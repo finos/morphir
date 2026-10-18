@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.18/mck-capabilities.schema.json",
+  "title": "Offline native owner mck-capabilities",
+  "description": "Closed exact Workbench MCK draft.18. Owner infrastructure only; no native reply or model decoding in the runner",
+  "examples": [
+    {
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.18",
+      "binding": "production-owner",
+      "language": "moonbit",
+      "operations": [ "run-native-owner" ],
+      "formats": [ "json" ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "binding",
+    "language",
+    "operations",
+    "formats"
+  ],
+  "properties": {
+    "suite": {
+      "const": "workbench"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.18"
+    },
+    "binding": {
+      "type": "string",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "const": [ "run-native-owner" ]
+    },
+    "formats": {
+      "const": [ "json" ]
+    }
+  },
+  "additionalProperties": false
+}

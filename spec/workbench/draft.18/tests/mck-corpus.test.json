@@ -1,0 +1,249 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.18/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "Fixed authority-negative example",
+      "data": {
+        "formatVersion": "0.1.0-draft.18",
+        "cases": [
+          {
+            "id": "wrong-window-no-authority",
+            "operation": "run-native-owner",
+            "format": "json",
+            "input": {
+              "context": {
+                "window": "other",
+                "origin": "app",
+                "page": "page-X"
+              },
+              "services": {
+                "executions": "enabled",
+                "workspace": true
+              },
+              "evaluation": {
+                "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                "entry": "client:main#answer",
+                "inputs": {
+                  "format": "json",
+                  "source": "[]"
+                }
+              },
+              "roots": [],
+              "pickers": [],
+              "cleanups": [],
+              "actions": [
+                {
+                  "op": "call",
+                  "id": "open",
+                  "operation": "session.open"
+                }
+              ]
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "call",
+                    "attempts": [
+                      {
+                        "id": "open",
+                        "state": "returned"
+                      }
+                    ],
+                    "callCount": 0,
+                    "delivery": null,
+                    "completion": null
+                  }
+                ],
+                "results": [
+                  {
+                    "id": "open",
+                    "state": "returned",
+                    "reply": {
+                      "ok": false,
+                      "code": "unauthorized",
+                      "effect": "none"
+                    },
+                    "cleanup": null,
+                    "failure": null
+                  }
+                ],
+                "calls": [],
+                "usedPickers": 0,
+                "unusedPickers": 0,
+                "usedCleanups": 0,
+                "unusedCleanups": 0
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level infrastructure",
+      "data": {
+        "formatVersion": "0.1.0-draft.18",
+        "cases": [
+          {
+            "id": "wrong-window-no-authority",
+            "operation": "run-native-owner",
+            "format": "json",
+            "input": {
+              "context": {
+                "window": "other",
+                "origin": "app",
+                "page": "page-X"
+              },
+              "services": {
+                "executions": "enabled",
+                "workspace": true
+              },
+              "evaluation": {
+                "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                "entry": "client:main#answer",
+                "inputs": {
+                  "format": "json",
+                  "source": "[]"
+                }
+              },
+              "roots": [],
+              "pickers": [],
+              "cleanups": [],
+              "actions": [
+                {
+                  "op": "call",
+                  "id": "open",
+                  "operation": "session.open"
+                }
+              ]
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "call",
+                    "attempts": [
+                      {
+                        "id": "open",
+                        "state": "returned"
+                      }
+                    ],
+                    "callCount": 0,
+                    "delivery": null,
+                    "completion": null
+                  }
+                ],
+                "results": [
+                  {
+                    "id": "open",
+                    "state": "returned",
+                    "reply": {
+                      "ok": false,
+                      "code": "unauthorized",
+                      "effect": "none"
+                    },
+                    "cleanup": null,
+                    "failure": null
+                  }
+                ],
+                "calls": [],
+                "usedPickers": 0,
+                "unusedPickers": 0,
+                "usedCleanups": 0,
+                "unusedCleanups": 0
+              }
+            }
+          }
+        ],
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Corpus expected result permits fixed effect set",
+      "data": {
+        "formatVersion": "0.1.0-draft.18",
+        "cases": [
+          {
+            "id": "wrong-window-no-authority",
+            "operation": "run-native-owner",
+            "format": "json",
+            "input": {
+              "context": {
+                "window": "other",
+                "origin": "app",
+                "page": "page-X"
+              },
+              "services": {
+                "executions": "enabled",
+                "workspace": true
+              },
+              "evaluation": {
+                "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                "entry": "client:main#answer",
+                "inputs": {
+                  "format": "json",
+                  "source": "[]"
+                }
+              },
+              "roots": [],
+              "pickers": [],
+              "cleanups": [],
+              "actions": [
+                {
+                  "op": "call",
+                  "id": "open",
+                  "operation": "session.open"
+                }
+              ]
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "call",
+                    "attempts": [
+                      {
+                        "id": "open",
+                        "state": "returned"
+                      }
+                    ],
+                    "callCount": 0,
+                    "delivery": null,
+                    "completion": null
+                  }
+                ],
+                "results": [
+                  {
+                    "id": "open",
+                    "state": "returned",
+                    "reply": {
+                      "ok": false,
+                      "code": "unauthorized",
+                      "effect": [
+                        "none",
+                        "unknown"
+                      ]
+                    },
+                    "cleanup": null,
+                    "failure": null
+                  }
+                ],
+                "calls": [],
+                "usedPickers": 0,
+                "unusedPickers": 0,
+                "usedCleanups": 0,
+                "unusedCleanups": 0
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    }
+  ]
+}

@@ -407,3 +407,21 @@ _Avoid_: Yank, ordinary package deletion, missing mirror
 **Release channel**:
 A named, mutable policy that selects eligible package, tool, or extension versions for updates.
 _Avoid_: Package identity, exact version, registry index
+
+## Workbench execution
+
+**Execution**:
+An accepted, tracked instance of requested work with captured inputs, lifecycle and outcomes. Reconnection observes the same execution. A rejection before acceptance creates none; losing the submission reply leaves acceptance unknown.
+_Avoid_: Job, task, invocation when referring to the tracked lifecycle
+
+**Invocation**:
+A function and its arguments. An execution can contain several invocations.
+_Avoid_: Execution when referring only to the requested function call
+
+**Operation**:
+The kind of requested work, such as evaluation, compilation or generation.
+_Avoid_: Execution, task
+
+**Cancellation acknowledgement**:
+Confirmation that cancellation was requested for an execution. It does not establish that evaluation stopped or cleanup finished.
+_Avoid_: Cancelled result, cleanup confirmation

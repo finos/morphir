@@ -1,0 +1,427 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/receipt.schema.json",
+  "tests": [
+    {
+      "description": "Submitted",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Running",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 1,
+        "state": "running",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Acknowledged while queued",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 1,
+        "state": "submitted",
+        "cancelRequested": true,
+        "outcomes": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Return can win cancellation race",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 2,
+        "state": "terminal",
+        "cancelRequested": true,
+        "outcomes": {
+          "contractVersion": "0.1.0-draft.5",
+          "calls": [
+            {
+              "id": "call",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "bool",
+                  "value": true
+                }
+              }
+            }
+          ],
+          "cleanup": {
+            "stage": "cleanup",
+            "code": "provider.dispose",
+            "message": "dispose failed"
+          },
+          "extensions": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Host cancellation without client request",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 2,
+        "state": "terminal",
+        "cancelRequested": false,
+        "outcomes": {
+          "contractVersion": "0.1.0-draft.5",
+          "calls": [
+            {
+              "id": "call",
+              "outcome": {
+                "status": "cancelled"
+              }
+            }
+          ],
+          "cleanup": null,
+          "extensions": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Premature running",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "running",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Acknowledged initial submission",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "submitted",
+        "cancelRequested": true,
+        "outcomes": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Terminal requires payload",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 1,
+        "state": "terminal",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Nonterminal cannot carry values",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 2,
+        "state": "running",
+        "cancelRequested": true,
+        "outcomes": {
+          "contractVersion": "0.1.0-draft.5",
+          "calls": [
+            {
+              "id": "call",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "bool",
+                  "value": true
+                }
+              }
+            }
+          ],
+          "cleanup": {
+            "stage": "cleanup",
+            "code": "provider.dispose",
+            "message": "dispose failed"
+          },
+          "extensions": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown state",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "disconnected",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Negative sequence",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": -1,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Fractional sequence",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0.5,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Out of range sequence",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 2147483648,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Maximum sequence",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 2147483647,
+        "state": "running",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Wrong nested terminal draft",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 2,
+        "state": "terminal",
+        "cancelRequested": true,
+        "outcomes": {
+          "contractVersion": "0.1.0-draft.14",
+          "calls": [
+            {
+              "id": "call",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "bool",
+                  "value": true
+                }
+              }
+            }
+          ],
+          "cleanup": {
+            "stage": "cleanup",
+            "code": "provider.dispose",
+            "message": "dispose failed"
+          },
+          "extensions": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown receipt field",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null,
+        "success": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Contradictory returned value",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 2,
+        "state": "terminal",
+        "cancelRequested": true,
+        "outcomes": {
+          "contractVersion": "0.1.0-draft.5",
+          "calls": [
+            {
+              "id": "call",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "bool",
+                  "value": true
+                },
+                "failure": {
+                  "stage": "evaluate",
+                  "code": "x",
+                  "message": "x"
+                }
+              }
+            }
+          ],
+          "cleanup": {
+            "stage": "cleanup",
+            "code": "provider.dispose",
+            "message": "dispose failed"
+          },
+          "extensions": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Breaking execution contract refuses historical identity or version",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "valid": false
+    }
+  ]
+}

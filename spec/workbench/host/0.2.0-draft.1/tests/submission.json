@@ -1,0 +1,265 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.1/submission.schema.json",
+  "tests": [
+    {
+      "description": "JSON tagged argument source",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Ion native argument list",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "ion-text",
+          "source": "[2,true,morphir_unit::null]"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "No arguments",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Model source is structurally opaque",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "invalid IR",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Input source decoding is semantic",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "invalid JSON"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Empty entry",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Entry code point upper bound",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Model must be source text",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": {},
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Model cannot be absent text",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown argument format",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "ion-binary",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Arguments source must be text",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown input member",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]",
+          "path": "/tmp/args"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No path substitution",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "modelPath": "/tmp/model.json"
+      },
+      "valid": false
+    },
+    {
+      "description": "Caller cannot choose provider",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "providerId": "other"
+      },
+      "valid": false
+    },
+    {
+      "description": "Caller cannot choose call inventory",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "calls": [
+          "other"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Future submission version",
+      "data": {
+        "contractVersion": "0.1.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Released version does not match draft",
+      "data": {
+        "contractVersion": "0.1.0",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Inputs required",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add"
+      },
+      "valid": false
+    },
+    {
+      "description": "Model required",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Version required",
+      "data": {
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        }
+      },
+      "valid": false
+    }
+  ]
+}

@@ -2,21 +2,21 @@ use super::*;
 use serde_json::json;
 
 #[test]
-fn capability_jobs_negotiates_the_new_exact_operation() {
-    let capabilities = json!({"suite":"workbench","contractVersion":"0.1.0-draft.13",
-        "binding":"job-policy-infrastructure-test","language":"test",
-        "operations":["run-capability-jobs"],"formats":["json"]});
-    assert!(Capabilities::parse(capabilities, "0.1.0-draft.13").is_ok());
+fn capability_executions_negotiates_the_new_exact_operation() {
+    let capabilities = json!({"suite":"workbench","contractVersion":"0.1.0-draft.19",
+        "binding":"execution-policy-infrastructure-test","language":"test",
+        "operations":["run-capability-executions"],"formats":["json"]});
+    assert!(Capabilities::parse(capabilities, "0.1.0-draft.19").is_ok());
 }
 
 fn capabilities() -> serde_json::Value {
-    json!({"suite":"workbench","contractVersion":CAPABILITY_JOBS_VERSION,
-        "binding":"job-infrastructure-only","language":"test",
-        "operations":["run-capability-jobs"],"formats":["json"]})
+    json!({"suite":"workbench","contractVersion":CAPABILITY_EXECUTIONS_VERSION,
+        "binding":"execution-infrastructure-only","language":"test",
+        "operations":["run-capability-executions"],"formats":["json"]})
 }
 fn fixture() -> serde_json::Value {
     serde_json::from_str::<serde_json::Value>(include_str!(
-        "../../../../spec/workbench/mck/draft.13/cases.json"
+        "../../../../spec/workbench/mck/draft.19/cases.json"
     ))
     .unwrap()["cases"][0]
         .clone()
@@ -24,7 +24,7 @@ fn fixture() -> serde_json::Value {
 fn small_corpus(root: &std::path::Path, case: serde_json::Value) -> Result<Corpus, String> {
     std::fs::write(
         root.join("cases.json"),
-        json!({"formatVersion":CAPABILITY_JOBS_VERSION,"cases":[case]}).to_string(),
+        json!({"formatVersion":CAPABILITY_EXECUTIONS_VERSION,"cases":[case]}).to_string(),
     )
     .unwrap();
     load(root)
@@ -36,31 +36,31 @@ impl Testee for Reply {
         if request["op"] == "capabilities" {
             Ok(capabilities())
         } else {
-            assert_eq!(request["op"], "run-capability-jobs");
+            assert_eq!(request["op"], "run-capability-executions");
             Ok(self.0.clone())
         }
     }
 }
 #[test]
-fn capability_jobs_rejects_adjacent_drafts_and_operation_format_expansion() {
+fn capability_executions_rejects_adjacent_drafts_and_operation_format_expansion() {
     for (field, value) in [
-        ("contractVersion", json!("0.1.0-draft.13+local")),
+        ("contractVersion", json!("0.1.0-draft.19+local")),
         ("contractVersion", json!(CAPABILITY_POLICY_VERSION)),
         ("operations", json!(["run-capability-policy"])),
         ("formats", json!(["ion-text"])),
     ] {
         let mut bad = capabilities();
         bad[field] = value;
-        assert!(Capabilities::parse(bad, CAPABILITY_JOBS_VERSION).is_err());
+        assert!(Capabilities::parse(bad, CAPABILITY_EXECUTIONS_VERSION).is_err());
     }
     let mut absent = capabilities();
     absent["operations"] = json!([]);
-    Capabilities::parse(absent, CAPABILITY_JOBS_VERSION).unwrap();
+    Capabilities::parse(absent, CAPABILITY_EXECUTIONS_VERSION).unwrap();
 }
 #[test]
-fn capability_jobs_fixed_inventory_replays_and_rechecks_without_linking_an_engine() {
+fn capability_executions_fixed_inventory_replays_and_rechecks_without_linking_an_engine() {
     let root =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.13");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.19");
     let corpus = load(&root).unwrap();
     assert_eq!(corpus.case_count(), 69);
     struct Replay(std::collections::VecDeque<serde_json::Value>);
@@ -87,7 +87,7 @@ fn capability_jobs_fixed_inventory_replays_and_rechecks_without_linking_an_engin
     check_report(&root, &Report::from_json(&report.to_json()).unwrap()).unwrap();
 }
 #[test]
-fn capability_jobs_corpus_closes_literal_shapes_before_typed_conversion() {
+fn capability_executions_corpus_closes_literal_shapes_before_typed_conversion() {
     let root = tempfile::tempdir().unwrap();
     for kind in [
         "model-marker",
@@ -101,10 +101,10 @@ fn capability_jobs_corpus_closes_literal_shapes_before_typed_conversion() {
         match kind{
             "model-marker"=>case["input"]["submission"]["model"]=json!({"$serde_json::private::RawValue":"\"x\""}),
             "policy-marker"=>case["input"]["submission"]["admission"]["policy"]=json!({"$serde_json::private::RawValue":"\"permissive\""}),
-            "claim-marker"=>case["input"]["actions"]=json!([{"op":"claim","job":0,"selection":{"planId":"plan-1","runtime":"scheme","policy":{"$serde_json::private::RawValue":"\"permissive\""},"providerId":"scheme"}}]),
-            "boundary-marker"=>case["expected"]["value"]["jobs"][0]["plan"]["boundary"]["entries"][0]["name"]=json!({"$serde_json::private::RawValue":"\"entry\""}),
+            "claim-marker"=>case["input"]["actions"]=json!([{"op":"claim","execution":0,"selection":{"planId":"plan-1","runtime":"scheme","policy":{"$serde_json::private::RawValue":"\"permissive\""},"providerId":"scheme"}}]),
+            "boundary-marker"=>case["expected"]["value"]["executions"][0]["plan"]["boundary"]["entries"][0]["name"]=json!({"$serde_json::private::RawValue":"\"entry\""}),
             "manifest"=>case["input"]["submission"]["manifest"]=json!({}),
-            "fourth-replan"=>case["input"]["actions"]=json!((0..4).map(|_|json!({"op":"replan","job":0,"selection":{"planId":"plan-1","runtime":"scheme","policy":"permissive","providerId":"scheme"}})).collect::<Vec<_>>()),_=>unreachable!()}
+            "fourth-replan"=>case["input"]["actions"]=json!((0..4).map(|_|json!({"op":"replan","execution":0,"selection":{"planId":"plan-1","runtime":"scheme","policy":"permissive","providerId":"scheme"}})).collect::<Vec<_>>()),_=>unreachable!()}
         assert!(small_corpus(root.path(), case).is_err(), "{kind}");
     }
     let mut opaque = fixture();
@@ -122,7 +122,7 @@ fn capability_jobs_corpus_closes_literal_shapes_before_typed_conversion() {
     assert!(load(root.path()).is_err());
 }
 #[test]
-fn capability_jobs_reports_recompute_captured_selection_context_receipts_and_inventory() {
+fn capability_executions_reports_recompute_captured_selection_context_receipts_and_inventory() {
     let root = tempfile::tempdir().unwrap();
     let case = fixture();
     let corpus = small_corpus(root.path(), case.clone()).unwrap();
@@ -142,7 +142,7 @@ fn capability_jobs_reports_recompute_captured_selection_context_receipts_and_inv
         "hash",
     ] {
         let mut bad = saved.clone();
-        let plan = &mut bad["records"][0]["observed"]["value"]["jobs"][0]["plan"];
+        let plan = &mut bad["records"][0]["observed"]["value"]["executions"][0]["plan"];
         match kind {
             "policy" => plan["admission"]["policy"] = json!("strict"),
             "runtime" => plan["runtime"] = json!("javascript"),
@@ -151,7 +151,8 @@ fn capability_jobs_reports_recompute_captured_selection_context_receipts_and_inv
             "plan-id" => plan["planId"] = json!("plan-2"),
             "identity" => plan["identity"]["snapshotId"] = json!("other"),
             "receipt" => {
-                bad["records"][0]["observed"]["value"]["jobs"][0]["receipt"]["sequence"] = json!(1)
+                bad["records"][0]["observed"]["value"]["executions"][0]["receipt"]["sequence"] =
+                    json!(1)
             }
             "action" => {
                 bad["records"][0]["observed"]["value"]["observations"][0]["view"]["policy"] =
@@ -169,7 +170,7 @@ fn capability_jobs_reports_recompute_captured_selection_context_receipts_and_inv
         );
     }
     let mut mismatch = case["expected"].clone();
-    mismatch["value"]["jobs"][0]["plan"]["admission"]["policy"] = json!("strict");
+    mismatch["value"]["executions"][0]["plan"]["admission"]["policy"] = json!("strict");
     let failed = execute(&corpus, &mut Reply(mismatch));
     assert_eq!(failed.records[0].result, ResultKind::Fail);
     check_report(root.path(), &failed).unwrap();
@@ -185,36 +186,40 @@ fn capability_jobs_reports_recompute_captured_selection_context_receipts_and_inv
     assert!(check_report(root.path(), &report).is_err());
 }
 #[test]
-fn capability_jobs_projection_resources_and_receipt_binding_are_checked() {
+fn capability_executions_projection_resources_and_receipt_binding_are_checked() {
     let root = tempfile::tempdir().unwrap();
     let case = fixture();
     let corpus = small_corpus(root.path(), case.clone()).unwrap();
     for kind in [
         "identity",
         "duplicate-plan",
-        "duplicate-job",
+        "duplicate-execution",
         "long-code",
         "oversized",
     ] {
         let mut value = case["expected"].clone();
         match kind {
             "identity" => {
-                value["value"]["jobs"][0]["receipt"]["identity"]["jobId"] = json!("other")
+                value["value"]["executions"][0]["receipt"]["identity"]["executionId"] =
+                    json!("other")
             }
             "duplicate-plan" => {
-                let j = value["value"]["jobs"][0].clone();
-                value["value"]["jobs"].as_array_mut().unwrap().push(j);
+                let j = value["value"]["executions"][0].clone();
+                value["value"]["executions"].as_array_mut().unwrap().push(j);
             }
-            "duplicate-job" => {
-                let mut job = value["value"]["jobs"][0].clone();
-                job["plan"]["planId"] = json!("plan-2");
-                value["value"]["jobs"].as_array_mut().unwrap().push(job);
+            "duplicate-execution" => {
+                let mut execution = value["value"]["executions"][0].clone();
+                execution["plan"]["planId"] = json!("plan-2");
+                value["value"]["executions"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(execution);
             }
             "long-code" => {
-                value["value"]["observations"][0] = json!({"op":"inspect","job":0,"status":"invalid","code":"😀".repeat(65),"view":null})
+                value["value"]["observations"][0] = json!({"op":"inspect","execution":0,"status":"invalid","code":"😀".repeat(65),"view":null})
             }
             "oversized" => {
-                value["value"]["jobs"][0]["plan"]["boundary"]["entries"][0]["name"] =
+                value["value"]["executions"][0]["plan"]["boundary"]["entries"][0]["name"] =
                     json!("x".repeat(MAX_VALUE_BYTES))
             }
             _ => unreachable!(),

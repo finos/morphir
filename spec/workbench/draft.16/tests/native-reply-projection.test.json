@@ -1,0 +1,243 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.16/native-reply-projection.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "replyAccepted": true,
+        "ok": true,
+        "operation": "session.open"
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed outer shape",
+      "data": {
+        "replyAccepted": true,
+        "ok": true,
+        "operation": "session.open",
+        "authority": "private"
+      },
+      "valid": false
+    },
+    {
+      "description": "Portable invalid_request none",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "invalid_request",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable invalid_request unknown",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "invalid_request",
+          "effect": "unknown"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable unavailable none",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable unavailable unknown",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "unavailable",
+          "effect": "unknown"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable unauthorized none",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "unauthorized",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable unauthorized unknown",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "unauthorized",
+          "effect": "unknown"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable not_found none",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "not_found",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable not_found unknown",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "not_found",
+          "effect": "unknown"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable conflict none",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "conflict",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable conflict unknown",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "conflict",
+          "effect": "unknown"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable limit none",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "limit",
+          "effect": "none"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Portable limit unknown",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "limit",
+          "effect": "unknown"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Invalid or private projection",
+      "data": {
+        "replyAccepted": false,
+        "ok": true,
+        "operation": "session.close"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid or private projection",
+      "data": {
+        "replyAccepted": true,
+        "ok": true,
+        "operation": "unknown"
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid or private projection",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "unknown",
+          "effect": "none"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid or private projection",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "limit",
+          "effect": "certain"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid or private projection",
+      "data": {
+        "replyAccepted": true,
+        "ok": false,
+        "error": {
+          "code": "limit",
+          "effect": "none",
+          "message": "private"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid or private projection",
+      "data": {
+        "replyAccepted": true,
+        "ok": true,
+        "operation": "session.close",
+        "error": {
+          "code": "limit",
+          "effect": "none"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Invalid or private projection",
+      "data": {
+        "$serde_json::private::RawValue": "{\"replyAccepted\":true,\"ok\":true,\"operation\":\"session.close\"}"
+      },
+      "valid": false
+    }
+  ]
+}

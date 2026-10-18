@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.1/submission.schema.json",
+  "title": "Workbench host submission request",
+  "description": "One immutable in-memory model source and one public entry invocation. Source decoding and whole UTF-8 frame budgets require runtime validation",
+  "examples": [
+    {
+      "contractVersion": "0.2.0-draft.1",
+      "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+      "entry": "sample:main#add",
+      "inputs": {
+        "format": "json",
+        "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "contractVersion", "model", "entry", "inputs" ],
+  "properties": {
+    "contractVersion": {
+      "const": "0.2.0-draft.1"
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 1048576,
+      "minLength": 1
+    },
+    "entry": {
+      "type": "string",
+      "maxLength": 1024,
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object",
+      "required": [ "format", "source" ],
+      "properties": {
+        "format": {
+          "enum": [ "json", "ion-text" ]
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 1048576,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

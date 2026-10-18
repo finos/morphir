@@ -1,0 +1,595 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/execution-projection.schema.json",
+  "tests": [
+    {
+      "description": "submitted projection",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": []
+      },
+      "valid": true
+    },
+    {
+      "description": "ordered action views",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "send"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "projection closed",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "send"
+            }
+          }
+        ],
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown action",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "submit",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "send"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "action rejection requires code",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "invalid",
+            "view": {
+              "sequence": 0,
+              "state": "submitted",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "send"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "accepted action forbids code",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 0,
+              "state": "submitted",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "send"
+            },
+            "code": "extra"
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "disconnect is local only",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "disconnect",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "send"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "zero running view rejected",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 0,
+              "state": "running",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "send"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "terminal view cannot send",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "terminal",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "send"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "offline active view cannot send",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "connected": false,
+              "cancelAction": "send"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "pending requires acknowledgement",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "pending"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "terminal cleanup preserved",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "terminal",
+          "cancelRequested": false,
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "call",
+                "outcome": {
+                  "status": "cancelled"
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          }
+        },
+        "connected": true,
+        "cancelAction": "already-terminal",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "terminal",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "already-terminal"
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Nonterminal view cannot claim already terminal",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "cancel-action",
+            "status": "local",
+            "view": {
+              "sequence": 0,
+              "state": "submitted",
+              "cancelRequested": false,
+              "connected": true,
+              "cancelAction": "already-terminal"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Acknowledged view cannot lack cancellation capability",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "connected": true,
+        "cancelAction": "send",
+        "observations": [
+          {
+            "op": "observe",
+            "status": "advanced",
+            "view": {
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": true,
+              "connected": true,
+              "cancelAction": "unavailable"
+            }
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

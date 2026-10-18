@@ -1,0 +1,375 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.1/submission-reply.schema.json",
+  "tests": [
+    {
+      "description": "Initial bound submission",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Cross-field identity equality is semantic",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "different",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "One fixed invocation ID",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "other"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No multi-call submission",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench",
+          "second"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Inventory cannot be empty",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Initial sequence exactly zero",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 1,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Initial state submitted",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "running",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No initial cancellation acknowledgement",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": true,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Receipt exact version",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.1.0-draft.2",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown reply member",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "token": "secret"
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown nested receipt member",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null,
+          "status": "ok"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Expected identity required",
+      "data": {
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Receipt required",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

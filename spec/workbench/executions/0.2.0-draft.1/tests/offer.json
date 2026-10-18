@@ -1,0 +1,184 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/offer.schema.json",
+  "tests": [
+    {
+      "description": "Query and cancel",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "cancel"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Query without cancellation",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Reordered operations",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "cancel",
+          "query"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Cancel alone",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "cancel"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Duplicate operation",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "query"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown operation",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "evaluate"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Other draft",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.1.0-draft.2",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "cancel"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Release spelling",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.1.0",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "cancel"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Build spelling",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.1.0-draft.1+build",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "cancel"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown flag",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "cancel"
+        ],
+        "recovery": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Breaking execution contract refuses historical identity or version",
+      "data": {
+        "profile": "morphir/workbench/jobs",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "cancel"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Breaking execution contract refuses historical identity or version",
+      "data": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.1.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "operations": [
+          "query",
+          "cancel"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

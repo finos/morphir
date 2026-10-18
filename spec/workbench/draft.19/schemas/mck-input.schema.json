@@ -1,0 +1,462 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.19/mck-input.schema.json",
+  "title": "Scheme execution policy mck-input",
+  "description": "Exact immutable Scheme execution selection and accepted context; frozen receipt envelopes remain unchanged",
+  "examples": [
+    {
+      "offer": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "operations": [ "query", "cancel" ]
+      },
+      "submission": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "extensions": null,
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "actions": [
+        {
+          "op": "inspect",
+          "execution": 0
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "offer", "submission", "actions" ],
+  "properties": {
+    "offer": {
+      "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/offer.schema.json"
+    },
+    "submission": {
+      "type": "object",
+      "required": [ "model", "calls", "runtime", "extensions" ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "maxLength": 262144
+        },
+        "calls": {
+          "type": "array",
+          "maxItems": 1000,
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [ "id", "entry", "inputs" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "entry": {
+                "type": "string",
+                "maxLength": 512,
+                "minLength": 1
+              },
+              "inputs": {
+                "type": "object",
+                "required": [ "format", "source" ],
+                "properties": {
+                  "format": {
+                    "enum": [ "json", "ion-text" ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 262144
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "admission": {
+          "$ref": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json"
+        },
+        "extensions": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [ "format", "bytes" ],
+              "properties": {
+                "format": {
+                  "const": "ion-binary"
+                },
+                "bytes": {
+                  "type": "array",
+                  "maxItems": 65536,
+                  "minItems": 1,
+                  "items": {
+                    "type": "integer",
+                    "maximum": 255,
+                    "minimum": 0
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 32,
+      "maxContains": 3,
+      "minContains": 0,
+      "contains": {
+        "type": "object",
+        "required": [ "op" ],
+        "properties": {
+          "op": {
+            "const": "replan"
+          }
+        }
+      },
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "op", "execution" ],
+            "properties": {
+              "op": {
+                "const": "inspect"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution" ],
+            "properties": {
+              "op": {
+                "const": "query"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution" ],
+            "properties": {
+              "op": {
+                "const": "cancel"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution" ],
+            "properties": {
+              "op": {
+                "const": "release"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution" ],
+            "properties": {
+              "op": {
+                "const": "query-lost-reply"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution" ],
+            "properties": {
+              "op": {
+                "const": "mutate-plan-view"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution", "selection" ],
+            "properties": {
+              "op": {
+                "const": "claim"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              },
+              "selection": {
+                "type": "object",
+                "required": [ "planId", "runtime", "policy", "providerId" ],
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "runtime": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "policy": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution", "selection" ],
+            "properties": {
+              "op": {
+                "const": "run"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              },
+              "selection": {
+                "type": "object",
+                "required": [ "planId", "runtime", "policy", "providerId" ],
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "runtime": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "policy": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution", "selection" ],
+            "properties": {
+              "op": {
+                "const": "replan"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              },
+              "selection": {
+                "type": "object",
+                "required": [ "planId", "runtime", "policy", "providerId" ],
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "runtime": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "policy": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution", "selection" ],
+            "properties": {
+              "op": {
+                "const": "claim-lost-reply"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              },
+              "selection": {
+                "type": "object",
+                "required": [ "planId", "runtime", "policy", "providerId" ],
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "runtime": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "policy": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution", "outcomes" ],
+            "properties": {
+              "op": {
+                "const": "complete"
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              },
+              "outcomes": {
+                "type": "object",
+                "required": [ "format", "source" ],
+                "properties": {
+                  "format": {
+                    "enum": [ "json", "ion-text" ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 262144,
+                    "minLength": 0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "policy" ],
+            "properties": {
+              "op": {
+                "const": "mutate-caller"
+              },
+              "policy": {
+                "enum": [ "strict", "permissive" ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op" ],
+            "properties": {
+              "op": {
+                "const": "transport-gap"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

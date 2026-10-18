@@ -1,0 +1,785 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/native/0.2.0-draft.1/descriptor.schema.json",
+  "tests": [
+    {
+      "description": "Native capabilities []",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": []
+      },
+      "valid": true
+    },
+    {
+      "description": "Native capabilities [\"workspace\"]",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "workspace"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Native capabilities [\"executions\"]",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Native capabilities [\"executions\",\"workspace\"]",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Offer session equality is checked at admission",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "different-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Frozen executions offer allows reordered operations",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "cancel",
+            "query"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Frozen executions offer permits query without cancellation",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Maximum native identifier length",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown descriptor member",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "token": "renderer-token"
+      },
+      "valid": false
+    },
+    {
+      "description": "HTTP profile is not native",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact native draft rejects 0.1.0-draft.2",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.1.0-draft.2",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact native draft rejects 0.1.0",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.1.0",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact native draft rejects 0.1.0-draft.1+build",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.1.0-draft.1+build",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact native draft rejects v0.1.0-draft.1",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "v0.1.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native capabilities have canonical order",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "workspace",
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Duplicate native capability",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown native capability",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "filesystem"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Executions capability requires an offer",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Workspace cannot carry an unadvertised executions offer",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Empty capabilities cannot carry an execution offer",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown frozen offer member",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ],
+          "transport": "ipc"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Frozen executions offer exact draft",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.1.0-draft.2",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Nested offer cannot advertise HTTP host",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/host",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session identifier empty",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session identifier too long",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session identifier path",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "/tmp/session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session identifier unicode",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "session-é",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session identifier whitespace",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Session identifier required",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Operations required",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session token rejects final newline",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session\n",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session token rejects embedded carriage return",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native\rsession",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session token accepts every permitted punctuation",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "A0_.-z",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Native capabilities must be an array",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": "executions",
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "native-host",
+          "sessionId": "native-session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Native offer cannot be null",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "sessionId": "native-session",
+        "operations": [
+          "executions",
+          "workspace"
+        ],
+        "offer": null
+      },
+      "valid": false
+    }
+  ]
+}

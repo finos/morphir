@@ -1,22 +1,22 @@
 use super::*;
 use serde_json::{Value, json};
 
-const DRAFT: &str = "0.1.0-draft.6";
+const DRAFT: &str = "0.1.0-draft.14";
 
 fn operation() -> Operation {
-    serde_json::from_value(json!("reduce-job")).unwrap()
+    serde_json::from_value(json!("reduce-execution")).unwrap()
 }
 
 fn capabilities() -> Value {
     json!({"suite":"workbench","contractVersion":DRAFT,
         "binding":"fixed-transcript","language":"test",
-        "operations":["reduce-job"],"formats":["json"]})
+        "operations":["reduce-execution"],"formats":["json"]})
 }
 
 fn projection() -> Value {
     let identity = json!({"hostId":"host","sessionId":"session","providerId":"provider",
-        "jobId":"job","snapshotId":"snapshot"});
-    json!({"identity":identity,"receipt":{"contractVersion":"0.1.0-draft.1",
+        "executionId":"execution","snapshotId":"snapshot"});
+    json!({"identity":identity,"receipt":{"contractVersion":"0.2.0-draft.1",
         "identity":identity,"sequence":0,"state":"submitted","cancelRequested":false,
         "outcomes":null},"connected":true,"cancelAction":"send","observations":[]})
 }
@@ -26,7 +26,7 @@ fn observation(value: Value) -> Observation {
 }
 
 #[test]
-fn jobs_exact_draft_supports_only_reduce_job_and_json() {
+fn executions_exact_draft_supports_only_reduce_execution_and_json() {
     let op = operation();
     let caps = capabilities();
     Capabilities::parse(caps.clone(), DRAFT).unwrap();
@@ -60,7 +60,7 @@ fn jobs_exact_draft_supports_only_reduce_job_and_json() {
         empty[field] = json!([]);
         assert!(Capabilities::parse(empty, DRAFT).is_err(), "{field}");
     }
-    for version in ["0.1.0-draft.7", "0.1.0-draft.6+local", "v0.1.0-draft.6"] {
+    for version in ["0.1.0-draft.15", "0.1.0-draft.14+local", "v0.1.0-draft.14"] {
         let mut bad = caps.clone();
         bad["contractVersion"] = json!(version);
         assert!(Capabilities::parse(bad, version).is_err());
@@ -74,11 +74,17 @@ fn jobs_exact_draft_supports_only_reduce_job_and_json() {
 }
 
 #[test]
-fn jobs_projection_rejects_forged_identity_view_and_closed_inventory() {
+fn executions_projection_rejects_forged_identity_view_and_closed_inventory() {
     let op = operation();
     let valid = projection();
     observation(valid.clone()).validate_for(op).unwrap();
-    for field in ["hostId", "sessionId", "providerId", "jobId", "snapshotId"] {
+    for field in [
+        "hostId",
+        "sessionId",
+        "providerId",
+        "executionId",
+        "snapshotId",
+    ] {
         let mut invalid = valid.clone();
         invalid["receipt"]["identity"][field] = json!("other");
         assert!(observation(invalid).validate_for(op).is_err());
@@ -113,7 +119,7 @@ fn jobs_projection_rejects_forged_identity_view_and_closed_inventory() {
         assert!(observation(value).validate_for(op).is_err());
     }
     let mut code = valid.clone();
-    code["observations"][0]["code"] = json!("workbench.job_receipt");
+    code["observations"][0]["code"] = json!("workbench.execution_receipt");
     assert!(observation(code).validate_for(op).is_err());
     let mut missing = valid;
     missing["observations"][0]["status"] = json!("invalid");
@@ -122,7 +128,7 @@ fn jobs_projection_rejects_forged_identity_view_and_closed_inventory() {
 }
 
 #[test]
-fn jobs_acknowledged_connected_view_cannot_claim_unavailable_cancellation() {
+fn executions_acknowledged_connected_view_cannot_claim_unavailable_cancellation() {
     let mut value = projection();
     value["receipt"]["sequence"] = json!(1);
     value["receipt"]["cancelRequested"] = json!(true);
@@ -137,13 +143,13 @@ fn jobs_acknowledged_connected_view_cannot_claim_unavailable_cancellation() {
 }
 
 #[test]
-fn jobs_projection_bounds_observations_and_utf16_and_admits_nested_terminal_values() {
+fn executions_projection_bounds_observations_and_utf16_and_admits_nested_terminal_values() {
     let op = operation();
     let mut value = projection();
-    value["identity"]["jobId"] = json!("😀".repeat(64));
+    value["identity"]["executionId"] = json!("😀".repeat(64));
     value["receipt"]["identity"] = value["identity"].clone();
     observation(value.clone()).validate_for(op).unwrap();
-    value["identity"]["jobId"] = json!("😀".repeat(65));
+    value["identity"]["executionId"] = json!("😀".repeat(65));
     value["receipt"]["identity"] = value["identity"].clone();
     assert!(observation(value).validate_for(op).is_err());
 
@@ -193,8 +199,8 @@ fn corpus_file(root: &std::path::Path, format: &str, input: Value) {
     std::fs::write(
         root.join("cases.json"),
         json!({"formatVersion":DRAFT,"cases":[
-            {"id":"trace","operation":"reduce-job","format":format,"input":input,
-            "expected":{"status":"invalid","code":"workbench.invalid_job_trace"}}
+            {"id":"trace","operation":"reduce-execution","format":format,"input":input,
+            "expected":{"status":"invalid","code":"workbench.invalid_execution_trace"}}
         ]})
         .to_string(),
     )
@@ -202,7 +208,7 @@ fn corpus_file(root: &std::path::Path, format: &str, input: Value) {
 }
 
 #[test]
-fn jobs_corpus_keeps_negative_inputs_opaque_and_rejects_wrong_format_or_operation() {
+fn executions_corpus_keeps_negative_inputs_opaque_and_rejects_wrong_format_or_operation() {
     let root = tempfile::tempdir().unwrap();
     for input in [
         json!(null),
@@ -244,9 +250,9 @@ impl Testee for Replay {
 }
 
 #[test]
-fn jobs_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_expectations() {
+fn executions_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_expectations() {
     let root =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.6");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.14");
     let corpus = load(&root).unwrap();
     assert_eq!(corpus.case_count(), 170);
     assert!(
@@ -256,7 +262,7 @@ fn jobs_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_expecta
             .all(|case| case.operation() == operation() && case.format == Format::Json)
     );
     // Replay exercises the shared verdict and report boundary only. It is not
-    // an adapter implementation and does not qualify job-reducer behavior.
+    // an adapter implementation and does not qualify execution-reducer behavior.
     let mut replay = Replay {
         replies: std::iter::once(capabilities())
             .chain(
@@ -286,7 +292,7 @@ fn jobs_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_expecta
     assert!(
         replay.requests[1..]
             .iter()
-            .all(|request| request["op"] == "reduce-job" && request["format"] == "json")
+            .all(|request| request["op"] == "reduce-execution" && request["format"] == "json")
     );
     let index = corpus
         .cases
@@ -309,7 +315,8 @@ fn jobs_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_expecta
                     json!(2147483647)
             }
             "identity" => {
-                forged["records"][index]["observed"]["value"]["identity"]["jobId"] = json!("other")
+                forged["records"][index]["observed"]["value"]["identity"]["executionId"] =
+                    json!("other")
             }
             "operation" => forged["records"][index]["operation"] = json!("validate-outcomes"),
             "capabilities" => forged["capabilities"]["contractVersion"] = json!(OUTCOMES_VERSION),
@@ -351,12 +358,12 @@ fn jobs_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_expecta
 }
 
 #[test]
-fn jobs_malformed_adapter_projection_is_an_exchange_error_and_valid_difference_fails() {
+fn executions_malformed_adapter_projection_is_an_exchange_error_and_valid_difference_fails() {
     let root = tempfile::tempdir().unwrap();
     let write = |expected: Value| {
         std::fs::write(
             root.path().join("cases.json"),
-            json!({"formatVersion":DRAFT,"cases":[{"id":"fixed","operation":"reduce-job",
+            json!({"formatVersion":DRAFT,"cases":[{"id":"fixed","operation":"reduce-execution",
             "format":"json","input":null,"expected":expected}]})
             .to_string(),
         )
@@ -390,4 +397,27 @@ fn jobs_malformed_adapter_projection_is_an_exchange_error_and_valid_difference_f
     assert!(report.errors.is_empty());
     assert!(!report.qualified);
     check_report(root.path(), &report).unwrap();
+}
+
+#[test]
+fn execution_projection_refuses_job_identity_aliases_and_previous_receipt_version() {
+    let current = projection();
+    for path in ["identity", "receipt"] {
+        let mut old = current.clone();
+        let identity = if path == "identity" {
+            &mut old["identity"]
+        } else {
+            &mut old["receipt"]["identity"]
+        };
+        let object = identity.as_object_mut().unwrap();
+        let id = object.remove("executionId").unwrap();
+        object.insert("jobId".into(), id);
+        assert!(observation(old).validate_for(operation()).is_err());
+    }
+    let mut duplicate = current.clone();
+    duplicate["identity"]["jobId"] = json!("old");
+    assert!(observation(duplicate).validate_for(operation()).is_err());
+    let mut old_version = current;
+    old_version["receipt"]["contractVersion"] = json!("0.1.0-draft.1");
+    assert!(observation(old_version).validate_for(operation()).is_err());
 }

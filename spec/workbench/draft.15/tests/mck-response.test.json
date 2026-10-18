@@ -1,0 +1,87 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.15/mck-response.schema.json",
+  "tests": [
+    {
+      "description": "Native observation",
+      "data": {
+        "id": 1,
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Capabilities",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.15",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "validate-native-frame"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Native rejection",
+      "data": {
+        "id": 2,
+        "status": "invalid",
+        "code": "native.frame.json"
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown code",
+      "data": {
+        "id": 2,
+        "status": "invalid",
+        "code": "native.frame.other"
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed",
+      "data": {
+        "id": 1,
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        },
+        "message": "extra"
+      },
+      "valid": false
+    },
+    {
+      "description": "False marker",
+      "data": {
+        "id": 1,
+        "status": "ok",
+        "value": {
+          "frameAccepted": false
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Literal object cannot impersonate accepted boolean marker",
+      "data": {
+        "id": 1,
+        "status": "ok",
+        "value": {
+          "frameAccepted": {
+            "$serde_json::private::RawValue": "true"
+          }
+        }
+      },
+      "valid": false
+    }
+  ]
+}

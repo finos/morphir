@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/receipt.schema.json",
+  "title": "Authoritative execution receipt",
+  "description": "Closed host receipt with separate cancellation acknowledgement and exact draft.5 terminal evidence. Cross-receipt semantics require the portable reducer",
+  "examples": [
+    {
+      "contractVersion": "0.2.0-draft.1",
+      "identity": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "executionId": "execution",
+        "snapshotId": "snapshot"
+      },
+      "sequence": 0,
+      "state": "submitted",
+      "cancelRequested": false,
+      "outcomes": null
+    }
+  ],
+  "type": "object",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "running"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "sequence": {
+            "minimum": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sequence": {
+            "const": 0
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "state": {
+            "const": "submitted"
+          },
+          "cancelRequested": {
+            "const": false
+          }
+        }
+      }
+    }
+  ],
+  "if": {
+    "properties": {
+      "state": {
+        "const": "terminal"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "sequence": {
+        "minimum": 1
+      },
+      "outcomes": {
+        "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json"
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "outcomes": {
+        "type": "null"
+      }
+    }
+  },
+  "required": [
+    "contractVersion",
+    "identity",
+    "sequence",
+    "state",
+    "cancelRequested",
+    "outcomes"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "0.2.0-draft.1"
+    },
+    "identity": {
+      "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/identity.schema.json"
+    },
+    "sequence": {
+      "type": "integer",
+      "maximum": 2147483647,
+      "minimum": 0
+    },
+    "state": {
+      "enum": [ "submitted", "running", "terminal" ]
+    },
+    "cancelRequested": {
+      "type": "boolean"
+    },
+    "outcomes": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

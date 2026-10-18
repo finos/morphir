@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/execution-plan/0.2.0-draft.1/selection.schema.json",
+  "title": "Expected immutable Scheme execution selection",
+  "description": "Exact immutable Scheme execution selection and accepted context; frozen receipt envelopes remain unchanged",
+  "examples": [
+    {
+      "planId": "plan-1",
+      "runtime": "scheme",
+      "policy": "permissive",
+      "providerId": "scheme"
+    }
+  ],
+  "type": "object",
+  "required": [ "planId", "runtime", "policy", "providerId" ],
+  "properties": {
+    "planId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "runtime": {
+      "const": "scheme"
+    },
+    "policy": {
+      "enum": [ "strict", "permissive" ]
+    },
+    "providerId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

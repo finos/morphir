@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.1/release-reply.schema.json",
+  "title": "Workbench host terminal release reply",
+  "description": "Successful explicit release of retained terminal evidence. The host must reject release before terminal",
+  "examples": [
+    {
+      "released": true
+    }
+  ],
+  "type": "object",
+  "required": [ "released" ],
+  "properties": {
+    "released": {
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}

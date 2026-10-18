@@ -1,0 +1,1088 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/native/0.2.0-draft.1/request.schema.json",
+  "tests": [
+    {
+      "description": "session.open request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.open"
+      },
+      "valid": true
+    },
+    {
+      "description": "session.check request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.check",
+        "sessionId": "native-session"
+      },
+      "valid": true
+    },
+    {
+      "description": "session.close request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.close",
+        "sessionId": "native-session"
+      },
+      "valid": true
+    },
+    {
+      "description": "execution.submit request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.submit",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+          "entry": "sample:main#identity",
+          "inputs": {
+            "format": "ion-text",
+            "source": "[true]"
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "execution.query request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.query",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1"
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "execution.cancel request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.cancel",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1"
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "execution.release request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.release",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1"
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.choose request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.choose",
+        "sessionId": "native-session"
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.cancel-picker request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.cancel-picker",
+        "sessionId": "native-session"
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.revoke request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.revoke",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.open request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 1
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.read request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.read",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1,
+          "offset": 0
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "workspace.release request",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.release",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Native request exact profile",
+      "data": {
+        "profile": "morphir/workbench/host",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.check",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "Native request exact draft",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.1.0-draft.2",
+        "operation": "session.check",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "Native request version required",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "operation": "session.check",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown operation",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.write",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "Native request has no renderer authority field",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.check",
+        "sessionId": "native-session",
+        "windowId": "main"
+      },
+      "valid": false
+    },
+    {
+      "description": "Open cannot select a session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.open",
+        "sessionId": "chosen"
+      },
+      "valid": false
+    },
+    {
+      "description": "Open cannot select capabilities",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.open",
+        "payload": {
+          "operations": [
+            "executions"
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "session.check requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.check"
+      },
+      "valid": false
+    },
+    {
+      "description": "session.close requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.close"
+      },
+      "valid": false
+    },
+    {
+      "description": "execution.submit requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.submit",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+          "entry": "sample:main#identity",
+          "inputs": {
+            "format": "ion-text",
+            "source": "[true]"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "execution.query requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.query",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "execution.cancel requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.cancel",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "execution.release requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.release",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.choose requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.choose"
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.cancel-picker requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.cancel-picker"
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.revoke requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.revoke",
+        "payload": {
+          "grantId": "grant-1"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.open requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.read requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.read",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1,
+          "offset": 0
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.release requires session",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.release",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "session.check rejects payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.check",
+        "sessionId": "native-session",
+        "payload": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "session.close rejects payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.close",
+        "sessionId": "native-session",
+        "payload": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.choose rejects payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.choose",
+        "sessionId": "native-session",
+        "payload": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.cancel-picker rejects payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.cancel-picker",
+        "sessionId": "native-session",
+        "payload": {}
+      },
+      "valid": false
+    },
+    {
+      "description": "execution.submit requires payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.submit",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "execution.query requires payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.query",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "execution.cancel requires payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.cancel",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "execution.release requires payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.release",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.revoke requires payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.revoke",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.open requires payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.read requires payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.read",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "workspace.release requires payload",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.release",
+        "sessionId": "native-session"
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session rejects URL authority",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.check",
+        "sessionId": "https://host/session"
+      },
+      "valid": false
+    },
+    {
+      "description": "Native session rejects non-ASCII",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "session.check",
+        "sessionId": "session-λ"
+      },
+      "valid": false
+    },
+    {
+      "description": "Picker request cannot select a path",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.choose",
+        "sessionId": "native-session",
+        "path": "/tmp/project"
+      },
+      "valid": false
+    },
+    {
+      "description": "Open cannot select a filesystem path",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 1,
+          "path": "/tmp/project/model.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Open cannot select a URL",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 1,
+          "url": "file:///tmp/model.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Grant token rejects a path",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "../grant",
+          "projectId": "project-1",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project token rejects a path",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "/tmp/model",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project token length limit",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Grant token required",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "projectId": "project-1",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project token required",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Open rejects sequence 0",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 0
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Open rejects sequence -1",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": -1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Open rejects sequence 1.5",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 1.5
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Open rejects sequence 2147483648",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 2147483648
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Maximum capture sequence",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 2147483647
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Read rejects offset -1",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.read",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1,
+          "offset": -1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Read rejects offset 0.5",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.read",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1,
+          "offset": 0.5
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Read rejects offset 16777217",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.read",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1,
+          "offset": 16777217
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Read at model size limit",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.read",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1,
+          "offset": 16777216
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Read has host-selected chunk size",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.read",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "sequence": 1,
+          "offset": 0,
+          "length": 16777216
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Release cannot retire an unspecified sequence",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.release",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Revoke has no project override",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.revoke",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Execution submission preserves JSON source",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.submit",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+          "entry": "sample:main#identity",
+          "inputs": {
+            "format": "json",
+            "source": "[{\"type\":\"int\",\"value\":\"9007199254740993\"}]"
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Execution submission cannot read a path",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.submit",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+          "entry": "sample:main#identity",
+          "inputs": {
+            "format": "ion-text",
+            "source": "[true]"
+          },
+          "modelPath": "/tmp/model.json"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Execution submission requires frozen draft",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.submit",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.1.0-draft.2",
+          "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+          "entry": "sample:main#identity",
+          "inputs": {
+            "format": "ion-text",
+            "source": "[true]"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Execution identity session equality is checked at admission",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.query",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "different-session",
+            "providerId": "scheme",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1"
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Execution identity cannot carry transport authority",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.query",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "native-host",
+            "sessionId": "native-session",
+            "providerId": "scheme",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1",
+            "url": "http://localhost/execution"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Execution query cannot be a submission",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.query",
+        "sessionId": "native-session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+          "entry": "sample:main#identity",
+          "inputs": {
+            "format": "ion-text",
+            "source": "[true]"
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Request session token rejects final newline",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session\n",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Grant token rejects final newline",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1\n",
+          "projectId": "project-1",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Project token rejects final newline",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1\n",
+          "sequence": 1
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Maximum grant and project token lengths",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+          "projectId": "pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp",
+          "sequence": 1
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Payload must be an object",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": []
+      },
+      "valid": false
+    },
+    {
+      "description": "Sequence is not coerced from text",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "workspace.open",
+        "sessionId": "native-session",
+        "payload": {
+          "grantId": "grant-1",
+          "projectId": "project-1",
+          "sequence": "1"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Breaking execution contract refuses historical identity or version",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.1.0-draft.1",
+        "operation": "session.open"
+      },
+      "valid": false
+    },
+    {
+      "description": "Breaking execution contract refuses historical identity or version",
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "job.query"
+      },
+      "valid": false
+    }
+  ]
+}

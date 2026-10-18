@@ -61,7 +61,7 @@ mod adapter {
 
     pub fn run(mode: &str, arg: Option<&str>) {
         match mode {
-            "workbench-capability-jobs" => {
+            "workbench-capability-executions" => {
                 for (id, line) in requests() {
                     if is_exit(&line) {
                         return;
@@ -72,18 +72,18 @@ mod adapter {
                         let operations = if arg == Some("unclaimed") {
                             serde_json::json!([])
                         } else {
-                            serde_json::json!(["run-capability-jobs"])
+                            serde_json::json!(["run-capability-executions"])
                         };
-                        say(format!("{}\n",serde_json::json!({"id":id,"suite":"workbench","contractVersion":"0.1.0-draft.13","binding":"replay-infrastructure-only","language":"test","operations":operations,"formats":["json"]})).as_bytes());
+                        say(format!("{}\n",serde_json::json!({"id":id,"suite":"workbench","contractVersion":"0.1.0-draft.19","binding":"replay-infrastructure-only","language":"test","operations":operations,"formats":["json"]})).as_bytes());
                     } else {
                         assert_ne!(
                             arg,
                             Some("unclaimed"),
                             "missing capability must not execute"
                         );
-                        assert_eq!(request["op"], "run-capability-jobs");
+                        assert_eq!(request["op"], "run-capability-executions");
                         let corpus: Value = serde_json::from_str(include_str!(
-                            "../../../spec/workbench/mck/draft.13/cases.json"
+                            "../../../spec/workbench/mck/draft.19/cases.json"
                         ))
                         .unwrap();
                         let mut response = corpus["cases"][0]["expected"].clone();
@@ -169,11 +169,11 @@ mod adapter {
                         return;
                     }
                     if line.contains("\"op\":\"capabilities\"") {
-                        say(format!(r#"{{"id":{id},"suite":"workbench","contractVersion":"0.1.0-draft.10","binding":"hostile-test","language":"test","operations":["run-native-owner"],"formats":["json"]}}
+                        say(format!(r#"{{"id":{id},"suite":"workbench","contractVersion":"0.1.0-draft.18","binding":"hostile-test","language":"test","operations":["run-native-owner"],"formats":["json"]}}
 "#).as_bytes());
                     } else {
                         let corpus: Value = serde_json::from_str(include_str!(
-                            "../../../spec/workbench/mck/draft.10/cases.json"
+                            "../../../spec/workbench/mck/draft.18/cases.json"
                         ))
                         .unwrap();
                         let observed = corpus["cases"][0]["expected"].as_object().unwrap();
@@ -197,7 +197,7 @@ mod adapter {
                         return;
                     }
                     if line.contains("\"op\":\"capabilities\"") {
-                        say(format!(r#"{{"id":{id},"suite":"workbench","contractVersion":"0.1.0-draft.7","binding":"hostile-test","language":"test","operations":["validate-native-frame"],"formats":["json"]}}
+                        say(format!(r#"{{"id":{id},"suite":"workbench","contractVersion":"0.1.0-draft.15","binding":"hostile-test","language":"test","operations":["validate-native-frame"],"formats":["json"]}}
 "#).as_bytes());
                     } else {
                         say(format!(r#"{{"id":{id},"status":"ok","value":{{"frameAccepted":{{"$serde_json::private::RawValue":"true"}}}}}}
@@ -768,7 +768,7 @@ fn the_frozen_transcript_replays_byte_for_byte() {
 fn native_workbench_literal_private_objects_cannot_forge_live_adapter_success() {
     use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
     let root = tempfile::tempdir().unwrap();
-    std::fs::write(root.path().join("cases.json"),r#"{"formatVersion":"0.1.0-draft.7","cases":[{"id":"frame","operation":"validate-native-frame","format":"json","input":{"encoding":"utf8","source":"{}"},"expected":{"status":"ok","value":{"frameAccepted":true}}}]}"#).unwrap();
+    std::fs::write(root.path().join("cases.json"),r#"{"formatVersion":"0.1.0-draft.15","cases":[{"id":"frame","operation":"validate-native-frame","format":"json","input":{"encoding":"utf8","source":"{}"},"expected":{"status":"ok","value":{"frameAccepted":true}}}]}"#).unwrap();
     let options = RunOptions {
         adapter: std::env::current_exe().unwrap().into_os_string(),
         adapter_args: vec![ADAPTER_FLAG.into(), "workbench-private-marker".into()],
@@ -788,12 +788,12 @@ fn native_owner_live_literal_infrastructure_faults_are_exchange_errors() {
     use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
     let root = tempfile::tempdir().unwrap();
     let published: Value = serde_json::from_str(include_str!(
-        "../../../spec/workbench/mck/draft.10/cases.json"
+        "../../../spec/workbench/mck/draft.18/cases.json"
     ))
     .unwrap();
     std::fs::write(
         root.path().join("cases.json"),
-        serde_json::json!({"formatVersion":"0.1.0-draft.10","cases":[published["cases"][0]]})
+        serde_json::json!({"formatVersion":"0.1.0-draft.18","cases":[published["cases"][0]]})
             .to_string(),
     )
     .unwrap();
@@ -889,16 +889,16 @@ fn capability_policy_live_transport_preserves_missing_claim_and_literal_projecti
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
 }
-fn capability_jobs_live_transport_preserves_missing_claim_and_literal_projection_evidence() {
+fn capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence() {
     use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
     let root = tempfile::tempdir().unwrap();
     let fixture: Value = serde_json::from_str(include_str!(
-        "../../../spec/workbench/mck/draft.13/cases.json"
+        "../../../spec/workbench/mck/draft.19/cases.json"
     ))
     .unwrap();
     std::fs::write(
         root.path().join("cases.json"),
-        serde_json::json!({"formatVersion":"0.1.0-draft.13","cases":[fixture["cases"][0]]})
+        serde_json::json!({"formatVersion":"0.1.0-draft.19","cases":[fixture["cases"][0]]})
             .to_string(),
     )
     .unwrap();
@@ -911,7 +911,7 @@ fn capability_jobs_live_transport_preserves_missing_claim_and_literal_projection
             adapter: std::env::current_exe().unwrap().into_os_string(),
             adapter_args: vec![
                 ADAPTER_FLAG.into(),
-                "workbench-capability-jobs".into(),
+                "workbench-capability-executions".into(),
                 kind.into(),
             ],
             limits: quick(),
@@ -935,7 +935,7 @@ fn main() {
     }
 
     let tests: &[(&str, fn())] = &[
-        ("capability_jobs_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_jobs_live_transport_preserves_missing_claim_and_literal_projection_evidence),
+        ("capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         ("capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         (
             "selected_scheme_live_transport_preserves_missing_claim_and_literal_projection_evidence",

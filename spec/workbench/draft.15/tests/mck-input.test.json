@@ -1,0 +1,213 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.15/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "UTF8 opaque source",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}"
+      },
+      "valid": true
+    },
+    {
+      "description": "Hex bytes",
+      "data": {
+        "encoding": "hex",
+        "source": "C328"
+      },
+      "valid": true
+    },
+    {
+      "description": "Empty hex",
+      "data": {
+        "encoding": "hex",
+        "source": ""
+      },
+      "valid": true
+    },
+    {
+      "description": "Generation maximum",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1048576
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Odd hex",
+      "data": {
+        "encoding": "hex",
+        "source": "f"
+      },
+      "valid": false
+    },
+    {
+      "description": "Nonhex",
+      "data": {
+        "encoding": "hex",
+        "source": "ff\n"
+      },
+      "valid": false
+    },
+    {
+      "description": "Missing source",
+      "data": {
+        "encoding": "utf8"
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown encoding",
+      "data": {
+        "encoding": "base64",
+        "source": ""
+      },
+      "valid": false
+    },
+    {
+      "description": "Extra member",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
+        "authority": "root"
+      },
+      "valid": false
+    },
+    {
+      "description": "Null recipe",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
+        "generate": null
+      },
+      "valid": false
+    },
+    {
+      "description": "Negative count",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": -1
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Count overflow",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1048577
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Fraction count",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1.5
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Only ASCII space",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
+        "generate": {
+          "prefix": {
+            "repeat": "\n",
+            "count": 1
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed recipe",
+      "data": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1,
+            "extra": true
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Private number object",
+      "data": {
+        "encoding": "utf8",
+        "source": "{}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": {
+              "$serde_json::private::Number": "1"
+            }
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Nested private number object",
+      "data": {
+        "encoding": "utf8",
+        "source": "{}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": {
+              "$serde_json::private::Number": {
+                "$serde_json::private::Number": "1"
+              }
+            }
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Private raw-value object",
+      "data": {
+        "encoding": "utf8",
+        "source": "{}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": {
+              "$serde_json::private::RawValue": "1"
+            }
+          }
+        }
+      },
+      "valid": false
+    }
+  ]
+}

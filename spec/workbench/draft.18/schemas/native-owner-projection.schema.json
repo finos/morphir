@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.18/native-owner-projection.schema.json",
+  "title": "Offline native owner native-owner-projection",
+  "description": "Closed exact Workbench MCK draft.18. Controlled production owner dependencies do not establish OS provenance, filesystem containment or native worker execution",
+  "examples": [
+    {
+      "steps": [
+        {
+          "action": "call",
+          "attempts": [
+            {
+              "id": "open",
+              "state": "returned"
+            }
+          ],
+          "callCount": 0,
+          "delivery": null,
+          "completion": null
+        }
+      ],
+      "results": [
+        {
+          "id": "open",
+          "state": "returned",
+          "reply": {
+            "ok": false,
+            "code": "unauthorized",
+            "effect": "none"
+          },
+          "cleanup": null,
+          "failure": null
+        }
+      ],
+      "calls": [],
+      "usedPickers": 0,
+      "unusedPickers": 0,
+      "usedCleanups": 0,
+      "unusedCleanups": 0
+    }
+  ],
+  "type": "object",
+  "required": [
+    "steps",
+    "results",
+    "calls",
+    "usedPickers",
+    "unusedPickers",
+    "usedCleanups",
+    "unusedCleanups"
+  ],
+  "properties": {
+    "steps": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": [
+          "action",
+          "attempts",
+          "callCount",
+          "delivery",
+          "completion"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "call",
+              "context",
+              "revoke",
+              "close",
+              "shutdown",
+              "deliver",
+              "complete",
+              "replace"
+            ]
+          },
+          "attempts": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "required": [ "id", "state" ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "not": {
+                    "pattern": "[^A-Za-z0-9_.-]"
+                  },
+                  "maxLength": 128,
+                  "minLength": 1
+                },
+                "state": {
+                  "enum": [ "pending", "returned", "rejected" ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "callCount": {
+            "type": "integer",
+            "maximum": 512,
+            "minimum": 0
+          },
+          "delivery": {
+            "enum": [ null, "delivered", "unavailable", "already-delivered" ]
+          },
+          "completion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "maxLength": 1048576
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "results": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "id", "state", "reply", "cleanup", "failure" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "state": {
+                "const": "pending"
+              },
+              "reply": {
+                "type": "null"
+              },
+              "cleanup": {
+                "type": "null"
+              },
+              "failure": {
+                "const": null
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "state", "reply", "cleanup", "failure" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "state": {
+                "const": "returned"
+              },
+              "reply": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "ok", "operation", "value" ],
+                    "properties": {
+                      "ok": {
+                        "const": true
+                      },
+                      "operation": {
+                        "enum": [
+                          "session.open",
+                          "session.check",
+                          "session.close",
+                          "execution.submit",
+                          "execution.query",
+                          "execution.cancel",
+                          "execution.release",
+                          "workspace.choose",
+                          "workspace.cancel-picker",
+                          "workspace.revoke",
+                          "workspace.open",
+                          "workspace.read",
+                          "workspace.release"
+                        ]
+                      },
+                      "value": {
+                        "type": "string",
+                        "maxLength": 1048576
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "ok", "code", "effect" ],
+                    "properties": {
+                      "ok": {
+                        "const": false
+                      },
+                      "code": {
+                        "enum": [
+                          "invalid_request",
+                          "unauthorized",
+                          "unavailable",
+                          "not_found",
+                          "conflict",
+                          "limit"
+                        ]
+                      },
+                      "effect": {
+                        "enum": [ "none", "unknown" ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "cleanup": {
+                "type": "null"
+              },
+              "failure": {
+                "const": null
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "state", "reply", "cleanup", "failure" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "state": {
+                "const": "returned"
+              },
+              "reply": {
+                "type": "null"
+              },
+              "cleanup": {
+                "const": true
+              },
+              "failure": {
+                "const": null
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "state", "reply", "cleanup", "failure" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "state": {
+                "const": "rejected"
+              },
+              "reply": {
+                "type": "null"
+              },
+              "cleanup": {
+                "enum": [ null, false ]
+              },
+              "failure": {
+                "const": null
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "id", "state", "reply", "cleanup", "failure" ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "state": {
+                "const": "rejected"
+              },
+              "reply": {
+                "type": "null"
+              },
+              "cleanup": {
+                "type": "null"
+              },
+              "failure": {
+                "const": "reference"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "calls": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "string",
+        "maxLength": 1048576
+      }
+    },
+    "usedPickers": {
+      "type": "integer",
+      "maximum": 128,
+      "minimum": 0
+    },
+    "unusedPickers": {
+      "type": "integer",
+      "maximum": 128,
+      "minimum": 0
+    },
+    "usedCleanups": {
+      "type": "integer",
+      "maximum": 128,
+      "minimum": 0
+    },
+    "unusedCleanups": {
+      "type": "integer",
+      "maximum": 128,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use super::contract::{MAX_VALUE_BYTES, OfflineOnly, encoded_size, identity};
 
-/// Admit canonical observations only. Job inputs and actions remain opaque to
+/// Admit canonical observations only. Execution inputs and actions remain opaque to
 /// the shared runner; independent fixed goldens establish transition behavior.
 pub(super) fn projection(value: &Value) -> Result<Value, String> {
     encoded_size(value, MAX_VALUE_BYTES)?;
@@ -15,8 +15,12 @@ pub(super) fn projection(value: &Value) -> Result<Value, String> {
             include_str!(
                 "../../../../spec/workbench/draft.5/schemas/terminal-outcomes.schema.json"
             ),
-            include_str!("../../../../spec/workbench/jobs/draft.1/schemas/identity.schema.json"),
-            include_str!("../../../../spec/workbench/jobs/draft.1/schemas/receipt.schema.json"),
+            include_str!(
+                "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/identity.schema.json"
+            ),
+            include_str!(
+                "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/receipt.schema.json"
+            ),
         ];
         let mut options = jsonschema::options();
         options.with_retriever(OfflineOnly);
@@ -29,26 +33,32 @@ pub(super) fn projection(value: &Value) -> Result<Value, String> {
             );
         }
         let schema: Value = serde_json::from_str(include_str!(
-            "../../../../spec/workbench/draft.6/schemas/job-projection.schema.json"
+            "../../../../spec/workbench/draft.14/schemas/execution-projection.schema.json"
         ))
-        .expect("Workbench job projection schema JSON");
+        .expect("Workbench execution projection schema JSON");
         options
             .build(&schema)
-            .expect("Workbench job projection schema")
+            .expect("Workbench execution projection schema")
     });
     validator
         .validate(value)
-        .map_err(|e| format!("invalid job projection at {}: {e}", e.instance_path))?;
-    for field in ["hostId", "sessionId", "providerId", "jobId", "snapshotId"] {
+        .map_err(|e| format!("invalid execution projection at {}: {e}", e.instance_path))?;
+    for field in [
+        "hostId",
+        "sessionId",
+        "providerId",
+        "executionId",
+        "snapshotId",
+    ] {
         identity(
             value["identity"][field]
                 .as_str()
-                .expect("schema-checked job identity"),
+                .expect("schema-checked execution identity"),
             128,
         )?;
     }
     if value["identity"] != value["receipt"]["identity"] {
-        return Err("job projection and receipt identities differ".into());
+        return Err("execution projection and receipt identities differ".into());
     }
     let receipt = &value["receipt"];
     let final_view = json!({
@@ -72,7 +82,9 @@ pub(super) fn projection(value: &Value) -> Result<Value, String> {
     if let Some(last) = observations.last()
         && last["view"] != final_view
     {
-        return Err("final job observation view differs from final receipt and local state".into());
+        return Err(
+            "final execution observation view differs from final receipt and local state".into(),
+        );
     }
     let mut projected = value.clone();
     if !receipt["outcomes"].is_null() {
@@ -102,7 +114,7 @@ fn check_view(view: &Value) -> Result<(), String> {
         _ => unreachable!("schema-checked cancel action"),
     };
     if !consistent || (state == "terminal" && action != "already-terminal") {
-        return Err("job view has contradictory state and cancellation action".into());
+        return Err("execution view has contradictory state and cancellation action".into());
     }
     Ok(())
 }

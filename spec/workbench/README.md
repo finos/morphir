@@ -18,7 +18,7 @@ Morphir's SemVer contract rules and explicitly map these existing codec IDs.
 
 The existing Rust connected host stays at `protocolVersion: 1`, with its existing
 compile, generate and workspace methods. This contribution defines no RPC method,
-job receipt or connected-host capability claim. Clients must keep connected evaluation and server
+execution receipt or connected-host capability claim. Clients must keep connected evaluation and server
 cancellation unavailable until the host implements and advertises an agreed
 extension. Compile output and generation must use the same negotiated IR version,
 even when a client migrates a copy for local inspection.
@@ -34,22 +34,43 @@ Capability validation checks whether the chosen runtime/provider meets the
 requirements of a particular run, selected function and model revision, before
 or as execution proceeds under policy. Unsupported-feature decisions are
 capability checks. Ordinary model, type, argument, output, receipt and authority
-checks remain validation. Historical profile IDs, JSON keys, operation names and
-file paths retain their names and compatibility meaning.
+checks remain validation. Frozen historical kits retain their original identifiers as evidence. Current
+execution contracts use the breaking migration described below.
 
 The [runtime capability policy](admission/draft.1/README.md) defines whole-model
 and as-executed capability checks. [Exact MCK draft.12](draft.12/README.md) verifies
 production selected Scheme execution separately from supplied-completion validation
 against its immutable context. Its [fixed corpus](mck/draft.12/README.md) does not
-qualify jobs, providers, UI, host/native negotiation or packaged platforms.
+qualify executions, providers, UI, host/native negotiation or packaged platforms.
 
-The [immutable job-plan profile](job-plan/draft.1/README.md) retains a job's
-accepted runtime and checking policy without extending frozen receipts.
-[Exact MCK draft.13](draft.13/README.md) checks real in-memory ownership,
-claims, retained-source replanning and captured-context completion through a
-[fixed job corpus](mck/draft.13/README.md). Actual isolated-worker evidence is
-required separately before claiming worker propagation; UI and host offers remain
-subsequent work.
+The [execution lifecycle](executions/0.2.0-draft.1/README.md),
+[immutable execution plans](execution-plan/0.2.0-draft.1/README.md),
+[HTTP mapping](host/0.2.0-draft.1/README.md) and
+[native mapping](native/0.2.0-draft.1/README.md) use exact `0.2.0-draft.1`.
+This is a coordinated breaking pre-1.0 change. Current contracts use
+`executionId`, `morphir/workbench/executions`, `execution.*` and
+`/executions`; old field names, operations and routes are refused without aliases.
+Typed values, invocation documents, terminal outcomes and capability-policy
+contracts retain their existing versions.
+
+An execution is an accepted, tracked instance with captured inputs, lifecycle and
+outcomes. An invocation identifies a function and its arguments. An operation
+identifies the requested kind of work. Rejecting a submission before acceptance
+creates no execution; losing the submission reply leaves acceptance unknown.
+Reconnection observes the same execution, and cancellation acknowledgement does
+not mean evaluation or cleanup has finished.
+
+Current MCK replacements are [draft.14](draft.14/README.md) for execution reduction,
+[draft.15](draft.15/README.md) for native frames,
+[draft.16](draft.16/README.md) for native replies,
+[draft.17](draft.17/README.md) for native clients,
+[draft.18](draft.18/README.md) for native owners, and
+[draft.19](draft.19/README.md) for immutable capability selections.
+The shared runner retires drafts.6 through .10 and .13. Their published kits,
+schemas and historical qualification records remain unchanged and are not accepted
+by the current runner. Drafts.1 through .5, .11 and .12 remain supported.
+Actual isolated-worker evidence is required separately before claiming worker
+propagation. UI and native/HTTP capability-policy offers remain subsequent work.
 
 ## JSON values
 

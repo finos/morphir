@@ -2,7 +2,7 @@ use super::*;
 use serde_json::json;
 
 fn capabilities() -> serde_json::Value {
-    json!({"suite":"workbench","contractVersion":"0.1.0-draft.8","binding":"transcript",
+    json!({"suite":"workbench","contractVersion":"0.1.0-draft.16","binding":"transcript",
         "language":"test","operations":["validate-native-reply"],"formats":["json"]})
 }
 
@@ -21,7 +21,7 @@ impl Testee for Replay {
 }
 
 fn successful_corpus(root: &std::path::Path) -> Corpus {
-    std::fs::write(root.join("cases.json"), json!({"formatVersion":"0.1.0-draft.8","cases":[{
+    std::fs::write(root.join("cases.json"), json!({"formatVersion":"0.1.0-draft.16","cases":[{
         "id":"close","operation":"validate-native-reply","format":"json",
         "input":{"expectedOperation":"session.close","expectedSession":null,"encoding":"utf8",
                  "source":"{\"ok\":true,\"operation\":\"session.close\",\"value\":{}}"},
@@ -69,7 +69,7 @@ fn native_reply_saved_reports_reject_literal_forgery_before_typed_conversion() {
 #[test]
 fn native_reply_fixed_corpus_runs_and_reports_are_recomputed_without_an_oracle() {
     let root =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.8");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.16");
     let corpus = load(&root).unwrap();
     assert_eq!(corpus.case_count(), 185);
     let mut adapter = Replay {
@@ -117,7 +117,7 @@ fn native_reply_fixed_corpus_runs_and_reports_are_recomputed_without_an_oracle()
             "effect" => {
                 forged["records"][24]["observed"]["value"]["error"]["effect"] = json!("unknown")
             }
-            "capabilities" => forged["capabilities"]["contractVersion"] = json!("0.1.0-draft.7"),
+            "capabilities" => forged["capabilities"]["contractVersion"] = json!("0.1.0-draft.15"),
             _ => unreachable!(),
         }
         assert!(
@@ -136,7 +136,7 @@ fn native_reply_fixed_corpus_runs_and_reports_are_recomputed_without_an_oracle()
 
 #[test]
 fn native_replies_negotiate_only_the_exact_operation_and_json() {
-    Capabilities::parse(capabilities(), "0.1.0-draft.8").unwrap();
+    Capabilities::parse(capabilities(), "0.1.0-draft.16").unwrap();
     for (field, value) in [
         ("operations", json!([])),
         ("operations", json!(["validate-native-frame"])),
@@ -150,13 +150,13 @@ fn native_replies_negotiate_only_the_exact_operation_and_json() {
     ] {
         let mut caps = capabilities();
         caps[field] = value;
-        assert!(Capabilities::parse(caps, "0.1.0-draft.8").is_err());
+        assert!(Capabilities::parse(caps, "0.1.0-draft.16").is_err());
     }
     for version in [
-        "0.1.0-draft.7",
-        "0.1.0-draft.9",
-        "0.1.0-draft.8+local",
-        "v0.1.0-draft.8",
+        "0.1.0-draft.15",
+        "0.1.0-draft.17",
+        "0.1.0-draft.16+local",
+        "v0.1.0-draft.16",
     ] {
         let mut caps = capabilities();
         caps["contractVersion"] = json!(version);
@@ -169,7 +169,7 @@ fn native_reply_corpus_accepts_opaque_source_for_exact_draft() {
     let root = tempfile::tempdir().unwrap();
     std::fs::write(
         root.path().join("cases.json"),
-        json!({"formatVersion":"0.1.0-draft.8","cases":[{
+        json!({"formatVersion":"0.1.0-draft.16","cases":[{
             "id":"opaque-reply","operation":"validate-native-reply","format":"json",
             "input":{"expectedOperation":"session.open","expectedSession":null,
                      "encoding":"utf8","source":"not JSON"},

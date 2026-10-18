@@ -235,15 +235,15 @@ fn terminal_report_retains_cleanup_and_rejects_value_or_operation_substitution()
 }
 
 #[test]
-fn job_trace_report_is_checked_through_the_existing_workbench_command() {
+fn execution_trace_report_is_checked_through_the_existing_workbench_command() {
     let root = tempfile::tempdir().unwrap();
     let kit = root.path().join("kit");
     std::fs::create_dir(&kit).unwrap();
     std::fs::write(
         kit.join("cases.json"),
-        json!({"formatVersion":"0.1.0-draft.6","cases":[{
-            "id":"negative-json","operation":"reduce-job","format":"json","input":null,
-            "expected":{"status":"invalid","code":"workbench.invalid_job_trace"}
+        json!({"formatVersion":"0.1.0-draft.14","cases":[{
+            "id":"negative-json","operation":"reduce-execution","format":"json","input":null,
+            "expected":{"status":"invalid","code":"workbench.invalid_execution_trace"}
         }]})
         .to_string(),
     )
@@ -252,11 +252,11 @@ fn job_trace_report_is_checked_through_the_existing_workbench_command() {
         .unwrap()
         .corpus_hash()
         .to_owned();
-    let saved = json!({"formatVersion":"0.1.0-draft.6","suite":"workbench","corpusHash":hash,
-        "capabilities":{"suite":"workbench","contractVersion":"0.1.0-draft.6",
-            "binding":"fixed-transcript","language":"fixture","operations":["reduce-job"],"formats":["json"]},
-        "records":[{"caseId":"negative-json","operation":"reduce-job","format":"json","result":"pass",
-            "observed":{"status":"invalid","code":"workbench.invalid_job_trace"}}],"errors":[],"qualified":true});
+    let saved = json!({"formatVersion":"0.1.0-draft.14","suite":"workbench","corpusHash":hash,
+        "capabilities":{"suite":"workbench","contractVersion":"0.1.0-draft.14",
+            "binding":"fixed-transcript","language":"fixture","operations":["reduce-execution"],"formats":["json"]},
+        "records":[{"caseId":"negative-json","operation":"reduce-execution","format":"json","result":"pass",
+            "observed":{"status":"invalid","code":"workbench.invalid_execution_trace"}}],"errors":[],"qualified":true});
     let report = root.path().join("report.json");
     std::fs::write(&report, saved.to_string()).unwrap();
     let admitted = check(&kit, &report);
@@ -271,7 +271,9 @@ fn job_trace_report_is_checked_through_the_existing_workbench_command() {
         match field {
             "operation" => forged["records"][0]["operation"] = json!("validate-outcomes"),
             "format" => forged["records"][0]["format"] = json!("ion-text"),
-            "code" => forged["records"][0]["observed"]["code"] = json!("workbench.job_receipt"),
+            "code" => {
+                forged["records"][0]["observed"]["code"] = json!("workbench.execution_receipt")
+            }
             _ => unreachable!(),
         }
         std::fs::write(&report, forged.to_string()).unwrap();
@@ -286,7 +288,7 @@ fn native_frame_reports_use_shared_run_and_independent_check() {
     std::fs::create_dir(&kit).unwrap();
     std::fs::write(
         kit.join("cases.json"),
-        json!({"formatVersion":"0.1.0-draft.7","cases":[{
+        json!({"formatVersion":"0.1.0-draft.15","cases":[{
         "id":"frame","operation":"validate-native-frame","format":"json",
         "input":{"encoding":"utf8","source":"{}"},
         "expected":{"status":"invalid","code":"native.frame.shape"}}]})
@@ -305,10 +307,10 @@ fn native_frame_reports_use_shared_run_and_independent_check() {
         .unwrap();
     assert_eq!(run.status.code(), Some(1));
     let mut saved: Value = serde_json::from_slice(&std::fs::read(&report).unwrap()).unwrap();
-    assert_eq!(saved["formatVersion"], "0.1.0-draft.7");
+    assert_eq!(saved["formatVersion"], "0.1.0-draft.15");
     assert_eq!(saved["records"][0]["operation"], "validate-native-frame");
     assert_eq!(check(&kit, &report).status.code(), Some(1));
-    saved["capabilities"] = json!({"suite":"workbench","contractVersion":"0.1.0-draft.7",
+    saved["capabilities"] = json!({"suite":"workbench","contractVersion":"0.1.0-draft.15",
         "binding":"transcript","language":"test","operations":["validate-native-frame"],"formats":["json"]});
     saved["errors"] = json!([]);
     saved["qualified"] = json!(true);
@@ -319,14 +321,14 @@ fn native_frame_reports_use_shared_run_and_independent_check() {
     for change in ["operation", "code", "projection", "hash", "capabilities"] {
         let mut forged = saved.clone();
         match change {
-            "operation" => forged["records"][0]["operation"] = json!("reduce-job"),
+            "operation" => forged["records"][0]["operation"] = json!("reduce-execution"),
             "code" => forged["records"][0]["observed"]["code"] = json!("native.frame.unknown"),
             "projection" => {
                 forged["records"][0]["observed"] =
                     json!({"status":"ok","value":{"frameAccepted":true}})
             }
             "hash" => forged["corpusHash"] = json!("0".repeat(64)),
-            "capabilities" => forged["capabilities"]["contractVersion"] = json!("0.1.0-draft.6"),
+            "capabilities" => forged["capabilities"]["contractVersion"] = json!("0.1.0-draft.14"),
             _ => unreachable!(),
         }
         std::fs::write(&report, forged.to_string()).unwrap();
@@ -339,7 +341,7 @@ fn native_frame_private_number_objects_reject_before_adapter_spawn() {
     let root = tempfile::tempdir().unwrap();
     let kit = root.path().join("kit");
     std::fs::create_dir(&kit).unwrap();
-    std::fs::write(kit.join("cases.json"),r#"{"formatVersion":"0.1.0-draft.7","cases":[{"id":"frame","operation":"validate-native-frame","format":"json","input":{"encoding":"utf8","source":"{}","generate":{"prefix":{"repeat":" ","count":{"$serde_json::private::Number":"1"}}}},"expected":{"status":"ok","value":{"frameAccepted":true}}}]}"#).unwrap();
+    std::fs::write(kit.join("cases.json"),r#"{"formatVersion":"0.1.0-draft.15","cases":[{"id":"frame","operation":"validate-native-frame","format":"json","input":{"encoding":"utf8","source":"{}","generate":{"prefix":{"repeat":" ","count":{"$serde_json::private::Number":"1"}}}},"expected":{"status":"ok","value":{"frameAccepted":true}}}]}"#).unwrap();
     let report = root.path().join("report.json");
     let result = command("run")
         .arg("--kit")
@@ -363,15 +365,15 @@ fn native_frame_check_rejects_literal_object_success_marker() {
     let root = tempfile::tempdir().unwrap();
     let kit = root.path().join("kit");
     std::fs::create_dir(&kit).unwrap();
-    std::fs::write(kit.join("cases.json"),json!({"formatVersion":"0.1.0-draft.7","cases":[{
+    std::fs::write(kit.join("cases.json"),json!({"formatVersion":"0.1.0-draft.15","cases":[{
         "id":"frame","operation":"validate-native-frame","format":"json",
         "input":{"encoding":"utf8","source":"{}"},"expected":{"status":"ok","value":{"frameAccepted":true}}}]}).to_string()).unwrap();
     let hash = morphir_mck::workbench::load(&kit)
         .unwrap()
         .corpus_hash()
         .to_owned();
-    let mut saved = json!({"formatVersion":"0.1.0-draft.7","suite":"workbench","corpusHash":hash,
-        "capabilities":{"suite":"workbench","contractVersion":"0.1.0-draft.7","binding":"transcript","language":"test","operations":["validate-native-frame"],"formats":["json"]},
+    let mut saved = json!({"formatVersion":"0.1.0-draft.15","suite":"workbench","corpusHash":hash,
+        "capabilities":{"suite":"workbench","contractVersion":"0.1.0-draft.15","binding":"transcript","language":"test","operations":["validate-native-frame"],"formats":["json"]},
         "records":[{"caseId":"frame","operation":"validate-native-frame","format":"json","result":"pass","observed":{"status":"ok","value":{"frameAccepted":true}}}],"errors":[],"qualified":true});
     let report = root.path().join("report.json");
     std::fs::write(&report, saved.to_string()).unwrap();
@@ -389,9 +391,9 @@ fn native_reply_cli_preserves_failure_evidence_and_rechecks_effects_and_literal_
     let root = tempfile::tempdir().unwrap();
     let kit = root.path().join("kit");
     std::fs::create_dir(&kit).unwrap();
-    let corpus = json!({"formatVersion":"0.1.0-draft.8","cases":[{
+    let corpus = json!({"formatVersion":"0.1.0-draft.16","cases":[{
         "id":"reply","operation":"validate-native-reply","format":"json",
-        "input":{"expectedOperation":"job.submit","expectedSession":"session","encoding":"utf8","source":"opaque"},
+        "input":{"expectedOperation":"execution.submit","expectedSession":"session","encoding":"utf8","source":"opaque"},
         "expected":{"status":"ok","value":{"replyAccepted":true,"ok":false,"error":{"code":"unavailable","effect":"unknown"}}}}]});
     std::fs::write(kit.join("cases.json"), corpus.to_string()).unwrap();
     let report = root.path().join("report.json");
@@ -411,7 +413,7 @@ fn native_reply_cli_preserves_failure_evidence_and_rechecks_effects_and_literal_
     assert!(!failure.qualified);
     assert_eq!(check(&kit, &report).status.code(), Some(1));
     let mut saved: Value = serde_json::from_str(&text).unwrap();
-    saved["capabilities"] = json!({"suite":"workbench","contractVersion":"0.1.0-draft.8",
+    saved["capabilities"] = json!({"suite":"workbench","contractVersion":"0.1.0-draft.16",
         "binding":"transcript","language":"test","operations":["validate-native-reply"],"formats":["json"]});
     saved["errors"] = json!([]);
     saved["qualified"] = json!(true);
@@ -428,7 +430,7 @@ fn native_reply_cli_preserves_failure_evidence_and_rechecks_effects_and_literal_
             "private" => {
                 forged["records"][0]["observed"]["value"] = json!({"$serde_json::private::RawValue":corpus["cases"][0]["expected"]["value"].to_string()})
             }
-            "version" => forged["formatVersion"] = json!("0.1.0-draft.9"),
+            "version" => forged["formatVersion"] = json!("0.1.0-draft.17"),
             "hash" => forged["corpusHash"] = json!("0".repeat(64)),
             _ => unreachable!(),
         }
@@ -463,7 +465,7 @@ fn native_client_cli_saves_failure_evidence_and_rejects_invalid_fixtures_before_
     let kit = root.path().join("kit");
     std::fs::create_dir(&kit).unwrap();
     let mut published: Value = serde_json::from_str(include_str!(
-        "../../../spec/workbench/mck/draft.9/cases.json"
+        "../../../spec/workbench/mck/draft.17/cases.json"
     ))
     .unwrap();
     let first = published["cases"][0].clone();
@@ -510,10 +512,10 @@ fn native_owner_cli_saves_failure_evidence_and_rejects_invalid_fixtures_before_s
     let kit = root.path().join("kit");
     std::fs::create_dir(&kit).unwrap();
     let published: Value = serde_json::from_str(include_str!(
-        "../../../spec/workbench/mck/draft.10/cases.json"
+        "../../../spec/workbench/mck/draft.18/cases.json"
     ))
     .unwrap();
-    let mut document = json!({"formatVersion":"0.1.0-draft.10","cases":[published["cases"][0]]});
+    let mut document = json!({"formatVersion":"0.1.0-draft.18","cases":[published["cases"][0]]});
     std::fs::write(kit.join("cases.json"), document.to_string()).unwrap();
     let report = root.path().join("report.json");
     let run = command("run")

@@ -132,12 +132,12 @@ fn schema_validator(schema: &str) -> jsonschema::Validator {
     let mut options = jsonschema::options();
     options.with_retriever(super::contract::OfflineOnly);
     for text in [
-        include_str!("../../../../spec/workbench/draft.7/schemas/mck-input.schema.json"),
+        include_str!("../../../../spec/workbench/draft.15/schemas/mck-input.schema.json"),
         include_str!(
-            "../../../../spec/workbench/draft.7/schemas/native-frame-projection.schema.json"
+            "../../../../spec/workbench/draft.15/schemas/native-frame-projection.schema.json"
         ),
-        include_str!("../../../../spec/workbench/draft.7/schemas/mck-observation.schema.json"),
-        include_str!("../../../../spec/workbench/draft.7/schemas/mck-capabilities.schema.json"),
+        include_str!("../../../../spec/workbench/draft.15/schemas/mck-observation.schema.json"),
+        include_str!("../../../../spec/workbench/draft.15/schemas/mck-capabilities.schema.json"),
     ] {
         let value: Value = serde_json::from_str(text).expect("native MCK schema JSON");
         options.with_resource(
@@ -168,7 +168,7 @@ pub(super) fn validate_corpus_shape(value: &Value) -> Result<(), String> {
         value,
         VALIDATOR.get_or_init(|| {
             schema_validator(include_str!(
-                "../../../../spec/workbench/draft.7/schemas/mck-corpus.schema.json"
+                "../../../../spec/workbench/draft.15/schemas/mck-corpus.schema.json"
             ))
         }),
         "corpus",
@@ -181,7 +181,7 @@ pub(super) fn validate_observation_shape(value: &Value) -> Result<(), String> {
         value,
         VALIDATOR.get_or_init(|| {
             schema_validator(include_str!(
-                "../../../../spec/workbench/draft.7/schemas/mck-observation.schema.json"
+                "../../../../spec/workbench/draft.15/schemas/mck-observation.schema.json"
             ))
         }),
         "observation",
@@ -194,7 +194,7 @@ pub(super) fn validate_report_shape(value: &Value) -> Result<(), String> {
         value,
         VALIDATOR.get_or_init(|| {
             schema_validator(include_str!(
-                "../../../../spec/workbench/draft.7/schemas/mck-report.schema.json"
+                "../../../../spec/workbench/draft.15/schemas/mck-report.schema.json"
             ))
         }),
         "report",

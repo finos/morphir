@@ -1,0 +1,83 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/identity.schema.json",
+  "tests": [
+    {
+      "description": "Exact identity",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "executionId": "execution",
+        "snapshotId": "snapshot"
+      },
+      "valid": true
+    },
+    {
+      "description": "Empty snapshot",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "executionId": "execution",
+        "snapshotId": ""
+      },
+      "valid": false
+    },
+    {
+      "description": "No execution",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "snapshotId": "snapshot"
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown member",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "executionId": "execution",
+        "snapshotId": "snapshot",
+        "path": "/local/path"
+      },
+      "valid": false
+    },
+    {
+      "description": "Long provider",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp",
+        "executionId": "execution",
+        "snapshotId": "snapshot"
+      },
+      "valid": false
+    },
+    {
+      "description": "Breaking execution contract refuses historical identity or version",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "snapshotId": "snapshot",
+        "jobId": "execution"
+      },
+      "valid": false
+    },
+    {
+      "description": "Breaking execution contract refuses historical identity or version",
+      "data": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "provider",
+        "executionId": "execution",
+        "snapshotId": "snapshot",
+        "jobId": "execution"
+      },
+      "valid": false
+    }
+  ]
+}

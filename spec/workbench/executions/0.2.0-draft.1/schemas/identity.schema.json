@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/identity.schema.json",
+  "title": "Snapshot-bound execution identity",
+  "description": "Immutable host, session, provider, execution and model snapshot binding. Identity strings also require bounded UTF-16 units in the reducer",
+  "examples": [
+    {
+      "hostId": "host",
+      "sessionId": "session",
+      "providerId": "provider",
+      "executionId": "execution",
+      "snapshotId": "snapshot"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "hostId",
+    "sessionId",
+    "providerId",
+    "executionId",
+    "snapshotId"
+  ],
+  "properties": {
+    "hostId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "sessionId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "providerId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "executionId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "snapshotId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

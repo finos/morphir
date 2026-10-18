@@ -1,0 +1,131 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/mck-response.schema.json",
+  "tests": [
+    {
+      "description": "execution response",
+      "data": {
+        "id": 1,
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": true,
+          "cancelAction": "send",
+          "observations": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "capability response",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "reduce-execution"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "historical capability response rejected",
+      "data": {
+        "id": 1,
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.5",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "reduce-execution"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "terminal envelope alone not projection",
+      "data": {
+        "id": 1,
+        "status": "ok",
+        "value": {
+          "contractVersion": "0.1.0-draft.5",
+          "calls": [
+            {
+              "id": "call",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "int",
+                  "value": "42"
+                }
+              }
+            }
+          ],
+          "cleanup": null,
+          "extensions": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "missing correlation",
+      "data": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": true,
+          "cancelAction": "send",
+          "observations": []
+        }
+      },
+      "valid": false
+    }
+  ]
+}

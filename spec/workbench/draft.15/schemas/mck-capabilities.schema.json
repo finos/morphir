@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.15/mck-capabilities.schema.json",
+  "title": "Offline Workbench native frame mck-capabilities",
+  "description": "Closed exact draft.15 JSON validate-native-frame contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+  "examples": [
+    {
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.15",
+      "binding": "fixture",
+      "language": "test",
+      "operations": [ "validate-native-frame" ],
+      "formats": [ "json" ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "binding",
+    "language",
+    "operations",
+    "formats"
+  ],
+  "properties": {
+    "suite": {
+      "const": "workbench"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.15"
+    },
+    "binding": {
+      "type": "string",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "const": [ "validate-native-frame" ]
+    },
+    "formats": {
+      "const": [ "json" ]
+    }
+  },
+  "additionalProperties": false
+}

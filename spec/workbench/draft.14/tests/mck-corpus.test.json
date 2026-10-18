@@ -1,0 +1,330 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "execution corpus",
+      "data": {
+        "formatVersion": "0.1.0-draft.14",
+        "cases": [
+          {
+            "id": "submitted-no-actions",
+            "operation": "reduce-execution",
+            "format": "json",
+            "input": {
+              "offer": {
+                "profile": "morphir/workbench/executions",
+                "contractVersion": "0.2.0-draft.1",
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "operations": [
+                  "query",
+                  "cancel"
+                ]
+              },
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "calls": [
+                "call"
+              ],
+              "initial": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "outcomes": null
+              },
+              "actions": []
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "receipt": {
+                  "contractVersion": "0.2.0-draft.1",
+                  "identity": {
+                    "hostId": "host",
+                    "sessionId": "session",
+                    "providerId": "provider",
+                    "executionId": "execution",
+                    "snapshotId": "snapshot"
+                  },
+                  "sequence": 0,
+                  "state": "submitted",
+                  "cancelRequested": false,
+                  "outcomes": null
+                },
+                "connected": true,
+                "cancelAction": "send",
+                "observations": []
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "exact corpus version",
+      "data": {
+        "formatVersion": "0.1.0-draft.5",
+        "cases": [
+          {
+            "id": "submitted-no-actions",
+            "operation": "reduce-execution",
+            "format": "json",
+            "input": {
+              "offer": {
+                "profile": "morphir/workbench/executions",
+                "contractVersion": "0.2.0-draft.1",
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "operations": [
+                  "query",
+                  "cancel"
+                ]
+              },
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "calls": [
+                "call"
+              ],
+              "initial": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "outcomes": null
+              },
+              "actions": []
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "receipt": {
+                  "contractVersion": "0.2.0-draft.1",
+                  "identity": {
+                    "hostId": "host",
+                    "sessionId": "session",
+                    "providerId": "provider",
+                    "executionId": "execution",
+                    "snapshotId": "snapshot"
+                  },
+                  "sequence": 0,
+                  "state": "submitted",
+                  "cancelRequested": false,
+                  "outcomes": null
+                },
+                "connected": true,
+                "cancelAction": "send",
+                "observations": []
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "closed case",
+      "data": {
+        "formatVersion": "0.1.0-draft.14",
+        "cases": [
+          {
+            "id": "submitted-no-actions",
+            "operation": "reduce-execution",
+            "format": "json",
+            "input": {
+              "offer": {
+                "profile": "morphir/workbench/executions",
+                "contractVersion": "0.2.0-draft.1",
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "operations": [
+                  "query",
+                  "cancel"
+                ]
+              },
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "calls": [
+                "call"
+              ],
+              "initial": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "outcomes": null
+              },
+              "actions": []
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "receipt": {
+                  "contractVersion": "0.2.0-draft.1",
+                  "identity": {
+                    "hostId": "host",
+                    "sessionId": "session",
+                    "providerId": "provider",
+                    "executionId": "execution",
+                    "snapshotId": "snapshot"
+                  },
+                  "sequence": 0,
+                  "state": "submitted",
+                  "cancelRequested": false,
+                  "outcomes": null
+                },
+                "connected": true,
+                "cancelAction": "send",
+                "observations": []
+              }
+            },
+            "extra": true
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "only reduce-execution",
+      "data": {
+        "formatVersion": "0.1.0-draft.14",
+        "cases": [
+          {
+            "id": "submitted-no-actions",
+            "operation": "decode-value",
+            "format": "json",
+            "input": {
+              "offer": {
+                "profile": "morphir/workbench/executions",
+                "contractVersion": "0.2.0-draft.1",
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "operations": [
+                  "query",
+                  "cancel"
+                ]
+              },
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "calls": [
+                "call"
+              ],
+              "initial": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "outcomes": null
+              },
+              "actions": []
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "receipt": {
+                  "contractVersion": "0.2.0-draft.1",
+                  "identity": {
+                    "hostId": "host",
+                    "sessionId": "session",
+                    "providerId": "provider",
+                    "executionId": "execution",
+                    "snapshotId": "snapshot"
+                  },
+                  "sequence": 0,
+                  "state": "submitted",
+                  "cancelRequested": false,
+                  "outcomes": null
+                },
+                "connected": true,
+                "cancelAction": "send",
+                "observations": []
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

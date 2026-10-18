@@ -1,7 +1,7 @@
 use super::*;
 use serde_json::{Value, json};
 
-const DRAFT: &str = "0.1.0-draft.7";
+const DRAFT: &str = "0.1.0-draft.15";
 
 fn operation() -> Operation {
     serde_json::from_value(json!("validate-native-frame")).unwrap()
@@ -33,10 +33,10 @@ fn native_frames_exact_negotiation_and_closed_projection() {
         INVOCATION_VERSION,
         OUTPUT_VERSION,
         OUTCOMES_VERSION,
-        JOBS_VERSION,
-        "0.1.0-draft.8",
-        "0.1.0-draft.7+local",
-        "v0.1.0-draft.7",
+        EXECUTIONS_VERSION,
+        "0.1.0-draft.16",
+        "0.1.0-draft.15+local",
+        "v0.1.0-draft.15",
     ] {
         let mut caps = capabilities();
         caps["contractVersion"] = json!(version);
@@ -44,7 +44,7 @@ fn native_frames_exact_negotiation_and_closed_projection() {
     }
     for (field, value) in [
         ("operations", json!([])),
-        ("operations", json!(["reduce-job"])),
+        ("operations", json!(["reduce-execution"])),
         (
             "operations",
             json!(["validate-native-frame", "decode-value"]),
@@ -94,7 +94,7 @@ fn native_frames_exact_negotiation_and_closed_projection() {
         Observation::Ok {
             value: json!({"frameAccepted":true})
         }
-        .validate_for(Operation::ReduceJob)
+        .validate_for(Operation::ReduceExecution)
         .is_err()
     );
 }
@@ -159,7 +159,7 @@ fn native_frames_corpus_rejects_literal_serde_private_objects_before_adapter_sta
         r#"{"$serde_json::private::RawValue":"1"}"#,
     ] {
         let text = format!(
-            r#"{{"formatVersion":"0.1.0-draft.7","cases":[{{"id":"frame","operation":"validate-native-frame","format":"json","input":{{"encoding":"utf8","source":"{{}}","generate":{{"prefix":{{"repeat":" ","count":{count}}}}}}},"expected":{{"status":"ok","value":{{"frameAccepted":true}}}}}}]}}"#
+            r#"{{"formatVersion":"0.1.0-draft.15","cases":[{{"id":"frame","operation":"validate-native-frame","format":"json","input":{{"encoding":"utf8","source":"{{}}","generate":{{"prefix":{{"repeat":" ","count":{count}}}}}}},"expected":{{"status":"ok","value":{{"frameAccepted":true}}}}}}]}}"#
         );
         std::fs::write(root.path().join("cases.json"), text).unwrap();
         assert!(load(root.path()).is_err(), "{count}");
@@ -177,7 +177,7 @@ fn native_frames_corpus_rejects_literal_serde_private_objects_before_adapter_sta
         corpus_file(root.path(), input);
         assert!(load(root.path()).is_err());
     }
-    let text = r#"{"formatVersion":"0.1.0-draft.7","cases":[{"id":"frame","operation":"validate-native-frame","format":"json","input":{"encoding":"utf8","source":"{}"},"expected":{"status":"ok","value":{"frameAccepted":{"$serde_json::private::RawValue":"true"}}}}]}"#;
+    let text = r#"{"formatVersion":"0.1.0-draft.15","cases":[{"id":"frame","operation":"validate-native-frame","format":"json","input":{"encoding":"utf8","source":"{}"},"expected":{"status":"ok","value":{"frameAccepted":{"$serde_json::private::RawValue":"true"}}}}]}"#;
     std::fs::write(root.path().join("cases.json"), text).unwrap();
     assert!(load(root.path()).is_err());
 }
@@ -198,7 +198,7 @@ impl Testee for Replay {
 #[test]
 fn native_frames_fixed_transcript_checks_reports_without_decoding_native_inputs() {
     let root =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.7");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.15");
     let corpus = load(&root).unwrap();
     assert!(corpus.case_count() >= 40);
     assert!(
@@ -253,7 +253,7 @@ fn native_frames_fixed_transcript_checks_reports_without_decoding_native_inputs(
         match change {
             "qualified" => forged["qualified"] = json!(false),
             "result" => forged["records"][0]["result"] = json!("fail"),
-            "operation" => forged["records"][0]["operation"] = json!("reduce-job"),
+            "operation" => forged["records"][0]["operation"] = json!("reduce-execution"),
             "format" => forged["records"][0]["format"] = json!("ion-text"),
             "hash" => forged["corpusHash"] = json!("0".repeat(64)),
             "projection" => {
@@ -264,7 +264,7 @@ fn native_frames_fixed_transcript_checks_reports_without_decoding_native_inputs(
                 forged["records"][0]["observed"] =
                     json!({"status":"invalid","code":"native.frame.other"})
             }
-            "capabilities" => forged["capabilities"]["contractVersion"] = json!(JOBS_VERSION),
+            "capabilities" => forged["capabilities"]["contractVersion"] = json!(EXECUTIONS_VERSION),
             _ => unreachable!(),
         }
         assert!(
