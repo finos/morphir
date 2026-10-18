@@ -274,7 +274,6 @@ fn install(root: &Path, state: &Path, default_recipe: DefaultRecipe) -> MorphirH
         .open(state.join("fixture-config.json"))
         .unwrap();
     serde_json::to_writer(file, &FixtureConfiguration { default_recipe }).unwrap();
-    let bytes = std::fs::read(std::env::current_exe().unwrap()).unwrap();
     let index = root.join("index");
     std::fs::create_dir_all(index.join("artifacts")).unwrap();
     std::fs::create_dir_all(index.join("extensions")).unwrap();
@@ -283,7 +282,21 @@ fn install(root: &Path, state: &Path, default_recipe: DefaultRecipe) -> MorphirH
     } else {
         "artifact-process"
     };
-    std::fs::write(index.join("artifacts").join(filename), &bytes).unwrap();
+    let payload = index.join("artifacts").join(filename);
+    std::fs::copy(std::env::current_exe().unwrap(), &payload).unwrap();
+    // Linux debug symbols can exceed the installer's unchanged 256 MiB limit.
+    // Strip only our private copied payload, never the running test executable.
+    #[cfg(unix)]
+    assert!(
+        std::process::Command::new("strip")
+            .arg("-S")
+            .arg(&payload)
+            .status()
+            .expect("platform strip is available")
+            .success(),
+        "strip the private qualification payload"
+    );
+    let bytes = std::fs::read(&payload).unwrap();
     let platform = Platform::current();
     let record = json!({"schemaVersion":"1.0","id":ID,"name":"Artifact process qualification","version":"0.1.0","channels":["stable"],"mepVersions":["0.1"],"capabilities":["backend"],"backend":{"targets":[TARGET],"irVersions":["4.0.0"],"generate":true},"artifacts":[{"runtime":"process","platform":{"os":platform.os(),"arch":platform.arch()},"source":{"kind":"local-file","path":format!("artifacts/{filename}")},"sha256":Sha256Digest::of_bytes(&bytes),"filename":filename,"args":["--artifact-process-fixture",state],"executable":true}]});
     std::fs::write(
