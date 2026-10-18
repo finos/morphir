@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Intent links and revision-scoped evidence</h1>
+<p class="meta">morphir-ukvn.7.7.4 · M4 · 18 October 2026 · Shared examples</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#example">A source edit</a></li>
+<li><a href="#identity">KB identity and lifecycle</a></li>
+<li><a href="#api">Constructed model API</a></li>
+<li><a href="#currency">Evidence currency</a></li>
+<li><a href="#cases">Examples and executed tests</a></li>
+<li><a href="#pins">Source pins and limits</a></li>
+</ul>
+</nav>
+
+<section id="example"><h2>A source edit</h2>
+<p>A requirement keeps its source identity when its wording changes. Its old evidence retains the revision it examined. The portable MoonBit intent library accepts these facts as caller-supplied records, produces a read-only requirements view, and reports whether each observation still has the requested revision context.</p>
+<p>The <a href="source-before.json">original source</a> retains <code>Track returns.\r\n  Keep identity.\n</code> at document revision <code>doc-1</code>. The <a href="source-after.json">edited source</a> retains <code>Accept partial returns.\n</code> at <code>doc-2</code>. Both use document ID <code>urn:document:return</code>, local Source ID <code>urn:source:return</code> and fragment anchor <code>return</code>.</p>
+<table><thead><tr><th>Input</th><th>Expected observation</th></tr></thead><tbody>
+<tr><td>Move the locator to <code>morphir/intent:/archive/0007-return.md</code>, retaining the same logical snapshot.</td><td>IDs, excerpt and document revision remain unchanged. Evidence remains current.</td></tr>
+<tr><td>Construct model <code>m2</code> with the edited document, then retain evidence from model <code>m1</code>.</td><td>The new source text and old evidence both remain available. Old evidence is stale.</td></tr>
+<tr><td>Omit the document from the revision context, or use the local Source ID in its place.</td><td>Assessment is inconclusive. Two equally incomplete contexts do not establish currency.</td></tr>
+</tbody></table>
+<p><a href="contexts.json">The complete before/after contexts</a> and <a href="examples.json">literal example expectations</a> are authored data. They are not generated from test results. Every observation in these examples is marked <code>hand-authored-fixture</code>; none claims that a domain evaluator ran.</p>
+</section>
+
+<section id="identity"><h2>KB identity and lifecycle</h2>
+<p>The existing KB service derives its short intent ID from the leading digits of a filename. That number is scoped to a bundle. Its JSON view includes path and slug, but no document revision. The adapter therefore requires the caller's stable document, source and entity identities, exact revision, anchor and original excerpt. Bundle, short number, slug and state remain KB origin metadata. The adapter never derives logical identity from a path or short number.</p>
+<p>The service owns Backlog, Refinement, InProgress, Released, Cancelled and Superseded. Missing state remains absent. All seven input possibilities are tested. A lifecycle change produces no contract, scenario or observation. Human acceptance remains review evidence. There is no PRD command in the pinned KB service; <code>prd_view</code> projects supplied requirements without creating another register.</p>
+<p>Functional, data, performance, operational and regulatory requirements use the M1 category namespace. Explicit extensions such as <code>example:availability</code> coexist with them. EARS classification belongs in notation, independently of category. A requirement may refine several intents, and several requirements may refine one intent.</p>
+</section>
+
+<section id="api"><h2>Constructed model API</h2>
+<p>The library is <code>finos/morphir-conceptual/intent</code>. It implements an inspection slice of the <a href="../model/contract.html">exact M1 contract</a>. The caller owns the complete model; the slice preserves source and requirement data and the links needed for assessment. It does not decode or replace the graph's Ion carrier.</p>
+<pre><code class="language-moonbit">adapt_kb_source(KbSnapshot) -&gt; AdaptedSource raise InvalidInput
+inspect(Model) -&gt; Inspection
+prd_view(Model) -&gt; PrdView
+assess_claim(Model, ResolvedRef, RevisionContext) -&gt; ClaimAssessment</code></pre>
+<table><thead><tr><th>Boundary</th><th>Behavior</th></tr></thead><tbody>
+<tr><td>IDs, revisions and categories</td><td>Smart constructors reject empty identities/revisions and unnamespaced categories. Opaque values are not normalized.</td></tr>
+<tr><td>Revision context</td><td>The constructor rejects duplicate IDs within each member list, including different revisions of the same ID. Lists are copied on input and output.</td></tr>
+<tr><td>Resolved reference</td><td>Selects an exact model/entity revision in the supplied dependency closure. Absent records, wrong revisions and wrong endpoint kinds are invalid.</td></tr>
+<tr><td>Unresolved reference</td><td>Retains a locator, expected kind and reason. It remains a visible gap and triggers no acquisition.</td></tr>
+<tr><td>PRD row</td><td>Retains identified requirement text, category, notation, source refs, intent/source links and contract/scenario/claim/evidence links. Invalid graphs retain rows and diagnostics but expose no usable assertion links.</td></tr>
+<tr><td>Rich values</td><td>Existing Ion values retain exact integers, decimal scale, symbols, typed nulls and annotations in notation, scope, descriptions and observations.</td></tr>
+</tbody></table>
+<p><code>Contract</code>, <code>Declaration</code>, <code>Scenario</code> and <code>Implementation</code> in the slice expose the link facts needed here. They are not replacement M1 records. In particular, a scenario's retained content is opaque, and this library does not validate contract binders or declaration signatures. Full record decoding and semantic validation remain separate work.</p>
+</section>
+
+<section id="currency"><h2>Evidence currency</h2>
+<p>Assessment compares the complete model, entity, source-document and implementation revision sets. Order does not matter. A changed revision or added subject makes the old observation stale. A missing required dependency makes assessment inconclusive. Requirements come from the claim's declared context, its explicit model links, observation source refs and run clauses. Supplied source facts also participate, so matching old context records cannot hide an edited source.</p>
+<p>Each support or contradiction keeps its own relationship identity, evidence kind, payload and currency. Analysis, review and run remain distinct. An observed Ion null differs from absent output. No observation means unknown. A malformed graph or claim query yields an invalid assessment without usable observations.</p>
+<table><thead><tr><th>Result</th><th>What it establishes</th></tr></thead><tbody>
+<tr><td>Current</td><td>Recorded context matches the complete requested context and supplied relevant snapshots.</td></tr>
+<tr><td>Stale</td><td>The recorded context differs from the requested or supplied relevant snapshot.</td></tr>
+<tr><td>Inconclusive</td><td>Required context or a relevant source is unavailable.</td></tr>
+<tr><td>Support and contradiction together</td><td>Both authored assertions are retained. Neither overrides the other.</td></tr>
+</tbody></table>
+<p>Currency says nothing about whether the claim is true. Accepted review does not become a run, type analysis does not become behavioral proof, and generated scenarios do not become executed evidence. The API has no proof Boolean.</p>
+</section>
+
+<section id="cases"><h2>Examples and executed tests</h2>
+<p><code>examples.json</code> contains construction recipes and literal expected observations. The MoonBit public-API tests construct the corresponding inputs directly. They do not load these JSON files; this table makes their relationship reviewable. There is no second compatibility checker or fixture-integrity result presented as runtime qualification.</p>
+<p>Test files live under <code>pkgs/morphir-conceptual/intent/</code> in morphir-moonbit.</p>
+<table><thead><tr><th>Example ID</th><th>Test file</th><th>Exact test name</th></tr></thead><tbody>
+<tr><td>source-move; source-edit</td><td><code>source_test.mbt</code><br><code>evidence_test.mbt</code></td><td>KB moves preserve caller identities and exact excerpts; edits retain old snapshot<br>source moves retain current evidence; edits make historical evidence stale and omitted source inconclusive</td></tr>
+<tr><td>bundle-scoped-kb-number</td><td><code>source_test.mbt</code></td><td>same short KB id in two bundles does not create document identity</td></tr>
+<tr><td>mixed-prd</td><td><code>inspection_test.mbt</code></td><td>PRD retains mixed categories and many-to-many intent links without inventing formalization</td></tr>
+<tr><td>unresolved-or-malformed</td><td><code>inspection_test.mbt</code></td><td>unresolved targets are gaps; fabricated resolution and wrong kinds are errors</td></tr>
+<tr><td>support-and-contradiction</td><td><code>evidence_test.mbt</code></td><td>current analysis and contradictory review remain distinct observations, not proof</td></tr>
+<tr><td>missing-context</td><td><code>evidence_test.mbt</code></td><td>missing context and duplicate context members cannot appear current<br>source moves retain current evidence; edits make historical evidence stale and omitted source inconclusive</td></tr>
+<tr><td>complete-context</td><td><code>evidence_test.mbt</code></td><td>complete context compares every revision dimension and ignores member order</td></tr>
+<tr><td>lifecycle-is-not-evidence</td><td><code>inspection_test.mbt</code><br><code>boundaries_test.mbt</code></td><td>all KB lifecycle states and absent state are read-only; Ion metadata survives<br>run evidence retains null versus absent, limits, clauses and rich values</td></tr>
+<tr><td>run-output</td><td><code>boundaries_test.mbt</code></td><td>run evidence retains null versus absent, limits, clauses and rich values</td></tr>
+</tbody></table>
+<p>Further negative tests cover duplicate graph identities, missing fragments, invalid contract subjects, dependency cycles, duplicate dependency snapshots, evidence-owned source refs and incomplete implementation context. The generated public interface is <code>intent/pkg.generated.mbti</code>.</p>
+<pre><code class="language-bash">moon test -p finos/morphir-conceptual/intent --target wasm
+moon test -p finos/morphir-conceptual/intent --target wasm-gc
+moon test -p finos/morphir-conceptual/intent --target js
+moon test -p finos/morphir-conceptual/intent --target native</code></pre>
+</section>
+
+<section id="pins"><h2>Source pins and limits</h2>
+<table><thead><tr><th>Input</th><th>Pinned source</th></tr></thead><tbody>
+<tr><td>M1 record contract</td><td><a href="https://github.com/finos/morphir/blob/9fe3a6f5cf05e8fe6862b2883db05ca9ed7d1551/spec/conceptual/model/contract.html">finos/morphir, 9fe3a6f5cf05e8fe6862b2883db05ca9ed7d1551</a>, exact profile <code>morphir-conceptual/0.1.0-draft.1</code>.</td></tr>
+<tr><td>KB identity, states and JSON view</td><td><a href="https://github.com/finos/morphir-rust/blob/af122ed0395876ff70645ffdc3b033b16ff0d7ac/crates/morphir-kb/src/intent/model.rs">intent/model.rs</a> and <a href="https://github.com/finos/morphir-rust/blob/af122ed0395876ff70645ffdc3b033b16ff0d7ac/crates/morphir-kb/src/intent/render.rs">intent/render.rs</a> at <code>af122ed0395876ff70645ffdc3b033b16ff0d7ac</code>.</td></tr>
+<tr><td>OKF bundle/document identity</td><td><a href="https://github.com/finos/morphir-rust/blob/af122ed0395876ff70645ffdc3b033b16ff0d7ac/crates/morphir-okf/src/model.rs">morphir-okf/src/model.rs</a> at the same Rust revision.</td></tr>
+<tr><td>CLI ownership</td><td><a href="https://github.com/finos/morphir/blob/7920a6b675906e7a4b21ad40d6e3e7570d45e6ba/crates/morphir/src/commands/kb.rs">Parent KB command layer</a> at <code>7920a6b675906e7a4b21ad40d6e3e7570d45e6ba</code>; behavior remains in the existing service crates.</td></tr>
+</tbody></table>
+<p>This delivery adds no parser, DSL, evaluator, carrier, runtime provider claim, capability admission, source discovery, synchronization, CLI lifecycle or compatibility runner. It does not verify source digests or prove equivalence to prose. The source slice accepts exact revisions; a future digest adapter must verify original bytes before admitting their identity. Original M1 models and rich carriers remain authoritative outside this bounded inspection slice.</p>
+</section>
+
+</main>
+</body>
+</html>
