@@ -39,7 +39,20 @@ fn duplicate_members(value : @ion.IonValue) -> Bool {
 /// Core JSON validates grammar/depth. Ion retains member pairs so duplicates
 /// cannot disappear during conversion to the core Json map. None means exit.
 pub fn handle_line(source : String) -> Json? raise {
+  if source.length() > 3146752 {
+    raise @execution.Invalid("workbench.mck_frame_limit")
+  }
+  let frame_bytes = @utf8.encode(source).length()
+  if frame_bytes > 3146752 {
+    raise @execution.Invalid("workbench.mck_frame_limit")
+  }
   let request = @json.parse(source)
+  // Only draft26 reserves room for hexadecimal binary sources and its fixed
+  // correlation wrapper. Historical line limits remain unchanged.
+  if frame_bytes > 2097152 &&
+    field(request, "contractVersion") != Json::string("0.1.0-draft.26") {
+    raise @execution.Invalid("workbench.mck_frame_limit")
+  }
   if duplicate_members(@text.read_ion(source[:])) {
     return Some(invalid(field(request, "id"), "workbench.invalid_request"))
   }
@@ -49,7 +62,8 @@ pub fn handle_line(source : String) -> Json? raise {
     Json::string("0.1.0-draft.15") ||
     field(request, "contractVersion") == Json::string("0.1.0-draft.16") ||
     field(request, "contractVersion") == Json::string("0.1.0-draft.20") ||
-    field(request, "contractVersion") == Json::string("0.1.0-draft.23") {
+    field(request, "contractVersion") == Json::string("0.1.0-draft.23") ||
+    field(request, "contractVersion") == Json::string("0.1.0-draft.26") {
     @wire.parse(source)
   } else {
     request
@@ -86,6 +100,7 @@ pub fn handle(request : Json) -> Json {
     ["id", "op", "suite", "contractVersion", "format", "input"]
   }
   let version = field(request, "contractVersion")
+  let draft26 = version == Json::string("0.1.0-draft.26")
   let draft23 = version == Json::string("0.1.0-draft.23")
   let draft20 = version == Json::string("0.1.0-draft.20")
   let draft16 = version == Json::string("0.1.0-draft.16")
@@ -107,7 +122,8 @@ pub fn handle(request : Json) -> Json {
       draft15 ||
       draft16 ||
       draft20 ||
-      draft23
+      draft23 ||
+      draft26
     ) else {
     return invalid(id, "workbench.invalid_request")
   }
@@ -118,7 +134,9 @@ pub fn handle(request : Json) -> Json {
       "contractVersion": version,
       "binding": "morphir-moonbit",
       "language": "moonbit",
-      "operations": if draft23 {
+      "operations": if draft26 {
+        ["transcode-invocations", "compare-values"]
+      } else if draft23 {
         ["validate-http-policy-boundary"]
       } else if draft20 {
         ["validate-native-policy-boundary"]
@@ -144,12 +162,27 @@ pub fn handle(request : Json) -> Json {
       } else {
         ["decode-value"]
       },
-      "formats": if draft14 || draft15 || draft16 || draft20 || draft23 {
+      "formats": if draft14 ||
+        draft15 ||
+        draft16 ||
+        draft20 ||
+        draft23 ||
+        draft26 {
         ["json"]
       } else {
         ["json", "ion-text"]
       },
     }
+  }
+  if draft26 {
+    guard field(request, "format") == Json::string("json") &&
+      (
+        op == Json::string("transcode-invocations") ||
+        op == Json::string("compare-values")
+      ) else {
+      return invalid(id, "workbench.invalid_request")
+    }
+    return codec_comparison(id, op, field(request, "input"))
   }
   if draft23 {
     guard op == Json::string("validate-http-policy-boundary") &&

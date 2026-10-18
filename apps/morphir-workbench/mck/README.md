@@ -2,7 +2,8 @@
 
 This component exposes the shipped `finos/morphir-execution` value codec and
 validator to the shared Rust MCK. It supports exact contracts
-`0.1.0-draft.1` through `0.1.0-draft.5`, plus replacement drafts14–16. It has no goldens, evaluator or separate
+`0.1.0-draft.1` through `0.1.0-draft.5`, plus replacement drafts14–16 and
+the exact boundary/codec drafts20, 23 and 26. It has no goldens, evaluator or separate
 conformance runner. The parent `finos/morphir` repository owns the specification,
 corpora and verdict calculation. Draft.1/.2 are merged; draft.3 adds invocation
 validation; draft.4 adds output validation; draft.5 adds terminal outcome validation.
@@ -301,3 +302,32 @@ HTTP client/provider kits retain their own 2-MiB complete NDJSON envelope budget
 and 1-MiB compact input budget. Their separate `json-frame` codec uses the shared
 duplicate-aware wire parser. Actual HTTP requests, replies and argument-source
 validation continue through the production 1-MiB boundary.
+
+## Invocation transcoding and comparison
+
+Exact offline draft.26 exercises the shipped invocation codecs and value
+comparator. `transcode-invocations` decodes opaque JSON, Ion text or binary bytes,
+encodes the captured suite into the selected destination, and decodes those
+actual output bytes. Fixed independent upstream expectations check the normalized
+suite, including exact Int/Decimal, Float64 bits, UTF-16 and extension bytes.
+Binary Ion has multiple valid encodings; this gate makes no canonical-byte claim.
+
+`compare-values` uses the existing exact or explicitly approximate comparison
+policy and reports equality plus the first mismatch as a JSON Pointer. Comparison
+qualification is distinct from claiming support for every SDK operation.
+
+```sh
+MORPHIR_MCK_BIN=/path/to/morphir \
+MORPHIR_WORKBENCH_KIT=/path/to/finos/morphir/spec/workbench/mck/draft.26 \
+MORPHIR_WORKBENCH_EVIDENCE=.dev/workbench-codec-comparison \
+mise run test:workbench-mck
+```
+
+The existing gate runs all four portable test targets and actual Node/native
+debug/release adapters, then independently checks each report. The exact new kit
+allows 3 MiB compact fixture inputs and a separate 1-KiB framing reserve to test
+the production 1-MiB source boundary with hexadecimal binary fixtures.
+Its retained compact value projection remains bounded to 1 MiB; expansion beyond
+that evidence budget reports `workbench.output_limit`. That evidence limit does
+not change production codec acceptance. Frozen kits and live native/HTTP offers
+retain their own contracts.

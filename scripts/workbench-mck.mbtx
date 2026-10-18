@@ -50,7 +50,7 @@ async fn main {
   let evidence_root = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
     ".dev/workbench-mck",
   )
-  @fs.mkdir(evidence_root, recursive=true)
+  @fs.mkdir(evidence_root, recursive=true, allow_exist=true)
   for target in ["js", "native", "wasm", "wasm-gc"] {
     checked("moon", ["test", "apps/morphir-workbench/mck", "--target", target])
   }

@@ -94,8 +94,8 @@ Linux has separate CEF-free native process acceptance. Linux and Windows retain
 browser workers pending independent packaged GUI/lifecycle qualification.
 The policy mapping is scoped to the independently checked boundary/client/owner
 MCK drafts 20, 21 and 22. Controlled fixtures remain distinct from actual worker,
-OS picker and packaged GUI evidence. The policy-aware HTTP mapping is separate
-work; native negotiation never upgrades a connected host. No additional platform
+OS picker and packaged GUI evidence. The policy-aware HTTP mapping has separate
+qualification; native negotiation never upgrades a connected host. No additional platform
 is enabled by this mapping.
 
 On macOS Apple Silicon, the `workspace` capability enables **Open workspace** in
@@ -151,6 +151,44 @@ For a headless packaged-app smoke check, enable Proton's CDP port using
 `PROTON_REMOTE_DEBUGGING_PORT` and `PROTON_HEADLESS=1`, then run the browser
 package's `scripts/desktop-test.ts <cdp-url>`. Keep that debugging port confined
 to local development.
+
+The opt-in lifecycle acceptance launches its own unmodified package with an
+ephemeral CDP port and verifies Proton's separate temporary CEF profile. From
+the repository root, after packaging:
+
+```sh
+bun --check apps/morphir-workbench/scripts/desktop-lifecycle-test.ts \
+  "apps/morphir-workbench-desktop/_build/package/Morphir Workbench.app" \
+  .dev/campaign-completion/lifecycle-agent
+```
+
+This currently qualifies macOS Apple Silicon. It evaluates a typed function,
+then holds actual owner-spawned native workers with `SIGSTOP` after checking
+their executable, direct parent and OS process identity. A bounded list argument
+keeps worker observation deterministic. It verifies worker removal at the
+replacement session's reply after reload, at the `session.close` reply, and at
+normal application exit. Replacement sessions reject the old authority and
+execute another typed function successfully.
+
+Before launching the package, the acceptance uses `clang` to build a temporary
+owned-child fixture. It verifies that an exited but unreaped macOS process still
+counts as present when `ps` changes its command to `<defunct>`. Only PID and birth
+time determine continued presence after the initial executable/parent check.
+Run just this regression, without launching CEF, with:
+
+```sh
+bun --check apps/morphir-workbench/scripts/desktop-lifecycle-test.ts \
+  --process-identity-regression .dev/campaign-completion/lifecycle-agent/regression
+```
+
+Normal quit uses macOS AppKit's `NSRunningApplication.terminate()` for the owned
+PID. That API requests normal application quit; it is not a Unix signal or a
+simulated menu click. Successful qualification requires exit code zero with no
+signal and OS confirmation that the owned native workers have exited. Emergency
+signal cleanup on a failed test does not count as qualification. The JSON
+receipt and package log remain in the evidence directory. This acceptance
+neither uses a worker executable substitute nor qualifies Linux or Windows
+packaged lifecycle behavior.
 
 Run `mise run test:workbench-native-workers` from the repository root for real
 native process, exact-value, cancellation, framing, memory and shutdown acceptance

@@ -10,7 +10,7 @@ test "HTTP policy boundary negotiates independently of frozen native contracts" 
     execution_field(reply, "operations"),
     (["validate-http-policy-boundary"] : Json),
   )
-  for version in ["0.1.0-draft.23+build", "0.1.0-draft.26"] {
+  for version in ["0.1.0-draft.23+build", "0.1.0-draft.999"] {
     assert_eq(
       execution_field(
         @mck.handle({

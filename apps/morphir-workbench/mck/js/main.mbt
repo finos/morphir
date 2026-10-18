@@ -2,7 +2,7 @@
 // Node owns the bounded line stream; the shared MoonBit component owns decoding.
 extern "js" fn serve(handler : (String) -> String) -> Unit =
   #| (handler) => {
-  #|   const limit = 2 * 1024 * 1024;
+  #|   const limit = 3 * 1024 * 1024 + 1024;
   #|   let pending = Buffer.alloc(0);
   #|   const decoder = new TextDecoder('utf-8', { fatal: true });
   #|   function fail() { process.stderr.write('workbench: invalid NDJSON framing\n'); process.exit(1); }
