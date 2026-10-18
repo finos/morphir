@@ -39,7 +39,36 @@ const INDEXED_FILE_HASHES: [&str; 4] = [
     "75e9210fb9b010ccd02fc3b824d482d6f1646aa3a5765baba3034423eb1550f7",
     "d5f3e8e4c2a22852ec5d5aa01c92f7ad149031ea896fd3fd70887f425fc30d27",
 ];
-struct Producer(PathBuf);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum DefaultRecipe {
+    Download,
+    Binary,
+    NulText,
+}
+impl DefaultRecipe {
+    fn parse(text: &str) -> Result<Self, &'static str> {
+        match text {
+            "download" => Ok(Self::Download),
+            "binary" => Ok(Self::Binary),
+            "nul-text" => Ok(Self::NulText),
+            _ => Err("fixture mode must be download, binary or nul-text"),
+        }
+    }
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Download => "download",
+            Self::Binary => "binary",
+            Self::NulText => "nul-text",
+        }
+    }
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct FixtureConfiguration {
+    default_recipe: DefaultRecipe,
+}
+struct Producer(PathBuf, DefaultRecipe);
 impl Extension for Producer {
     fn info() -> ExtensionInfo {
         ExtensionInfo {
@@ -77,11 +106,31 @@ impl Backend for Producer {
         std::fs::write(self.0.join("captured.json"), serde_json::to_vec(&request)?)?;
         // Only this explicitly installed fixture target has these recipe controls.
         // The ordinary UI generation action supplies no fixture-only option.
-        let mode = request
-            .options
-            .get("fixtureMode")
-            .and_then(Value::as_str)
-            .unwrap_or("download");
+        let mode = match request.options.get("fixtureMode") {
+            None => self.1.as_str(),
+            Some(Value::String(mode))
+                if [
+                    "download",
+                    "binary",
+                    "nul-text",
+                    "small",
+                    "lost",
+                    "hang",
+                    "file-one-over",
+                    "set-one-over",
+                ]
+                .contains(&mode.as_str()) =>
+            {
+                mode.as_str()
+            }
+            Some(_) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "invalid fixtureMode override",
+                )
+                .into());
+            }
+        };
         if mode == "lost" {
             std::process::exit(17);
         }
@@ -165,7 +214,11 @@ impl Backend for Producer {
 }
 fn serve(directory: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     event(&directory, "start");
-    let guest = NativeExtension::backend_only(Producer(directory.clone()))?;
+    let configuration: FixtureConfiguration =
+        serde_json::from_slice(&std::fs::read(directory.join("fixture-config.json"))?)?;
+    // Capture the validated host recipe once; requests do not reread local state.
+    let guest =
+        NativeExtension::backend_only(Producer(directory.clone(), configuration.default_recipe))?;
     let mut input = io::stdin().lock();
     let mut output = io::stdout().lock();
     loop {
@@ -214,7 +267,13 @@ fn serve(directory: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         output.flush()?;
     }
 }
-fn install(root: &Path, state: &Path) -> MorphirHome {
+fn install(root: &Path, state: &Path, default_recipe: DefaultRecipe) -> MorphirHome {
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(state.join("fixture-config.json"))
+        .unwrap();
+    serde_json::to_writer(file, &FixtureConfiguration { default_recipe }).unwrap();
     let bytes = std::fs::read(std::env::current_exe().unwrap()).unwrap();
     let index = root.join("index");
     std::fs::create_dir_all(index.join("artifacts")).unwrap();
@@ -299,7 +358,7 @@ async fn qualify() {
     let root = tempfile::tempdir().unwrap();
     let state = root.path().join("state");
     std::fs::create_dir(&state).unwrap();
-    let home = install(root.path(), &state);
+    let home = install(root.path(), &state, DefaultRecipe::Download);
     let provider = NativePlaygroundProvider::in_workspace(home, root.path());
     for mode in ["binary", "nul-text", "small"] {
         let expected = params(mode);
@@ -395,6 +454,63 @@ async fn qualify() {
     stopped(&state).await;
     println!("ordinary generation after artifact failures passed");
 }
+async fn configured_process_defaults() {
+    for default_recipe in [DefaultRecipe::Binary, DefaultRecipe::NulText] {
+        assert_eq!(
+            DefaultRecipe::parse(default_recipe.as_str()).unwrap(),
+            default_recipe
+        );
+        let root = tempfile::tempdir().unwrap();
+        let state = root.path().join("state");
+        std::fs::create_dir(&state).unwrap();
+        let home = install(root.path(), &state, default_recipe);
+        let provider = NativePlaygroundProvider::in_workspace(home, root.path());
+        let mut input = params(default_recipe.as_str());
+        input.options.as_object_mut().unwrap().remove("fixtureMode");
+        let generated = provider
+            .generate_artifacts(input.try_into().unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(generated.result.success);
+        assert_eq!(generated.result.artifacts.len(), 4);
+        for (artifact, expected) in generated.result.artifacts.iter().zip(INDEXED_FILE_HASHES) {
+            match default_recipe {
+                DefaultRecipe::Binary => {
+                    assert!(artifact.binary);
+                    let bytes = STANDARD.decode(&artifact.content).unwrap();
+                    assert_eq!(bytes.len(), FILE_BYTES);
+                    assert_eq!(Sha256Digest::of_bytes(&bytes).to_string(), expected);
+                }
+                DefaultRecipe::NulText => {
+                    assert!(!artifact.binary);
+                    assert_eq!(artifact.content.len(), FILE_BYTES);
+                    assert!(artifact.content.bytes().all(|byte| byte == 0));
+                }
+                DefaultRecipe::Download => unreachable!(),
+            }
+        }
+        assert_eq!(
+            PreparedArtifacts::inspect(generated.result.artifacts)
+                .unwrap()
+                .decoded_length(),
+            64 * 1024 * 1024
+        );
+        let captured: GenerateRequest =
+            serde_json::from_slice(&std::fs::read(state.join("captured.json")).unwrap()).unwrap();
+        assert!(!captured.options.contains_key("fixtureMode"));
+        assert_eq!(events(&state, "generate").len(), 1);
+        stopped(&state).await;
+        println!(
+            "configured {} default: real SDK process64MiB with no mode override passed",
+            default_recipe.as_str()
+        );
+    }
+    for unknown in ["", "unknown", "Binary", "nul_text", "binary "] {
+        assert!(DefaultRecipe::parse(unknown).is_err());
+    }
+}
+
 type Socket =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 async fn exchange(socket: &mut Socket, id: u64, method: &str, params: Value) -> Value {
@@ -454,7 +570,7 @@ async fn authenticated_process_host() {
     let root = tempfile::tempdir().unwrap();
     let state = root.path().join("state");
     std::fs::create_dir(&state).unwrap();
-    let home = install(root.path(), &state);
+    let home = install(root.path(), &state, DefaultRecipe::Download);
     let host = BoundUiHost::bind(
         "installed-process-session".into(),
         SessionCapabilities {
@@ -670,13 +786,16 @@ async fn authenticated_process_host() {
         "installed SDK process → authenticated host: independently fixed bytes, literal inputs, authority, single invocation and release/disconnect cleanup passed"
     );
 }
-async fn launch_installed_host(directory: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+async fn launch_installed_host(
+    directory: PathBuf,
+    default_recipe: DefaultRecipe,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Explicit new scratch ownership; never overwrite a previous run or user state.
     std::fs::create_dir(&directory)?;
     let directory = directory.canonicalize()?;
     let state = directory.join("state");
     std::fs::create_dir(&state)?;
-    let home = install(&directory, &state);
+    let home = install(&directory, &state, default_recipe);
     let provider = NativePlaygroundProvider::in_workspace(home, &directory);
     let catalog = provider.catalog().await?;
     let host = BoundUiHost::bind(
@@ -692,7 +811,7 @@ async fn launch_installed_host(directory: PathBuf) -> Result<(), Box<dyn std::er
         tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     println!(
         "{}",
-        json!({"launchUrl":host.launch_url(),"baseUrl":host.base_url(),"sessionId":"installed-process-session","providerId":"playground","producerId":ID,"producerVersion":"0.1.0","target":TARGET,"irVersion":"4.0.0","fixtureMode":"download","stateDirectory":state,"source":"installed-sdk-process","catalog":catalog})
+        json!({"launchUrl":host.launch_url(),"baseUrl":host.base_url(),"sessionId":"installed-process-session","providerId":"playground","producerId":ID,"producerVersion":"0.1.0","target":TARGET,"irVersion":"4.0.0","fixtureMode":default_recipe.as_str(),"stateDirectory":state,"source":"installed-sdk-process","catalog":catalog})
     );
     std::io::stdout().flush()?;
     let shutdown = async {
@@ -723,11 +842,21 @@ fn main() {
         .get(1)
         .is_some_and(|arg| arg == "--artifact-process-host")
     {
+        let default_recipe = args
+            .get(3)
+            .map(|mode| DefaultRecipe::parse(mode.to_str().expect("fixture mode must be UTF-8")))
+            .transpose()
+            .expect("closed fixture launch mode")
+            .unwrap_or(DefaultRecipe::Download);
+        assert!(args.len() <= 4, "unexpected fixture launch arguments");
         runtime
-            .block_on(launch_installed_host(PathBuf::from(
-                args.get(2)
-                    .expect("explicit new scratch directory required"),
-            )))
+            .block_on(launch_installed_host(
+                PathBuf::from(
+                    args.get(2)
+                        .expect("explicit new scratch directory required"),
+                ),
+                default_recipe,
+            ))
             .unwrap();
         return;
     }
@@ -743,6 +872,7 @@ fn main() {
     runtime.block_on(async {
         tokio::time::timeout(Duration::from_secs(240), async {
             qualify().await;
+            configured_process_defaults().await;
             authenticated_process_host().await;
         })
         .await
