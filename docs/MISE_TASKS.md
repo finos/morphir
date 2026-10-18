@@ -217,30 +217,40 @@ Full qualification checks uncached mise installs on all three Unix platforms.
 
 ### Main CI Workflow (`.github/workflows/ci.yml`)
 
-- **Lint Job**: Uses `mise run lint`
-- **Format Check Job**: Uses `mise run lint:moonbit`
-- **Build Job**: Builds release artifacts for `wasm`, `wasm-gc`, `js`, and `native`, then runs CLI smoke tests for each target. The JavaScript job also packs, installs, and runs the npm package.
-- **Test Job**: Installs MoonBit and runs `moon test`
-- **Validate Configuration Files Job**: Uses `mise run list-tasks` and `mise run validate` on every run
-- **ci-ok Job**: Fails if any other job failed or was cancelled. It is the only required check
+- **Lint** runs YAML lint once. **Validate Configuration Files** lists the task configuration and runs `mise run validate:packages`. Local `mise run validate` still includes YAML lint.
+- **TypeScript** installs frozen dependencies, checks all projects and proves invalid types fail checked builds once on Linux. `setup-typescript` accepts `build-runtimes: 'false'` for static consumers; runtime consumers retain JavaScript emission by default.
+- **Build** retains Wasm, Wasm GC and JavaScript release CLI smoke tests and JavaScript Workbench checks. **Test** retains Wasm, Wasm GC, JavaScript and native workspace tests. Native qualification retains the separate native CLI artifact and MEP process checks.
+- **Process supervision** retains Linux, macOS and Windows execution whenever selected. Installed and signed-provider qualification retain their platform, trust and debug/release checks.
+- **ci-ok** requires every selected job to succeed and refuses any failed or cancelled dependency. A selected job that is missing or skipped fails the gate.
 
-### Docs and site changes
+### Component selection
 
-The **Detect code changes** job runs first. It runs `moonx scripts/ci-changes.mbtx BASE HEAD`, which lists the
-changed files and prints two flags:
+`mise run ci:changes` uses exact event revisions. The tested rules in `scripts/ci-changes.mbtx` select each job and produce the aggregate gate's required-job list from the same selection.
 
-- `code=false` when every changed file is documentation or project-site work: `docs/**`, `site/**`,
-  `apps/morphir-site/**`, the site workflows, and every other `*.md` file except `*.mbt.md`, which holds MoonBit
-  tests. The long jobs (process supervision, embedding, build, installed lifecycle, native telemetry and test) are
-  then skipped, and `ci-ok` counts them as passed. Lint, format check and configuration validation always run.
-- `site=true` when a site input changed: docs, site sources, the site and workbench apps, `pkgs/`, app READMEs,
-  `moon.work`, `.config/mise/` or the CI and site workflows. The **Site** job then calls
-  `.github/workflows/site-build.yml`, which builds, checks and tests the site. `ci-ok` covers it, in pull requests
-  and in the merge queue.
+| Changed inputs | Independently selected baseline jobs | Other retained checks |
+| --- | --- | --- |
+| Workbench app, native Workbench packages and Workbench scripts | TypeScript | Build/test backends, native CLI/MEP, installed Workbench, site when its inputs change |
+| Workbench sample generator or generated sample inputs | TypeScript, Elm/Scheme freshness | Workbench and backend checks |
+| Host embedding directory | TypeScript, embedding including Chromium | Build/test backends, native CLI/MEP; site for documentation changes |
+| MoonBit MEP directory or extension app | TypeScript | Build/test backends, native CLI/MEP |
+| MoonBit generator, bindings, SDK or frontend | TypeScript, Elm/Scheme | Build/test backends, native CLI/MEP, selected transitive acceptance and site |
+| Native telemetry adapter/scripts | TypeScript | Build/test backends, native CLI/MEP, telemetry and site when affected |
+| Shared IR, engine, host, tooling, locks or unknown code paths | All baseline jobs | Conservative acceptance dependency rules |
+| Documentation or site only | TypeScript when a site input changes | Site, lint, format and package validation |
 
-A rename counts as a deletion and an addition. A manual run runs every job. A push to `main` runs every job except
-the site build, because the Site workflow builds and deploys `main`. The job runs
-`moonx scripts/ci-changes.mbtx --self-test` before it uses the rules.
+Shared inputs and combinations union their dependencies. Renames count both the old and new paths, including code moved to documentation. A manual run selects everything. Main pushes use a two-commit diff and PR/merge-queue events use the merge base. An unreachable push base selects everything. The separate Site workflow owns main deployment.
+
+CI policy, shared setup, workspace and mise toolchain changes still exercise full qualification. The known site workflows exercise the site build without native qualification. Further workflow narrowing requires a tested mapping. Scheduled full runs, uncached Linux x64/ARM64 and macOS toolchain installs, installed OS matrices and exact-candidate release qualification remain in `qualification.yml`.
+
+### CI measurements and rollback
+
+Run `mise run ci:measure -- RUN_ID --logs > .dev/ci-measurement.json` on a completed run. It uses authenticated `gh`, paginates all jobs in the exact run attempt, and records per-job queue seconds, execution seconds, per-OS runner occupancy, individual step costs and cache log observations. Missing logs mean unknown cache state. GitHub retains successful jobs on retries and resets their creation timestamps. The command marks those results as retained, leaves their original queue delay unknown, and excludes them from the current attempt's execution totals. Effective totals include retained results for workload comparisons. Save each attempt before retrying and sum current-attempt execution totals to measure cumulative runner cost. These seconds are unweighted and are not billed minutes. Queue sums overlap, and run elapsed time includes dependency waits. The API does not expose a complete dependency DAG; use the final jobs and workflow dependencies to inspect the critical path.
+
+Compare the same workload and dependency locks, report warm/cold/unknown cache observations, and distinguish elapsed time from runner occupancy. Do not turn one pair of runs into a general percentage claim. Optimization evidence and the HTML coverage report are stored in beads epic `morphir-ukvn.5.65`.
+
+Bun/package download caches and additional JavaScript artifact transfers require a measured benefit. Keep frozen installs on misses. Never cache trust decisions, signing state, mutable fixtures or qualification receipts. Existing native artifact admission verifies source, run, target, compiler/core and dependency identity; absent or incompatible artifacts fail closed. The scheduled installation checks remain uncached.
+
+For a material regression, revert the affected optimization commit. Restore broad baseline job conditions and their required-job selection together, or revert the complete selector slice. Keep the TypeScript job ID in `ci-ok`; restoring its OS matrix does not require a protection change. Keep the runtime-setup default enabled. Reverting these optimizations must preserve the qualification workflow and exact-candidate gate.
 
 ### Merge queue
 

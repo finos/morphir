@@ -57,10 +57,15 @@ run = "moonx scripts/check.mbtx"
 description = "Test focused CI selection and fail-closed aggregate gates"
 run = [
   "actionlint",
-  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/check.mbtx",
+  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx",
   "moonx scripts/ci-changes.mbtx --self-test",
   "moonx scripts/ci-gate.mbtx --self-test",
+  "moonx scripts/ci-measure.mbtx --self-test",
 ]
+
+[tasks."ci:measure"]
+description = "Measure completed Actions run queue, execution, runner and step costs"
+run = "moonx scripts/ci-measure.mbtx"
 
 [tasks."ci:changes"]
 description = "Select focused CI jobs from the GitHub event and exact commits"

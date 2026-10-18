@@ -82,6 +82,21 @@ async fn self_test() -> Unit {
   guard !accepts(good, []) && !accepts(good, [42]) else {
     fail("Accepted malformed required jobs")
   }
+  // Every independently selected baseline job must fail closed, even when all
+  // other jobs succeeded. Optional cancellation must also reject the aggregate.
+  for
+    selected in ["supervision", "embedding", "typescript", "elm-scheme", "site"] {
+    for state in ["failure", "cancelled", "skipped"] {
+      let needs : Map[String, Json] = {
+        "changes": { "result": "success" },
+        "build": { "result": "success" },
+      }
+      needs.set(selected, { "result": state })
+      guard !accepts(Json::object(needs), Json(["changes", "build", selected])) else {
+        fail("Accepted selected \{selected} with \{state}")
+      }
+    }
+  }
   let focused : Json = {
     "runner": "ubuntu-24.04",
     "full": false,
@@ -127,7 +142,9 @@ async fn self_test() -> Unit {
   guard mismatch_refused else {
     fail("Accepted qualification for a different commit")
   }
-  println("ci-gate: success, optional skip and 11 refusal cases pass")
+  println(
+    "ci-gate: success, optional skip and selected baseline refusal cases pass",
+  )
   println("ci-gate: focused/full native and installed nested requirements pass")
   println("ci-gate: exact candidate match and mismatch refusal pass")
 }

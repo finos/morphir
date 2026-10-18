@@ -38,6 +38,12 @@ fn is_docs_like(path : String) -> Bool {
 
 ///|
 fn is_site_input(path : String) -> Bool {
+  // These directories are not imported by the site or its /try/ workbench.
+  if starts_with_any(path, [
+      "pkgs/morphir-host/embedding/", "pkgs/morphir-moonbit/mep/",
+    ]) {
+    return path.has_suffix(".md")
+  }
   starts_with_any(path, [
     "docs/", "site/", "apps/morphir-site/", "apps/morphir-workbench/", "pkgs/", ".config/mise/",
     "tools/", "types/", "tests/", ".github/actions/",
@@ -48,6 +54,47 @@ fn is_site_input(path : String) -> Bool {
   path == "package.json" ||
   path == "bun.lock" ||
   path.has_prefix(".github/workflows/")
+}
+
+///|
+/// Only proven independent components opt out. Shared inputs and unknown paths
+/// keep all baseline jobs. Native/workspace backend checks still follow `code`.
+fn baseline_jobs(path : String) -> Array[String] {
+  if is_docs_like(path) {
+    return if is_site_input(path) { ["typescript"] } else { [] }
+  }
+  if path.has_prefix("pkgs/morphir-host/embedding/") {
+    return ["typescript", "embedding"]
+  }
+  // Elm/Scheme owns generated sample freshness, even though the samples ship
+  // inside the Workbench app. Keep that transitive edge ahead of the app rule.
+  if path == "scripts/workbench-samples.mbtx" ||
+    path.has_prefix("apps/morphir-workbench/assets/samples/") {
+    return ["typescript", "elm-scheme"]
+  }
+  if [
+      "scripts/conformance-check.mbtx", "scripts/installed-lifecycle-check.mbtx",
+      "scripts/llvm-setup.mbtx",
+    ].contains(path) {
+    return ["typescript"]
+  }
+  if starts_with_any(path, [
+      "apps/morphir-workbench/", "pkgs/morphir-workbench-native/", "pkgs/morphir-workbench-native-session/",
+      "scripts/workbench-", "apps/morphir-extension/", "pkgs/morphir-moonbit/mep/",
+    ]) ||
+    path == "scripts/moonbit-extension.mbtx" ||
+    path == "pkgs/morphir-host/native_telemetry.mbt" ||
+    path == "pkgs/morphir-host/native_telemetry_test.mbt" ||
+    starts_with_any(path, ["scripts/native-otel-", "scripts/native-telemetry-"]) {
+    return ["typescript"]
+  }
+  if starts_with_any(path, [
+      "pkgs/morphir-moonbit/", "pkgs/morphir-moonbit-bindings/", "pkgs/morphir-sdk/",
+      "pkgs/morphir-moonbit-frontend/",
+    ]) {
+    return ["typescript", "elm-scheme"]
+  }
+  ["supervision", "embedding", "typescript", "elm-scheme"]
 }
 
 ///|
@@ -129,6 +176,12 @@ fn select(paths : Array[String]) -> Map[String, Bool] {
       paths.is_empty() || paths.iter().any(p => affected(p).contains(suite)),
     )
   }
+  for job in ["supervision", "embedding", "typescript", "elm-scheme"] {
+    result.set(
+      job,
+      paths.is_empty() || paths.iter().any(p => baseline_jobs(p).contains(job)),
+    )
+  }
   result
 }
 
@@ -136,11 +189,12 @@ fn select(paths : Array[String]) -> Map[String, Bool] {
 fn required(selection : Map[String, Bool]) -> Array[String] {
   let jobs = ["changes", "lint", "format-check", "validate-config"]
   if selection.get("code") == Some(true) {
-    jobs.append([
-      "supervision", "embedding", "typescript", "build", "elm-scheme", "test",
-    ])
-  } else if selection.get("site") == Some(true) {
-    jobs.push("typescript")
+    jobs.append(["build", "test"])
+  }
+  for job in ["supervision", "embedding", "typescript", "elm-scheme"] {
+    if selection.get(job) == Some(true) {
+      jobs.push(job)
+    }
   }
   if selection.get("site") == Some(true) {
     jobs.push("site")
@@ -201,9 +255,9 @@ async fn self_test() -> Unit {
     (["pkgs/morphir-host/host.mbt"], true, true, suites),
     (["apps/morphir/main.mbt"], true, false, suites),
     (["apps/morphir-extension/main.mbt"], true, false, []),
-    (["pkgs/morphir-moonbit/mep/session.mbt"], true, true, []),
+    (["pkgs/morphir-moonbit/mep/session.mbt"], true, false, []),
     (["scripts/moonbit-extension.mbtx"], true, false, []),
-    (["pkgs/morphir-host/embedding/index.mts"], true, true, []),
+    (["pkgs/morphir-host/embedding/index.mts"], true, false, []),
     (["apps/morphir-workbench/browser/main.ts"], true, true, ["workbench"]),
     (
       ["pkgs/morphir-workbench-native/workspace/service.mbt"],
@@ -296,6 +350,71 @@ async fn self_test() -> Unit {
     fail("Revision validation failed")
   }
   println("ci-changes: \{cases.length()} dependency cases pass")
+  for
+    (paths, expected) in [
+      (["apps/morphir-workbench/browser/main.ts"], ["typescript"]),
+      (["scripts/workbench-samples.mbtx"], ["typescript", "elm-scheme"]),
+      (
+        ["apps/morphir-workbench/assets/samples/schema.json"],
+        ["typescript", "elm-scheme"],
+      ),
+      (["pkgs/morphir-workbench-native/workspace/service.mbt"], ["typescript"]),
+      (["pkgs/morphir-host/embedding/index.mts"], ["typescript", "embedding"]),
+      (["pkgs/morphir-moonbit/mep/session.mbt"], ["typescript"]),
+      (["pkgs/morphir-sdk/int/int.mbt"], ["typescript", "elm-scheme"]),
+      (["scripts/conformance-check.mbtx"], ["typescript"]),
+      (["scripts/installed-lifecycle-check.mbtx"], ["typescript"]),
+      (
+        ["pkgs/morphir-moonbit-frontend/library.mbt"],
+        ["typescript", "elm-scheme"],
+      ),
+      (
+        ["pkgs/morphir-ir/ir.mbt"],
+        ["supervision", "embedding", "typescript", "elm-scheme"],
+      ),
+      (
+        ["pkgs/morphir-host/capabilities.mts"],
+        ["supervision", "embedding", "typescript", "elm-scheme"],
+      ),
+      (
+        ["unknown/new.mbt"],
+        ["supervision", "embedding", "typescript", "elm-scheme"],
+      ),
+      (
+        ["tools/build.ts"],
+        ["supervision", "embedding", "typescript", "elm-scheme"],
+      ),
+      (["bun.lock"], ["supervision", "embedding", "typescript", "elm-scheme"]),
+      (
+        [".github/workflows/ci.yml"],
+        ["supervision", "embedding", "typescript", "elm-scheme"],
+      ),
+      ([".github/workflows/site-build.yml"], ["typescript"]),
+      (["README.md"], []),
+      (["docs/ARCHITECTURE.md"], ["typescript"]),
+      (
+        [
+          "pkgs/morphir-sdk/int/int.mbt", "pkgs/morphir-host/embedding/index.mts",
+        ],
+        ["typescript", "embedding", "elm-scheme"],
+      ),
+      ([], ["supervision", "embedding", "typescript", "elm-scheme"]),
+    ] {
+    let selection = select(paths)
+    let jobs = required(selection)
+    for job in ["supervision", "embedding", "typescript", "elm-scheme"] {
+      guard selection.get(job) == Some(expected.contains(job)) &&
+        jobs.contains(job) == expected.contains(job) else {
+        fail(
+          "Wrong baseline job or gate requirement for \{job}: " +
+          paths.join(", "),
+        )
+      }
+    }
+  }
+  println(
+    "ci-changes: isolated, shared, unknown and combined baseline dependencies pass",
+  )
   diff_test()
 }
 
@@ -490,7 +609,11 @@ async fn main {
     _ => fail("Usage: ci-changes.mbtx --event | BASE HEAD | --self-test")
   }
   let lines = StringBuilder()
-  for name in ["code", "site", "full", ..suites] {
+  for
+    name in [
+      "code", "site", "full", "supervision", "embedding", "typescript", "elm-scheme",
+      ..suites,
+    ] {
     lines.write_string("\{name}=\{selection.get(name) == Some(true)}\n")
   }
   let lanes = ["compiler", "frontend", "conformance"].filter(s => {
