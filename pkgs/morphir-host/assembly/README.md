@@ -8,7 +8,9 @@ compiler or grant a runtime capability.
 `PackagePin::new` accepts an exact package path and a lowercase SHA-256 content
 identity. Paths preserve their spelling and contain nonempty slash-separated
 ASCII letter/digit/underscore/hyphen segments. `Dependency::new` pairs a local
-import name with that exact pin. It checks identifier spelling; compiler keyword
+import name with that exact pin. It accepts identifier aliases and qualified
+package paths, including the pinned core graph's `internal/strconv` import name.
+It checks identifier/path spelling; compiler keyword
 and source semantics remain the compiler's responsibility. Different packages
 may use different import names for the same dependency.
 

@@ -1,0 +1,78 @@
+///|
+/// Fixture preparation may use Moon; actual library assembly and fresh loading
+/// run with an empty PATH and no MOON_HOME in the application acceptance test.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn output(command : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(command, args)
+  if code != 0 {
+    fail("Assembly fixture preparation failed: " + err.text())
+  }
+  out.text()
+}
+
+///|
+async fn run(command : String, args : Array[String]) -> Unit {
+  let code = @process.run(
+    command,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    fail("Assembly qualification failed: " + command)
+  }
+}
+
+///|
+async fn main {
+  let core_home = match @env.get_env_var("MOON_HOME") {
+    Some(path) => path
+    None => output("mise", ["where", "http:moonbit"]).trim().to_owned()
+  }
+  let directory = @fs.tmpdir(prefix="morphir-assembly-qualification-")
+  @stdio.stdout.write("Assembly qualification workspace: " + directory + "\n")
+  // Keep a failed run for diagnosis; remove successful test publications only
+  // after an independent consumer has loaded and executed both saved variants.
+  @fs.write_file(
+    directory + "/generated.json",
+    output("moon", [
+      "run", "pkgs/morphir-host/assembly/qualification", "--target", "js",
+    ]),
+  )
+  @fs.write_file(
+    directory + "/core-graph.json",
+    output("moon", [
+      "-C",
+      core_home + "/lib/core",
+      "tree",
+      "--package",
+      "--json",
+    ]),
+  )
+  @fs.write_file(
+    directory + "/sdk-build.txt",
+    output("moon", [
+      "build", "--dry-run", "--target", "wasm", "--release", "pkgs/morphir-sdk/basics",
+    ]),
+  )
+  run("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"])
+  run("node", [
+    "pkgs/morphir-host/embedding/test/generated.mts", directory, core_home,
+  ])
+  if !@fs.exists(".dev") {
+    @fs.mkdir(".dev", recursive=true)
+  }
+  @fs.write_file(
+    ".dev/assembly-qualification-report.json",
+    @fs.read_file(directory + "/report.json"),
+  )
+  @fs.rmdir(directory, recursive=true)
+}

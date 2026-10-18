@@ -36,17 +36,22 @@ fn digit(c : Char) -> Bool {
 }
 
 ///|
+fn package_name_valid(name : String) -> Bool {
+  !name.is_empty() &&
+  name
+  .split("/")
+  .all(part => {
+    !part.is_empty() &&
+    part.iter().all(c => letter(c) || digit(c) || c == '_' || c == '-')
+  })
+}
+
+///|
 pub fn PackagePin::new(
   name : String,
   sha256 : String,
 ) -> PackagePin raise AssemblyError {
-  if name.is_empty() ||
-    name
-    .split("/")
-    .any(part => {
-      part.is_empty() ||
-      !part.iter().all(c => letter(c) || digit(c) || c == '_' || c == '-')
-    }) {
+  if !package_name_valid(name) {
     raise InvalidPackageName(name)
   }
   if sha256.length() != 64 ||
@@ -79,9 +84,11 @@ pub fn Dependency::new(
   target : PackagePin,
 ) -> Dependency raise AssemblyError {
   let chars = import_name.to_array()
-  if chars.is_empty() ||
-    !(letter(chars[0]) || chars[0] == '_') ||
-    !chars.iter().all(c => letter(c) || digit(c) || c == '_') {
+  let simple = !chars.is_empty() &&
+    (letter(chars[0]) || chars[0] == '_') &&
+    chars.iter().all(c => letter(c) || digit(c) || c == '_')
+  let qualified = import_name.contains("/") && package_name_valid(import_name)
+  if !simple && !qualified {
     raise InvalidAlias(import_name)
   }
   { import_name, target, }

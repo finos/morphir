@@ -215,7 +215,7 @@ test "pins and aliases reject malformed input and preserve exact spelling" {
       _ => fail("expected invalid digest")
     }
   }
-  for import_name in ["", "0dep", "a-b", "a/b", "a b"] {
+  for import_name in ["", "0dep", "a-b", "a//b", "a/../b", "/a", "a/", "a b"] {
     match
       rejected(fn() raise AssemblyError {
         Dependency::new(import_name, pin("deps/a"))
@@ -226,6 +226,13 @@ test "pins and aliases reject malformed input and preserve exact spelling" {
   }
   assert_eq(pin("Example/pkg-name_2").name(), "Example/pkg-name_2")
   assert_eq(pin("Example/pkg-name_2").sha256().length(), 64)
+  assert_eq(
+    Dependency::new(
+      "internal/strconv",
+      pin("moonbitlang/core/internal/strconv"),
+    ).import_name(),
+    "internal/strconv",
+  )
 }
 
 ///|

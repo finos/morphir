@@ -297,6 +297,10 @@ run = "moonx scripts/typescript-tooling.mbtx test-workbench"
 description = "Test Node, npm and browser embedding"
 run = "moonx scripts/typescript-tooling.mbtx test-embedding"
 
+[tasks."test:assembly"]
+description = "Generate, assemble and independently load libraries with real SDK/core assets"
+run = "moonx scripts/assembly-check.mbtx"
+
 [tasks."setup:wasm-hosts"]
 description = "Install the optional component qualification dependencies and Chromium"
 run = "moonx scripts/wasm-host-check.mbtx setup"

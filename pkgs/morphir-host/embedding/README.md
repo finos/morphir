@@ -114,6 +114,37 @@ start function; use an isolated worker when interruption is required. Disposal
 does not dispose host-owned imported resources. Component/native ABIs and shared
 MEP/MCK integration remain separate work.
 
+## Generated-library qualification
+
+After installing the build dependencies below, run `mise run test:assembly`.
+The MoonBit script prepares a three-module Morphir model, runs the production
+generator, and reads Moon's dry-run SDK build recipes and pinned core graph.
+It executes none of the compiler commands printed by those recipes. Actual
+assembly uses only the packaged compiler with an empty `PATH` and no `MOON_HOME`.
+
+The fixture supplies every selected source file from the real root, integer,
+list and basics SDK packages, and the exact prebuilt interface/core bytes for
+their complete standard-library closure. The current pin produces 44 packages,
+including 38 core packages. It exercises a cross-module reference and an external
+SDK addition, then saves each optimization variant and runs it in a fresh process.
+Both runs check results, selected exports and exactly-once initialization through
+an explicit host import. They also check missing-library and corrupted-core
+refusal, and absence of a deliberately unreachable payload.
+
+Source build and linker `noOpt` settings vary while the same pinned prebuilt core
+bytes remain optimized. With compiler `0.10.15+943464bfa`, the initial measured
+sizes were 17,282 and 18,476 bytes. Both modes removed the unreachable payload;
+`noOpt` is not a promise to disable every linker elimination pass. Results are
+fixture-specific. They establish this supplied-graph/core-Wasm path, without
+extending the production CLI or shared MEP/MCK runner.
+
+Successful temporary publications are cleaned after independent consumption.
+Failed workspaces are retained at the printed path. The diagnostic report at
+`.dev/assembly-qualification-report.json` explicitly uses JSON, as do Moon's
+fixture/build-plan boundaries. The actual model and persisted manifests use
+binary Ion. The lightweight qualification also runs in the embedding CI job;
+the optional component/native host qualification stays separate.
+
 `@morphir/moonbit-toolchain` embeds the pinned MoonBit package compiler and a Wasm
 execution adapter in browser and non-browser applications. It requires no system
 MoonBit installation or Morphir CLI. Morphir owns these host adapters;

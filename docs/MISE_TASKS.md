@@ -53,6 +53,7 @@ This document provides a reference for all available mise tasks in the Morphir M
 | `mise run test:moonbit-frontend` | Compare original Boolean MoonBit, Scheme and generated libraries across four targets in debug and release; requires pinned `MOON_HOME` and retains identities | All |
 | `mise run test:supervision` | Verify process-tree cleanup, cancellation, deadlines and bounded diagnostics on Linux, macOS and Windows | All |
 | `mise run test:embedding` | Install embedding dependencies and Chromium, then test Node, installed npm and browser hosts | All |
+| `mise run test:assembly` | Generate a real multi-module Morphir library, assemble its source SDK/pinned core graph, persist binary Ion artifacts and consume them in fresh hosts | Pinned MoonBit, Bun and Node |
 | `mise run test:wasm-hosts` | Opt-in MoonBit component boundary checks in Wasmtime, jco/Node and Chromium; optional pinned native Wasmoon checkout. See [scope and evidence](../tests/wasm-host/README.md) | Platforms with the pinned tool releases and Chromium |
 
 ### Utility Tasks

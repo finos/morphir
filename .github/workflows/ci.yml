@@ -114,6 +114,8 @@ jobs:
           bun run --cwd pkgs/morphir-host/embedding test
           bun run --cwd pkgs/morphir-host/embedding playwright install --with-deps chromium
           bun run --cwd pkgs/morphir-host/embedding test:browser
+      - name: Qualify generated libraries with real SDK and pinned core
+        run: moonx scripts/assembly-check.mbtx
 
   typescript:
     name: TypeScript

@@ -23,8 +23,26 @@ priv struct Input {
 } derive(FromJson)
 
 ///|
-fn Pin::validated(self : Pin) -> @assembly.PackagePin raise {
+fn Pin::validated(
+  self : Pin,
+) -> @assembly.PackagePin raise @assembly.AssemblyError {
   @assembly.PackagePin::new(self.name, self.sha256)
+}
+
+///|
+fn planned(value : Input) -> Array[String] raise @assembly.AssemblyError {
+  let result = @assembly.plan(
+    value.root.validated(),
+    value.packages.map(entry => {
+      @assembly.Package::new(
+        entry.pin.validated(),
+        entry.dependencies.map(dep => {
+          @assembly.Dependency::new(dep.name, dep.pin.validated())
+        }),
+      )
+    }),
+  )
+  result.packages().map(p => p.pin().name())
 }
 
 ///|
@@ -33,22 +51,11 @@ fn Pin::validated(self : Pin) -> @assembly.PackagePin raise {
 pub fn plan(input : String) -> String {
   try {
     let value : Input = @json.from_json(@json.parse(input))
-    let result = @assembly.plan(
-      value.root.validated(),
-      value.packages.map(entry => {
-        @assembly.Package::new(
-          entry.pin.validated(),
-          entry.dependencies.map(dep => {
-            @assembly.Dependency::new(dep.name, dep.pin.validated())
-          }),
-        )
-      }),
-    )
-    Json::object({
-      "order": Json::array(
-        result.packages().map(p => Json::string(p.pin().name())),
-      ),
-    }).stringify()
+    let order = planned(value) catch {
+      error =>
+        return Json::object({ "error": Json::string(@debug.to_string(error)) }).stringify()
+    }
+    Json::object({ "order": Json::array(order.map(Json::string)) }).stringify()
   } catch {
     error =>
       Json::object({ "error": Json::string(error.to_string()) }).stringify()
