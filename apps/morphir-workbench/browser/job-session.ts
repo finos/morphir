@@ -77,7 +77,7 @@ export class JobClient {
       let text;
       try { text = await this.transport.nativeRequest!(source!); }
       catch (cause) {
-        // Framework/transport exceptions are not admitted native error replies.
+        // Framework/transport exceptions are not validated native error replies.
         throw new Error('The native job reply was lost or unavailable. Its effect is unknown.', { cause });
       }
       if (typeof text !== 'string') throw new Error('The native host returned an invalid raw job reply.');
@@ -112,7 +112,7 @@ export class JobClient {
   async descriptor(optional = false): Promise<JobDescriptor | null> {
     if (this.native) {
       // The binding checks its page/session and admits raw replies before any projection.
-      // Explicit transport selection keeps HTTP authentication admission separate.
+      // Explicit transport selection keeps HTTP authentication validation separate.
       const source = await this.transport.nativeDescriptor!();
       if (typeof source !== 'string') throw new Error('The native descriptor must be raw JSON text.');
       if (source.length > limit || bytes(source) > limit) throw new Error('Native descriptor exceeds the 1-MiB limit.');
@@ -251,7 +251,7 @@ export class JobClient {
       this.releasePending = false;
     } catch (cause) { const error = workbenchError(cause);
       // A successful release reply can be lost. Fresh authentication and exact
-      // offer admission make absence of this already-terminal identity safe.
+      // offer validation make absence of this already-terminal identity safe.
       if (this.releaseReauthenticated && this.job.state === 'terminal' &&
           ((error.status === 404 && error.code === 'workbench.host_unknown_job') ||
            (error.native === true && error.code === 'not_found' && error.effect === 'none'))) {

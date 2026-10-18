@@ -4,7 +4,7 @@
 pub fn plan_scheme_capabilities(
   unit : @data.IRUnit,
   suite : @protocol.Suite,
-  policy~ : AdmissionPolicy = Strict,
+  policy~ : CapabilityPolicy = Strict,
   limits~ : @data.Limits = @data.Limits::default(),
 ) -> SchemePlan raise {
   let selected = plan_scheme(unit, suite, policy~, limits~)
@@ -113,7 +113,7 @@ pub fn SchemePlan::evaluate_outcomes(
       runtime.set_cancelled(cancelled)
       @backend.install(runtime, accelerators=false, model_errors=true)
       let value = try {
-        let actual = if self.admission is Permissive {
+        let actual = if self.check_policy is Permissive {
           @backend.run_selected_in(
             runtime,
             unit.distribution,

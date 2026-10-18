@@ -72,7 +72,7 @@ fn Session::submit_with(
   self : Session,
   unit : @data.IRUnit,
   suite : @protocol.Suite,
-  policy : @execution.AdmissionPolicy?,
+  policy : @execution.CapabilityPolicy?,
 ) -> @receipts.Receipt raise {
   if self.jobs.length() >= self.max_jobs || self.next == 2147483647 {
     raise Invalid("workbench.host_capacity")
@@ -84,7 +84,7 @@ fn Session::submit_with(
   }
   let encoded_suite = suite.encode("json")
   // Decode through the bounded public codec before any provider can acquire.
-  let admitted_suite = @protocol.Suite::decode(encoded_suite, "json")
+  let captured_suite = @protocol.Suite::decode(encoded_suite, "json")
   let mut reserved = snapshot.length() + encoded_suite.length() + 1024 * 1024
   if reserved > self.max_bytes - self.reserved {
     raise Invalid("workbench.host_capacity")
@@ -96,13 +96,13 @@ fn Session::submit_with(
   captured.validate()
   let kind = match policy {
     None => {
-      ignore(@execution.plan(captured, admitted_suite))
+      ignore(@execution.plan(captured, captured_suite))
       Legacy
     }
     Some(policy) => {
       let plan = @execution.plan_scheme_capabilities(
         captured,
-        admitted_suite,
+        captured_suite,
         policy~,
       )
       let boundary = @utf8.encode(plan.boundary_json().stringify())
@@ -127,7 +127,7 @@ fn Session::submit_with(
   let cursor = @receipts.Cursor::start(
     self.offer,
     identity,
-    admitted_suite.calls.map(c => c.id),
+    captured_suite.calls.map(c => c.id),
     initial,
   )
   let job = Job::{
@@ -179,7 +179,7 @@ fn Job::plan(self : Job) -> @execution.Plan raise {
 }
 
 ///|
-/// A single worker claims an admitted, independently decoded plan. Claiming again
+/// A single worker claims a validated, independently decoded plan. Claiming again
 /// rejects even if the first worker loses its connection. There is no retry lease.
 pub fn Session::claim(
   self : Session,

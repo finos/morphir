@@ -1,5 +1,5 @@
 ///|
-fn scheme_policy(value : Json) -> @execution.AdmissionPolicy raise {
+fn scheme_policy(value : Json) -> @execution.CapabilityPolicy raise {
   let fields = closed(value, ["profile", "contractVersion", "policy"])
   version(fields)
   guard fields["profile"] == Json::string("morphir/workbench/admission") else {
@@ -9,7 +9,7 @@ fn scheme_policy(value : Json) -> @execution.AdmissionPolicy raise {
 }
 
 ///|
-fn scheme_policy_name(value : Json) -> @execution.AdmissionPolicy raise {
+fn scheme_policy_name(value : Json) -> @execution.CapabilityPolicy raise {
   match value {
     String("strict") => Strict
     String("permissive") => Permissive
@@ -41,7 +41,7 @@ fn scheme_projection(plan : @owner.SchemeJobProjection) -> Json {
 ///|
 fn selection(
   value : Json,
-) -> (String, String, @execution.AdmissionPolicy) raise {
+) -> (String, String, @execution.CapabilityPolicy) raise {
   let fields = closed(value, ["planId", "providerId", "runtime", "policy"])
   if fields["runtime"] != Json::string("scheme") {
     raise Invalid("workbench.host_selection_mismatch")

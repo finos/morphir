@@ -1,40 +1,43 @@
 ///|
-/// Explicit admission selection. Existing compiled plans always remain strict.
-pub(all) enum AdmissionPolicy {
+/// Capability validation scope and timing. Existing compiled plans always remain strict.
+/// AdmissionPolicy remains a source-compatible alias for existing consumers.
+#alias(AdmissionPolicy)
+pub(all) enum CapabilityPolicy {
   Strict
   Permissive
 } derive(Eq, Debug)
 
 ///|
-pub extend AdmissionPolicy with Eq::{equal, not_equal}
+pub extend CapabilityPolicy with Eq::{equal, not_equal}
 
 ///|
-pub extend AdmissionPolicy with @debug.Debug::{to_repr}
+pub extend CapabilityPolicy with @debug.Debug::{to_repr}
 
 ///|
 pub(all) suberror SchemePlanError {
+  // Historical public error constructor, retained for source compatibility.
   AdmissionInvalid(String)
 }
 
 ///|
-/// An admitted Scheme call snapshot. No caller-owned arrays or maps are retained.
+/// A validated Scheme call snapshot. No caller-owned arrays or maps are retained.
 pub struct SchemePlan {
   priv source : Bytes
   priv unit_id : String
   priv suite : Bytes
-  priv admission : AdmissionPolicy
+  priv check_policy : CapabilityPolicy
   priv entries : Array[@protocol.PublicEntry]
   priv definitions : Array[@protocol.CustomType]
   priv limits : @data.Limits
 }
 
 ///|
-pub fn SchemePlan::policy(self : SchemePlan) -> AdmissionPolicy {
-  self.admission
+pub fn SchemePlan::policy(self : SchemePlan) -> CapabilityPolicy {
+  self.check_policy
 }
 
 ///|
-/// Fresh observation only; editing it cannot change the admitted declarations.
+/// Fresh observation only; editing it cannot change the validated declarations.
 pub fn SchemePlan::boundary_json(self : SchemePlan) -> Json {
   scheme_boundary_json(self.entries, self.definitions)
 }
@@ -75,7 +78,7 @@ fn scheme_boundary_json(
 pub fn plan_scheme(
   unit : @data.IRUnit,
   suite : @protocol.Suite,
-  policy~ : AdmissionPolicy = Strict,
+  policy~ : CapabilityPolicy = Strict,
   limits~ : @data.Limits = @data.Limits::default(),
 ) -> SchemePlan raise {
   if policy is Strict {
@@ -113,13 +116,13 @@ pub fn plan_scheme(
     source,
     unit_id: captured.id,
     suite: encoded_suite,
-    admission: policy,
+    check_policy: policy,
     entries,
     definitions,
     limits,
   }
   // Descriptor count and name/dimension bounds constrain expansion before this
-  // byte check, including repeated aliases. Callers only receive admitted plans.
+  // byte check, including repeated aliases. Callers only receive validated plans.
   if @utf8.encode(selected.boundary_json().stringify()).length() > 1048576 {
     raise AdmissionInvalid("execution.type_limit")
   }
@@ -164,7 +167,7 @@ pub fn SchemePlan::evaluate(self : SchemePlan) -> Array[@protocol.Value] raise {
     })
     @backend.install(runtime, accelerators=false, model_errors=true)
     let result = try {
-      let selected = if self.admission is Permissive {
+      let selected = if self.check_policy is Permissive {
         @backend.selected_file(unit.distribution, @ir.FQName::parse(call.entry))
       } else {
         unit.distribution

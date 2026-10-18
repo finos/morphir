@@ -304,7 +304,7 @@ test('connected compile failure keeps the host diagnostics with their locations'
   });
 });
 
-// Transport fixtures are precomputed projections. Receipt/state admission is the
+// Transport fixtures are precomputed projections. Receipt/state validation is the
 // compiled MoonBit cursor's responsibility, exercised by its own qualified tests.
 import { JobClient } from './job-session.ts';
 const jobIdentity = { hostId: 'host', sessionId: 'test-session', providerId: 'scheme', jobId: 'one', snapshotId: 'snapshot' };
@@ -339,7 +339,7 @@ const response = (value: unknown, status = 200) => new Response(typeof value ===
 const submission = { identity: jobIdentity, calls: ['workbench'], receipt: { job: submittedJob } };
 const evaluationRequest = { operation: 'evaluate', source: '{"distribution":{}}', entry: 'Example:Main:answer', arguments: [] };
 
-test('host jobs are optional, advertised only after exact authenticated profile admission', async () => {
+test('host jobs are optional, advertised only after exact authenticated profile validation', async () => {
   const fixture = cursorFixture();
   const legacy = new JobClient('test-session', { core: fixture.core, fetchFn: async () => response('', 404) });
   assert.equal(await legacy.initialize(), false);
@@ -350,7 +350,7 @@ test('host jobs are optional, advertised only after exact authenticated profile 
   await assert.rejects(otherSession.initialize(), /rejected/);
 });
 
-test('a text transport reuses shared job admission, polling and terminal release without HTTP', async () => {
+test('a text transport reuses shared job validation, polling and terminal release without HTTP', async () => {
   const fixture = cursorFixture(), requests: { operation: string; source?: string }[] = [];
   const client = new JobClient('test-session', { core: fixture.core, pause: async () => {},
     fetchFn() { throw new Error('HTTP must not be used'); },
@@ -827,5 +827,36 @@ test('local policy echo checks retain the submitted selection after caller edits
     } } });
     if (changeMode) await assert.rejects(pending, /different checking policy/);
     else assert.equal((await pending).success, true);
+  }
+});
+
+test('invalid capability selections are refused before a worker starts', async () => {
+  let started = 0;
+  const adapter = new LocalAdapter(() => { started++; throw new Error('Unexpected worker'); });
+  const selections: Json[] = [
+    { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: 'unknown' },
+    { profile: 'morphir/workbench/admission', contractVersion: 'future', policy: 'strict' },
+    { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: 'strict', extra: true },
+    { policy: 'permissive' },
+  ];
+  for (const selection of selections) {
+    await assert.rejects(adapter.execute({ operation: 'evaluate', source: '{}', executionMode: 'capability', admission: selection }), /invalid capability checking policy/);
+  }
+  assert.equal(started, 0);
+});
+
+test('an omitted capability policy is captured as strict and must be echoed', async () => {
+  for (const policy of ['strict', 'permissive']) {
+    const adapter = new LocalAdapter(() => {
+      const port: WorkerPort = { terminate() {}, postMessage(message) {
+        queueMicrotask(() => port.onmessage?.({ data: { id: message.id, result: { success: true,
+          admission: { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy },
+        } } }));
+      } };
+      return port;
+    });
+    const pending = adapter.execute({ operation: 'evaluate', source: '{}', executionMode: 'capability' });
+    if (policy === 'strict') assert.equal((await pending).success, true);
+    else await assert.rejects(pending, /different checking policy/);
   }
 });

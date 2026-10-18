@@ -97,8 +97,8 @@ fn policy_scope_model() -> Model {
     ..scope_model(),
     jobs_available: false,
     evaluation_typed: true,
-    evaluation_policy: "strict",
-    local_evaluator: "scheme-portable-v1/shared-sdk/bounded",
+    evaluation_policy: @capabilities.CapabilityPolicy::Strict,
+    local_evaluator: Some(@capabilities.SchemePortable),
     model: {
       "capabilityEvaluations": {
         "evaluator": "scheme-portable-v1/shared-sdk/bounded",
@@ -136,10 +136,10 @@ test "policy changes retain exact drafts and source profiles while making result
   }
   let (after, _) = update(
     model,
-    EvaluationPolicy("permissive"),
+    EvaluationPolicy(@capabilities.CapabilityPolicy::Permissive),
     @cmd.Emit(fn(_) { @cmd.none }),
   )
-  assert_eq(after.evaluation_policy, "permissive")
+  assert_eq(after.evaluation_policy, @capabilities.CapabilityPolicy::Permissive)
   assert_eq(after.evaluation_arguments, model.evaluation_arguments)
   assert_true(after.evaluation_mode == model.evaluation_mode)
   assert_eq(after.source_profile, model.source_profile)
@@ -156,8 +156,13 @@ test "local checking offer is scoped to the actual evaluator entry and complete 
     incompatible in [
       { ..model, connected: true, },
       { ..model, jobs_available: true, },
-      { ..model, local_evaluator: "", },
-      { ..model, local_evaluator: "some-other-evaluator", },
+      { ..model, local_evaluator: None, },
+      {
+        ..model,
+        local_evaluator: @capabilities.Evaluator::from_json(
+          Json::string("some-other-evaluator"),
+        ),
+      },
       { ..model, selected: "value|unsupported", },
       { ..model, selected: "value|private", },
       { ..model, evaluation_typed: false, },
@@ -165,21 +170,28 @@ test "local checking offer is scoped to the actual evaluator entry and complete 
     assert_false(checking_available(incompatible))
     let (after, _) = update(
       incompatible,
-      EvaluationPolicy("permissive"),
+      EvaluationPolicy(@capabilities.CapabilityPolicy::Permissive),
       @cmd.Emit(fn(_) { @cmd.none }),
     )
-    assert_eq(after.evaluation_policy, "strict")
+    assert_eq(after.evaluation_policy, @capabilities.CapabilityPolicy::Strict)
   }
-  let requested = { ..model, evaluation_policy: "permissive", connected: true, }
+  let requested = {
+    ..model,
+    evaluation_policy: @capabilities.CapabilityPolicy::Permissive,
+    connected: true,
+  }
   let (blocked, _) = update(requested, Evaluate, @cmd.Emit(fn(_) { @cmd.none }))
-  assert_eq(blocked.evaluation_policy, "permissive")
+  assert_eq(
+    blocked.evaluation_policy,
+    @capabilities.CapabilityPolicy::Permissive,
+  )
   assert_eq(blocked.job, requested.job)
   let (strict, _) = update(
     blocked,
-    EvaluationPolicy("strict"),
+    EvaluationPolicy(@capabilities.CapabilityPolicy::Strict),
     @cmd.Emit(fn(_) { @cmd.none }),
   )
-  assert_eq(strict.evaluation_policy, "strict")
+  assert_eq(strict.evaluation_policy, @capabilities.CapabilityPolicy::Strict)
 }
 
 ///|
@@ -188,11 +200,11 @@ test "editing policy during execution never rewrites the completed run selection
     ..policy_scope_model(),
     busy: true,
     job: 7,
-    evaluation_policy: "permissive",
+    evaluation_policy: @capabilities.CapabilityPolicy::Permissive,
   }
   let (edited, _) = update(
     running,
-    EvaluationPolicy("strict"),
+    EvaluationPolicy(@capabilities.CapabilityPolicy::Strict),
     @cmd.Emit(fn(_) { @cmd.none }),
   )
   assert_eq(edited.job, running.job)
@@ -211,7 +223,7 @@ test "editing policy during execution never rewrites the completed run selection
     Receive(7, running.evaluation_revision, "evaluate", reply.stringify()),
     @cmd.Emit(fn(_) { @cmd.none }),
   )
-  assert_eq(finished.evaluation_policy, "strict")
+  assert_eq(finished.evaluation_policy, @capabilities.CapabilityPolicy::Strict)
   assert_eq(
     text(field(finished.evaluation_result, "admission"), "policy"),
     "permissive",
@@ -247,8 +259,8 @@ test "bounded local descriptions preserve existing strict entries without granti
   assert_false(checking_available(model))
   let (after, _) = update(
     model,
-    EvaluationPolicy("permissive"),
+    EvaluationPolicy(@capabilities.CapabilityPolicy::Permissive),
     @cmd.Emit(fn(_) { @cmd.none }),
   )
-  assert_eq(after.evaluation_policy, "strict")
+  assert_eq(after.evaluation_policy, @capabilities.CapabilityPolicy::Strict)
 }

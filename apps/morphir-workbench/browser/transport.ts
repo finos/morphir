@@ -1,6 +1,7 @@
 import type { Adapter, Catalog, CoreReply, Diagnostic, JobOptions, Language, Manifest, Progress, Project, Target, WorkRequest, WorkResult, WorkerPort, Rpc, RpcSocket, Fetch } from './contracts.ts';
 import { isRecord, workbenchError } from '../../../types/data.ts';
 import { JobClient } from './job-session.ts';
+import { captureLocalEvaluation, matchesCapabilityPolicy } from './capabilities.ts';
 // Browser host boundary. Private operation envelopes never go onto Morphir RPC.
 export class LocalAdapter {
   workerFactory: () => WorkerPort;
@@ -27,8 +28,9 @@ export class LocalAdapter {
   }
   execute(request: WorkRequest, _progress?: Progress): Promise<WorkResult> {
     this.cancel();
-    const capability = request.executionMode === 'capability';
-    const checkingPolicy = isRecord(request.admission) ? request.admission.policy : 'strict';
+    let selection;
+    try { selection = captureLocalEvaluation(request); }
+    catch (error) { return Promise.reject(error); }
     if (request.sourceBase64 !== undefined && (typeof request.sourceBase64 !== 'string' || request.sourceBase64.length > Math.ceil(16 * 1024 * 1024 / 3) * 4 ||
         request.operation !== 'inspect' || !['morphir-json', 'ion-text', 'ion-binary'].includes(request.sourceCodec ?? ''))) {
       return Promise.reject(new Error('Model bytes must use a supported codec and fit the 16 MiB import limit.'));
@@ -63,10 +65,8 @@ export class LocalAdapter {
       this.active = { id, cancel: () => finish(new Error('Cancelled')) };
       worker.onmessage = ({ data }) => {
         if (data.id !== id) return;
-        if (capability && (data.result.success || data.result.terminalOutcomes || data.result.admission)) {
-          const actual = data.result.admission;
-          if (!isRecord(actual) || Object.keys(actual).length !== 3 || actual.profile !== 'morphir/workbench/admission'
-              || actual.contractVersion !== '0.1.0-draft.1' || actual.policy !== checkingPolicy) {
+        if (selection.kind === 'capability' && (data.result.success || data.result.terminalOutcomes || data.result.admission)) {
+          if (!matchesCapabilityPolicy(selection, data.result.admission)) {
             finish(new Error('The local runtime returned a different checking policy.'));
             return;
           }

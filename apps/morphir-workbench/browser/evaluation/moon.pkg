@@ -1,6 +1,7 @@
 supported_targets = "js"
 
 import {
+  "finos/morphir-workbench/capabilities",
   "finos/morphir-workbench/outcomes",
   "finos/morphir-workbench/browser/outcomes" @terminal_view,
   "finos/morphir-workbench/arguments",

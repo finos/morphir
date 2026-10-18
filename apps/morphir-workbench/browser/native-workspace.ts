@@ -130,7 +130,7 @@ export class NativeWorkspaceClient {
     this.local.cancel();
     if (this.choosing) await this.session.request('workspace.cancel-picker');
     // The active open owns cleanup until its request settles. Releasing here
-    // could run before a delayed admission; its finally retires the sequence.
+    // could run before a delayed validation; its finally retires the sequence.
     if (!this.opening) await this.release();
   }
   dispose() { this.disposed = true; ++this.epoch; }

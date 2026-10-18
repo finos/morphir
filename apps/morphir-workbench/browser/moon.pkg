@@ -3,6 +3,7 @@ supported_targets = "js"
 pkgtype(kind: "executable")
 
 import {
+  "finos/morphir-workbench/capabilities",
   "finos/morphir-workbench/outcomes",
   "finos/morphir-workbench/arguments",
   "finos/morphir-workbench/browser/evaluation",

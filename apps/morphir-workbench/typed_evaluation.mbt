@@ -84,7 +84,7 @@ fn typed_profile(
 
 ///|
 /// Local worker descriptions only. Each selected type closure is discovered
-/// independently; neither this description nor generated-code success admits a run.
+/// independently; neither this description nor generated-code success validates a run.
 fn capability_profiles(file : @ir.IRFile) -> Json {
   let values = evaluation_definitions(file)
   let names = values.keys().collect()
@@ -116,12 +116,8 @@ fn capability_profiles(file : @ir.IRFile) -> Json {
     profiles.push((name, profile))
   }
   {
-    "evaluator": "scheme-portable-v1/shared-sdk/bounded",
-    "admission": {
-      "profile": "morphir/workbench/admission",
-      "contractVersion": "0.1.0-draft.1",
-      "policies": ["strict", "permissive"],
-    },
+    "evaluator": @capabilities.SchemePortable.to_json(),
+    "admission": @capabilities.policy_offer(),
     "entries": @wire.obj(profiles),
     "reason": "No supported public boundary is described for this function. Local descriptions are limited to 128 entries and 1 MiB.",
   }
@@ -131,22 +127,17 @@ fn capability_profiles(file : @ir.IRFile) -> Json {
 /// The standalone worker captures the policy and builds an immutable plan before
 /// execution. Connected/native mappings continue to use their strict old path.
 fn evaluate_capabilities(file : @ir.IRFile, request : Json) -> Json raise {
-  let selection = @wire.optional(request, "admission").unwrap_or({
-    "profile": "morphir/workbench/admission",
-    "contractVersion": "0.1.0-draft.1",
-    "policy": "strict",
-  })
-  guard selection is Object(fields) &&
-    fields.length() == 3 &&
-    fields.get("profile") == Some(Json::string("morphir/workbench/admission")) &&
-    fields.get("contractVersion") == Some(Json::string("0.1.0-draft.1")) else {
-    raise @scheme.Invalid("Unknown checking-policy profile")
+  let policy = match @wire.optional(request, "admission") {
+    None => @typed_engine.Strict
+    Some(selection) =>
+      @capabilities.selection_from_json(selection) catch {
+        @capabilities.InvalidProfile =>
+          raise @scheme.Invalid("Unknown checking-policy profile")
+        @capabilities.InvalidPolicy =>
+          raise @scheme.Invalid("Unknown checking policy")
+      }
   }
-  let policy : @typed_engine.AdmissionPolicy = match fields.get("policy") {
-    Some(String("strict")) => Strict
-    Some(String("permissive")) => Permissive
-    _ => raise @scheme.Invalid("Unknown checking policy")
-  }
+  let selection = @capabilities.selection_to_json(policy)
   let reply = try {
     let raw = match @wire.optional(request, "argumentsIon") {
       Some(String(source)) =>

@@ -1,5 +1,5 @@
 import type { Core, Json } from './contracts.ts';
-// Actual compiled production admission and receipt cursor, isolated per client.
+// Actual compiled production validation and receipt cursor, isolated per client.
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 const compiled = readFileSync(new URL('../dist/job-core.js', import.meta.url), 'utf8');

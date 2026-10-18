@@ -259,8 +259,8 @@ struct Model {
   query : String
   selected : String
   evaluation_typed : Bool
-  evaluation_policy : String
-  local_evaluator : String
+  evaluation_policy : @capabilities.CapabilityPolicy
+  local_evaluator : @capabilities.Evaluator?
   evaluation_host_job : Bool
   evaluation_mode : @evaluation.InputMode
   result_mode : @result.Mode
@@ -323,7 +323,7 @@ enum Msg {
   Sample(String)
   SampleLoaded(Int32, String, String)
   EvaluationRuntime(Bool)
-  EvaluationPolicy(String)
+  EvaluationPolicy(@capabilities.CapabilityPolicy)
   EvaluationMode(@evaluation.InputMode)
   ResultMode(@result.Mode)
   EvaluationEdit(@arguments.Edit)
@@ -475,8 +475,8 @@ fn initial() -> Model {
     query: "",
     selected: "",
     evaluation_typed: false,
-    evaluation_policy: "strict",
-    local_evaluator: "",
+    evaluation_policy: @capabilities.CapabilityPolicy::Strict,
+    local_evaluator: None,
     evaluation_host_job: false,
     evaluation_mode: @evaluation.Fields,
     result_mode: @result.Value,
@@ -1686,8 +1686,10 @@ fn update_core(
     }
     EvaluationPolicy(policy) => {
       if policy == model.evaluation_policy ||
-        (policy != "strict" && policy != "permissive") ||
-        (policy == "permissive" && !checking_available(model)) ||
+        (
+          policy == @capabilities.CapabilityPolicy::Permissive &&
+          !checking_available(model)
+        ) ||
         host_job_pending(model) ||
         host_job_disconnected(model) ||
         model.submission_unknown {
@@ -1763,7 +1765,7 @@ fn update_core(
       )
       if (
           model.evaluation_typed &&
-          model.evaluation_policy == "permissive" &&
+          model.evaluation_policy == @capabilities.CapabilityPolicy::Permissive &&
           !checking_available(model)
         ) ||
         model.busy ||
@@ -1874,11 +1876,7 @@ fn update_core(
             (
               "admission",
               if model.evaluation_typed && local_capabilities(model) {
-                object([
-                  ("profile", Json::string("morphir/workbench/admission")),
-                  ("contractVersion", Json::string("0.1.0-draft.1")),
-                  ("policy", Json::string(model.evaluation_policy)),
-                ])
+                @capabilities.selection_to_json(model.evaluation_policy)
               } else {
                 Json::null()
               },
@@ -2793,9 +2791,11 @@ fn update_core(
           local_evaluator: if field(result, "connected") != Json::boolean(true) &&
             field(result, "jobsAvailable") != Json::boolean(true) &&
             field(result, "nativeSession") != Json::boolean(true) {
-            text(result, "capabilityEvaluator")
+            @capabilities.Evaluator::from_json(
+              field(result, "capabilityEvaluator"),
+            )
           } else {
-            ""
+            None
           },
           jobs_available: field(result, "jobsAvailable") == Json::boolean(true),
           workspace_available: field(result, "workspaceAvailable") ==
@@ -4162,32 +4162,24 @@ fn explorer_props(model : Model) -> @explorer.Props {
 
 ///|
 fn local_capabilities(model : Model) -> Bool {
-  !model.connected &&
-  !model.jobs_available &&
-  model.local_evaluator == "scheme-portable-v1/shared-sdk/bounded"
+  !model.connected && !model.jobs_available && model.local_evaluator is Some(_)
 }
 
 ///|
 fn checking_available(model : Model) -> Bool {
-  let offer = field(model.model, "capabilityEvaluations")
-  let policy = field(offer, "admission")
-  model.evaluation_typed &&
-  local_capabilities(model) &&
-  text(offer, "evaluator") == model.local_evaluator &&
-  text(policy, "profile") == "morphir/workbench/admission" &&
-  text(policy, "contractVersion") == "0.1.0-draft.1" &&
-  field(policy, "policies") == (["strict", "permissive"] : Json) &&
-  field(
-    field(
-      field(offer, "entries"),
-      model.selected
-      .strip_prefix("value|")
-      .unwrap_or(model.selected[:])
-      .to_owned(),
-    ),
-    "supported",
-  ) ==
-  Json::boolean(true)
+  guard model.evaluation_typed &&
+    local_capabilities(model) &&
+    model.local_evaluator is Some(evaluator) else {
+    return false
+  }
+  @capabilities.supports_checks(
+    field(model.model, "capabilityEvaluations"),
+    evaluator,
+    model.selected
+    .strip_prefix("value|")
+    .unwrap_or(model.selected[:])
+    .to_owned(),
+  )
 }
 
 ///|

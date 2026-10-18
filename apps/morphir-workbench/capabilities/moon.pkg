@@ -1,0 +1,7 @@
+import {
+  "finos/morphir-engine/execution",
+}
+
+import {
+  "finos/morphir-workbench/capabilities",
+} for "test"

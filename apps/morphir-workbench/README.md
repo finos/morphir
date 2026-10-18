@@ -28,6 +28,14 @@ proceeds under policy. Unsupported-feature decisions are capability checks.
 Model, type, argument, output, receipt and authority checks remain ordinary
 validation. Existing protocol identifiers and public offers are unchanged.
 
+The engine's closed `CapabilityPolicy` type represents the checking policy and is
+reused by browser state, messages and the evaluation component. The Workbench
+`capabilities` package decodes policy and evaluator identifiers at the boundary.
+The worker adapter captures a validated selection before dispatch and checks the
+reply against it. These decisions remain pure; adapters manage worker and transport
+effects. `AdmissionPolicy` is a source-compatible alias, and `admission` remains
+the historical wire key. New domain code and user-facing text use capabilities.
+
 ## Run locally
 
 The [MCK adapter](mck/README.md) exposes the same typed JSON/Ion execution codec

@@ -1,7 +1,7 @@
 import type { Fetch } from './contracts.ts';
 export const jobFrameLimit = 1024 * 1024;
 
-// Transports carry bounded text. JobClient owns decoding and receipt admission.
+// Transports carry bounded text. JobClient owns decoding and receipt validation.
 export class HttpJobTransport {
   fetchFn: Fetch;
   timeout: number;

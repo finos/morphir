@@ -16,14 +16,14 @@ pub(all) struct SchemeJobProjection {
   identity : @receipts.Identity
   plan_id : String
   runtime : SchemeRuntime
-  policy : @execution.AdmissionPolicy
+  policy : @execution.CapabilityPolicy
   boundary : Json
 }
 
 ///|
 priv enum JobKind {
   Legacy
-  Scheme(String, SchemeRuntime, @execution.AdmissionPolicy, Bytes)
+  Scheme(String, SchemeRuntime, @execution.CapabilityPolicy, Bytes)
 }
 
 ///|
@@ -31,7 +31,7 @@ pub fn Session::submit_scheme(
   self : Session,
   unit : @data.IRUnit,
   suite : @protocol.Suite,
-  policy~ : @execution.AdmissionPolicy = Strict,
+  policy~ : @execution.CapabilityPolicy = Strict,
 ) -> @receipts.Receipt raise {
   self.submit_with(unit, suite, Some(policy))
 }
@@ -80,7 +80,7 @@ fn Job::check_scheme_selection(
   expected_plan_id : String,
   expected_provider_id : String,
   expected_runtime : SchemeRuntime,
-  expected_policy : @execution.AdmissionPolicy,
+  expected_policy : @execution.CapabilityPolicy,
 ) -> Unit raise {
   guard self.kind is Scheme(plan_id, runtime, policy, _) else {
     raise Invalid("workbench.host_job_kind")
@@ -102,7 +102,7 @@ pub fn Session::claim_scheme(
   expected_plan_id : String,
   expected_provider_id : String,
   expected_runtime : SchemeRuntime,
-  expected_policy : @execution.AdmissionPolicy,
+  expected_policy : @execution.CapabilityPolicy,
 ) -> @execution.SchemePlan raise {
   let job = self.lookup(identity)
   job.check_scheme_selection(
@@ -136,7 +136,7 @@ pub fn Session::replan_scheme(
   expected_plan_id : String,
   expected_provider_id : String,
   expected_runtime : SchemeRuntime,
-  expected_policy : @execution.AdmissionPolicy,
+  expected_policy : @execution.CapabilityPolicy,
 ) -> @receipts.Receipt raise {
   let job = self.lookup(identity)
   job.check_scheme_selection(

@@ -7,6 +7,27 @@ order: 8
 
 This repository implements Morphir in Moonbit, organized as a monorepo with multiple interdependent packages. The architecture is designed to support both server-side (WASI) and browser-based (WASM-GC) WebAssembly targets.
 
+## Domain model and effects
+
+Morphir uses functional domain modeling and a functional core with an imperative
+shell. Domain types express meaning and invariants. Closed enums and discriminated
+unions represent choices and state transitions; validated value types represent
+identities and constrained values. Unrestricted strings, sentinel values and
+independent flags should not represent domain states with invalid combinations.
+Booleans remain appropriate for independent facts and derived predicates.
+
+Decode external JSON and strings into domain values at explicit boundaries. Pure
+functions validate requirements, choose behavior and calculate state transitions.
+Adapters perform worker, network, filesystem and host effects using those decisions.
+Encode domain values when crossing an external boundary. A compatibility spelling
+in a protocol does not define the vocabulary inside the domain model.
+
+The canonical vocabulary is in [CONTEXT.md](../CONTEXT.md). For example, a capability
+checking policy is a closed choice reused by the engine and UI. The historical
+`admission` wire key and source aliases remain compatibility identifiers. Capability
+claims and UI descriptions are information about support; a validated execution
+plan captures the requirements and policy for a particular run.
+
 ## Repository Structure
 
 ```

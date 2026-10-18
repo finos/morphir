@@ -18,6 +18,7 @@ export interface WorkRequest {
   /** The text files of an `import-folder` request. */
   files?: unknown;
   executionMode?: string;
+  /** Historical wire key. Decode into a capability policy before making domain decisions. */
   admission?: Json;
 }
 /** A project as the browser sends it to the local worker. */
@@ -36,6 +37,7 @@ export interface WorkResult {
   value?: Json;
   typed?: { type: string; value?: Json; [field: string]: Json | undefined };
   terminalOutcomes?: Json;
+  /** Untrusted wire selection, checked against the captured capability policy. */
   admission?: Json;
   operation?: string;
   message?: string;

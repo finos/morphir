@@ -621,7 +621,7 @@ pub fn terminal_diagnostics(
           "workbench.invalid_terminal_evidence",
           "Terminal evidence rejected: " + code,
           "",
-          "admission",
+          "validation",
         ),
       ]
     Valid(summary) => {

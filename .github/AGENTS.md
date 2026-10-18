@@ -74,6 +74,26 @@ To add a new skill:
 3. Update this AGENTS.md file to document the new skill
 4. Create symbolic links for agent-specific locations if needed
 
+## Domain modeling and architecture
+
+- Use the vocabulary in `CONTEXT.md`. Runtime support and checks use **capabilities**,
+  **capability verification** and **capability validation**. Historical `admission`
+  protocol keys, identifiers and source-compatible aliases belong at compatibility
+  boundaries; do not propagate that name into new domain types or user-facing text.
+- Model domain concepts with closed enums, discriminated unions and validated value
+  types. Avoid unrestricted strings, sentinel values and independent booleans for
+  states with distinct meanings or invalid combinations. A type alias for `String`
+  alone does not establish an invariant. Use smart constructors when values need
+  validation, and reuse existing domain types instead of introducing parallel ones.
+- Follow functional domain modeling and **functional core, imperative shell**.
+  Keep validation, decisions and state transitions pure. Decode external strings
+  and JSON into domain values at the boundary, and encode only when crossing back.
+  Keep filesystem, network, worker and host effects in adapters that execute those
+  decisions. Capability claims and UI descriptions do not grant execution authority.
+- Review changes for domain meaning and invalid states as well as tool results.
+  Tests should establish behavior and boundary invariants; compilers and static
+  analyzers should check exhaustiveness and type safety.
+
 ## Task Scripts
 
 Use standalone MoonBit `.mbtx` scripts for scripting and automation, especially mise tasks and CI orchestration.

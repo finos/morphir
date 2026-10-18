@@ -101,6 +101,10 @@ Checking that a chosen runtime/provider's capabilities meet the requirements of 
 **Capability check**:
 A check of a required runtime feature against the chosen runtime/provider's capabilities. Policy determines when an unsupported requirement must refuse a run.
 
+**Capability checking policy**:
+The scope and timing of capability validation for a run. "Whole model before running" checks the model up front; "As code executes" checks required behavior when execution reaches it. Both retain mandatory identity, integrity, input/output boundary and resource checks.
+_Avoid_: Admission policy, unrestricted execution, tree shaking
+
 ## Frontend selection
 
 **Source language**:

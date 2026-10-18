@@ -5,7 +5,7 @@ import { JobClient } from './job-session.ts';
 import { NativeWorkspaceClient } from './native-workspace.ts';
 export const nativeBridgeVersion = '0.1.0-draft.1';
 const limit = 1048576;
-// Admission closes both objects. Compare every descriptor/offer field in a fixed
+// Validation closes both objects. Compare every descriptor/offer field in a fixed
 // order so equivalent JSON member order does not look like changed authority.
 const descriptorText = (value: NativeDescriptor) => JSON.stringify(value,
   ['profile', 'contractVersion', 'sessionId', 'operations', 'offer', 'hostId', 'providerId']);

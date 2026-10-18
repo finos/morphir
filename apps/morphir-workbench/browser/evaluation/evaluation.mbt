@@ -21,7 +21,7 @@ pub(all) struct Props {
   jobs_available : Bool
   job_pending : Bool
   typed : Bool
-  policy : String
+  policy : @capabilities.CapabilityPolicy
   policy_available : Bool
   input_mode : InputMode
   result_mode : @result.Mode
@@ -340,8 +340,13 @@ pub fn view(
   on_edit : @cmd.Emit[@arguments.Edit],
   on_result_mode : @cmd.Emit[@result.Mode],
   on_runtime : @cmd.Emit[Bool],
-  on_policy : @cmd.Emit[String],
+  on_policy : @cmd.Emit[@capabilities.CapabilityPolicy],
 ) -> @html.Html {
+  let captured_policy = Some(
+    @capabilities.selection_from_json(field(props.result, "admission")),
+  ) catch {
+    _ => None
+  }
   let heading : Array[@html.Html] = [@html.h3("Evaluate function")]
   if !props.connected {
     heading.push(
@@ -373,7 +378,7 @@ pub fn view(
     @html.div(class="evaluation-heading", heading),
   ]
   let incompatible = props.typed &&
-    props.policy == "permissive" &&
+    props.policy == @capabilities.CapabilityPolicy::Permissive &&
     !props.policy_available
   if props.typed {
     contents.push(
@@ -383,19 +388,27 @@ pub fn view(
           disabled=props.job_pending,
           attrs=@html.Attrs::build()
             .aria_label("Capability checks")
-            .value_prop(props.policy),
-          on_change=on_policy,
+            .value_prop(@capabilities.policy_value(props.policy)),
+          on_change=@cmd.Emit(value => {
+            match @capabilities.policy_from_control(value) {
+              Some(policy) => on_policy(policy)
+              None => @cmd.none
+            }
+          }),
           [
             @html.option(
               value="strict",
-              selected=props.policy == "strict",
-              "Whole model before running",
+              selected=props.policy == @capabilities.CapabilityPolicy::Strict,
+              @capabilities.policy_label(@capabilities.CapabilityPolicy::Strict),
             ),
             @html.option(
               value="permissive",
-              selected=props.policy == "permissive",
+              selected=props.policy ==
+                @capabilities.CapabilityPolicy::Permissive,
               disabled=!props.policy_available,
-              "As code executes",
+              @capabilities.policy_label(
+                @capabilities.CapabilityPolicy::Permissive,
+              ),
             ),
           ],
         ),
@@ -610,13 +623,12 @@ pub fn view(
             },
           ),
           @html.p(
-            hidden=text(field(props.result, "admission"), "policy") == "",
+            hidden=captured_policy is None,
             class="small muted captured-policy",
             "Run checks · " +
-            (if text(field(props.result, "admission"), "policy") == "permissive" {
-              "As code executes"
-            } else {
-              "Whole model before running"
+            (match captured_policy {
+              Some(policy) => @capabilities.policy_label(policy)
+              None => ""
             }),
           ),
           @terminal_view.view(props.terminal),
