@@ -70,6 +70,14 @@ run = ["moon run scripts/moonbit-core.mbtx check", "moon run scripts/moonbit-cor
 description = "Run lint, CI policy tests, workspace tests and builds"
 run = "moonx scripts/check.mbtx"
 
+[tasks."package:codec-adapter"]
+description = "Package production Workbench codecs into Wasm and Ion execution artifacts"
+run = "moonx scripts/package-codec-adapter.mbtx"
+
+[tasks."test:codec-adapter-mck"]
+description = "Qualify saved codec adapters on Node and Chromium with the selected shared MCK"
+run = "moonx scripts/codec-adapter-mck.mbtx"
+
 [tasks."test:ci"]
 description = "Test focused CI selection and fail-closed aggregate gates"
 run = [

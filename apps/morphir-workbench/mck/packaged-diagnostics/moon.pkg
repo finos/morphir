@@ -1,0 +1,5 @@
+supported_targets = "wasm"
+
+import {
+  "finos/morphir-workbench/mck/packaged",
+}

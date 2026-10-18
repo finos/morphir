@@ -1,0 +1,62 @@
+///|
+/// Acquire exact build inputs with Moon, then compile/link with the packaged
+/// provider. Runtime consumers need only the saved Wasm/Ion pair and host.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn output(command : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(command, args)
+  if code != 0 {
+    fail("Codec adapter acquisition failed: " + err.text())
+  }
+  out.text()
+}
+
+///|
+async fn checked(command : String, args : Array[String]) -> Unit {
+  let code = @process.run(
+    command,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    fail("Codec adapter packaging failed: " + command)
+  }
+}
+
+///|
+async fn main {
+  let destination = @env.get_env_var("MORPHIR_CODEC_ARTIFACTS").unwrap_or(
+    ".dev/packaged-codec-adapter",
+  )
+  if !@fs.exists(destination) {
+    @fs.mkdir(destination, recursive=true)
+  }
+  let core = output("moon", ["run", "scripts/moonbit-core.mbtx", "check"])
+    .trim()
+    .to_owned()
+  @fs.write_file(
+    destination + "/core-graph.json",
+    output("moon", ["-C", core, "tree", "--package", "--json"]),
+  )
+  @fs.write_file(
+    destination + "/recipe.txt",
+    output("moon", [
+      "build", "--dry-run", "--target", "wasm", "--release", "apps/morphir-workbench/mck/packaged-diagnostics",
+    ]),
+  )
+  checked("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"])
+  // The js_of_ocaml compiler needs a larger JS stack for the production codec
+  // closure. This applies only to packaging, never the artifact consumer.
+  checked("node", [
+    "--stack-size=4096", "pkgs/morphir-host/embedding/node-package-codec-adapter.mjs",
+    destination, core,
+  ])
+}

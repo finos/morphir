@@ -32,6 +32,9 @@ await checkedBuild({entrypoints: [fileURLToPath(new URL("./browser-worker.mts", 
   }}]});
 
 await import("../../../tools/build-runtimes.ts");
+// Portable qualification helper uses the same source in Node and Chromium.
+await checkedBuild({entrypoints:[fileURLToPath(new URL('./test/saved-byte-preflight.mts',import.meta.url))],
+  outdir:fileURLToPath(new URL('./dist/test/',import.meta.url)),target:'browser',format:'esm',naming:'[name].mjs'});
 execFileSync(process.execPath, ["run", "tsc", "-p", fileURLToPath(new URL("./tsconfig.types.json", import.meta.url))], {
   cwd: fileURLToPath(new URL("../../../", import.meta.url)), stdio: "inherit",
 });

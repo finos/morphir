@@ -237,3 +237,17 @@ Tests compile real source and execute it in Node and Chromium, report type error
 recover after failed compilations, supply host imports, and cancel running workers.
 The browser fixture demonstrates a host with no CLI. Node demonstrates general
 application embedding. `bun run test` also checks the installed package.
+
+## Bounded byte adapters
+
+`loadByteAdapter(saved, host)` reuses the independent artifact loader for a
+versioned byte-exchange execution profile. Select `{profile: 'bytes-v1'}` or
+`{profile: 'bytes-diagnostics-v1', diagnostics(event) { ... }}`. Requests and
+responses are copied UTF-8 bytes; guest pointers do not cross the boundary.
+`exchange` returns a response or terminal exit. Dispose explicitly; traps and
+infrastructure failures require a fresh instance. These local draft core-Wasm
+profiles are separate from language profiles and MEP/WIT bindings.
+
+The production Workbench codec example, complete assembly task, process bridge
+and shared MCK qualification are documented in
+[`mck/packaged`](../../../apps/morphir-workbench/mck/packaged/README.md).

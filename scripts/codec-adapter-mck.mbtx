@@ -1,0 +1,233 @@
+///|
+/// Shared runner owns all verdicts. This gate selects explicit independent
+/// inputs, rechecks saved reports, and compares their actual observations.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+}
+
+///|
+async fn checked(program : String, args : Array[String]) -> Unit {
+  let code = @process.run(
+    program,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    fail(
+      "Packaged codec qualification failed: " + program + " " + args.join(" "),
+    )
+  }
+}
+
+///|
+async fn report(
+  runner : String,
+  kit : String,
+  path : String,
+  adapter : Array[String],
+) -> Json {
+  checked(
+    runner,
+    ["--no-banner", "mck", "workbench", "run", "--kit", kit, "--report", path] +
+    adapter,
+  )
+  checked(runner, [
+    "--no-banner", "mck", "workbench", "check", "--kit", kit, "--report", path,
+  ])
+  let evidence = @fs.read_file(path).json()
+  guard field(evidence, "qualified") == Json::boolean(true) &&
+    field(evidence, "errors") == Json::array([]) else {
+    fail("Unqualified report: " + path)
+  }
+  evidence
+}
+
+///|
+async fn main {
+  guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
+    @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
+    fail(
+      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the independent runner and exact draft26 kit",
+    )
+  }
+  let corpus_bytes = @fs.read_file(kit + "/cases.json").binary()
+  let corpus = @json.parse(@utf8.decode(corpus_bytes[:]))
+  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.26") &&
+    field(corpus, "cases") is Array(cases) &&
+    !cases.is_empty() else {
+    fail("Select the independent exact draft26 corpus")
+  }
+  let runner_hash = digest(@fs.read_file(runner).binary())
+  let kit_hash = digest(corpus_bytes)
+  let artifacts = @env.get_env_var("MORPHIR_CODEC_ARTIFACTS").unwrap_or(
+    ".dev/packaged-codec-adapter",
+  )
+  let evidence_root = @env.get_env_var("MORPHIR_CODEC_EVIDENCE").unwrap_or(
+    ".dev/codec-adapter-mck",
+  )
+  if !@fs.exists(evidence_root) {
+    @fs.mkdir(evidence_root, recursive=true)
+  }
+  let mut reference : Json = Json::null()
+  let receipts : Array[Json] = []
+  for target in ["js", "native"] {
+    checked("moon", [
+      "build",
+      "apps/morphir-workbench/mck/" + target,
+      "--target",
+      target,
+      "--release",
+    ])
+    let path = "_build/" +
+      target +
+      "/release/build/finos/morphir-workbench/mck/" +
+      target +
+      "/" +
+      target +
+      (if target == "js" { ".js" } else { ".exe" })
+    let args = if target == "js" {
+      ["--adapter", "node", "--adapter-arg", path]
+    } else {
+      ["--adapter", path]
+    }
+    let observed = report(
+      runner,
+      kit,
+      evidence_root + "/existing-" + target + ".json",
+      args,
+    )
+    guard field(observed, "records") is Array(records) &&
+      records.length() == cases.length() else {
+      fail("Incomplete reference observations")
+    }
+    if reference == Json::null() {
+      reference = field(observed, "records")
+    } else {
+      guard reference == field(observed, "records") else {
+        fail("Existing Node/native observations differ")
+      }
+    }
+  }
+  for profile in ["bytes-v1", "bytes-diagnostics-v1"] {
+    let artifact_hash = digest(
+      @fs.read_file(artifacts + "/" + profile + "/model.wasm").binary(),
+    )
+    let manifest_hash = digest(
+      @fs.read_file(artifacts + "/" + profile + "/manifest.ion").binary(),
+    )
+    checked("node", [
+      "pkgs/morphir-host/embedding/test/saved-byte-preflight-cli.mts",
+      artifacts + "/" + profile,
+      profile,
+    ])
+    for host in ["node", "chromium"] {
+      let bridge = if host == "node" {
+        "pkgs/morphir-host/embedding/node-byte-adapter-cli.mjs"
+      } else {
+        "pkgs/morphir-host/embedding/test/browser-byte-adapter.mts"
+      }
+      let path = evidence_root + "/" + host + "-" + profile + ".json"
+      let host_receipt = evidence_root + "/chromium-" + profile + "-host.json"
+      let extra = if host == "chromium" {
+        ["--adapter-arg", host_receipt]
+      } else {
+        []
+      }
+      let observed = report(
+        runner,
+        kit,
+        path,
+        [
+          "--adapter",
+          "node",
+          "--adapter-arg",
+          bridge,
+          "--adapter-arg",
+          artifacts + "/" + profile,
+          "--adapter-arg",
+          profile,
+        ] +
+        extra,
+      )
+      guard reference == field(observed, "records") else {
+        fail("Saved artifact observations differ: " + host + " " + profile)
+      }
+      let manifest = @fs.read_file(artifacts + "/" + profile + "/manifest.ion").binary()
+      let identity = if host == "chromium" {
+        let identity = @fs.read_file(host_receipt).json()
+        guard field(identity, "shutdown") == Json::string("passed") &&
+          field(identity, "preflight") == Json::string("passed") &&
+          field(identity, "requests") ==
+          Json::number((cases.length() + 2).to_double()) else {
+          fail("Missing complete browser host identity and lifecycle evidence")
+        }
+        identity
+      } else {
+        let (code, output, _) = @process.collect_output("node", ["--version"])
+        guard code == 0 else { fail("Cannot identify Node host") }
+        {
+          "host": host,
+          "version": output.text().trim().to_owned(),
+          "preflight": "passed",
+        }
+      }
+      guard digest(manifest) == manifest_hash &&
+        digest(
+          @fs.read_file(artifacts + "/" + profile + "/model.wasm").binary(),
+        ) ==
+        artifact_hash else {
+        fail("Saved artifact changed during host qualification")
+      }
+      receipts.push({
+        "host": host,
+        "identity": identity,
+        "profile": profile,
+        "report": path,
+        "cases": cases.length(),
+        "manifestSha256": manifest_hash,
+        "artifactSha256": artifact_hash,
+      })
+    }
+  }
+  guard runner_hash == digest(@fs.read_file(runner).binary()) &&
+    kit_hash == digest(@fs.read_file(kit + "/cases.json").binary()) else {
+    fail("Independent qualification inputs changed during the run")
+  }
+  let summary : Json = {
+    "runnerSha256": runner_hash,
+    "corpusSha256": kit_hash,
+    "cases": cases.length(),
+    "observations": cases.length() * 6,
+    "contractVersion": "0.1.0-draft.26",
+    "receipts": receipts,
+  }
+  // Ion text is the gate's default record. Upstream MCK report JSON stays exact.
+  @fs.write_file(
+    evidence_root + "/qualification.ion",
+    "qualification::" + summary.stringify() + "\n",
+  )
+  @stdio.stdout.write(
+    "Saved codec artifacts match independent Node/native observations on both Node and Chromium hosts, for both execution profiles.\n",
+  )
+}
