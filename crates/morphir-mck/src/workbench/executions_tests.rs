@@ -332,7 +332,9 @@ fn executions_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_e
             forged["records"][index]["observed"]["value"]["extra"] = json!(true);
         }
         assert!(
-            check_report(&root, &Report::from_json(&forged.to_string()).unwrap()).is_err(),
+            Report::from_json(&forged.to_string())
+                .and_then(|report| check_report(&root, &report))
+                .is_err(),
             "{mutation}"
         );
     }
@@ -420,4 +422,62 @@ fn execution_projection_refuses_job_identity_aliases_and_previous_receipt_versio
     let mut old_version = current;
     old_version["receipt"]["contractVersion"] = json!("0.1.0-draft.1");
     assert!(observation(old_version).validate_for(operation()).is_err());
+}
+
+#[test]
+fn execution_corpus_preserves_exact_opaque_negative_inputs() {
+    let root = tempfile::tempdir().unwrap();
+    for token in [
+        "1.00000000000000001",
+        r#"{"$serde_json::private::RawValue":"7"}"#,
+        r#"{"$serde_json::private::Number":"1"}"#,
+        r#"{"$serde_json::private::RawValue":false}"#,
+    ] {
+        let input = format!(r#"{{"initial":{{"sequence":{token}}}}}"#);
+        let text = format!(
+            r#"{{"formatVersion":"{DRAFT}","cases":[{{"id":"opaque","operation":"reduce-execution","format":"json","input":{input},"expected":{{"status":"invalid","code":"workbench.invalid_execution_trace"}}}}]}}"#
+        );
+        std::fs::write(root.path().join("cases.json"), text).unwrap();
+        let corpus = load(root.path()).unwrap();
+        assert_eq!(corpus.cases[0].input.to_string(), input, "{token}");
+    }
+}
+
+#[test]
+fn execution_corpus_refuses_literal_private_marker_expectations() {
+    let root = tempfile::tempdir().unwrap();
+    let marker = json!({"$serde_json::private::RawValue":projection().to_string()});
+    std::fs::write(
+        root.path().join("cases.json"),
+        json!({"formatVersion":DRAFT,"cases":[{
+        "id":"marker","operation":"reduce-execution","format":"json","input":null,
+        "expected":{"status":"ok","value":marker}}]})
+        .to_string(),
+    )
+    .unwrap();
+    assert!(load(root.path()).is_err());
+}
+
+#[test]
+fn execution_saved_report_refuses_literal_private_marker_projections() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(
+        root.path().join("cases.json"),
+        json!({"formatVersion":DRAFT,"cases":[{
+        "id":"marker","operation":"reduce-execution","format":"json","input":null,
+        "expected":{"status":"ok","value":projection()}}]})
+        .to_string(),
+    )
+    .unwrap();
+    let corpus = load(root.path()).unwrap();
+    let mut replay = Replay {
+        replies: [capabilities(), json!({"status":"ok","value":projection()})].into(),
+        requests: vec![],
+    };
+    let report = execute(&corpus, &mut replay);
+    assert!(report.qualified);
+    let mut saved: Value = serde_json::from_str(&report.to_json()).unwrap();
+    saved["records"][0]["observed"]["value"] =
+        json!({"$serde_json::private::RawValue":projection().to_string()});
+    assert!(Report::from_json(&saved.to_string()).is_err());
 }

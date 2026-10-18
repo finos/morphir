@@ -2,7 +2,7 @@
 
 Workbench MCK `0.1.0-draft.14` qualifies the single offline operation
 `reduce-execution` with JSON inputs. It adds parent-owned traces for the existing
-[`morphir/workbench/executions` `0.1.0-draft.1`](../executions/0.2.0-draft.1/README.md)
+[`morphir/workbench/executions` `0.2.0-draft.1`](../executions/0.2.0-draft.1/README.md)
 receipt profile. Neither that execution profile nor its nested
 [draft.5 terminal outcomes](../draft.5/README.md) changes.
 
@@ -17,7 +17,7 @@ host, submission, query or cancellation endpoint. No Ion execution mapping is de
 A request uses the existing correlated JSON-lines adapter transport:
 
 ```json
-{"id":1,"op":"reduce-execution","suite":"workbench","contractVersion":"0.1.0-draft.14","format":"json","input":{"offer":{"profile":"morphir/workbench/executions","contractVersion":"0.1.0-draft.1","hostId":"host","sessionId":"session","providerId":"provider","operations":["query","cancel"]},"identity":{"hostId":"host","sessionId":"session","providerId":"provider","executionId":"execution","snapshotId":"snapshot"},"calls":["call"],"initial":{"contractVersion":"0.1.0-draft.1","identity":{"hostId":"host","sessionId":"session","providerId":"provider","executionId":"execution","snapshotId":"snapshot"},"sequence":0,"state":"submitted","cancelRequested":false,"outcomes":null},"actions":[{"op":"cancel-action"}]}}
+{"id":1,"op":"reduce-execution","suite":"workbench","contractVersion":"0.1.0-draft.14","format":"json","input":{"offer":{"profile":"morphir/workbench/executions","contractVersion":"0.2.0-draft.1","hostId":"host","sessionId":"session","providerId":"provider","operations":["query","cancel"]},"identity":{"hostId":"host","sessionId":"session","providerId":"provider","executionId":"execution","snapshotId":"snapshot"},"calls":["call"],"initial":{"contractVersion":"0.2.0-draft.1","identity":{"hostId":"host","sessionId":"session","providerId":"provider","executionId":"execution","snapshotId":"snapshot"},"sequence":0,"state":"submitted","cancelRequested":false,"outcomes":null},"actions":[{"op":"cancel-action"}]}}
 ```
 
 The input has exactly `offer`, `identity`, `calls`, `initial`, `actions`.
@@ -95,6 +95,13 @@ state update. Nested decoder errors outside the portable error union normalize t
 and allow later actions to run. Error messages are not qualification data.
 
 ## Bounds and schema scope
+
+The shared runner retains literal JSON object kinds and exact decimal tokens
+before schema checks or typed decoding. Negative trace inputs remain opaque and
+are sent without numeric normalization or reinterpretation of JSON library private
+marker maps. Those maps cannot impersonate scalar fields or successful projections
+in corpus expectations, live observations or saved reports.
+
 
 | Item | Bound |
 | --- | --- |

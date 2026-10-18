@@ -84,6 +84,22 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
             .as_str()
             .ok_or("Workbench formatVersion must be a string")?,
     )?;
+    let literal_inputs = if value["formatVersion"] == super::contract::EXECUTIONS_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::executions::validate_corpus_shape(&value)?;
+        // Negative traces can contain any literal JSON, including serde-private
+        // marker maps. Move them around typed decoding without reinterpreting them.
+        Some(
+            value["cases"]
+                .as_array_mut()
+                .expect("schema-checked cases")
+                .iter_mut()
+                .map(|case| std::mem::replace(&mut case["input"], Value::Null))
+                .collect::<Vec<_>>(),
+        )
+    } else {
+        None
+    };
     if value["formatVersion"] == super::contract::CAPABILITY_EXECUTIONS_VERSION {
         value = crate::json::strict::parse_exact(text)?;
         super::capability_executions::validate_corpus_shape(&value)?;
@@ -117,7 +133,12 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         // interpret private arbitrary-precision/raw-value marker objects.
         super::native_frames::validate_corpus_shape(&value)?;
     }
-    let document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
+    let mut document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
+    if let Some(inputs) = literal_inputs {
+        for (case, input) in document.cases.iter_mut().zip(inputs) {
+            case.input = input;
+        }
+    }
     version(&document.format_version)?;
     if document.cases.is_empty() || document.cases.len() > MAX_CASES {
         return Err("corpus must contain 1 to 1024 cases".into());

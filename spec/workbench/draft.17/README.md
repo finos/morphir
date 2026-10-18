@@ -2,7 +2,7 @@
 
 Exact offline Workbench MCK **`0.1.0-draft.17`** adds `run-native-client`, with
 JSON transport. It exercises a production client against controlled reply
-delivery for the unchanged `morphir/workbench/native` `0.1.0-draft.1` profile.
+delivery for the current `morphir/workbench/native` `0.2.0-draft.1` profile.
 Historical MCK drafts.1 through .8 are unchanged.
 
 ```sh

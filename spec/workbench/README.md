@@ -124,7 +124,7 @@ Comparison normalizes decimals without truncating them through the SDK.
 SDK failure. Provider crashes, validation, transport, cancellation, deadlines and
 cleanup failures belong to host execution status. They must not become model
 errors or successful results. This outcome-value schema does not describe the
-`morphir-outcomes-v1` report envelope or authoritative job state.
+`morphir-outcomes-v1` report envelope or authoritative execution state.
 
 ## Invocation suites and Ion
 
@@ -199,7 +199,7 @@ execution also requires the corresponding model and public entry manifest.
 The next slice maps complete outcome envelopes and lifecycle receipts,
 extends MCK with binary/reverse-encode fixtures and adds independent
 Rust/TypeScript adapters alongside the current MoonBit codec adapter.
-Model/revision handles, worksheet source maps, job query/cancellation/recovery,
+Model/revision handles, worksheet source maps, execution query/cancellation/recovery,
 artifact publication and provider availability require coordinated host and UI
 contracts. Required results remain separate from observational telemetry.
 
@@ -219,56 +219,44 @@ execution. Those remain separate work before a host advertises an extension.
 terminal evidence to a validated invocation suite and public manifest. Its
 [377-case kit](mck/draft.5/README.md) preserves returned values, SDK model errors,
 primary failures, cancellation and separate cleanup failures. Offline validation
-does not establish actual host execution or authoritative job cancellation.
+does not establish actual host execution or authoritative execution cancellation.
 
-[Snapshot-bound job receipts](jobs/draft.1/README.md) define a separate exact
-`morphir/workbench/jobs` `0.1.0-draft.1` profile. The portable reducer binds
-authority, snapshot and call inventory; separates cancellation acknowledgement
-from terminal evidence; and retains host receipts across same-session reconnect.
-This contribution does not change any offline MCK draft or add live RPC methods.
-Shared transition MCK qualification and authenticated host adapters remain pending.
+[Snapshot-bound execution receipts](executions/0.2.0-draft.1/README.md) define the
+exact `morphir/workbench/executions` `0.2.0-draft.1` profile. The portable reducer
+binds authority, snapshot and invocation inventory, separates cancellation
+acknowledgement from terminal evidence, and retains receipts across same-session
+reconnection. [Offline transition qualification](draft.14/README.md) uses
+`reduce-execution` and its [170-case kit](mck/draft.14/README.md).
 
-[Offline job transition qualification](draft.6/README.md) adds the separate exact
-MCK `0.1.0-draft.6` operation `reduce-job`, JSON only. The existing shared Rust
-runner compares parent-owned fixed traces against an explicit implementation
-adapter and independently rechecks reports. The five historical kits, job
-receipt profile and nested terminal payload remain unchanged. This qualifies
-offline receipt behavior; live authenticated host/UI jobs remain separate.
+[Authenticated HTTP host](host/0.2.0-draft.1/README.md) defines the opt-in
+`morphir/workbench/host` `0.2.0-draft.1` mapping for immutable submission, query,
+cancellation and explicit terminal release. It authenticates host requests through
+the existing connected v1 session. Structural fixtures do not advertise a live
+implementation or durable recovery.
 
-[Authenticated HTTP host](host/draft.1/README.md) defines the separate opt-in
-`morphir/workbench/host` `0.1.0-draft.1` mapping for immutable submission,
-query, cancellation and explicit terminal release. It authenticates each host
-request through the existing connected v1 session and preserves its manifest
-and RPC contract. Structural fixtures do not advertise live implementation
-support or durable recovery.
+[Native Workbench mapping](native/0.2.0-draft.1/README.md) defines the exact
+`morphir/workbench/native` `0.2.0-draft.1` profile for page-bound desktop IPC,
+immutable execution payloads and read-only OS-picked workspace grants. Its
+descriptor contains the execution offer. Publication alone does not qualify a
+packaged platform or the private bootstrap.
 
-[Native Workbench mapping](native/draft.1/README.md) defines the separate exact
-`morphir/workbench/native` `0.1.0-draft.1` profile for page-bound desktop IPC,
-existing immutable job payloads and read-only OS-picked workspace grants.
-Its own descriptor contains the frozen jobs offer directly. Structural cases,
-raw input fixtures and lifecycle traces are separate evidence; publication
-does not qualify a packaged platform or advertise the existing private bootstrap.
+[Native request frame qualification](draft.15/README.md) uses
+`validate-native-frame` with a [140-case kit](mck/draft.15/README.md).
+[Native reply qualification](draft.16/README.md) uses `validate-native-reply`
+with a [185-case kit](mck/draft.16/README.md).
+[Native client qualification](draft.17/README.md) uses `run-native-client`
+with a [48-case kit](mck/draft.17/README.md), and
+[native owner qualification](draft.18/README.md) uses `run-native-owner`
+with a [43-case kit](mck/draft.18/README.md).
+The shared Rust runner compares fixed parent-owned observations against an explicit
+adapter, and the independent checker recomputes all verdicts. These scopes remain
+separate from real caller provenance, picker integration and packaged platforms.
 
-[Offline native request frame qualification](draft.7/README.md) adds the separate
-exact MCK `0.1.0-draft.7` operation `validate-native-frame`, JSON only, with an
-independent [138-case kit](mck/draft.7/README.md). The existing shared Rust runner
-compares fixed raw request expectations through an explicit production adapter
-and independently rechecks reports. Runtime authority, native lifecycle,
-response handling and packaged platform qualification remain separate.
+[Immutable capability selection](draft.19/README.md) uses
+`run-capability-executions` and a [69-case kit](mck/draft.19/README.md) for the real
+in-memory owner, retained plans and bounded evaluator. Actual isolated-worker
+propagation and native/HTTP checking-policy offers require separate qualification.
 
-[Offline native reply qualification](draft.8/README.md) adds exact MCK
-`0.1.0-draft.8`, only `validate-native-reply` and JSON, with an independent
-[185-case kit](mck/draft.8/README.md). The adapter passes original bytes and
-captured call context to its production response decoder. Closed observations
-retain successful operation or native error code/effect, omitting private
-payloads. This uses the same runner and independent report check. Native owner lifecycle execution and packaged platform qualification remain pending;
-the live native protocol stays at draft.1.
-
-[Offline native client qualification](draft.9/README.md) adds exact MCK
-`0.1.0-draft.9`, only `run-native-client` and JSON, with a fixed
-[48-case kit](mck/draft.9/README.md). Controlled raw replies and explicit actions
-exercise the production client, retained receipts, cancellation, disposal and
-workspace byte transfers. Node and Chromium with debug/release MoonBit cores
-qualify the TypeScript client shared with Proton CEF. The existing Rust runner
-and independent checker retain all verdict authority. This does not qualify
-the native owner, real picker grants, caller provenance or packaged platforms.
+The older jobs, host/native draft.1 and MCK drafts.6 through .10 and .13 remain
+published as historical records. The current runner does not translate or accept
+their retired operations or versions.

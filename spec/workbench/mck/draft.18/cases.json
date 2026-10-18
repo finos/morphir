@@ -8267,7 +8267,7 @@
               ],
               "callCount": 9,
               "delivery": null,
-              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"cancelled\"}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}}"
+              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"cancelled\"}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}}"
             },
             {
               "action": "call",
@@ -8468,7 +8468,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.submit",
-                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
+                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
               },
               "cleanup": null,
               "failure": null
@@ -8479,7 +8479,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.query",
-                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":1,\"state\":\"running\"}"
+                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":1,\"state\":\"running\"}"
               },
               "cleanup": null,
               "failure": null
@@ -8490,7 +8490,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.query",
-                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":1,\"state\":\"running\"}"
+                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":1,\"state\":\"running\"}"
               },
               "cleanup": null,
               "failure": null
@@ -8501,7 +8501,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.cancel",
-                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":2,\"state\":\"running\"}"
+                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":2,\"state\":\"running\"}"
               },
               "cleanup": null,
               "failure": null
@@ -8512,7 +8512,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.query",
-                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":2,\"state\":\"running\"}"
+                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":2,\"state\":\"running\"}"
               },
               "cleanup": null,
               "failure": null
@@ -8534,7 +8534,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.query",
-                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"cancelled\"}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}"
+                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"cancelled\"}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}"
               },
               "cleanup": null,
               "failure": null
@@ -8567,14 +8567,14 @@
             "{\"event\":\"executions.offer\",\"session\":\"session-1\"}",
             "{\"event\":\"executions.request\",\"operation\":\"execution.submit\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"entry\\\":\\\"client:main#answer\\\",\\\"inputs\\\":{\\\"format\\\":\\\"json\\\",\\\"source\\\":\\\"[]\\\"},\\\"model\\\":\\\"{\\\\\\\"formatVersion\\\\\\\":4,\\\\\\\"distribution\\\\\\\":{\\\\\\\"Library\\\\\\\":{\\\\\\\"packageName\\\\\\\":\\\\\\\"client\\\\\\\",\\\\\\\"dependencies\\\\\\\":{},\\\\\\\"def\\\\\\\":{\\\\\\\"modules\\\\\\\":{\\\\\\\"main\\\\\\\":{\\\\\\\"Public\\\\\\\":{\\\\\\\"types\\\\\\\":{},\\\\\\\"values\\\\\\\":{\\\\\\\"answer\\\\\\\":{\\\\\\\"Public\\\\\\\":{\\\\\\\"doc\\\\\\\":\\\\\\\"Native client immutable fixture\\\\\\\",\\\\\\\"ExpressionBody\\\\\\\":{\\\\\\\"inputTypes\\\\\\\":{},\\\\\\\"outputType\\\\\\\":\\\\\\\"morphir/SDK:basics#int\\\\\\\",\\\\\\\"body\\\\\\\":{\\\\\\\"Literal\\\\\\\":{\\\\\\\"IntegerLiteral\\\\\\\":42}}}}}}}}}}}}}\\\"}\",\"session\":\"session-1\"}",
             "{\"event\":\"executions.claim\",\"execution\":\"execution-1\",\"request\":\"{\\\"arguments\\\":[],\\\"entry\\\":\\\"client:main#answer\\\",\\\"executionMode\\\":\\\"typed\\\",\\\"operation\\\":\\\"evaluate\\\"}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.cancel\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.release\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.release\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}"
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.cancel\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.release\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.release\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}"
           ],
           "usedPickers": 0,
           "unusedPickers": 0,
@@ -8741,7 +8741,7 @@
               ],
               "callCount": 5,
               "delivery": null,
-              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}}"
+              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}}"
             },
             {
               "action": "call",
@@ -8846,7 +8846,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.submit",
-                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
+                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
               },
               "cleanup": null,
               "failure": null
@@ -8857,7 +8857,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.cancel",
-                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":2,\"state\":\"running\"}"
+                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":2,\"state\":\"running\"}"
               },
               "cleanup": null,
               "failure": null
@@ -8868,7 +8868,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.query",
-                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}"
+                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}"
               },
               "cleanup": null,
               "failure": null
@@ -8879,7 +8879,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.cancel",
-                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}"
+                "value": "{\"cancelRequested\":true,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":3,\"state\":\"terminal\"}"
               },
               "cleanup": null,
               "failure": null
@@ -8901,10 +8901,10 @@
             "{\"event\":\"executions.offer\",\"session\":\"session-1\"}",
             "{\"event\":\"executions.request\",\"operation\":\"execution.submit\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"entry\\\":\\\"client:main#answer\\\",\\\"inputs\\\":{\\\"format\\\":\\\"json\\\",\\\"source\\\":\\\"[]\\\"},\\\"model\\\":\\\"{\\\\\\\"formatVersion\\\\\\\":4,\\\\\\\"distribution\\\\\\\":{\\\\\\\"Library\\\\\\\":{\\\\\\\"packageName\\\\\\\":\\\\\\\"client\\\\\\\",\\\\\\\"dependencies\\\\\\\":{},\\\\\\\"def\\\\\\\":{\\\\\\\"modules\\\\\\\":{\\\\\\\"main\\\\\\\":{\\\\\\\"Public\\\\\\\":{\\\\\\\"types\\\\\\\":{},\\\\\\\"values\\\\\\\":{\\\\\\\"answer\\\\\\\":{\\\\\\\"Public\\\\\\\":{\\\\\\\"doc\\\\\\\":\\\\\\\"Native client immutable fixture\\\\\\\",\\\\\\\"ExpressionBody\\\\\\\":{\\\\\\\"inputTypes\\\\\\\":{},\\\\\\\"outputType\\\\\\\":\\\\\\\"morphir/SDK:basics#int\\\\\\\",\\\\\\\"body\\\\\\\":{\\\\\\\"Literal\\\\\\\":{\\\\\\\"IntegerLiteral\\\\\\\":42}}}}}}}}}}}}}\\\"}\",\"session\":\"session-1\"}",
             "{\"event\":\"executions.claim\",\"execution\":\"execution-1\",\"request\":\"{\\\"arguments\\\":[],\\\"entry\\\":\\\"client:main#answer\\\",\\\"executionMode\\\":\\\"typed\\\",\\\"operation\\\":\\\"evaluate\\\"}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.cancel\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.cancel\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.release\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}"
+            "{\"event\":\"executions.request\",\"operation\":\"execution.cancel\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.cancel\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.release\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}"
           ],
           "usedPickers": 0,
           "unusedPickers": 0,
@@ -9054,7 +9054,7 @@
               ],
               "callCount": 4,
               "delivery": null,
-              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}}"
+              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}}"
             },
             {
               "action": "call",
@@ -9094,7 +9094,7 @@
               ],
               "callCount": 5,
               "delivery": null,
-              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}}"
+              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}}"
             },
             {
               "action": "call",
@@ -9139,7 +9139,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.submit",
-                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
+                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
               },
               "cleanup": null,
               "failure": null
@@ -9150,7 +9150,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.query",
-                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}"
+                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}"
               },
               "cleanup": null,
               "failure": null
@@ -9161,7 +9161,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.query",
-                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}"
+                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}"
               },
               "cleanup": null,
               "failure": null
@@ -9172,8 +9172,8 @@
             "{\"event\":\"executions.offer\",\"session\":\"session-1\"}",
             "{\"event\":\"executions.request\",\"operation\":\"execution.submit\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"entry\\\":\\\"client:main#answer\\\",\\\"inputs\\\":{\\\"format\\\":\\\"ion-text\\\",\\\"source\\\":\\\"$ion_1_0 [ ]\\\"},\\\"model\\\":\\\"{\\\\\\\"formatVersion\\\\\\\":4,\\\\\\\"distribution\\\\\\\":{\\\\\\\"Library\\\\\\\":{\\\\\\\"packageName\\\\\\\":\\\\\\\"client\\\\\\\",\\\\\\\"dependencies\\\\\\\":{},\\\\\\\"def\\\\\\\":{\\\\\\\"modules\\\\\\\":{\\\\\\\"main\\\\\\\":{\\\\\\\"Public\\\\\\\":{\\\\\\\"types\\\\\\\":{},\\\\\\\"values\\\\\\\":{\\\\\\\"answer\\\\\\\":{\\\\\\\"Public\\\\\\\":{\\\\\\\"doc\\\\\\\":\\\\\\\"Native client immutable fixture\\\\\\\",\\\\\\\"ExpressionBody\\\\\\\":{\\\\\\\"inputTypes\\\\\\\":{},\\\\\\\"outputType\\\\\\\":\\\\\\\"morphir/SDK:basics#int\\\\\\\",\\\\\\\"body\\\\\\\":{\\\\\\\"Literal\\\\\\\":{\\\\\\\"IntegerLiteral\\\\\\\":42}}}}}}}}}}}}}\\\"}\",\"session\":\"session-1\"}",
             "{\"event\":\"executions.claim\",\"execution\":\"execution-1\",\"request\":\"{\\\"arguments\\\":[],\\\"entry\\\":\\\"client:main#answer\\\",\\\"executionMode\\\":\\\"typed\\\",\\\"operation\\\":\\\"evaluate\\\"}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}"
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-1\"}"
           ],
           "usedPickers": 0,
           "unusedPickers": 0,
@@ -9574,7 +9574,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.submit",
-                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
+                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
               },
               "cleanup": null,
               "failure": null
@@ -9618,7 +9618,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.submit",
-                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"hostId\":\"host-2\",\"executionId\":\"execution-2\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-2\",\"snapshotId\":\"snapshot-2\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-2\",\"executionId\":\"execution-2\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-2\",\"snapshotId\":\"snapshot-2\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
+                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"executionId\":\"execution-2\",\"hostId\":\"host-2\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-2\",\"snapshotId\":\"snapshot-2\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-2\",\"hostId\":\"host-2\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-2\",\"snapshotId\":\"snapshot-2\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
               },
               "cleanup": null,
               "failure": null
@@ -9629,7 +9629,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.query",
-                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-2\",\"executionId\":\"execution-2\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-2\",\"snapshotId\":\"snapshot-2\"},\"outcomes\":null,\"sequence\":1,\"state\":\"running\"}"
+                "value": "{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-2\",\"hostId\":\"host-2\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-2\",\"snapshotId\":\"snapshot-2\"},\"outcomes\":null,\"sequence\":1,\"state\":\"running\"}"
               },
               "cleanup": null,
               "failure": null
@@ -9644,10 +9644,10 @@
             "{\"event\":\"cleanup.result\",\"id\":null,\"session\":\"session-1\",\"success\":true}",
             "{\"event\":\"executions.create\",\"session\":\"session-2\"}",
             "{\"event\":\"executions.offer\",\"session\":\"session-2\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-1\\\",\\\"executionId\\\":\\\"execution-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-2\"}",
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-1\\\",\\\"hostId\\\":\\\"host-1\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-1\\\",\\\"snapshotId\\\":\\\"snapshot-1\\\"}}\",\"session\":\"session-2\"}",
             "{\"event\":\"executions.request\",\"operation\":\"execution.submit\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"entry\\\":\\\"client:main#answer\\\",\\\"inputs\\\":{\\\"format\\\":\\\"json\\\",\\\"source\\\":\\\"[]\\\"},\\\"model\\\":\\\"{\\\\\\\"formatVersion\\\\\\\":4,\\\\\\\"distribution\\\\\\\":{\\\\\\\"Library\\\\\\\":{\\\\\\\"packageName\\\\\\\":\\\\\\\"client\\\\\\\",\\\\\\\"dependencies\\\\\\\":{},\\\\\\\"def\\\\\\\":{\\\\\\\"modules\\\\\\\":{\\\\\\\"main\\\\\\\":{\\\\\\\"Public\\\\\\\":{\\\\\\\"types\\\\\\\":{},\\\\\\\"values\\\\\\\":{\\\\\\\"answer\\\\\\\":{\\\\\\\"Public\\\\\\\":{\\\\\\\"doc\\\\\\\":\\\\\\\"Native client immutable fixture\\\\\\\",\\\\\\\"ExpressionBody\\\\\\\":{\\\\\\\"inputTypes\\\\\\\":{},\\\\\\\"outputType\\\\\\\":\\\\\\\"morphir/SDK:basics#int\\\\\\\",\\\\\\\"body\\\\\\\":{\\\\\\\"Literal\\\\\\\":{\\\\\\\"IntegerLiteral\\\\\\\":42}}}}}}}}}}}}}\\\"}\",\"session\":\"session-2\"}",
             "{\"event\":\"executions.claim\",\"execution\":\"execution-2\",\"request\":\"{\\\"arguments\\\":[],\\\"entry\\\":\\\"client:main#answer\\\",\\\"executionMode\\\":\\\"typed\\\",\\\"operation\\\":\\\"evaluate\\\"}\",\"session\":\"session-2\"}",
-            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"hostId\\\":\\\"host-2\\\",\\\"executionId\\\":\\\"execution-2\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-2\\\",\\\"snapshotId\\\":\\\"snapshot-2\\\"}}\",\"session\":\"session-2\"}"
+            "{\"event\":\"executions.request\",\"operation\":\"execution.query\",\"payload\":\"{\\\"contractVersion\\\":\\\"0.2.0-draft.1\\\",\\\"identity\\\":{\\\"executionId\\\":\\\"execution-2\\\",\\\"hostId\\\":\\\"host-2\\\",\\\"providerId\\\":\\\"moonbit-scheme\\\",\\\"sessionId\\\":\\\"session-2\\\",\\\"snapshotId\\\":\\\"snapshot-2\\\"}}\",\"session\":\"session-2\"}"
           ],
           "usedPickers": 0,
           "unusedPickers": 0,
@@ -9799,7 +9799,7 @@
               ],
               "callCount": 6,
               "delivery": null,
-              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}}"
+              "completion": "{\"ok\":true,\"value\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":{\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"contractVersion\":\"0.1.0-draft.5\",\"extensions\":null},\"sequence\":2,\"state\":\"terminal\"}}"
             },
             {
               "action": "call",
@@ -9860,7 +9860,7 @@
               "reply": {
                 "ok": true,
                 "operation": "execution.submit",
-                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host-1\",\"executionId\":\"execution-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
+                "value": "{\"calls\":[\"workbench\"],\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"receipt\":{\"cancelRequested\":false,\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host-1\",\"providerId\":\"moonbit-scheme\",\"sessionId\":\"session-1\",\"snapshotId\":\"snapshot-1\"},\"outcomes\":null,\"sequence\":0,\"state\":\"submitted\"}}"
               },
               "cleanup": null,
               "failure": null

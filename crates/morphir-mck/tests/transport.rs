@@ -191,6 +191,27 @@ mod adapter {
                     }
                 }
             }
+            "workbench-execution-private-marker" => {
+                for (id, line) in requests() {
+                    if is_exit(&line) {
+                        return;
+                    }
+                    if line.contains("\"op\":\"capabilities\"") {
+                        say(format!("{}\n",serde_json::json!({"id":id,"suite":"workbench","contractVersion":"0.1.0-draft.14","binding":"hostile-test","language":"test","operations":["reduce-execution"],"formats":["json"]})).as_bytes());
+                    } else {
+                        let kit: Value = serde_json::from_str(include_str!(
+                            "../../../spec/workbench/mck/draft.14/cases.json"
+                        ))
+                        .unwrap();
+                        let marker = serde_json::json!({"$serde_json::private::RawValue":kit["cases"][0]["expected"]["value"].to_string()});
+                        say(format!(
+                            "{}\n",
+                            serde_json::json!({"id":id,"status":"ok","value":marker})
+                        )
+                        .as_bytes());
+                    }
+                }
+            }
             "workbench-private-marker" => {
                 for (id, line) in requests() {
                     if is_exit(&line) {
@@ -765,6 +786,36 @@ fn the_frozen_transcript_replays_byte_for_byte() {
 
 // ---------------------------------------------------------------- runner
 
+fn execution_literal_private_objects_cannot_forge_live_adapter_success() {
+    use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
+    let root = tempfile::tempdir().unwrap();
+    let kit: Value = serde_json::from_str(include_str!(
+        "../../../spec/workbench/mck/draft.14/cases.json"
+    ))
+    .unwrap();
+    std::fs::write(
+        root.path().join("cases.json"),
+        serde_json::json!({"formatVersion":"0.1.0-draft.14","cases":[kit["cases"][0]]}).to_string(),
+    )
+    .unwrap();
+    let options = RunOptions {
+        adapter: std::env::current_exe().unwrap().into_os_string(),
+        adapter_args: vec![
+            ADAPTER_FLAG.into(),
+            "workbench-execution-private-marker".into(),
+        ],
+        limits: quick(),
+    };
+    let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
+    assert!(
+        !report.qualified,
+        "literal marker must not become a valid execution projection"
+    );
+    assert_eq!(report.records[0].result, ResultKind::Error);
+    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    morphir_mck::workbench::check_report(root.path(), &report).unwrap();
+}
+
 fn native_workbench_literal_private_objects_cannot_forge_live_adapter_success() {
     use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
     let root = tempfile::tempdir().unwrap();
@@ -934,7 +985,7 @@ fn main() {
         return;
     }
 
-    let tests: &[(&str, fn())] = &[
+    let tests: &[(&str, fn())] = &[("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
         ("capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         ("capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         (

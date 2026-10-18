@@ -361,7 +361,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -412,7 +412,7 @@
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -782,7 +782,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -833,7 +833,7 @@
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -1203,7 +1203,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -1254,7 +1254,7 @@
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -1624,7 +1624,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -1675,7 +1675,7 @@
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -2045,7 +2045,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -2096,7 +2096,7 @@
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -2466,7 +2466,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -2517,7 +2517,7 @@
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -3470,7 +3470,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -3513,7 +3513,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -3556,12 +3556,12 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -3678,7 +3678,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -3721,7 +3721,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -3764,12 +3764,12 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"ion-text\",\"source\":\"$ion_1_0 [ ]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -3899,7 +3899,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -3942,7 +3942,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -3991,7 +3991,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": true,
                 "releasePending": false,
@@ -4046,7 +4046,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -4101,15 +4101,15 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -4228,7 +4228,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -4271,7 +4271,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -4320,7 +4320,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -4369,7 +4369,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -4423,11 +4423,11 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -4546,7 +4546,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -4589,7 +4589,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -4638,7 +4638,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -4687,7 +4687,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -4741,11 +4741,11 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -4975,7 +4975,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"pending\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"pending\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -5031,7 +5031,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -5087,14 +5087,14 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.cancel\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.cancel\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"pending\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"pending\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -5221,7 +5221,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -5264,7 +5264,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"pending\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"pending\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -5320,7 +5320,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -5376,14 +5376,14 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.cancel\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.cancel\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"pending\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"pending\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":true,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -5524,7 +5524,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -5567,7 +5567,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -5616,7 +5616,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -5672,7 +5672,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-2\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-2\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-2\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-2\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -5734,7 +5734,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-2\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-2\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-2\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-2\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -5796,15 +5796,15 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.cancel\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.cancel\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}",
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-2\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-2\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\"}",
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-2\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-2\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -5928,7 +5928,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -5971,7 +5971,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -6014,7 +6014,7 @@
               },
               "disposed": true,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -6057,7 +6057,7 @@
               },
               "disposed": true,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -6099,11 +6099,11 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.close\",\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -6354,7 +6354,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -6397,7 +6397,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": true,
@@ -6447,7 +6447,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -6503,15 +6503,15 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -6638,7 +6638,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -6681,7 +6681,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": true,
@@ -6731,7 +6731,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": true,
@@ -6786,16 +6786,16 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -10527,7 +10527,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -10570,7 +10570,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -10613,7 +10613,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -10656,13 +10656,13 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -10782,7 +10782,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -10825,7 +10825,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"running\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"running\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -10868,7 +10868,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"running\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"running\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -10910,13 +10910,13 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"running\"}",
-            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"running\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"running\"}",
+            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"running\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -11027,7 +11027,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -11070,7 +11070,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -11112,11 +11112,11 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"disconnected\",\"cancelRequested\":false,\"connected\":false,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"
@@ -11233,7 +11233,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+                "execution": "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
                 "active": true,
                 "polling": true,
                 "releasePending": false,
@@ -11276,7 +11276,7 @@
               },
               "disposed": false,
               "executions": {
-                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
+                "execution": "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}",
                 "active": false,
                 "polling": false,
                 "releasePending": false,
@@ -11319,12 +11319,12 @@
           "requests": [
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
             "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
-            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.query\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.release\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"}},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
           ],
           "progress": [
-            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
-            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"hostId\":\"host\",\"executionId\":\"execution-1\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
+            "{\"cancelAction\":\"send\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\"}",
+            "{\"cancelAction\":\"already-terminal\",\"cancelRequested\":false,\"connected\":true,\"identity\":{\"executionId\":\"execution-1\",\"hostId\":\"host\",\"providerId\":\"scheme\",\"sessionId\":\"session\",\"snapshotId\":\"snapshot-1\"},\"sequence\":1,\"state\":\"terminal\"}"
           ],
           "localCalls": [
             "{\"operation\":\"initialize\"}"

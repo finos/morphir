@@ -2,8 +2,8 @@
 
 Exact offline Workbench MCK `0.1.0-draft.18` adds the JSON-only
 `run-native-owner` operation to the existing shared Rust runner. Historical MCK
-drafts.1 through .9 and the live `morphir/workbench/native` `0.1.0-draft.1`
-contract are unchanged.
+drafts remain unchanged. The current native contract is
+`morphir/workbench/native` `0.2.0-draft.1`.
 
 ```sh
 morphir mck workbench run --kit spec/workbench/mck/draft.18 \

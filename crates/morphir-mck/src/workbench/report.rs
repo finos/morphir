@@ -124,6 +124,10 @@ impl Report {
             return Err("Workbench report exceeds 32 MiB".into());
         }
         let mut value = crate::json::strict::parse(text)?;
+        if value["formatVersion"] == super::contract::EXECUTIONS_VERSION {
+            value = crate::json::strict::parse_exact(text)?;
+            super::executions::validate_report_shape(&value)?;
+        }
         if value["formatVersion"] == super::contract::CAPABILITY_EXECUTIONS_VERSION {
             value = crate::json::strict::parse_exact(text)?;
             super::capability_executions::validate_report_shape(&value)?;

@@ -4,45 +4,92 @@ use serde_json::{Value, json};
 
 use super::contract::{MAX_VALUE_BYTES, OfflineOnly, encoded_size, identity};
 
-/// Admit canonical observations only. Execution inputs and actions remain opaque to
-/// the shared runner; independent fixed goldens establish transition behavior.
+fn schema_validator(schema: &str) -> jsonschema::Validator {
+    let mut options = jsonschema::options();
+    options.with_retriever(OfflineOnly);
+    for text in [
+        include_str!("../../../../spec/workbench/schemas/value.schema.json"),
+        include_str!("../../../../spec/workbench/draft.5/schemas/terminal-outcomes.schema.json"),
+        include_str!(
+            "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/identity.schema.json"
+        ),
+        include_str!(
+            "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/receipt.schema.json"
+        ),
+        include_str!(
+            "../../../../spec/workbench/draft.14/schemas/execution-projection.schema.json"
+        ),
+        include_str!("../../../../spec/workbench/draft.14/schemas/mck-observation.schema.json"),
+        include_str!("../../../../spec/workbench/draft.14/schemas/mck-capabilities.schema.json"),
+    ] {
+        let value: Value = serde_json::from_str(text).expect("execution schema JSON");
+        options.with_resource(
+            value["$id"].as_str().expect("execution schema id"),
+            jsonschema::Resource::from_contents(value.clone()).expect("execution schema resource"),
+        );
+    }
+    let value: Value = serde_json::from_str(schema).expect("execution schema JSON");
+    options.build(&value).expect("execution schema")
+}
+
+fn validate_shape(value: &Value, validator: &jsonschema::Validator) -> Result<(), String> {
+    validator.validate(value).map_err(|error| {
+        format!(
+            "invalid execution shape at {}: {error}",
+            error.instance_path
+        )
+    })
+}
+
+pub(super) fn validate_corpus_shape(value: &Value) -> Result<(), String> {
+    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
+    validate_shape(
+        value,
+        VALIDATOR.get_or_init(|| {
+            schema_validator(include_str!(
+                "../../../../spec/workbench/draft.14/schemas/mck-corpus.schema.json"
+            ))
+        }),
+    )
+}
+
+pub(super) fn validate_observation_shape(value: &Value) -> Result<(), String> {
+    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
+    validate_shape(
+        value,
+        VALIDATOR.get_or_init(|| {
+            schema_validator(include_str!(
+                "../../../../spec/workbench/draft.14/schemas/mck-observation.schema.json"
+            ))
+        }),
+    )
+}
+
+pub(super) fn validate_report_shape(value: &Value) -> Result<(), String> {
+    static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
+    validate_shape(
+        value,
+        VALIDATOR.get_or_init(|| {
+            schema_validator(include_str!(
+                "../../../../spec/workbench/draft.14/schemas/mck-report.schema.json"
+            ))
+        }),
+    )
+}
+
+/// Validate literal observations only. Trace input stays opaque to the shared
+/// runner; independent fixed expectations establish transition behavior.
 pub(super) fn projection(value: &Value) -> Result<Value, String> {
     encoded_size(value, MAX_VALUE_BYTES)?;
     static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
-    let validator = VALIDATOR.get_or_init(|| {
-        let resources = [
-            include_str!("../../../../spec/workbench/schemas/value.schema.json"),
-            include_str!(
-                "../../../../spec/workbench/draft.5/schemas/terminal-outcomes.schema.json"
-            ),
-            include_str!(
-                "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/identity.schema.json"
-            ),
-            include_str!(
-                "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/receipt.schema.json"
-            ),
-        ];
-        let mut options = jsonschema::options();
-        options.with_retriever(OfflineOnly);
-        for text in resources {
-            let resource: Value = serde_json::from_str(text).expect("Workbench schema JSON");
-            options.with_resource(
-                resource["$id"].as_str().expect("Workbench schema id"),
-                jsonschema::Resource::from_contents(resource.clone())
-                    .expect("Workbench schema resource"),
-            );
-        }
-        let schema: Value = serde_json::from_str(include_str!(
-            "../../../../spec/workbench/draft.14/schemas/execution-projection.schema.json"
-        ))
-        .expect("Workbench execution projection schema JSON");
-        options
-            .build(&schema)
-            .expect("Workbench execution projection schema")
-    });
-    validator
-        .validate(value)
-        .map_err(|e| format!("invalid execution projection at {}: {e}", e.instance_path))?;
+    validate_shape(
+        value,
+        VALIDATOR.get_or_init(|| {
+            schema_validator(include_str!(
+                "../../../../spec/workbench/draft.14/schemas/execution-projection.schema.json"
+            ))
+        }),
+    )?;
     for field in [
         "hostId",
         "sessionId",

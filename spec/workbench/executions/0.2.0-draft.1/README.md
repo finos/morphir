@@ -127,9 +127,9 @@ established by schema validation.
 Structural fixtures run through the existing `workbench:schema-check` task.
 The MoonBit implementation has portable semantic tests on JS, native, Wasm and
 Wasm GC. These are implementation tests, not a shared MCK adapter qualification
-or evidence that the Rust connected host implements execution execution. A future
-shared MCK slice must add parent-owned transition goldens to the existing runner,
-then qualify host adapters and bind query/cancel transport methods.
+or evidence that the Rust connected host evaluates functions. The independent
+transition kit below supplies parent-owned fixed expectations through the shared
+runner. Live host query/cancel controls require separate adapter qualification.
 
 ## Independent offline transition kit
 

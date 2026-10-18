@@ -2,9 +2,10 @@
 
 Workbench MCK **`0.1.0-draft.15`** adds the single offline operation
 `validate-native-frame`, JSON transport only. It qualifies raw request decoding
-for the unchanged [`morphir/workbench/native` `0.1.0-draft.1`](../native/0.2.0-draft.1/README.md)
-profile. The native profile is not MCK draft.15. Historical MCK drafts.1–.6,
-connected v1, HTTP host draft.1, executions draft.1 and terminal draft.5 remain unchanged.
+for the current [`morphir/workbench/native` `0.2.0-draft.1`](../native/0.2.0-draft.1/README.md)
+profile. The native profile is not MCK draft.15. Historical MCK kits and
+connected v1 stay unchanged. Current HTTP host and execution profiles use exact
+`0.2.0-draft.1`; terminal draft.5 remains unchanged.
 
 Use the existing shared Rust runner with an explicit implementation adapter:
 
@@ -41,7 +42,7 @@ runner never sends a case ID, expected observation or qualification hint.
 ```json
 {
   "encoding": "utf8",
-  "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}",
+  "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\"}",
   "generate": {"prefix": {"repeat": " ", "count": 1048576}}
 }
 ```
@@ -88,7 +89,7 @@ creating any native authority. Stage precedence is:
    Whitespace can precede/follow the value; a second value or BOM cannot.
 4. For any of the six recognized `workspace.*` operations, bound the complete
    raw command to 4,096 bytes before closed-shape validation.
-5. Check the closed public native draft.1 request shape, including operation,
+5. Check the closed public native 0.2.0-draft.1 request shape, including operation,
    version, tokens, frozen payload shapes, integer ranges and UTF-16 identity
    bounds. Session equality and active capability ownership are not authenticated
    by this stage.

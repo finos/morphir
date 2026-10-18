@@ -1,10 +1,10 @@
 # Native request frame corpus
 
 This independent offline kit selects exact Workbench MCK `0.1.0-draft.15`:
-`validate-native-frame`, JSON only. Its 140 fixed cases exercise the unchanged
-`morphir/workbench/native` `0.1.0-draft.1` request decoder. Historical kits remain
-unchanged and qualify separately. Parent-owned expectations never reach the
-adapter.
+`validate-native-frame`, JSON only. Its 140 fixed cases exercise the current
+`morphir/workbench/native` `0.2.0-draft.1` request decoder. Historical kits remain
+unchanged. Only explicitly supported current versions can qualify with the current
+runner. Parent-owned expectations never reach the adapter.
 
 The corpus promotes the 16 published raw rejection expectations into executable
 inputs, includes all 78 published structural request cases and valid

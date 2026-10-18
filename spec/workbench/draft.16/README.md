@@ -2,8 +2,8 @@
 
 Exact offline Workbench MCK **`0.1.0-draft.16`** adds only
 `validate-native-reply`, with JSON transport. It qualifies raw response decoding
-for the unchanged [`morphir/workbench/native` `0.1.0-draft.1`](../native/0.2.0-draft.1/README.md)
-profile. The live native version and historical MCK drafts.1–.7 stay unchanged.
+for the current [`morphir/workbench/native` `0.2.0-draft.1`](../native/0.2.0-draft.1/README.md)
+profile. The current native version is 0.2.0-draft.1. Historical published kits remain unchanged.
 
 Use the existing shared Rust runner and an explicit production adapter:
 
@@ -39,7 +39,7 @@ Case requests carry that suite/version, `op: "validate-native-reply"`,
 }
 ```
 
-`expectedOperation` is one of the thirteen native draft.1 operations.
+`expectedOperation` is one of the thirteen native 0.2.0-draft.1 operations.
 `expectedSession` is required and is either null or an ASCII token of 1–128
 characters from `[A-Za-z0-9_.-]`. A non-null capture requires equality wherever
 the production reply contract carries session authority. Null disables that
