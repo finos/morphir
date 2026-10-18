@@ -48,6 +48,31 @@ behavior remains governed by the selected registry format.
 
 ## IR-unit profile
 
+### Conceptual graph adapter
+
+`IRUnit::with_conceptual_graph(Graph)` attaches the complete draft conceptual
+graph at `unit:<id>` using the existing metadata entry. It refuses an occupied
+owner with `conceptual.metadata_owner_conflict` and leaves the input unchanged.
+`IRUnit::conceptual_graph()` reads that owner; graph-free legacy units return
+`None`. A recognized malformed or unsupported conceptual profile raises an error.
+Graph entity IDs stay inside the graph and never become IR metadata owners.
+
+`IRUnit::conceptual_specification()` extracts a Library's public signatures,
+retaining the entire graph, annotations, provenance and valid sidecar metadata.
+It hides private constructors and excludes private declarations. A public
+declaration without a representable signature or a sidecar whose owner disappears
+causes `data.lossy_conversion`; the adapter does not drop that data. Existing
+Specs pass through. Application projection requires a separate linking policy
+and is unsupported here. Projection does not lower conceptual declarations or
+interpret their traits, and retained `projectionGaps` remain visible.
+
+These methods use the existing `morphir-pipeline-v1` carrier and registered codecs.
+Both Ion codecs retain the rich graph. Bare `morphir-json` export continues to
+refuse metadata loss. They add no MEP tuple or model envelope. See the
+[model API and limits](../../morphir-conceptual/model/README.md).
+
+### Wire shape
+
 The initial `morphir-pipeline-v1` contract is `ir-unit`. It keeps the profile
 version separate from the nested IR format version and Ion 1.0 encoding. Text and
 binary carry the same value model. The source snapshot supplies an expected

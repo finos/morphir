@@ -8,7 +8,7 @@ repository = "https://github.com/finos/morphir-moonbit"
 
 readme = "README.md"
 
-description = "Constructed conceptual intent links and revision-scoped inspection"
+description = "Rich conceptual model preservation and revision-scoped intent inspection"
 
 import {
   "moonrockz/ion@0.5.0",

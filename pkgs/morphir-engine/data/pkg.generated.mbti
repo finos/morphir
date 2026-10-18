@@ -2,6 +2,7 @@
 package "finos/morphir-engine/data"
 
 import {
+  "finos/morphir-conceptual/model",
   "finos/morphir-ir/versions/v4",
   "moonbitlang/core/debug",
   "moonrockz/ion/ion",
@@ -45,9 +46,12 @@ pub(all) struct IRUnit {
   annotations : Array[@ion.SymbolToken]
   provenance : Array[@ion.IonValue]
 } derive(@debug.Debug)
+pub fn IRUnit::conceptual_graph(Self) -> @model.Graph? raise
+pub fn IRUnit::conceptual_specification(Self) -> Self raise
 pub fn IRUnit::new(String, @v4.IRFile, metadata? : Array[NodeMetadata]) -> Self
 pub fn IRUnit::to_repr(Self) -> @debug.Repr
 pub fn IRUnit::validate(Self, limits? : Limits) -> Unit raise
+pub fn IRUnit::with_conceptual_graph(Self, @model.Graph) -> Self raise
 
 pub(all) struct Limits {
   max_bytes : Int

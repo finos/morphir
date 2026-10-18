@@ -1,4 +1,5 @@
 import {
+  "finos/morphir-conceptual/model",
   "finos/morphir-ir/identities",
   "finos/morphir-ir" @ir,
   "finos/morphir-ir/json" @ir_json,
@@ -15,4 +16,5 @@ import {
 import {
   "finos/morphir-engine/data",
   "finos/morphir-moonbit/fixtures",
+  "finos/morphir-conceptual/model/fixtures" @conceptual_fixtures,
 } for "test"

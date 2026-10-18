@@ -1,0 +1,191 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-conceptual/model"
+
+import {
+  "finos/morphir-conceptual/intent",
+  "moonbitlang/core/debug",
+  "moonrockz/ion/ion",
+}
+
+// Values
+pub const PROFILE : String = "morphir-conceptual/0.1.0-draft.1"
+
+pub const RECORD_VERSION : String = "0.1.0-draft.1"
+
+pub const TRAITS_PROFILE : String = "morphir-traits/0.1.0-draft.1"
+
+// Errors
+pub(all) suberror ModelError {
+  Invalid(Diagnostic)
+} derive(@debug.Debug)
+pub fn ModelError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) struct Diagnostic {
+  code : String
+  path : String
+  related_path : String?
+} derive(Eq, @debug.Debug)
+pub fn Diagnostic::equal(Self, Self) -> Bool
+pub fn Diagnostic::not_equal(Self, Self) -> Bool
+pub fn Diagnostic::to_repr(Self) -> @debug.Repr
+
+pub struct Entity {
+  // private fields
+}
+pub fn Entity::concern(Self, String) -> Record? raise ModelError
+pub fn Entity::content(Self) -> @ion.IonValue
+pub fn Entity::content_field(Self, String) -> @ion.IonValue?
+pub fn Entity::identity(Self) -> @intent.Snapshot
+pub fn Entity::kind(Self) -> EntityKind
+pub fn Entity::record(Self) -> Record
+
+pub(all) enum EntityKind {
+  Intent
+  Requirement
+  Concept
+  DataElement
+  SourceFragment
+  Declaration
+  Contract
+  Scenario
+  Implementation
+  Claim
+  Evidence
+  Unknown(String)
+} derive(Eq, @debug.Debug)
+pub fn EntityKind::equal(Self, Self) -> Bool
+pub fn EntityKind::not_equal(Self, Self) -> Bool
+pub fn EntityKind::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Fragment {
+  anchor : @intent.Id
+  text : String
+}
+
+pub struct Graph {
+  // private fields
+}
+pub fn Graph::capabilities(Self) -> Array[Record]
+pub fn Graph::decode(@ion.IonValue) -> Self raise ModelError
+pub fn Graph::entities(Self) -> Array[Entity]
+pub fn Graph::entity(Self, String) -> Entity?
+pub fn Graph::identity(Self) -> @intent.Snapshot
+pub fn Graph::inspect(Self, inputs? : Map[String, Self]) -> Inspection raise ModelError
+pub fn Graph::record(Self) -> Record
+pub fn Graph::relationships(Self) -> Array[Relationship]
+pub fn Graph::require_interpretation(Self, Interpretation) -> Unit raise ModelError
+pub fn Graph::sources(Self) -> Array[Source]
+pub fn Graph::to_ion(Self) -> @ion.IonValue
+pub fn Graph::trait_applications(Self) -> Array[TraitApplication]
+pub fn Graph::trait_definitions(Self) -> Array[TraitDefinition]
+
+pub(all) enum Inspection {
+  InvalidGraph(Array[Diagnostic])
+  Inspected(Array[Diagnostic])
+}
+pub fn Inspection::diagnostics(Self) -> Array[Diagnostic]
+
+pub(all) enum Interpretation {
+  Check
+  Execute
+  ValidateTraits
+}
+
+pub(all) enum Multiplicity {
+  One
+  Many
+}
+
+pub(all) enum Origin {
+  Authored
+  Imported
+  Derived
+}
+
+pub struct Record {
+  // private fields
+}
+pub fn Record::field(Self, String) -> @ion.IonValue?
+pub fn Record::to_ion(Self) -> @ion.IonValue
+
+pub(all) enum Reference {
+  Resolved(@intent.ResolvedRef)
+  Unresolved(String, String, String)
+} derive(Eq, @debug.Debug)
+pub fn Reference::equal(Self, Self) -> Bool
+pub fn Reference::not_equal(Self, Self) -> Bool
+pub fn Reference::to_repr(Self) -> @debug.Repr
+
+pub struct Relationship {
+  // private fields
+}
+pub fn Relationship::id(Self) -> @intent.Id
+pub fn Relationship::predicate(Self) -> String
+pub fn Relationship::record(Self) -> Record
+pub fn Relationship::subject(Self) -> Reference
+pub fn Relationship::target(Self) -> Reference
+
+pub struct Source {
+  // private fields
+}
+pub fn Source::fragments(Self) -> Array[Fragment]
+pub fn Source::id(Self) -> @intent.Id
+pub fn Source::record(Self) -> Record
+
+pub struct TraitApplication {
+  // private fields
+}
+pub fn TraitApplication::definition(Self) -> Reference
+pub fn TraitApplication::identity(Self) -> @intent.Snapshot
+pub fn TraitApplication::interpretation(Self) -> TraitInterpretation raise ModelError
+pub fn TraitApplication::origin(Self) -> Origin raise ModelError
+pub fn TraitApplication::payload(Self) -> @ion.IonValue
+pub fn TraitApplication::provenance(Self) -> Record
+pub fn TraitApplication::record(Self) -> Record
+pub fn TraitApplication::target(Self) -> TraitTarget raise ModelError
+
+pub struct TraitDefinition {
+  // private fields
+}
+pub fn TraitDefinition::identity(Self) -> @intent.Snapshot
+pub fn TraitDefinition::interpretation(Self) -> TraitInterpretation raise ModelError
+pub fn TraitDefinition::multiplicity(Self) -> Multiplicity raise ModelError
+pub fn TraitDefinition::record(Self) -> Record
+
+pub(all) enum TraitInterpretation {
+  Descriptive
+  Semantic(Array[@intent.Id])
+}
+
+pub(all) enum TraitTarget {
+  ModelTarget(@intent.Snapshot)
+  ModuleTarget(@intent.Snapshot, String)
+  EntityTarget(TraitTargetKind, Reference)
+  ProfileTarget(TraitTargetKind, @intent.Id, Reference)
+  UnknownTarget(Record)
+}
+
+pub(all) enum TraitTargetKind {
+  ConceptTarget
+  TypeTarget
+  MemberTarget
+  FunctionTarget
+  OperationTarget
+  ServiceBindingTarget
+} derive(Eq)
+pub fn TraitTargetKind::equal(Self, Self) -> Bool
+pub fn TraitTargetKind::not_equal(Self, Self) -> Bool
+
+// Type aliases
+pub using @intent {type Id}
+
+pub using @intent {type ResolvedRef}
+
+pub using @intent {type Revision}
+
+pub using @intent {type Snapshot}
+
+pub using @intent {type SourceRef}
+
+// Traits

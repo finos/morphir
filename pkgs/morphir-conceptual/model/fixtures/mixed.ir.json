@@ -1,0 +1,9 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Specs": {
+      "packageName": "example/model", "dependencies": {},
+      "spec": { "modules": { "api": { "types": {}, "values": { "identity": { "inputs": { "value": "a" }, "output": "a" } } } } }
+    }
+  }
+}

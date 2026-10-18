@@ -1,0 +1,11 @@
+import {
+  "moonrockz/ion/ion",
+  "finos/morphir-conceptual/intent",
+  "moonbitlang/core/debug",
+}
+
+import {
+  "finos/morphir-conceptual/model",
+  "finos/morphir-conceptual/model/fixtures",
+  "moonrockz/ion/text" @ion_text,
+} for "test"

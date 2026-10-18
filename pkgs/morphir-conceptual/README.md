@@ -1,4 +1,11 @@
-# Conceptual intent links
+# Conceptual model and intent links
+
+[`finos/morphir-conceptual/model`](model/README.md) preserves the complete M1/M2
+rich graph, exposes record views and inspects exact references and independent
+gaps. The engine data adapter carries it through existing Ion text/binary codecs
+as unit-owned IRUnit metadata.
+
+## Constructed intent links
 
 `finos/morphir-conceptual/intent` inspects constructed source, requirement, claim and
 evidence records. It adapts caller-supplied KB excerpts and projects a read-only PRD.
