@@ -43,6 +43,21 @@ pub enum ConnectedMethod {
     PlaygroundCompile,
     #[serde(rename = "morphir.playground.generate")]
     PlaygroundGenerate,
+    #[serde(rename = "morphir.artifacts.generate")]
+    ArtifactsGenerate,
+    #[serde(rename = "morphir.artifacts.read")]
+    ArtifactsRead,
+    #[serde(rename = "morphir.artifacts.release")]
+    ArtifactsRelease,
+}
+
+impl ConnectedMethod {
+    pub fn is_artifact_transfer(self) -> bool {
+        matches!(
+            self,
+            Self::ArtifactsGenerate | Self::ArtifactsRead | Self::ArtifactsRelease
+        )
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/generate-request.schema.json",
+  "title": "Artifact generate request",
+  "description": "Exact negotiated artifact transfer draft; complete semantic rules and encoded bounds are normative in README.html",
+  "examples": [
+    {
+      "contractVersion": "0.1.0-draft.1",
+      "providerId": "playground",
+      "generation": {
+        "ir": {
+          "formatVersion": 4
+        },
+        "irVersion": "4",
+        "target": "fixture",
+        "options": {}
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "contractVersion", "providerId", "generation" ],
+  "properties": {
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "providerId": {
+      "type": "string",
+      "not": {
+        "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "generation": {
+      "type": "object",
+      "required": [ "ir", "irVersion", "target", "options" ],
+      "properties": {
+        "ir": true,
+        "irVersion": {
+          "type": "string",
+          "not": {
+            "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+          },
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "target": {
+          "type": "string",
+          "not": {
+            "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+          },
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "options": true
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

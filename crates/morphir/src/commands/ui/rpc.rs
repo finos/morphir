@@ -26,6 +26,216 @@ use super::{
 
 const MAX_INBOUND_MESSAGE_BYTES: usize = 1024 * 1024;
 
+/// Probe only the method with IgnoredAny for other fields. New profile frames
+/// are then validated literally before constructing maps or numeric values.
+/// Legacy requests keep their original decoder and wire behavior.
+fn decode_rpc_request(raw: &str) -> Result<JsonRpcRequest, ()> {
+    #[derive(Deserialize)]
+    struct MethodProbe {
+        method: String,
+    }
+    let probe = serde_json::from_str::<MethodProbe>(raw).map_err(|_| ())?;
+    if matches!(
+        probe.method.as_str(),
+        "morphir.artifacts.generate" | "morphir.artifacts.read" | "morphir.artifacts.release"
+    ) {
+        let limit = if probe.method == "morphir.artifacts.generate" {
+            super::artifacts::MAX_GENERATE_REQUEST_BYTES
+        } else {
+            super::artifacts::MAX_CONTROL_REQUEST_BYTES
+        };
+        if raw.len() > limit {
+            return Err(());
+        }
+        let value = morphir_mck::json::parse_exact_document(raw).map_err(|_| ())?;
+        let mut fields =
+            super::artifacts::closed_object(value, &["jsonrpc", "id", "method", "params"])
+                .map_err(|_| ())?;
+        if fields["jsonrpc"] != "2.0" {
+            return Err(());
+        }
+        let id = fields["id"].as_u64().ok_or(())?;
+        let method = match fields["method"].as_str() {
+            Some("morphir.artifacts.generate") => ConnectedMethod::ArtifactsGenerate,
+            Some("morphir.artifacts.read") => ConnectedMethod::ArtifactsRead,
+            Some("morphir.artifacts.release") => ConnectedMethod::ArtifactsRelease,
+            _ => return Err(()),
+        };
+        // Value::Deserialize may reinterpret serde's private marker maps.
+        // Move literal params directly rather than deserialize them again.
+        Ok(JsonRpcRequest {
+            jsonrpc: super::protocol::JsonRpcVersion::V2,
+            id,
+            method,
+            params: fields.remove("params").expect("closed params"),
+        })
+    } else {
+        serde_json::from_str(raw).map_err(|_| ())
+    }
+}
+
+fn artifact_rpc_error(id: u64, error: super::artifacts::ArtifactError) -> DispatchResult {
+    let mut response = DispatchResult::error(id, INVALID_PARAMS, &error.to_string());
+    response.envelope["error"]["data"] = json!({ "profile": super::artifacts::PROFILE, "contractVersion": super::artifacts::CONTRACT_VERSION, "code": error.code() });
+    response
+}
+
+fn artifact_profile_available(host: &UiHostState, provider_id: Option<&str>) -> bool {
+    let Some(provider) = host.capabilities.playground.as_ref() else {
+        return false;
+    };
+    let current = provider.manifest();
+    current.status == super::protocol::ProviderStatus::Available
+        && provider_id.is_none_or(|id| id == current.id)
+        && current.capabilities.iter().any(|offer| {
+            offer.name == super::artifacts::PROFILE
+                && offer.version == super::artifacts::CONTRACT_VERSION
+        })
+        && host.manifest.providers.iter().any(|captured| {
+            captured.id == current.id
+                && captured.status == super::protocol::ProviderStatus::Available
+                && captured.capabilities.iter().any(|offer| {
+                    offer.name == super::artifacts::PROFILE
+                        && offer.version == super::artifacts::CONTRACT_VERSION
+                })
+        })
+}
+
+async fn dispatch_artifacts(
+    host: &UiHostState,
+    state: &mut ConnectionState,
+    request: &JsonRpcRequest,
+) -> DispatchResult {
+    use super::artifacts::*;
+    if !state.initialized || !artifact_profile_available(host, None) {
+        return artifact_rpc_error(request.id, ArtifactError::Unavailable);
+    }
+    match request.method {
+        ConnectedMethod::ArtifactsGenerate => {
+            let params = match decode_generate(&request.params.to_string()) {
+                Ok(params) => params,
+                Err(error) => return artifact_rpc_error(request.id, error),
+            };
+            if !artifact_profile_available(host, Some(params.provider_id.as_str())) {
+                return artifact_rpc_error(request.id, ArtifactError::Unavailable);
+            }
+            if let Err(error) = state.artifacts.begin(&host.artifact_capacity) {
+                return if error == ArtifactError::Capacity {
+                    DispatchResult::result(request.id, json!(ArtifactFailure::error(error)))
+                } else {
+                    artifact_rpc_error(request.id, error)
+                };
+            }
+            let _invocation = match host.artifact_capacity.reserve_invocation() {
+                Ok(permit) => permit,
+                Err(error) => {
+                    state.artifacts.fail();
+                    return DispatchResult::result(
+                        request.id,
+                        json!(ArtifactFailure::error(error)),
+                    );
+                }
+            };
+            let target = params.generation.target().clone();
+            let ir_version = params.generation.ir_version().clone();
+            let provider = host
+                .capabilities
+                .playground
+                .as_ref()
+                .expect("offered playground");
+            let generated = match provider.generate_artifacts(params.generation).await {
+                Ok(Some(generated)) => generated,
+                Ok(None) => {
+                    state.artifacts.fail();
+                    return artifact_rpc_error(request.id, ArtifactError::Unavailable);
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "Negotiated artifact generation failed");
+                    state.artifacts.fail();
+                    return DispatchResult::result(
+                        request.id,
+                        json!(ArtifactFailure::generation_failed()),
+                    );
+                }
+            };
+            let diagnostics = match ArtifactDiagnostics::from_sdk(&generated.result.diagnostics) {
+                Ok(diagnostics) => diagnostics,
+                Err(error) => {
+                    state.artifacts.fail();
+                    return DispatchResult::result(
+                        request.id,
+                        json!(ArtifactFailure::error(error)),
+                    );
+                }
+            };
+            if !generated.result.success {
+                state.artifacts.fail();
+                return DispatchResult::result(
+                    request.id,
+                    json!(ArtifactFailure::diagnostics(diagnostics)),
+                );
+            }
+            let retained = SessionId::parse(&host.manifest.session_id)
+                .and_then(|session| {
+                    Producer::parse(&generated.producer.id, &generated.producer.version).map(
+                        |producer| {
+                            GenerationContext::new(
+                                session,
+                                params.provider_id,
+                                target,
+                                ir_version,
+                                producer,
+                            )
+                        },
+                    )
+                })
+                .and_then(|context| {
+                    PreparedArtifacts::inspect(generated.result.artifacts).and_then(|prepared| {
+                        state.artifacts.retain(
+                            prepared,
+                            context,
+                            diagnostics,
+                            &host.artifact_capacity,
+                        )
+                    })
+                });
+            match retained {
+                Ok(manifest) => DispatchResult::result(request.id, json!(manifest)),
+                Err(error) => {
+                    state.artifacts.fail();
+                    DispatchResult::result(request.id, json!(ArtifactFailure::error(error)))
+                }
+            }
+        }
+        ConnectedMethod::ArtifactsRead => {
+            let params = match decode_read(&request.params.to_string()) {
+                Ok(params) => params,
+                Err(error) => return artifact_rpc_error(request.id, error),
+            };
+            match state.artifacts.read(
+                &params.generation_id,
+                &params.artifact_id,
+                params.offset,
+                params.max_bytes,
+            ) {
+                Ok(chunk) => DispatchResult::result(request.id, json!(chunk)),
+                Err(error) => artifact_rpc_error(request.id, error),
+            }
+        }
+        ConnectedMethod::ArtifactsRelease => {
+            let params = match decode_release(&request.params.to_string()) {
+                Ok(params) => params,
+                Err(error) => return artifact_rpc_error(request.id, error),
+            };
+            match state.artifacts.release(&params.generation_id) {
+                Ok(()) => DispatchResult::result(request.id, json!({})),
+                Err(error) => artifact_rpc_error(request.id, error),
+            }
+        }
+        _ => unreachable!("artifact dispatch only"),
+    }
+}
+
 pub(crate) async fn upgrade(
     State(state): State<UiHostState>,
     headers: HeaderMap,
@@ -79,6 +289,7 @@ struct ConnectionState {
     ledger: RequestLedger,
     next_subscription: u64,
     subscriptions: BTreeMap<String, WatchSubscription>,
+    artifacts: super::artifacts::ArtifactSession,
 }
 
 struct WatchSubscription {
@@ -94,6 +305,7 @@ impl Default for ConnectionState {
             ledger: RequestLedger::default(),
             next_subscription: 1,
             subscriptions: BTreeMap::new(),
+            artifacts: super::artifacts::ArtifactSession::default(),
         }
     }
 }
@@ -126,7 +338,7 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                     let _ = socket.send(Message::Close(None)).await;
                     break;
                 }
-                let Ok(request) = serde_json::from_str::<JsonRpcRequest>(&text) else {
+                let Ok(request) = decode_rpc_request(&text) else {
                     if send_value(
                         &mut socket,
                         rpc_error(Value::Null, -32600, "Invalid Request"),
@@ -495,6 +707,9 @@ async fn dispatch(
                 Err(error) => provider_failure(request.id, &error),
             }
         }
+        ConnectedMethod::ArtifactsGenerate
+        | ConnectedMethod::ArtifactsRead
+        | ConnectedMethod::ArtifactsRelease => dispatch_artifacts(host, state, request).await,
     }
 }
 
@@ -639,6 +854,7 @@ mod tests {
             capabilities,
             initial_view: None,
             authority: "127.0.0.1:0".into(),
+            artifact_capacity: super::super::artifacts::HostArtifactCapacity::default(),
         }
     }
 
@@ -647,6 +863,67 @@ mod tests {
             playground: Some(std::sync::Arc::new(StubPlayground)),
             ..Default::default()
         })
+    }
+
+    #[test]
+    fn artifact_raw_frames_keep_duplicates_and_fractional_tokens_before_conversion() {
+        let raw = r#"{"jsonrpc":"2.0","id":1,"method":"morphir.artifacts.read","params":{"contractVersion":"0.1.0-draft.1","generationId":"g","artifactId":"a","offset":1e-9999,"maxBytes":1}}"#;
+        let request = decode_rpc_request(raw).unwrap();
+        assert_eq!(
+            super::super::artifacts::decode_read(&request.params.to_string()).unwrap_err(),
+            super::super::artifacts::ArtifactError::InvalidRange
+        );
+        assert!(
+            decode_rpc_request(&raw.replace("\"offset\":1e-9999", "\"offset\":0,\"offset\":1"))
+                .is_err()
+        );
+        assert!(decode_rpc_request(&raw.replace("\"g\"", r#""\ud800""#)).is_err());
+        assert!(
+            decode_rpc_request(&raw.replace(
+                "\"maxBytes\":1",
+                &format!("\"maxBytes\":1,\"padding\":\"{}\"", "x".repeat(16384))
+            ))
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn artifact_rpc_literal_objects_cannot_impersonate_serde_private_numbers() {
+        let raw = r#"{"jsonrpc":"2.0","id":1,"method":"morphir.artifacts.read","params":{"contractVersion":"0.1.0-draft.1","generationId":"g","artifactId":"a","offset":{"$serde_json::private::Number":"1"},"maxBytes":1}}"#;
+        let request = decode_rpc_request(raw).unwrap();
+        assert!(request.params["offset"].is_object());
+        assert_eq!(
+            super::super::artifacts::decode_read(&request.params.to_string()).unwrap_err(),
+            super::super::artifacts::ArtifactError::InvalidRange
+        );
+        let raw = r#"{"jsonrpc":"2.0","id":2,"method":"morphir.artifacts.generate","params":{"contractVersion":"0.1.0-draft.1","providerId":"playground","generation":{"ir":{"$serde_json::private::Number":"1"},"irVersion":"4","target":"fixture","options":{"$serde_json::private::RawValue":"{\"x\":1,\"x\":2}"}}}}"#;
+        let request = decode_rpc_request(raw).unwrap();
+        let generation = super::super::artifacts::decode_generate(&request.params.to_string())
+            .unwrap()
+            .generation
+            .into_playground();
+        assert_eq!(generation.ir["$serde_json::private::Number"], "1");
+        assert_eq!(
+            generation.options["$serde_json::private::RawValue"],
+            r#"{"x":1,"x":2}"#
+        );
+    }
+
+    #[tokio::test]
+    async fn artifact_methods_refuse_uninitialized_or_unoffered_capabilities() {
+        let host = state_with_playground();
+        let request = decode_rpc_request(r#"{"jsonrpc":"2.0","id":1,"method":"morphir.artifacts.generate","params":{"contractVersion":"0.1.0-draft.1","providerId":"playground","generation":{"ir":{},"irVersion":"4","target":"fixture","options":{}}}}"#).unwrap();
+        let mut connection = ConnectionState::default();
+        assert_eq!(
+            dispatch(&host, &mut connection, &request).await.envelope["error"]["data"]["code"],
+            "artifacts.unavailable"
+        );
+        connection.initialized = true;
+        assert_eq!(
+            dispatch(&host, &mut connection, &request).await.envelope["error"]["data"]["code"],
+            "artifacts.unavailable"
+        );
+        assert_eq!(host.artifact_capacity.reserved_generations(), 0);
     }
 
     fn state_with_workspace_only() -> UiHostState {

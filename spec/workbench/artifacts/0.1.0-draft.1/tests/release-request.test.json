@@ -1,0 +1,22 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/release-request.schema.json",
+  "tests": [
+    {
+      "description": "Independently authored profile example",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1"
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown members are refused in this exact draft",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "unknown": true
+      },
+      "valid": false
+    }
+  ]
+}

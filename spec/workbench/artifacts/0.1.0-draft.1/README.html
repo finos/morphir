@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Negotiated generated artifact transfer</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Negotiated generated artifact transfer</h1><p class="meta">morphir/workbench/artifacts · exact 0.1.0-draft.1 · in-memory generation and retrieval</p>
+<nav class="toc"><ul><li><a href="#compatibility">Compatibility</a></li><li><a href="#wire">Wire contract</a></li><li><a href="#bytes">Byte and path semantics</a></li><li><a href="#budgets">Budgets</a></li><li><a href="#lifecycle">Authority and lifecycle</a></li><li><a href="#errors">Errors</a></li><li><a href="#qualification">Qualification boundaries</a></li></ul></nav>
+<section id="compatibility"><h2>Compatibility</h2><p>This additive profile is offered as an existing provider capability name/version entry. Connected protocolVersion 1, initialization, all legacy methods and PlaygroundArtifact serialization remain frozen. Exact canonical SemVer draft selection is mandatory before invoking a backend. Other providers default to unavailable. A selected-profile failure never triggers legacy regeneration. The documented SDK artifact binary flag already means standard base64; this profile changes no SDK schema.</p></section>
+<section id="wire"><h2>Wire contract</h2><p>All objects are closed. Requests and replies reject duplicate members at every nesting level before serde or JSON.parse can discard evidence. Strings must be well-formed Unicode. IDs, provider/session identities, targets and IR-version selectors contain 1–128 UTF-8 bytes and exclude C0, DEL and C1 controls. Their spelling is opaque, not a filesystem location. JSON Schema maxLength cannot establish the UTF-8 bound, so semantic decoding also checks bytes. Actual producer versions use canonical SemVer, with no lenient prefix. IR selectors retain existing semantics, including the selector 4.</p>
+<table><thead><tr><th>Method</th><th>Closed parameters</th><th>Result</th></tr></thead><tbody><tr><td>morphir.artifacts.generate</td><td>{contractVersion,providerId,generation:{ir,irVersion,target,options}}</td><td>Ready manifest or Failed diagnostics</td></tr><tr><td>morphir.artifacts.read</td><td>{contractVersion,generationId,artifactId,offset,maxBytes}</td><td>{profile,contractVersion,generationId,artifactId,offset,nextOffset,content}</td></tr><tr><td>morphir.artifacts.release</td><td>{contractVersion,generationId}</td><td>{}</td></tr></tbody></table>
+<p>Ready includes status, profile, contractVersion, sessionId, providerId, generationId, actual producer {id,version}, selected target, irVersion, ordered artifacts [{id,path,kind,byteLength,sha256}] and diagnostics. Kinds are utf8-text or binary. Failed includes only status:failed, profile, contractVersion and diagnostics. No failed response contains a partial inventory. The chunk content is canonical padded standard base64; length follows from decoded bytes, nextOffset equals offset plus that length. No independent EOF flag exists.</p><p>Byte offsets and counts accept mathematically integral JSON numbers, including 1.0 and 1e0. Raw decimal tokens are checked before floating-point conversion. Fractional values, nonzero underflow tokens, negative nonzero values and values outside the field's bounds are rejected. Negative zero denotes zero. JSON-RPC request IDs retain the existing connected-protocol u64 syntax and uniqueness rules.</p></section>
+<section id="bytes"><h2>Byte and path semantics</h2><p>Text retains String::as_bytes exactly, including BOM, NUL, CRLF and final newlines. Binary decodes the SDK's standard base64 and requires exact encoder round-trip spelling, including padding and zero unused bits. Preflight derives exact decoded lengths without allocating decoded output. No content is treated as an encoded Morphir model. SHA-256 is computed from retained bytes; wire digests are exactly 64 lowercase hexadecimal digits.</p><p>Reuse morphir_distribution::RelativeArtifactPath and Sha256Digest. Paths contain portable forward-slash components, at most 4096 UTF-8 bytes and 1024 UTF-16 units total, each component at most 255 bytes and 255 UTF-16 units. Reject C0 controls U+0000–U+001F, DEL U+007F and C1 controls U+0080–U+009F, forbidden characters, dot components, backslashes, device names including COM/LPT superscript digits, trailing dots/spaces, duplicate paths, normalized case aliases, parent-directory aliases and file/directory prefix conflicts. Path hints are never joined to a host output root. Collision keys are NFKC → full default casefold → NFC, with unicode-normalization 0.1.25 Unicode 17.0.0 and unicode-casefold 0.2.0 Unicode 9.0.0. These distinct table revisions are part of this exact profile.</p></section>
+<section id="budgets"><h2>Budgets</h2><table><thead><tr><th>Boundary</th><th>Inclusive maximum</th></tr></thead><tbody><tr><td>Files per generation</td><td>256</td></tr><tr><td>One decoded file</td><td>16,777,216 bytes</td></tr><tr><td>Decoded generation and host reservations plus retained bytes</td><td>67,108,864 bytes</td></tr><tr><td>Host simultaneous reserved/retained generations</td><td>64, including Generating and Ready; empty files consume a slot</td></tr><tr><td>Generation request complete text frame</td><td>1,048,576 UTF-8 bytes, also bounded by existing RPC framing</td></tr><tr><td>Read/release complete text frame</td><td>16,384 UTF-8 bytes</td></tr><tr><td>Complete compact encoded reply envelope</td><td>131,072 UTF-8 bytes, including JSON-RPC wrapper, IDs, manifest and diagnostics</td></tr><tr><td>Read decoded chunk</td><td>65,536 bytes; maxBytes is 1–65,536</td></tr><tr><td>Read base64 content</td><td>87,384 ASCII characters</td></tr></tbody></table><p>Reserve a generation slot before provider invocation. One separate host invocation credit permits at most one artifact producer invocation and its response conversion at a time; another concurrent invocation refuses with artifacts.capacity before reaching the backend. Existing retained generations and reads remain independent. Reserve exact decoded bytes after preflight and before decoding. Validate the entire inventory and measure the complete encoded manifest plus diagnostics before Ready. Use the largest u64 request-ID wrapper when validating retained manifests, so later serialization fits every permitted request. Reject oversized diagnostics using a fixed bounded failure; never echo oversized content recursively. Reservations roll back on every failure. Decoded reservations include in-flight conversion and retained buffers. SDK strings, existing generator allocations, networking buffers and client ZIP working memory have separate ownership and are not claimed to fit inside this decoded-byte counter.</p></section>
+<section id="lifecycle"><h2>Authority and lifecycle</h2><p>Every call requires the initialized authenticated connection and its currently offered exact profile/provider. Cookie, Host and Origin checks remain unchanged. One active generation per connection moves Empty/Released → Generating → Ready. Failures restore Empty. A second generation never silently replaces active output. Capture actual resolved producer metadata from the same single bounded SDK invocation used to produce artifacts. Reads and releases never invoke the backend again. Ready bytes are immutable even if the registry later changes.</p><p>Read min(maxBytes,length-offset) with offsets inside the advertised file. Repeated identical reads return identical bytes. Offset equal to EOF returns an empty chunk; beyond EOF refuses. Wrong generation/artifact IDs or another connection's handles refuse. Release drops all bytes and reservations, preserving only the last released identity for same-connection idempotence. Starting a new generation supersedes that last-release record. Connection/session closure or host shutdown drops reservations through ownership. A lost generate reply requires closing the owning socket, without automatic regeneration. Generation remains bounded by the existing synchronous invocation timeout; stopping client waiting does not prove remote generator interruption.</p><p>Generated bytes, retained bytes, verified client bytes, saved downloads and published files are distinct states. This service writes no files, installs no packages and promises no durable restoration. Clients verify captured context after every await, length and independent digest before any downloadable Blob/ZIP entry, and release the exact captured generation. Strict UTF-8 preview never becomes a re-encoded download payload.</p></section>
+<section id="errors"><h2>Errors</h2><p>Invalid request/authority/lifecycle calls return existing JSON-RPC errors with bounded messages and artifact data {profile,contractVersion,code}. Generation, SDK conversion, capacity and manifest-budget failures return Failed diagnostics with no inventory. Stable codes are artifacts.invalid_request, artifacts.invalid_identity, artifacts.invalid_range, artifacts.invalid_path, artifacts.invalid_path_set, artifacts.invalid_content, artifacts.file_count, artifacts.file_size, artifacts.set_size, artifacts.reply_limit, artifacts.capacity, artifacts.active_generation, artifacts.unknown_handle and artifacts.unavailable. Provider runtime errors use artifacts.generation_failed. Oversized replies use one error diagnostic with code artifacts.reply_limit, message Artifact reply exceeds its limit., and location:null. Diagnostics retain existing required severity, nullable code, message and nullable location fields; severity is error/warning/info/hint.</p></section>
+<section id="qualification"><h2>Qualification boundaries</h2><p>The parent shared Rust MCK owns independently authored expectations and scoped server/client claims. The next artifact evidence draft is provisionally 28 after worksheet 27 and is not allocated by this document. Native-direct boundary qualification does not imply process/WASM support at the full decoded aggregate: the currently pinned morphir-host-native transport caps MEP encoded replies at 64 MiB, below base64 for 64 MiB decoded binary. Any opt-in larger artifact invocation policy must remain bounded and preserve legacy transport behavior. Real Rust producer/registry/invoker/authenticated-host, upstream TypeScript, actual Chromium and packaged Proton saved-file/ZIP comparisons remain required. A preview, a manifest digest copied as expected, or a download click does not qualify saved bytes.</p></section>
+</main></body></html>

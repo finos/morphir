@@ -1,0 +1,17 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/release-result.schema.json",
+  "tests": [
+    {
+      "description": "Independently authored profile example",
+      "data": {},
+      "valid": true
+    },
+    {
+      "description": "Unknown members are refused in this exact draft",
+      "data": {
+        "unknown": true
+      },
+      "valid": false
+    }
+  ]
+}

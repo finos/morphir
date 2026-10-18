@@ -1,0 +1,32 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/read-result.schema.json",
+  "tests": [
+    {
+      "description": "Independently authored profile example",
+      "data": {
+        "profile": "morphir/workbench/artifacts",
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 0,
+        "nextOffset": 3,
+        "content": "AP8K"
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown members are refused in this exact draft",
+      "data": {
+        "profile": "morphir/workbench/artifacts",
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 0,
+        "nextOffset": 3,
+        "content": "AP8K",
+        "unknown": true
+      },
+      "valid": false
+    }
+  ]
+}

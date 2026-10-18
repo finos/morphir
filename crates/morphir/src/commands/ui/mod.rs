@@ -11,6 +11,7 @@ use provider::{
 };
 use server::BoundUiHost;
 
+pub mod artifacts;
 pub mod assets;
 pub mod auth;
 pub mod protocol;
