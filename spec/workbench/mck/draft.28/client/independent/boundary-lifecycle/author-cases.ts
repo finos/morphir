@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 /**
  * Static case authoring from the approved contract, never a compatibility runner.
  * No production/adapter imports, executions, outputs or observed-to-expected path.
@@ -6,9 +7,9 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-const own = resolve(process.argv[2] ?? dirname(new URL(import.meta.url).pathname));
+const own = resolve(process.argv[2] ?? dirname(fileURLToPath(import.meta.url)));
 const parent = resolve(own, '../../..');
-const foundation = resolve(dirname(new URL(import.meta.url).pathname), 'foundation/byte-recipes.json');
+const foundation = resolve(dirname(fileURLToPath(import.meta.url)), 'foundation/byte-recipes.json');
 const catalog = JSON.parse(await readFile(foundation, 'utf8'));
 const sha = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
 const copy = <T>(value: T): T => structuredClone(value);

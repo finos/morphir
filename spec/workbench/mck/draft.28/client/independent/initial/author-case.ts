@@ -1,5 +1,6 @@
+import { fileURLToPath } from 'node:url';
 import {resolve,dirname} from 'node:path';
-const output=resolve(process.argv[2] ?? dirname(new URL(import.meta.url).pathname));
+const output=resolve(process.argv[2] ?? dirname(fileURLToPath(import.meta.url)));
 /** Independently authored from the reviewed operation semantics. This file
  * imports no production client or adapter and never reads an observed report.
  */

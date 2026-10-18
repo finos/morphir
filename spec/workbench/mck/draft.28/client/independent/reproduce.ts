@@ -1,8 +1,9 @@
+import { fileURLToPath } from 'node:url';
 /** Reproduce static authored cases only. Never invokes a client or adapter. */
 import { createHash } from 'node:crypto';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-const source=dirname(new URL(import.meta.url).pathname);
+const source=dirname(fileURLToPath(import.meta.url));
 if(!process.argv[2])throw new Error('Supply an owned ignored output directory.');
 const output=resolve(process.argv[2]);
 const sha=(bytes:Uint8Array|string)=>createHash('sha256').update(bytes).digest('hex');

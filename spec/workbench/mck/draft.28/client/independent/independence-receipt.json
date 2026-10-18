@@ -9,8 +9,8 @@
   "artifacts": [
     {
       "path": "independent/boundary-lifecycle/author-cases.ts",
-      "byteLength": 39160,
-      "sha256": "14c0d3e3f30928b9c55e6bb63d5a7143ff48614471f0c9ad7eac8fdef894bf1f"
+      "byteLength": 39196,
+      "sha256": "106524f2e3eb280d9b5775c7312a3bb52b85fc5328d4fae2564262d69fc8e357"
     },
     {
       "path": "independent/boundary-lifecycle/coverage.json",
@@ -39,8 +39,8 @@
     },
     {
       "path": "independent/bytes-preview/author-cases.ts",
-      "byteLength": 29370,
-      "sha256": "611d3b694fe155e70a537304c2c50ed47297e25c33f215d427d39ba8d4346b04"
+      "byteLength": 29406,
+      "sha256": "9d8adffc7d80a73237e544b89b005acd4a45332d0c906edc76528cf1508835b6"
     },
     {
       "path": "independent/bytes-preview/authored-manifest.json",
@@ -69,8 +69,8 @@
     },
     {
       "path": "independent/initial/author-case.ts",
-      "byteLength": 4605,
-      "sha256": "663091e5bc6f97e5e51b16f8d4cf51142af93f6eb85cb6c9b68970c6a77026f6"
+      "byteLength": 4644,
+      "sha256": "2ecdb3b9762ed3bb297a24177d6de19446b17ffea14e524693fecd077bdbb32f"
     },
     {
       "path": "independent/initial/first-input.json",
@@ -79,8 +79,14 @@
     },
     {
       "path": "independent/reproduce.ts",
-      "byteLength": 1904,
-      "sha256": "7176ec8b3e9486becfe13587201c3e7824a0b8e3ee7499c37839af1dba6d6738"
+      "byteLength": 1943,
+      "sha256": "23696f82094a38d674ce055fc97467e3b8aaba476c9f61bb46a73ed96ed54389"
+    },
+    {
+      "path": "independent/bytes-preview/author-before-file-url-fix.ts",
+      "byteLength": 29370,
+      "sha256": "611d3b694fe155e70a537304c2c50ed47297e25c33f215d427d39ba8d4346b04"
     }
-  ]
+  ],
+  "pathPortability": "Published author scripts use Node fileURLToPath rather than URL.pathname before native path joins. Frozen original portable34 source retained; all102 case bytes reproduce identically after this filesystem-only change."
 }
