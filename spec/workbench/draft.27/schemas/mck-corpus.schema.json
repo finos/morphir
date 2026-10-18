@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.27/mck-corpus.schema.json",
+  "title": "Worksheet immutable MCK corpus",
+  "description": "Exact local Scheme worksheet source capture, UTF-16 ranges and existing typed terminal payloads; semantic rules remain normative in the profile",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.27",
+      "cases": [
+        {
+          "id": "integer",
+          "operation": "worksheet-evaluate",
+          "format": "json",
+          "input": {
+            "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"7\"}}"
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "profile": "morphir/workbench/worksheet",
+              "contractVersion": "0.1.0-draft.1",
+              "source": {
+                "id": "worksheet-source",
+                "revision": 4,
+                "text": "7"
+              },
+              "observations": [
+                {
+                  "id": "form-0",
+                  "range": {
+                    "start": 0,
+                    "end": 1
+                  },
+                  "expression": "7",
+                  "preview": "7",
+                  "outcome": {
+                    "status": "returned",
+                    "value": {
+                      "type": "int",
+                      "value": "7"
+                    }
+                  }
+                }
+              ],
+              "completion": {
+                "status": "returned",
+                "value": {
+                  "type": "unit"
+                }
+              },
+              "diagnostic": null
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.27"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "enum": [ "worksheet-evaluate", "worksheet-validate" ]
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.27/mck-input.schema.json"
+          },
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.27/mck-observation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

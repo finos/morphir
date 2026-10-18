@@ -1,0 +1,114 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.27/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "valid worksheet structure",
+      "data": {
+        "formatVersion": "0.1.0-draft.27",
+        "cases": [
+          {
+            "id": "integer",
+            "operation": "worksheet-evaluate",
+            "format": "json",
+            "input": {
+              "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"7\"}}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir/workbench/worksheet",
+                "contractVersion": "0.1.0-draft.1",
+                "source": {
+                  "id": "worksheet-source",
+                  "revision": 4,
+                  "text": "7"
+                },
+                "observations": [
+                  {
+                    "id": "form-0",
+                    "range": {
+                      "start": 0,
+                      "end": 1
+                    },
+                    "expression": "7",
+                    "preview": "7",
+                    "outcome": {
+                      "status": "returned",
+                      "value": {
+                        "type": "int",
+                        "value": "7"
+                      }
+                    }
+                  }
+                ],
+                "completion": {
+                  "status": "returned",
+                  "value": {
+                    "type": "unit"
+                  }
+                },
+                "diagnostic": null
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "extra field rejected",
+      "data": {
+        "formatVersion": "0.1.0-draft.27",
+        "cases": [
+          {
+            "id": "integer",
+            "operation": "worksheet-evaluate",
+            "format": "json",
+            "input": {
+              "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"7\"}}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "profile": "morphir/workbench/worksheet",
+                "contractVersion": "0.1.0-draft.1",
+                "source": {
+                  "id": "worksheet-source",
+                  "revision": 4,
+                  "text": "7"
+                },
+                "observations": [
+                  {
+                    "id": "form-0",
+                    "range": {
+                      "start": 0,
+                      "end": 1
+                    },
+                    "expression": "7",
+                    "preview": "7",
+                    "outcome": {
+                      "status": "returned",
+                      "value": {
+                        "type": "int",
+                        "value": "7"
+                      }
+                    }
+                  }
+                ],
+                "completion": {
+                  "status": "returned",
+                  "value": {
+                    "type": "unit"
+                  }
+                },
+                "diagnostic": null
+              }
+            }
+          }
+        ],
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.27/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "valid worksheet structure",
+      "data": {
+        "formatVersion": "0.1.0-draft.27",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": null,
+        "records": [
+          {
+            "caseId": "integer",
+            "operation": "worksheet-evaluate",
+            "format": "json",
+            "result": "error",
+            "observed": null
+          }
+        ],
+        "errors": [
+          {
+            "phase": "spawn",
+            "message": "No adapter supplied"
+          }
+        ],
+        "qualified": false
+      },
+      "valid": true
+    },
+    {
+      "description": "extra field rejected",
+      "data": {
+        "formatVersion": "0.1.0-draft.27",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": null,
+        "records": [
+          {
+            "caseId": "integer",
+            "operation": "worksheet-evaluate",
+            "format": "json",
+            "result": "error",
+            "observed": null
+          }
+        ],
+        "errors": [
+          {
+            "phase": "spawn",
+            "message": "No adapter supplied"
+          }
+        ],
+        "qualified": false,
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

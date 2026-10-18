@@ -558,3 +558,40 @@ fn native_owner_cli_saves_failure_evidence_and_rejects_invalid_fixtures_before_s
     );
     assert!(String::from_utf8_lossy(&rejected.stderr).contains("native owner"));
 }
+
+#[test]
+fn worksheet_cli_preserves_spawn_failure_and_rejects_forged_qualification() {
+    let root = tempfile::tempdir().unwrap();
+    let kit = root.path().join("kit");
+    std::fs::create_dir(&kit).unwrap();
+    let published: Value = serde_json::from_str(include_str!(
+        "../../../spec/workbench/mck/draft.27/cases.json"
+    ))
+    .unwrap();
+    let document = json!({"formatVersion":"0.1.0-draft.27","cases":[published["cases"][2]]});
+    std::fs::write(kit.join("cases.json"), document.to_string()).unwrap();
+    let report = root.path().join("report.json");
+    let run = command("run")
+        .arg("--kit")
+        .arg(&kit)
+        .arg("--adapter")
+        .arg(root.path().join("absent"))
+        .arg("--report")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(1));
+    let evidence =
+        morphir_mck::workbench::Report::from_json(&std::fs::read_to_string(&report).unwrap())
+            .unwrap();
+    morphir_mck::workbench::check_report(&kit, &evidence).unwrap();
+    assert!(!evidence.qualified);
+    assert_eq!(
+        evidence.records[0].operation,
+        Some(morphir_mck::workbench::Operation::WorksheetEvaluate)
+    );
+    let mut forged: Value = serde_json::from_str(&evidence.to_json()).unwrap();
+    forged["qualified"] = json!(true);
+    std::fs::write(&report, forged.to_string()).unwrap();
+    assert_eq!(check(&kit, &report).status.code(), Some(1));
+}

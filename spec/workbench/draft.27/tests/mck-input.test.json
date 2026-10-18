@@ -1,0 +1,20 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.27/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "valid worksheet structure",
+      "data": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"7\"}}"
+      },
+      "valid": true
+    },
+    {
+      "description": "extra field rejected",
+      "data": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"7\"}}",
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}
