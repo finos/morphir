@@ -6,28 +6,28 @@ priv enum CheckingContext {
 }
 
 ///|
-priv struct NativePlanId(String) derive(Eq)
+priv struct SelectedPlanId(String) derive(Eq)
 
 ///|
 priv struct AcceptedSelection {
   identity : @receipts.Identity
-  plan_id : NativePlanId
+  plan_id : SelectedPlanId
 }
 
 ///|
-fn NativePlanId::from_json(value : Json) -> NativePlanId raise {
+fn SelectedPlanId::from_json(value : Json) -> SelectedPlanId raise {
   let value = string(value)
   guard value.length() > 0 && value.length() <= 128 else {
     raise Invalid("workbench.host_selection_mismatch")
   }
-  NativePlanId(value)
+  SelectedPlanId(value)
 }
 
 ///|
 fn AcceptedSelection::reused(
   self : AcceptedSelection,
   identity : @receipts.Identity,
-  plan_id : NativePlanId,
+  plan_id : SelectedPlanId,
 ) -> Bool {
   guard self.identity.to_json() is Object(previous) &&
     identity.to_json() is Object(next) else {
@@ -87,6 +87,39 @@ fn descriptor(value : Json, session : String) -> Json raise {
 }
 
 ///|
+fn http_policy_descriptor(value : Json, session : String) -> Json raise {
+  let fields = closed(value, [
+    "profile", "contractVersion", "offer", "capabilityChecks",
+  ])
+  if fields["contractVersion"] != Json::string("0.2.0-draft.2") {
+    raise Invalid("workbench.host_version")
+  }
+  if fields["profile"] != Json::string("morphir/workbench/host") {
+    raise Invalid("workbench.host_profile")
+  }
+  let offer = @receipts.Offer::from_json(fields["offer"]).to_json()
+  guard offer is Object(authority) &&
+    authority["sessionId"] == Json::string(session) else {
+    raise Invalid("workbench.execution_authority")
+  }
+  let checks = closed(fields["capabilityChecks"], [
+    "profile", "contractVersion", "runtime", "evaluator", "policies",
+  ])
+  if checks["contractVersion"] != Json::string("0.1.0-draft.1") {
+    raise Invalid("workbench.host_version")
+  }
+  if checks["profile"] != Json::string("morphir/workbench/admission") {
+    raise Invalid("workbench.host_profile")
+  }
+  guard checks["runtime"] == Json::string("scheme") &&
+    checks["evaluator"] == Json::string("scheme-portable-v1/shared-sdk/bounded") &&
+    checks["policies"] == (["strict", "permissive"] : Json) else {
+    raise Invalid("workbench.host_selection_mismatch")
+  }
+  value
+}
+
+///|
 pub fn Client::handle(self : Client, source : String) -> Json {
   try {
     let fields = command(source)
@@ -95,13 +128,33 @@ pub fn Client::handle(self : Client, source : String) -> Json {
       ignore(closed(Json::object(fields), ["op", "source"]))
       return { "ok": true, "value": decode(string(fields["source"])) }
     }
-    if op == "validate-native-policy" {
+    if op == "validate-native-policy" || op == "validate-http-policy" {
       ignore(closed(Json::object(fields), ["op", "offer", "body"]))
       guard self.accepted.length() < 256 else {
         raise Invalid("workbench.host_session_capacity")
       }
-      ignore(native_request_plan(string(fields["body"]), fields["offer"]))
+      ignore(
+        selected_request_plan(
+          string(fields["body"]),
+          fields["offer"],
+          if op == "validate-http-policy" {
+            HttpPolicy
+          } else {
+            NativePolicy
+          },
+        ),
+      )
       return { "ok": true, "value": true }
+    }
+    if op == "host-policy-descriptor" {
+      ignore(closed(Json::object(fields), ["op", "source", "sessionId"]))
+      return {
+        "ok": true,
+        "value": http_policy_descriptor(
+          decode(string(fields["source"])),
+          string(fields["sessionId"]),
+        ),
+      }
     }
     if op == "native-descriptor" || op == "native-policy-descriptor" {
       ignore(closed(Json::object(fields), ["op", "source", "sessionId"]))
@@ -168,7 +221,7 @@ pub fn Client::handle(self : Client, source : String) -> Json {
       Tracking(_, checking) => checking
     }
     let cursor = match op {
-      "start" | "start-native-policy" => {
+      "start" | "start-native-policy" | "start-http-policy" => {
         ignore(
           closed(
             Json::object(fields),
@@ -178,7 +231,7 @@ pub fn Client::handle(self : Client, source : String) -> Json {
               "identity",
               "calls",
               "receipt",
-              ..if op == "start-native-policy" {
+              ..if op == "start-native-policy" || op == "start-http-policy" {
                 ["body", "plan"]
               } else {
                 []
@@ -193,20 +246,25 @@ pub fn Client::handle(self : Client, source : String) -> Json {
         if fields["calls"] != (["workbench"] : Json) {
           raise Invalid("execution.call_identity")
         }
-        checking = if op == "start-native-policy" {
+        checking = if op == "start-native-policy" || op == "start-http-policy" {
           guard self.accepted.length() < 256 else {
             raise Invalid("workbench.host_session_capacity")
           }
           let identity = @receipts.Identity::from_json(fields["identity"])
-          let retained = native_request_plan(
+          let retained = selected_request_plan(
             string(fields["body"]),
             fields["offer"],
+            if op == "start-http-policy" {
+              HttpPolicy
+            } else {
+              NativePolicy
+            },
           )
           let accepted = closed(fields["plan"], [
             "profile", "contractVersion", "identity", "planId", "runtime", "evaluator",
             "admission", "boundary",
           ])
-          let plan_id = NativePlanId::from_json(accepted["planId"])
+          let plan_id = SelectedPlanId::from_json(accepted["planId"])
           guard !self.accepted.any(previous => {
             previous.reused(identity, plan_id)
           }) else {
@@ -300,14 +358,14 @@ pub fn Client::handle(self : Client, source : String) -> Json {
         Disconnected => "disconnected"
       },
     }
-    if op == "start-native-policy" {
+    if op == "start-native-policy" || op == "start-http-policy" {
       let projection = closed(fields["plan"], [
         "profile", "contractVersion", "identity", "planId", "runtime", "evaluator",
         "admission", "boundary",
       ])
       self.accepted.push({
         identity: receipt.identity(),
-        plan_id: NativePlanId::from_json(projection["planId"]),
+        plan_id: SelectedPlanId::from_json(projection["planId"]),
       })
     }
     self.state = Tracking(cursor, checking)

@@ -1,7 +1,7 @@
 import type { TestContext } from 'node:test';
 import type { Server, IncomingMessage, IncomingHttpHeaders } from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
-import type { ExecutionGateway } from './execution-contracts.ts';
+import type { ExecutionGateway, ExecutionOperation, ExecutionValues, Submission } from './execution-contracts.ts';
 import { malformed } from '../../../tests/helpers.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -162,6 +162,55 @@ test('changed authenticated session returns bounded409 without replacing owner',
   assert.equal(response.status, 409); assert.equal((await response.json()).error.code, 'workbench.session_changed');
   changeSession('authenticated-session'); assert.equal((await get(`${base}/api/workbench/session`, headers)).status, 200);
 });
+test('a session changing while the body arrives cannot authorize an execution under the old identity', async t => {
+  const gateway = await executionGateway(t);
+  const response = new Promise<{ status?: number; text: string }>((resolve, reject) => {
+    const request = httpRequest(`${gateway.base}/api/workbench/submit`, { method: 'POST', headers: gateway.headers }, response => {
+      const chunks: Buffer[] = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => resolve({ status: response.statusCode, text: Buffer.concat(chunks).toString() }));
+    });
+    request.on('error', reject);
+    request.write('{');
+    void (async () => {
+      while (gateway.seen.length === 0) await new Promise(resolve => setTimeout(resolve, 1));
+      gateway.changeSession('replacement');
+      request.end('}');
+    })();
+  });
+  const result = await response;
+  assert.equal(result.status, 409);
+  assert.equal(JSON.parse(result.text).error.code, 'workbench.session_changed');
+  assert.equal(gateway.commands.length, 0);
+  gateway.changeSession('authenticated-session');
+  assert.equal((await fetch(`${gateway.base}/api/workbench/submit`, { method: 'POST', headers: gateway.headers, body: '{}' })).status, 200);
+  assert.equal(gateway.commands.length, 1);
+});
+test('a delayed descriptor cannot expose a retained owner after authentication changes', async t => {
+  let ready!: () => void, resume!: () => void;
+  const waiting = new Promise<void>(resolve => { ready = resolve; });
+  const resumed = new Promise<void>(resolve => { resume = resolve; });
+  const gateway = await executionGateway(t, { executions: {
+    decode: JSON.parse,
+    async session(sessionId) { ready(); await resumed; return { offer: { sessionId } }; },
+    async command() { throw new Error('No command expected'); }, close() {},
+  } });
+  const pending = get(`${gateway.base}/api/workbench/session`, gateway.headers);
+  await waiting; gateway.changeSession('replacement'); resume();
+  const response = await pending;
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.code, 'workbench.session_changed');
+});
+test('disconnecting an incomplete HTTP submission never dispatches an execution', async t => {
+  const gateway = await executionGateway(t);
+  const request = httpRequest(`${gateway.base}/api/workbench/submit`, { method: 'POST', headers: gateway.headers });
+  request.on('error', () => {});
+  request.write('{');
+  while (gateway.seen.length === 0) await new Promise(resolve => setTimeout(resolve, 1));
+  const closed = new Promise<void>(resolve => request.once('close', resolve)); request.destroy(); await closed;
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(gateway.commands.length, 0);
+});
 test('execution body byte limit and fatal UTF8 reject before core invocation', async t => {
   const { base, headers, commands } = await executionGateway(t);
   assert.equal((await fetch(`${base}/api/workbench/submit`, { method: 'POST', headers, body: 'x'.repeat(1024 * 1024 + 1) })).status, 413);
@@ -199,6 +248,52 @@ test('real duplicate-aware core authenticates exact manifests and rejects duplic
   assert.deepEqual(await (await fetch(`${base}/api/workbench/release`, { method: 'POST', headers, body: query })).json(), { released: true });
   const absent = await fetch(`${base}/api/workbench/query`, { method: 'POST', headers, body: query });
   assert.equal(absent.status, 404); assert.equal((await absent.json()).error.code, 'workbench.host_unknown_execution');
+});
+test('authenticated HTTP policy submission survives a lost acceptance reply without resubmission', async t => {
+  const { createExecutionProvider } = await import('./execution-provider.ts');
+  const { readFile } = await import('node:fs/promises');
+  const executions = await createExecutionProvider({ mapping: 'capability-checks' });
+  const original = executions.command.bind(executions);
+  let resolveAccepted!: (value: Submission) => void;
+  let releaseReply!: () => void;
+  const accepted = new Promise<Submission>(resolve => { resolveAccepted = resolve; });
+  const released = new Promise<void>(resolve => { releaseReply = resolve; });
+  let submissions = 0;
+  executions.command = async <K extends ExecutionOperation>(op: K, body: string, sessionId: string): Promise<ExecutionValues[K]> => {
+    const value = await original(op, body, sessionId);
+    if (op === 'submit') { submissions++; resolveAccepted(value as Submission); await released; }
+    return value;
+  };
+  const { base, headers } = await executionGateway(t, { executions });
+  const descriptor = await (await get(`${base}/api/workbench/session`, headers)).json();
+  assert.equal(descriptor.contractVersion, '0.2.0-draft.2');
+  const model = await readFile(new URL('../fixtures/capability-execution.json', import.meta.url), 'utf8');
+  const request = httpRequest(`${base}/api/workbench/submit`, { method: 'POST', headers });
+  request.on('error', () => {});
+  const unexpectedReply = new Promise<never>((_, reject) => request.once('response', response => {
+    response.resume(); reject(new Error(`Submission replied before the held acceptance: ${response.statusCode}`));
+  }));
+  t.after(() => { releaseReply(); request.destroy(); });
+  request.end(JSON.stringify({ contractVersion: '0.2.0-draft.2', model, entry: 'selected:main#answer',
+    runtime: 'scheme', providerId: descriptor.offer.providerId, inputs: { format: 'ion-text', source: '[]' },
+    admission: { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: 'permissive' } }));
+  const execution = await Promise.race([accepted, unexpectedReply]);
+  assert.ok('identity' in execution && 'plan' in execution);
+  request.destroy(); releaseReply();
+  const reconnect = await (await get(`${base}/api/workbench/session`, headers)).json();
+  assert.deepEqual(reconnect, descriptor);
+  const body = JSON.stringify({ contractVersion: '0.2.0-draft.1', identity: execution.identity });
+  let receipt;
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const response = await fetch(`${base}/api/workbench/query`, { method: 'POST', headers, body });
+    assert.equal(response.status, 200); receipt = await response.json();
+    if (receipt.state === 'terminal') break;
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.equal(receipt.state, 'terminal');
+  assert.deepEqual(receipt.outcomes.calls[0].outcome, { status: 'returned', value: { type: 'int', value: '42' } });
+  assert.equal(submissions, 1);
+  assert.deepEqual(await (await fetch(`${base}/api/workbench/release`, { method: 'POST', headers, body })).json(), { released: true });
 });
 test('malformed duplicate foreign and oversized authentication manifests never bind a provider', async t => {
   const { createExecutionProvider } = await import('./execution-provider.ts');

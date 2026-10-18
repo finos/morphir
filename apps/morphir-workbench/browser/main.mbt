@@ -229,6 +229,7 @@ enum CapabilityRuntime {
   Unavailable
   Standalone(@capabilities.Evaluator)
   Native(@capabilities.Evaluator)
+  Connected(@capabilities.Evaluator)
 } derive(Eq)
 
 ///|
@@ -4191,12 +4192,19 @@ fn explorer_props(model : Model) -> @explorer.Props {
 
 ///|
 fn capability_runtime(result : Json) -> CapabilityRuntime {
-  guard field(result, "connected") != Json::boolean(true) &&
-    @capabilities.Evaluator::from_json(field(result, "capabilityEvaluator"))
+  guard @capabilities.Evaluator::from_json(field(result, "capabilityEvaluator"))
     is Some(evaluator) else {
     return Unavailable
   }
-  if field(result, "nativeSession") == Json::boolean(true) {
+  if field(result, "connected") == Json::boolean(true) {
+    if field(result, "executionsAvailable") == Json::boolean(true) &&
+      field(result, "nativeSession") != Json::boolean(true) &&
+      text(result, "capabilityRuntime") == "connected" {
+      Connected(evaluator)
+    } else {
+      Unavailable
+    }
+  } else if field(result, "nativeSession") == Json::boolean(true) {
     if field(result, "executionsAvailable") == Json::boolean(true) &&
       text(result, "capabilityRuntime") == "native" {
       Native(evaluator)
@@ -4212,18 +4220,21 @@ fn capability_runtime(result : Json) -> CapabilityRuntime {
 
 ///|
 fn capability_evaluator(model : Model) -> @capabilities.Evaluator? {
-  if model.connected {
-    return None
-  }
   match model.capability_runtime {
+    Connected(evaluator) =>
+      if model.connected && model.executions_available {
+        Some(evaluator)
+      } else {
+        None
+      }
     Standalone(evaluator) =>
-      if model.executions_available {
+      if model.connected || model.executions_available {
         None
       } else {
         Some(evaluator)
       }
     Native(evaluator) =>
-      if model.executions_available {
+      if !model.connected && model.executions_available {
         Some(evaluator)
       } else {
         None

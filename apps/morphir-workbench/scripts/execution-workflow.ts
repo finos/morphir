@@ -15,7 +15,7 @@ const endpoint = (request: Request, name: string) => new URL(request.url()).path
 
 // The caller owns real host startup/authentication and browser or Proton cleanup.
 // This helper never replaces execution results or manufactures execution receipts.
-export async function executionWorkflow(page: Page, { screenshot }: { screenshot?: string } = {}) {
+export async function executionWorkflow(page: Page, { screenshot, submitVersion = '0.2.0-draft.1' }: { screenshot?: string; submitVersion?: '0.2.0-draft.1' | '0.2.0-draft.2' } = {}) {
   const errors: string[] = [], submissions: { contractVersion: string; model: string; inputs: {format: string;source: string} }[] = [], cancellations: unknown[] = [], responses: { path: string; status: number; value: Receipt }[] = [], methods: string[] = [];
   const responseReads: Promise<unknown>[] = [];
   const onError = (error: Error) => errors.push(error.message);
@@ -280,7 +280,7 @@ export async function executionWorkflow(page: Page, { screenshot }: { screenshot
     assert.ok(await page.locator('#tool-panel-body .tool-report.current .tool-clean').count() > 0, 'Current successful evaluation has no invented diagnostics');
     await openPanel('Output');
     await Promise.all(responseReads);
-    assert.ok(submissions.every(body => body.contractVersion === '0.2.0-draft.1' && typeof body.model === 'string' && typeof body.inputs.source === 'string'));
+    assert.ok(submissions.every(body => body.contractVersion === submitVersion && typeof body.model === 'string' && typeof body.inputs.source === 'string'));
     assert.ok(methods.length > 0 && methods.every(method => !/evaluate|cancel/.test(method)), 'Evaluation and cancellation add no v1 RPC operation');
     assert.deepEqual(errors, []);
     if (screenshot) await page.screenshot({ path: screenshot, fullPage: false });

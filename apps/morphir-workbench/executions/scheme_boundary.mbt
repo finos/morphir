@@ -1,7 +1,23 @@
 ///|
+/// Public mappings fix their submission version; receipt commands stay frozen.
+priv enum SchemeMapping {
+  NativePolicy
+  HttpPolicy
+}
+
+///|
+fn SchemeMapping::version(self : SchemeMapping) -> String {
+  match self {
+    NativePolicy => "0.2.0-draft.1"
+    HttpPolicy => "0.2.0-draft.2"
+  }
+}
+
+///|
 fn scheme_request(
   raw : Json,
   provider : Json,
+  mapping~ : SchemeMapping = NativePolicy,
 ) -> (@data.IRUnit, @protocol.Suite, @execution.CapabilityPolicy) raise {
   guard raw is Object(body) else { raise Invalid("workbench.host_shape") }
   let names = [
@@ -14,7 +30,9 @@ fn scheme_request(
     @execution.Strict
   }
   ignore(closed(raw, names))
-  version(body)
+  if body["contractVersion"] != Json::string(mapping.version()) {
+    raise Invalid("workbench.host_version")
+  }
   if body["runtime"] != Json::string("scheme") || body["providerId"] != provider {
     raise Invalid("workbench.host_selection_mismatch")
   }
@@ -42,14 +60,16 @@ fn scheme_request(
 }
 
 ///|
-fn native_request_plan(
+fn selected_request_plan(
   body : String,
   offer : Json,
+  mapping : SchemeMapping,
 ) -> @execution.SchemePlan raise {
   let authority = @receipts.Offer::from_json(offer).to_json()
   let (unit, suite, policy) = scheme_request(
     decode(body),
     @wire.field(authority, "providerId"),
+    mapping~,
   )
   @execution.plan_scheme_capabilities(unit, suite, policy~)
 }
@@ -131,11 +151,12 @@ fn Host::scheme_command(
   op : String,
   fields : Map[String, Json],
 ) -> Json raise {
-  if op == "submit-native-policy" {
+  if op == "submit-native-policy" || op == "submit-http-policy" {
     ignore(closed(Json::object(fields), ["op", "body"]))
     let (unit, suite, policy) = scheme_request(
       decode(string(fields["body"])),
       @wire.field(self.owner.offer().to_json(), "providerId"),
+      mapping=if op == "submit-http-policy" { HttpPolicy } else { NativePolicy },
     )
     let prepared : Ref[Json?] = Ref(None)
     ignore(
@@ -152,13 +173,18 @@ fn Host::scheme_command(
           }
           // Reserve the actual complete native reply, including the selected
           // boundary, before the owner publishes an accepted execution.
-          ignore(@native_reply.success_policy("execution.submit", value))
+          if op == "submit-native-policy" {
+            ignore(@native_reply.success_policy("execution.submit", value))
+          } else {
+            // Reserve the actual bare HTTP reply before owner publication.
+            ignore(decode(value.stringify()))
+          }
           prepared.val = Some(value)
         }),
       ),
     )
     guard prepared.val is Some(value) else {
-      abort("Prepared native submission")
+      abort("Prepared selected submission")
     }
     return value
   }

@@ -299,3 +299,59 @@ test "native runtime selection refuses local inspection claims without session c
   }
   assert_true(capability_runtime(validated) is Native(_))
 }
+
+///|
+test "connected checking requires a validated HTTP offer and complete selected boundary" {
+  let model = {
+    ..policy_scope_model(),
+    connected: true,
+    executions_available: true,
+    capability_runtime: Connected(@capabilities.SchemePortable),
+  }
+  assert_true(checking_available(model))
+  for
+    incompatible in [
+      { ..model, executions_available: false, },
+      { ..model, connected: false, },
+      { ..model, capability_runtime: Unavailable, },
+      { ..model, capability_runtime: Standalone(@capabilities.SchemePortable), },
+      { ..model, capability_runtime: Native(@capabilities.SchemePortable), },
+      { ..model, selected: "value|unsupported", },
+      { ..model, selected: "value|private", },
+    ] {
+    assert_false(checking_available(incompatible))
+  }
+  let (selected, _) = update(
+    model,
+    EvaluationPolicy(@capabilities.CapabilityPolicy::Permissive),
+    @cmd.Emit(fn(_) { @cmd.none }),
+  )
+  assert_eq(
+    selected.evaluation_policy,
+    @capabilities.CapabilityPolicy::Permissive,
+  )
+}
+
+///|
+test "connected runtime selection refuses catalog evaluator claims without an authenticated policy mapping" {
+  let claims : Json = {
+    "connected": true,
+    "capabilityEvaluator": "scheme-portable-v1/shared-sdk/bounded",
+    "executionsAvailable": true,
+  }
+  assert_true(capability_runtime(claims) is Unavailable)
+  let validated : Json = {
+    "connected": true,
+    "capabilityRuntime": "connected",
+    "capabilityEvaluator": "scheme-portable-v1/shared-sdk/bounded",
+    "executionsAvailable": true,
+  }
+  assert_true(capability_runtime(validated) is Connected(_))
+  let invalid : Json = {
+    "connected": true,
+    "capabilityRuntime": "connected",
+    "capabilityEvaluator": "scheme-portable-v1/shared-sdk/bounded",
+    "executionsAvailable": false,
+  }
+  assert_true(capability_runtime(invalid) is Unavailable)
+}

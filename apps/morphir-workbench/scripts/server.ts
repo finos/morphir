@@ -97,10 +97,20 @@ export function createWorkbenchServer({ root = new URL('../dist/', import.meta.u
         if (op !== 'session' && request.headers.origin !== `http://${authority}`) throw executionFailure('workbench.host_origin', 403);
         const sessionId = await authenticateExecution(upstream!, request.headers.cookie, executionAuthDeadlineMs, source => executions.decode(source));
         if (response.destroyed) return;
-        if (op === 'session') executionJSON(response, 200, await executions.session(sessionId));
-        else {
+        if (op === 'session') {
+          const descriptor = await executions.session(sessionId);
+          if (response.destroyed) return;
+          const currentSession = await authenticateExecution(upstream!, request.headers.cookie, executionAuthDeadlineMs, source => executions.decode(source));
+          if (currentSession !== sessionId) throw executionFailure('workbench.session_changed', 409);
+          if (!response.destroyed) executionJSON(response, 200, descriptor);
+        } else {
           if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(request.headers['content-type'] ?? '') || (request.headers['content-encoding'] && request.headers['content-encoding'] !== 'identity')) throw executionFailure('workbench.host_content_type', 400);
           const body = await readExecutionBody(request, executionBodyDeadlineMs);
+          if (response.destroyed) return;
+          // Receiving a body can cross a logout/session replacement. Authenticate
+          // again before the effect and retain the original owner on mismatch.
+          const currentSession = await authenticateExecution(upstream!, request.headers.cookie, executionAuthDeadlineMs, source => executions.decode(source));
+          if (currentSession !== sessionId) throw executionFailure('workbench.session_changed', 409);
           if (!response.destroyed) executionJSON(response, 200, await executions.command(op, body, sessionId));
         }
       } catch (error) {

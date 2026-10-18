@@ -111,6 +111,7 @@ pub fn Host::handle(self : Host, source : String) -> Json {
     let value = match op {
       "submit-scheme"
       | "submit-native-policy"
+      | "submit-http-policy"
       | "plan-scheme"
       | "claim-scheme"
       | "replan-scheme" => self.scheme_command(op, fields)

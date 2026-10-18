@@ -23,6 +23,9 @@ export class ExecutionClient {
   pause: () => Promise<void>;
   authenticate?: () => Promise<string>;
   offer: ExecutionDescriptor | null;
+  private negotiatedDescriptor: ExecutionDescriptor | null = null;
+  private initialization: Promise<boolean> | null = null;
+  private reconciliation: 'idle' | 'pending' = 'idle';
   execution: Execution | null;
   result: WorkResult | null;
   polling: boolean;
@@ -136,12 +139,31 @@ export class ExecutionClient {
     }
     const value = await this.request<ExecutionDescriptor>('session', undefined, optional);
     if (value === null) return null;
+    if (value.contractVersion === nativePolicyVersion) {
+      return this.command<ExecutionDescriptor>({ op: 'host-policy-descriptor', source: JSON.stringify(value), sessionId: this.sessionId }).value;
+    }
     if (!exact(value, ['profile', 'contractVersion', 'offer']) || value.profile !== 'morphir/workbench/host' || value.contractVersion !== version) {
       throw new Error('The host execution profile is incompatible.');
     }
     return this.command<ExecutionDescriptor>({ op: 'offer', value, sessionId: this.sessionId }).value;
   }
-  async initialize() { this.offer = await this.descriptor(true); return this.offer !== null; }
+  initialize(): Promise<boolean> {
+    // A page negotiates once. Concurrent callers share that exact handshake;
+    // a delayed reinitialization cannot replace an accepted session's scope.
+    if (this.initialization) return this.initialization;
+    if (this.active || this.execution) return Promise.reject(new Error('An accepted host session cannot be initialized again.'));
+    this.initialization = this.descriptor(true).then(descriptor => {
+      this.negotiatedDescriptor = structuredClone(descriptor);
+      this.offer = structuredClone(descriptor);
+      return descriptor !== null;
+    }).catch(cause => { this.initialization = null; throw cause; });
+    return this.initialization;
+  }
+  get capabilityEvaluator(): 'scheme-portable-v1/shared-sdk/bounded' | undefined {
+    return this.negotiatedDescriptor?.contractVersion === nativePolicyVersion &&
+      this.negotiatedDescriptor.capabilityChecks?.evaluator === 'scheme-portable-v1/shared-sdk/bounded'
+      ? this.negotiatedDescriptor.capabilityChecks.evaluator : undefined;
+  }
   emit() { this.progress(this.execution); }
   disconnected(cause: unknown) {
     const error = workbenchError(cause);
@@ -153,16 +175,18 @@ export class ExecutionClient {
   async execute(request: Pick<WorkRequest, 'source' | 'entry' | 'arguments' | 'argumentsIon' | 'executionMode' | 'admission'>, progress: Progress = () => {}): Promise<WorkResult> {
     // Capture before release, authentication, page checks or any host effect.
     const captured = structuredClone(request);
-    const policyMapping = this.channel.kind === 'native' && this.nativeMapping === 'capability-checks';
+    const capturedDescriptor = structuredClone(this.negotiatedDescriptor);
+    const policyMapping = capturedDescriptor?.contractVersion === nativePolicyVersion;
+    const httpPolicy = policyMapping && this.channel.kind === 'http';
     if (!policyMapping && (captured.executionMode === 'capability' || captured.admission != null)) {
       throw new Error('This host mapping does not offer checking-policy selection.');
     }
-    if (!this.offer) throw new Error('This host does not offer execution evaluation.');
-    if (this.active || this.polling) throw new Error('A host execution is already active. Resume it instead of submitting again.');
+    if (!capturedDescriptor) throw new Error('This host does not offer execution evaluation.');
+    if (this.active || this.polling || this.reconciliation === 'pending') throw new Error('A host execution is already active. Resume it instead of submitting again.');
     if (this.uncertainSubmission) throw new Error('Submission status is unknown. No second execution was submitted. Reopen the host session to recover.');
     if (this.execution && this.execution.state !== 'terminal') throw new Error('A host execution is already active. Resume it instead of submitting again.');
-    const provider = this.offer.offer;
-    const body = { contractVersion: version, model: captured.source, entry: captured.entry,
+    const provider = capturedDescriptor.offer;
+    const body = { contractVersion: httpPolicy ? nativePolicyVersion : version, model: captured.source, entry: captured.entry,
       inputs: { format: typeof captured.argumentsIon === 'string' ? 'ion-text' : 'json',
         source: typeof captured.argumentsIon === 'string' ? captured.argumentsIon : JSON.stringify(captured.arguments) },
       ...(policyMapping ? { runtime: 'scheme', providerId: typeof provider === 'object' && provider !== null && !Array.isArray(provider) ? provider.providerId : undefined,
@@ -171,7 +195,7 @@ export class ExecutionClient {
     // Check frame bounds before parsing the captured selection, then validate
     // it before any submission or cleanup.
     this.encodeRequest('submit', body);
-    if (policyMapping) this.command({ op: 'validate-native-policy', offer: this.offer.offer, body: capturedBody });
+    if (policyMapping) this.command({ op: httpPolicy ? 'validate-http-policy' : 'validate-native-policy', offer: provider, body: capturedBody });
     // Reserve this attempt before cleanup can yield, so another click cannot
     // enter the same pending release and create a second accepted execution.
     ++this.generation;
@@ -193,7 +217,7 @@ export class ExecutionClient {
     }
     try {
       if (!submitted || !exact(submitted, policyMapping ? ['identity', 'calls', 'receipt', 'plan'] : ['identity', 'calls', 'receipt']) || !Array.isArray(submitted.calls) || submitted.calls.length !== 1 || submitted.calls[0] !== 'workbench') throw new Error('Invalid host submission envelope.');
-      this.command({ op: policyMapping ? 'start-native-policy' : 'start', offer: this.offer.offer, identity: submitted.identity, calls: ['workbench'], receipt: submitted.receipt,
+      this.command({ op: policyMapping ? (httpPolicy ? 'start-http-policy' : 'start-native-policy') : 'start', offer: provider, identity: submitted.identity, calls: ['workbench'], receipt: submitted.receipt,
         ...(policyMapping ? { body: capturedBody, plan: submitted.plan } : {}) });
       if (policyMapping) {
         this.acceptedPlan = structuredClone(submitted.plan!);
@@ -257,27 +281,33 @@ export class ExecutionClient {
   }
   async resume(progress: Progress = () => {}): Promise<WorkResult> {
     if (!this.execution) throw new Error('There is no retained execution to resume.');
-    if (this.polling) throw new Error('This host execution is already being observed.');
-    this.progress = progress;
+    if (this.active || this.polling || this.reconciliation === 'pending') throw new Error('This host execution is already being observed.');
+    // Pin the retained execution across asynchronous reauthentication and offer
+    // checks. A second submit or resume cannot replace it while these yield.
+    this.reconciliation = 'pending';
     try {
-      const sessionId = await this.authenticate?.();
-      if (sessionId !== undefined && sessionId !== this.sessionId) throw new Error('The authenticated host session changed. The retained execution cannot be resumed.');
-      const descriptor = await this.descriptor();
-      if (descriptor === null) throw new Error('This session no longer offers execution evaluation.');
-      if (this.offer?.profile === 'morphir/workbench/native' &&
-          (JSON.stringify(descriptor, ['profile','contractVersion','sessionId','operations','offer','hostId','providerId','capabilityChecks','runtime','evaluator','policies']) !== JSON.stringify(this.offer, ['profile','contractVersion','sessionId','operations','offer','hostId','providerId','capabilityChecks','runtime','evaluator','policies']))) {
-        throw new Error('The native session capabilities changed. Reopen the application page.');
-      }
-      this.command({ op: 'reconnect', offer: descriptor.offer });
-      this.releaseReauthenticated = sessionId === this.sessionId && this.execution.state === 'terminal';
-      this.suspended = false;
-      this.emit();
-      if (this.execution.state === 'terminal') {
-        if (this.releasePending) await this.release();
-        return { success: false, ...this.result, execution: this.execution };
-      }
-    } catch (cause) { const error = workbenchError(cause); throw this.disconnected(error); }
-    return this.poll();
+      this.progress = progress;
+      try {
+        const sessionId = await this.authenticate?.();
+        if (sessionId !== undefined && sessionId !== this.sessionId) throw new Error('The authenticated host session changed. The retained execution cannot be resumed.');
+        const descriptor = await this.descriptor();
+        if (descriptor === null) throw new Error('This session no longer offers execution evaluation.');
+        if (this.negotiatedDescriptor &&
+            (this.negotiatedDescriptor.profile === 'morphir/workbench/native' || this.negotiatedDescriptor.contractVersion === nativePolicyVersion) &&
+            (JSON.stringify(descriptor, ['profile','contractVersion','sessionId','operations','offer','hostId','providerId','capabilityChecks','runtime','evaluator','policies']) !== JSON.stringify(this.negotiatedDescriptor, ['profile','contractVersion','sessionId','operations','offer','hostId','providerId','capabilityChecks','runtime','evaluator','policies']))) {
+          throw new Error('The host session capabilities changed. Reopen the application page.');
+        }
+        this.command({ op: 'reconnect', offer: descriptor.offer });
+        this.releaseReauthenticated = sessionId === this.sessionId && this.execution.state === 'terminal';
+        this.suspended = false;
+        this.emit();
+        if (this.execution.state === 'terminal') {
+          if (this.releasePending) await this.release();
+          return { success: false, ...this.result, execution: this.execution };
+        }
+      } catch (cause) { const error = workbenchError(cause); throw this.disconnected(error); }
+      return await this.poll();
+    } finally { this.reconciliation = 'idle'; }
   }
   async release() {
     if (!this.execution) throw new Error('There is no retained execution to release.');

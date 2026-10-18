@@ -287,3 +287,17 @@ release. The private Node execution provider also has actual isolated-worker tes
 `scripts/capability-execution.test.ts`. These controlled traces and process tests add no
 browser, connected HTTP or native capability offer; those integrations remain
 separate tasks.
+
+HTTP checking-policy boundary qualification selects exact `0.1.0-draft.23` and
+`validate-http-policy-boundary`. Compact opaque byte fixtures retain their actual
+UTF-8 or hex encoding, with captured session, offer and submission context. The
+production core checks descriptors, selected requests and accepted plans; the
+adapter only materializes fixture bytes and projects decisions. Node and native,
+debug and release, use the same implementation. Draft24 client traces and draft25
+actual authenticated gateway/provider traces have separate production adapters
+and gates. Frozen native drafts20–22 remain unchanged.
+
+HTTP client/provider kits retain their own 2-MiB complete NDJSON envelope budget
+and 1-MiB compact input budget. Their separate `json-frame` codec uses the shared
+duplicate-aware wire parser. Actual HTTP requests, replies and argument-source
+validation continue through the production 1-MiB boundary.

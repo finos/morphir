@@ -24,6 +24,7 @@ import { detailsWorkflow } from './details-workflow.ts';
 import { unzipSync, strFromU8 } from 'fflate';
 import { openSample } from './workbench-steps.ts';
 import { capabilityWorkflow } from './capability-workflow.ts';
+import { connectedCapabilityWorkflow } from './connected-capability-workflow.ts';
 
 // Opt-in acceptance uses a real Rust binary and an isolated provider/workspace.
 // Keep the ordinary fixture workflow independent of Rust tooling.
@@ -33,7 +34,8 @@ async function liveHostWorkflow(binary: string) {
   await mkdir(workspace); await mkdir(home);
   await writeFile(join(workspace, 'morphir.toml'), '[project]\nname="acceptance/workbench"\nversion="1.0.0"\nsource_directory="src"\n[frontend]\nlanguage="gleam"\n');
   let host: ChildProcess | undefined, proxy: ReturnType<typeof createWorkbenchServer> | undefined, browser: Browser | null | undefined, desktop: ChildProcess | undefined;
-  const executionsEnabled = process.env.MORPHIR_WORKBENCH_LIVE_EXECUTIONS === '1';
+  const policyExecutions = process.env.MORPHIR_WORKBENCH_LIVE_EXECUTIONS === 'capability-checks';
+  const executionsEnabled = policyExecutions || process.env.MORPHIR_WORKBENCH_LIVE_EXECUTIONS === '1';
   try {
     host = spawn(binary, ['ui', workspace, '--no-open', '--no-banner'], {
       env: {...process.env, MORPHIR_HOME:home, RUST_LOG:'warn'}, stdio:['ignore','ignore','pipe'],
@@ -50,7 +52,7 @@ async function liveHostWorkflow(binary: string) {
         if (url) { clearTimeout(timer); resolve(new URL(url)); }
       });
     });
-    const executions = executionsEnabled ? await createExecutionProvider() : null;
+    const executions = executionsEnabled ? await createExecutionProvider({ mapping: policyExecutions ? 'capability-checks' : 'strict' }) : null;
     proxy = createWorkbenchServer({host:launch.origin, executions});
     proxy.listen(0, '127.0.0.1'); await once(proxy, 'listening');
     const origin = `http://127.0.0.1:${(proxy.address() as AddressInfo).port}`;
@@ -152,6 +154,7 @@ async function liveHostWorkflow(binary: string) {
     await page!.locator('.tree-item').filter({hasText:'identity'}).click();
     await page!.getByRole('heading',{name:'identity',exact:true}).waitFor();
     if (!executionsEnabled) assert.equal(await page!.getByRole('button',{name:'Evaluate',exact:true}).count(), 0);
+    else if (policyExecutions) await connectedCapabilityWorkflow(page!, { screenshot: process.env.MORPHIR_WORKBENCH_CAPABILITY_SCREENSHOT });
     else await executionWorkflow(page!, { screenshot: process.env.MORPHIR_WORKBENCH_EXECUTION_SCREENSHOT });
     assert.ok(methods.includes('morphir.session.initialize'));
     for (const method of ['catalog','compile','generate']) assert.ok(methods.includes('morphir.playground.'+method));

@@ -160,9 +160,15 @@ function diagnosticMessage(result: { diagnostics?: Diagnostic[] }, fallback: str
   return result.diagnostics?.map(diagnostic => diagnostic.message).filter(Boolean).join('\n') || fallback;
 }
 
+type ConnectedExecutions = Pick<ExecutionClient, 'initialize' | 'execute' | 'resume' | 'cancel' | 'active' | 'execution'> & {
+  /** Validated by the authenticated HTTP handshake, never by compiler catalog claims. */
+  readonly capabilityEvaluator?: string;
+};
+const schemeCapabilityEvaluator = 'scheme-portable-v1/shared-sdk/bounded';
+
 export class ConnectedAdapter {
   rpc: Rpc;
-  executions: Pick<ExecutionClient, 'initialize' | 'execute' | 'resume' | 'cancel' | 'active' | 'execution'> | null;
+  executions: ConnectedExecutions | null;
   manifest: Manifest;
   local: Pick<Adapter, 'execute' | 'cancel'>;
   catalog: Catalog;
@@ -171,7 +177,7 @@ export class ConnectedAdapter {
   epoch: number;
   workspaceMessage?: string;
   executionsAvailable = false;
-  constructor(rpc: Rpc, manifest: Manifest, local: Pick<Adapter, 'execute' | 'cancel'>, executions: Pick<ExecutionClient, 'initialize' | 'execute' | 'resume' | 'cancel' | 'active' | 'execution'> | null = null) {
+  constructor(rpc: Rpc, manifest: Manifest, local: Pick<Adapter, 'execute' | 'cancel'>, executions: ConnectedExecutions | null = null) {
     this.rpc = rpc;
     this.executions = executions;
     this.manifest = validateManifest(manifest);
@@ -212,12 +218,21 @@ export class ConnectedAdapter {
       } catch (cause) { const error = workbenchError(cause); this.workspaceMessage = error.message; }
     }
     this.executionsAvailable = this.executions ? await this.executions.initialize() : false;
-    return { success: true, operation: 'initialize', connected: true, executionsAvailable: this.executionsAvailable, catalog: this.catalog, projects: this.projects,
+    const capabilityEvaluator = this.executionsAvailable && this.executions?.capabilityEvaluator === schemeCapabilityEvaluator
+      ? schemeCapabilityEvaluator : undefined;
+    return { success: true, operation: 'initialize', connected: true, executionsAvailable: this.executionsAvailable,
+      capabilityEvaluator, capabilityRuntime: capabilityEvaluator ? 'connected' as const : undefined, catalog: this.catalog, projects: this.projects,
       message: this.workspaceMessage || (this.catalog.frontends.length ? 'Connected · ready to compile' : 'Connected · no compiler is advertised') };
   }
   async execute(request: WorkRequest, progress?: Progress): Promise<WorkResult> {
+    // Capture the entire caller-owned selection before any asynchronous host or
+    // pending-release work. Later edits belong to the next explicit evaluation.
+    request = structuredClone(request);
     if (request.executionMode === 'capability' || request.admission != null) {
-      throw new Error('This connected session does not offer checking-policy selection.');
+      if (!this.executionsAvailable || this.executions?.capabilityEvaluator !== schemeCapabilityEvaluator) {
+        throw new Error('This connected session does not offer checking-policy selection.');
+      }
+      if (request.operation !== 'evaluate') throw new Error('Checking-policy selection is available only for evaluation.');
     }
     if (request.operation === 'resume-execution') return this.executions!.resume(progress);
     if (request.operation === 'evaluate' && this.executionsAvailable) return this.executions!.execute(request, progress);

@@ -1,0 +1,10 @@
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { checkedBuild } from '../../../tools/build.ts';
+const app = fileURLToPath(new URL('../', import.meta.url));
+const root = new URL('../../../', import.meta.url);
+for (const mode of ['debug', 'release']) execFileSync('moon', ['build', app + 'execution-core', app + 'mck/json-frame', '--target', 'js', '--target-dir', app + '_build', ...(mode === 'release' ? ['--release'] : [])], { cwd: app, stdio: 'inherit' });
+const outdir = app + '_build/http-client-mck';
+await checkedBuild({ entrypoints: [app + 'browser/http-client-trace.ts'], outdir, target: 'browser', tsconfig: fileURLToPath(new URL('tsconfig.browser.json', root)) });
+await checkedBuild({ entrypoints: [app + 'scripts/http-client-mck.ts'], outdir, target: 'node', naming: '[name].mjs', external: ['playwright'], tsconfig: fileURLToPath(new URL('tsconfig.node.json', root)) });
+console.log('Checked HTTP client MCK and browser driver built with production debug/release cores');

@@ -44,7 +44,7 @@ export interface WorkResult {
   message?: string;
   connected?: boolean;
   capabilityEvaluator?: string;
-  capabilityRuntime?: 'standalone' | 'native';
+  capabilityRuntime?: 'standalone' | 'native' | 'connected';
   catalog?: Catalog;
   frontends?: Language[];
   targets?: Target[];
@@ -90,6 +90,7 @@ export interface Manifest {
 }
 export type Core = (command: string) => string;
 export interface ExecutionDescriptor {
+  capabilityChecks?: CapabilityCheckingOffer;
   profile: string;
   contractVersion: string;
   sessionId?: string;

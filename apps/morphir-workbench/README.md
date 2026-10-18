@@ -801,3 +801,46 @@ drafts6–10/13 and their evidence stay frozen; current adapters refuse them.
 Capability policy `0.1.0-draft.1`, terminal outcomes `0.1.0-draft.5` and independent
 value/invocation contracts retain their versions. This migration does not enable
 policy selection on the public native or authenticated HTTP mappings.
+
+### Authenticated HTTP capability checking policies
+
+A gateway must explicitly select `createExecutionProvider({ mapping: 'capability-checks' })`
+to offer HTTP host `0.2.0-draft.2`. For the development server, set
+`MORPHIR_WORKBENCH_EXECUTIONS=capability-checks` together with
+`MORPHIR_WORKBENCH_HOST_URL` pointing to the supported authenticated loopback host.
+`MORPHIR_WORKBENCH_EXECUTIONS=1` retains the frozen strict mapping. Unknown mapping
+settings fail at startup.
+
+The exact host descriptor includes the scoped `capabilityChecks` offer for
+`scheme-portable-v1/shared-sdk/bounded`. Submissions use `0.2.0-draft.2` and capture
+the runtime, provider and optional checking policy. An omitted policy means strict.
+The accepted reply includes an immutable execution plan. Query, cancel and release
+retain their `0.2.0-draft.1` bodies and receipt contracts. Unsupported, unknown or
+retired offers cannot enable the checking-policy control or trigger a downgrade.
+
+The browser captures the complete request before awaiting cleanup or transport.
+The owner validates the selected public boundary and reserves the complete escaped
+HTTP reply before acceptance. The selected worker claims that retained plan once;
+its returned plan and typed terminal must match. Reconnection requires fresh
+matching authentication and the exact retained descriptor. A lost submit reply
+keeps the request uncertain and prevents a second submission.
+
+This gateway executes Scheme in its actual isolated Node workers. The result's
+execution identity identifies that gateway/provider. The supported Rust connected
+protocol v1 still advertises `executions:false`; its compilation/workspace APIs
+are tested separately and do not establish HTTP policy support. Native MEP source
+compilation also negotiates independently of these execution offers.
+
+The parent-owned exact MCK kits qualify distinct claims:
+
+- Draft23 drives opaque HTTP boundary bytes through the production selection core.
+- Draft24 drives the production HTTP client with controlled responses in Node and
+  Chromium. It does not establish authentication or actual execution.
+- Draft25 drives the real authenticated HTTP gateway, provider and isolated workers.
+
+Run `test:workbench-http-policy-mck`, `test:workbench-http-policy-client-mck` and
+`test:workbench-http-policy-provider-mck` with `MORPHIR_MCK_BIN` and
+`MORPHIR_WORKBENCH_KIT` set to the shared parent runner and corresponding exact kit.
+The live UI workflow uses `MORPHIR_WORKBENCH_LIVE_EXECUTIONS=capability-checks` and
+the supported real Rust host. `MORPHIR_WORKBENCH_DESKTOP_BIN` runs the same workflow
+in the packaged Proton application on the tested platform.

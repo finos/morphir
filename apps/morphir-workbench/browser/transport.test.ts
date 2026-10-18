@@ -579,7 +579,8 @@ test('connected evaluator uses the separately admitted host profile without addi
   const adapter = new ConnectedAdapter(rpc, { ...manifest, providers: [], initialSources: [] }, { async execute() { throw new Error('Unexpected local execution'); }, cancel() {} }, executions);
   assert.equal((await adapter.initialize()).executionsAvailable, true);
   assert.equal((await adapter.execute(evaluationRequest, execution => progress.push(execution))).value, '42');
-  assert.equal(evaluatedRequests[0], evaluationRequest);
+  assert.deepEqual(evaluatedRequests[0], evaluationRequest);
+  assert.notEqual(evaluatedRequests[0], evaluationRequest, 'The adapter captures caller input before asynchronous transport work');
   const epoch = adapter.epoch;
   await adapter.cancel();
   assert.equal(adapter.epoch, epoch);
@@ -859,4 +860,58 @@ test('an omitted capability policy is captured as strict and must be echoed', as
     if (policy === 'strict') assert.equal((await pending).success, true);
     else await assert.rejects(pending, /different checking policy/);
   }
+});
+
+
+test('connected checking controls require the validated live policy evaluator', async () => {
+  for (const evaluator of [undefined, 'unknown-evaluator', 'scheme-portable-v1/shared-sdk/bounded']) {
+    for (const available of [false, true]) {
+      const executions = { capabilityEvaluator: evaluator, active: false, execution: null,
+        async initialize() { return available; }, async execute() { return evaluated; },
+        async resume() { return evaluated; }, async cancel() {} };
+      const adapter = new ConnectedAdapter({ async call() { return {}; } }, { ...manifest, providers: [], initialSources: [] },
+        { async execute() { return { success: true }; }, cancel() {} }, executions);
+      const result = await adapter.initialize();
+      const qualified = available && evaluator === 'scheme-portable-v1/shared-sdk/bounded';
+      assert.equal(result.capabilityEvaluator, qualified ? evaluator : undefined);
+      assert.equal(result.capabilityRuntime, qualified ? 'connected' : undefined);
+      if (!qualified) await assert.rejects(adapter.execute({ ...evaluationRequest, executionMode: 'capability' }), /does not offer/);
+    }
+  }
+});
+
+test('connected policy evaluation captures source inputs and selection before any asynchronous work', async () => {
+  let captured: WorkRequest | undefined;
+  let finish: () => void = () => {};
+  const gate = new Promise<void>(resolve => { finish = resolve; });
+  const executions = { capabilityEvaluator: 'scheme-portable-v1/shared-sdk/bounded', active: false, execution: null,
+    async initialize() { return true; }, async execute(request: WorkRequest) { await gate; captured = request; return evaluated; },
+    async resume() { return evaluated; }, async cancel() {} };
+  const adapter = new ConnectedAdapter({ async call() { return {}; } }, { ...manifest, providers: [], initialSources: [] },
+    { async execute() { throw new Error('No local execution'); }, cancel() {} }, executions);
+  await adapter.initialize();
+  const request: WorkRequest = { ...evaluationRequest, executionMode: 'capability', arguments: [{ type: 'int', value: '42' }],
+    admission: { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: 'permissive' } };
+  const expected = structuredClone(request);
+  const pending = adapter.execute(request);
+  request.source = 'changed'; request.arguments = []; request.argumentsIon = '[]';
+  (request.admission as Record<string, Json>).policy = 'strict';
+  finish(); await pending;
+  assert.deepEqual(captured, expected);
+  for (const operation of ['compile', 'inspect', 'resume-execution']) {
+    await assert.rejects(adapter.execute({ ...expected, operation }), /only.*evaluation/);
+  }
+});
+
+test('a disconnected checking client cannot reuse earlier UI capability discovery', async () => {
+  let connected = true, calls = 0;
+  const executions = { get capabilityEvaluator() { return connected ? 'scheme-portable-v1/shared-sdk/bounded' : undefined; },
+    active: false, execution: null, async initialize() { return true; },
+    async execute() { calls++; return evaluated; }, async resume() { return evaluated; }, async cancel() {} };
+  const adapter = new ConnectedAdapter({ async call() { return {}; } }, { ...manifest, providers: [], initialSources: [] },
+    { async execute() { return { success: true }; }, cancel() {} }, executions);
+  assert.equal((await adapter.initialize()).capabilityRuntime, 'connected');
+  connected = false;
+  await assert.rejects(adapter.execute({ ...evaluationRequest, executionMode: 'capability' }), /does not offer/);
+  assert.equal(calls, 0, 'Stale UI discovery never authorizes a submission');
 });

@@ -7,6 +7,7 @@ import { createExecutionProvider } from './execution-provider.ts';
 import type { Identity, ExecutionProvider, Receipt, SchemeExecutionPlan, SchemeSubmission } from './execution-contracts.ts';
 
 const version = '0.2.0-draft.1';
+const policyVersion = '0.2.0-draft.2';
 const session = 'capability-session';
 const admission = (policy: string) => ({ profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy });
 const model = await readFile(new URL('../fixtures/capability-execution.json', import.meta.url), 'utf8');
@@ -24,6 +25,95 @@ async function terminal(provider: ExecutionProvider, identity: Identity): Promis
   }
   throw new Error('Owned Scheme worker did not finish');
 }
+
+test('HTTP capability mapping is explicit and cannot silently downgrade either submission contract', async t => {
+  const strict = await createExecutionProvider();
+  const selected = await createExecutionProvider({ mapping: 'capability-checks' });
+  t.after(async () => { await strict.close(); await selected.close(); });
+  const oldDescriptor = await strict.session(session);
+  assert.equal(oldDescriptor.contractVersion, version);
+  assert.equal(Object.hasOwn(oldDescriptor, 'capabilityChecks'), false);
+  const descriptor = await selected.session(session);
+  assert.equal(descriptor.contractVersion, policyVersion);
+  assert.equal(descriptor.offer.contractVersion, version);
+  assert.deepEqual(descriptor.capabilityChecks, { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1',
+    runtime: 'scheme', evaluator: 'scheme-portable-v1/shared-sdk/bounded', policies: ['strict', 'permissive'] });
+  const body = submission().replace(version, policyVersion);
+  await assert.rejects(strict.command('submit', body, session));
+  await assert.rejects(selected.command('submit', submission(), session));
+  for (const invalid of [
+    body.replace('"runtime":"scheme"', '"runtime":"javascript"'),
+    body.replace('"providerId":"moonbit-scheme"', '"providerId":"replacement"'),
+    body.replace('"policy":"permissive"', '"policy":"best-effort"'),
+    body.replace('{', '{"runtime":"scheme",'),
+  ]) await assert.rejects(selected.command('submit', invalid, session));
+  const first = await selected.command('submit', body, session);
+  assert.equal(first.identity.executionId, 'execution-1', 'Rejected mappings do not consume an identity');
+  assert.equal(first.plan?.admission.policy, 'permissive');
+  assert.deepEqual(first.plan?.identity, first.identity);
+  assert.equal((await terminal(selected, first.identity)).outcomes?.calls[0]?.outcome.status, 'returned');
+});
+
+test('HTTP policy worker retains JSON and Ion selection, strict default and reached-operation failures', async t => {
+  const provider = await createExecutionProvider({ mapping: 'capability-checks' });
+  t.after(() => provider.close());
+  for (const format of ['json', 'ion-text']) {
+    const request = submission(model, 'permissive', format).replace(version, policyVersion);
+    const accepted = await provider.command('submit', request, session);
+    assert.equal(accepted.plan?.admission.policy, 'permissive');
+    const retained = structuredClone(accepted.plan);
+    accepted.plan!.admission.policy = 'strict';
+    const result = await terminal(provider, accepted.identity);
+    assert.deepEqual(result.outcomes?.calls[0]?.outcome, { status: 'returned', value: { type: 'int', value: '42' } });
+    assert.deepEqual(await provider.schemeCommand('plan-scheme', body(accepted.identity), session), retained);
+    await provider.command('release', body(accepted.identity), session);
+  }
+  await assert.rejects(provider.command('submit', submission(model, null).replace(version, policyVersion), session));
+  const plain = JSON.parse(model);
+  plain.distribution.Library.def.modules.main.Public.values.answer.Public.ExpressionBody.body = { Literal: { IntegerLiteral: 42 } };
+  const strict = await provider.command('submit', submission(JSON.stringify(plain), null).replace(version, policyVersion), session);
+  assert.equal(strict.plan?.admission.policy, 'strict');
+  assert.equal((await terminal(provider, strict.identity)).outcomes?.calls[0]?.outcome.status, 'returned');
+  const reached = JSON.parse(model);
+  reached.distribution.Library.def.modules.main.Public.values.answer.Public.ExpressionBody.body.IfThenElse.condition = true;
+  const execution = await provider.command('submit', submission(JSON.stringify(reached)).replace(version, policyVersion), session);
+  assert.equal((await terminal(provider, execution.identity)).outcomes?.calls[0]?.outcome.failure?.code, 'execution.unsupported_reached');
+});
+
+test('HTTP policy cancellation, deadline and close await actual selected worker exits', async t => {
+  const workers: Worker[] = [];
+  const module = `data:text/javascript,${encodeURIComponent('self.onmessage = () => { while (true) {} };')}`;
+  const provider = await createExecutionProvider({ mapping: 'capability-checks', deadlineMs: 10000, workerFactory: () => {
+    const worker = new Worker(new URL('./execution-worker.ts', import.meta.url), { workerData: { module } });
+    workers.push(worker); return worker;
+  } });
+  t.after(() => provider.close());
+  const request = submission().replace(version, policyVersion);
+  const first = await provider.command('submit', request, session);
+  const second = await provider.command('submit', request, session);
+  const queued = await provider.command('submit', request, session);
+  assert.equal(workers.length, 2);
+  const queuedAck = await provider.command('cancel', body(queued.identity), session);
+  assert.equal(queuedAck.cancelRequested, true);
+  assert.equal((await terminal(provider, queued.identity)).outcomes?.calls[0]?.outcome.status, 'cancelled');
+  assert.equal(workers.length, 2, 'Cancelling queued policy work starts no worker');
+  const ack = await provider.command('cancel', body(first.identity), session);
+  assert.equal(ack.state, 'running');
+  assert.equal((await terminal(provider, first.identity)).outcomes?.calls[0]?.outcome.status, 'cancelled');
+  assert.equal(workers[0]?.threadId, -1);
+  await provider.close();
+  assert.equal(workers[1]?.threadId, -1);
+  await assert.rejects(provider.command('query', body(second.identity), session));
+
+  let timedWorker: Worker | undefined;
+  const timed = await createExecutionProvider({ mapping: 'capability-checks', deadlineMs: 20, workerFactory: () =>
+    timedWorker = new Worker(new URL('./execution-worker.ts', import.meta.url), { workerData: { module } }) });
+  t.after(() => timed.close());
+  const execution = await timed.command('submit', request, session);
+  const done = await terminal(timed, execution.identity);
+  assert.equal(done.outcomes?.calls[0]?.outcome.failure?.code, 'workbench.worker_deadline');
+  assert.equal(timedWorker?.threadId, -1);
+});
 
 test('current MoonBit String and Int32 libraries retain policy through real Scheme executions', async t => {
   type Compiled = { success: boolean; irSource: string; nodes: { id: string; label: string }[] };

@@ -234,6 +234,18 @@ run = "moonx scripts/workbench-native-policy-mck.mbtx"
 description = "Opt-in exact native checking-policy client qualification in Node and Chromium"
 run = "moonx scripts/workbench-native-policy-client-mck.mbtx"
 
+[tasks."test:workbench-http-policy-mck"]
+description = "Opt-in exact HTTP checking-policy boundary qualification through the shared Rust MCK"
+run = "moonx scripts/workbench-http-policy-mck.mbtx"
+
+[tasks."test:workbench-http-policy-client-mck"]
+description = "Opt-in exact HTTP checking-policy client qualification in Node and Chromium"
+run = "moonx scripts/workbench-http-policy-client-mck.mbtx"
+
+[tasks."test:workbench-http-policy-provider-mck"]
+description = "Opt-in real authenticated HTTP checking-policy provider and worker qualification"
+run = "moonx scripts/workbench-http-policy-provider-mck.mbtx"
+
 [tasks."setup:site"]
 description = "Install site build dependencies and Chromium for the smoke test"
 run = "moonx scripts/typescript-tooling.mbtx setup-site"

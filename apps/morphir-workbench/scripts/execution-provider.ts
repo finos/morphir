@@ -21,9 +21,10 @@ const failed = (code: string, message: string) => evidence({ status: 'failed', f
 export async function createExecutionProvider({
   bridgeUrl = new URL('../_build/js/release/build/finos/morphir-workbench/execution-host/execution-host.js', import.meta.url),
   workerUrl = new URL('../_build/js/release/build/finos/morphir-workbench/worker/worker.js', import.meta.url),
-  deadlineMs = 30000, factory, workerFactory, decoder,
+  deadlineMs = 30000, mapping = 'strict', factory, workerFactory, decoder,
 }: ProviderOptions = {}): Promise<ExecutionProvider> {
   if (!Number.isFinite(deadlineMs) || deadlineMs < 1) throw new Error('A positive worker deadline is required.');
+  if (mapping !== 'strict' && mapping !== 'capability-checks') throw new Error('A supported execution mapping is required.');
   if (!factory) {
     await import(bridgeUrl.href ?? bridgeUrl);
     factory = globalThis.morphirWorkbenchExecutionHost;
@@ -98,10 +99,11 @@ export async function createExecutionProvider({
   };
   const start = (record: ExecutionRecord) => {
     let request: Claim;
-    try { request = command<Claim>(record.schemePlan ? {
+    const selected = record.selection;
+    try { request = command<Claim>(selected.mode === 'selected-scheme' ? {
       op: 'claim-scheme', identity: record.identity, selection: {
-        planId: record.schemePlan.planId, providerId: record.schemePlan.identity.providerId,
-        runtime: record.schemePlan.runtime, policy: record.schemePlan.admission.policy,
+        planId: selected.plan.planId, providerId: selected.plan.identity.providerId,
+        runtime: selected.plan.runtime, policy: selected.plan.admission.policy,
       },
     } : { op: 'claim', identity: record.identity }); }
     catch (error) { record.failure = error; return; }
@@ -111,7 +113,7 @@ export async function createExecutionProvider({
       record.exited = new Promise<void>(resolve => record.worker!.once('exit', code => { resolve(); void finish(record, code); }));
       record.worker.on('message', message => {
         if (message?.id !== 1 || record.captured || record.selectionMismatch) return;
-        if (record.schemePlan && !isDeepStrictEqual(message.result?.executionPlan, record.schemePlan)) {
+        if (selected.mode === 'selected-scheme' && !isDeepStrictEqual(message.result?.executionPlan, selected.plan)) {
           record.selectionMismatch = true; return;
         }
         if (message.result?.terminalOutcomes) record.captured = structuredClone(message.result.terminalOutcomes);
@@ -139,12 +141,28 @@ export async function createExecutionProvider({
       if (!reply?.ok) throw new ExecutionProviderError('workbench.host_unavailable', 503);
       return reply.value;
     },
-    async session(sessionId: string) { bind(sessionId); return { profile: 'morphir/workbench/host', contractVersion: version, offer: structuredClone(offer!) }; },
+    async session(sessionId: string) {
+      bind(sessionId);
+      const identity = { profile: 'morphir/workbench/host' as const, offer: structuredClone(offer!) };
+      return mapping === 'strict' ? { ...identity, contractVersion: version } : {
+        ...identity, contractVersion: '0.2.0-draft.2', capabilityChecks: {
+          profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', runtime: 'scheme',
+          evaluator: 'scheme-portable-v1/shared-sdk/bounded', policies: ['strict', 'permissive'],
+        },
+      };
+    },
     async command<K extends ExecutionOperation>(op: K, body: string, sessionId: string): Promise<ExecutionValues[K]> {
       bind(sessionId);
-      const value = command<Submission & Receipt & { released: boolean }>({ op, body });
+      // The capability mapping reserves the complete serialized HTTP acceptance in
+      // the pure owner before creating an execution or starting a worker.
+      const value = command<Submission & Receipt & { released: boolean }>({
+        op: op === 'submit' && mapping === 'capability-checks' ? 'submit-http-policy' : op, body,
+      });
       if (op === 'submit') {
-        const record: ExecutionRecord = { identity: structuredClone(value.identity), done: false, worker: null };
+        const record: ExecutionRecord = { identity: structuredClone(value.identity),
+          selection: mapping === 'capability-checks'
+            ? { mode: 'selected-scheme', plan: structuredClone((value as SchemeSubmission).plan) }
+            : { mode: 'whole-model' }, done: false, worker: null };
         records.set(value.identity.executionId, record); queue.push(record); queueMicrotask(drain);
       } else if (op === 'cancel') {
         const record = records.get(value.identity.executionId);
@@ -166,7 +184,7 @@ export async function createExecutionProvider({
       bind(sessionId);
       const value = command<SchemeSubmission & SchemeExecutionPlan>({ op, body });
       if (op === 'submit-scheme' || op === 'replan-scheme') {
-        const record: ExecutionRecord = { identity: structuredClone(value.identity), schemePlan: structuredClone(value.plan), done: false, worker: null };
+        const record: ExecutionRecord = { identity: structuredClone(value.identity), selection: { mode: 'selected-scheme', plan: structuredClone(value.plan) }, done: false, worker: null };
         records.set(value.identity.executionId, record); queue.push(record); queueMicrotask(drain);
       }
       return value as SchemeExecutionValues[K];
