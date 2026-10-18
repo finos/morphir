@@ -20,7 +20,7 @@ fn selected_scheme_negotiates_only_the_exact_json_witness_operation() {
         bad[field] = value;
         assert!(Capabilities::parse(bad, "0.1.0-draft.11").is_err());
     }
-    assert!(Capabilities::parse(capabilities(), "0.1.0-draft.10").is_err());
+    assert!(Capabilities::parse(capabilities(), "0.1.0-draft.18").is_err());
     let mut unsupported = capabilities();
     unsupported["operations"] = json!([]);
     Capabilities::parse(unsupported, "0.1.0-draft.11").unwrap();

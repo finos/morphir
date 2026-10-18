@@ -1,0 +1,167 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.16/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "input": {
+              "expectedOperation": "session.open",
+              "expectedSession": null,
+              "encoding": "utf8",
+              "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed outer shape",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "input": {
+              "expectedOperation": "session.open",
+              "expectedSession": null,
+              "encoding": "utf8",
+              "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ],
+        "authority": "private"
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "input": {
+              "expectedOperation": "session.open",
+              "expectedSession": null,
+              "encoding": "utf8",
+              "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Required capture",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "input": {
+              "expectedOperation": "session.open",
+              "encoding": "utf8",
+              "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown rejection",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "input": {
+              "expectedOperation": "session.open",
+              "expectedSession": null,
+              "encoding": "utf8",
+              "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+            },
+            "expected": {
+              "status": "invalid",
+              "code": "native.reply.other"
+            }
+          }
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Private result",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "cases": [
+          {
+            "id": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "input": {
+              "expectedOperation": "session.open",
+              "expectedSession": null,
+              "encoding": "utf8",
+              "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "$serde_json::private::RawValue": "{}"
+              }
+            }
+          }
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

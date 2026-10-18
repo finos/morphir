@@ -9,16 +9,16 @@ fn schema_validator(schema: &str) -> jsonschema::Validator {
     let mut options = jsonschema::options();
     options.with_retriever(super::contract::OfflineOnly);
     for text in [
-        include_str!("../../../../spec/workbench/draft.10/schemas/mck-input.schema.json"),
+        include_str!("../../../../spec/workbench/draft.18/schemas/mck-input.schema.json"),
         include_str!(
-            "../../../../spec/workbench/draft.10/schemas/native-owner-projection.schema.json"
+            "../../../../spec/workbench/draft.18/schemas/native-owner-projection.schema.json"
         ),
         include_str!(
-            "../../../../spec/workbench/draft.10/schemas/native-owner-expectation.schema.json"
+            "../../../../spec/workbench/draft.18/schemas/native-owner-expectation.schema.json"
         ),
-        include_str!("../../../../spec/workbench/draft.10/schemas/mck-observation.schema.json"),
-        include_str!("../../../../spec/workbench/draft.10/schemas/mck-expectation.schema.json"),
-        include_str!("../../../../spec/workbench/draft.10/schemas/mck-capabilities.schema.json"),
+        include_str!("../../../../spec/workbench/draft.18/schemas/mck-observation.schema.json"),
+        include_str!("../../../../spec/workbench/draft.18/schemas/mck-expectation.schema.json"),
+        include_str!("../../../../spec/workbench/draft.18/schemas/mck-capabilities.schema.json"),
     ] {
         let value: Value = serde_json::from_str(text).expect("native owner MCK schema JSON");
         options.with_resource(
@@ -51,7 +51,7 @@ macro_rules! shape_validator {
 
 /// JSON Schema numeric checks may round arbitrary-precision decimal tokens.
 /// Infrastructure contains bounded integers only; completion outcomes remain
-/// opaque and are admitted by the production job host instead.
+/// opaque and are admitted by the production execution host instead.
 fn check_integer_tokens(value: &Value) -> Result<(), String> {
     match value {
         Value::Number(number) => {
@@ -103,23 +103,23 @@ fn exact_integer(token: &str) -> Option<u64> {
 }
 shape_validator!(
     validate_corpus_shape,
-    "../../../../spec/workbench/draft.10/schemas/mck-corpus.schema.json"
+    "../../../../spec/workbench/draft.18/schemas/mck-corpus.schema.json"
 );
 shape_validator!(
     validate_observation_shape,
-    "../../../../spec/workbench/draft.10/schemas/mck-observation.schema.json"
+    "../../../../spec/workbench/draft.18/schemas/mck-observation.schema.json"
 );
 shape_validator!(
     validate_report_shape,
-    "../../../../spec/workbench/draft.10/schemas/mck-report.schema.json"
+    "../../../../spec/workbench/draft.18/schemas/mck-report.schema.json"
 );
 shape_validator!(
     validate_projection_shape,
-    "../../../../spec/workbench/draft.10/schemas/native-owner-projection.schema.json"
+    "../../../../spec/workbench/draft.18/schemas/native-owner-projection.schema.json"
 );
 shape_validator!(
     validate_expected_shape,
-    "../../../../spec/workbench/draft.10/schemas/native-owner-expectation.schema.json"
+    "../../../../spec/workbench/draft.18/schemas/native-owner-expectation.schema.json"
 );
 
 fn validate_file(file: &Value) -> Result<(), String> {

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/offer.schema.json",
+  "title": "Exact Workbench executions offer",
+  "description": "Exact prerelease receipt profile offered by an authenticated host. Query is required and cancellation is optional. This schema does not grant authority",
+  "examples": [
+    {
+      "profile": "morphir/workbench/executions",
+      "contractVersion": "0.2.0-draft.1",
+      "hostId": "host",
+      "sessionId": "session",
+      "providerId": "provider",
+      "operations": [ "query", "cancel" ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "profile",
+    "contractVersion",
+    "hostId",
+    "sessionId",
+    "providerId",
+    "operations"
+  ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/executions"
+    },
+    "contractVersion": {
+      "const": "0.2.0-draft.1"
+    },
+    "hostId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "sessionId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "providerId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "type": "array",
+      "maxItems": 2,
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": {
+        "const": "query"
+      },
+      "items": {
+        "enum": [ "query", "cancel" ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

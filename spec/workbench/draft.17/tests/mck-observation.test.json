@@ -1,0 +1,350 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.17/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "status": "ok",
+        "value": {
+          "steps": [
+            {
+              "action": "initialize",
+              "requestCount": 1,
+              "progressCount": 0,
+              "localCount": 1,
+              "session": {
+                "id": "session",
+                "disposed": false
+              },
+              "disposed": false,
+              "executions": {
+                "execution": null,
+                "active": false,
+                "polling": false,
+                "releasePending": false,
+                "uncertainSubmission": false,
+                "suspended": false,
+                "cancelOnSubmit": false
+              },
+              "workspace": null,
+              "attempts": [
+                {
+                  "id": "init",
+                  "status": "returned",
+                  "error": null,
+                  "result": {
+                    "success": true,
+                    "operation": null,
+                    "cancelled": null,
+                    "typed": null,
+                    "terminalOutcomes": null,
+                    "artifact": null
+                  }
+                }
+              ],
+              "delivery": null
+            },
+            {
+              "action": "evaluate",
+              "requestCount": 2,
+              "progressCount": 0,
+              "localCount": 1,
+              "session": {
+                "id": "session",
+                "disposed": false
+              },
+              "disposed": false,
+              "executions": {
+                "execution": null,
+                "active": false,
+                "polling": false,
+                "releasePending": false,
+                "uncertainSubmission": true,
+                "suspended": false,
+                "cancelOnSubmit": false
+              },
+              "workspace": null,
+              "attempts": [
+                {
+                  "id": "init",
+                  "status": "returned",
+                  "error": null,
+                  "result": {
+                    "success": true,
+                    "operation": null,
+                    "cancelled": null,
+                    "typed": null,
+                    "terminalOutcomes": null,
+                    "artifact": null
+                  }
+                },
+                {
+                  "id": "first",
+                  "status": "rejected",
+                  "error": {
+                    "native": false,
+                    "code": null,
+                    "effect": null,
+                    "submissionUnknown": true,
+                    "executionTransport": true
+                  },
+                  "result": null
+                }
+              ],
+              "delivery": null
+            },
+            {
+              "action": "evaluate",
+              "requestCount": 2,
+              "progressCount": 0,
+              "localCount": 1,
+              "session": {
+                "id": "session",
+                "disposed": false
+              },
+              "disposed": false,
+              "executions": {
+                "execution": null,
+                "active": false,
+                "polling": false,
+                "releasePending": false,
+                "uncertainSubmission": true,
+                "suspended": false,
+                "cancelOnSubmit": false
+              },
+              "workspace": null,
+              "attempts": [
+                {
+                  "id": "init",
+                  "status": "returned",
+                  "error": null,
+                  "result": {
+                    "success": true,
+                    "operation": null,
+                    "cancelled": null,
+                    "typed": null,
+                    "terminalOutcomes": null,
+                    "artifact": null
+                  }
+                },
+                {
+                  "id": "first",
+                  "status": "rejected",
+                  "error": {
+                    "native": false,
+                    "code": null,
+                    "effect": null,
+                    "submissionUnknown": true,
+                    "executionTransport": true
+                  },
+                  "result": null
+                },
+                {
+                  "id": "retry",
+                  "status": "rejected",
+                  "error": {
+                    "native": false,
+                    "code": null,
+                    "effect": null,
+                    "submissionUnknown": false,
+                    "executionTransport": false
+                  },
+                  "result": null
+                }
+              ],
+              "delivery": null
+            }
+          ],
+          "requests": [
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+          ],
+          "progress": [],
+          "localCalls": [
+            "{\"operation\":\"initialize\"}"
+          ],
+          "consumed": 2,
+          "remaining": 0
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed literal shape",
+      "data": {
+        "status": "ok",
+        "value": {
+          "steps": [
+            {
+              "action": "initialize",
+              "requestCount": 1,
+              "progressCount": 0,
+              "localCount": 1,
+              "session": {
+                "id": "session",
+                "disposed": false
+              },
+              "disposed": false,
+              "executions": {
+                "execution": null,
+                "active": false,
+                "polling": false,
+                "releasePending": false,
+                "uncertainSubmission": false,
+                "suspended": false,
+                "cancelOnSubmit": false
+              },
+              "workspace": null,
+              "attempts": [
+                {
+                  "id": "init",
+                  "status": "returned",
+                  "error": null,
+                  "result": {
+                    "success": true,
+                    "operation": null,
+                    "cancelled": null,
+                    "typed": null,
+                    "terminalOutcomes": null,
+                    "artifact": null
+                  }
+                }
+              ],
+              "delivery": null
+            },
+            {
+              "action": "evaluate",
+              "requestCount": 2,
+              "progressCount": 0,
+              "localCount": 1,
+              "session": {
+                "id": "session",
+                "disposed": false
+              },
+              "disposed": false,
+              "executions": {
+                "execution": null,
+                "active": false,
+                "polling": false,
+                "releasePending": false,
+                "uncertainSubmission": true,
+                "suspended": false,
+                "cancelOnSubmit": false
+              },
+              "workspace": null,
+              "attempts": [
+                {
+                  "id": "init",
+                  "status": "returned",
+                  "error": null,
+                  "result": {
+                    "success": true,
+                    "operation": null,
+                    "cancelled": null,
+                    "typed": null,
+                    "terminalOutcomes": null,
+                    "artifact": null
+                  }
+                },
+                {
+                  "id": "first",
+                  "status": "rejected",
+                  "error": {
+                    "native": false,
+                    "code": null,
+                    "effect": null,
+                    "submissionUnknown": true,
+                    "executionTransport": true
+                  },
+                  "result": null
+                }
+              ],
+              "delivery": null
+            },
+            {
+              "action": "evaluate",
+              "requestCount": 2,
+              "progressCount": 0,
+              "localCount": 1,
+              "session": {
+                "id": "session",
+                "disposed": false
+              },
+              "disposed": false,
+              "executions": {
+                "execution": null,
+                "active": false,
+                "polling": false,
+                "releasePending": false,
+                "uncertainSubmission": true,
+                "suspended": false,
+                "cancelOnSubmit": false
+              },
+              "workspace": null,
+              "attempts": [
+                {
+                  "id": "init",
+                  "status": "returned",
+                  "error": null,
+                  "result": {
+                    "success": true,
+                    "operation": null,
+                    "cancelled": null,
+                    "typed": null,
+                    "terminalOutcomes": null,
+                    "artifact": null
+                  }
+                },
+                {
+                  "id": "first",
+                  "status": "rejected",
+                  "error": {
+                    "native": false,
+                    "code": null,
+                    "effect": null,
+                    "submissionUnknown": true,
+                    "executionTransport": true
+                  },
+                  "result": null
+                },
+                {
+                  "id": "retry",
+                  "status": "rejected",
+                  "error": {
+                    "native": false,
+                    "code": null,
+                    "effect": null,
+                    "submissionUnknown": false,
+                    "executionTransport": false
+                  },
+                  "result": null
+                }
+              ],
+              "delivery": null
+            }
+          ],
+          "requests": [
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"session.open\",\"profile\":\"morphir/workbench/native\"}}",
+            "{\"command\":\"app:workbench_native\",\"frame\":{\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"entry\":\"client:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"client\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Native client immutable fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}\"},\"profile\":\"morphir/workbench/native\",\"sessionId\":\"session\"}}"
+          ],
+          "progress": [],
+          "localCalls": [
+            "{\"operation\":\"initialize\"}"
+          ],
+          "consumed": 2,
+          "remaining": 0
+        },
+        "unpublished": true
+      },
+      "valid": false
+    },
+    {
+      "description": "No domain-invalid observation",
+      "data": {
+        "status": "invalid",
+        "code": "native.client.invalid"
+      },
+      "valid": false
+    }
+  ]
+}

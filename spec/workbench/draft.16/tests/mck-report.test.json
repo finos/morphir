@@ -1,0 +1,315 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.16/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.16",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-reply"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed outer shape",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.16",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-reply"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true,
+        "authority": "private"
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong draft",
+      "data": {
+        "formatVersion": "0.1.0-draft.15",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.16",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-reply"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong operation",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.16",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-reply"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-frame",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong format",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.16",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-reply"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-reply",
+            "format": "ion-text",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": true,
+                "operation": "session.open"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown rejection",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.16",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-reply"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "invalid",
+              "code": "native.reply.other"
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Private success object",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.16",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-reply"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "$serde_json::private::RawValue": "{}"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Effect carried in saved report",
+      "data": {
+        "formatVersion": "0.1.0-draft.16",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.16",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "validate-native-reply"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "open",
+            "operation": "validate-native-reply",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "replyAccepted": true,
+                "ok": false,
+                "error": {
+                  "code": "limit",
+                  "effect": "unknown"
+                }
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    }
+  ]
+}

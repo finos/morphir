@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/execution-plan/0.2.0-draft.1/submission.schema.json",
+  "title": "Accepted Scheme execution submission",
+  "description": "Exact immutable Scheme execution selection and accepted context; frozen receipt envelopes remain unchanged",
+  "examples": [
+    {
+      "identity": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "executionId": "execution-1",
+        "snapshotId": "snapshot-1"
+      },
+      "calls": [ "first" ],
+      "receipt": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution-1",
+          "snapshotId": "snapshot-1"
+        },
+        "sequence": 0,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "plan": {
+        "profile": "morphir/workbench/execution-plan",
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution-1",
+          "snapshotId": "snapshot-1"
+        },
+        "planId": "plan-1",
+        "runtime": "scheme",
+        "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        },
+        "boundary": {
+          "entries": [
+            {
+              "name": "selected:main#answer",
+              "inputs": [],
+              "output": {
+                "type": "int"
+              }
+            }
+          ],
+          "definitions": []
+        }
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "identity", "calls", "receipt", "plan" ],
+  "properties": {
+    "identity": {
+      "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/identity.schema.json"
+    },
+    "calls": {
+      "type": "array",
+      "maxItems": 1000,
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 128,
+        "minLength": 1
+      }
+    },
+    "receipt": {
+      "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/receipt.schema.json"
+    },
+    "plan": {
+      "$ref": "https://morphir.finos.org/spec/workbench/execution-plan/0.2.0-draft.1/plan.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

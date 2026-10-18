@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.16/mck-observation.schema.json",
+  "title": "Offline Workbench native reply mck-observation",
+  "description": "Closed exact draft.16 JSON validate-native-reply contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "replyAccepted": true,
+        "ok": true,
+        "operation": "session.open"
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "status", "value" ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.16/native-reply-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "status", "code" ],
+      "properties": {
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "enum": [
+            "native.reply.limit",
+            "native.reply.utf8",
+            "native.reply.json",
+            "native.reply.shape",
+            "native.reply.operation",
+            "native.reply.authority"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "exact offline claims",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "reduce-execution"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "historical version rejected",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.5",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "reduce-execution"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Ion absent",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "reduce-execution"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "other operations absent",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "reduce-execution",
+          "decode-value"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "empty operations rejected",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "closed claims",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "reduce-execution"
+        ],
+        "formats": [
+          "json"
+        ],
+        "live": true
+      },
+      "valid": false
+    }
+  ]
+}

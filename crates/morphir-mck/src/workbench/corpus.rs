@@ -79,9 +79,30 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     let bytes = read_bounded(file, MAX_CORPUS_BYTES as usize)?;
     let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
     let mut value = crate::json::strict::parse(text)?;
-    if value["formatVersion"] == super::contract::CAPABILITY_JOBS_VERSION {
+    version(
+        value["formatVersion"]
+            .as_str()
+            .ok_or("Workbench formatVersion must be a string")?,
+    )?;
+    let literal_inputs = if value["formatVersion"] == super::contract::EXECUTIONS_VERSION {
         value = crate::json::strict::parse_exact(text)?;
-        super::capability_jobs::validate_corpus_shape(&value)?;
+        super::executions::validate_corpus_shape(&value)?;
+        // Negative traces can contain any literal JSON, including serde-private
+        // marker maps. Move them around typed decoding without reinterpreting them.
+        Some(
+            value["cases"]
+                .as_array_mut()
+                .expect("schema-checked cases")
+                .iter_mut()
+                .map(|case| std::mem::replace(&mut case["input"], Value::Null))
+                .collect::<Vec<_>>(),
+        )
+    } else {
+        None
+    };
+    if value["formatVersion"] == super::contract::CAPABILITY_EXECUTIONS_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::capability_executions::validate_corpus_shape(&value)?;
     }
     if value["formatVersion"] == super::contract::CAPABILITY_POLICY_VERSION {
         value = crate::json::strict::parse_exact(text)?;
@@ -104,15 +125,20 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         super::native_replies::validate_corpus_shape(&value)?;
     }
     if value["formatVersion"] == super::contract::NATIVE_FRAMES_VERSION {
-        // Keep duplicate-aware infrastructure admission above, but retain exact
+        // Keep duplicate-aware infrastructure validation above, but retain exact
         // decimal tokens for compact generation counts in this new draft. The
-        // historical parser's IEEE-754 normalization remains unchanged in 1–6.
+        // historical parser's IEEE-754 normalization remains unchanged for value drafts.
         value = crate::json::strict::parse_exact(text)?;
         // Validate literal token kinds before serde's nested Value visitors can
         // interpret private arbitrary-precision/raw-value marker objects.
         super::native_frames::validate_corpus_shape(&value)?;
     }
-    let document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
+    let mut document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
+    if let Some(inputs) = literal_inputs {
+        for (case, input) in document.cases.iter_mut().zip(inputs) {
+            case.input = input;
+        }
+    }
     version(&document.format_version)?;
     if document.cases.is_empty() || document.cases.len() > MAX_CASES {
         return Err("corpus must contain 1 to 1024 cases".into());
@@ -131,8 +157,8 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::RunCapabilityJobs {
-            super::capability_jobs::validate_input(&case.input)?;
+        let input_len = if case.operation() == Operation::RunCapabilityExecutions {
+            super::capability_executions::validate_input(&case.input)?;
             encoded_size(&case.input, MAX_INPUT_BYTES)?
         } else if case.operation() == Operation::RunCapabilityPolicy {
             super::capability_policy::validate_input(&case.input)?;
@@ -152,8 +178,8 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         } else if case.operation() == Operation::ValidateNativeFrame {
             super::native_frames::validate_input(&case.input)?;
             encoded_size(&case.input, MAX_INPUT_BYTES)?
-        } else if case.operation() == Operation::ReduceJob {
-            // Negative job traces are arbitrary JSON. The adapter owns admission;
+        } else if case.operation() == Operation::ReduceExecution {
+            // Negative execution traces are arbitrary JSON. The adapter owns admission;
             // the runner only bounds the compact encoded input.
             encoded_size(&case.input, MAX_INPUT_BYTES)?
         } else if case.operation() == Operation::ValidateOutcomes {

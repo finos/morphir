@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.16/native-reply-projection.schema.json",
+  "title": "Offline Workbench native reply native-reply-projection",
+  "description": "Closed exact draft.16 JSON validate-native-reply contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+  "examples": [
+    {
+      "replyAccepted": true,
+      "ok": true,
+      "operation": "session.open"
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "replyAccepted", "ok", "operation" ],
+      "properties": {
+        "replyAccepted": {
+          "const": true
+        },
+        "ok": {
+          "const": true
+        },
+        "operation": {
+          "enum": [
+            "session.open",
+            "session.check",
+            "session.close",
+            "execution.submit",
+            "execution.query",
+            "execution.cancel",
+            "execution.release",
+            "workspace.choose",
+            "workspace.cancel-picker",
+            "workspace.revoke",
+            "workspace.open",
+            "workspace.read",
+            "workspace.release"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "replyAccepted", "ok", "error" ],
+      "properties": {
+        "replyAccepted": {
+          "const": true
+        },
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "type": "object",
+          "required": [ "code", "effect" ],
+          "properties": {
+            "code": {
+              "enum": [
+                "invalid_request",
+                "unauthorized",
+                "unavailable",
+                "not_found",
+                "conflict",
+                "limit"
+              ]
+            },
+            "effect": {
+              "enum": [ "none", "unknown" ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

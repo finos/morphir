@@ -1,0 +1,164 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.19/capability-executions-projection.schema.json",
+  "tests": [
+    {
+      "description": "Closed valid infrastructure",
+      "data": {
+        "executions": [
+          {
+            "plan": {
+              "profile": "morphir/workbench/execution-plan",
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "scheme",
+                "executionId": "execution-1",
+                "snapshotId": "snapshot-1"
+              },
+              "planId": "plan-1",
+              "runtime": "scheme",
+              "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+              "admission": {
+                "profile": "morphir/workbench/admission",
+                "contractVersion": "0.1.0-draft.1",
+                "policy": "permissive"
+              },
+              "boundary": {
+                "entries": [
+                  {
+                    "name": "selected:main#answer",
+                    "inputs": [],
+                    "output": {
+                      "type": "int"
+                    }
+                  }
+                ],
+                "definitions": []
+              }
+            },
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "scheme",
+                "executionId": "execution-1",
+                "snapshotId": "snapshot-1"
+              },
+              "sequence": 0,
+              "state": "submitted",
+              "cancelRequested": false,
+              "outcomes": null
+            },
+            "released": false
+          }
+        ],
+        "observations": [
+          {
+            "op": "inspect",
+            "execution": 0,
+            "status": "ok",
+            "code": null,
+            "view": {
+              "planId": "plan-1",
+              "policy": "permissive",
+              "runtime": "scheme",
+              "sequence": 0,
+              "state": "submitted",
+              "cancelRequested": false
+            }
+          }
+        ],
+        "failure": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject unknown top-level member",
+      "data": {
+        "executions": [
+          {
+            "plan": {
+              "profile": "morphir/workbench/execution-plan",
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "scheme",
+                "executionId": "execution-1",
+                "snapshotId": "snapshot-1"
+              },
+              "planId": "plan-1",
+              "runtime": "scheme",
+              "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+              "admission": {
+                "profile": "morphir/workbench/admission",
+                "contractVersion": "0.1.0-draft.1",
+                "policy": "permissive"
+              },
+              "boundary": {
+                "entries": [
+                  {
+                    "name": "selected:main#answer",
+                    "inputs": [],
+                    "output": {
+                      "type": "int"
+                    }
+                  }
+                ],
+                "definitions": []
+              }
+            },
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "scheme",
+                "executionId": "execution-1",
+                "snapshotId": "snapshot-1"
+              },
+              "sequence": 0,
+              "state": "submitted",
+              "cancelRequested": false,
+              "outcomes": null
+            },
+            "released": false
+          }
+        ],
+        "observations": [
+          {
+            "op": "inspect",
+            "execution": 0,
+            "status": "ok",
+            "code": null,
+            "view": {
+              "planId": "plan-1",
+              "policy": "permissive",
+              "runtime": "scheme",
+              "sequence": 0,
+              "state": "submitted",
+              "cancelRequested": false
+            }
+          }
+        ],
+        "failure": null,
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Publication refusal does not claim rollback",
+      "data": {
+        "executions": [],
+        "observations": [],
+        "failure": {
+          "stage": "projection",
+          "code": "workbench.projection_limit"
+        }
+      },
+      "valid": true
+    }
+  ]
+}

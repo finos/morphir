@@ -1,0 +1,282 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "execution report",
+      "data": {
+        "formatVersion": "0.1.0-draft.14",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.14",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "reduce-execution"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "submitted-no-actions",
+            "operation": "reduce-execution",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "receipt": {
+                  "contractVersion": "0.2.0-draft.1",
+                  "identity": {
+                    "hostId": "host",
+                    "sessionId": "session",
+                    "providerId": "provider",
+                    "executionId": "execution",
+                    "snapshotId": "snapshot"
+                  },
+                  "sequence": 0,
+                  "state": "submitted",
+                  "cancelRequested": false,
+                  "outcomes": null
+                },
+                "connected": true,
+                "cancelAction": "send",
+                "observations": []
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "only JSON report",
+      "data": {
+        "formatVersion": "0.1.0-draft.14",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.14",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "reduce-execution"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "submitted-no-actions",
+            "operation": "reduce-execution",
+            "format": "ion-text",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "receipt": {
+                  "contractVersion": "0.2.0-draft.1",
+                  "identity": {
+                    "hostId": "host",
+                    "sessionId": "session",
+                    "providerId": "provider",
+                    "executionId": "execution",
+                    "snapshotId": "snapshot"
+                  },
+                  "sequence": 0,
+                  "state": "submitted",
+                  "cancelRequested": false,
+                  "outcomes": null
+                },
+                "connected": true,
+                "cancelAction": "send",
+                "observations": []
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "only reduce-execution records",
+      "data": {
+        "formatVersion": "0.1.0-draft.14",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.14",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "reduce-execution"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "submitted-no-actions",
+            "operation": "validate-outcomes",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "receipt": {
+                  "contractVersion": "0.2.0-draft.1",
+                  "identity": {
+                    "hostId": "host",
+                    "sessionId": "session",
+                    "providerId": "provider",
+                    "executionId": "execution",
+                    "snapshotId": "snapshot"
+                  },
+                  "sequence": 0,
+                  "state": "submitted",
+                  "cancelRequested": false,
+                  "outcomes": null
+                },
+                "connected": true,
+                "cancelAction": "send",
+                "observations": []
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "legacy observed value rejected",
+      "data": {
+        "formatVersion": "0.1.0-draft.14",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.14",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "reduce-execution"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "submitted-no-actions",
+            "operation": "reduce-execution",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "type": "unit"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "qualified field is boolean",
+      "data": {
+        "formatVersion": "0.1.0-draft.14",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.14",
+          "binding": "fixture",
+          "language": "test",
+          "operations": [
+            "reduce-execution"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "submitted-no-actions",
+            "operation": "reduce-execution",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "receipt": {
+                  "contractVersion": "0.2.0-draft.1",
+                  "identity": {
+                    "hostId": "host",
+                    "sessionId": "session",
+                    "providerId": "provider",
+                    "executionId": "execution",
+                    "snapshotId": "snapshot"
+                  },
+                  "sequence": 0,
+                  "state": "submitted",
+                  "cancelRequested": false,
+                  "outcomes": null
+                },
+                "connected": true,
+                "cancelAction": "send",
+                "observations": []
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": "true"
+      },
+      "valid": false
+    }
+  ]
+}

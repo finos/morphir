@@ -924,3 +924,46 @@ fn workbench_output_corpus_retains_history_and_binds_report_evidence() {
         assert!(check_report(&root, &Report::from_json(&forged.to_string()).unwrap()).is_err());
     }
 }
+
+#[test]
+fn execution_contract_replacements_accept_only_new_exact_drafts() {
+    for (version, operation) in [
+        ("0.1.0-draft.14", "reduce-execution"),
+        ("0.1.0-draft.15", "validate-native-frame"),
+        ("0.1.0-draft.16", "validate-native-reply"),
+        ("0.1.0-draft.17", "run-native-client"),
+        ("0.1.0-draft.18", "run-native-owner"),
+        ("0.1.0-draft.19", "run-capability-executions"),
+    ] {
+        let caps = json!({"suite":"workbench","contractVersion":version,
+            "binding":"execution-contract-regression","language":"test",
+            "operations":[operation],"formats":["json"]});
+        Capabilities::parse(caps, version).unwrap();
+    }
+    for version in [
+        "0.1.0-draft.6",
+        "0.1.0-draft.7",
+        "0.1.0-draft.8",
+        "0.1.0-draft.9",
+        "0.1.0-draft.10",
+        "0.1.0-draft.13",
+    ] {
+        assert!(super::contract::version(version).is_err(), "{version}");
+    }
+    for operation in ["reduce-job", "run-capability-jobs"] {
+        assert!(serde_json::from_value::<Operation>(json!(operation)).is_err());
+    }
+}
+
+#[test]
+fn published_job_based_workbench_kits_are_historical_and_unsupported() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck");
+    for old in [6, 7, 8, 9, 10, 13] {
+        let error = load(&root.join(format!("draft.{old}")))
+            .expect_err("retired Workbench kit must not be accepted");
+        assert!(
+            error.contains("unsupported Workbench draft"),
+            "{old}: {error}"
+        );
+    }
+}

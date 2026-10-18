@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.18/mck-expectation.schema.json",
+  "title": "Offline native owner mck-expectation",
+  "description": "Closed exact Workbench MCK draft.18. Controlled production owner dependencies do not establish OS provenance, filesystem containment or native worker execution",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": "none"
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "status", "value" ],
+  "properties": {
+    "status": {
+      "const": "ok"
+    },
+    "value": {
+      "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.18/native-owner-expectation.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

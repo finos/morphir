@@ -1,0 +1,232 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/mck-request.schema.json",
+  "tests": [
+    {
+      "description": "exact reduce request",
+      "data": {
+        "id": 1,
+        "op": "reduce-execution",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "format": "json",
+        "input": {
+          "offer": {
+            "profile": "morphir/workbench/executions",
+            "contractVersion": "0.2.0-draft.1",
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "operations": [
+              "query",
+              "cancel"
+            ]
+          },
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "calls": [
+            "call"
+          ],
+          "initial": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "actions": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "input preserves rejection candidates",
+      "data": {
+        "id": 1,
+        "op": "reduce-execution",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "format": "json",
+        "input": null
+      },
+      "valid": true
+    },
+    {
+      "description": "no Ion request",
+      "data": {
+        "id": 1,
+        "op": "reduce-execution",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "format": "ion-text",
+        "input": {
+          "offer": {
+            "profile": "morphir/workbench/executions",
+            "contractVersion": "0.2.0-draft.1",
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "operations": [
+              "query",
+              "cancel"
+            ]
+          },
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "calls": [
+            "call"
+          ],
+          "initial": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "actions": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "closed request",
+      "data": {
+        "id": 1,
+        "op": "reduce-execution",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "format": "json",
+        "input": {
+          "offer": {
+            "profile": "morphir/workbench/executions",
+            "contractVersion": "0.2.0-draft.1",
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "operations": [
+              "query",
+              "cancel"
+            ]
+          },
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "calls": [
+            "call"
+          ],
+          "initial": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "actions": []
+        },
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "description": "no value decoding",
+      "data": {
+        "id": 1,
+        "op": "decode-value",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14",
+        "format": "json",
+        "input": {
+          "offer": {
+            "profile": "morphir/workbench/executions",
+            "contractVersion": "0.2.0-draft.1",
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "operations": [
+              "query",
+              "cancel"
+            ]
+          },
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "calls": [
+            "call"
+          ],
+          "initial": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "actions": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "exact capabilities request",
+      "data": {
+        "id": 1,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.14"
+      },
+      "valid": true
+    },
+    {
+      "description": "exit shape",
+      "data": {
+        "id": 1,
+        "op": "exit"
+      },
+      "valid": true
+    }
+  ]
+}

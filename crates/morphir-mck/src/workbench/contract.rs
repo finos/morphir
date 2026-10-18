@@ -10,12 +10,12 @@ pub const ADMISSION_VERSION: &str = "0.1.0-draft.2";
 pub const INVOCATION_VERSION: &str = "0.1.0-draft.3";
 pub const OUTPUT_VERSION: &str = "0.1.0-draft.4";
 pub const OUTCOMES_VERSION: &str = "0.1.0-draft.5";
-pub const JOBS_VERSION: &str = "0.1.0-draft.6";
-pub const NATIVE_FRAMES_VERSION: &str = "0.1.0-draft.7";
-pub const NATIVE_REPLIES_VERSION: &str = "0.1.0-draft.8";
-pub const NATIVE_CLIENT_VERSION: &str = "0.1.0-draft.9";
-pub const NATIVE_OWNER_VERSION: &str = "0.1.0-draft.10";
-pub const CAPABILITY_JOBS_VERSION: &str = "0.1.0-draft.13";
+pub const EXECUTIONS_VERSION: &str = "0.1.0-draft.14";
+pub const NATIVE_FRAMES_VERSION: &str = "0.1.0-draft.15";
+pub const NATIVE_REPLIES_VERSION: &str = "0.1.0-draft.16";
+pub const NATIVE_CLIENT_VERSION: &str = "0.1.0-draft.17";
+pub const NATIVE_OWNER_VERSION: &str = "0.1.0-draft.18";
+pub const CAPABILITY_EXECUTIONS_VERSION: &str = "0.1.0-draft.19";
 pub const CAPABILITY_POLICY_VERSION: &str = "0.1.0-draft.12";
 pub const SELECTED_SCHEME_VERSION: &str = "0.1.0-draft.11";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
@@ -54,14 +54,14 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.3",
         "=0.1.0-draft.4",
         "=0.1.0-draft.5",
-        "=0.1.0-draft.6",
-        "=0.1.0-draft.7",
-        "=0.1.0-draft.8",
-        "=0.1.0-draft.9",
-        "=0.1.0-draft.10",
+        "=0.1.0-draft.14",
+        "=0.1.0-draft.15",
+        "=0.1.0-draft.16",
+        "=0.1.0-draft.17",
+        "=0.1.0-draft.18",
         "=0.1.0-draft.11",
         "=0.1.0-draft.12",
-        "=0.1.0-draft.13",
+        "=0.1.0-draft.19",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -93,8 +93,8 @@ pub enum Operation {
     ValidateOutput,
     #[serde(rename = "validate-outcomes")]
     ValidateOutcomes,
-    #[serde(rename = "reduce-job")]
-    ReduceJob,
+    #[serde(rename = "reduce-execution")]
+    ReduceExecution,
     #[serde(rename = "validate-native-frame")]
     ValidateNativeFrame,
     #[serde(rename = "validate-native-reply")]
@@ -107,13 +107,13 @@ pub enum Operation {
     RunSelectedScheme,
     #[serde(rename = "run-capability-policy")]
     RunCapabilityPolicy,
-    #[serde(rename = "run-capability-jobs")]
-    RunCapabilityJobs,
+    #[serde(rename = "run-capability-executions")]
+    RunCapabilityExecutions,
 }
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
-        if (version == CAPABILITY_JOBS_VERSION) != (self == Self::RunCapabilityJobs) {
+        if (version == CAPABILITY_EXECUTIONS_VERSION) != (self == Self::RunCapabilityExecutions) {
             return Err("operation is not defined by this Workbench draft".into());
         }
         if (version == CAPABILITY_POLICY_VERSION) != (self == Self::RunCapabilityPolicy) {
@@ -134,7 +134,7 @@ impl Operation {
         if (version == NATIVE_FRAMES_VERSION) != (self == Self::ValidateNativeFrame) {
             return Err("operation is not defined by this Workbench draft".into());
         }
-        if (version == JOBS_VERSION) != (self == Self::ReduceJob) {
+        if (version == EXECUTIONS_VERSION) != (self == Self::ReduceExecution) {
             return Err("operation is not defined by this Workbench draft".into());
         }
         if (version == VERSION && self != Self::DecodeValue)
@@ -152,12 +152,12 @@ impl Operation {
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
         if matches!(
             self,
-            Self::ReduceJob
+            Self::ReduceExecution
                 | Self::ValidateNativeFrame
                 | Self::ValidateNativeReply
                 | Self::RunNativeClient
                 | Self::RunNativeOwner
-                | Self::RunCapabilityJobs
+                | Self::RunCapabilityExecutions
                 | Self::RunCapabilityPolicy
                 | Self::RunSelectedScheme
         ) && format != Format::Json
@@ -210,10 +210,13 @@ impl Capabilities {
         for operation in &self.operations {
             operation.validate_version(&self.contract_version)?;
         }
-        if self.contract_version == JOBS_VERSION
-            && (self.operations != [Operation::ReduceJob] || self.formats != [Format::Json])
+        if self.contract_version == EXECUTIONS_VERSION
+            && (self.operations != [Operation::ReduceExecution] || self.formats != [Format::Json])
         {
-            return Err("job reduction requires exactly reduce-job and JSON capabilities".into());
+            return Err(
+                "execution reduction requires exactly reduce-execution and JSON capabilities"
+                    .into(),
+            );
         }
         if self.contract_version == NATIVE_FRAMES_VERSION
             && (self.operations != [Operation::ValidateNativeFrame]
@@ -263,13 +266,15 @@ impl Capabilities {
         {
             return Err("capability policy supports only run-capability-policy and JSON".into());
         }
-        if self.contract_version == CAPABILITY_JOBS_VERSION
+        if self.contract_version == CAPABILITY_EXECUTIONS_VERSION
             && (!matches!(
                 self.operations.as_slice(),
-                [] | [Operation::RunCapabilityJobs]
+                [] | [Operation::RunCapabilityExecutions]
             ) || self.formats != [Format::Json])
         {
-            return Err("capability jobs support only run-capability-jobs and JSON".into());
+            return Err(
+                "capability executions support only run-capability-executions and JSON".into(),
+            );
         }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
@@ -311,8 +316,8 @@ impl Observation {
                 if operation == Operation::RunNativeOwner {
                     return Err("native owner scenarios have no domain-invalid observation".into());
                 }
-                if operation == Operation::RunCapabilityJobs {
-                    return Err("capability job failures belong in the projection".into());
+                if operation == Operation::RunCapabilityExecutions {
+                    return Err("capability execution failures belong in the projection".into());
                 }
                 if operation == Operation::RunCapabilityPolicy {
                     return Err("capability policy domain failures belong in the projection".into());
@@ -375,12 +380,12 @@ fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> 
     match operation {
         Operation::ValidateInvocations => invocation_projection(value),
         Operation::ValidateOutcomes => super::outcomes::projection(value),
-        Operation::ReduceJob => super::jobs::projection(value),
+        Operation::ReduceExecution => super::executions::projection(value),
         Operation::ValidateNativeFrame => super::native_frames::projection(value),
         Operation::ValidateNativeReply => super::native_replies::projection(value),
         Operation::RunNativeClient => super::native_client::projection(value),
         Operation::RunNativeOwner => super::native_owner::projection(value),
-        Operation::RunCapabilityJobs => super::capability_jobs::projection(value),
+        Operation::RunCapabilityExecutions => super::capability_executions::projection(value),
         Operation::RunCapabilityPolicy => super::capability_policy::projection(value),
         Operation::RunSelectedScheme => super::selected_scheme::projection(value),
         _ => projection(value),

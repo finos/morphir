@@ -1,0 +1,112 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.16/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "session.open"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed outer shape",
+      "data": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "session.open"
+        },
+        "authority": "private"
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed rejection limit",
+      "data": {
+        "status": "invalid",
+        "code": "native.reply.limit"
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed rejection utf8",
+      "data": {
+        "status": "invalid",
+        "code": "native.reply.utf8"
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed rejection json",
+      "data": {
+        "status": "invalid",
+        "code": "native.reply.json"
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed rejection shape",
+      "data": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed rejection operation",
+      "data": {
+        "status": "invalid",
+        "code": "native.reply.operation"
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed rejection authority",
+      "data": {
+        "status": "invalid",
+        "code": "native.reply.authority"
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown rejection",
+      "data": {
+        "status": "invalid",
+        "code": "native.reply.other"
+      },
+      "valid": false
+    },
+    {
+      "description": "Private object cannot impersonate projection",
+      "data": {
+        "status": "ok",
+        "value": {
+          "$serde_json::private::RawValue": "{}"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Error message cannot leak",
+      "data": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": false,
+          "error": {
+            "code": "limit",
+            "effect": "none",
+            "message": "secret"
+          }
+        }
+      },
+      "valid": false
+    }
+  ]
+}

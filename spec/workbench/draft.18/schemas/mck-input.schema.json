@@ -1,0 +1,904 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.18/mck-input.schema.json",
+  "title": "Offline native owner mck-input",
+  "description": "Closed exact Workbench MCK draft.18. Controlled production owner dependencies do not establish OS provenance, filesystem containment or native worker execution",
+  "examples": [
+    {
+      "context": {
+        "window": "other",
+        "origin": "app",
+        "page": "page-X"
+      },
+      "services": {
+        "executions": "enabled",
+        "workspace": true
+      },
+      "evaluation": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "client:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        }
+      },
+      "roots": [],
+      "pickers": [],
+      "cleanups": [],
+      "actions": [
+        {
+          "op": "call",
+          "id": "open",
+          "operation": "session.open"
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "context",
+    "services",
+    "evaluation",
+    "roots",
+    "pickers",
+    "cleanups",
+    "actions"
+  ],
+  "properties": {
+    "context": {
+      "type": "object",
+      "required": [ "window", "origin", "page" ],
+      "properties": {
+        "window": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "origin": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "page": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "maxLength": 256
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "services": {
+      "type": "object",
+      "required": [ "executions", "workspace" ],
+      "properties": {
+        "executions": {
+          "enum": [ "enabled", "disabled", "unavailable" ]
+        },
+        "workspace": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "evaluation": {
+      "type": "object",
+      "required": [ "model", "entry", "inputs" ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "maxLength": 262144
+        },
+        "entry": {
+          "type": "string",
+          "maxLength": 512,
+          "minLength": 1
+        },
+        "inputs": {
+          "type": "object",
+          "required": [ "format", "source" ],
+          "properties": {
+            "format": {
+              "enum": [ "json", "ion-text" ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "roots": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [ "id", "manifest", "files" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "not": {
+              "pattern": "[^A-Za-z0-9_.-]"
+            },
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "manifest": {
+            "type": "string",
+            "maxLength": 16384
+          },
+          "files": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "required": [ "name", "encoding", "source" ],
+              "properties": {
+                "name": {
+                  "enum": [
+                    "morphir-ir.json",
+                    "morphir-ir.ion",
+                    "morphir-ir.10n",
+                    "morphir-ir.ionb"
+                  ]
+                },
+                "encoding": {
+                  "enum": [ "utf8", "base64" ]
+                },
+                "source": {
+                  "type": "string",
+                  "maxLength": 393216
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "pickers": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "required": [ "id", "held", "root", "fail" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "not": {
+              "pattern": "[^A-Za-z0-9_.-]"
+            },
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "root": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            ]
+          },
+          "fail": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cleanups": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "required": [ "id", "session", "held", "success" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "not": {
+              "pattern": "[^A-Za-z0-9_.-]"
+            },
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "session": {
+            "type": "string",
+            "not": {
+              "pattern": "[^A-Za-z0-9_.-]"
+            },
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "held": {
+            "type": "boolean"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "session.open"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "session.check"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "session.close"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "execution.submit"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "workspace.choose"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "workspace.cancel-picker"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session", "execution" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "execution.query"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "execution": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session", "execution" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "execution.cancel"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "execution": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session", "execution" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "execution.release"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "execution": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "operation", "session", "grant" ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "workspace.revoke"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "grant": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "id",
+              "operation",
+              "session",
+              "grant",
+              "project",
+              "sequence"
+            ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "workspace.open"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "grant": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "project": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "sequence": {
+                "type": "integer",
+                "maximum": 2147483647,
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "id",
+              "operation",
+              "session",
+              "grant",
+              "sequence",
+              "offset"
+            ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "workspace.read"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "grant": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "sequence": {
+                "type": "integer",
+                "maximum": 2147483647,
+                "minimum": 1
+              },
+              "offset": {
+                "type": "integer",
+                "maximum": 16777216,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "op",
+              "id",
+              "operation",
+              "session",
+              "grant",
+              "sequence"
+            ],
+            "properties": {
+              "op": {
+                "const": "call"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "workspace.release"
+              },
+              "session": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "grant": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "sequence": {
+                "type": "integer",
+                "maximum": 2147483647,
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "window", "origin", "page" ],
+            "properties": {
+              "op": {
+                "const": "context"
+              },
+              "window": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "origin": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "page": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op" ],
+            "properties": {
+              "op": {
+                "const": "revoke"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op" ],
+            "properties": {
+              "op": {
+                "const": "close"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id" ],
+            "properties": {
+              "op": {
+                "const": "shutdown"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id" ],
+            "properties": {
+              "op": {
+                "const": "deliver"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution", "outcomes" ],
+            "properties": {
+              "op": {
+                "const": "complete"
+              },
+              "execution": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "outcomes": {
+                "type": "object",
+                "propertyNames": {
+                  "not": {
+                    "enum": [
+                      "$serde_json::private::RawValue",
+                      "$serde_json::private::Number"
+                    ]
+                  }
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/opaqueJson"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "root", "name", "encoding", "source" ],
+            "properties": {
+              "op": {
+                "const": "replace"
+              },
+              "root": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "name": {
+                "enum": [
+                  "morphir-ir.json",
+                  "morphir-ir.ion",
+                  "morphir-ir.10n",
+                  "morphir-ir.ionb"
+                ]
+              },
+              "encoding": {
+                "enum": [ "utf8", "base64" ]
+              },
+              "source": {
+                "type": "string",
+                "maxLength": 393216
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "opaqueJson": {
+      "anyOf": [
+        {
+          "type": [ "null", "boolean", "number", "string" ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/opaqueJson"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "not": {
+              "enum": [
+                "$serde_json::private::RawValue",
+                "$serde_json::private::Number"
+              ]
+            }
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/opaqueJson"
+          }
+        }
+      ]
+    }
+  }
+}

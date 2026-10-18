@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/mck-corpus.schema.json",
+  "title": "Offline Workbench execution mck-corpus",
+  "description": "Closed exact draft.14 JSON reduce-execution contract. Shape validation does not establish transition semantics, authority authentication or live host execution",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.14",
+      "cases": [
+        {
+          "id": "submitted-no-actions",
+          "operation": "reduce-execution",
+          "format": "json",
+          "input": {
+            "offer": {
+              "profile": "morphir/workbench/executions",
+              "contractVersion": "0.2.0-draft.1",
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "operations": [ "query", "cancel" ]
+            },
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "calls": [ "call" ],
+            "initial": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 0,
+              "state": "submitted",
+              "cancelRequested": false,
+              "outcomes": null
+            },
+            "actions": []
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution",
+                  "snapshotId": "snapshot"
+                },
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "outcomes": null
+              },
+              "connected": true,
+              "cancelAction": "send",
+              "observations": []
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.14"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "reduce-execution"
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": true,
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/mck-observation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

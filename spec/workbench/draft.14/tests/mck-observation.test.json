@@ -1,0 +1,124 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.14/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "execution projection",
+      "data": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": true,
+          "cancelAction": "send",
+          "observations": []
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "bounded rejection",
+      "data": {
+        "status": "invalid",
+        "code": "workbench.execution_receipt"
+      },
+      "valid": true
+    },
+    {
+      "description": "bare value not execution projection",
+      "data": {
+        "status": "ok",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "invalid cannot have value",
+      "data": {
+        "status": "invalid",
+        "code": "x",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": true,
+          "cancelAction": "send",
+          "observations": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "observation closed",
+      "data": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": true,
+          "cancelAction": "send",
+          "observations": []
+        },
+        "message": "extra"
+      },
+      "valid": false
+    }
+  ]
+}

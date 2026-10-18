@@ -2,32 +2,32 @@ use super::*;
 use serde_json::{Value, json};
 
 fn caps() -> Value {
-    json!({"suite":"workbench","contractVersion":"0.1.0-draft.10",
+    json!({"suite":"workbench","contractVersion":"0.1.0-draft.18",
         "binding":"production-owner","language":"moonbit",
         "operations":["run-native-owner"],"formats":["json"]})
 }
 
 #[test]
 fn native_owner_negotiates_only_its_exact_json_operation() {
-    Capabilities::parse(caps(), "0.1.0-draft.10").unwrap();
+    Capabilities::parse(caps(), "0.1.0-draft.18").unwrap();
     for (field, value) in [
         ("operations", json!([])),
         ("operations", json!(["run-native-client"])),
         ("formats", json!(["ion-text"])),
         ("formats", json!(["json", "ion-text"])),
-        ("contractVersion", json!("0.1.0-draft.10+local")),
+        ("contractVersion", json!("0.1.0-draft.18+local")),
         ("contractVersion", json!("0.1.0-draft.11")),
     ] {
         let mut bad = caps();
         bad[field] = value;
-        assert!(Capabilities::parse(bad, "0.1.0-draft.10").is_err());
+        assert!(Capabilities::parse(bad, "0.1.0-draft.18").is_err());
     }
-    assert!(Capabilities::parse(caps(), "0.1.0-draft.9").is_err());
+    assert!(Capabilities::parse(caps(), "0.1.0-draft.17").is_err());
 }
 
 fn fixture() -> Value {
     serde_json::from_str::<Value>(include_str!(
-        "../../../../spec/workbench/mck/draft.10/cases.json"
+        "../../../../spec/workbench/mck/draft.18/cases.json"
     ))
     .unwrap()["cases"][0]
         .clone()
@@ -59,7 +59,7 @@ fn native_owner_runs_fixed_authority_negative_case_and_recomputes_report() {
 fn small_corpus(root: &std::path::Path, case: Value) -> Result<Corpus, String> {
     std::fs::write(
         root.join("cases.json"),
-        json!({"formatVersion":"0.1.0-draft.10","cases":[case]}).to_string(),
+        json!({"formatVersion":"0.1.0-draft.18","cases":[case]}).to_string(),
     )
     .unwrap();
     load(root)
@@ -168,7 +168,7 @@ fn native_owner_literal_guards_reject_serde_markers_before_typed_conversion() {
                     json!({"$serde_json::private::Number":"0"})
             }
             "private-outcomes" => {
-                case["input"]["actions"] = json!([{"op":"complete","job":"unknown","outcomes":{"nested":{"$serde_json::private::RawValue":"true"}}}])
+                case["input"]["actions"] = json!([{"op":"complete","execution":"unknown","outcomes":{"nested":{"$serde_json::private::RawValue":"true"}}}])
             }
             "unknown" => case["input"]["authority"] = json!(true),
             _ => unreachable!(),
@@ -177,7 +177,7 @@ fn native_owner_literal_guards_reject_serde_markers_before_typed_conversion() {
     }
     std::fs::write(
         root.path().join("cases.json"),
-        json!({"formatVersion":"0.1.0-draft.10","cases":[fixture()]})
+        json!({"formatVersion":"0.1.0-draft.18","cases":[fixture()]})
             .to_string()
             .replacen(
                 "\"workspace\":true",
@@ -283,7 +283,7 @@ fn native_owner_reports_preserve_errors_mismatches_and_reject_forgery() {
             "result" => bad["records"][0]["result"] = json!("fail"),
             "operation" => bad["records"][0]["operation"] = json!("run-native-client"),
             "hash" => bad["corpusHash"] = json!("0".repeat(64)),
-            "capabilities" => bad["capabilities"]["contractVersion"] = json!("0.1.0-draft.9"),
+            "capabilities" => bad["capabilities"]["contractVersion"] = json!("0.1.0-draft.17"),
             "observed" => bad["records"][0]["observed"]["value"]["usedPickers"] = json!(1),
             "private-count" => {
                 bad["records"][0]["observed"]["value"]["usedPickers"] =

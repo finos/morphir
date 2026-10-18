@@ -1,0 +1,38 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.19/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Closed valid infrastructure",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.19",
+        "binding": "scheme-execution-policy-adapter",
+        "language": "moonbit",
+        "operations": [
+          "run-capability-executions"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject unknown top-level member",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.19",
+        "binding": "scheme-execution-policy-adapter",
+        "language": "moonbit",
+        "operations": [
+          "run-capability-executions"
+        ],
+        "formats": [
+          "json"
+        ],
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

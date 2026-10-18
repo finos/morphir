@@ -1,0 +1,498 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.18/native-owner-projection.schema.json",
+  "tests": [
+    {
+      "description": "Fixed authority-negative example",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": "none"
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level infrastructure",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": "none"
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0,
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Projection counts have literal numeric kinds",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": "none"
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": {
+          "$serde_json::private::Number": "0"
+        },
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "Projection result states are closed",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "anything",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": "none"
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "Request reference failure is explicit",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "rejected",
+            "reply": null,
+            "cleanup": null,
+            "failure": "reference"
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": true
+    },
+    {
+      "description": "Pending result cannot contain a reply",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "pending",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": "none"
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "Successful shutdown confirms cleanup",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "shutdown",
+            "state": "returned",
+            "reply": null,
+            "cleanup": true,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": true
+    },
+    {
+      "description": "Returned shutdown cannot claim cleanup false",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "shutdown",
+            "state": "returned",
+            "reply": null,
+            "cleanup": false,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "Expected fixed effect choice",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": [
+                "none",
+                "unknown"
+              ]
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "No duplicate effect choice",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": [
+                "none",
+                "none"
+              ]
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "No empty effect choice",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": []
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "No extension effect choice",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": [
+                "none",
+                "other"
+              ]
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "Result requires failure field",
+      "data": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": "none"
+            },
+            "cleanup": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0
+      },
+      "valid": false
+    }
+  ]
+}

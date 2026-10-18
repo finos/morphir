@@ -1,0 +1,86 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.17/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.17",
+        "binding": "production-client",
+        "language": "typescript",
+        "operations": [
+          "run-native-client"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed literal shape",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.17",
+        "binding": "production-client",
+        "language": "typescript",
+        "operations": [
+          "run-native-client"
+        ],
+        "formats": [
+          "json"
+        ],
+        "unpublished": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact draft",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.17 +local",
+        "binding": "production-client",
+        "language": "typescript",
+        "operations": [
+          "run-native-client"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "Only client lifecycle",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.17",
+        "binding": "production-client",
+        "language": "typescript",
+        "operations": [
+          "validate-native-reply"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "JSON transport",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.17",
+        "binding": "production-client",
+        "language": "typescript",
+        "operations": [
+          "run-native-client"
+        ],
+        "formats": [
+          "ion-text"
+        ]
+      },
+      "valid": false
+    }
+  ]
+}

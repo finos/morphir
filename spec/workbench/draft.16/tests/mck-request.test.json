@@ -1,0 +1,120 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.16/mck-request.schema.json",
+  "tests": [
+    {
+      "description": "Published example",
+      "data": {
+        "id": 1,
+        "op": "validate-native-reply",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.16",
+        "format": "json",
+        "input": {
+          "expectedOperation": "session.open",
+          "expectedSession": null,
+          "encoding": "utf8",
+          "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed outer shape",
+      "data": {
+        "id": 1,
+        "op": "validate-native-reply",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.16",
+        "format": "json",
+        "input": {
+          "expectedOperation": "session.open",
+          "expectedSession": null,
+          "encoding": "utf8",
+          "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+        },
+        "authority": "private"
+      },
+      "valid": false
+    },
+    {
+      "description": "Capabilities request",
+      "data": {
+        "id": 1,
+        "op": "capabilities",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.16"
+      },
+      "valid": true
+    },
+    {
+      "description": "Wrong operation",
+      "data": {
+        "id": 1,
+        "op": "validate-native-frame",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.16",
+        "format": "json",
+        "input": {
+          "expectedOperation": "session.open",
+          "expectedSession": null,
+          "encoding": "utf8",
+          "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Wrong format",
+      "data": {
+        "id": 1,
+        "op": "validate-native-reply",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.16",
+        "format": "ion-text",
+        "input": {
+          "expectedOperation": "session.open",
+          "expectedSession": null,
+          "encoding": "utf8",
+          "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No expectation hints",
+      "data": {
+        "id": 1,
+        "op": "validate-native-reply",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.16",
+        "format": "json",
+        "input": {
+          "expectedOperation": "session.open",
+          "expectedSession": null,
+          "encoding": "utf8",
+          "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+        },
+        "expected": {
+          "status": "ok"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Required capture",
+      "data": {
+        "id": 1,
+        "op": "validate-native-reply",
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.16",
+        "format": "json",
+        "input": {
+          "expectedOperation": "session.open",
+          "encoding": "utf8",
+          "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}"
+        }
+      },
+      "valid": false
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.1/release-reply.schema.json",
+  "tests": [
+    {
+      "description": "Successful release",
+      "data": {
+        "released": true
+      },
+      "valid": true
+    },
+    {
+      "description": "No negative success reply",
+      "data": {
+        "released": false
+      },
+      "valid": false
+    },
+    {
+      "description": "Released must be boolean",
+      "data": {
+        "released": "true"
+      },
+      "valid": false
+    },
+    {
+      "description": "No missing release status",
+      "data": {},
+      "valid": false
+    },
+    {
+      "description": "Unknown release member",
+      "data": {
+        "released": true,
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        }
+      },
+      "valid": false
+    }
+  ]
+}

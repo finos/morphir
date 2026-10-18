@@ -1,4 +1,4 @@
-//! Closed immutable-job fixture infrastructure. Model, argument and supplied
+//! Closed immutable-execution fixture infrastructure. Model, argument and supplied
 //! completion source stay opaque; the production adapter owns planning/execution.
 use serde_json::Value;
 use std::sync::OnceLock;
@@ -13,28 +13,38 @@ fn schema_validator(schema: &str) -> jsonschema::Validator {
         include_str!("../../../../spec/workbench/draft.3/schemas/value-type.schema.json"),
         include_str!("../../../../spec/workbench/draft.3/schemas/definitions.schema.json"),
         include_str!("../../../../spec/workbench/draft.3/schemas/manifest.schema.json"),
-        include_str!("../../../../spec/workbench/jobs/draft.1/schemas/identity.schema.json"),
-        include_str!("../../../../spec/workbench/jobs/draft.1/schemas/receipt.schema.json"),
-        include_str!("../../../../spec/workbench/jobs/draft.1/schemas/offer.schema.json"),
-        include_str!("../../../../spec/workbench/job-plan/draft.1/schemas/plan.schema.json"),
-        include_str!("../../../../spec/workbench/admission/draft.1/schemas/selection.schema.json"),
-        include_str!("../../../../spec/workbench/draft.13/schemas/mck-input.schema.json"),
         include_str!(
-            "../../../../spec/workbench/draft.13/schemas/capability-jobs-projection.schema.json"
+            "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/identity.schema.json"
         ),
-        include_str!("../../../../spec/workbench/draft.13/schemas/mck-observation.schema.json"),
-        include_str!("../../../../spec/workbench/draft.13/schemas/mck-capabilities.schema.json"),
+        include_str!(
+            "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/receipt.schema.json"
+        ),
+        include_str!(
+            "../../../../spec/workbench/executions/0.2.0-draft.1/schemas/offer.schema.json"
+        ),
+        include_str!(
+            "../../../../spec/workbench/execution-plan/0.2.0-draft.1/schemas/plan.schema.json"
+        ),
+        include_str!("../../../../spec/workbench/admission/draft.1/schemas/selection.schema.json"),
+        include_str!("../../../../spec/workbench/draft.19/schemas/mck-input.schema.json"),
+        include_str!(
+            "../../../../spec/workbench/draft.19/schemas/capability-executions-projection.schema.json"
+        ),
+        include_str!("../../../../spec/workbench/draft.19/schemas/mck-observation.schema.json"),
+        include_str!("../../../../spec/workbench/draft.19/schemas/mck-capabilities.schema.json"),
     ] {
-        let value: Value = serde_json::from_str(source).expect("capability jobs schema JSON");
+        let value: Value = serde_json::from_str(source).expect("capability executions schema JSON");
         options.with_resource(
-            value["$id"].as_str().expect("capability jobs schema id"),
+            value["$id"]
+                .as_str()
+                .expect("capability executions schema id"),
             jsonschema::Resource::from_contents(value.clone())
-                .expect("capability jobs schema resource"),
+                .expect("capability executions schema resource"),
         );
     }
     options
-        .build(&serde_json::from_str(schema).expect("capability jobs schema JSON"))
-        .expect("capability jobs schema")
+        .build(&serde_json::from_str(schema).expect("capability executions schema JSON"))
+        .expect("capability executions schema")
 }
 
 macro_rules! shape_validator {
@@ -46,7 +56,7 @@ macro_rules! shape_validator {
                 .validate(value)
                 .map_err(|e| {
                     format!(
-                        "invalid capability jobs {} at {}: {e}",
+                        "invalid capability executions {} at {}: {e}",
                         stringify!($name),
                         e.instance_path
                     )
@@ -56,19 +66,19 @@ macro_rules! shape_validator {
 }
 shape_validator!(
     validate_corpus_shape,
-    "../../../../spec/workbench/draft.13/schemas/mck-corpus.schema.json"
+    "../../../../spec/workbench/draft.19/schemas/mck-corpus.schema.json"
 );
 shape_validator!(
     validate_observation_shape,
-    "../../../../spec/workbench/draft.13/schemas/mck-observation.schema.json"
+    "../../../../spec/workbench/draft.19/schemas/mck-observation.schema.json"
 );
 shape_validator!(
     validate_report_shape,
-    "../../../../spec/workbench/draft.13/schemas/mck-report.schema.json"
+    "../../../../spec/workbench/draft.19/schemas/mck-report.schema.json"
 );
 shape_validator!(
     validate_projection_shape,
-    "../../../../spec/workbench/draft.13/schemas/capability-jobs-projection.schema.json"
+    "../../../../spec/workbench/draft.19/schemas/capability-executions-projection.schema.json"
 );
 
 pub(super) fn validate_input(value: &Value) -> Result<(), String> {
@@ -85,16 +95,22 @@ pub(super) fn projection(value: &Value) -> Result<Value, String> {
     let mut projected = value.clone();
     let mut plans = std::collections::BTreeSet::new();
     let mut identities = std::collections::BTreeSet::new();
-    for job in projected["jobs"]
+    for execution in projected["executions"]
         .as_array_mut()
-        .expect("schema checked jobs")
+        .expect("schema checked executions")
     {
-        let plan = &job["plan"];
+        let plan = &execution["plan"];
         super::contract::identity(
             plan["planId"].as_str().expect("schema checked plan id"),
             128,
         )?;
-        for field in ["hostId", "sessionId", "providerId", "jobId", "snapshotId"] {
+        for field in [
+            "hostId",
+            "sessionId",
+            "providerId",
+            "executionId",
+            "snapshotId",
+        ] {
             super::contract::identity(
                 plan["identity"][field]
                     .as_str()
@@ -102,10 +118,17 @@ pub(super) fn projection(value: &Value) -> Result<Value, String> {
                 128,
             )?;
         }
-        if plan["identity"] != job["receipt"]["identity"] {
-            return Err("job plan and receipt identities differ".into());
+        if plan["identity"] != execution["receipt"]["identity"] {
+            return Err("execution plan and receipt identities differ".into());
         }
-        let identity = ["hostId", "sessionId", "providerId", "jobId", "snapshotId"].map(|field| {
+        let identity = [
+            "hostId",
+            "sessionId",
+            "providerId",
+            "executionId",
+            "snapshotId",
+        ]
+        .map(|field| {
             plan["identity"][field]
                 .as_str()
                 .expect("schema checked identity")
@@ -118,10 +141,11 @@ pub(super) fn projection(value: &Value) -> Result<Value, String> {
                 .to_owned(),
         ) || !identities.insert(identity)
         {
-            return Err("duplicate accepted job or plan identity".into());
+            return Err("duplicate accepted execution or plan identity".into());
         }
-        if !job["receipt"]["outcomes"].is_null() {
-            job["receipt"]["outcomes"] = super::outcomes::projection(&job["receipt"]["outcomes"])?;
+        if !execution["receipt"]["outcomes"].is_null() {
+            execution["receipt"]["outcomes"] =
+                super::outcomes::projection(&execution["receipt"]["outcomes"])?;
         }
     }
     for observation in projected["observations"]

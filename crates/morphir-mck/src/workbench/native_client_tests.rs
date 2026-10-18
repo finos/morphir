@@ -3,26 +3,26 @@ use serde_json::json;
 
 #[test]
 fn native_client_negotiates_only_its_exact_json_operation() {
-    let caps = json!({"suite":"workbench","contractVersion":"0.1.0-draft.9",
+    let caps = json!({"suite":"workbench","contractVersion":"0.1.0-draft.17",
         "binding":"production-client","language":"typescript",
         "operations":["run-native-client"],"formats":["json"]});
-    Capabilities::parse(caps.clone(), "0.1.0-draft.9").unwrap();
+    Capabilities::parse(caps.clone(), "0.1.0-draft.17").unwrap();
     for (field, value) in [
         ("operations", json!([])),
         ("operations", json!(["validate-native-reply"])),
         ("formats", json!(["ion-text"])),
-        ("contractVersion", json!("0.1.0-draft.9+local")),
+        ("contractVersion", json!("0.1.0-draft.17+local")),
     ] {
         let mut bad = caps.clone();
         bad[field] = value;
-        assert!(Capabilities::parse(bad, "0.1.0-draft.9").is_err());
+        assert!(Capabilities::parse(bad, "0.1.0-draft.17").is_err());
     }
 }
 
 #[test]
 fn native_client_corpus_uses_fixed_opaque_scenarios_and_recomputed_reports() {
     let root =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.9");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.17");
     let corpus = load(&root).unwrap();
     assert_eq!(corpus.case_count(), 48);
     struct Replay {
@@ -34,7 +34,7 @@ fn native_client_corpus_uses_fixed_opaque_scenarios_and_recomputed_reports() {
             self.replies.pop_front().ok_or("exhausted".into())
         }
     }
-    let caps = json!({"suite":"workbench","contractVersion":"0.1.0-draft.9","binding":"transcript",
+    let caps = json!({"suite":"workbench","contractVersion":"0.1.0-draft.17","binding":"transcript",
         "language":"test","operations":["run-native-client"],"formats":["json"]});
     let mut replay = Replay {
         replies: std::iter::once(caps)
@@ -53,7 +53,7 @@ fn native_client_corpus_uses_fixed_opaque_scenarios_and_recomputed_reports() {
 
 fn fixture() -> serde_json::Value {
     serde_json::from_str::<serde_json::Value>(include_str!(
-        "../../../../spec/workbench/mck/draft.9/cases.json"
+        "../../../../spec/workbench/mck/draft.17/cases.json"
     ))
     .unwrap()["cases"][0]
         .clone()
@@ -61,13 +61,13 @@ fn fixture() -> serde_json::Value {
 fn small_corpus(root: &std::path::Path, case: serde_json::Value) -> Result<Corpus, String> {
     std::fs::write(
         root.join("cases.json"),
-        json!({"formatVersion":"0.1.0-draft.9","cases":[case]}).to_string(),
+        json!({"formatVersion":"0.1.0-draft.17","cases":[case]}).to_string(),
     )
     .unwrap();
     load(root)
 }
 fn caps() -> serde_json::Value {
-    json!({"suite":"workbench","contractVersion":"0.1.0-draft.9","binding":"transcript","language":"test","operations":["run-native-client"],"formats":["json"]})
+    json!({"suite":"workbench","contractVersion":"0.1.0-draft.17","binding":"transcript","language":"test","operations":["run-native-client"],"formats":["json"]})
 }
 struct Reply(serde_json::Value);
 impl Testee for Reply {
@@ -183,7 +183,7 @@ fn native_client_errors_and_mismatches_have_distinct_truthful_reports() {
             "result" => bad["records"][0]["result"] = json!("fail"),
             "operation" => bad["records"][0]["operation"] = json!("validate-native-reply"),
             "hash" => bad["corpusHash"] = json!("0".repeat(64)),
-            "capabilities" => bad["capabilities"]["contractVersion"] = json!("0.1.0-draft.8"),
+            "capabilities" => bad["capabilities"]["contractVersion"] = json!("0.1.0-draft.16"),
             "requests" => bad["records"][0]["observed"]["value"]["requests"] = json!([]),
             "private" => {
                 bad["records"][0]["observed"]["value"] =

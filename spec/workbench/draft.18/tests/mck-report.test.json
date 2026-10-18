@@ -1,0 +1,283 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.18/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "Fixed authority-negative example",
+      "data": {
+        "formatVersion": "0.1.0-draft.18",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.18",
+          "binding": "production-owner",
+          "language": "moonbit",
+          "operations": [
+            "run-native-owner"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "wrong-window-no-authority",
+            "operation": "run-native-owner",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "call",
+                    "attempts": [
+                      {
+                        "id": "open",
+                        "state": "returned"
+                      }
+                    ],
+                    "callCount": 0,
+                    "delivery": null,
+                    "completion": null
+                  }
+                ],
+                "results": [
+                  {
+                    "id": "open",
+                    "state": "returned",
+                    "reply": {
+                      "ok": false,
+                      "code": "unauthorized",
+                      "effect": "none"
+                    },
+                    "cleanup": null,
+                    "failure": null
+                  }
+                ],
+                "calls": [],
+                "usedPickers": 0,
+                "unusedPickers": 0,
+                "usedCleanups": 0,
+                "unusedCleanups": 0
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed top-level infrastructure",
+      "data": {
+        "formatVersion": "0.1.0-draft.18",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.18",
+          "binding": "production-owner",
+          "language": "moonbit",
+          "operations": [
+            "run-native-owner"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "wrong-window-no-authority",
+            "operation": "run-native-owner",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "call",
+                    "attempts": [
+                      {
+                        "id": "open",
+                        "state": "returned"
+                      }
+                    ],
+                    "callCount": 0,
+                    "delivery": null,
+                    "completion": null
+                  }
+                ],
+                "results": [
+                  {
+                    "id": "open",
+                    "state": "returned",
+                    "reply": {
+                      "ok": false,
+                      "code": "unauthorized",
+                      "effect": "none"
+                    },
+                    "cleanup": null,
+                    "failure": null
+                  }
+                ],
+                "calls": [],
+                "usedPickers": 0,
+                "unusedPickers": 0,
+                "usedCleanups": 0,
+                "unusedCleanups": 0
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true,
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Saved observations forbid effect arrays",
+      "data": {
+        "formatVersion": "0.1.0-draft.18",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.18",
+          "binding": "production-owner",
+          "language": "moonbit",
+          "operations": [
+            "run-native-owner"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "wrong-window-no-authority",
+            "operation": "run-native-owner",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "call",
+                    "attempts": [
+                      {
+                        "id": "open",
+                        "state": "returned"
+                      }
+                    ],
+                    "callCount": 0,
+                    "delivery": null,
+                    "completion": null
+                  }
+                ],
+                "results": [
+                  {
+                    "id": "open",
+                    "state": "returned",
+                    "reply": {
+                      "ok": false,
+                      "code": "unauthorized",
+                      "effect": [
+                        "none",
+                        "unknown"
+                      ]
+                    },
+                    "cleanup": null,
+                    "failure": null
+                  }
+                ],
+                "calls": [],
+                "usedPickers": 0,
+                "unusedPickers": 0,
+                "usedCleanups": 0,
+                "unusedCleanups": 0
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Saved observation literal numeric guard",
+      "data": {
+        "formatVersion": "0.1.0-draft.18",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.18",
+          "binding": "production-owner",
+          "language": "moonbit",
+          "operations": [
+            "run-native-owner"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "wrong-window-no-authority",
+            "operation": "run-native-owner",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "call",
+                    "attempts": [
+                      {
+                        "id": "open",
+                        "state": "returned"
+                      }
+                    ],
+                    "callCount": 0,
+                    "delivery": null,
+                    "completion": null
+                  }
+                ],
+                "results": [
+                  {
+                    "id": "open",
+                    "state": "returned",
+                    "reply": {
+                      "ok": false,
+                      "code": "unauthorized",
+                      "effect": "none"
+                    },
+                    "cleanup": null,
+                    "failure": null
+                  }
+                ],
+                "calls": [],
+                "usedPickers": 0,
+                "unusedPickers": 0,
+                "usedCleanups": {
+                  "$serde_json::private::Number": "0"
+                },
+                "unusedCleanups": 0
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": false
+    }
+  ]
+}
