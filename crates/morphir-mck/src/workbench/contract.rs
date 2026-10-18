@@ -27,6 +27,7 @@ pub const HTTP_POLICY_PROVIDER_VERSION: &str = "0.1.0-draft.25";
 pub const WORKSHEET_PROFILE_VERSION: &str = "0.1.0-draft.1";
 pub const WORKSHEET_VERSION: &str = "0.1.0-draft.27";
 pub const CODEC_COMPARISON_VERSION: &str = "0.1.0-draft.26";
+pub const ARTIFACT_TRANSFER_VERSION: &str = "0.1.0-draft.28";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -79,6 +80,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.25",
         "=0.1.0-draft.26",
         "=0.1.0-draft.27",
+        "=0.1.0-draft.28",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -100,6 +102,8 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Operation {
+    #[serde(rename = "artifact-server")]
+    ArtifactServer,
     #[serde(rename = "worksheet-evaluate")]
     WorksheetEvaluate,
     #[serde(rename = "worksheet-validate")]
@@ -150,6 +154,16 @@ pub enum Operation {
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if version == ARTIFACT_TRANSFER_VERSION {
+            return if self == Self::ArtifactServer {
+                Ok(())
+            } else {
+                Err("operation is not defined by this Workbench draft".into())
+            };
+        }
+        if self == Self::ArtifactServer {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if version == WORKSHEET_VERSION {
             return if matches!(self, Self::WorksheetEvaluate | Self::WorksheetValidate) {
                 Ok(())
@@ -227,7 +241,8 @@ impl Operation {
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
         if matches!(
             self,
-            Self::WorksheetEvaluate
+            Self::ArtifactServer
+                | Self::WorksheetEvaluate
                 | Self::WorksheetValidate
                 | Self::TranscodeInvocations
                 | Self::CompareValues
@@ -390,6 +405,9 @@ impl Capabilities {
         if self.contract_version == WORKSHEET_VERSION && self.formats != [Format::Json] {
             return Err("worksheet requires JSON framing".into());
         }
+        if self.contract_version == ARTIFACT_TRANSFER_VERSION && self.formats != [Format::Json] {
+            return Err("artifact transfer requires JSON framing".into());
+        }
         if self.contract_version == CODEC_COMPARISON_VERSION && self.formats != [Format::Json] {
             return Err("codec comparison requires JSON framing".into());
         }
@@ -427,6 +445,9 @@ impl Observation {
                 projection_for(value, operation)?;
             }
             Self::Invalid { code } => {
+                if operation == Operation::ArtifactServer {
+                    return Err("artifact domain refusals belong in the observed transcript".into());
+                }
                 if matches!(
                     operation,
                     Operation::RunHttpPolicyClient
@@ -535,6 +556,7 @@ impl Observation {
 
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
     match operation {
+        Operation::ArtifactServer => super::artifacts::projection(value),
         Operation::WorksheetEvaluate | Operation::WorksheetValidate => {
             super::worksheet::projection(value, operation)
         }

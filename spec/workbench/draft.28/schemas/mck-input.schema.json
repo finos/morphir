@@ -1,0 +1,636 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-input.schema.json",
+  "title": "Artifact transfer mck-input",
+  "description": "Exact artifact-server evidence with independently authored byte hashes; semantic byte, work, authority and lifecycle rules are normative in README.html",
+  "examples": [
+    {
+      "fixture": {
+        "producer": {
+          "id": "artifact-fixture",
+          "version": "0.1.0"
+        },
+        "offer": "exact",
+        "completion": "success",
+        "artifacts": [
+          {
+            "path": "data.bin",
+            "content": {
+              "representation": "binary-recipe",
+              "recipe": {
+                "kind": "hex",
+                "hex": ""
+              }
+            }
+          }
+        ],
+        "diagnostics": []
+      },
+      "actions": [
+        {
+          "action": "connect",
+          "connection": "c1",
+          "authentication": "valid"
+        },
+        {
+          "action": "initialize",
+          "connection": "c1",
+          "session": "current"
+        },
+        {
+          "action": "generate",
+          "connection": "c1",
+          "generation": "g1",
+          "requestId": "2",
+          "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":{}}}"
+        },
+        {
+          "action": "usage"
+        },
+        {
+          "action": "read-all",
+          "connection": "c1",
+          "generation": "g1",
+          "artifactIndex": 0,
+          "maxBytes": 65536
+        },
+        {
+          "action": "read",
+          "connection": "c1",
+          "generation": "g1",
+          "artifactIndex": 0,
+          "requestId": "3000",
+          "offset": "0",
+          "maxBytes": "65536"
+        },
+        {
+          "action": "release",
+          "connection": "c1",
+          "generation": "g1",
+          "requestId": "9000"
+        },
+        {
+          "action": "release",
+          "connection": "c1",
+          "generation": "g1",
+          "requestId": "9001"
+        },
+        {
+          "action": "close",
+          "connection": "c1"
+        },
+        {
+          "action": "usage"
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "fixture", "actions" ],
+  "properties": {
+    "fixture": {
+      "type": "object",
+      "required": [
+        "producer",
+        "offer",
+        "completion",
+        "artifacts",
+        "diagnostics"
+      ],
+      "properties": {
+        "producer": {
+          "type": "object",
+          "required": [ "id", "version" ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 128,
+              "minLength": 1
+            },
+            "version": {
+              "type": "string",
+              "maxLength": 256,
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "offer": {
+          "enum": [ "exact", "absent", "wrong-draft", "unavailable" ]
+        },
+        "completion": {
+          "enum": [ "success", "failure", "lost-reply" ]
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 257,
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [ "path", "content" ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "maxLength": 4097
+              },
+              "content": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "representation", "recipe" ],
+                    "properties": {
+                      "representation": {
+                        "const": "binary-recipe"
+                      },
+                      "recipe": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "required": [ "kind", "hex" ],
+                            "properties": {
+                              "kind": {
+                                "const": "hex"
+                              },
+                              "hex": {
+                                "type": "string",
+                                "pattern": "^([0-9a-f]{2})*$",
+                                "maxLength": 2097152
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "required": [ "kind", "length" ],
+                            "properties": {
+                              "kind": {
+                                "const": "cycle-u8"
+                              },
+                              "length": {
+                                "type": "integer",
+                                "maximum": 16777217,
+                                "minimum": 0
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "required": [ "kind", "length", "seed" ],
+                            "properties": {
+                              "kind": {
+                                "const": "chunk-indexed-u8"
+                              },
+                              "length": {
+                                "type": "integer",
+                                "maximum": 16777217,
+                                "minimum": 0
+                              },
+                              "seed": {
+                                "type": "integer",
+                                "maximum": 255,
+                                "minimum": 0
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "representation", "content" ],
+                    "properties": {
+                      "representation": {
+                        "const": "literal-binary"
+                      },
+                      "content": {
+                        "type": "string",
+                        "maxLength": 1048576
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [ "representation", "content" ],
+                    "properties": {
+                      "representation": {
+                        "const": "utf8-text"
+                      },
+                      "content": {
+                        "type": "string",
+                        "maxLength": 1048576
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "maxItems": 256,
+          "minItems": 0,
+          "items": {
+            "type": "object",
+            "required": [ "severity", "code", "message", "location" ],
+            "properties": {
+              "severity": {
+                "enum": [ "error", "warning", "info", "hint" ]
+              },
+              "code": {
+                "type": [ "string", "null" ]
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 131072
+              },
+              "location": {
+                "type": "null"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 512,
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "action", "connection", "authentication" ],
+            "properties": {
+              "action": {
+                "const": "connect"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "authentication": {
+                "enum": [
+                  "valid",
+                  "missing-cookie",
+                  "wrong-cookie",
+                  "wrong-origin",
+                  "wrong-host",
+                  "missing-origin"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "action", "connection", "session" ],
+            "properties": {
+              "action": {
+                "const": "initialize"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "session": {
+                "enum": [ "current", "wrong" ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "connection",
+              "generation",
+              "requestId",
+              "params"
+            ],
+            "properties": {
+              "action": {
+                "const": "generate"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$"
+              },
+              "params": {
+                "type": "string",
+                "maxLength": 1048576
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "connection",
+              "generation",
+              "requestId",
+              "params"
+            ],
+            "properties": {
+              "action": {
+                "const": "start-generate"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$"
+              },
+              "params": {
+                "type": "string",
+                "maxLength": 1048576
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "action", "connection", "generation" ],
+            "properties": {
+              "action": {
+                "const": "receive-generate"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "connection",
+              "generation",
+              "artifactIndex",
+              "requestId",
+              "offset",
+              "maxBytes"
+            ],
+            "properties": {
+              "action": {
+                "const": "read"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "artifactIndex": {
+                "type": "integer",
+                "maximum": 255,
+                "minimum": 0
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$"
+              },
+              "offset": {
+                "type": "string",
+                "maxLength": 1024,
+                "minLength": 1
+              },
+              "maxBytes": {
+                "type": "string",
+                "maxLength": 1024,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "connection",
+              "generation",
+              "artifactIndex",
+              "maxBytes"
+            ],
+            "properties": {
+              "action": {
+                "const": "read-all"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "artifactIndex": {
+                "type": "integer",
+                "maximum": 255,
+                "minimum": 0
+              },
+              "maxBytes": {
+                "type": "integer",
+                "maximum": 65536,
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "action", "connection", "generation", "requestId" ],
+            "properties": {
+              "action": {
+                "const": "release"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "action", "connection", "frame" ],
+            "properties": {
+              "action": {
+                "const": "raw"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "frame": {
+                "type": "string",
+                "maxLength": 1048576
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "action", "connection" ],
+            "properties": {
+              "action": {
+                "const": "close"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "action" ],
+            "properties": {
+              "action": {
+                "const": "usage"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "action", "state" ],
+            "properties": {
+              "action": {
+                "const": "producer"
+              },
+              "state": {
+                "enum": [ "held", "success", "failure" ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "action", "connection", "prefix", "size" ],
+            "properties": {
+              "action": {
+                "const": "raw-sized"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "prefix": {
+                "type": "string",
+                "maxLength": 16384,
+                "minLength": 1
+              },
+              "size": {
+                "type": "integer",
+                "maximum": 1048577,
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "connection",
+              "prefix",
+              "size",
+              "generation",
+              "requestId"
+            ],
+            "properties": {
+              "action": {
+                "const": "generate-sized"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "prefix": {
+                "type": "string",
+                "maxLength": 16384,
+                "minLength": 1
+              },
+              "size": {
+                "type": "integer",
+                "maximum": 1048577,
+                "minimum": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

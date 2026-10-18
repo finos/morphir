@@ -1,0 +1,35 @@
+{
+  "document":"artifact-saved-report-tamper-matrix",
+  "revision":1,
+  "status":"planned fixed mutations; no artifact report is qualified yet",
+  "singleChecker":"Existing parent morphir mck workbench report-check path; no implementation decoder linked into checker.",
+  "defaultMutationRule":"Modify one saved observation, keep original pass result and qualified:true, then require independent checker rejection. Keep an unmodified passing baseline and hash every tested report.",
+  "mutations":[
+    {"id":"chunk-byte-evidence","field":"read decoded-byte sha256","change":"Flip one lowercase hex nibble.","required":"Reject forged pass; measured chunk no longer equals fixed independent expectation."},
+    {"id":"chunk-count","field":"read decodedLength","change":"Increment by one.","required":"Reject forged pass."},
+    {"id":"chunk-offset","field":"read offset or nextOffset","change":"Skip or overlap one byte.","required":"Reject forged pass."},
+    {"id":"chunk-order","field":"read transcript","change":"Swap two indexed-content chunk observations while retaining their fields.","required":"Reject order/evidence mismatch."},
+    {"id":"manifest-path","field":"artifact path","change":"Change an admitted safe path or insert colliding path.","required":"Reject shape/semantic or fixed comparison mismatch."},
+    {"id":"manifest-digest","field":"manifest artifact sha256","change":"Alter digest independent of observed bytes.","required":"Reject forged pass."},
+    {"id":"actual-assembled-digest","field":"client measured byte digest","change":"Replace with supplied manifest digest in a corruption case.","required":"Reject fixed observation; malformed case must have no verified/download creation."},
+    {"id":"context-profile","field":"captured profile/version/offer","change":"Replace with unknown exact draft or unoffered capability.","required":"Reject version/shape or fixed comparison mismatch."},
+    {"id":"context-authority","field":"session/provider/generation/artifact context","change":"Copy another connection's identity.","required":"Reject authority correlation or fixed comparison mismatch."},
+    {"id":"generation-effects","field":"producer invocation count","change":"Hide automatic regeneration by decrementing count.","required":"Reject fixed effect mismatch."},
+    {"id":"release-effects","field":"released generation / retained bytes / reserved slots","change":"Claim zero reservation or successful release when recorded failure retained uncertainty.","required":"Reject fixed effect mismatch."},
+    {"id":"stale-publication","field":"download/verified object creation count","change":"Claim one creation in cancelled/replaced malformed scenario.","required":"Reject fixed zero-creation expectation."},
+    {"id":"result-forgery","field":"record.result","change":"Change fail or unsupported to pass without evidence.","required":"Reject recomputed verdict mismatch."},
+    {"id":"qualification-forgery","field":"qualified","change":"Set true despite unsupported/error/fail or unavailable scoped operation.","required":"Reject recomputed qualification."},
+    {"id":"record-removed","field":"records","change":"Remove one case.","required":"Reject case inventory count."},
+    {"id":"record-reordered","field":"records","change":"Swap records from two cases.","required":"Reject ordered case identity inventory."},
+    {"id":"corpus-binding","field":"corpusHash","change":"Copy another corpus hash.","required":"Reject exact corpus identity."},
+    {"id":"scope-binding","field":"capabilities operations / record operation","change":"Substitute client operation into server kit or vice versa.","required":"Reject scoped negotiation/dispatch or recomputed unsupported qualification."},
+    {"id":"raw-duplicate","field":"raw report JSON","change":"Add duplicate or escaped-equivalent member.","required":"Reject strict literal parsing before typed report conversion."},
+    {"id":"budget-overflow","field":"encoded report / aggregate observations","change":"Exceed preserved shared caps with otherwise structurally plausible evidence.","required":"Reject bounded report validation; never truncate to a pass."}
+  ],
+  "honestFailureControl":{
+    "change":"Change observed byte evidence, recompute its actual fail verdict and set qualified:false consistently.",
+    "expected":"Checker may accept this as internally consistent unqualified evidence. It must never become a successful qualification.",
+    "reason":"Saved-report checking establishes consistency with fixed expectations, not report origin or cryptographic attestation. Do not mislabel every edited but honestly failed report as invalid."
+  },
+  "qualificationRequirement":"A full transfer claim needs qualified server and client scopes plus separately evidenced actual producer/authenticated transport/browser/Proton saved bytes."
+}

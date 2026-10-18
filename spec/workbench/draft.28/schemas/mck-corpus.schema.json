@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-corpus.schema.json",
+  "title": "Artifact transfer mck-corpus",
+  "description": "Exact artifact-server evidence with independently authored byte hashes; semantic byte, work, authority and lifecycle rules are normative in README.html",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.28",
+      "cases": [
+        {
+          "id": "bytes-empty-binary",
+          "operation": "artifact-server",
+          "format": "json",
+          "input": {
+            "fixture": {
+              "producer": {
+                "id": "artifact-fixture",
+                "version": "0.1.0"
+              },
+              "offer": "exact",
+              "completion": "success",
+              "artifacts": [
+                {
+                  "path": "data.bin",
+                  "content": {
+                    "representation": "binary-recipe",
+                    "recipe": {
+                      "kind": "hex",
+                      "hex": ""
+                    }
+                  }
+                }
+              ],
+              "diagnostics": []
+            },
+            "actions": [
+              {
+                "action": "connect",
+                "connection": "c1",
+                "authentication": "valid"
+              },
+              {
+                "action": "initialize",
+                "connection": "c1",
+                "session": "current"
+              },
+              {
+                "action": "generate",
+                "connection": "c1",
+                "generation": "g1",
+                "requestId": "2",
+                "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":{}}}"
+              },
+              {
+                "action": "usage"
+              },
+              {
+                "action": "read-all",
+                "connection": "c1",
+                "generation": "g1",
+                "artifactIndex": 0,
+                "maxBytes": 65536
+              },
+              {
+                "action": "read",
+                "connection": "c1",
+                "generation": "g1",
+                "artifactIndex": 0,
+                "requestId": "3000",
+                "offset": "0",
+                "maxBytes": "65536"
+              },
+              {
+                "action": "release",
+                "connection": "c1",
+                "generation": "g1",
+                "requestId": "9000"
+              },
+              {
+                "action": "release",
+                "connection": "c1",
+                "generation": "g1",
+                "requestId": "9001"
+              },
+              {
+                "action": "close",
+                "connection": "c1"
+              },
+              {
+                "action": "usage"
+              }
+            ]
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "sessionId": "session-fixture",
+              "providerId": "playground",
+              "events": [
+                {
+                  "event": "connected",
+                  "connection": "c1",
+                  "status": "accepted"
+                },
+                {
+                  "event": "initialized",
+                  "connection": "c1",
+                  "status": "initialized"
+                },
+                {
+                  "event": "generated",
+                  "connection": "c1",
+                  "generation": "g1",
+                  "requestId": "2",
+                  "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"status\":\"ready\",\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session-fixture\",\"providerId\":\"playground\",\"generationId\":\"11111111-1111-4111-8111-111111111111\",\"producer\":{\"id\":\"artifact-fixture\",\"version\":\"0.1.0\"},\"target\":\"fixture\",\"irVersion\":\"4\",\"artifacts\":[{\"id\":\"00000000-0000-4000-8000-000000000001\",\"path\":\"data.bin\",\"kind\":\"binary\",\"byteLength\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}],\"diagnostics\":[]}}"
+                },
+                {
+                  "event": "usage",
+                  "invocations": 1,
+                  "reservedBytes": 0,
+                  "reservedGenerations": 1,
+                  "activeInvocations": 0
+                },
+                {
+                  "event": "transferred",
+                  "connection": "c1",
+                  "generation": "g1",
+                  "artifactIndex": 0,
+                  "maxBytes": 65536,
+                  "chunks": [],
+                  "byteLength": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                {
+                  "event": "read",
+                  "connection": "c1",
+                  "requestId": "3000",
+                  "reply": "{\"jsonrpc\":\"2.0\",\"id\":3000,\"result\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"generationId\":\"11111111-1111-4111-8111-111111111111\",\"artifactId\":\"00000000-0000-4000-8000-000000000001\",\"offset\":0,\"nextOffset\":0,\"content\":\"\"}}"
+                },
+                {
+                  "event": "released",
+                  "connection": "c1",
+                  "generation": "g1",
+                  "requestId": "9000",
+                  "reply": "{\"jsonrpc\":\"2.0\",\"id\":9000,\"result\":{}}"
+                },
+                {
+                  "event": "released",
+                  "connection": "c1",
+                  "generation": "g1",
+                  "requestId": "9001",
+                  "reply": "{\"jsonrpc\":\"2.0\",\"id\":9001,\"result\":{}}"
+                },
+                {
+                  "event": "closed",
+                  "connection": "c1"
+                },
+                {
+                  "event": "usage",
+                  "invocations": 1,
+                  "reservedBytes": 0,
+                  "reservedGenerations": 0,
+                  "activeInvocations": 0
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.28"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "artifact-server"
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-input.schema.json"
+          },
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-observation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -189,6 +189,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         value = crate::json::strict::parse_exact(text)?;
         super::worksheet::validate_corpus_shape(&value)?;
     }
+    if value["formatVersion"] == super::contract::ARTIFACT_TRANSFER_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::artifacts::validate_corpus_shape(&value)?;
+    }
     let mut document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
     if let Some(inputs) = literal_inputs {
         for (case, input) in document.cases.iter_mut().zip(inputs) {
@@ -200,6 +204,7 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         return Err("corpus must contain 1 to 1024 cases".into());
     }
     let mut ids = BTreeSet::new();
+    let mut artifact_expansion = 0usize;
     for case in &document.cases {
         if (document.format_version == VERSION) != case.operation.is_none() {
             return Err(
@@ -213,7 +218,15 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if matches!(
+        let input_len = if case.operation() == Operation::ArtifactServer {
+            artifact_expansion = artifact_expansion
+                .checked_add(super::artifacts::validate_input(&case.input)?)
+                .ok_or("artifact corpus expansion overflow")?;
+            if artifact_expansion > super::artifacts::MAX_CORPUS_EXPANSION {
+                return Err("artifact corpus exceeds recipe expansion budget".into());
+            }
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if matches!(
             case.operation(),
             Operation::WorksheetEvaluate | Operation::WorksheetValidate
         ) {
