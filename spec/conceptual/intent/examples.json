@@ -1,0 +1,82 @@
+{
+  "description": "Authored M4 construction recipes and literal expectations, not a carrier or a second compatibility runner. The guide names the executing MoonBit tests.",
+  "modelContract": "morphir-conceptual/0.1.0-draft.1",
+  "kbSource": {
+    "repository": "finos/morphir-rust",
+    "commit": "af122ed0395876ff70645ffdc3b033b16ff0d7ac",
+    "files": ["crates/morphir-kb/src/intent/model.rs", "crates/morphir-kb/src/intent/render.rs", "crates/morphir-okf/src/model.rs"]
+  },
+  "cases": [
+    {
+      "id": "source-move",
+      "input": { "source": "source-before.json", "movedLocator": "morphir/intent:/archive/0007-return.md", "context": "contexts.json#/before" },
+      "expected": { "documentId": "urn:document:return", "sourceId": "urn:source:return", "anchor": "return", "text": "Track returns.\r\n  Keep identity.\n", "freshness": "current" }
+    },
+    {
+      "id": "source-edit",
+      "input": { "before": "source-before.json", "after": "source-after.json", "historicalEvidenceContext": "contexts.json#/before", "requestedContext": "contexts.json#/after" },
+      "expected": { "sameDocumentId": true, "sameSourceId": true, "oldExcerptRetained": "Track returns.\r\n  Keep identity.\n", "newExcerptRetained": "Accept partial returns.\n", "historicalEvidence": "stale" }
+    },
+    {
+      "id": "bundle-scoped-kb-number",
+      "input": [
+        { "bundle": "morphir/intent", "shortId": "0007", "documentId": "urn:document:return", "sourceId": "urn:source:return", "intentId": "urn:intent:return" },
+        { "bundle": "other/intent", "shortId": "0007", "documentId": "urn:other:return", "sourceId": "urn:other:source", "intentId": "urn:other:intent" }
+      ],
+      "expected": { "distinctDocuments": 2, "distinctIntents": 2, "duplicateIdentities": 0 }
+    },
+    {
+      "id": "mixed-prd",
+      "input": {
+        "requirementIds": ["functional", "data", "performance", "operational", "regulatory", "extension"],
+        "categories": ["morphir:requirement-kind/functional", "morphir:requirement-kind/data", "morphir:requirement-kind/performance", "morphir:requirement-kind/operational", "morphir:requirement-kind/regulatory", "example:availability"],
+        "text": "  Exact requirement.\n",
+        "refines": [["functional", "i1"], ["functional", "i2"], ["data", "i1"]]
+      },
+      "expected": { "rows": 6, "functionalIntentIds": ["i1", "i2"], "dataIntentIds": ["i1"], "contracts": 0, "scenarios": 0, "gaps": ["missing-formalization", "missing-examples", "missing-evidence"] }
+    },
+    {
+      "id": "unresolved-or-malformed",
+      "input": {
+        "predicate": "morphir:derivedFrom",
+        "subjectKind": "requirement",
+        "unresolvedTarget": { "state": "unresolved", "locator": "external#text", "expectedKind": "sourceFragment", "reason": "not supplied" },
+        "absentResolvedTarget": { "state": "resolved", "modelId": "urn:model", "modelRevision": "m1", "entityId": "missing", "entityRevision": "r1" }
+      },
+      "expected": { "unresolved": "gap", "absentResolved": "invalid", "wrongEndpointKind": "invalid", "wrongEntityRevision": "invalid" }
+    },
+    {
+      "id": "support-and-contradiction",
+      "input": {
+        "claimSubject": { "modelId": "urn:model", "modelRevision": "m1", "entityId": "requirement", "entityRevision": "r1" },
+        "context": { "model": { "id": "urn:model", "revision": "m1" }, "entities": [{ "id": "requirement", "revision": "r1" }], "sources": [], "implementations": [] },
+        "proposition": "The return preserves identity",
+        "observations": [
+          { "id": "analysis", "kind": "analysis", "origin": "hand-authored-fixture", "result": { "wellTyped": true }, "relationship": "morphir:supports" },
+          { "id": "review", "kind": "review", "origin": "hand-authored-fixture", "decision": "rejected", "rationale": "A counterexample remains.", "relationship": "morphir:contradicts" }
+        ]
+      },
+      "expected": { "availability": "present", "observations": [{ "id": "analysis", "polarity": "supporting", "freshness": "current" }, { "id": "review", "polarity": "contradicting", "freshness": "current" }], "proofInferred": false }
+    },
+    {
+      "id": "missing-context",
+      "input": { "source": "source-before.json", "contexts": ["contexts.json#/missingSource", "contexts.json#/wrongSourceIdentity"] },
+      "expected": { "assessments": ["inconclusive", "inconclusive"], "emptySubjectSet": "inconclusive", "duplicateContextId": "invalid-input" }
+    },
+    {
+      "id": "complete-context",
+      "input": { "model": { "id": "urn:model", "revision": "m1" }, "entities": [{ "id": "requirement", "revision": "r1" }, { "id": "other", "revision": "r7" }], "sources": [{ "id": "urn:document:return", "revision": "doc-1" }], "implementations": [{ "id": "urn:library", "revision": "lib-1" }] },
+      "expected": { "reorderedSubjects": "current", "changedModelRevision": "stale", "changedEntityRevision": "stale", "changedSourceRevision": "stale", "changedImplementationRevision": "stale", "addedSubject": "stale", "addedSource": "stale", "addedImplementation": "stale", "missingRequiredMember": "inconclusive" }
+    },
+    {
+      "id": "lifecycle-is-not-evidence",
+      "input": { "kbStates": ["Backlog", "Refinement", "InProgress", "Released", "Cancelled", "Superseded", null], "reviewDecision": "accepted" },
+      "expected": { "contractsCreated": 0, "scenariosCreated": 0, "observationsCreatedByState": 0, "acceptedReviewKind": "review", "noEvidenceAvailability": "unknown", "proofInferred": false }
+    },
+    {
+      "id": "run-output",
+      "input": { "observed": { "state": "observed", "value": null }, "absent": { "state": "absent", "reason": "notInvoked" }, "origin": "hand-authored-fixture" },
+      "expected": { "observedNullRetained": true, "absentRemainsAbsent": true, "observationKind": "run", "proofInferred": false }
+    }
+  ]
+}

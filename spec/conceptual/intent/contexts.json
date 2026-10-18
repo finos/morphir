@@ -1,0 +1,26 @@
+{
+  "before": {
+    "model": { "id": "urn:model", "revision": "m1" },
+    "entities": [{ "id": "requirement", "revision": "r1" }],
+    "sources": [{ "id": "urn:document:return", "revision": "doc-1" }],
+    "implementations": []
+  },
+  "after": {
+    "model": { "id": "urn:model", "revision": "m2" },
+    "entities": [{ "id": "requirement", "revision": "r1" }],
+    "sources": [{ "id": "urn:document:return", "revision": "doc-2" }],
+    "implementations": []
+  },
+  "missingSource": {
+    "model": { "id": "urn:model", "revision": "m1" },
+    "entities": [{ "id": "requirement", "revision": "r1" }],
+    "sources": [],
+    "implementations": []
+  },
+  "wrongSourceIdentity": {
+    "model": { "id": "urn:model", "revision": "m1" },
+    "entities": [{ "id": "requirement", "revision": "r1" }],
+    "sources": [{ "id": "urn:source:return", "revision": "doc-1" }],
+    "implementations": []
+  }
+}

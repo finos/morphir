@@ -1,0 +1,10 @@
+{
+  "recordVersion": "0.1.0-draft.1",
+  "id": "urn:source:return",
+  "document": { "id": "urn:document:return", "revision": "doc-2" },
+  "resolution": "retained",
+  "locator": "morphir/intent:/0007-return.md",
+  "fragments": [
+    { "anchor": "return", "text": "Accept partial returns.\n" }
+  ]
+}
