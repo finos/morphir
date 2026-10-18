@@ -259,8 +259,41 @@ fn socket_ended(error: &tokio_tungstenite::tungstenite::Error) -> bool {
         _ => false,
     }
 }
-fn authentication_refusal(error: &tokio_tungstenite::tungstenite::Error) -> bool {
-    matches!(error,tokio_tungstenite::tungstenite::Error::Http(response) if response.status().as_u16()==403)
+#[derive(Clone, Copy, Debug)]
+enum AuthenticationFixture {
+    Valid,
+    MissingCookie,
+    WrongCookie,
+    WrongOrigin,
+    WrongHost,
+    MissingOrigin,
+}
+impl TryFrom<&str> for AuthenticationFixture {
+    type Error = &'static str;
+    fn try_from(text: &str) -> Result<Self, Self::Error> {
+        match text {
+            "valid" => Ok(Self::Valid),
+            "missing-cookie" => Ok(Self::MissingCookie),
+            "wrong-cookie" => Ok(Self::WrongCookie),
+            "wrong-origin" => Ok(Self::WrongOrigin),
+            "wrong-host" => Ok(Self::WrongHost),
+            "missing-origin" => Ok(Self::MissingOrigin),
+            _ => Err("unknown authentication fixture"),
+        }
+    }
+}
+fn authentication_refusal(
+    fixture: AuthenticationFixture,
+    error: &tokio_tungstenite::tungstenite::Error,
+) -> bool {
+    let expected = match fixture {
+        AuthenticationFixture::MissingCookie | AuthenticationFixture::WrongCookie => Some(401),
+        AuthenticationFixture::WrongOrigin
+        | AuthenticationFixture::WrongHost
+        | AuthenticationFixture::MissingOrigin => Some(403),
+        AuthenticationFixture::Valid => None,
+    };
+    matches!(error,tokio_tungstenite::tungstenite::Error::Http(response) if expected==Some(response.status().as_u16()))
 }
 fn input_fixture(input: &Value) -> Result<(), Error> {
     if serde_json::to_vec(input)?.len() > 1024 * 1024 {
@@ -511,28 +544,30 @@ async fn run(input: &Value) -> Result<Value, Error> {
             "connect" => {
                 let mut request =
                     (url.replacen("http://", "ws://", 1) + "/rpc").into_client_request()?;
-                let auth = action["authentication"].as_str().ok_or("auth absent")?;
-                if auth != "missing-cookie" {
+                let auth = AuthenticationFixture::try_from(
+                    action["authentication"].as_str().ok_or("auth absent")?,
+                )?;
+                if !matches!(auth, AuthenticationFixture::MissingCookie) {
                     request.headers_mut().insert(
                         "cookie",
-                        if auth == "wrong-cookie" {
+                        if matches!(auth, AuthenticationFixture::WrongCookie) {
                             "morphir_session=wrong".parse()?
                         } else {
                             cookie.parse()?
                         },
                     );
                 }
-                if auth != "missing-origin" {
+                if !matches!(auth, AuthenticationFixture::MissingOrigin) {
                     request.headers_mut().insert(
                         "origin",
-                        if auth == "wrong-origin" {
+                        if matches!(auth, AuthenticationFixture::WrongOrigin) {
                             "https://untrusted.invalid".parse()?
                         } else {
                             url.parse()?
                         },
                     );
                 }
-                if auth == "wrong-host" {
+                if matches!(auth, AuthenticationFixture::WrongHost) {
                     request
                         .headers_mut()
                         .insert("host", "untrusted.invalid".parse()?);
@@ -544,7 +579,7 @@ async fn run(input: &Value) -> Result<Value, Error> {
                         }
                         events.push(json!({"event":"connected","connection":connection,"status":"accepted"}));
                     }
-                    Err(error) if authentication_refusal(&error) => events.push(
+                    Err(error) if authentication_refusal(auth, &error) => events.push(
                         json!({"event":"connected","connection":connection,"status":"refused"}),
                     ),
                     Err(error) => return Err(error.into()),
@@ -719,23 +754,36 @@ async fn run(input: &Value) -> Result<Value, Error> {
 mod tests {
     use super::*;
     #[test]
-    fn authentication_requires_actual_forbidden_response() {
+    fn authentication_requires_the_fixture_specific_http_response() {
         use tokio_tungstenite::tungstenite::{Error, http::Response};
         let response = |status| {
             Error::Http(Box::new(
                 Response::builder().status(status).body(None).unwrap(),
             ))
         };
-        assert!(authentication_refusal(&response(403)));
-        for error in [
-            response(503),
-            response(401),
-            Error::Io(std::io::Error::new(
+        for (fixture, expected) in [
+            (AuthenticationFixture::MissingCookie, Some(401)),
+            (AuthenticationFixture::WrongCookie, Some(401)),
+            (AuthenticationFixture::WrongOrigin, Some(403)),
+            (AuthenticationFixture::WrongHost, Some(403)),
+            (AuthenticationFixture::MissingOrigin, Some(403)),
+            (AuthenticationFixture::Valid, None),
+        ] {
+            for status in [401, 403, 503] {
+                assert_eq!(
+                    authentication_refusal(fixture, &response(status)),
+                    expected == Some(status),
+                    "{fixture:?} status {status}"
+                );
+            }
+            let reset = Error::Io(std::io::Error::new(
                 std::io::ErrorKind::ConnectionReset,
                 "independent reset fixture",
-            )),
-        ] {
-            assert!(!authentication_refusal(&error), "{error}");
+            ));
+            assert!(
+                !authentication_refusal(fixture, &reset),
+                "{fixture:?} reset"
+            );
         }
     }
 }
