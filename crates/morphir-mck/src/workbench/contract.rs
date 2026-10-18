@@ -24,6 +24,7 @@ pub const NATIVE_POLICY_OWNER_VERSION: &str = "0.1.0-draft.22";
 pub const HTTP_POLICY_BOUNDARY_VERSION: &str = "0.1.0-draft.23";
 pub const HTTP_POLICY_CLIENT_VERSION: &str = "0.1.0-draft.24";
 pub const HTTP_POLICY_PROVIDER_VERSION: &str = "0.1.0-draft.25";
+pub const CODEC_COMPARISON_VERSION: &str = "0.1.0-draft.26";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -74,6 +75,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.23",
         "=0.1.0-draft.24",
         "=0.1.0-draft.25",
+        "=0.1.0-draft.26",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -95,6 +97,10 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Operation {
+    #[serde(rename = "transcode-invocations")]
+    TranscodeInvocations,
+    #[serde(rename = "compare-values")]
+    CompareValues,
     #[serde(rename = "validate-http-policy-boundary")]
     ValidateHttpPolicyBoundary,
     #[serde(rename = "run-http-policy-client")]
@@ -137,6 +143,16 @@ pub enum Operation {
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if version == CODEC_COMPARISON_VERSION {
+            return if matches!(self, Self::TranscodeInvocations | Self::CompareValues) {
+                Ok(())
+            } else {
+                Err("operation is not defined by this Workbench draft".into())
+            };
+        }
+        if matches!(self, Self::TranscodeInvocations | Self::CompareValues) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         for (supported, operation) in [
             (
                 HTTP_POLICY_BOUNDARY_VERSION,
@@ -194,7 +210,9 @@ impl Operation {
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
         if matches!(
             self,
-            Self::ValidateHttpPolicyBoundary
+            Self::TranscodeInvocations
+                | Self::CompareValues
+                | Self::ValidateHttpPolicyBoundary
                 | Self::RunHttpPolicyClient
                 | Self::RunHttpPolicyProvider
                 | Self::ValidateNativePolicyBoundary
@@ -350,6 +368,9 @@ impl Capabilities {
                 return Err("native policy kits require their exact operation and JSON".into());
             }
         }
+        if self.contract_version == CODEC_COMPARISON_VERSION && self.formats != [Format::Json] {
+            return Err("codec comparison requires JSON framing".into());
+        }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
         if self.operations.iter().collect::<BTreeSet<_>>().len() != self.operations.len()
@@ -416,6 +437,14 @@ impl Observation {
                     );
                 }
                 identity(code, 128)?;
+                if matches!(
+                    operation,
+                    Operation::TranscodeInvocations | Operation::CompareValues
+                ) {
+                    super::codec_comparison::validate_observation_shape(
+                        &serde_json::json!({"status":"invalid","code":code}),
+                    )?;
+                }
                 if operation == Operation::ValidateNativeFrame
                     && !super::native_frames::INVALID_CODES.contains(&code.as_str())
                 {
@@ -476,6 +505,9 @@ impl Observation {
 
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
     match operation {
+        Operation::TranscodeInvocations | Operation::CompareValues => {
+            super::codec_comparison::projection(value, operation)
+        }
         Operation::ValidateHttpPolicyBoundary => {
             super::http_policy::Kit::Boundary.projection(value)
         }
@@ -500,7 +532,7 @@ fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> 
 
 /// Validate only the published invocation projection. Inputs/manifests are never
 /// decoded here. Extension bytes are opaque ordered evidence, not re-serialized Ion.
-fn invocation_projection(value: &Value) -> Result<Value, String> {
+pub(super) fn invocation_projection(value: &Value) -> Result<Value, String> {
     encoded_size(value, MAX_VALUE_BYTES)?;
     static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
     let validator = VALIDATOR.get_or_init(|| {

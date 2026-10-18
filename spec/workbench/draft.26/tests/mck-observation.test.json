@@ -1,0 +1,56 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.26/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Accepted fixed shape",
+      "data": {
+        "status": "ok",
+        "value": {
+          "targetFormat": "json",
+          "invocations": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "call",
+                "entry": "fixture:main#echo",
+                "arguments": [
+                  {
+                    "type": "int",
+                    "value": "42"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed shape rejects unknown member",
+      "data": {
+        "status": "ok",
+        "value": {
+          "targetFormat": "json",
+          "invocations": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "call",
+                "entry": "fixture:main#echo",
+                "arguments": [
+                  {
+                    "type": "int",
+                    "value": "42"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "unknown": true
+      },
+      "valid": false
+    }
+  ]
+}

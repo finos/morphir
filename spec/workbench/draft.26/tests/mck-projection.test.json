@@ -1,0 +1,66 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.26/mck-projection.schema.json",
+  "tests": [
+    {
+      "description": "Accepted fixed shape",
+      "data": {
+        "targetFormat": "json",
+        "invocations": {
+          "profile": "morphir-invocations-v1",
+          "calls": [
+            {
+              "id": "call",
+              "entry": "fixture:main#echo",
+              "arguments": [
+                {
+                  "type": "int",
+                  "value": "42"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed shape rejects unknown member",
+      "data": {
+        "targetFormat": "json",
+        "invocations": {
+          "profile": "morphir-invocations-v1",
+          "calls": [
+            {
+              "id": "call",
+              "entry": "fixture:main#echo",
+              "arguments": [
+                {
+                  "type": "int",
+                  "value": "42"
+                }
+              ]
+            }
+          ]
+        },
+        "unknown": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Newline in legal record field name is a JSON Pointer token",
+      "data": {
+        "matches": false,
+        "mismatchPath": "/a\nb"
+      },
+      "valid": true
+    },
+    {
+      "description": "Tilde must use an RFC6901 escape",
+      "data": {
+        "matches": false,
+        "mismatchPath": "/~2"
+      },
+      "valid": false
+    }
+  ]
+}

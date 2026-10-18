@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.26/mck-corpus.schema.json",
+  "title": "Workbench codec and comparison mck-corpus draft.26",
+  "description": "Exact offline codec-transcoding and typed-value comparison qualification. Input source decoding, reverse encoding and comparison belong to an explicit production adapter; fixed expected projections belong to the parent kit. This draft adds no live runtime claim; compact operation inputs are bounded at 3 MiB so full-size binary source hex fits its closed wrapper",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.26",
+      "cases": [
+        {
+          "id": "scalar-json-to-json",
+          "operation": "transcode-invocations",
+          "format": "json",
+          "input": {
+            "sourceFormat": "json",
+            "source": {
+              "utf8": "{\"profile\":\"morphir-invocations-v1\",\"calls\":[{\"id\":\"call\",\"entry\":\"fixture:main#echo\",\"arguments\":[{\"type\":\"int\",\"value\":\"42\"}]}]}"
+            },
+            "targetFormat": "json"
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "targetFormat": "json",
+              "invocations": {
+                "profile": "morphir-invocations-v1",
+                "calls": [
+                  {
+                    "id": "call",
+                    "entry": "fixture:main#echo",
+                    "arguments": [
+                      {
+                        "type": "int",
+                        "value": "42"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.26"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "if": {
+          "properties": {
+            "operation": {
+              "const": "transcode-invocations"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "input": {
+              "type": "object",
+              "if": {
+                "properties": {
+                  "sourceFormat": {
+                    "const": "ion-binary"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "source": {
+                    "type": "object",
+                    "required": [ "hex" ],
+                    "properties": {
+                      "hex": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]*$",
+                        "maxLength": 2097154
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "source": {
+                    "type": "object",
+                    "required": [ "utf8" ],
+                    "properties": {
+                      "utf8": {
+                        "type": "string",
+                        "maxLength": 1048577
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [ "sourceFormat", "source", "targetFormat" ],
+              "properties": {
+                "sourceFormat": {
+                  "enum": [ "json", "ion-text", "ion-binary" ]
+                },
+                "source": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [ "utf8" ],
+                      "properties": {
+                        "utf8": {
+                          "type": "string",
+                          "maxLength": 1048577
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": [ "hex" ],
+                      "properties": {
+                        "hex": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]*$",
+                          "maxLength": 2097154
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "targetFormat": {
+                  "enum": [ "json", "ion-text", "ion-binary" ]
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "input": {
+              "type": "object",
+              "required": [ "actual", "expected", "comparison" ],
+              "properties": {
+                "actual": true,
+                "expected": true,
+                "comparison": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [ "profile" ],
+                      "properties": {
+                        "profile": {
+                          "const": "morphir-comparison-exact-v1"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "required": [ "profile", "absolute", "relative" ],
+                      "properties": {
+                        "profile": {
+                          "const": "morphir-comparison-approximate-v1"
+                        },
+                        "absolute": {
+                          "type": "number"
+                        },
+                        "relative": {
+                          "type": "number"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "enum": [ "transcode-invocations", "compare-values" ]
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.26/mck-input.schema.json"
+          },
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.26/mck-observation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

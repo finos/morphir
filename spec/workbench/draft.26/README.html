@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Workbench codec and comparison qualification</h1>
+<p class="subtitle">Exact offline MCK <code>0.1.0-draft.26</code> · independently authored fixtures · existing production codecs</p>
+<nav class="toc" aria-label="Contents"><ol><li><a href="#scope">Scope</a></li><li><a href="#transcode">Invocation transcoding</a></li><li><a href="#comparison">Typed value comparison</a></li><li><a href="#evidence">Fixtures and evidence</a></li><li><a href="#bounds">Limits and failures</a></li><li><a href="#run">Run and recheck</a></li></ol></nav>
+<section id="scope"><h2>Scope</h2><p>This exact offline draft adds two independently qualified operations: <code>transcode-invocations</code> and <code>compare-values</code>. The shared Rust MCK owns source fixtures and fixed expected projections. An explicit adapter exercises its production implementation. The runner never decodes an input invocation suite, performs the comparison or derives expectations from adapter output.</p><p>All outer messages use JSON and negotiate only this exact draft, operation subset and <code>formats:["json"]</code>. A claim subset qualifies only its matching operation-specific kit: <a href="../mck/draft.26/transcode/README.html">transcode</a> or <a href="../mck/draft.26/comparison/README.html">comparison</a>. The combined root kit requires both operations; an unsupported case is never a passing case. The source and target codecs inside the transcode operation are separately named. This kit adds no runtime capability, live protocol operation, provider authority, worksheet contract or packaged-platform claim. Historical kits and live profiles remain unchanged.</p><pre><code class="language-json">{"op":"capabilities","suite":"workbench","contractVersion":"0.1.0-draft.26"}
+{"suite":"workbench","contractVersion":"0.1.0-draft.26","binding":"implementation","language":"moonbit","operations":["transcode-invocations","compare-values"],"formats":["json"]}</code></pre></section>
+<section id="transcode"><h2>Invocation transcoding</h2><p>Input is the closed object <code>{sourceFormat,source,targetFormat}</code>. Both formats are exactly <code>json</code>, <code>ion-text</code> or <code>ion-binary</code>. Text source uses <code>{"utf8":"…"}</code>; binary source uses <code>{"hex":"…"}</code> with lowercase, even-length hexadecimal. Framing validation bounds these opaque sources; semantic decoding belongs to the adapter.</p><ol><li>Decode the supplied bytes with the production invocation-suite decoder for <code>sourceFormat</code>.</li><li>Encode that suite with the production encoder for <code>targetFormat</code>.</li><li>Decode the actual encoded output bytes with the production target decoder.</li><li>Project the redecoded suite through the production tagged JSON projection and return <code>{targetFormat,invocations}</code>.</li></ol><p>A successful observation is <code>{"status":"ok","value":{"targetFormat":"ion-binary","invocations":…}}</code>. The runner validates the frozen <code>morphir-invocations-v1</code> projection, bounded identities, distinct calls, exact numeric spellings and rich values, then compares with the independent expected suite. Record fields compare by name; invocation/list/tuple ordering and extension bytes remain exact.</p><p>No canonical Ion byte sequence is promised. Ion permits multiple valid encodings; the required property is preservation of the semantic suite through an actual reverse encoding and target decoding. Extension bytes in the JSON projection are compared exactly for each fixed fixture. This is not a general promise that arbitrary noncanonical extension encodings survive an Ion decode/re-encode byte for byte.</p></section>
+<section id="comparison"><h2>Typed value comparison</h2><p>Input is the closed object <code>{actual,expected,comparison}</code>. Operands are opaque tagged JSON until the adapter decodes them through its production typed-value decoder. The comparison policy is <code>{"profile":"morphir-comparison-exact-v1"}</code> or <code>{"profile":"morphir-comparison-approximate-v1","absolute":number,"relative":number}</code>. Negative tolerances reach the implementation and are rejected as <code>execution.comparison_tolerance</code>.</p><p>The production comparator and mismatch locator return <code>{matches,mismatchPath}</code>. A match requires a null path. A mismatch requires a JSON Pointer string; the empty string denotes the root. The runner checks these observation invariants and fixed expected values, without evaluating the comparison itself.</p><p>Fixtures distinguish normalized Decimal equality from preserved codec scale, exact integer values, Float64 bits and explicit approximate tolerances. Signed zero and unequal NaN payloads remain distinct even under approximate comparison; nonfinite values do not gain approximate equality. Records ignore field order, nested mismatch paths escape <code>~</code> and <code>/</code>, and constructor ownership remains meaningful. <code>Result.Err</code> is ordinary data, distinct from an SDK model-error value. This is comparison evidence for these fixed cases, not universal SDK or evaluator qualification.</p></section>
+<section id="evidence"><h2>Fixtures and evidence</h2><p>The <a href="../mck/draft.26/cases.json">parent-owned corpus</a> covers all nine source/target combinations for scalar, rich and extension-bearing suites. Rich fixtures include large exact integers, Decimal scale, Float64 signed zero and NaN payload, isolated UTF-16 units, records, constructors, Maybe and Result. Negative fixtures cover malformed JSON/Ion/binary input, duplicate members/calls, identity and argument limits, invalid values and bounded evidence expansion. Binary source fixtures pair an accepted exact 1-MiB Ion stream with a 1-MiB-plus-one-byte rejection, using legal single-byte Ion NOP padding after the scalar suite. Both raw-byte boundaries pass through actual adapter framing.</p><p>Binary fixtures were authored from the published <a href="https://amazon-ion.github.io/ion-docs/docs/binary.html">Ion 1.0 binary grammar</a>: version marker, type/length descriptors, VarUInt/VarInt, local symbol tables and annotation wrappers. They are fixed source bytes, separate from the expected normalized suites. Neither fixture bytes nor expectations come from the implementation adapter. The local authoring helper is not a second compatibility runner and is not part of the shipped kit.</p><p>Reports retain the corpus SHA-256, exact claim set and ordered observations. <code>morphir mck workbench check</code> reloads the corpus and recomputes every verdict. Changed values, extension bytes, mismatch paths, missing/duplicate records and forged qualification cannot establish compatibility.</p></section>
+<section id="bounds"><h2>Limits and failures</h2><table><thead><tr><th>Boundary</th><th>Limit or behavior</th></tr></thead><tbody><tr><td>Corpus</td><td>16 MiB; 1–1024 independently identified cases.</td></tr><tr><td>Compact input</td><td>3 MiB for this draft only, so a full 1-MiB binary source represented as 2-MiB hex still fits with its operation wrapper. Complete adapter NDJSON framing is bounded at 3 MiB plus 1 KiB for correlation fields and newline. Historical drafts retain their bounds.</td></tr><tr><td>Decoded source bytes</td><td>1 MiB. An oversized fixture source returns <code>workbench.input_limit</code>.</td></tr><tr><td>Actual target bytes</td><td>Pass through the production decoder, including its existing size and value validation.</td></tr><tr><td>Compact observation value</td><td>1 MiB, including <code>targetFormat</code> and suite wrapper. A valid codec round trip that exceeds this evidence envelope returns <code>workbench.output_limit</code>; this is an MCK evidence bound, not a new production-codec failure.</td></tr><tr><td>Retained observations / report</td><td>16 MiB / 32 MiB, unchanged shared supervision and cleanup requirements.</td></tr></tbody></table><p>Semantic decoder rejection preserves a stable <code>execution.*</code> code with identity details removed. Lexical JSON errors map to <code>workbench.invalid_json</code>; lexical Ion text/binary errors map to <code>workbench.invalid_ion</code>. Invalid operation wrappers map to <code>workbench.invalid_request</code>. Infrastructure failures remain report phases, never model values or successful observations. Raw outer JSON rejects duplicate members and retains literal token kinds before typed admission, including private serde marker-shaped maps.</p></section>
+<section id="run"><h2>Run and recheck</h2><pre><code class="language-bash">morphir mck workbench run --kit spec/workbench/mck/draft.26 --adapter /absolute/path/to/adapter --report /tmp/draft26.json
+morphir mck workbench check --kit spec/workbench/mck/draft.26 --report /tmp/draft26.json
+mise run workbench:schema-check</code></pre><p>Qualify each claimed implementation mode independently. Schema fixtures establish structural acceptance only. A fixed-response infrastructure test establishes checker behavior; actual production-adapter reports establish the supported codec/comparison intersection. Browser/native execution and authenticated host acceptance require their own evidence.</p></section>
+</main>
+</body>
+</html>

@@ -78,13 +78,31 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     }
     let bytes = read_bounded(file, MAX_CORPUS_BYTES as usize)?;
     let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
-    let mut value = crate::json::strict::parse(text)?;
+    // Sniff this exact draft without first narrowing opaque operands to IEEE-754.
+    // Every historical draft still takes its unchanged parser below.
+    let exact = crate::json::strict::parse_exact(text)?;
+    let mut value = if exact["formatVersion"] == super::contract::CODEC_COMPARISON_VERSION {
+        exact
+    } else {
+        crate::json::strict::parse(text)?
+    };
     version(
         value["formatVersion"]
             .as_str()
             .ok_or("Workbench formatVersion must be a string")?,
     )?;
-    let mut literal_inputs = if value["formatVersion"] == super::contract::EXECUTIONS_VERSION {
+    let mut literal_inputs = if value["formatVersion"] == super::contract::CODEC_COMPARISON_VERSION
+    {
+        super::codec_comparison::validate_corpus_shape(&value)?;
+        Some(
+            value["cases"]
+                .as_array_mut()
+                .expect("checked cases")
+                .iter_mut()
+                .map(|case| std::mem::replace(&mut case["input"], Value::Null))
+                .collect::<Vec<_>>(),
+        )
+    } else if value["formatVersion"] == super::contract::EXECUTIONS_VERSION {
         value = crate::json::strict::parse_exact(text)?;
         super::executions::validate_corpus_shape(&value)?;
         // Negative traces can contain any literal JSON, including serde-private
@@ -191,7 +209,13 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if let Some(kit) = http_kit {
+        let input_len = if matches!(
+            case.operation(),
+            Operation::TranscodeInvocations | Operation::CompareValues
+        ) {
+            super::codec_comparison::validate_input(&case.input, case.operation())?;
+            encoded_size(&case.input, super::codec_comparison::MAX_INPUT_BYTES)?
+        } else if let Some(kit) = http_kit {
             kit.input(&case.input)?;
             encoded_size(&case.input, MAX_INPUT_BYTES)?
         } else if case.operation() == Operation::ValidateNativePolicyBoundary {
@@ -299,7 +323,13 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
                 }
             }
         };
-        if input_len > MAX_INPUT_BYTES {
+        if input_len
+            > if document.format_version == super::contract::CODEC_COMPARISON_VERSION {
+                super::codec_comparison::MAX_INPUT_BYTES
+            } else {
+                MAX_INPUT_BYTES
+            }
+        {
             return Err(format!("case {} input exceeds 1 MiB", case.id));
         }
         case.expected

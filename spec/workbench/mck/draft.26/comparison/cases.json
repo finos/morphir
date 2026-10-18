@@ -1,0 +1,847 @@
+{
+  "formatVersion": "0.1.0-draft.26",
+  "cases": [
+    {
+      "id": "equal-int-exact",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "int",
+          "value": "9007199254740993"
+        },
+        "expected": {
+          "type": "int",
+          "value": "9007199254740993"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+    {
+      "id": "different-int-exact",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "int",
+          "value": "9007199254740993"
+        },
+        "expected": {
+          "type": "int",
+          "value": "9007199254740992"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "decimal-scale",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "decimal",
+          "coefficient": "1250",
+          "exponent": -2
+        },
+        "expected": {
+          "type": "decimal",
+          "coefficient": "125",
+          "exponent": -1
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+    {
+      "id": "decimal-zero",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "decimal",
+          "coefficient": "0",
+          "exponent": -32
+        },
+        "expected": {
+          "type": "decimal",
+          "coefficient": "0",
+          "exponent": 10000
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+    {
+      "id": "decimal-different",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "decimal",
+          "coefficient": "125",
+          "exponent": -1
+        },
+        "expected": {
+          "type": "decimal",
+          "coefficient": "126",
+          "exponent": -1
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "positive-negative-zero",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "0"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "9223372036854775808"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "nan-same-payload",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "9221120237041090626"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "9221120237041090626"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+    {
+      "id": "nan-different-payload",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "9221120237041090626"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "9221120237041090627"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "utf16-isolated-surrogates",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "text",
+          "units": [
+            55296,
+            57343
+          ]
+        },
+        "expected": {
+          "type": "text",
+          "units": [
+            55296,
+            57343
+          ]
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+    {
+      "id": "utf16-difference",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "text",
+          "units": [
+            55296
+          ]
+        },
+        "expected": {
+          "type": "text",
+          "units": [
+            65533
+          ]
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "character-vs-text",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "character",
+          "units": [
+            83,
+            83
+          ]
+        },
+        "expected": {
+          "type": "text",
+          "units": [
+            83,
+            83
+          ]
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "record-order",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "b",
+              "value": {
+                "type": "bool",
+                "value": true
+              }
+            },
+            {
+              "name": "a",
+              "value": {
+                "type": "int",
+                "value": "1"
+              }
+            }
+          ]
+        },
+        "expected": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "a",
+              "value": {
+                "type": "int",
+                "value": "1"
+              }
+            },
+            {
+              "name": "b",
+              "value": {
+                "type": "bool",
+                "value": true
+              }
+            }
+          ]
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+    {
+      "id": "record-pointer-escape",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "a/b~c",
+              "value": {
+                "type": "int",
+                "value": "1"
+              }
+            }
+          ]
+        },
+        "expected": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "a/b~c",
+              "value": {
+                "type": "int",
+                "value": "2"
+              }
+            }
+          ]
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": "/a~1b~0c"
+        }
+      }
+    },
+    {
+      "id": "record-missing",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "a",
+              "value": {
+                "type": "unit"
+              }
+            }
+          ]
+        },
+        "expected": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "b",
+              "value": {
+                "type": "unit"
+              }
+            }
+          ]
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": "/a"
+        }
+      }
+    },
+    {
+      "id": "list-length",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "list",
+          "items": [
+            {
+              "type": "unit"
+            }
+          ]
+        },
+        "expected": {
+          "type": "list",
+          "items": []
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": "/length"
+        }
+      }
+    },
+    {
+      "id": "nested-result",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "maybe",
+          "case": "just",
+          "value": {
+            "type": "result",
+            "case": "err",
+            "value": {
+              "type": "tuple",
+              "items": [
+                {
+                  "type": "unit"
+                },
+                {
+                  "type": "int",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        "expected": {
+          "type": "maybe",
+          "case": "just",
+          "value": {
+            "type": "result",
+            "case": "err",
+            "value": {
+              "type": "tuple",
+              "items": [
+                {
+                  "type": "unit"
+                },
+                {
+                  "type": "int",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": "/just/err/1"
+        }
+      }
+    },
+    {
+      "id": "custom-owner",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "custom",
+          "owner": "a:b#c",
+          "tag": "a:b#d",
+          "items": []
+        },
+        "expected": {
+          "type": "custom",
+          "owner": "a:b#e",
+          "tag": "a:b#d",
+          "items": []
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": "/constructor"
+        }
+      }
+    },
+    {
+      "id": "result-err-vs-model-error",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "result",
+          "case": "err",
+          "value": {
+            "type": "unit"
+          }
+        },
+        "expected": {
+          "type": "model-error",
+          "code": "sdk.division_by_zero"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "approx-close",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "4607182418800017408"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "4607182418845053404"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-approximate-v1",
+          "absolute": 0.000001,
+          "relative": 0
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+    {
+      "id": "exact-close",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "4607182418800017408"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "4607182418845053404"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "approx-zero-sign",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "0"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "9223372036854775808"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-approximate-v1",
+          "absolute": 1,
+          "relative": 1
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "approx-nan",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "9221120237041090626"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "9221120237041090627"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-approximate-v1",
+          "absolute": 1,
+          "relative": 1
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "approx-infinity",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "9218868437227405312"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "18442240474082181120"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-approximate-v1",
+          "absolute": 1,
+          "relative": 1
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "approx-zero-tolerance",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "4607182418800017408"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "4607182418845053404"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-approximate-v1",
+          "absolute": 0,
+          "relative": 0
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+    {
+      "id": "negative-tolerance-72",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "int",
+          "value": "1"
+        },
+        "expected": {
+          "type": "int",
+          "value": "1"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-approximate-v1",
+          "absolute": -1,
+          "relative": 0
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.comparison_tolerance"
+      }
+    },
+    {
+      "id": "negative-tolerance-73",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "int",
+          "value": "1"
+        },
+        "expected": {
+          "type": "int",
+          "value": "1"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-approximate-v1",
+          "absolute": 0,
+          "relative": -1
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.comparison_tolerance"
+      }
+    },
+    {
+      "id": "record-pointer-newline",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "a\nb",
+              "value": {
+                "type": "int",
+                "value": "1"
+              }
+            }
+          ]
+        },
+        "expected": {
+          "type": "record",
+          "fields": [
+            {
+              "name": "a\nb",
+              "value": {
+                "type": "int",
+                "value": "2"
+              }
+            }
+          ]
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": "/a\nb"
+        }
+      }
+    },
+    {
+      "id": "opaque-number-outside-ieee-range",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": 1e400,
+        "expected": {
+          "type": "unit"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.expected_struct"
+      }
+    }
+  ]
+}
