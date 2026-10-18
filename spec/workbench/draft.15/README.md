@@ -123,7 +123,7 @@ shape precedes nested model, and nested model precedes JSON arguments.
 
 ## Evidence and remaining qualification
 
-The [138-case independent corpus](../mck/draft.15/README.md) includes all 16
+The [140-case independent corpus](../mck/draft.15/README.md) includes all 16
 published raw rejection expectations, all 78 published structural request cases,
 valid counterparts, every native operation, exact and excessive byte/depth/node
 boundaries, decoded-name duplicates, nested whole-value consumption, UTF-16
@@ -142,3 +142,6 @@ own transport/corpus limits and number normalization do not define native
 request behavior. Schemas express closed structural contracts; the runner and
 adapter enforce byte sizes, duplicate names, UTF-16 budgets, corpus identity and
 runtime parsing rules that JSON Schema alone cannot establish.
+
+The current corpus explicitly refuses the previous native version and the old
+`job.query` operation. These are breaking contract checks, with no translation.

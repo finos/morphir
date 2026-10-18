@@ -1,7 +1,7 @@
 # Native request frame corpus
 
 This independent offline kit selects exact Workbench MCK `0.1.0-draft.15`:
-`validate-native-frame`, JSON only. Its 138 fixed cases exercise the unchanged
+`validate-native-frame`, JSON only. Its 140 fixed cases exercise the unchanged
 `morphir/workbench/native` `0.1.0-draft.1` request decoder. Historical kits remain
 unchanged and qualify separately. Parent-owned expectations never reach the
 adapter.
@@ -23,3 +23,6 @@ qualify runner/report handling only.
 See [the exact contract](../../draft.15/README.md) for decoder stage precedence,
 compact input validation, stable observations, limits and excluded authority,
 lifecycle and packaged platform claims.
+
+The current corpus explicitly refuses the previous native version and the old
+`job.query` operation. These are breaking contract checks, with no translation.

@@ -1906,6 +1906,32 @@
         "status": "invalid",
         "code": "native.frame.shape"
       }
+    },
+    {
+      "id": "historical-native-version-refused",
+      "operation": "validate-native-frame",
+      "format": "json",
+      "input": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.1.0-draft.1\",\"operation\":\"session.open\"}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "historical-job-operation-refused",
+      "operation": "validate-native-frame",
+      "format": "json",
+      "input": {
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"job.query\",\"sessionId\":\"native-session\",\"payload\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"native-session\",\"providerId\":\"scheme\",\"executionId\":\"execution\",\"snapshotId\":\"snapshot\"}}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
     }
   ]
 }
