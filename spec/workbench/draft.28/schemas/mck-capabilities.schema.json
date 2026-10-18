@@ -2,19 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-capabilities.schema.json",
   "title": "Artifact transfer mck-capabilities",
-  "description": "Exact separately scoped artifact-server and artifact-client evidence. Semantic byte, work, authority and lifecycle rules are normative in README.html.",
+  "description": "Exact separately scoped artifact-server and artifact-client evidence. Semantic byte, work, authority and lifecycle rules are normative in README.html",
   "examples": [
     {
       "suite": "workbench",
       "contractVersion": "0.1.0-draft.28",
       "binding": "example-rust-artifact-host",
       "language": "rust",
-      "operations": [
-        "artifact-server"
-      ],
-      "formats": [
-        "json"
-      ]
+      "operations": [ "artifact-server" ],
+      "formats": [ "json" ]
     }
   ],
   "type": "object",
@@ -48,16 +44,11 @@
       "maxItems": 2,
       "uniqueItems": true,
       "items": {
-        "enum": [
-          "artifact-server",
-          "artifact-client"
-        ]
+        "enum": [ "artifact-server", "artifact-client" ]
       }
     },
     "formats": {
-      "const": [
-        "json"
-      ]
+      "const": [ "json" ]
     }
   },
   "additionalProperties": false

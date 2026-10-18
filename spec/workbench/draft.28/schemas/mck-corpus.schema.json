@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-corpus.schema.json",
   "title": "Artifact transfer mck-corpus",
-  "description": "Exact separately scoped artifact-server and artifact-client evidence. Semantic byte, work, authority and lifecycle rules are normative in README.html.",
+  "description": "Exact separately scoped artifact-server and artifact-client evidence. Semantic byte, work, authority and lifecycle rules are normative in README.html",
   "examples": [
     {
       "formatVersion": "0.1.0-draft.28",
@@ -170,10 +170,7 @@
     }
   ],
   "type": "object",
-  "required": [
-    "formatVersion",
-    "cases"
-  ],
+  "required": [ "formatVersion", "cases" ],
   "properties": {
     "formatVersion": {
       "const": "0.1.0-draft.28"
@@ -186,13 +183,7 @@
         "oneOf": [
           {
             "type": "object",
-            "required": [
-              "id",
-              "operation",
-              "format",
-              "input",
-              "expected"
-            ],
+            "required": [ "id", "operation", "format", "input", "expected" ],
             "properties": {
               "id": {
                 "type": "string",
@@ -216,13 +207,7 @@
           },
           {
             "type": "object",
-            "required": [
-              "id",
-              "operation",
-              "format",
-              "input",
-              "expected"
-            ],
+            "required": [ "id", "operation", "format", "input", "expected" ],
             "properties": {
               "id": {
                 "type": "string",
