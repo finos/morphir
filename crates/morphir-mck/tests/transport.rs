@@ -61,6 +61,40 @@ mod adapter {
 
     pub fn run(mode: &str, arg: Option<&str>) {
         match mode {
+            "workbench-http-policy-marker" => {
+                let draft = arg.unwrap();
+                let (operation, text) = match draft {
+                    "23" => (
+                        "validate-http-policy-boundary",
+                        include_str!("../../../spec/workbench/mck/draft.23/cases.json"),
+                    ),
+                    "24" => (
+                        "run-http-policy-client",
+                        include_str!("../../../spec/workbench/mck/draft.24/cases.json"),
+                    ),
+                    "25" => (
+                        "run-http-policy-provider",
+                        include_str!("../../../spec/workbench/mck/draft.25/cases.json"),
+                    ),
+                    _ => unreachable!(),
+                };
+                let corpus: Value = serde_json::from_str(text).unwrap();
+                for (id, line) in requests() {
+                    if is_exit(&line) {
+                        return;
+                    }
+                    if line.contains("\"op\":\"capabilities\"") {
+                        say(format!("{}\n",serde_json::json!({"id":id,"suite":"workbench","contractVersion":format!("0.1.0-draft.{draft}"),"binding":"hostile-HTTP-observation","language":"test","operations":[operation],"formats":["json"]})).as_bytes());
+                    } else {
+                        let marker = serde_json::json!({"$serde_json::private::RawValue":corpus["cases"][0]["expected"]["value"].to_string()});
+                        say(format!(
+                            "{}\n",
+                            serde_json::json!({"id":id,"status":"ok","value":marker})
+                        )
+                        .as_bytes());
+                    }
+                }
+            }
             "workbench-capability-executions" => {
                 for (id, line) in requests() {
                     if is_exit(&line) {
@@ -786,6 +820,49 @@ fn the_frozen_transcript_replays_byte_for_byte() {
 
 // ---------------------------------------------------------------- runner
 
+fn http_policy_live_observations_cannot_reinterpret_private_json_objects() {
+    use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
+    for (draft, text) in [
+        (
+            "23",
+            include_str!("../../../spec/workbench/mck/draft.23/cases.json"),
+        ),
+        (
+            "24",
+            include_str!("../../../spec/workbench/mck/draft.24/cases.json"),
+        ),
+        (
+            "25",
+            include_str!("../../../spec/workbench/mck/draft.25/cases.json"),
+        ),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let mut corpus: Value = serde_json::from_str(text).unwrap();
+        corpus["cases"].as_array_mut().unwrap().truncate(1);
+        std::fs::write(root.path().join("cases.json"), corpus.to_string()).unwrap();
+        let report = morphir_mck::workbench::run(
+            root.path(),
+            &RunOptions {
+                adapter: std::env::current_exe().unwrap().into_os_string(),
+                adapter_args: vec![
+                    ADAPTER_FLAG.into(),
+                    "workbench-http-policy-marker".into(),
+                    draft.into(),
+                ],
+                limits: quick(),
+            },
+        )
+        .unwrap();
+        assert!(
+            !report.qualified,
+            "HTTP draft.{draft} accepted a literal private object as a valid observation"
+        );
+        assert_eq!(report.records[0].result, ResultKind::Error);
+        assert_eq!(report.errors[0].phase, Phase::Exchange);
+        morphir_mck::workbench::check_report(root.path(), &report).unwrap();
+    }
+}
+
 fn execution_literal_private_objects_cannot_forge_live_adapter_success() {
     use morphir_mck::workbench::{Phase, ResultKind, RunOptions};
     let root = tempfile::tempdir().unwrap();
@@ -985,7 +1062,7 @@ fn main() {
         return;
     }
 
-    let tests: &[(&str, fn())] = &[("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
+    let tests: &[(&str, fn())] = &[("http_policy_live_observations_cannot_reinterpret_private_json_objects",http_policy_live_observations_cannot_reinterpret_private_json_objects),("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
         ("capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         ("capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         (
