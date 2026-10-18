@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.24/mck-report.schema.json",
+  "title": "Workbench HTTP checking-policy mck-report draft.24",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.24",
+      "suite": "workbench",
+      "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "capabilities": null,
+      "records": [
+        {
+          "caseId": "strict-omission-captured-before-effects",
+          "operation": "run-http-policy-client",
+          "format": "json",
+          "result": "error",
+          "observed": null
+        }
+      ],
+      "errors": [],
+      "qualified": false
+    }
+  ],
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "suite",
+    "corpusHash",
+    "capabilities",
+    "records",
+    "errors",
+    "qualified"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.24"
+    },
+    "suite": {
+      "const": "workbench"
+    },
+    "corpusHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capabilities": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.24/mck-capabilities.schema.json"
+        }
+      ]
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "caseId", "operation", "format", "result", "observed" ],
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "run-http-policy-client"
+          },
+          "format": {
+            "const": "json"
+          },
+          "result": {
+            "enum": [ "pass", "fail", "unsupported", "error" ]
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.24/mck-observation.schema.json"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "phase", "message" ],
+        "properties": {
+          "phase": {
+            "enum": [ "spawn", "capabilities", "exchange", "shutdown" ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 16384,
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "qualified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

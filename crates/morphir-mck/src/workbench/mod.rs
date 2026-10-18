@@ -5,6 +5,7 @@ mod capability_policy;
 mod contract;
 mod corpus;
 mod executions;
+mod http_policy;
 mod native_client;
 mod native_frames;
 mod native_owner;
@@ -68,3 +69,6 @@ mod capability_executions_tests;
 
 #[cfg(test)]
 mod native_policy_tests;
+
+#[cfg(test)]
+mod http_policy_tests;

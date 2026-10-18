@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.23/mck-observation.schema.json",
+  "title": "Workbench HTTP checking-policy mck-observation draft.23",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "accepted": true,
+        "policy": null
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "status", "value" ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.23/http-policy-boundary-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "status", "code" ],
+      "properties": {
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "enum": [
+            "workbench.host_shape",
+            "workbench.host_version",
+            "workbench.host_profile",
+            "workbench.execution_authority",
+            "workbench.host_selection_mismatch",
+            "workbench.host_input_limit",
+            "workbench.host_utf8"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

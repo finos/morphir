@@ -262,3 +262,13 @@ published as historical records. The current runner does not translate or accept
 their retired operations or versions.
 
 [Native capability checking policies](native/0.2.0-draft.2/README.html) add exact native negotiation, captured submission selection and accepted execution plans. The new fixed [boundary](draft.20/README.html), [client](draft.21/README.html) and [owner](draft.22/README.html) kits preserve earlier drafts. HTTP checking-policy negotiation remains separate.
+
+[Authenticated HTTP capability checking policies](host/0.2.0-draft.2/README.html)
+add an exact host mapping, immutable selected provider/policy and accepted execution
+plan. Authentication remains a transport requirement. A native compile offer or
+Rust protocol v1 descriptor does not advertise HTTP execution policy support.
+
+The HTTP checking-policy [boundary](draft.23/README.html),
+[controlled client](draft.24/README.html) and [actual provider](draft.25/README.html)
+kits extend the shared Rust MCK with independent fixed cases. They keep controlled
+client effects distinct from authenticated gateway and Node worker evidence.

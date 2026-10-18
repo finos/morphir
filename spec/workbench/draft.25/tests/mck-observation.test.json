@@ -1,0 +1,236 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.25/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Published fixed infrastructure",
+      "data": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "strict"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "strict"
+            ]
+          },
+          "failure": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed root rejects extra member",
+      "data": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "strict"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "strict"
+            ]
+          },
+          "failure": null
+        },
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

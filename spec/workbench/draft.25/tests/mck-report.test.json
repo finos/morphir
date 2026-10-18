@@ -1,0 +1,48 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.25/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "Published fixed infrastructure",
+      "data": {
+        "formatVersion": "0.1.0-draft.25",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": null,
+        "records": [
+          {
+            "caseId": "actual-strict-default-json",
+            "operation": "run-http-policy-provider",
+            "format": "json",
+            "result": "error",
+            "observed": null
+          }
+        ],
+        "errors": [],
+        "qualified": false
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed root rejects extra member",
+      "data": {
+        "formatVersion": "0.1.0-draft.25",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": null,
+        "records": [
+          {
+            "caseId": "actual-strict-default-json",
+            "operation": "run-http-policy-provider",
+            "format": "json",
+            "result": "error",
+            "observed": null
+          }
+        ],
+        "errors": [],
+        "qualified": false,
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

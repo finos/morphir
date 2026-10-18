@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.24/mck-input.schema.json",
+  "title": "Workbench HTTP checking-policy mck-input draft.24",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "sessionId": "session",
+      "evaluation": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "providerId": "provider"
+      },
+      "invocations": [
+        {
+          "id": "s",
+          "path": "session",
+          "status": 200,
+          "source": "{\"profile\":\"morphir/workbench/host\",\"contractVersion\":\"0.2.0-draft.2\",\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"provider\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}",
+          "held": false
+        },
+        {
+          "id": "a",
+          "path": "submit",
+          "status": 200,
+          "source": "{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"provider\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"provider\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"provider\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"strict\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}",
+          "held": false
+        },
+        {
+          "id": "q",
+          "path": "query",
+          "status": 200,
+          "source": "{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"provider\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":2,\"state\":\"terminal\",\"cancelRequested\":false,\"outcomes\":{\"contractVersion\":\"0.1.0-draft.5\",\"calls\":[{\"id\":\"workbench\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"42\"}}}],\"cleanup\":null,\"extensions\":null}}",
+          "held": false
+        },
+        {
+          "id": "r",
+          "path": "release",
+          "status": 200,
+          "source": "{\"released\":true}",
+          "held": false
+        }
+      ],
+      "actions": [
+        {
+          "op": "initialize",
+          "id": "init"
+        },
+        {
+          "op": "evaluate",
+          "id": "run"
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "sessionId", "evaluation", "invocations", "actions" ],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "evaluation": {
+      "type": "object",
+      "required": [ "model", "entry", "inputs", "runtime", "providerId" ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "maxLength": 1048576,
+          "minLength": 1
+        },
+        "entry": {
+          "type": "string",
+          "maxLength": 1024,
+          "minLength": 1
+        },
+        "inputs": {
+          "type": "object",
+          "required": [ "format", "source" ],
+          "properties": {
+            "format": {
+              "enum": [ "json", "ion-text" ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1048576,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "providerId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "admission": {
+          "$ref": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "invocations": {
+      "type": "array",
+      "maxItems": 128,
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [ "id", "path", "status", "source", "held" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "path": {
+            "enum": [ "session", "submit", "query", "cancel", "release" ]
+          },
+          "status": {
+            "enum": [ 200, 400, 401, 403, 404, 409, 413, 503 ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "maxLength": 393216
+              }
+            ]
+          },
+          "held": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 32,
+      "minItems": 0,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "op", "id" ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "initialize",
+                  "evaluate",
+                  "resume",
+                  "cancel",
+                  "release"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "call" ],
+            "properties": {
+              "op": {
+                "const": "deliver"
+              },
+              "call": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "evaluation" ],
+            "properties": {
+              "op": {
+                "const": "mutate"
+              },
+              "evaluation": {
+                "type": "object",
+                "required": [
+                  "model",
+                  "entry",
+                  "inputs",
+                  "runtime",
+                  "providerId"
+                ],
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "maxLength": 1048576,
+                    "minLength": 1
+                  },
+                  "entry": {
+                    "type": "string",
+                    "maxLength": 1024,
+                    "minLength": 1
+                  },
+                  "inputs": {
+                    "type": "object",
+                    "required": [ "format", "source" ],
+                    "properties": {
+                      "format": {
+                        "enum": [ "json", "ion-text" ]
+                      },
+                      "source": {
+                        "type": "string",
+                        "maxLength": 1048576,
+                        "minLength": 0
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "runtime": {
+                    "const": "scheme"
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  },
+                  "admission": {
+                    "$ref": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "sessionId" ],
+            "properties": {
+              "op": {
+                "const": "authenticate"
+              },
+              "sessionId": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

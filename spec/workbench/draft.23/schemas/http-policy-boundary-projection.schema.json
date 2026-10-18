@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.23/http-policy-boundary-projection.schema.json",
+  "title": "Workbench HTTP checking-policy http-policy-boundary-projection draft.23",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "accepted": true,
+      "policy": null
+    }
+  ],
+  "type": "object",
+  "required": [ "accepted", "policy" ],
+  "properties": {
+    "accepted": {
+      "const": true
+    },
+    "policy": {
+      "enum": [ null, "strict", "permissive" ]
+    }
+  },
+  "additionalProperties": false
+}

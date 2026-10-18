@@ -100,6 +100,9 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                 "format":case.format,"input":case.input}),
                 )
                 .and_then(|value| {
+                    if case.operation() == super::contract::Operation::ValidateHttpPolicyBoundary { super::http_policy::Kit::Boundary.observation(&value)?; }
+                    if case.operation() == super::contract::Operation::RunHttpPolicyClient { super::http_policy::Kit::Client.observation(&value)?; }
+                    if case.operation() == super::contract::Operation::RunHttpPolicyProvider { super::http_policy::Kit::Provider.observation(&value)?; }
                     if case.operation() == super::contract::Operation::ReduceExecution {
                         super::executions::validate_observation_shape(&value)?;
                     }

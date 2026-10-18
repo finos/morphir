@@ -65,7 +65,7 @@ macro_rules! shape_validator {
 /// JSON Schema numeric checks may round arbitrary-precision decimal tokens.
 /// Infrastructure contains bounded integers only; completion outcomes remain
 /// opaque and are admitted by the production execution host instead.
-fn check_integer_tokens(value: &Value) -> Result<(), String> {
+pub(super) fn check_integer_tokens(value: &Value) -> Result<(), String> {
     match value {
         Value::Number(number) => {
             if exact_integer(&number.to_string()).is_none() {

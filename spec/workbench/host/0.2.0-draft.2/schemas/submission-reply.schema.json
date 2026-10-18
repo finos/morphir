@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.2/submission-reply.schema.json",
+  "title": "Workbench host initial submission reply with capability checking policies",
+  "description": "Exact authenticated HTTP host 0.2.0-draft.2; transport authority and retained plan equality require semantic validation",
+  "examples": [
+    {
+      "identity": {
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "executionId": "execution",
+        "snapshotId": "snapshot"
+      },
+      "calls": [ "workbench" ],
+      "receipt": {
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "sequence": 0,
+        "state": "submitted",
+        "cancelRequested": false,
+        "outcomes": null
+      },
+      "plan": {
+        "profile": "morphir/workbench/execution-plan",
+        "contractVersion": "0.2.0-draft.1",
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "planId": "plan-1",
+        "runtime": "scheme",
+        "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        },
+        "boundary": {
+          "entries": [
+            {
+              "name": "selected:main#answer",
+              "inputs": [],
+              "output": {
+                "type": "int"
+              }
+            }
+          ],
+          "definitions": []
+        }
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "identity", "calls", "receipt", "plan" ],
+  "properties": {
+    "identity": {
+      "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/identity.schema.json"
+    },
+    "calls": {
+      "const": [ "workbench" ]
+    },
+    "receipt": {
+      "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/receipt.schema.json",
+      "properties": {
+        "sequence": {
+          "const": 0
+        },
+        "state": {
+          "const": "submitted"
+        },
+        "cancelRequested": {
+          "const": false
+        }
+      }
+    },
+    "plan": {
+      "$ref": "https://morphir.finos.org/spec/workbench/execution-plan/0.2.0-draft.1/plan.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

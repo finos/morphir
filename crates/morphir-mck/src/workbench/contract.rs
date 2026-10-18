@@ -21,6 +21,9 @@ pub const SELECTED_SCHEME_VERSION: &str = "0.1.0-draft.11";
 pub const NATIVE_POLICY_BOUNDARY_VERSION: &str = "0.1.0-draft.20";
 pub const NATIVE_POLICY_CLIENT_VERSION: &str = "0.1.0-draft.21";
 pub const NATIVE_POLICY_OWNER_VERSION: &str = "0.1.0-draft.22";
+pub const HTTP_POLICY_BOUNDARY_VERSION: &str = "0.1.0-draft.23";
+pub const HTTP_POLICY_CLIENT_VERSION: &str = "0.1.0-draft.24";
+pub const HTTP_POLICY_PROVIDER_VERSION: &str = "0.1.0-draft.25";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -68,6 +71,9 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.20",
         "=0.1.0-draft.21",
         "=0.1.0-draft.22",
+        "=0.1.0-draft.23",
+        "=0.1.0-draft.24",
+        "=0.1.0-draft.25",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -89,6 +95,12 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Operation {
+    #[serde(rename = "validate-http-policy-boundary")]
+    ValidateHttpPolicyBoundary,
+    #[serde(rename = "run-http-policy-client")]
+    RunHttpPolicyClient,
+    #[serde(rename = "run-http-policy-provider")]
+    RunHttpPolicyProvider,
     #[serde(rename = "validate-native-policy-boundary")]
     ValidateNativePolicyBoundary,
     #[serde(rename = "run-native-policy-client")]
@@ -126,6 +138,12 @@ pub enum Operation {
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
         for (supported, operation) in [
+            (
+                HTTP_POLICY_BOUNDARY_VERSION,
+                Self::ValidateHttpPolicyBoundary,
+            ),
+            (HTTP_POLICY_CLIENT_VERSION, Self::RunHttpPolicyClient),
+            (HTTP_POLICY_PROVIDER_VERSION, Self::RunHttpPolicyProvider),
             (
                 NATIVE_POLICY_BOUNDARY_VERSION,
                 Self::ValidateNativePolicyBoundary,
@@ -176,7 +194,10 @@ impl Operation {
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
         if matches!(
             self,
-            Self::ValidateNativePolicyBoundary
+            Self::ValidateHttpPolicyBoundary
+                | Self::RunHttpPolicyClient
+                | Self::RunHttpPolicyProvider
+                | Self::ValidateNativePolicyBoundary
                 | Self::RunNativePolicyClient
                 | Self::RunNativePolicyOwner
                 | Self::ReduceExecution
@@ -305,6 +326,15 @@ impl Capabilities {
         }
         for (supported, operation) in [
             (
+                HTTP_POLICY_BOUNDARY_VERSION,
+                Operation::ValidateHttpPolicyBoundary,
+            ),
+            (HTTP_POLICY_CLIENT_VERSION, Operation::RunHttpPolicyClient),
+            (
+                HTTP_POLICY_PROVIDER_VERSION,
+                Operation::RunHttpPolicyProvider,
+            ),
+            (
                 NATIVE_POLICY_BOUNDARY_VERSION,
                 Operation::ValidateNativePolicyBoundary,
             ),
@@ -356,7 +386,10 @@ impl Observation {
             Self::Invalid { code } => {
                 if matches!(
                     operation,
-                    Operation::RunNativePolicyClient | Operation::RunNativePolicyOwner
+                    Operation::RunHttpPolicyClient
+                        | Operation::RunHttpPolicyProvider
+                        | Operation::RunNativePolicyClient
+                        | Operation::RunNativePolicyOwner
                 ) {
                     return Err("native policy domain failures belong in the projection".into());
                 }
@@ -443,6 +476,11 @@ impl Observation {
 
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
     match operation {
+        Operation::ValidateHttpPolicyBoundary => {
+            super::http_policy::Kit::Boundary.projection(value)
+        }
+        Operation::RunHttpPolicyClient => super::http_policy::Kit::Client.projection(value),
+        Operation::RunHttpPolicyProvider => super::http_policy::Kit::Provider.projection(value),
         Operation::ValidateNativePolicyBoundary => super::native_policy_boundary::projection(value),
         Operation::RunNativePolicyClient => super::native_policy_client::projection(value),
         Operation::RunNativePolicyOwner => super::native_policy_owner::projection(value),

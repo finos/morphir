@@ -1,0 +1,2401 @@
+{
+  "formatVersion": "0.1.0-draft.25",
+  "cases": [
+    {
+      "id": "actual-strict-default-json",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "strict"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "strict"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "actual-explicit-strict-json",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "strict"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "strict"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "strict"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "actual-permissive-unreachable-json",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "permissive"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "actual-permissive-unreachable-ion",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "ion-text",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "permissive"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "strict-omission-refuses-unreachable",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 400,
+              "code": "workbench.host_admission",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "explicit-strict-refuses-unreachable",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "strict"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 400,
+              "code": "workbench.host_admission",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "wrong-provider-no-fallback",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "other"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 409,
+              "code": "workbench.host_selection_mismatch",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "wrong-runtime-no-fallback",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "native",
+          "providerId": "provider"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 409,
+              "code": "workbench.host_selection_mismatch",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "unknown-policy-no-fallback",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "lenient"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 409,
+              "code": "workbench.host_selection_mismatch",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "unknown-policy-profile",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "other",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 400,
+              "code": "workbench.host_profile",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "unknown-policy-version",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.2",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 400,
+              "code": "workbench.host_version",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "retired-submit-version",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 400,
+              "code": "workbench.host_version",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "future-submit-version",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.3",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 400,
+              "code": "workbench.host_version",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "closed-request-no-caller-path",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "modelPath": "/tmp/model"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 400,
+              "code": "workbench.host_shape",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "closed-request-no-old-job-alias",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "jobId": "job"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 400,
+              "code": "workbench.host_shape",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "actual-reached-unsupported-is-typed-failure",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":true,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "failed",
+                        "failure": {
+                          "stage": "evaluate",
+                          "code": "execution.unsupported_reached",
+                          "message": "Unsupported operation reached"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "permissive"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "expired-auth-cannot-mutate-captured-selection",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "authenticate",
+            "sessionId": null
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "cancel",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "authenticate",
+            "sessionId": "session"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 401,
+              "code": "workbench.host_authentication",
+              "execution": 0
+            },
+            {
+              "operation": "cancel",
+              "status": 401,
+              "code": "workbench.host_authentication",
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 401,
+              "code": "workbench.host_authentication",
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "permissive"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "changed-auth-session-cannot-mutate-captured-selection",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "authenticate",
+            "sessionId": "other"
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "cancel",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "authenticate",
+            "sessionId": "session"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 409,
+              "code": "workbench.session_changed",
+              "execution": 0
+            },
+            {
+              "operation": "cancel",
+              "status": 409,
+              "code": "workbench.session_changed",
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 409,
+              "code": "workbench.session_changed",
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "permissive"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "submit-reply-loss-does-not-reclaim-worker",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit-lost-reply"
+          },
+          {
+            "op": "replace-submission",
+            "submission": {
+              "contractVersion": "0.2.0-draft.2",
+              "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              },
+              "runtime": "scheme",
+              "providerId": "provider"
+            }
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": null,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 404,
+              "code": "workbench.host_unknown_execution",
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "permissive"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "query-reply-loss-does-not-reclaim-worker",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "replace-submission",
+            "submission": {
+              "contractVersion": "0.2.0-draft.2",
+              "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              },
+              "runtime": "scheme",
+              "providerId": "provider"
+            }
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query-lost-reply",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": null,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 404,
+              "code": "workbench.host_unknown_execution",
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "permissive"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "release-reply-loss-does-not-reclaim-worker",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "replace-submission",
+            "submission": {
+              "contractVersion": "0.2.0-draft.2",
+              "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              },
+              "runtime": "scheme",
+              "providerId": "provider"
+            }
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release-lost-reply",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "session",
+              "status": 200,
+              "code": null,
+              "execution": null
+            },
+            {
+              "operation": "submit",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "wait",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 200,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "release",
+              "status": null,
+              "code": null,
+              "execution": 0
+            },
+            {
+              "operation": "query",
+              "status": 404,
+              "code": "workbench.host_unknown_execution",
+              "execution": 0
+            }
+          ],
+          "executions": [
+            {
+              "plan": {
+                "profile": "morphir/workbench/execution-plan",
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "planId": "plan-1",
+                "runtime": "scheme",
+                "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                "admission": {
+                  "profile": "morphir/workbench/admission",
+                  "contractVersion": "0.1.0-draft.1",
+                  "policy": "permissive"
+                },
+                "boundary": {
+                  "definitions": [],
+                  "entries": [
+                    {
+                      "inputs": [],
+                      "name": "selected:main#answer",
+                      "output": {
+                        "type": "int"
+                      }
+                    }
+                  ]
+                }
+              },
+              "receipt": {
+                "contractVersion": "0.2.0-draft.1",
+                "identity": {
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "executionId": "execution-1",
+                  "snapshotId": "snapshot-1"
+                },
+                "sequence": 2,
+                "state": "terminal",
+                "cancelRequested": false,
+                "outcomes": {
+                  "contractVersion": "0.1.0-draft.5",
+                  "calls": [
+                    {
+                      "id": "workbench",
+                      "outcome": {
+                        "status": "returned",
+                        "value": {
+                          "type": "int",
+                          "value": "42"
+                        }
+                      }
+                    }
+                  ],
+                  "cleanup": null,
+                  "extensions": null
+                }
+              },
+              "released": true
+            }
+          ],
+          "workers": {
+            "started": 1,
+            "exited": 1,
+            "policies": [
+              "permissive"
+            ]
+          },
+          "failure": null
+        }
+      }
+    },
+    {
+      "id": "unauthenticated-submit-never-claims-worker",
+      "operation": "run-http-policy-provider",
+      "format": "json",
+      "input": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        },
+        "actions": [
+          {
+            "op": "authenticate",
+            "sessionId": null
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "requests": [
+            {
+              "operation": "submit",
+              "status": 401,
+              "code": "workbench.host_authentication",
+              "execution": null
+            }
+          ],
+          "executions": [],
+          "workers": {
+            "started": 0,
+            "exited": 0,
+            "policies": []
+          },
+          "failure": null
+        }
+      }
+    }
+  ]
+}

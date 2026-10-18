@@ -1,0 +1,283 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.2/submission.schema.json",
+  "tests": [
+    {
+      "description": "Omission resolves to strict semantically",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme"
+      },
+      "valid": true
+    },
+    {
+      "description": "Required contractVersion",
+      "data": {
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Required model",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Required entry",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Required inputs",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "runtime": "scheme",
+        "providerId": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Required runtime",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "providerId": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Required providerId",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed root",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme",
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Explicit permissive JSON",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Explicit strict Ion",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "ion-text",
+          "source": "[2]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "strict"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Reject unknown selection policy",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "lenient"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject unknown selection profile",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/capabilities",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Reject unknown selection contractVersion",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.2",
+          "policy": "permissive"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed selection",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive",
+          "extra": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Runtime is scoped",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "native",
+        "providerId": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Frozen request is not policy request",
+      "data": {
+        "contractVersion": "0.2.0-draft.1",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme"
+      },
+      "valid": false
+    },
+    {
+      "description": "Provider cannot be empty",
+      "data": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+        "entry": "sample:main#add",
+        "inputs": {
+          "format": "json",
+          "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+        },
+        "runtime": "scheme",
+        "providerId": ""
+      },
+      "valid": false
+    }
+  ]
+}

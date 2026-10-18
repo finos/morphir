@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.25/mck-corpus.schema.json",
+  "title": "Workbench HTTP checking-policy mck-corpus draft.25",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.25",
+      "cases": [
+        {
+          "id": "actual-strict-default-json",
+          "operation": "run-http-policy-provider",
+          "format": "json",
+          "input": {
+            "submission": {
+              "contractVersion": "0.2.0-draft.2",
+              "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+              "entry": "selected:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              },
+              "runtime": "scheme",
+              "providerId": "provider"
+            },
+            "actions": [
+              {
+                "op": "session"
+              },
+              {
+                "op": "submit"
+              },
+              {
+                "op": "wait",
+                "execution": 0
+              },
+              {
+                "op": "query",
+                "execution": 0
+              },
+              {
+                "op": "release",
+                "execution": 0
+              },
+              {
+                "op": "shutdown"
+              }
+            ]
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "requests": [
+                {
+                  "operation": "session",
+                  "status": 200,
+                  "code": null,
+                  "execution": null
+                },
+                {
+                  "operation": "submit",
+                  "status": 200,
+                  "code": null,
+                  "execution": 0
+                },
+                {
+                  "operation": "wait",
+                  "status": 200,
+                  "code": null,
+                  "execution": 0
+                },
+                {
+                  "operation": "query",
+                  "status": 200,
+                  "code": null,
+                  "execution": 0
+                },
+                {
+                  "operation": "release",
+                  "status": 200,
+                  "code": null,
+                  "execution": 0
+                }
+              ],
+              "executions": [
+                {
+                  "plan": {
+                    "profile": "morphir/workbench/execution-plan",
+                    "contractVersion": "0.2.0-draft.1",
+                    "identity": {
+                      "hostId": "host",
+                      "sessionId": "session",
+                      "providerId": "provider",
+                      "executionId": "execution-1",
+                      "snapshotId": "snapshot-1"
+                    },
+                    "planId": "plan-1",
+                    "runtime": "scheme",
+                    "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+                    "admission": {
+                      "profile": "morphir/workbench/admission",
+                      "contractVersion": "0.1.0-draft.1",
+                      "policy": "strict"
+                    },
+                    "boundary": {
+                      "definitions": [],
+                      "entries": [
+                        {
+                          "inputs": [],
+                          "name": "selected:main#answer",
+                          "output": {
+                            "type": "int"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "receipt": {
+                    "contractVersion": "0.2.0-draft.1",
+                    "identity": {
+                      "hostId": "host",
+                      "sessionId": "session",
+                      "providerId": "provider",
+                      "executionId": "execution-1",
+                      "snapshotId": "snapshot-1"
+                    },
+                    "sequence": 2,
+                    "state": "terminal",
+                    "cancelRequested": false,
+                    "outcomes": {
+                      "contractVersion": "0.1.0-draft.5",
+                      "calls": [
+                        {
+                          "id": "workbench",
+                          "outcome": {
+                            "status": "returned",
+                            "value": {
+                              "type": "int",
+                              "value": "42"
+                            }
+                          }
+                        }
+                      ],
+                      "cleanup": null,
+                      "extensions": null
+                    }
+                  },
+                  "released": true
+                }
+              ],
+              "workers": {
+                "started": 1,
+                "exited": 1,
+                "policies": [ "strict" ]
+              },
+              "failure": null
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.25"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "run-http-policy-provider"
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.25/mck-input.schema.json"
+          },
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.25/mck-observation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
