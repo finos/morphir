@@ -1,0 +1,417 @@
+use super::{domain::*, record};
+use crate::commands::ui::artifacts::portable_path_key;
+use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt, OpenOptionsSyncExt};
+use cap_std::fs::{Dir, OpenOptions};
+use morphir_distribution::Sha256Digest;
+use serde::Serialize;
+use sha2::{Digest, Sha256};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::{Read, Write},
+    path::{Component, Path},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::{Duration, Instant},
+};
+
+/// Cooperative deadline/cancellation. A blocking OS read cannot be forcibly
+/// interrupted; its caller must keep any host credit until this worker exits.
+#[derive(Clone)]
+pub struct CaptureControl {
+    cancelled: Arc<AtomicBool>,
+    deadline: Instant,
+}
+impl Default for CaptureControl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl CaptureControl {
+    pub fn new() -> Self {
+        Self {
+            cancelled: Arc::new(AtomicBool::new(false)),
+            deadline: Instant::now() + Duration::from_secs(30),
+        }
+    }
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Relaxed);
+    }
+    fn check(&self) -> Result<(), CaptureError> {
+        if self.cancelled.load(Ordering::Relaxed) || Instant::now() >= self.deadline {
+            Err(CaptureError::Timeout)
+        } else {
+            Ok(())
+        }
+    }
+}
+#[derive(Clone, Copy)]
+pub(super) struct Limits {
+    pub source: usize,
+    pub record: usize,
+    pub metadata: usize,
+    pub descendants: usize,
+}
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            source: MAX_SOURCE_BYTES,
+            record: MAX_RECORD_BYTES,
+            metadata: MAX_METADATA_BYTES,
+            descendants: MAX_DESCENDANTS,
+        }
+    }
+}
+
+pub fn capture_compiled(
+    output: &Dir,
+    module: &SelectedModule,
+    scope: CaptureScope,
+    control: &CaptureControl,
+) -> Result<CaptureResult, CaptureError> {
+    capture_with_limits(output, module, scope, control, Limits::default())
+}
+pub(super) fn capture_with_limits(
+    output: &Dir,
+    module: &SelectedModule,
+    scope: CaptureScope,
+    control: &CaptureControl,
+    limits: Limits,
+) -> Result<CaptureResult, CaptureError> {
+    control.check()?;
+    let directory = match open_directory(output, Path::new(module.as_str())) {
+        Ok(dir) => dir,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(CaptureResult::Unavailable(CaptureUnavailable::NotCompiled));
+        }
+        Err(_) => return Err(CaptureError::CaptureFailed),
+    };
+    let mut options = OpenOptions::new();
+    options
+        .read(true)
+        .write(true)
+        .create(true)
+        .follow(FollowSymlinks::No)
+        .nonblock(true);
+    let lock = directory
+        .open_with("compile.lock", &options)
+        .map_err(io_error)?
+        .into_std();
+    if !lock.metadata().map_err(io_error)?.is_file() {
+        return Err(CaptureError::CaptureFailed);
+    }
+    loop {
+        control.check()?;
+        match fs2::FileExt::try_lock_shared(&lock) {
+            Ok(()) => break,
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(10))
+            }
+            Err(_) => return Err(CaptureError::CaptureFailed),
+        }
+    }
+    let raw_file = match open_file(&directory, Path::new("compile.json")) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(CaptureResult::Unavailable(CaptureUnavailable::NotCompiled));
+        }
+        Err(_) => return Err(CaptureError::CaptureFailed),
+    };
+    let raw = read_bounded(raw_file, limits.record, CaptureError::RecordLimit, control)?;
+    let (record, declaration) = record::decode(raw, module, scope)?;
+    let primary = record.descriptor.primary()?;
+    let companions = match (scope, declaration) {
+        (CaptureScope::Primary, _) => vec![],
+        (_, Declaration::Absent) => {
+            return Ok(CaptureResult::Unavailable(
+                CaptureUnavailable::CompanionsUndeclared,
+            ));
+        }
+        (_, Declaration::Invalid) => return Err(CaptureError::InvalidDeclaration),
+        (_, Declaration::Declared(roots)) => roots,
+    };
+    let roots: Vec<_> = std::iter::once(&primary).chain(companions.iter()).collect();
+    validate_roots(&roots)?;
+    let dest = directory
+        .open_dir_nofollow("compile.dest")
+        .map_err(io_error)?;
+    let mut builder = Builder {
+        entries: vec![],
+        source_left: limits.source,
+        metadata_left: limits.metadata,
+        descendants_left: limits.descendants,
+        paths: PathSet::default(),
+        control,
+    };
+    for root in roots {
+        builder.metadata(root)?;
+        builder.walk(&dest, &root.path, root.kind, 0)?;
+    }
+    control.check()?;
+    // Drop the shared lock only after all record/descriptor/originals are owned.
+    drop(lock);
+    builder
+        .entries
+        .sort_by(|left, right| left.path.cmp(&right.path));
+    let inventory_digest = inventory_digest(&builder.entries);
+    control.check()?;
+    Ok(CaptureResult::Ready(Box::new(CapturedSources {
+        record,
+        primary,
+        companions,
+        scope,
+        entries: builder.entries,
+        source_bytes: limits.source - builder.source_left,
+        metadata_bytes: limits.metadata - builder.metadata_left,
+        inventory_digest,
+    })))
+}
+fn io_error(_: std::io::Error) -> CaptureError {
+    CaptureError::CaptureFailed
+}
+fn open_directory(root: &Dir, path: &Path) -> std::io::Result<Dir> {
+    let mut directory = root.try_clone()?;
+    for component in path.components() {
+        let Component::Normal(name) = component else {
+            return Err(std::io::Error::other("unconfined path"));
+        };
+        directory = directory.open_dir_nofollow(name)?;
+    }
+    Ok(directory)
+}
+fn open_file(root: &Dir, path: &Path) -> std::io::Result<cap_std::fs::File> {
+    let parent = open_directory(root, path.parent().unwrap_or(Path::new("")))?;
+    let mut options = OpenOptions::new();
+    options.read(true).follow(FollowSymlinks::No).nonblock(true);
+    parent.open_with(
+        path.file_name()
+            .ok_or_else(|| std::io::Error::other("missing name"))?,
+        &options,
+    )
+}
+fn read_bounded(
+    mut file: cap_std::fs::File,
+    limit: usize,
+    excess: CaptureError,
+    control: &CaptureControl,
+) -> Result<Vec<u8>, CaptureError> {
+    let metadata = file.metadata().map_err(io_error)?;
+    if !metadata.is_file() {
+        return Err(CaptureError::CaptureFailed);
+    }
+    if metadata.len() > limit as u64 {
+        return Err(excess);
+    }
+    let mut bytes = Vec::new();
+    let mut block = [0u8; 65_536];
+    loop {
+        control.check()?;
+        // Include one over-budget probe without allocating it in the owner.
+        let count = file
+            .read(&mut block[..65_536.min(limit - bytes.len() + 1)])
+            .map_err(io_error)?;
+        if count == 0 {
+            break;
+        }
+        if count > limit - bytes.len() {
+            return Err(excess);
+        }
+        bytes.extend_from_slice(&block[..count]);
+    }
+    Ok(bytes)
+}
+
+fn validate_roots(roots: &[&SourceRoot]) -> Result<(), CaptureError> {
+    if roots.len() > MAX_ROOTS {
+        return Err(CaptureError::InventoryLimit);
+    }
+    let mut paths = PathSet::default();
+    for root in roots {
+        paths.insert(&root.path, root.kind)?;
+    }
+    // Even directory roots cannot contain another independently selected root.
+    let keys: BTreeSet<_> = roots
+        .iter()
+        .map(|root| portable_path_key(root.path.as_str()))
+        .collect();
+    for key in &keys {
+        for (separator, _) in key.match_indices('/') {
+            if keys.contains(&key[..separator]) {
+                return Err(CaptureError::InvalidPathSet);
+            }
+        }
+    }
+    Ok(())
+}
+#[derive(Default)]
+struct PathSet {
+    roots: Trie,
+    full_paths: BTreeMap<String, SourceKind>,
+}
+#[derive(Default)]
+struct Trie {
+    children: BTreeMap<String, (String, Trie)>,
+    kind: Option<SourceKind>,
+}
+impl PathSet {
+    fn insert(&mut self, path: &SourcePath, kind: SourceKind) -> Result<(), CaptureError> {
+        let key = portable_path_key(path.as_str());
+        if self.full_paths.contains_key(&key) {
+            return Err(CaptureError::InvalidPathSet);
+        }
+        for (separator, _) in key.match_indices('/') {
+            if self.full_paths.get(&key[..separator]) == Some(&SourceKind::File) {
+                return Err(CaptureError::InvalidPathSet);
+            }
+        }
+        if kind == SourceKind::File {
+            let prefix = format!("{key}/");
+            if self
+                .full_paths
+                .range(prefix.clone()..)
+                .next()
+                .is_some_and(|(next, _)| next.starts_with(&prefix))
+            {
+                return Err(CaptureError::InvalidPathSet);
+            }
+        }
+        let mut node = &mut self.roots;
+        for part in path.as_str().split('/') {
+            if node.kind == Some(SourceKind::File) {
+                return Err(CaptureError::InvalidPathSet);
+            }
+            let (prior, next) = node
+                .children
+                .entry(portable_path_key(part))
+                .or_insert_with(|| (part.to_owned(), Trie::default()));
+            if prior != part {
+                return Err(CaptureError::InvalidPathSet);
+            }
+            node = next;
+        }
+        if node.kind.is_some() || (kind == SourceKind::File && !node.children.is_empty()) {
+            return Err(CaptureError::InvalidPathSet);
+        }
+        node.kind = Some(kind);
+        self.full_paths.insert(key, kind);
+        Ok(())
+    }
+}
+
+struct Builder<'a> {
+    entries: Vec<SourceEntry>,
+    source_left: usize,
+    metadata_left: usize,
+    descendants_left: usize,
+    paths: PathSet,
+    control: &'a CaptureControl,
+}
+impl Builder<'_> {
+    fn metadata(&mut self, value: &impl Serialize) -> Result<(), CaptureError> {
+        struct Counter<'a>(&'a mut usize);
+        impl Write for Counter<'_> {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                *self.0 = self
+                    .0
+                    .checked_sub(bytes.len())
+                    .ok_or_else(|| std::io::Error::other("inventory limit"))?;
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        serde_json::to_writer(Counter(&mut self.metadata_left), value)
+            .map_err(|_| CaptureError::InventoryLimit)
+    }
+    fn walk(
+        &mut self,
+        dest: &Dir,
+        path: &SourcePath,
+        kind: SourceKind,
+        depth: usize,
+    ) -> Result<(), CaptureError> {
+        self.control.check()?;
+        if depth > 128 || self.entries.len() == MAX_ENTRIES {
+            return Err(CaptureError::InventoryLimit);
+        }
+        self.paths.insert(path, kind)?;
+        let id = uuid::Uuid::new_v4().to_string();
+        let content = match kind {
+            SourceKind::File => {
+                let bytes = read_bounded(
+                    open_file(dest, Path::new(path.as_str())).map_err(io_error)?,
+                    self.source_left,
+                    CaptureError::SourceLimit,
+                    self.control,
+                )?;
+                self.source_left -= bytes.len();
+                SourceContent::File {
+                    digest: Sha256Digest::of_bytes(&bytes),
+                    bytes,
+                }
+            }
+            SourceKind::Directory => SourceContent::Directory,
+        };
+        // Charge the exact compact entry metadata, including generated identity,
+        // before retaining the entry. Original file content never enters JSON.
+        let metadata = match &content {
+            SourceContent::Directory => {
+                serde_json::json!({"kind":"directory","entryId":&id,"path":path})
+            }
+            SourceContent::File { bytes, digest } => {
+                serde_json::json!({"kind":"file","entryId":&id,"path":path,"byteLength":bytes.len(),"sha256":digest})
+            }
+        };
+        self.metadata(&metadata)?;
+        self.entries.push(SourceEntry {
+            id,
+            path: path.clone(),
+            content,
+        });
+        if kind == SourceKind::Directory {
+            let directory = open_directory(dest, Path::new(path.as_str())).map_err(io_error)?;
+            for child in directory.entries().map_err(io_error)? {
+                self.control.check()?;
+                self.descendants_left = self
+                    .descendants_left
+                    .checked_sub(1)
+                    .ok_or(CaptureError::InventoryLimit)?;
+                let child = child.map_err(io_error)?;
+                let name = child.file_name();
+                let name = name.to_str().ok_or(CaptureError::InvalidPath)?;
+                let child_path = SourcePath::parse(&format!("{}/{name}", path.as_str()))?;
+                let file_type = child.file_type().map_err(io_error)?;
+                let child_kind = if file_type.is_dir() {
+                    SourceKind::Directory
+                } else if file_type.is_file() {
+                    SourceKind::File
+                } else {
+                    return Err(CaptureError::CaptureFailed);
+                };
+                self.walk(dest, &child_path, child_kind, depth + 1)?;
+            }
+        }
+        Ok(())
+    }
+}
+fn inventory_digest(entries: &[SourceEntry]) -> Sha256Digest {
+    let mut hash = Sha256::new();
+    hash.update(b"morphir/workbench/model-originals/0.1.0-draft.1\0");
+    hash.update((entries.len() as u32).to_be_bytes());
+    for entry in entries {
+        hash.update([if entry.kind() == SourceKind::Directory {
+            0
+        } else {
+            1
+        }]);
+        hash.update((entry.path.as_str().len() as u32).to_be_bytes());
+        hash.update(entry.path.as_str().as_bytes());
+        if let SourceContent::File { bytes, digest } = &entry.content {
+            hash.update((bytes.len() as u64).to_be_bytes());
+            hash.update(digest.as_bytes());
+        }
+    }
+    Sha256Digest::from_bytes(hash.finalize().into())
+}
