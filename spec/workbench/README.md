@@ -260,3 +260,5 @@ propagation and native/HTTP checking-policy offers require separate qualificatio
 The older jobs, host/native draft.1 and MCK drafts.6 through .10 and .13 remain
 published as historical records. The current runner does not translate or accept
 their retired operations or versions.
+
+[Native capability checking policies](native/0.2.0-draft.2/README.html) add exact native negotiation, captured submission selection and accepted execution plans. The new fixed [boundary](draft.20/README.html), [client](draft.21/README.html) and [owner](draft.22/README.html) kits preserve earlier drafts. HTTP checking-policy negotiation remains separate.

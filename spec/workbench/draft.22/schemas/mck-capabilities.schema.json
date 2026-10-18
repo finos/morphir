@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-capabilities.schema.json",
+  "title": "Workbench native checking-policy mck-capabilities draft.22",
+  "description": "Exact draft.22 run-native-policy-owner. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.22",
+      "binding": "independent-fixed",
+      "language": "moonbit",
+      "operations": [ "run-native-policy-owner" ],
+      "formats": [ "json" ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "binding",
+    "language",
+    "operations",
+    "formats"
+  ],
+  "properties": {
+    "suite": {
+      "const": "workbench"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.22"
+    },
+    "binding": {
+      "type": "string",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "const": [ "run-native-policy-owner" ]
+    },
+    "formats": {
+      "const": [ "json" ]
+    }
+  },
+  "additionalProperties": false
+}

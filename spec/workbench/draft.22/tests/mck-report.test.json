@@ -1,0 +1,85 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "parent-owned contract example",
+      "valid": true,
+      "data": {
+        "formatVersion": "0.1.0-draft.22",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.22",
+          "binding": "independent-fixed",
+          "language": "moonbit",
+          "operations": [
+            "run-native-policy-owner"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "wrong-window-no-authority",
+            "operation": "run-native-policy-owner",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "steps": [
+                  {
+                    "action": "call",
+                    "attempts": [
+                      {
+                        "id": "open",
+                        "state": "returned"
+                      }
+                    ],
+                    "callCount": 0,
+                    "delivery": null,
+                    "completion": null
+                  }
+                ],
+                "results": [
+                  {
+                    "id": "open",
+                    "state": "returned",
+                    "reply": {
+                      "ok": false,
+                      "code": "unauthorized",
+                      "effect": "none"
+                    },
+                    "cleanup": null,
+                    "failure": null
+                  }
+                ],
+                "calls": [],
+                "usedPickers": 0,
+                "unusedPickers": 0,
+                "usedCleanups": 0,
+                "unusedCleanups": 0,
+                "acceptedPlans": [],
+                "selectedResults": []
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      }
+    },
+    {
+      "description": "empty object rejects closed infrastructure",
+      "valid": false,
+      "data": {}
+    },
+    {
+      "description": "unknown scalar rejects infrastructure",
+      "valid": false,
+      "data": "unsupported"
+    }
+  ]
+}

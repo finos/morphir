@@ -1,0 +1,281 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/native/0.2.0-draft.2/descriptor.schema.json",
+  "tests": [
+    {
+      "description": "exact checking descriptor",
+      "valid": true,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "capabilityChecks": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "policies": [
+            "strict",
+            "permissive"
+          ]
+        }
+      }
+    },
+    {
+      "description": "missing capabilityChecks",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        }
+      }
+    },
+    {
+      "description": "missing offer",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "executions"
+        ],
+        "capabilityChecks": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "policies": [
+            "strict",
+            "permissive"
+          ]
+        }
+      }
+    },
+    {
+      "description": "unsupported policies",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "capabilityChecks": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "policies": [
+            "strict"
+          ]
+        }
+      }
+    },
+    {
+      "description": "unsupported runtime",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "capabilityChecks": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "runtime": "unsupported",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "policies": [
+            "strict",
+            "permissive"
+          ]
+        }
+      }
+    },
+    {
+      "description": "unsupported evaluator",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "capabilityChecks": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "runtime": "scheme",
+          "evaluator": "unsupported",
+          "policies": [
+            "strict",
+            "permissive"
+          ]
+        }
+      }
+    },
+    {
+      "description": "unsupported profile",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "capabilityChecks": {
+          "profile": "unsupported",
+          "contractVersion": "0.1.0-draft.1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "policies": [
+            "strict",
+            "permissive"
+          ]
+        }
+      }
+    },
+    {
+      "description": "unsupported contractVersion",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "executions"
+        ],
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "capabilityChecks": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "unsupported",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "policies": [
+            "strict",
+            "permissive"
+          ]
+        }
+      }
+    },
+    {
+      "description": "workspace has no policy offer",
+      "valid": true,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "workspace"
+        ]
+      }
+    },
+    {
+      "description": "workspace cannot claim checks",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "session",
+        "operations": [
+          "workspace"
+        ],
+        "capabilityChecks": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "policies": [
+            "strict",
+            "permissive"
+          ]
+        }
+      }
+    }
+  ]
+}

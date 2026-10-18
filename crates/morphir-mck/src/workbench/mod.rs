@@ -8,6 +8,9 @@ mod executions;
 mod native_client;
 mod native_frames;
 mod native_owner;
+mod native_policy_boundary;
+mod native_policy_client;
+mod native_policy_owner;
 mod native_replies;
 mod outcomes;
 mod report;
@@ -17,8 +20,9 @@ mod selected_scheme;
 pub use contract::{
     ADMISSION_VERSION, CAPABILITY_EXECUTIONS_VERSION, CAPABILITY_POLICY_VERSION, Capabilities,
     EXECUTIONS_VERSION, Format, INVOCATION_VERSION, MAX_VALUE_BYTES, NATIVE_CLIENT_VERSION,
-    NATIVE_FRAMES_VERSION, NATIVE_OWNER_VERSION, NATIVE_REPLIES_VERSION, OUTCOMES_VERSION,
-    OUTPUT_VERSION, Observation, Operation, SELECTED_SCHEME_VERSION, VERSION,
+    NATIVE_FRAMES_VERSION, NATIVE_OWNER_VERSION, NATIVE_POLICY_BOUNDARY_VERSION,
+    NATIVE_POLICY_CLIENT_VERSION, NATIVE_POLICY_OWNER_VERSION, NATIVE_REPLIES_VERSION,
+    OUTCOMES_VERSION, OUTPUT_VERSION, Observation, Operation, SELECTED_SCHEME_VERSION, VERSION,
 };
 pub use corpus::{Corpus, load};
 pub use report::{
@@ -61,3 +65,6 @@ mod capability_policy_tests;
 
 #[cfg(test)]
 mod capability_executions_tests;
+
+#[cfg(test)]
+mod native_policy_tests;

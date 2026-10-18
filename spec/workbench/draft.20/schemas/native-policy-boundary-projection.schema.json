@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/native-policy-boundary-projection.schema.json",
+  "title": "Workbench native checking-policy native-policy-boundary-projection draft.20",
+  "description": "Exact draft.20 validate-native-policy-boundary. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "frameAccepted": true
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "replyAccepted", "ok", "operation" ],
+      "properties": {
+        "replyAccepted": {
+          "const": true
+        },
+        "ok": {
+          "const": true
+        },
+        "operation": {
+          "enum": [
+            "session.open",
+            "session.check",
+            "session.close",
+            "execution.submit",
+            "execution.query",
+            "execution.cancel",
+            "execution.release",
+            "workspace.choose",
+            "workspace.cancel-picker",
+            "workspace.revoke",
+            "workspace.open",
+            "workspace.read",
+            "workspace.release"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "replyAccepted", "ok", "error" ],
+      "properties": {
+        "replyAccepted": {
+          "const": true
+        },
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "type": "object",
+          "required": [ "code", "effect" ],
+          "properties": {
+            "code": {
+              "enum": [
+                "invalid_request",
+                "unauthorized",
+                "unavailable",
+                "not_found",
+                "conflict",
+                "limit"
+              ]
+            },
+            "effect": {
+              "enum": [ "none", "unknown" ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "Offline Workbench native frame native-frame-projection",
+      "description": "Closed exact draft.15 JSON validate-native-frame contract. Shape validation alone does not qualify native decoding, caller provenance, authority or lifecycle behavior",
+      "type": "object",
+      "required": [ "frameAccepted" ],
+      "properties": {
+        "frameAccepted": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

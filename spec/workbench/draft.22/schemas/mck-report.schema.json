@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-report.schema.json",
+  "title": "Workbench native checking-policy mck-report draft.22",
+  "description": "Exact draft.22 run-native-policy-owner. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.22",
+      "suite": "workbench",
+      "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "capabilities": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.22",
+        "binding": "independent-fixed",
+        "language": "moonbit",
+        "operations": [ "run-native-policy-owner" ],
+        "formats": [ "json" ]
+      },
+      "records": [
+        {
+          "caseId": "wrong-window-no-authority",
+          "operation": "run-native-policy-owner",
+          "format": "json",
+          "result": "pass",
+          "observed": {
+            "status": "ok",
+            "value": {
+              "steps": [
+                {
+                  "action": "call",
+                  "attempts": [
+                    {
+                      "id": "open",
+                      "state": "returned"
+                    }
+                  ],
+                  "callCount": 0,
+                  "delivery": null,
+                  "completion": null
+                }
+              ],
+              "results": [
+                {
+                  "id": "open",
+                  "state": "returned",
+                  "reply": {
+                    "ok": false,
+                    "code": "unauthorized",
+                    "effect": "none"
+                  },
+                  "cleanup": null,
+                  "failure": null
+                }
+              ],
+              "calls": [],
+              "usedPickers": 0,
+              "unusedPickers": 0,
+              "usedCleanups": 0,
+              "unusedCleanups": 0,
+              "acceptedPlans": [],
+              "selectedResults": []
+            }
+          }
+        }
+      ],
+      "errors": [],
+      "qualified": true
+    }
+  ],
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "suite",
+    "corpusHash",
+    "capabilities",
+    "records",
+    "errors",
+    "qualified"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.22"
+    },
+    "suite": {
+      "const": "workbench"
+    },
+    "corpusHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capabilities": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-capabilities.schema.json"
+        }
+      ]
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "caseId", "operation", "format", "result", "observed" ],
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "run-native-policy-owner"
+          },
+          "format": {
+            "const": "json"
+          },
+          "result": {
+            "enum": [ "pass", "fail", "unsupported", "error" ]
+          },
+          "observed": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-observation.schema.json"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "phase", "message" ],
+        "properties": {
+          "phase": {
+            "enum": [ "spawn", "capabilities", "exchange", "shutdown" ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 16384,
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "qualified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.21/mck-input.schema.json",
+  "title": "Workbench native checking-policy mck-input draft.21",
+  "description": "Exact draft.21 run-native-policy-client. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "evaluation": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "client:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "providerId": "scheme"
+      },
+      "inspectionSuccess": true,
+      "checkSource": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+      "invocations": [
+        {
+          "id": "call-0",
+          "operation": "session.open",
+          "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+          "held": false
+        },
+        {
+          "id": "call-1",
+          "operation": "execution.submit",
+          "source": null,
+          "held": false
+        }
+      ],
+      "actions": [
+        {
+          "op": "initialize",
+          "id": "init"
+        },
+        {
+          "op": "evaluate",
+          "id": "first"
+        },
+        {
+          "op": "evaluate",
+          "id": "retry"
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "evaluation",
+    "inspectionSuccess",
+    "checkSource",
+    "invocations",
+    "actions"
+  ],
+  "properties": {
+    "evaluation": {
+      "type": "object",
+      "required": [ "model", "entry", "inputs", "runtime", "providerId" ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "maxLength": 262144
+        },
+        "entry": {
+          "type": "string",
+          "maxLength": 512,
+          "minLength": 1
+        },
+        "inputs": {
+          "type": "object",
+          "required": [ "format", "source" ],
+          "properties": {
+            "format": {
+              "enum": [ "json", "ion-text" ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 16384
+            }
+          },
+          "additionalProperties": false
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "providerId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "admission": {
+          "$ref": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "inspectionSuccess": {
+      "type": "boolean"
+    },
+    "checkSource": {
+      "type": "string",
+      "maxLength": 393216
+    },
+    "invocations": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "source", "held" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "not": {
+              "pattern": "[^A-Za-z0-9_.-]"
+            },
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "enum": [
+              "session.open",
+              "session.close",
+              "execution.submit",
+              "execution.query",
+              "execution.cancel",
+              "execution.release",
+              "workspace.choose",
+              "workspace.cancel-picker",
+              "workspace.revoke",
+              "workspace.open",
+              "workspace.read",
+              "workspace.release"
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "maxLength": 393216
+              }
+            ]
+          },
+          "held": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "op", "id" ],
+            "properties": {
+              "op": {
+                "const": "initialize"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id" ],
+            "properties": {
+              "op": {
+                "const": "evaluate"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id" ],
+            "properties": {
+              "op": {
+                "const": "resume"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id" ],
+            "properties": {
+              "op": {
+                "const": "cancel"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id" ],
+            "properties": {
+              "op": {
+                "const": "choose"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "id", "project" ],
+            "properties": {
+              "op": {
+                "const": "open"
+              },
+              "id": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "project": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "call" ],
+            "properties": {
+              "op": {
+                "const": "deliver"
+              },
+              "call": {
+                "type": "string",
+                "not": {
+                  "pattern": "[^A-Za-z0-9_.-]"
+                },
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op" ],
+            "properties": {
+              "op": {
+                "const": "poll"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op" ],
+            "properties": {
+              "op": {
+                "const": "dispose"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "source" ],
+            "properties": {
+              "op": {
+                "const": "set-check"
+              },
+              "source": {
+                "type": "string",
+                "maxLength": 393216
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

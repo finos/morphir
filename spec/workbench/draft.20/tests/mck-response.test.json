@@ -1,0 +1,26 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/mck-response.schema.json",
+  "tests": [
+    {
+      "description": "parent-owned contract example",
+      "valid": true,
+      "data": {
+        "id": 1,
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "description": "empty object rejects closed infrastructure",
+      "valid": false,
+      "data": {}
+    },
+    {
+      "description": "unknown scalar rejects infrastructure",
+      "valid": false,
+      "data": "unsupported"
+    }
+  ]
+}

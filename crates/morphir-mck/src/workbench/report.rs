@@ -128,6 +128,18 @@ impl Report {
             value = crate::json::strict::parse_exact(text)?;
             super::executions::validate_report_shape(&value)?;
         }
+        if value["formatVersion"] == super::contract::NATIVE_POLICY_BOUNDARY_VERSION {
+            value = crate::json::strict::parse_exact(text)?;
+            super::native_policy_boundary::validate_report_shape(&value)?;
+        }
+        if value["formatVersion"] == super::contract::NATIVE_POLICY_CLIENT_VERSION {
+            value = crate::json::strict::parse_exact(text)?;
+            super::native_policy_client::validate_report_shape(&value)?;
+        }
+        if value["formatVersion"] == super::contract::NATIVE_POLICY_OWNER_VERSION {
+            value = crate::json::strict::parse_exact(text)?;
+            super::native_policy_owner::validate_report_shape(&value)?;
+        }
         if value["formatVersion"] == super::contract::CAPABILITY_EXECUTIONS_VERSION {
             value = crate::json::strict::parse_exact(text)?;
             super::capability_executions::validate_report_shape(&value)?;

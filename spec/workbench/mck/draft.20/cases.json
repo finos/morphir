@@ -1,0 +1,1261 @@
+{
+  "formatVersion": "0.1.0-draft.20",
+  "cases": [
+    {
+      "id": "strict-default-request",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "id": "permissive-request",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"}}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "id": "missing-runtime",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"providerId\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "missing-providerId",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "invalid-runtime-4",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"wasm\",\"providerId\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "invalid-runtime-5",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"Scheme\",\"providerId\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "invalid-providerId-6",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "invalid-admission-7",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\",\"admission\":null}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "invalid-admission-8",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"relaxed\"}}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "invalid-admission-9",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.2\",\"policy\":\"permissive\"}}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "invalid-admission-10",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\",\"extra\":true}}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "request-version-0.2.0-draft.1",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "request-version-0.2.0-draft.3",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.3\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "request-version-0.2.0-draft.2+local",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2+local\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "request-version-v0.2.0-draft.2",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"v0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\"}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.shape"
+      }
+    },
+    {
+      "id": "session.open-descriptor",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "session.open"
+        }
+      }
+    },
+    {
+      "id": "session.open-missing-offer",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "session.open-missing-capabilityChecks",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "session.check-descriptor",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.check",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "session.check"
+        }
+      }
+    },
+    {
+      "id": "session.check-missing-offer",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.check",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "session.check-missing-capabilityChecks",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+        "expectedOperation": "session.check",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "accepted-plan-reply",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "execution.submit"
+        }
+      }
+    },
+    {
+      "id": "reply-missing-plan",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "descriptor-invalid-runtime-23",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"wasm\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "descriptor-invalid-evaluator-24",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "descriptor-invalid-policies-25",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "descriptor-invalid-policies-26",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"permissive\",\"strict\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "descriptor-invalid-policies-27",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\",\"permissive\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "descriptor-invalid-contractVersion-28",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.2\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "descriptor-invalid-unknown-29",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"],\"unknown\":true}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "plan-mismatched-hostId",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"other\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.authority"
+      }
+    },
+    {
+      "id": "plan-mismatched-sessionId",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"other\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.authority"
+      }
+    },
+    {
+      "id": "plan-mismatched-providerId",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"other\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.authority"
+      }
+    },
+    {
+      "id": "plan-mismatched-executionId",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"other\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.authority"
+      }
+    },
+    {
+      "id": "plan-mismatched-snapshotId",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"other\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.authority"
+      }
+    },
+    {
+      "id": "plan-invalid-runtime",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"wasm\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "plan-invalid-profile",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/job-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "plan-invalid-contractVersion",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.2\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "plan-invalid-planId",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "plan-invalid-admission",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":null,\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "plan-invalid-boundary",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"plan-1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":null}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "wrong-session",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "other"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.authority"
+      }
+    },
+    {
+      "id": "wrong-operation",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.check",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.operation"
+      }
+    },
+    {
+      "id": "request-duplicate",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"ok\":false}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.json"
+      }
+    },
+    {
+      "id": "request-invalid-json",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.json"
+      }
+    },
+    {
+      "id": "request-invalid-utf8",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "hex",
+        "source": "C328"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.utf8"
+      }
+    },
+    {
+      "id": "request-raw-byte-limit",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1048576
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      }
+    },
+    {
+      "id": "reply-duplicate",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"ok\":false}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.json"
+      }
+    },
+    {
+      "id": "reply-invalid-json",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.json"
+      }
+    },
+    {
+      "id": "reply-invalid-utf8",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "hex",
+        "source": "C328",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.utf8"
+      }
+    },
+    {
+      "id": "reply-raw-byte-limit",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 1048576
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.limit"
+      }
+    },
+    {
+      "id": "explicit-error-none",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":false,\"error\":{\"code\":\"conflict\",\"effect\":\"none\",\"message\":\"Controlled failure\"}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": false,
+          "error": {
+            "code": "conflict",
+            "effect": "none"
+          }
+        }
+      }
+    },
+    {
+      "id": "explicit-error-unknown",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":false,\"error\":{\"code\":\"conflict\",\"effect\":\"unknown\",\"message\":\"Controlled failure\"}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": false,
+          "error": {
+            "code": "conflict",
+            "effect": "unknown"
+          }
+        }
+      }
+    },
+    {
+      "id": "explicit-strict-request",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"strict\"}}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "id": "session-open-request",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"session.open\"}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "id": "frozen-identity-execution.query",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.query\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"}}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "id": "frozen-identity-execution.cancel",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.cancel\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"}}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "id": "frozen-identity-execution.release",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.release\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"}}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "id": "frozen-receipt-execution.query",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.query\",\"value\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null}}",
+        "expectedOperation": "execution.query",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "execution.query"
+        }
+      }
+    },
+    {
+      "id": "frozen-receipt-execution.cancel",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.cancel\",\"value\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null}}",
+        "expectedOperation": "execution.cancel",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "execution.cancel"
+        }
+      }
+    },
+    {
+      "id": "terminal-release-reply",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.release\",\"value\":{\"released\":true}}",
+        "expectedOperation": "execution.release",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "execution.release"
+        }
+      }
+    },
+    {
+      "id": "workspace-only-descriptor",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"workspace\"]}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "session.open"
+        }
+      }
+    },
+    {
+      "id": "old-descriptor-never-upgrades",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.1\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    },
+    {
+      "id": "escaped-duplicate-policy",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\",\"pol\\u0069cy\":\"permissive\"}}}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.json"
+      }
+    },
+    {
+      "id": "escaped-duplicate-runtime",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"runt\\u0069me\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "expectedOperation": "session.open",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.json"
+      }
+    },
+    {
+      "id": "original-byte-workspace-limit-workspace.choose",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"workspace.choose\",\"sessionId\":\"session\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 4096
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      }
+    },
+    {
+      "id": "workspace-exact-byte-boundary-4096",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"workspace.choose\",\"sessionId\":\"session\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 3971
+          }
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "frameAccepted": true
+        }
+      }
+    },
+    {
+      "id": "workspace-exact-byte-boundary-4097",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"workspace.choose\",\"sessionId\":\"session\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 3972
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      }
+    },
+    {
+      "id": "original-byte-workspace-limit-workspace.cancel-picker",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"workspace.cancel-picker\",\"sessionId\":\"session\"}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 4096
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      }
+    },
+    {
+      "id": "original-byte-workspace-limit-workspace.revoke",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"workspace.revoke\",\"sessionId\":\"session\",\"payload\":{\"grantId\":\"grant\"}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 4096
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      }
+    },
+    {
+      "id": "original-byte-workspace-limit-workspace.open",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"workspace.open\",\"sessionId\":\"session\",\"payload\":{\"grantId\":\"grant\",\"projectId\":\"project\",\"sequence\":1}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 4096
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      }
+    },
+    {
+      "id": "original-byte-workspace-limit-workspace.read",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"workspace.read\",\"sessionId\":\"session\",\"payload\":{\"grantId\":\"grant\",\"sequence\":1,\"offset\":0}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 4096
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      }
+    },
+    {
+      "id": "original-byte-workspace-limit-workspace.release",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "request",
+        "encoding": "utf8",
+        "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"workspace.release\",\"sessionId\":\"session\",\"payload\":{\"grantId\":\"grant\",\"sequence\":1}}",
+        "generate": {
+          "prefix": {
+            "repeat": " ",
+            "count": 4096
+          }
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.frame.limit"
+      }
+    },
+    {
+      "id": "plan-id-utf16-bound-128",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "replyAccepted": true,
+          "ok": true,
+          "operation": "execution.submit"
+        }
+      }
+    },
+    {
+      "id": "plan-id-utf16-bound-130",
+      "operation": "validate-native-policy-boundary",
+      "format": "json",
+      "input": {
+        "kind": "reply",
+        "encoding": "utf8",
+        "source": "{\"ok\":true,\"operation\":\"execution.submit\",\"value\":{\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"calls\":[\"workbench\"],\"receipt\":{\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"sequence\":0,\"state\":\"submitted\",\"cancelRequested\":false,\"outcomes\":null},\"plan\":{\"profile\":\"morphir/workbench/execution-plan\",\"contractVersion\":\"0.2.0-draft.1\",\"identity\":{\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"executionId\":\"execution-1\",\"snapshotId\":\"snapshot-1\"},\"planId\":\"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"admission\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"policy\":\"permissive\"},\"boundary\":{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}}}}",
+        "expectedOperation": "execution.submit",
+        "expectedSession": "session"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "native.reply.shape"
+      }
+    }
+  ]
+}

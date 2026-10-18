@@ -1,0 +1,22 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/native-policy-boundary-projection.schema.json",
+  "tests": [
+    {
+      "description": "parent-owned contract example",
+      "valid": true,
+      "data": {
+        "frameAccepted": true
+      }
+    },
+    {
+      "description": "empty object rejects closed infrastructure",
+      "valid": false,
+      "data": {}
+    },
+    {
+      "description": "unknown scalar rejects infrastructure",
+      "valid": false,
+      "data": "unsupported"
+    }
+  ]
+}

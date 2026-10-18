@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/native/0.2.0-draft.2/descriptor.schema.json",
+  "title": "Native Workbench session descriptor with capability checking policies",
+  "description": "Exact native 0.2.0-draft.2. Policy negotiation never changes the frozen execution receipt or HTTP mapping",
+  "examples": [
+    {
+      "profile": "morphir/workbench/native",
+      "contractVersion": "0.2.0-draft.2",
+      "sessionId": "session",
+      "operations": [ "executions" ],
+      "offer": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "operations": [ "query", "cancel" ]
+      },
+      "capabilityChecks": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.1",
+        "runtime": "scheme",
+        "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+        "policies": [ "strict", "permissive" ]
+      }
+    }
+  ],
+  "type": "object",
+  "if": {
+    "properties": {
+      "operations": {
+        "contains": {
+          "const": "executions"
+        }
+      }
+    }
+  },
+  "then": {
+    "required": [ "offer", "capabilityChecks" ]
+  },
+  "else": {
+    "not": {
+      "anyOf": [
+        {
+          "required": [ "offer" ]
+        },
+        {
+          "required": [ "capabilityChecks" ]
+        }
+      ]
+    }
+  },
+  "required": [ "profile", "contractVersion", "sessionId", "operations" ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/native"
+    },
+    "contractVersion": {
+      "const": "0.2.0-draft.2"
+    },
+    "sessionId": {
+      "type": "string",
+      "not": {
+        "pattern": "[^A-Za-z0-9_.-]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "enum": [
+        [],
+        [ "executions" ],
+        [ "workspace" ],
+        [ "executions", "workspace" ]
+      ]
+    },
+    "offer": {
+      "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/offer.schema.json"
+    },
+    "capabilityChecks": {
+      "type": "object",
+      "required": [
+        "profile",
+        "contractVersion",
+        "runtime",
+        "evaluator",
+        "policies"
+      ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/admission"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "evaluator": {
+          "const": "scheme-portable-v1/shared-sdk/bounded"
+        },
+        "policies": {
+          "const": [ "strict", "permissive" ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

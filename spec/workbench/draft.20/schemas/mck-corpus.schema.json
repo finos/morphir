@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/mck-corpus.schema.json",
+  "title": "Workbench native checking-policy mck-corpus draft.20",
+  "description": "Exact draft.20 validate-native-policy-boundary. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.20",
+      "cases": [
+        {
+          "id": "strict-default-request",
+          "operation": "validate-native-policy-boundary",
+          "format": "json",
+          "input": {
+            "kind": "request",
+            "encoding": "utf8",
+            "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\"}}"
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "frameAccepted": true
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.20"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "validate-native-policy-boundary"
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/mck-input.schema.json"
+          },
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/mck-observation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

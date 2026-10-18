@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-response.schema.json",
+  "title": "Workbench native checking-policy mck-response draft.22",
+  "description": "Exact draft.22 run-native-policy-owner. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "id": 1,
+      "status": "ok",
+      "value": {
+        "steps": [
+          {
+            "action": "call",
+            "attempts": [
+              {
+                "id": "open",
+                "state": "returned"
+              }
+            ],
+            "callCount": 0,
+            "delivery": null,
+            "completion": null
+          }
+        ],
+        "results": [
+          {
+            "id": "open",
+            "state": "returned",
+            "reply": {
+              "ok": false,
+              "code": "unauthorized",
+              "effect": "none"
+            },
+            "cleanup": null,
+            "failure": null
+          }
+        ],
+        "calls": [],
+        "usedPickers": 0,
+        "unusedPickers": 0,
+        "usedCleanups": 0,
+        "unusedCleanups": 0,
+        "acceptedPlans": [],
+        "selectedResults": []
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "suite",
+        "contractVersion",
+        "binding",
+        "language",
+        "operations",
+        "formats"
+      ],
+      "properties": {
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.22"
+        },
+        "binding": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "operations": {
+          "const": [ "run-native-policy-owner" ]
+        },
+        "formats": {
+          "const": [ "json" ]
+        },
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "status", "value" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/native-owner-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
