@@ -18,6 +18,9 @@ pub const NATIVE_OWNER_VERSION: &str = "0.1.0-draft.18";
 pub const CAPABILITY_EXECUTIONS_VERSION: &str = "0.1.0-draft.19";
 pub const CAPABILITY_POLICY_VERSION: &str = "0.1.0-draft.12";
 pub const SELECTED_SCHEME_VERSION: &str = "0.1.0-draft.11";
+pub const NATIVE_POLICY_BOUNDARY_VERSION: &str = "0.1.0-draft.20";
+pub const NATIVE_POLICY_CLIENT_VERSION: &str = "0.1.0-draft.21";
+pub const NATIVE_POLICY_OWNER_VERSION: &str = "0.1.0-draft.22";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -62,6 +65,9 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.11",
         "=0.1.0-draft.12",
         "=0.1.0-draft.19",
+        "=0.1.0-draft.20",
+        "=0.1.0-draft.21",
+        "=0.1.0-draft.22",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -83,6 +89,12 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Operation {
+    #[serde(rename = "validate-native-policy-boundary")]
+    ValidateNativePolicyBoundary,
+    #[serde(rename = "run-native-policy-client")]
+    RunNativePolicyClient,
+    #[serde(rename = "run-native-policy-owner")]
+    RunNativePolicyOwner,
     #[serde(rename = "decode-value")]
     DecodeValue,
     #[serde(rename = "validate-value")]
@@ -113,6 +125,18 @@ pub enum Operation {
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        for (supported, operation) in [
+            (
+                NATIVE_POLICY_BOUNDARY_VERSION,
+                Self::ValidateNativePolicyBoundary,
+            ),
+            (NATIVE_POLICY_CLIENT_VERSION, Self::RunNativePolicyClient),
+            (NATIVE_POLICY_OWNER_VERSION, Self::RunNativePolicyOwner),
+        ] {
+            if (version == supported) != (self == operation) {
+                return Err("operation is not defined by this Workbench draft".into());
+            }
+        }
         if (version == CAPABILITY_EXECUTIONS_VERSION) != (self == Self::RunCapabilityExecutions) {
             return Err("operation is not defined by this Workbench draft".into());
         }
@@ -152,7 +176,10 @@ impl Operation {
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
         if matches!(
             self,
-            Self::ReduceExecution
+            Self::ValidateNativePolicyBoundary
+                | Self::RunNativePolicyClient
+                | Self::RunNativePolicyOwner
+                | Self::ReduceExecution
                 | Self::ValidateNativeFrame
                 | Self::ValidateNativeReply
                 | Self::RunNativeClient
@@ -276,6 +303,23 @@ impl Capabilities {
                 "capability executions support only run-capability-executions and JSON".into(),
             );
         }
+        for (supported, operation) in [
+            (
+                NATIVE_POLICY_BOUNDARY_VERSION,
+                Operation::ValidateNativePolicyBoundary,
+            ),
+            (
+                NATIVE_POLICY_CLIENT_VERSION,
+                Operation::RunNativePolicyClient,
+            ),
+            (NATIVE_POLICY_OWNER_VERSION, Operation::RunNativePolicyOwner),
+        ] {
+            if self.contract_version == supported
+                && (self.operations != [operation] || self.formats != [Format::Json])
+            {
+                return Err("native policy kits require their exact operation and JSON".into());
+            }
+        }
         identity(&self.binding, 256)?;
         identity(&self.language, 128)?;
         if self.operations.iter().collect::<BTreeSet<_>>().len() != self.operations.len()
@@ -310,6 +354,17 @@ impl Observation {
                 projection_for(value, operation)?;
             }
             Self::Invalid { code } => {
+                if matches!(
+                    operation,
+                    Operation::RunNativePolicyClient | Operation::RunNativePolicyOwner
+                ) {
+                    return Err("native policy domain failures belong in the projection".into());
+                }
+                if operation == Operation::ValidateNativePolicyBoundary
+                    && !super::native_policy_boundary::INVALID_CODES.contains(&code.as_str())
+                {
+                    return Err("unknown native policy boundary rejection code".into());
+                }
                 if operation == Operation::RunNativeClient {
                     return Err("native client scenarios have no domain-invalid observation".into());
                 }
@@ -349,7 +404,14 @@ impl Observation {
     }
 
     pub(super) fn validate_expected_for(&self, operation: Operation) -> Result<(), String> {
-        if operation == Operation::RunNativeOwner {
+        if operation == Operation::RunNativePolicyOwner {
+            match self {
+                Self::Ok { value } => super::native_policy_owner::validate_expected(value),
+                Self::Invalid { .. } => {
+                    Err("native policy owner scenarios have no domain-invalid expectation".into())
+                }
+            }
+        } else if operation == Operation::RunNativeOwner {
             match self {
                 Self::Ok { value } => super::native_owner::validate_expected(value),
                 Self::Invalid { .. } => {
@@ -366,6 +428,9 @@ impl Observation {
         other.validate_for(operation)?;
         match (self, other) {
             (Self::Ok { value: left }, Self::Ok { value: right }) => {
+                if operation == Operation::RunNativePolicyOwner {
+                    return super::native_policy_owner::matches(left, right);
+                }
                 if operation == Operation::RunNativeOwner {
                     return super::native_owner::matches(left, right);
                 }
@@ -378,6 +443,9 @@ impl Observation {
 
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
     match operation {
+        Operation::ValidateNativePolicyBoundary => super::native_policy_boundary::projection(value),
+        Operation::RunNativePolicyClient => super::native_policy_client::projection(value),
+        Operation::RunNativePolicyOwner => super::native_policy_owner::projection(value),
         Operation::ValidateInvocations => invocation_projection(value),
         Operation::ValidateOutcomes => super::outcomes::projection(value),
         Operation::ReduceExecution => super::executions::projection(value),

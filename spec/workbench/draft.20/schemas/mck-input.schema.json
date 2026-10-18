@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/mck-input.schema.json",
+  "title": "Workbench native checking-policy mck-input draft.20",
+  "description": "Exact draft.20 validate-native-policy-boundary. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "kind": "request",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\"}}"
+    }
+  ],
+  "type": "object",
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {
+          "const": "request"
+        },
+        "expectedOperation": false,
+        "expectedSession": false
+      }
+    },
+    {
+      "required": [ "expectedOperation", "expectedSession" ],
+      "properties": {
+        "kind": {
+          "const": "reply"
+        }
+      }
+    }
+  ],
+  "if": {
+    "properties": {
+      "encoding": {
+        "const": "hex"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "source": {
+        "not": {
+          "pattern": "[^0-9A-Fa-f]"
+        },
+        "pattern": "^(?:[0-9A-Fa-f]{2})*$"
+      }
+    }
+  },
+  "required": [ "encoding", "source", "kind" ],
+  "properties": {
+    "encoding": {
+      "enum": [ "utf8", "hex" ]
+    },
+    "source": {
+      "type": "string"
+    },
+    "generate": {
+      "type": "object",
+      "required": [ "prefix" ],
+      "properties": {
+        "prefix": {
+          "type": "object",
+          "required": [ "repeat", "count" ],
+          "properties": {
+            "repeat": {
+              "const": " "
+            },
+            "count": {
+              "type": "integer",
+              "maximum": 1048576,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "expectedOperation": {
+      "enum": [
+        "session.open",
+        "session.check",
+        "session.close",
+        "execution.submit",
+        "execution.query",
+        "execution.cancel",
+        "execution.release",
+        "workspace.choose",
+        "workspace.cancel-picker",
+        "workspace.revoke",
+        "workspace.open",
+        "workspace.read",
+        "workspace.release"
+      ]
+    },
+    "expectedSession": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "not": {
+            "pattern": "[^A-Za-z0-9_.-]"
+          },
+          "maxLength": 128,
+          "minLength": 1
+        }
+      ]
+    },
+    "kind": {
+      "enum": [ "request", "reply" ]
+    }
+  },
+  "additionalProperties": false
+}

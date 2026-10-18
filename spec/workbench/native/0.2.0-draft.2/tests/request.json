@@ -1,0 +1,177 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/native/0.2.0-draft.2/request.schema.json",
+  "tests": [
+    {
+      "description": "omitted policy resolves strict at acceptance",
+      "valid": true,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "operation": "execution.submit",
+        "sessionId": "session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "scheme"
+        }
+      }
+    },
+    {
+      "description": "explicit permissive",
+      "valid": true,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "operation": "execution.submit",
+        "sessionId": "session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "scheme",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          }
+        }
+      }
+    },
+    {
+      "description": "missing captured runtime",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "operation": "execution.submit",
+        "sessionId": "session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "providerId": "scheme"
+        }
+      }
+    },
+    {
+      "description": "missing captured providerId",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "operation": "execution.submit",
+        "sessionId": "session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme"
+        }
+      }
+    },
+    {
+      "description": "old outer version rejects",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.1",
+        "operation": "execution.submit",
+        "sessionId": "session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "scheme"
+        }
+      }
+    },
+    {
+      "description": "unknown runtime rejects",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "operation": "execution.submit",
+        "sessionId": "session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "wasm",
+          "providerId": "scheme"
+        }
+      }
+    },
+    {
+      "description": "null policy is not omission",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "operation": "execution.submit",
+        "sessionId": "session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.1",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "scheme",
+          "admission": null
+        }
+      }
+    },
+    {
+      "description": "outer mapping version never replaces execution payload version",
+      "valid": false,
+      "data": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "operation": "execution.submit",
+        "sessionId": "session",
+        "payload": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "scheme"
+        }
+      }
+    }
+  ]
+}

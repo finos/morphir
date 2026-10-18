@@ -20,7 +20,11 @@ pub(super) trait Testee {
 
 impl Testee for Session {
     fn exchange(&mut self, request: &Value) -> Result<Value, String> {
-        let response = if request["contractVersion"] == super::contract::EXECUTIONS_VERSION
+        let response = if request["contractVersion"]
+            == super::contract::NATIVE_POLICY_BOUNDARY_VERSION
+            || request["contractVersion"] == super::contract::NATIVE_POLICY_CLIENT_VERSION
+            || request["contractVersion"] == super::contract::NATIVE_POLICY_OWNER_VERSION
+            || request["contractVersion"] == super::contract::EXECUTIONS_VERSION
             || request["contractVersion"] == super::contract::NATIVE_OWNER_VERSION
             || request["contractVersion"] == super::contract::CAPABILITY_EXECUTIONS_VERSION
             || request["contractVersion"] == super::contract::CAPABILITY_POLICY_VERSION
@@ -99,6 +103,9 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                     if case.operation() == super::contract::Operation::ReduceExecution {
                         super::executions::validate_observation_shape(&value)?;
                     }
+                    if case.operation() == super::contract::Operation::ValidateNativePolicyBoundary { super::native_policy_boundary::validate_observation_shape(&value)?; }
+                    if case.operation() == super::contract::Operation::RunNativePolicyClient { super::native_policy_client::validate_observation_shape(&value)?; }
+                    if case.operation() == super::contract::Operation::RunNativePolicyOwner { super::native_policy_owner::validate_observation_shape(&value)?; }
                     if case.operation() == super::contract::Operation::RunCapabilityExecutions {
                         super::capability_executions::validate_observation_shape(&value)?;
                     }

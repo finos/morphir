@@ -1,0 +1,390 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/native/0.2.0-draft.2/response.schema.json",
+  "title": "Native Workbench response with capability checking policies",
+  "description": "Exact native 0.2.0-draft.2. Policy negotiation never changes the frozen execution receipt or HTTP mapping",
+  "examples": [
+    {
+      "ok": true,
+      "operation": "session.open",
+      "value": {
+        "profile": "morphir/workbench/native",
+        "contractVersion": "0.2.0-draft.2",
+        "sessionId": "native-session",
+        "operations": [ "workspace" ]
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "enum": [ "session.open", "session.check" ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "https://morphir.finos.org/spec/workbench/native/0.2.0-draft.2/descriptor.schema.json"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "enum": [
+                  "session.close",
+                  "workspace.cancel-picker",
+                  "workspace.revoke",
+                  "workspace.release"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "execution.submit"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "description": "Frozen initial receipt plus immutable accepted execution plan. Identity equality and accepted selection binding require runtime checks",
+                "type": "object",
+                "required": [ "identity", "calls", "receipt", "plan" ],
+                "properties": {
+                  "identity": {
+                    "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/identity.schema.json"
+                  },
+                  "calls": {
+                    "const": [ "workbench" ]
+                  },
+                  "receipt": {
+                    "type": "object",
+                    "required": [
+                      "contractVersion",
+                      "identity",
+                      "sequence",
+                      "state",
+                      "cancelRequested",
+                      "outcomes"
+                    ],
+                    "properties": {
+                      "contractVersion": {
+                        "const": "0.2.0-draft.1"
+                      },
+                      "identity": {
+                        "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/identity.schema.json"
+                      },
+                      "sequence": {
+                        "const": 0
+                      },
+                      "state": {
+                        "const": "submitted"
+                      },
+                      "cancelRequested": {
+                        "const": false
+                      },
+                      "outcomes": {
+                        "const": null
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "plan": {
+                    "$ref": "https://morphir.finos.org/spec/workbench/execution-plan/0.2.0-draft.1/plan.schema.json"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "enum": [ "execution.query", "execution.cancel" ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/receipt.schema.json"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "execution.release"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "$ref": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.1/release-reply.schema.json"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "workspace.choose"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [ "cancelled" ],
+                    "properties": {
+                      "cancelled": {
+                        "const": true
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "cancelled",
+                      "grantId",
+                      "projects",
+                      "warnings"
+                    ],
+                    "properties": {
+                      "cancelled": {
+                        "const": false
+                      },
+                      "grantId": {
+                        "type": "string",
+                        "not": {
+                          "pattern": "[^A-Za-z0-9_.-]"
+                        },
+                        "maxLength": 128,
+                        "minLength": 1
+                      },
+                      "projects": {
+                        "description": "Project IDs must be unique within a grant. This structural constraint rejects identical rows; repeated IDs with differing metadata require runtime validation",
+                        "type": "array",
+                        "maxItems": 128,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "object",
+                          "required": [ "id", "name", "available", "message" ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "not": {
+                                "pattern": "[^A-Za-z0-9_.-]"
+                              },
+                              "maxLength": 128,
+                              "minLength": 1
+                            },
+                            "name": {
+                              "type": "string",
+                              "maxLength": 1024,
+                              "minLength": 1
+                            },
+                            "available": {
+                              "type": "boolean"
+                            },
+                            "message": {
+                              "type": "string",
+                              "maxLength": 1024,
+                              "minLength": 0
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "warnings": {
+                        "type": "array",
+                        "maxItems": 128,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 1024,
+                          "minLength": 0
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "workspace.open"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "object",
+                "required": [ "sequence", "size", "format", "filename" ],
+                "properties": {
+                  "sequence": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 1
+                  },
+                  "size": {
+                    "type": "integer",
+                    "maximum": 16777216,
+                    "minimum": 0
+                  },
+                  "format": {
+                    "enum": [ "morphir-json", "ion-text", "ion-binary" ]
+                  },
+                  "filename": {
+                    "type": "string",
+                    "pattern": "^[^/\\\\]+$",
+                    "maxLength": 256,
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "workspace.read"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "object",
+                "required": [ "sequence", "offset", "content", "done" ],
+                "properties": {
+                  "sequence": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 1
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "maximum": 16777216,
+                    "minimum": 0
+                  },
+                  "content": {
+                    "type": "string",
+                    "not": {
+                      "pattern": "[^A-Za-z0-9+/=]"
+                    },
+                    "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+                    "maxLength": 262144
+                  },
+                  "done": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "required": [ "ok", "operation", "value" ],
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "operation": {
+          "enum": [
+            "session.open",
+            "session.check",
+            "session.close",
+            "execution.submit",
+            "execution.query",
+            "execution.cancel",
+            "execution.release",
+            "workspace.choose",
+            "workspace.open",
+            "workspace.read",
+            "workspace.cancel-picker",
+            "workspace.revoke",
+            "workspace.release"
+          ]
+        },
+        "value": true
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "ok", "error" ],
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "type": "object",
+          "required": [ "code", "effect", "message" ],
+          "properties": {
+            "code": {
+              "enum": [
+                "invalid_request",
+                "unauthorized",
+                "unavailable",
+                "not_found",
+                "conflict",
+                "limit"
+              ]
+            },
+            "effect": {
+              "enum": [ "none", "unknown" ]
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 512,
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

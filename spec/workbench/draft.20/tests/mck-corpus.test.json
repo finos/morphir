@@ -1,0 +1,40 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "parent-owned contract example",
+      "valid": true,
+      "data": {
+        "formatVersion": "0.1.0-draft.20",
+        "cases": [
+          {
+            "id": "strict-default-request",
+            "operation": "validate-native-policy-boundary",
+            "format": "json",
+            "input": {
+              "kind": "request",
+              "encoding": "utf8",
+              "source": "{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"operation\":\"execution.submit\",\"sessionId\":\"session\",\"payload\":{\"contractVersion\":\"0.2.0-draft.1\",\"model\":\"{\\\"formatVersion\\\":4,\\\"distribution\\\":{\\\"Library\\\":{\\\"packageName\\\":\\\"selected\\\",\\\"dependencies\\\":{},\\\"def\\\":{\\\"modules\\\":{\\\"main\\\":{\\\"Public\\\":{\\\"types\\\":{},\\\"values\\\":{\\\"answer\\\":{\\\"Public\\\":{\\\"doc\\\":\\\"Fixed capability-policy fixture\\\",\\\"ExpressionBody\\\":{\\\"inputTypes\\\":{},\\\"outputType\\\":\\\"morphir/SDK:basics#int\\\",\\\"body\\\":{\\\"IfThenElse\\\":{\\\"condition\\\":false,\\\"then\\\":{\\\"Hole\\\":{\\\"reason\\\":{\\\"DeletedDuringRefactor\\\":{\\\"tx-id\\\":\\\"fixed-unsupported\\\"}}}},\\\"else\\\":{\\\"Literal\\\":{\\\"IntegerLiteral\\\":42}}}}}}}}}}}}}}}\",\"entry\":\"selected:main#answer\",\"inputs\":{\"format\":\"json\",\"source\":\"[]\"},\"runtime\":\"scheme\",\"providerId\":\"scheme\"}}"
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "frameAccepted": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "description": "empty object rejects closed infrastructure",
+      "valid": false,
+      "data": {}
+    },
+    {
+      "description": "unknown scalar rejects infrastructure",
+      "valid": false,
+      "data": "unsupported"
+    }
+  ]
+}

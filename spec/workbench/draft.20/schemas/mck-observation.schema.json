@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/mck-observation.schema.json",
+  "title": "Workbench native checking-policy mck-observation draft.20",
+  "description": "Exact draft.20 validate-native-policy-boundary. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "frameAccepted": true
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "status", "value" ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/native-policy-boundary-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "status", "code" ],
+      "properties": {
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "enum": [
+            "native.reply.limit",
+            "native.reply.utf8",
+            "native.reply.json",
+            "native.reply.shape",
+            "native.reply.operation",
+            "native.reply.authority",
+            "native.frame.limit",
+            "native.frame.utf8",
+            "native.frame.json",
+            "native.frame.shape",
+            "native.frame.model",
+            "native.frame.arguments"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

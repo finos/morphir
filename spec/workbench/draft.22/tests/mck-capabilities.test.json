@@ -1,0 +1,31 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "parent-owned contract example",
+      "valid": true,
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.22",
+        "binding": "independent-fixed",
+        "language": "moonbit",
+        "operations": [
+          "run-native-policy-owner"
+        ],
+        "formats": [
+          "json"
+        ]
+      }
+    },
+    {
+      "description": "empty object rejects closed infrastructure",
+      "valid": false,
+      "data": {}
+    },
+    {
+      "description": "unknown scalar rejects infrastructure",
+      "valid": false,
+      "data": "unsupported"
+    }
+  ]
+}

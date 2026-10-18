@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/mck-response.schema.json",
+  "title": "Workbench native checking-policy mck-response draft.20",
+  "description": "Exact draft.20 validate-native-policy-boundary. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "id": 1,
+      "status": "ok",
+      "value": {
+        "frameAccepted": true
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "id",
+        "suite",
+        "contractVersion",
+        "binding",
+        "language",
+        "operations",
+        "formats"
+      ],
+      "properties": {
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.20"
+        },
+        "binding": {
+          "type": "string",
+          "maxLength": 256,
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "operations": {
+          "const": [ "validate-native-policy-boundary" ]
+        },
+        "formats": {
+          "const": [ "json" ]
+        },
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "status", "value" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.20/native-policy-boundary-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "status", "code" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "enum": [
+            "native.reply.limit",
+            "native.reply.utf8",
+            "native.reply.json",
+            "native.reply.shape",
+            "native.reply.operation",
+            "native.reply.authority",
+            "native.frame.limit",
+            "native.frame.utf8",
+            "native.frame.json",
+            "native.frame.shape",
+            "native.frame.model",
+            "native.frame.arguments"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.21/mck-request.schema.json",
+  "title": "Workbench native checking-policy mck-request draft.21",
+  "description": "Exact draft.21 run-native-policy-client. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "id": 1,
+      "op": "run-native-policy-client",
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.21",
+      "format": "json",
+      "input": {
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "scheme"
+        },
+        "inspectionSuccess": true,
+        "checkSource": "{\"ok\":true,\"operation\":\"session.check\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+        "invocations": [
+          {
+            "id": "call-0",
+            "operation": "session.open",
+            "source": "{\"ok\":true,\"operation\":\"session.open\",\"value\":{\"profile\":\"morphir/workbench/native\",\"contractVersion\":\"0.2.0-draft.2\",\"sessionId\":\"session\",\"operations\":[\"executions\"],\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"scheme\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}}",
+            "held": false
+          },
+          {
+            "id": "call-1",
+            "operation": "execution.submit",
+            "source": null,
+            "held": false
+          }
+        ],
+        "actions": [
+          {
+            "op": "initialize",
+            "id": "init"
+          },
+          {
+            "op": "evaluate",
+            "id": "first"
+          },
+          {
+            "op": "evaluate",
+            "id": "retry"
+          }
+        ]
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "capabilities"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.21"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op", "suite", "contractVersion", "format", "input" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "run-native-policy-client"
+        },
+        "suite": {
+          "const": "workbench"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.21"
+        },
+        "format": {
+          "const": "json"
+        },
+        "input": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.21/mck-input.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "id", "op" ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": 1
+        },
+        "op": {
+          "const": "exit"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

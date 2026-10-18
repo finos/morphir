@@ -1,0 +1,50 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "parent-owned contract example",
+      "valid": true,
+      "data": {
+        "context": {
+          "window": "other",
+          "origin": "app",
+          "page": "page-X"
+        },
+        "services": {
+          "executions": "enabled",
+          "workspace": true
+        },
+        "evaluation": {
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "client:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "moonbit-scheme"
+        },
+        "roots": [],
+        "pickers": [],
+        "cleanups": [],
+        "actions": [
+          {
+            "op": "call",
+            "id": "open",
+            "operation": "session.open"
+          }
+        ]
+      }
+    },
+    {
+      "description": "empty object rejects closed infrastructure",
+      "valid": false,
+      "data": {}
+    },
+    {
+      "description": "unknown scalar rejects infrastructure",
+      "valid": false,
+      "data": "unsupported"
+    }
+  ]
+}

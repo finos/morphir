@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-corpus.schema.json",
+  "title": "Workbench native checking-policy mck-corpus draft.22",
+  "description": "Exact draft.22 run-native-policy-owner. Controlled inputs do not establish native caller provenance or process isolation",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.22",
+      "cases": [
+        {
+          "id": "wrong-window-no-authority",
+          "operation": "run-native-policy-owner",
+          "format": "json",
+          "input": {
+            "context": {
+              "window": "other",
+              "origin": "app",
+              "page": "page-X"
+            },
+            "services": {
+              "executions": "enabled",
+              "workspace": true
+            },
+            "evaluation": {
+              "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"client\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Native client immutable fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+              "entry": "client:main#answer",
+              "inputs": {
+                "format": "json",
+                "source": "[]"
+              },
+              "runtime": "scheme",
+              "providerId": "moonbit-scheme"
+            },
+            "roots": [],
+            "pickers": [],
+            "cleanups": [],
+            "actions": [
+              {
+                "op": "call",
+                "id": "open",
+                "operation": "session.open"
+              }
+            ]
+          },
+          "expected": {
+            "status": "ok",
+            "value": {
+              "steps": [
+                {
+                  "action": "call",
+                  "attempts": [
+                    {
+                      "id": "open",
+                      "state": "returned"
+                    }
+                  ],
+                  "callCount": 0,
+                  "delivery": null,
+                  "completion": null
+                }
+              ],
+              "results": [
+                {
+                  "id": "open",
+                  "state": "returned",
+                  "reply": {
+                    "ok": false,
+                    "code": "unauthorized",
+                    "effect": "none"
+                  },
+                  "cleanup": null,
+                  "failure": null
+                }
+              ],
+              "calls": [],
+              "usedPickers": 0,
+              "unusedPickers": 0,
+              "usedCleanups": 0,
+              "unusedCleanups": 0,
+              "acceptedPlans": [],
+              "selectedResults": []
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "formatVersion", "cases" ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.22"
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [ "id", "operation", "format", "input", "expected" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "operation": {
+            "const": "run-native-policy-owner"
+          },
+          "format": {
+            "const": "json"
+          },
+          "input": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-input.schema.json"
+          },
+          "expected": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.22/mck-expectation.schema.json"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

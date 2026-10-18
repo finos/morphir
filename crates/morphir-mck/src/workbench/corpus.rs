@@ -100,6 +100,18 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     } else {
         None
     };
+    if value["formatVersion"] == super::contract::NATIVE_POLICY_BOUNDARY_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::native_policy_boundary::validate_corpus_shape(&value)?;
+    }
+    if value["formatVersion"] == super::contract::NATIVE_POLICY_CLIENT_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::native_policy_client::validate_corpus_shape(&value)?;
+    }
+    if value["formatVersion"] == super::contract::NATIVE_POLICY_OWNER_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::native_policy_owner::validate_corpus_shape(&value)?;
+    }
     if value["formatVersion"] == super::contract::CAPABILITY_EXECUTIONS_VERSION {
         value = crate::json::strict::parse_exact(text)?;
         super::capability_executions::validate_corpus_shape(&value)?;
@@ -157,7 +169,16 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::RunCapabilityExecutions {
+        let input_len = if case.operation() == Operation::ValidateNativePolicyBoundary {
+            super::native_policy_boundary::validate_input(&case.input)?;
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::RunNativePolicyClient {
+            super::native_policy_client::validate_input(&case.input)?;
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::RunNativePolicyOwner {
+            super::native_policy_owner::validate_input(&case.input)?;
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::RunCapabilityExecutions {
             super::capability_executions::validate_input(&case.input)?;
             encoded_size(&case.input, MAX_INPUT_BYTES)?
         } else if case.operation() == Operation::RunCapabilityPolicy {
