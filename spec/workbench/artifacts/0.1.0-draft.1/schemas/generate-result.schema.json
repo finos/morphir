@@ -92,6 +92,7 @@
               "minLength": 1
             },
             "version": {
+              "description": "Canonical SemVer parsed with a SemVer library; major/minor/patch each <=9007199254740991. Prerelease/build identifiers retain literal string semantics. This semantic bound is additional to JSON Schema.",
               "type": "string",
               "minLength": 1
             }

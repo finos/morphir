@@ -12,21 +12,37 @@ use super::*;
 
 pub const MAX_HOST_GENERATIONS: usize = 64;
 
+/// The shared Rust/TypeScript profile uses canonical SemVer whose core fits
+/// exactly in both libraries. Prerelease/build identifiers remain strings.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[serde(transparent)]
+struct ProducerVersion(Version);
+impl ProducerVersion {
+    fn parse(text: &str) -> Result<Self, ArtifactError> {
+        const MAX_SAFE_COMPONENT: u64 = 9_007_199_254_740_991;
+        let parsed = Version::parse(text).map_err(|_| ArtifactError::InvalidIdentity)?;
+        if parsed.to_string() != text
+            || [parsed.major, parsed.minor, parsed.patch]
+                .into_iter()
+                .any(|component| component > MAX_SAFE_COMPONENT)
+        {
+            return Err(ArtifactError::InvalidIdentity);
+        }
+        Ok(Self(parsed))
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Producer {
     id: ProducerId,
-    version: Version,
+    version: ProducerVersion,
 }
 impl Producer {
     pub fn parse(id: &str, version: &str) -> Result<Self, ArtifactError> {
-        let parsed = Version::parse(version).map_err(|_| ArtifactError::InvalidIdentity)?;
-        if parsed.to_string() != version {
-            return Err(ArtifactError::InvalidIdentity);
-        }
         Ok(Self {
             id: ProducerId::parse(id)?,
-            version: parsed,
+            version: ProducerVersion::parse(version)?,
         })
     }
 }

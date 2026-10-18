@@ -11,6 +11,26 @@ fn artifact(path: &str, content: &str, binary: bool) -> Artifact {
 }
 
 #[test]
+fn producer_versions_have_portable_canonical_semver_components() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../../spec/workbench/artifacts/0.1.0-draft.1/fixtures/producer-version-boundaries.json"
+    ))
+    .unwrap();
+    for case in fixture["cases"].as_array().unwrap() {
+        let version = case["version"].as_str().unwrap();
+        let result = Producer::parse("fixture", version);
+        assert_eq!(
+            result.is_ok(),
+            case["accepted"].as_bool().unwrap(),
+            "{version}"
+        );
+        if let Ok(producer) = result {
+            assert_eq!(serde_json::to_value(producer).unwrap()["version"], version);
+        }
+    }
+}
+
+#[test]
 fn sdk_bytes_preserve_binary_and_text_without_newline_or_bom_conversion() {
     let bytes: Vec<u8> = (0..=255).collect();
     let sdk = vec![
