@@ -24,6 +24,8 @@ pub const NATIVE_POLICY_OWNER_VERSION: &str = "0.1.0-draft.22";
 pub const HTTP_POLICY_BOUNDARY_VERSION: &str = "0.1.0-draft.23";
 pub const HTTP_POLICY_CLIENT_VERSION: &str = "0.1.0-draft.24";
 pub const HTTP_POLICY_PROVIDER_VERSION: &str = "0.1.0-draft.25";
+pub const WORKSHEET_PROFILE_VERSION: &str = "0.1.0-draft.1";
+pub const WORKSHEET_VERSION: &str = "0.1.0-draft.27";
 pub const CODEC_COMPARISON_VERSION: &str = "0.1.0-draft.26";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
@@ -76,6 +78,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.24",
         "=0.1.0-draft.25",
         "=0.1.0-draft.26",
+        "=0.1.0-draft.27",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -97,6 +100,10 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Operation {
+    #[serde(rename = "worksheet-evaluate")]
+    WorksheetEvaluate,
+    #[serde(rename = "worksheet-validate")]
+    WorksheetValidate,
     #[serde(rename = "transcode-invocations")]
     TranscodeInvocations,
     #[serde(rename = "compare-values")]
@@ -143,6 +150,16 @@ pub enum Operation {
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if version == WORKSHEET_VERSION {
+            return if matches!(self, Self::WorksheetEvaluate | Self::WorksheetValidate) {
+                Ok(())
+            } else {
+                Err("operation is not defined by this Workbench draft".into())
+            };
+        }
+        if matches!(self, Self::WorksheetEvaluate | Self::WorksheetValidate) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if version == CODEC_COMPARISON_VERSION {
             return if matches!(self, Self::TranscodeInvocations | Self::CompareValues) {
                 Ok(())
@@ -210,7 +227,9 @@ impl Operation {
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
         if matches!(
             self,
-            Self::TranscodeInvocations
+            Self::WorksheetEvaluate
+                | Self::WorksheetValidate
+                | Self::TranscodeInvocations
                 | Self::CompareValues
                 | Self::ValidateHttpPolicyBoundary
                 | Self::RunHttpPolicyClient
@@ -368,6 +387,9 @@ impl Capabilities {
                 return Err("native policy kits require their exact operation and JSON".into());
             }
         }
+        if self.contract_version == WORKSHEET_VERSION && self.formats != [Format::Json] {
+            return Err("worksheet requires JSON framing".into());
+        }
         if self.contract_version == CODEC_COMPARISON_VERSION && self.formats != [Format::Json] {
             return Err("codec comparison requires JSON framing".into());
         }
@@ -439,6 +461,14 @@ impl Observation {
                 identity(code, 128)?;
                 if matches!(
                     operation,
+                    Operation::WorksheetEvaluate | Operation::WorksheetValidate
+                ) {
+                    super::worksheet::validate_observation_shape(
+                        &serde_json::json!({"status":"invalid","code":code}),
+                    )?;
+                }
+                if matches!(
+                    operation,
                     Operation::TranscodeInvocations | Operation::CompareValues
                 ) {
                     super::codec_comparison::validate_observation_shape(
@@ -505,6 +535,9 @@ impl Observation {
 
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
     match operation {
+        Operation::WorksheetEvaluate | Operation::WorksheetValidate => {
+            super::worksheet::projection(value, operation)
+        }
         Operation::TranscodeInvocations | Operation::CompareValues => {
             super::codec_comparison::projection(value, operation)
         }
@@ -585,8 +618,14 @@ pub(super) fn invocation_projection(value: &Value) -> Result<Value, String> {
 /// record fields compare by name, recursively, without erasing duplicate names.
 pub(super) fn projection(value: &Value) -> Result<Value, String> {
     encoded_size(value, MAX_VALUE_BYTES)?;
-    let mut budget = 100_000_usize;
-    check_projection_limits(value, 0, &mut budget)?;
+    projection_semantics(value, &mut 100_000)
+}
+
+/// Validate existing typed-value semantics using the enclosing profile's shared
+/// budget. The caller owns its encoded-document bound; frozen entry points keep
+/// their original byte limits in `projection`.
+pub(super) fn projection_semantics(value: &Value, budget: &mut usize) -> Result<Value, String> {
+    check_projection_limits(value, 0, budget)?;
     static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
     let validator = VALIDATOR.get_or_init(|| {
         let value_schema: Value = serde_json::from_str(include_str!(

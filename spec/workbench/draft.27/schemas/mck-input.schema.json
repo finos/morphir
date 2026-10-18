@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.27/mck-input.schema.json",
+  "title": "Worksheet raw MCK inputs",
+  "description": "Exact local Scheme worksheet source capture, UTF-16 ranges and existing typed terminal payloads; semantic rules remain normative in the profile",
+  "examples": [
+    {
+      "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"7\"}}"
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "request" ],
+      "properties": {
+        "request": {
+          "type": "string",
+          "maxLength": 2097153,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "request", "report" ],
+      "properties": {
+        "request": {
+          "type": "string",
+          "maxLength": 2097153,
+          "minLength": 0
+        },
+        "report": {
+          "type": "string",
+          "maxLength": 2097153,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -128,6 +128,10 @@ impl Report {
             value = crate::json::strict::parse_exact(text)?;
             super::codec_comparison::validate_report_shape(&value)?;
         }
+        if value["formatVersion"] == super::contract::WORKSHEET_VERSION {
+            value = crate::json::strict::parse_exact(text)?;
+            super::worksheet::validate_report_shape(&value)?;
+        }
         for (version, kit) in [
             (
                 super::contract::HTTP_POLICY_BOUNDARY_VERSION,

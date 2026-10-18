@@ -274,3 +274,7 @@ The HTTP checking-policy [boundary](draft.23/README.html),
 [controlled client](draft.24/README.html) and [actual provider](draft.25/README.html)
 kits extend the shared Rust MCK with independent fixed cases. They keep controlled
 client effects distinct from authenticated gateway and Node worker evidence.
+
+## Worksheet observations
+
+The exact [worksheet profile](worksheet/0.1.0-draft.1/README.html) captures source identity, UTF-16 ranges and existing typed terminal values. [MCK draft 27](draft.27/README.html) independently qualifies actual local Scheme evaluation and supplied report validation, with separate scoped kits. It adds no connected RPC method or daemon execution capability.

@@ -185,6 +185,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
                 .collect(),
         );
     }
+    if value["formatVersion"] == super::contract::WORKSHEET_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::worksheet::validate_corpus_shape(&value)?;
+    }
     let mut document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
     if let Some(inputs) = literal_inputs {
         for (case, input) in document.cases.iter_mut().zip(inputs) {
@@ -210,6 +214,12 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
             return Err(format!("duplicate case id {}", case.id));
         }
         let input_len = if matches!(
+            case.operation(),
+            Operation::WorksheetEvaluate | Operation::WorksheetValidate
+        ) {
+            super::worksheet::validate_input(&case.input, case.operation())?;
+            encoded_size(&case.input, super::worksheet::MAX_INPUT_BYTES)?
+        } else if matches!(
             case.operation(),
             Operation::TranscodeInvocations | Operation::CompareValues
         ) {
@@ -324,7 +334,9 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
             }
         };
         if input_len
-            > if document.format_version == super::contract::CODEC_COMPARISON_VERSION {
+            > if document.format_version == super::contract::WORKSHEET_VERSION {
+                super::worksheet::MAX_INPUT_BYTES
+            } else if document.format_version == super::contract::CODEC_COMPARISON_VERSION {
                 super::codec_comparison::MAX_INPUT_BYTES
             } else {
                 MAX_INPUT_BYTES

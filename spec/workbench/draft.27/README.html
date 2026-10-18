@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worksheet compatibility kit</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main><h1>Worksheet compatibility kit</h1><p class="meta">Exact Workbench 0.1.0-draft.27 · parent-owned fixed evidence</p><nav class="toc" aria-label="Contents"><ul><li><a href="#contract">Contract</a></li><li><a href="#operations">Independent operations</a></li><li><a href="#kits">Qualification scope</a></li><li><a href="#evidence">Evidence boundaries</a></li></ul></nav><section id="contract"><h2>Contract</h2><p>This kit qualifies the <a href="../worksheet/0.1.0-draft.1/README.html">exact worksheet source/range/value profile</a>. Negotiate suite workbench, contractVersion 0.1.0-draft.27 and JSON framing. All earlier supported kits and fixed bytes remain unchanged.</p><pre><code class="language-json">{"op":"capabilities","suite":"workbench","contractVersion":"0.1.0-draft.27"}
+{"suite":"workbench","contractVersion":"0.1.0-draft.27","binding":"implementation","language":"moonbit","operations":["worksheet-evaluate","worksheet-validate"],"formats":["json"]}</code></pre></section><section id="operations"><h2>Independent operations</h2><table><thead><tr><th>Operation</th><th>Input</th><th>Observation</th></tr></thead><tbody><tr><td>worksheet-evaluate</td><td>Exactly <code>{request: rawJsonText}</code></td><td>Actual production pipeline report, or stable boundary-invalid code.</td></tr><tr><td>worksheet-validate</td><td>Exactly <code>{request: rawJsonText, report: rawJsonText}</code></td><td>Complete accepted canonical report, or boundary-invalid code. This must call production validation without running Scheme.</td></tr></tbody></table><p>Both return <code>{status:"ok",value:report}</code> or <code>{status:"invalid",code}</code>. The runner leaves input strings opaque, so malformed/duplicate JSON, ill-formed UTF-16 escapes and hostile numeric spellings reach production decoders. Closed MCK operation wrappers are bounded separately at 8 MiB of compact JSON. Adapter request framing permits a further 1 KiB; this is independent of the production 2 MiB bound on each raw document. Arbitrary invalid strings can expand sixfold when escaped and need not fit this wrapper budget. Older drafts retain their existing limits.</p><p>The parent runner owns literal source, expected offsets/values/failures and comparison rules. It never evaluates Scheme, derives expectations from adapter output, or passes expected answers/case IDs to the adapter. Typed payload validation reuses the frozen parent terminal/value schemas and independent projection guards. Successful report validation is not inferred execution.</p></section><section id="kits"><h2>Qualification scope</h2><p><a href="../mck/draft.27/cases.json">The complete corpus</a> contains 109 cases (47 evaluate and 62 validate). <a href="../mck/draft.27/evaluate/cases.json">Evaluate</a> and <a href="../mck/draft.27/validate/cases.json">validate</a> are independently scoped subsets with their own byte hashes. An adapter may advertise either or both operations. A subset claim qualifies only its matching subset; unsupported full-kit records prevent full qualification.</p><p>Coverage includes exact integers, float bits, UTF-16 text/character/ranges, CRLF/trivia/datum comments, definitions and fresh-run isolation, unavailable Scheme projections with continuing evaluation, parser/runtime failures and budgets, shared nested-vector expansion stopped before unbounded preview/projection traversal, repeated wide integers charged against encoded bytes before constructing a whole row, source/revision identity, malformed raw input and forged report boundaries. Independent report checking rejects altered captures, values, offsets, identities, inventory or result claims.</p><pre><code class="language-bash">morphir mck workbench run --kit spec/workbench/mck/draft.27 --adapter &lt;production-adapter&gt; --report worksheet-report.json
+morphir mck workbench check --kit spec/workbench/mck/draft.27 --report worksheet-report.json</code></pre></section><section id="evidence"><h2>Evidence boundaries</h2><p>The fixed supplied cancellation, timeout, output-budget, large typed payload and ModelError reports exercise validation only. The local Scheme language currently exposes no recognized SDK ModelError constructor; these structural cases do not claim actual evaluator projection of ModelError. Actual browser worker cancellation, stale-revision editor guards, packaged Proton and supported OS behavior need separate runtime tests and receipts. A replay adapter used in runner unit tests proves infrastructure consistency only and never qualifies a product.</p><p>Profile schemas enforce structural constraints. Production validation checks parsed form inventory; the independent parent runner validates literal expected observations and their source slices without embedding a second Scheme reader or execution engine.</p></section></main>
+
+</body>
+</html>

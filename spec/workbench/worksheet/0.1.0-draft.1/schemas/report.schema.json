@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/worksheet/0.1.0-draft.1/report.schema.json",
+  "title": "Located typed worksheet report",
+  "description": "Exact local Scheme worksheet source capture, UTF-16 ranges and existing typed terminal payloads; semantic rules remain normative in the profile",
+  "examples": [
+    {
+      "profile": "morphir/workbench/worksheet",
+      "contractVersion": "0.1.0-draft.1",
+      "source": {
+        "id": "worksheet-source",
+        "revision": 4,
+        "text": "7"
+      },
+      "observations": [
+        {
+          "id": "form-0",
+          "range": {
+            "start": 0,
+            "end": 1
+          },
+          "expression": "7",
+          "preview": "7",
+          "outcome": {
+            "status": "returned",
+            "value": {
+              "type": "int",
+              "value": "7"
+            }
+          }
+        }
+      ],
+      "completion": {
+        "status": "returned",
+        "value": {
+          "type": "unit"
+        }
+      },
+      "diagnostic": null
+    }
+  ],
+  "type": "object",
+  "required": [
+    "profile",
+    "contractVersion",
+    "source",
+    "observations",
+    "completion",
+    "diagnostic"
+  ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/worksheet"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "source": {
+      "type": "object",
+      "required": [ "id", "revision", "text" ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "not": {
+            "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+          },
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 262144,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "observations": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "required": [ "id", "range", "expression", "preview", "outcome" ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^form-(?:0|[1-9][0-9]*)$"
+          },
+          "range": {
+            "type": "object",
+            "required": [ "start", "end" ],
+            "properties": {
+              "start": {
+                "type": "integer",
+                "maximum": 262144,
+                "minimum": 0
+              },
+              "end": {
+                "type": "integer",
+                "maximum": 262144,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          "expression": {
+            "type": "string",
+            "maxLength": 262144,
+            "minLength": 1
+          },
+          "preview": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 0
+          },
+          "outcome": {
+            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json#/properties/calls/items/properties/outcome"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "completion": {
+      "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.5/terminal-outcomes.schema.json#/properties/calls/items/properties/outcome"
+    },
+    "diagnostic": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [ "stage", "range" ],
+          "properties": {
+            "stage": {
+              "enum": [ "read", "evaluate", "project", "transport" ]
+            },
+            "range": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "required": [ "start", "end" ],
+                  "properties": {
+                    "start": {
+                      "type": "integer",
+                      "maximum": 262144,
+                      "minimum": 0
+                    },
+                    "end": {
+                      "type": "integer",
+                      "maximum": 262144,
+                      "minimum": 0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

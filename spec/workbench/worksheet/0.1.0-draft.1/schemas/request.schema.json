@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/worksheet/0.1.0-draft.1/request.schema.json",
+  "title": "Captured worksheet request",
+  "description": "Exact local Scheme worksheet source capture, UTF-16 ranges and existing typed terminal payloads; semantic rules remain normative in the profile",
+  "examples": [
+    {
+      "profile": "morphir/workbench/worksheet",
+      "contractVersion": "0.1.0-draft.1",
+      "source": {
+        "id": "worksheet-source",
+        "revision": 4,
+        "text": "7"
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "profile", "contractVersion", "source" ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/worksheet"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "source": {
+      "type": "object",
+      "required": [ "id", "revision", "text" ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "not": {
+            "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+          },
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "maximum": 2147483647,
+          "minimum": 0
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 262144,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

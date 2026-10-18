@@ -18,6 +18,7 @@ mod outcomes;
 mod report;
 mod run;
 mod selected_scheme;
+mod worksheet;
 
 pub use contract::{
     ADMISSION_VERSION, CAPABILITY_EXECUTIONS_VERSION, CAPABILITY_POLICY_VERSION,
@@ -26,7 +27,8 @@ pub use contract::{
     INVOCATION_VERSION, MAX_VALUE_BYTES, NATIVE_CLIENT_VERSION, NATIVE_FRAMES_VERSION,
     NATIVE_OWNER_VERSION, NATIVE_POLICY_BOUNDARY_VERSION, NATIVE_POLICY_CLIENT_VERSION,
     NATIVE_POLICY_OWNER_VERSION, NATIVE_REPLIES_VERSION, OUTCOMES_VERSION, OUTPUT_VERSION,
-    Observation, Operation, SELECTED_SCHEME_VERSION, VERSION,
+    Observation, Operation, SELECTED_SCHEME_VERSION, VERSION, WORKSHEET_PROFILE_VERSION,
+    WORKSHEET_VERSION,
 };
 pub use corpus::{Corpus, load};
 pub use report::{
@@ -78,3 +80,6 @@ mod http_policy_tests;
 
 #[cfg(test)]
 mod codec_comparison_tests;
+
+#[cfg(test)]
+mod worksheet_tests;

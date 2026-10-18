@@ -9,6 +9,16 @@ use super::contract::{MAX_VALUE_BYTES, OfflineOnly, encoded_size, identity};
 /// or uses implementation output to author expectations or infer execution success.
 pub(super) fn projection(value: &Value) -> Result<Value, String> {
     encoded_size(value, MAX_VALUE_BYTES)?;
+    projection_semantics(value, super::contract::projection)
+}
+
+/// Reuse frozen terminal semantics under a caller-owned document/value budget.
+/// This helper imposes no envelope byte limit and does not weaken the public
+/// frozen projection entry point.
+pub(super) fn projection_semantics(
+    value: &Value,
+    mut project_value: impl FnMut(&Value) -> Result<Value, String>,
+) -> Result<Value, String> {
     static VALIDATOR: OnceLock<jsonschema::Validator> = OnceLock::new();
     let validator = VALIDATOR.get_or_init(|| {
         let values: Value = serde_json::from_str(include_str!(
@@ -44,7 +54,7 @@ pub(super) fn projection(value: &Value) -> Result<Value, String> {
         }
         let outcome = &mut call["outcome"];
         match outcome["status"].as_str().expect("schema-checked status") {
-            "returned" => outcome["value"] = super::contract::projection(&outcome["value"])?,
+            "returned" => outcome["value"] = project_value(&outcome["value"])?,
             "failed" => failure(&outcome["failure"], false)?,
             "model-error" | "cancelled" => {}
             _ => unreachable!("schema-checked terminal"),

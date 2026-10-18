@@ -1,0 +1,40 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.27/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "valid worksheet structure",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.27",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "worksheet-evaluate",
+          "worksheet-validate"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "extra field rejected",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.27",
+        "binding": "fixture",
+        "language": "test",
+        "operations": [
+          "worksheet-evaluate",
+          "worksheet-validate"
+        ],
+        "formats": [
+          "json"
+        ],
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

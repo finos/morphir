@@ -1,0 +1,82 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/worksheet/0.1.0-draft.1/report.schema.json",
+  "tests": [
+    {
+      "description": "simple typed report",
+      "data": {
+        "profile": "morphir/workbench/worksheet",
+        "contractVersion": "0.1.0-draft.1",
+        "source": {
+          "id": "worksheet-source",
+          "revision": 4,
+          "text": "7"
+        },
+        "observations": [
+          {
+            "id": "form-0",
+            "range": {
+              "start": 0,
+              "end": 1
+            },
+            "expression": "7",
+            "preview": "7",
+            "outcome": {
+              "status": "returned",
+              "value": {
+                "type": "int",
+                "value": "7"
+              }
+            }
+          }
+        ],
+        "completion": {
+          "status": "returned",
+          "value": {
+            "type": "unit"
+          }
+        },
+        "diagnostic": null
+      },
+      "valid": true
+    },
+    {
+      "description": "extra fields reject",
+      "data": {
+        "profile": "morphir/workbench/worksheet",
+        "contractVersion": "0.1.0-draft.1",
+        "source": {
+          "id": "worksheet-source",
+          "revision": 4,
+          "text": "7"
+        },
+        "observations": [
+          {
+            "id": "form-0",
+            "range": {
+              "start": 0,
+              "end": 1
+            },
+            "expression": "7",
+            "preview": "7",
+            "outcome": {
+              "status": "returned",
+              "value": {
+                "type": "int",
+                "value": "7"
+              }
+            }
+          }
+        ],
+        "completion": {
+          "status": "returned",
+          "value": {
+            "type": "unit"
+          }
+        },
+        "diagnostic": null,
+        "extra": 1
+      },
+      "valid": false
+    }
+  ]
+}
