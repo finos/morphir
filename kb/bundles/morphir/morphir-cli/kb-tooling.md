@@ -31,7 +31,7 @@ Day to day, three commands carry most of the weight: `morphir kb check` before c
 `--index` for full-text ranking) to find what is already written. The kb skill at
 `.claude/skills/kb/SKILL.md` wraps these workflows for agents.
 
-The [conceptual intent examples](../../../../../spec/conceptual/intent/guide.html)
+The [conceptual intent examples](../../../../spec/conceptual/intent/guide.html)
 show how a caller can link KB excerpts to requirements and revision-scoped evidence.
 The KB service still owns the intent lifecycle. Its short intent number is scoped
 to a bundle; callers supply the stable document identity and exact revision.
