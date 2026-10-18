@@ -99,6 +99,39 @@ mod adapter {
                     }
                 }
             }
+            "workbench-codec-single-operation" => {
+                let operation = arg.expect("selected operation");
+                let corpus: Value = serde_json::from_str(include_str!(
+                    "../../../spec/workbench/mck/draft.26/cases.json"
+                ))
+                .unwrap();
+                let mut observations: std::collections::VecDeque<Value> = corpus["cases"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|case| case["operation"] == operation)
+                    .map(|case| case["expected"].clone())
+                    .collect();
+                for (id, line) in requests() {
+                    if is_exit(&line) {
+                        return;
+                    }
+                    if line.contains("\"op\":\"capabilities\"") {
+                        say(format!("{}\n",serde_json::json!({"id":id,"suite":"workbench","contractVersion":"0.1.0-draft.26","binding":"single-operation-infrastructure-only","language":"test","operations":[operation],"formats":["json"]})).as_bytes());
+                    } else {
+                        let request: Value = serde_json::from_str(&line).unwrap();
+                        assert_eq!(request["op"], operation);
+                        assert!(
+                            request.get("expected").is_none() && request.get("caseId").is_none()
+                        );
+                        let mut observation = observations
+                            .pop_front()
+                            .expect("fixed observation inventory");
+                        observation["id"] = Value::from(id);
+                        say(format!("{observation}\n").as_bytes());
+                    }
+                }
+            }
             "workbench-codec-input-literal" => {
                 for (id, line) in requests() {
                     if is_exit(&line) {
@@ -1123,6 +1156,47 @@ fn codec_comparison_live_input_preserves_literal_marker_objects() {
     assert!(report.qualified, "{:?}", report.errors);
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
+
+fn codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined() {
+    use morphir_mck::workbench::{Report, ResultKind, RunOptions};
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.26");
+    for (name, operation) in [
+        ("transcode", "transcode-invocations"),
+        ("comparison", "compare-values"),
+    ] {
+        for combined in [false, true] {
+            let kit = if combined {
+                base.clone()
+            } else {
+                base.join(name)
+            };
+            let report = morphir_mck::workbench::run(
+                &kit,
+                &RunOptions {
+                    adapter: std::env::current_exe().unwrap().into_os_string(),
+                    adapter_args: vec![
+                        ADAPTER_FLAG.into(),
+                        "workbench-codec-single-operation".into(),
+                        operation.into(),
+                    ],
+                    limits: quick(),
+                },
+            )
+            .unwrap();
+            assert_eq!(report.qualified, !combined, "{name}: {:?}", report.errors);
+            assert!(report.errors.is_empty(), "{:?}", report.errors);
+            assert_eq!(
+                report
+                    .records
+                    .iter()
+                    .any(|record| record.result == ResultKind::Unsupported),
+                combined
+            );
+            let restored = Report::from_json(&report.to_json()).unwrap();
+            morphir_mck::workbench::check_report(&kit, &restored).unwrap();
+        }
+    }
+}
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some(ADAPTER_FLAG) {
@@ -1130,7 +1204,7 @@ fn main() {
         return;
     }
 
-    let tests: &[(&str, fn())] = &[("codec_comparison_live_input_preserves_literal_marker_objects",codec_comparison_live_input_preserves_literal_marker_objects),("codec_comparison_live_marker_objects_cannot_forge_observations",codec_comparison_live_marker_objects_cannot_forge_observations),("http_policy_live_observations_cannot_reinterpret_private_json_objects",http_policy_live_observations_cannot_reinterpret_private_json_objects),("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
+    let tests: &[(&str, fn())] = &[("codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined",codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined),("codec_comparison_live_input_preserves_literal_marker_objects",codec_comparison_live_input_preserves_literal_marker_objects),("codec_comparison_live_marker_objects_cannot_forge_observations",codec_comparison_live_marker_objects_cannot_forge_observations),("http_policy_live_observations_cannot_reinterpret_private_json_objects",http_policy_live_observations_cannot_reinterpret_private_json_objects),("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
         ("capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         ("capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         (

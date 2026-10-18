@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.26/mck-input.schema.json",
   "title": "Workbench codec and comparison mck-input draft.26",
-  "description": "Exact offline codec-transcoding and typed-value comparison qualification. Input source decoding, reverse encoding and comparison belong to an explicit production adapter; fixed expected projections belong to the parent kit. This draft adds no live runtime claim",
+  "description": "Exact offline codec-transcoding and typed-value comparison qualification. Input source decoding, reverse encoding and comparison belong to an explicit production adapter; fixed expected projections belong to the parent kit. This draft adds no live runtime claim; compact operation inputs are bounded at 3 MiB so full-size binary source hex fits its closed wrapper",
   "examples": [
     {
       "sourceFormat": "json",

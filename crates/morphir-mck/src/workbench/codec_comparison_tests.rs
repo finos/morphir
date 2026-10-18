@@ -127,3 +127,33 @@ fn codec_comparison_json_pointers_accept_newlines_but_reject_invalid_escapes() {
         );
     }
 }
+
+#[test]
+fn codec_binary_source_wrapper_fits_full_production_byte_boundary() {
+    let input = json!({"sourceFormat":"ion-binary","source":{"hex":"00".repeat(1048576)},"targetFormat":"json"});
+    super::codec_comparison::validate_input(&input, Operation::TranscodeInvocations).unwrap();
+}
+
+#[test]
+fn codec_operation_specific_kits_publish_exact_canonical_subsets() {
+    let base =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/workbench/mck/draft.26");
+    let combined = load(&base).unwrap();
+    for (name, operation) in [
+        ("transcode", Operation::TranscodeInvocations),
+        ("comparison", Operation::CompareValues),
+    ] {
+        let subset = load(&base.join(name)).unwrap();
+        let expected: Vec<_> = combined
+            .cases
+            .iter()
+            .filter(|case| case.operation() == operation)
+            .collect();
+        assert_eq!(subset.cases.len(), expected.len());
+        for (actual, expected) in subset.cases.iter().zip(expected) {
+            assert_eq!(actual.id, expected.id);
+            assert_eq!(actual.input, expected.input);
+            assert_eq!(actual.expected, expected.expected);
+        }
+    }
+}

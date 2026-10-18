@@ -214,7 +214,7 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
             Operation::TranscodeInvocations | Operation::CompareValues
         ) {
             super::codec_comparison::validate_input(&case.input, case.operation())?;
-            encoded_size(&case.input, 2 * MAX_INPUT_BYTES)?
+            encoded_size(&case.input, super::codec_comparison::MAX_INPUT_BYTES)?
         } else if let Some(kit) = http_kit {
             kit.input(&case.input)?;
             encoded_size(&case.input, MAX_INPUT_BYTES)?
@@ -325,7 +325,7 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         };
         if input_len
             > if document.format_version == super::contract::CODEC_COMPARISON_VERSION {
-                2 * MAX_INPUT_BYTES
+                super::codec_comparison::MAX_INPUT_BYTES
             } else {
                 MAX_INPUT_BYTES
             }

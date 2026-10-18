@@ -5,6 +5,9 @@ use super::contract::{MAX_VALUE_BYTES, OfflineOnly, Operation, encoded_size};
 use serde_json::Value;
 use std::sync::OnceLock;
 
+/// Raw binary hex plus the closed operation wrapper must fit at the source bound.
+pub(super) const MAX_INPUT_BYTES: usize = 3 * MAX_VALUE_BYTES;
+
 pub(super) fn validate_corpus_shape(value: &Value) -> Result<(), String> {
     check("mck-corpus", value)
 }
@@ -15,7 +18,7 @@ pub(super) fn validate_observation_shape(value: &Value) -> Result<(), String> {
     check("mck-observation", value)
 }
 pub(super) fn validate_input(value: &Value, operation: Operation) -> Result<(), String> {
-    encoded_size(value, 2 * MAX_VALUE_BYTES)?;
+    encoded_size(value, MAX_INPUT_BYTES)?;
     check("mck-input", value)?;
     match operation {
         Operation::TranscodeInvocations if value.get("sourceFormat").is_some() => {
