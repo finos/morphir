@@ -1,0 +1,174 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "valid independent artifact structure",
+      "data": {
+        "fixture": {
+          "producer": {
+            "id": "artifact-fixture",
+            "version": "0.1.0"
+          },
+          "offer": "exact",
+          "completion": "success",
+          "artifacts": [
+            {
+              "path": "data.bin",
+              "content": {
+                "representation": "binary-recipe",
+                "recipe": {
+                  "kind": "hex",
+                  "hex": ""
+                }
+              }
+            }
+          ],
+          "diagnostics": []
+        },
+        "actions": [
+          {
+            "action": "connect",
+            "connection": "c1",
+            "authentication": "valid"
+          },
+          {
+            "action": "initialize",
+            "connection": "c1",
+            "session": "current"
+          },
+          {
+            "action": "generate",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "2",
+            "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":{}}}"
+          },
+          {
+            "action": "usage"
+          },
+          {
+            "action": "read-all",
+            "connection": "c1",
+            "generation": "g1",
+            "artifactIndex": 0,
+            "maxBytes": 65536
+          },
+          {
+            "action": "read",
+            "connection": "c1",
+            "generation": "g1",
+            "artifactIndex": 0,
+            "requestId": "3000",
+            "offset": "0",
+            "maxBytes": "65536"
+          },
+          {
+            "action": "release",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "9000"
+          },
+          {
+            "action": "release",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "9001"
+          },
+          {
+            "action": "close",
+            "connection": "c1"
+          },
+          {
+            "action": "usage"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "closed object rejects an extra field",
+      "data": {
+        "fixture": {
+          "producer": {
+            "id": "artifact-fixture",
+            "version": "0.1.0"
+          },
+          "offer": "exact",
+          "completion": "success",
+          "artifacts": [
+            {
+              "path": "data.bin",
+              "content": {
+                "representation": "binary-recipe",
+                "recipe": {
+                  "kind": "hex",
+                  "hex": ""
+                }
+              }
+            }
+          ],
+          "diagnostics": []
+        },
+        "actions": [
+          {
+            "action": "connect",
+            "connection": "c1",
+            "authentication": "valid"
+          },
+          {
+            "action": "initialize",
+            "connection": "c1",
+            "session": "current"
+          },
+          {
+            "action": "generate",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "2",
+            "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":{}}}"
+          },
+          {
+            "action": "usage"
+          },
+          {
+            "action": "read-all",
+            "connection": "c1",
+            "generation": "g1",
+            "artifactIndex": 0,
+            "maxBytes": 65536
+          },
+          {
+            "action": "read",
+            "connection": "c1",
+            "generation": "g1",
+            "artifactIndex": 0,
+            "requestId": "3000",
+            "offset": "0",
+            "maxBytes": "65536"
+          },
+          {
+            "action": "release",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "9000"
+          },
+          {
+            "action": "release",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "9001"
+          },
+          {
+            "action": "close",
+            "connection": "c1"
+          },
+          {
+            "action": "usage"
+          }
+        ],
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

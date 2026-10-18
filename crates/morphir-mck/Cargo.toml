@@ -23,6 +23,7 @@ similar.workspace = true
 flate2.workspace = true
 tar.workspace = true
 unicode-normalization.workspace = true
+unicode-casefold.workspace = true
 url.workspace = true
 chrono = "0.4"
 semver = { workspace = true, features = ["serde"] }

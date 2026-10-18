@@ -1,0 +1,90 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/generate-result.schema.json",
+  "tests": [
+    {
+      "description": "Independently authored profile example",
+      "data": {
+        "status": "ready",
+        "profile": "morphir/workbench/artifacts",
+        "contractVersion": "0.1.0-draft.1",
+        "sessionId": "session-7",
+        "providerId": "playground",
+        "generationId": "generation-1",
+        "producer": {
+          "id": "qualified-binary-fixture",
+          "version": "0.1.0"
+        },
+        "target": "fixture",
+        "irVersion": "4",
+        "artifacts": [
+          {
+            "id": "artifact-1",
+            "path": "empty.bin",
+            "kind": "binary",
+            "byteLength": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "diagnostics": []
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown members are refused in this exact draft",
+      "data": {
+        "status": "ready",
+        "profile": "morphir/workbench/artifacts",
+        "contractVersion": "0.1.0-draft.1",
+        "sessionId": "session-7",
+        "providerId": "playground",
+        "generationId": "generation-1",
+        "producer": {
+          "id": "qualified-binary-fixture",
+          "version": "0.1.0"
+        },
+        "target": "fixture",
+        "irVersion": "4",
+        "artifacts": [
+          {
+            "id": "artifact-1",
+            "path": "empty.bin",
+            "kind": "binary",
+            "byteLength": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "diagnostics": [],
+        "unknown": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Digest spelling is canonical lowercase",
+      "data": {
+        "status": "ready",
+        "profile": "morphir/workbench/artifacts",
+        "contractVersion": "0.1.0-draft.1",
+        "sessionId": "session-7",
+        "providerId": "playground",
+        "generationId": "generation-1",
+        "producer": {
+          "id": "qualified-binary-fixture",
+          "version": "0.1.0"
+        },
+        "target": "fixture",
+        "irVersion": "4",
+        "artifacts": [
+          {
+            "id": "artifact-1",
+            "path": "empty.bin",
+            "kind": "binary",
+            "byteLength": 0,
+            "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+          }
+        ],
+        "diagnostics": []
+      },
+      "valid": false
+    }
+  ]
+}

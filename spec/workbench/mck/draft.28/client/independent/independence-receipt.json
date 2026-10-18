@@ -1,0 +1,92 @@
+{
+  "contractVersion": "0.1.0-draft.28",
+  "operation": "artifact-client",
+  "caseCount": 102,
+  "corpusSha256": "ab810f6c007c33aacfc9e3c552f79cc179a73e9d77d2ea5e23d3396e8efc9191",
+  "authorship": "Initial1, independent34 and boundary/lifecycle67 cases authored before any adapter outputs were read. Review2 corrects exactly3 numeric-refusal category leaves by independently verified source mapping; original review1 corpus and actual reports remain immutable.",
+  "expectedCasesFromObservedOutput": false,
+  "portableReproduction": "bun spec/workbench/mck/draft.28/client/independent/reproduce.ts .dev/client-author-reproduction",
+  "artifacts": [
+    {
+      "path": "independent/boundary-lifecycle/author-cases.ts",
+      "byteLength": 39196,
+      "sha256": "106524f2e3eb280d9b5775c7312a3bb52b85fc5328d4fae2564262d69fc8e357"
+    },
+    {
+      "path": "independent/boundary-lifecycle/coverage.json",
+      "byteLength": 14725,
+      "sha256": "b7fb12cc461a1189690792cd0f36b0f144675b6026a89dce1e0363814a999dc3"
+    },
+    {
+      "path": "independent/boundary-lifecycle/foundation/byte-recipes.json",
+      "byteLength": 302369,
+      "sha256": "749ba370717e1a4cfa5e526f4a716bfe68616feaf7ba8899d0b9bd5cd14bf231"
+    },
+    {
+      "path": "independent/boundary-lifecycle/manifest.json",
+      "byteLength": 25797,
+      "sha256": "64658a48f12c7c8c270f17229f19db8d87f7db98d78ac8bc1f536d33232db438"
+    },
+    {
+      "path": "independent/boundary-lifecycle/refusal-review2-correction.json",
+      "byteLength": 1169,
+      "sha256": "791a13639391e547c61f4767259f9143256d6e169e7b6814675860104cd0dc69"
+    },
+    {
+      "path": "independent/boundary-lifecycle/source-review-correction.json",
+      "byteLength": 513,
+      "sha256": "3f687da4c3befc53ff9cba8273974f75bd41a3a9ef18988d1e6949d18299f745"
+    },
+    {
+      "path": "independent/bytes-preview/author-cases.ts",
+      "byteLength": 29406,
+      "sha256": "9d8adffc7d80a73237e544b89b005acd4a45332d0c906edc76528cf1508835b6"
+    },
+    {
+      "path": "independent/bytes-preview/authored-manifest.json",
+      "byteLength": 20925,
+      "sha256": "9fcbe1a6a7ef035dc6a90dfc2aadf0d8f1a9838433d49c18e463ea89518dbeb9"
+    },
+    {
+      "path": "independent/bytes-preview/coverage-matrix.json",
+      "byteLength": 8160,
+      "sha256": "625713b8e23540afa058549488822a4f693d301c9a348ca927fd7058e1a66ae5"
+    },
+    {
+      "path": "independent/bytes-preview/foundation/byte-recipes.json",
+      "byteLength": 302369,
+      "sha256": "749ba370717e1a4cfa5e526f4a716bfe68616feaf7ba8899d0b9bd5cd14bf231"
+    },
+    {
+      "path": "independent/bytes-preview/freeze-wave1-manifest.json",
+      "byteLength": 12046,
+      "sha256": "f1d52bd44dd9af13c1534a2b8928c14fa87aaed000f257ef4cb7aafd19d6d9c5"
+    },
+    {
+      "path": "independent/bytes-preview/publication-receipt.json",
+      "byteLength": 8189,
+      "sha256": "1ffea75b69da0a24a61d1443ee2da66ddd26514f7b1266b7b49b23e4078334c8"
+    },
+    {
+      "path": "independent/initial/author-case.ts",
+      "byteLength": 4644,
+      "sha256": "2ecdb3b9762ed3bb297a24177d6de19446b17ffea14e524693fecd077bdbb32f"
+    },
+    {
+      "path": "independent/initial/first-input.json",
+      "byteLength": 1832,
+      "sha256": "62b379d87c6d15b6f8906189d61113c8960f683df4e5888c410906c65deae57f"
+    },
+    {
+      "path": "independent/reproduce.ts",
+      "byteLength": 1943,
+      "sha256": "23696f82094a38d674ce055fc97467e3b8aaba476c9f61bb46a73ed96ed54389"
+    },
+    {
+      "path": "independent/bytes-preview/author-before-file-url-fix.ts",
+      "byteLength": 29370,
+      "sha256": "611d3b694fe155e70a537304c2c50ed47297e25c33f215d427d39ba8d4346b04"
+    }
+  ],
+  "pathPortability": "Published author scripts use Node fileURLToPath rather than URL.pathname before native path joins. Frozen original portable34 source retained; all102 case bytes reproduce identically after this filesystem-only change."
+}

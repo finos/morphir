@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/release-request.schema.json",
+  "title": "Artifact release request",
+  "description": "Exact negotiated artifact transfer draft; complete semantic rules and encoded bounds are normative in README.html",
+  "examples": [
+    {
+      "contractVersion": "0.1.0-draft.1",
+      "generationId": "generation-1"
+    }
+  ],
+  "type": "object",
+  "required": [ "contractVersion", "generationId" ],
+  "properties": {
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "generationId": {
+      "type": "string",
+      "not": {
+        "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

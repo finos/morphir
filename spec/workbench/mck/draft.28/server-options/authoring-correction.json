@@ -1,0 +1,32 @@
+{
+  "reason": "Before actual adapter execution, shared schema validation detected missing required initialize.session. The current-session selector is required by the published action schema. No expected values were changed.",
+  "expectedFromObservedOutput": false,
+  "initialCorpusSha256": "aee33ed06c9ec64f8edbd8c4d86d635499d8ceb31228caba6d0950bdc9dfaa75",
+  "correctedCorpusSha256": "f414c2bb065408ea2a66231de9fe24b76ad20254eab0ed7d04a72e21ede73f1c",
+  "changes": [
+    {
+      "pointer": "/cases/0/input/actions/1/session",
+      "added": "current"
+    },
+    {
+      "pointer": "/cases/1/input/actions/1/session",
+      "added": "current"
+    },
+    {
+      "pointer": "/cases/2/input/actions/1/session",
+      "added": "current"
+    },
+    {
+      "pointer": "/cases/3/input/actions/1/session",
+      "added": "current"
+    },
+    {
+      "pointer": "/cases/4/input/actions/1/session",
+      "added": "current"
+    },
+    {
+      "pointer": "/cases/5/input/actions/1/session",
+      "added": "current"
+    }
+  ]
+}

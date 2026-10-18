@@ -1,0 +1,699 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-observation.schema.json",
+  "title": "Artifact client observation",
+  "description": "Exact scoped artifact-client input/evidence. Semantic capture, lifecycle, pre-allocation work and raw-frame rules are normative in README.html. Every object is closed",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "events": [
+          {
+            "kind": "effect",
+            "attempt": "A",
+            "index": 0,
+            "effect": "connect",
+            "argument": {
+              "signalAborted": false
+            }
+          },
+          {
+            "kind": "settled",
+            "attempt": "A",
+            "index": 0,
+            "settlement": "resolved"
+          },
+          {
+            "kind": "effect",
+            "attempt": "A",
+            "index": 1,
+            "effect": "initialize",
+            "argument": {
+              "frame": {
+                "kind": "text",
+                "source": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"morphir.session.initialize\",\"params\":{\"protocolVersion\":1,\"sessionId\":\"session-client\"}}"
+              }
+            }
+          },
+          {
+            "kind": "settled",
+            "attempt": "A",
+            "index": 1,
+            "settlement": "resolved"
+          },
+          {
+            "kind": "effect",
+            "attempt": "A",
+            "index": 2,
+            "effect": "generate",
+            "argument": {
+              "frame": {
+                "kind": "text",
+                "source": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"morphir.artifacts.generate\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"provider-client\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":{}}}}"
+              }
+            }
+          },
+          {
+            "kind": "settled",
+            "attempt": "A",
+            "index": 2,
+            "settlement": "resolved"
+          },
+          {
+            "kind": "effect",
+            "attempt": "A",
+            "index": 3,
+            "effect": "read",
+            "argument": {
+              "frame": {
+                "kind": "text",
+                "source": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"morphir.artifacts.read\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"generationId\":\"generation-A\",\"artifactId\":\"artifact-A\",\"offset\":0,\"maxBytes\":65536}}"
+              }
+            }
+          },
+          {
+            "kind": "settled",
+            "attempt": "A",
+            "index": 3,
+            "settlement": "resolved"
+          },
+          {
+            "kind": "effect",
+            "attempt": "A",
+            "index": 4,
+            "effect": "digest",
+            "argument": {
+              "byteLength": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          },
+          {
+            "kind": "settled",
+            "attempt": "A",
+            "index": 4,
+            "settlement": "resolved"
+          },
+          {
+            "kind": "effect",
+            "attempt": "A",
+            "index": 5,
+            "effect": "release",
+            "argument": {
+              "frame": {
+                "kind": "text",
+                "source": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"morphir.artifacts.release\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"generationId\":\"generation-A\"}}"
+              }
+            }
+          },
+          {
+            "kind": "settled",
+            "attempt": "A",
+            "index": 5,
+            "settlement": "resolved"
+          },
+          {
+            "kind": "close",
+            "attempt": "A"
+          }
+        ],
+        "checkpoints": [
+          {
+            "actionIndex": 0,
+            "eventCount": 0,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "not-started",
+                "pending": [],
+                "signalAborted": null,
+                "terminal": {
+                  "kind": "pending"
+                },
+                "closeCalls": 0
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 1,
+            "eventCount": 1,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "connecting",
+                "pending": [
+                  {
+                    "index": 0,
+                    "effect": "connect"
+                  }
+                ],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "pending"
+                },
+                "closeCalls": 0
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 2,
+            "eventCount": 3,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "initializing",
+                "pending": [
+                  {
+                    "index": 1,
+                    "effect": "initialize"
+                  }
+                ],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "pending"
+                },
+                "closeCalls": 0
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 3,
+            "eventCount": 5,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "generating",
+                "pending": [
+                  {
+                    "index": 2,
+                    "effect": "generate"
+                  }
+                ],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "pending"
+                },
+                "closeCalls": 0
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 4,
+            "eventCount": 7,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "receiving",
+                "pending": [
+                  {
+                    "index": 3,
+                    "effect": "read"
+                  }
+                ],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "pending"
+                },
+                "closeCalls": 0
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 5,
+            "eventCount": 9,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "verifying",
+                "pending": [
+                  {
+                    "index": 4,
+                    "effect": "digest"
+                  }
+                ],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "pending"
+                },
+                "closeCalls": 0
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 6,
+            "eventCount": 11,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "releasing",
+                "pending": [
+                  {
+                    "index": 5,
+                    "effect": "release"
+                  }
+                ],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "pending"
+                },
+                "closeCalls": 0
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 7,
+            "eventCount": 13,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "finished",
+                "pending": [],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "verified",
+                  "cleanup": {
+                    "kind": "released",
+                    "generationId": "generation-A"
+                  }
+                },
+                "closeCalls": 1
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 8,
+            "eventCount": 13,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "finished",
+                "pending": [],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "verified",
+                  "cleanup": {
+                    "kind": "released",
+                    "generationId": "generation-A"
+                  }
+                },
+                "closeCalls": 1
+              }
+            ],
+            "registry": {
+              "kind": "published",
+              "views": "views-A"
+            },
+            "actionResult": {
+              "kind": "published",
+              "views": "views-A",
+              "artifacts": [
+                {
+                  "file": "file-0",
+                  "path": "empty.bin",
+                  "binary": true,
+                  "encoding": "verified-bytes",
+                  "byteLength": 0,
+                  "previewState": "binary",
+                  "content": {
+                    "utf16Length": 0,
+                    "utf8": {
+                      "byteLength": 0,
+                      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                    }
+                  },
+                  "binaryPreview": {
+                    "byteLength": 0,
+                    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  "reference": {
+                    "views": "views-A",
+                    "file": "file-0"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "actionIndex": 9,
+            "eventCount": 13,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "finished",
+                "pending": [],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "verified",
+                  "cleanup": {
+                    "kind": "released",
+                    "generationId": "generation-A"
+                  }
+                },
+                "closeCalls": 1
+              }
+            ],
+            "registry": {
+              "kind": "published",
+              "views": "views-A"
+            },
+            "actionResult": {
+              "kind": "download",
+              "files": [
+                {
+                  "path": "empty.bin",
+                  "bytes": {
+                    "byteLength": 0,
+                    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "actionIndex": 10,
+            "eventCount": 13,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "finished",
+                "pending": [],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "verified",
+                  "cleanup": {
+                    "kind": "released",
+                    "generationId": "generation-A"
+                  }
+                },
+                "closeCalls": 1
+              }
+            ],
+            "registry": {
+              "kind": "published",
+              "views": "views-A"
+            },
+            "actionResult": {
+              "kind": "archive",
+              "archive": {
+                "encodedByteLength": 116,
+                "entries": [
+                  {
+                    "path": "empty.bin",
+                    "bytes": {
+                      "byteLength": 0,
+                      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "actionIndex": 11,
+            "eventCount": 13,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "finished",
+                "pending": [],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "verified",
+                  "cleanup": {
+                    "kind": "released",
+                    "generationId": "generation-A"
+                  }
+                },
+                "closeCalls": 1
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          },
+          {
+            "actionIndex": 12,
+            "eventCount": 13,
+            "label": null,
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "finished",
+                "pending": [],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "verified",
+                  "cleanup": {
+                    "kind": "released",
+                    "generationId": "generation-A"
+                  }
+                },
+                "closeCalls": 1
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "refused",
+              "operation": "download",
+              "message": "These generated files are no longer available. Recompile to download them."
+            }
+          },
+          {
+            "actionIndex": 13,
+            "eventCount": 13,
+            "label": "released-original-empty-bytes",
+            "currentContext": {
+              "sourceId": "client-source",
+              "revision": 1,
+              "epoch": 1
+            },
+            "attempts": [
+              {
+                "id": "A",
+                "phase": "finished",
+                "pending": [],
+                "signalAborted": false,
+                "terminal": {
+                  "kind": "verified",
+                  "cleanup": {
+                    "kind": "released",
+                    "generationId": "generation-A"
+                  }
+                },
+                "closeCalls": 1
+              }
+            ],
+            "registry": {
+              "kind": "empty"
+            },
+            "actionResult": {
+              "kind": "none"
+            }
+          }
+        ],
+        "attempts": [
+          {
+            "id": "A",
+            "capture": {
+              "profile": "morphir/workbench/artifacts",
+              "contractVersion": "0.1.0-draft.1",
+              "providerId": "provider-client",
+              "sessionId": "session-client",
+              "target": "fixture",
+              "irVersion": "4"
+            },
+            "phase": "finished",
+            "result": {
+              "kind": "verified",
+              "manifest": {
+                "profile": "morphir/workbench/artifacts",
+                "contractVersion": "0.1.0-draft.1",
+                "sessionId": "session-client",
+                "providerId": "provider-client",
+                "generationId": "generation-A",
+                "producer": {
+                  "id": "artifact-fixture",
+                  "version": "0.1.0"
+                },
+                "target": "fixture",
+                "irVersion": "4",
+                "diagnostics": []
+              },
+              "inventory": [
+                {
+                  "id": "file-0",
+                  "path": "empty.bin",
+                  "declaredKind": "binary",
+                  "bytes": {
+                    "byteLength": 0,
+                    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  },
+                  "preview": {
+                    "kind": "binary",
+                    "prefix": {
+                      "byteLength": 0,
+                      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                    }
+                  }
+                }
+              ],
+              "cleanup": {
+                "kind": "released",
+                "generationId": "generation-A"
+              }
+            },
+            "closeCalls": 1,
+            "effects": {
+              "connect": 1,
+              "initialize": 1,
+              "generate": 1,
+              "read": 1,
+              "digest": 1,
+              "release": 1
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "status", "value" ],
+  "properties": {
+    "status": {
+      "const": "ok"
+    },
+    "value": {
+      "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-projection.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

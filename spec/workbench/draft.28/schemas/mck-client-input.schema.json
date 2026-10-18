@@ -1,0 +1,1306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-input.schema.json",
+  "title": "Artifact client scenario",
+  "description": "Exact scoped artifact-client input/evidence. Semantic capture, lifecycle, pre-allocation work and raw-frame rules are normative in README.html. Every object is closed",
+  "examples": [
+    {
+      "attempts": [
+        {
+          "id": "A",
+          "offer": {
+            "id": "provider-client",
+            "status": "available",
+            "capabilities": [
+              {
+                "name": "morphir/workbench/artifacts",
+                "version": "0.1.0-draft.1"
+              }
+            ]
+          },
+          "input": {
+            "sessionId": "session-client",
+            "target": "fixture",
+            "irVersion": "4",
+            "ir": {
+              "formatVersion": 4
+            },
+            "options": {}
+          },
+          "context": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "peer": {
+            "kind": "ready",
+            "generationId": "generation-A",
+            "producer": {
+              "id": "artifact-fixture",
+              "version": "0.1.0"
+            },
+            "artifacts": [
+              {
+                "id": "artifact-A",
+                "path": "empty.bin",
+                "kind": "binary",
+                "content": {
+                  "kind": "hex",
+                  "hex": ""
+                }
+              }
+            ],
+            "diagnostics": []
+          },
+          "localFaults": []
+        }
+      ],
+      "actions": [
+        {
+          "action": "set-current",
+          "context": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          }
+        },
+        {
+          "action": "start",
+          "attempt": "A"
+        },
+        {
+          "action": "deliver",
+          "effect": {
+            "attempt": "A",
+            "index": 0,
+            "kind": "connect"
+          },
+          "value": {
+            "kind": "connect"
+          }
+        },
+        {
+          "action": "deliver",
+          "effect": {
+            "attempt": "A",
+            "index": 1,
+            "kind": "initialize"
+          },
+          "value": {
+            "kind": "peer"
+          }
+        },
+        {
+          "action": "deliver",
+          "effect": {
+            "attempt": "A",
+            "index": 2,
+            "kind": "generate"
+          },
+          "value": {
+            "kind": "peer"
+          }
+        },
+        {
+          "action": "drain-reads",
+          "attempt": "A",
+          "maxReads": 1
+        },
+        {
+          "action": "deliver",
+          "effect": {
+            "attempt": "A",
+            "index": 4,
+            "kind": "digest"
+          },
+          "value": {
+            "kind": "digest",
+            "result": "actual"
+          }
+        },
+        {
+          "action": "deliver",
+          "effect": {
+            "attempt": "A",
+            "index": 5,
+            "kind": "release"
+          },
+          "value": {
+            "kind": "peer"
+          }
+        },
+        {
+          "action": "publish",
+          "attempt": "A",
+          "views": "views-A"
+        },
+        {
+          "action": "download",
+          "views": {
+            "views": "views-A",
+            "indices": [ 0 ],
+            "mutations": []
+          },
+          "complete": false
+        },
+        {
+          "action": "archive",
+          "views": {
+            "views": "views-A",
+            "indices": [ 0 ],
+            "mutations": []
+          }
+        },
+        {
+          "action": "clear-registry"
+        },
+        {
+          "action": "download",
+          "views": {
+            "views": "views-A",
+            "indices": [ 0 ],
+            "mutations": []
+          },
+          "complete": false
+        },
+        {
+          "action": "observe",
+          "label": "released-original-empty-bytes"
+        }
+      ]
+    }
+  ],
+  "$ref": "#/$defs/ClientScenario",
+  "$defs": {
+    "Json": true,
+    "AttemptId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "ViewId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "ObservationLabel": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "FileAlias": {
+      "type": "string",
+      "pattern": "^file-(0|[1-9][0-9]{0,2})$",
+      "maxLength": 16,
+      "minLength": 6
+    },
+    "EffectIndex": {
+      "type": "integer",
+      "maximum": 4095,
+      "minimum": 0
+    },
+    "Revision": {
+      "type": "integer",
+      "maximum": 2147483647,
+      "minimum": 0
+    },
+    "Epoch": {
+      "type": "integer",
+      "maximum": 2147483647,
+      "minimum": 0
+    },
+    "SourceIdentity": {
+      "type": "string",
+      "not": {
+        "pattern": "[\u0000-\u001F-]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "ByteCount": {
+      "type": "integer",
+      "maximum": 134217728,
+      "minimum": 0
+    },
+    "ByteOffset": {
+      "type": "integer",
+      "maximum": 16777217,
+      "minimum": 0
+    },
+    "ReadCount": {
+      "type": "integer",
+      "maximum": 4096,
+      "minimum": 0
+    },
+    "U8": {
+      "type": "integer",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "U7": {
+      "type": "integer",
+      "maximum": 127,
+      "minimum": 0
+    },
+    "BoundedText": {
+      "type": "string",
+      "maxLength": 512,
+      "minLength": 0
+    },
+    "LocalContext": {
+      "type": "object",
+      "required": [ "sourceId", "revision", "epoch" ],
+      "properties": {
+        "sourceId": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "epoch": {
+          "$ref": "#/$defs/Epoch"
+        }
+      },
+      "additionalProperties": false
+    },
+    "JsonPathStep": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "key" ],
+          "properties": {
+            "kind": {
+              "const": "member"
+            },
+            "key": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "index" ],
+          "properties": {
+            "kind": {
+              "const": "index"
+            },
+            "index": {
+              "type": "integer",
+              "maximum": 9007199254740991,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "JsonPath": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/JsonPathStep"
+      }
+    },
+    "Capability": {
+      "type": "object",
+      "required": [ "name", "version" ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "version": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProviderOffer": {
+      "type": "object",
+      "required": [ "id", "status", "capabilities" ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "status": {
+          "oneOf": [
+            {
+              "const": "available"
+            },
+            {
+              "const": "disconnected"
+            }
+          ]
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/Capability"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticPosition": {
+      "type": "object",
+      "required": [ "line", "character" ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 0
+        },
+        "character": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticLocation": {
+      "type": "object",
+      "required": [ "uri", "range" ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "range": {
+          "type": "object",
+          "required": [ "start", "end" ],
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/DiagnosticPosition"
+            },
+            "end": {
+              "$ref": "#/$defs/DiagnosticPosition"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Diagnostic": {
+      "type": "object",
+      "required": [ "severity", "code", "message", "location" ],
+      "properties": {
+        "severity": {
+          "oneOf": [
+            {
+              "const": "error"
+            },
+            {
+              "const": "warning"
+            },
+            {
+              "const": "info"
+            },
+            {
+              "const": "hint"
+            }
+          ]
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "location": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/DiagnosticLocation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ByteRecipe": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "hex" ],
+          "properties": {
+            "kind": {
+              "const": "hex"
+            },
+            "hex": {
+              "type": "string",
+              "pattern": "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "length" ],
+          "properties": {
+            "kind": {
+              "const": "cycle-u8"
+            },
+            "length": {
+              "$ref": "#/$defs/ByteCount"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "length", "byte" ],
+          "properties": {
+            "kind": {
+              "const": "repeat-u8"
+            },
+            "length": {
+              "$ref": "#/$defs/ByteCount"
+            },
+            "byte": {
+              "$ref": "#/$defs/U8"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "length", "seed" ],
+          "properties": {
+            "kind": {
+              "const": "chunk-indexed-u8"
+            },
+            "length": {
+              "$ref": "#/$defs/ByteCount"
+            },
+            "seed": {
+              "$ref": "#/$defs/U8"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PeerFile": {
+      "type": "object",
+      "required": [ "id", "path", "kind", "content" ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "path": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "kind": {
+          "oneOf": [
+            {
+              "const": "utf8-text"
+            },
+            {
+              "const": "binary"
+            }
+          ]
+        },
+        "content": {
+          "$ref": "#/$defs/ByteRecipe"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PeerRecipe": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "generationId",
+            "producer",
+            "artifacts",
+            "diagnostics"
+          ],
+          "properties": {
+            "kind": {
+              "const": "ready"
+            },
+            "generationId": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            },
+            "producer": {
+              "type": "object",
+              "required": [ "id", "version" ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 1048577,
+                  "minLength": 0
+                },
+                "version": {
+                  "type": "string",
+                  "maxLength": 1048577,
+                  "minLength": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            "artifacts": {
+              "type": "array",
+              "maxItems": 257,
+              "items": {
+                "$ref": "#/$defs/PeerFile"
+              }
+            },
+            "diagnostics": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "#/$defs/Diagnostic"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "diagnostics" ],
+          "properties": {
+            "kind": {
+              "const": "failed"
+            },
+            "diagnostics": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "#/$defs/Diagnostic"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "LocalFault": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "field", "path", "unit" ],
+          "properties": {
+            "kind": {
+              "oneOf": [
+                {
+                  "const": "unpaired-surrogate-value"
+                },
+                {
+                  "const": "unpaired-surrogate-key"
+                }
+              ]
+            },
+            "field": {
+              "oneOf": [
+                {
+                  "const": "ir"
+                },
+                {
+                  "const": "options"
+                }
+              ]
+            },
+            "path": {
+              "$ref": "#/$defs/JsonPath"
+            },
+            "unit": {
+              "oneOf": [
+                {
+                  "const": "high"
+                },
+                {
+                  "const": "low"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "field", "path", "value" ],
+          "properties": {
+            "kind": {
+              "const": "nonfinite-number"
+            },
+            "field": {
+              "oneOf": [
+                {
+                  "const": "ir"
+                },
+                {
+                  "const": "options"
+                }
+              ]
+            },
+            "path": {
+              "$ref": "#/$defs/JsonPath"
+            },
+            "value": {
+              "oneOf": [
+                {
+                  "const": "nan"
+                },
+                {
+                  "const": "positive-infinity"
+                },
+                {
+                  "const": "negative-infinity"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "LocalValueRecipe": {
+      "type": "object",
+      "required": [ "kind", "field", "path", "byte", "count" ],
+      "properties": {
+        "kind": {
+          "const": "repeat-ascii-value"
+        },
+        "field": {
+          "oneOf": [
+            {
+              "const": "ir"
+            },
+            {
+              "const": "options"
+            }
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/JsonPath"
+        },
+        "byte": {
+          "$ref": "#/$defs/U7"
+        },
+        "count": {
+          "$ref": "#/$defs/ByteCount"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AttemptDefinition": {
+      "type": "object",
+      "required": [ "id", "offer", "input", "context", "peer", "localFaults" ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/AttemptId"
+        },
+        "offer": {
+          "$ref": "#/$defs/ProviderOffer"
+        },
+        "input": {
+          "type": "object",
+          "required": [ "sessionId", "target", "irVersion", "ir", "options" ],
+          "properties": {
+            "sessionId": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            },
+            "irVersion": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            },
+            "ir": {
+              "$ref": "#/$defs/Json"
+            },
+            "options": {
+              "$ref": "#/$defs/Json"
+            }
+          },
+          "additionalProperties": false
+        },
+        "context": {
+          "$ref": "#/$defs/LocalContext"
+        },
+        "peer": {
+          "$ref": "#/$defs/PeerRecipe"
+        },
+        "localValues": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/LocalValueRecipe"
+          }
+        },
+        "localFaults": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/LocalFault"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "FrameSegment": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "source" ],
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "byte", "count" ],
+          "properties": {
+            "kind": {
+              "const": "repeat-ascii"
+            },
+            "byte": {
+              "$ref": "#/$defs/U7"
+            },
+            "count": {
+              "$ref": "#/$defs/ByteCount"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FrameSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "source" ],
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "segments" ],
+          "properties": {
+            "kind": {
+              "const": "segments"
+            },
+            "segments": {
+              "type": "array",
+              "maxItems": 32,
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/FrameSegment"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "EffectKind": {
+      "oneOf": [
+        {
+          "const": "connect"
+        },
+        {
+          "const": "initialize"
+        },
+        {
+          "const": "generate"
+        },
+        {
+          "const": "read"
+        },
+        {
+          "const": "digest"
+        },
+        {
+          "const": "release"
+        }
+      ]
+    },
+    "EffectRef": {
+      "type": "object",
+      "required": [ "attempt", "index", "kind" ],
+      "properties": {
+        "attempt": {
+          "$ref": "#/$defs/AttemptId"
+        },
+        "index": {
+          "$ref": "#/$defs/EffectIndex"
+        },
+        "kind": {
+          "$ref": "#/$defs/EffectKind"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Delivery": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "connect"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "peer"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "frame" ],
+          "properties": {
+            "kind": {
+              "const": "raw"
+            },
+            "frame": {
+              "$ref": "#/$defs/FrameSource"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "result" ],
+          "properties": {
+            "kind": {
+              "const": "digest"
+            },
+            "result": {
+              "oneOf": [
+                {
+                  "const": "actual"
+                },
+                {
+                  "const": "wrong-32"
+                },
+                {
+                  "const": "short-31"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "xor" ],
+          "properties": {
+            "kind": {
+              "const": "digest-mutated-input"
+            },
+            "xor": {
+              "$ref": "#/$defs/U8"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ViewMutation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "index", "path" ],
+          "properties": {
+            "kind": {
+              "const": "path"
+            },
+            "index": {
+              "type": "integer",
+              "maximum": 9007199254740991,
+              "minimum": 0
+            },
+            "path": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "index", "fromViews", "fromIndex" ],
+          "properties": {
+            "kind": {
+              "const": "reference"
+            },
+            "index": {
+              "type": "integer",
+              "maximum": 9007199254740991,
+              "minimum": 0
+            },
+            "fromViews": {
+              "$ref": "#/$defs/ViewId"
+            },
+            "fromIndex": {
+              "type": "integer",
+              "maximum": 9007199254740991,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ViewSelection": {
+      "type": "object",
+      "required": [ "views", "indices", "mutations" ],
+      "properties": {
+        "views": {
+          "$ref": "#/$defs/ViewId"
+        },
+        "indices": {
+          "type": "array",
+          "maxItems": 257,
+          "items": {
+            "type": "integer",
+            "maximum": 9007199254740991,
+            "minimum": 0
+          }
+        },
+        "mutations": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/ViewMutation"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClientAction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "action", "attempt" ],
+          "properties": {
+            "action": {
+              "const": "start"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "effect", "value" ],
+          "properties": {
+            "action": {
+              "const": "deliver"
+            },
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "value": {
+              "$ref": "#/$defs/Delivery"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "effect", "message" ],
+          "properties": {
+            "action": {
+              "const": "reject"
+            },
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "message": {
+              "$ref": "#/$defs/BoundedText"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "attempt", "maxReads" ],
+          "properties": {
+            "action": {
+              "const": "drain-reads"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "maxReads": {
+              "$ref": "#/$defs/ReadCount"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "context" ],
+          "properties": {
+            "action": {
+              "const": "set-current"
+            },
+            "context": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/LocalContext"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "attempt", "field", "value" ],
+          "properties": {
+            "action": {
+              "const": "replace-caller"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "field": {
+              "oneOf": [
+                {
+                  "const": "ir"
+                },
+                {
+                  "const": "options"
+                }
+              ]
+            },
+            "value": {
+              "$ref": "#/$defs/Json"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "attempt" ],
+          "properties": {
+            "action": {
+              "const": "replace-effect-functions"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "attempt" ],
+          "properties": {
+            "action": {
+              "const": "cancel"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "attempt" ],
+          "properties": {
+            "action": {
+              "const": "close-channel"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "attempt", "views" ],
+          "properties": {
+            "action": {
+              "const": "publish"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "views": {
+              "$ref": "#/$defs/ViewId"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action" ],
+          "properties": {
+            "action": {
+              "const": "clear-registry"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "attempt", "file", "offset", "xor" ],
+          "properties": {
+            "action": {
+              "const": "mutate-copy"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "file": {
+              "$ref": "#/$defs/FileAlias"
+            },
+            "offset": {
+              "$ref": "#/$defs/ByteOffset"
+            },
+            "xor": {
+              "$ref": "#/$defs/U8"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "views", "complete" ],
+          "properties": {
+            "action": {
+              "const": "download"
+            },
+            "views": {
+              "$ref": "#/$defs/ViewSelection"
+            },
+            "complete": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "views" ],
+          "properties": {
+            "action": {
+              "const": "archive"
+            },
+            "views": {
+              "$ref": "#/$defs/ViewSelection"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "action", "label" ],
+          "properties": {
+            "action": {
+              "const": "observe"
+            },
+            "label": {
+              "$ref": "#/$defs/ObservationLabel"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ClientScenario": {
+      "type": "object",
+      "required": [ "attempts", "actions" ],
+      "properties": {
+        "attempts": {
+          "type": "array",
+          "maxItems": 4,
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/AttemptDefinition"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "maxItems": 512,
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ClientAction"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

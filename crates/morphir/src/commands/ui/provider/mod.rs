@@ -13,6 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use morphir_extension_sdk::{ExtensionInfo, GenerateResult};
 
 use crate::error::CliError;
 
@@ -53,6 +54,22 @@ pub trait PlaygroundCapability: Send + Sync {
         &self,
         params: PlaygroundGenerateParams,
     ) -> Result<PlaygroundGenerateResult, CliError>;
+
+    /// Additive negotiated artifact generation. Other providers remain
+    /// unavailable until they implement and advertise the exact profile.
+    async fn generate_artifacts(
+        &self,
+        _params: super::artifacts::ArtifactGenerationInput,
+    ) -> Result<Option<SdkGeneration>, CliError> {
+        Ok(None)
+    }
+}
+
+/// Actual resolved producer metadata and the one SDK invocation result.
+/// Legacy and negotiated projections share this boundary, never regenerate.
+pub struct SdkGeneration {
+    pub producer: ExtensionInfo,
+    pub result: GenerateResult,
 }
 
 /// What a Morphir UI session can actually do. A session may carry a

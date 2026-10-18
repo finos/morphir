@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 
 use super::contract::{
     Capabilities, Format, Observation, Operation, encoded_size, identity, version,
@@ -91,6 +92,22 @@ fn required_option<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     Option::deserialize(deserializer)
 }
 
+fn take_artifact_observations(value: &mut Value) -> Result<Vec<Option<Observation>>, String> {
+    value["records"]
+        .as_array_mut()
+        .ok_or("report records must be an array")?
+        .iter_mut()
+        .map(|record| {
+            let observed = std::mem::replace(&mut record["observed"], Value::Null);
+            if observed.is_null() {
+                Ok(None)
+            } else {
+                Observation::parse(observed).map(Some)
+            }
+        })
+        .collect()
+}
+
 impl Report {
     pub fn adapter_error(corpus: &Corpus, message: String) -> Self {
         let mut report = Self::new(corpus);
@@ -124,6 +141,10 @@ impl Report {
             return Err("Workbench report exceeds 32 MiB".into());
         }
         let mut value = crate::json::strict::parse(text)?;
+        if value["formatVersion"] == super::contract::ARTIFACT_TRANSFER_VERSION {
+            value = crate::json::strict::parse_exact(text)?;
+            super::artifacts::validate_report_shape(&value)?;
+        }
         if value["formatVersion"] == super::contract::CODEC_COMPARISON_VERSION {
             value = crate::json::strict::parse_exact(text)?;
             super::codec_comparison::validate_report_shape(&value)?;
@@ -192,7 +213,18 @@ impl Report {
         if value["formatVersion"] == super::contract::NATIVE_FRAMES_VERSION {
             super::native_frames::validate_report_shape(&value)?;
         }
-        serde_json::from_value(value).map_err(|e| e.to_string())
+        let observations = if value["formatVersion"] == super::contract::ARTIFACT_TRANSFER_VERSION {
+            Some(take_artifact_observations(&mut value)?)
+        } else {
+            None
+        };
+        let mut report: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
+        if let Some(observations) = observations {
+            for (record, observed) in report.records.iter_mut().zip(observations) {
+                record.observed = observed;
+            }
+        }
+        Ok(report)
     }
     pub fn to_json(&self) -> String {
         // Compact JSON keeps retained observation bytes and emitted report bytes
@@ -277,7 +309,7 @@ pub fn check_report(root: &Path, report: &Report) -> Result<(), String> {
             }
             ResultKind::Unsupported
         } else if let Some(observed) = &record.observed {
-            observed.validate_for(case.operation())?;
+            case.validate_observation(observed)?;
             let bytes = encoded_size(observed, observation_budget)?;
             observation_budget -= bytes;
             if seen_exchange_error {
@@ -309,4 +341,23 @@ pub fn check_report(root: &Path, report: &Report) -> Result<(), String> {
     }
     encoded_size(report, MAX_REPORT_BYTES - 1)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod artifact_observation_literal_tests {
+    use super::*;
+    #[test]
+    fn artifact_report_extraction_never_deserializes_arbitrary_values_twice() {
+        // This isolates the extraction mechanism, not a claim that arbitrary
+        // observations satisfy the artifact role's closed evidence schemas.
+        let literal = serde_json::json!({"$serde_json::private::Number":"1","nested":{"$serde_json::private::RawValue":"{\"x\":1,\"x\":2}"}});
+        let mut value =
+            serde_json::json!({"records":[{"observed":{"status":"ok","value":literal}}]});
+        let extracted = take_artifact_observations(&mut value).unwrap();
+        let Some(Observation::Ok { value: actual }) = &extracted[0] else {
+            panic!("missing literal observation")
+        };
+        assert_eq!(actual, &literal);
+        assert!(value["records"][0]["observed"].is_null());
+    }
 }

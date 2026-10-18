@@ -27,6 +27,7 @@ pub const HTTP_POLICY_PROVIDER_VERSION: &str = "0.1.0-draft.25";
 pub const WORKSHEET_PROFILE_VERSION: &str = "0.1.0-draft.1";
 pub const WORKSHEET_VERSION: &str = "0.1.0-draft.27";
 pub const CODEC_COMPARISON_VERSION: &str = "0.1.0-draft.26";
+pub const ARTIFACT_TRANSFER_VERSION: &str = "0.1.0-draft.28";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
 pub(super) fn encoded_size(value: &impl Serialize, limit: usize) -> Result<usize, String> {
@@ -79,6 +80,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.25",
         "=0.1.0-draft.26",
         "=0.1.0-draft.27",
+        "=0.1.0-draft.28",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -100,6 +102,10 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Operation {
+    #[serde(rename = "artifact-server")]
+    ArtifactServer,
+    #[serde(rename = "artifact-client")]
+    ArtifactClient,
     #[serde(rename = "worksheet-evaluate")]
     WorksheetEvaluate,
     #[serde(rename = "worksheet-validate")]
@@ -150,6 +156,16 @@ pub enum Operation {
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if version == ARTIFACT_TRANSFER_VERSION {
+            return if matches!(self, Self::ArtifactServer | Self::ArtifactClient) {
+                Ok(())
+            } else {
+                Err("operation is not defined by this Workbench draft".into())
+            };
+        }
+        if matches!(self, Self::ArtifactServer | Self::ArtifactClient) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if version == WORKSHEET_VERSION {
             return if matches!(self, Self::WorksheetEvaluate | Self::WorksheetValidate) {
                 Ok(())
@@ -227,7 +243,9 @@ impl Operation {
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
         if matches!(
             self,
-            Self::WorksheetEvaluate
+            Self::ArtifactServer
+                | Self::ArtifactClient
+                | Self::WorksheetEvaluate
                 | Self::WorksheetValidate
                 | Self::TranscodeInvocations
                 | Self::CompareValues
@@ -390,6 +408,9 @@ impl Capabilities {
         if self.contract_version == WORKSHEET_VERSION && self.formats != [Format::Json] {
             return Err("worksheet requires JSON framing".into());
         }
+        if self.contract_version == ARTIFACT_TRANSFER_VERSION && self.formats != [Format::Json] {
+            return Err("artifact transfer requires JSON framing".into());
+        }
         if self.contract_version == CODEC_COMPARISON_VERSION && self.formats != [Format::Json] {
             return Err("codec comparison requires JSON framing".into());
         }
@@ -417,8 +438,27 @@ pub enum Observation {
 
 impl Observation {
     pub(super) fn parse(value: Value) -> Result<Self, String> {
-        let observation: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
-        Ok(observation)
+        // `Value::Deserialize` can reinterpret ordinary private-looking maps
+        // when serde_json's raw_value/arbitrary_precision features are unified.
+        // The literal-aware boundary has already decoded this document. Move
+        // its arbitrary value subtree directly, rather than deserializing twice.
+        let Value::Object(mut members) = value else {
+            return Err("Workbench observation must be an object".into());
+        };
+        if members.len() != 2 {
+            return Err("Workbench observation has missing or unknown members".into());
+        }
+        match members.remove("status") {
+            Some(Value::String(status)) if status == "ok" => members
+                .remove("value")
+                .map(|value| Self::Ok { value })
+                .ok_or_else(|| "Workbench ok observation requires value".into()),
+            Some(Value::String(status)) if status == "invalid" => match members.remove("code") {
+                Some(Value::String(code)) => Ok(Self::Invalid { code }),
+                _ => Err("Workbench invalid observation requires a string code".into()),
+            },
+            _ => Err("unsupported Workbench observation status".into()),
+        }
     }
 
     pub(super) fn validate_for(&self, operation: Operation) -> Result<(), String> {
@@ -427,6 +467,12 @@ impl Observation {
                 projection_for(value, operation)?;
             }
             Self::Invalid { code } => {
+                if matches!(
+                    operation,
+                    Operation::ArtifactServer | Operation::ArtifactClient
+                ) {
+                    return Err("artifact domain refusals belong in the observed transcript".into());
+                }
                 if matches!(
                     operation,
                     Operation::RunHttpPolicyClient
@@ -535,6 +581,8 @@ impl Observation {
 
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
     match operation {
+        Operation::ArtifactServer => super::artifacts::projection(value),
+        Operation::ArtifactClient => super::artifact_client::projection(value),
         Operation::WorksheetEvaluate | Operation::WorksheetValidate => {
             super::worksheet::projection(value, operation)
         }

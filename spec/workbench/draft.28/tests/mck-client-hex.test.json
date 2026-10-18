@@ -1,0 +1,53 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-input.schema.json#/$defs/ByteRecipe",
+  "tests": [
+    {
+      "description": "empty hex",
+      "data": {
+        "kind": "hex",
+        "hex": ""
+      },
+      "valid": true
+    },
+    {
+      "description": "one byte",
+      "data": {
+        "kind": "hex",
+        "hex": "00"
+      },
+      "valid": true
+    },
+    {
+      "description": "lowercase full range",
+      "data": {
+        "kind": "hex",
+        "hex": "001f7f80ff"
+      },
+      "valid": true
+    },
+    {
+      "description": "odd length",
+      "data": {
+        "kind": "hex",
+        "hex": "001"
+      },
+      "valid": false
+    },
+    {
+      "description": "uppercase refused",
+      "data": {
+        "kind": "hex",
+        "hex": "0F"
+      },
+      "valid": false
+    },
+    {
+      "description": "non-hex refused",
+      "data": {
+        "kind": "hex",
+        "hex": "0g"
+      },
+      "valid": false
+    }
+  ]
+}

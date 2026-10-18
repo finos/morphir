@@ -1,0 +1,28 @@
+{
+  "attempts": [
+    {
+      "id": "A",
+      "offer": {"id":"provider-client","status":"available","capabilities":[{"name":"morphir/workbench/artifacts","version":"0.1.0-draft.1"}]},
+      "input": {"sessionId":"session-client","target":"fixture","irVersion":"4","ir":{"formatVersion":4},"options":{}},
+      "context": {"sourceId":"client-source","revision":1,"epoch":1},
+      "peer": {"kind":"ready","generationId":"generation-A","producer":{"id":"artifact-fixture","version":"0.1.0"},"artifacts":[{"id":"artifact-A","path":"empty.bin","kind":"binary","content":{"kind":"hex","hex":""}}],"diagnostics":[]},
+      "localFaults": []
+    }
+  ],
+  "actions": [
+    {"action":"set-current","context":{"sourceId":"client-source","revision":1,"epoch":1}},
+    {"action":"start","attempt":"A"},
+    {"action":"deliver","effect":{"attempt":"A","index":0,"kind":"connect"},"value":{"kind":"connect"}},
+    {"action":"deliver","effect":{"attempt":"A","index":1,"kind":"initialize"},"value":{"kind":"peer"}},
+    {"action":"deliver","effect":{"attempt":"A","index":2,"kind":"generate"},"value":{"kind":"peer"}},
+    {"action":"drain-reads","attempt":"A","maxReads":1},
+    {"action":"deliver","effect":{"attempt":"A","index":4,"kind":"digest"},"value":{"kind":"digest","result":"actual"}},
+    {"action":"deliver","effect":{"attempt":"A","index":5,"kind":"release"},"value":{"kind":"peer"}},
+    {"action":"publish","attempt":"A","views":"views-A"},
+    {"action":"download","views":{"views":"views-A","indices":[0],"mutations":[]},"complete":false},
+    {"action":"archive","views":{"views":"views-A","indices":[0],"mutations":[]}},
+    {"action":"clear-registry"},
+    {"action":"download","views":{"views":"views-A","indices":[0],"mutations":[]},"complete":false},
+    {"action":"observe","label":"released-original-empty-bytes"}
+  ]
+}

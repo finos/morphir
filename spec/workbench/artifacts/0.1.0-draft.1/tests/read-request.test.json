@@ -1,0 +1,105 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/read-request.schema.json",
+  "tests": [
+    {
+      "description": "Independently authored profile example",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 0,
+        "maxBytes": 65536
+      },
+      "valid": true
+    },
+    {
+      "description": "Unknown members are refused in this exact draft",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 0,
+        "maxBytes": 65536,
+        "unknown": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Refuse out-of-contract maxBytes 0",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 0,
+        "maxBytes": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "Refuse out-of-contract maxBytes 65537",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 0,
+        "maxBytes": 65537
+      },
+      "valid": false
+    },
+    {
+      "description": "Refuse out-of-contract offset -1",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": -1,
+        "maxBytes": 65536
+      },
+      "valid": false
+    },
+    {
+      "description": "Refuse out-of-contract offset 0.5",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 0.5,
+        "maxBytes": 65536
+      },
+      "valid": false
+    },
+    {
+      "description": "Refuse out-of-contract offset 16777217",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 16777217,
+        "maxBytes": 65536
+      },
+      "valid": false
+    },
+    {
+      "description": "Refuse out-of-contract generationId \"bad\\nidentity\"",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "generationId": "bad\nidentity",
+        "artifactId": "artifact-1",
+        "offset": 0,
+        "maxBytes": 65536
+      },
+      "valid": false
+    },
+    {
+      "description": "Refuse out-of-contract contractVersion \"0.1.0-draft.2\"",
+      "data": {
+        "contractVersion": "0.1.0-draft.2",
+        "generationId": "generation-1",
+        "artifactId": "artifact-1",
+        "offset": 0,
+        "maxBytes": 65536
+      },
+      "valid": false
+    }
+  ]
+}

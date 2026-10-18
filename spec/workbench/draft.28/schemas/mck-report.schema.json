@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-report.schema.json",
+  "title": "Worksheet mck-report draft.27",
+  "description": "Exact separately scoped artifact-server and artifact-client evidence. Semantic byte, work, authority and lifecycle rules are normative in README.html",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.28",
+      "suite": "workbench",
+      "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "capabilities": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.28",
+        "binding": "example-rust-artifact-host",
+        "language": "rust",
+        "operations": [ "artifact-server" ],
+        "formats": [ "json" ]
+      },
+      "records": [
+        {
+          "caseId": "bytes-empty-binary",
+          "operation": "artifact-server",
+          "format": "json",
+          "result": "pass",
+          "observed": {
+            "status": "ok",
+            "value": {
+              "sessionId": "session-fixture",
+              "providerId": "playground",
+              "events": [
+                {
+                  "event": "connected",
+                  "connection": "c1",
+                  "status": "accepted"
+                },
+                {
+                  "event": "initialized",
+                  "connection": "c1",
+                  "status": "initialized"
+                },
+                {
+                  "event": "generated",
+                  "connection": "c1",
+                  "generation": "g1",
+                  "requestId": "2",
+                  "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"status\":\"ready\",\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session-fixture\",\"providerId\":\"playground\",\"generationId\":\"11111111-1111-4111-8111-111111111111\",\"producer\":{\"id\":\"artifact-fixture\",\"version\":\"0.1.0\"},\"target\":\"fixture\",\"irVersion\":\"4\",\"artifacts\":[{\"id\":\"00000000-0000-4000-8000-000000000001\",\"path\":\"data.bin\",\"kind\":\"binary\",\"byteLength\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}],\"diagnostics\":[]}}"
+                },
+                {
+                  "event": "usage",
+                  "invocations": 1,
+                  "reservedBytes": 0,
+                  "reservedGenerations": 1,
+                  "activeInvocations": 0
+                },
+                {
+                  "event": "transferred",
+                  "connection": "c1",
+                  "generation": "g1",
+                  "artifactIndex": 0,
+                  "maxBytes": 65536,
+                  "chunks": [],
+                  "byteLength": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                {
+                  "event": "read",
+                  "connection": "c1",
+                  "requestId": "3000",
+                  "reply": "{\"jsonrpc\":\"2.0\",\"id\":3000,\"result\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"generationId\":\"11111111-1111-4111-8111-111111111111\",\"artifactId\":\"00000000-0000-4000-8000-000000000001\",\"offset\":0,\"nextOffset\":0,\"content\":\"\"}}"
+                },
+                {
+                  "event": "released",
+                  "connection": "c1",
+                  "generation": "g1",
+                  "requestId": "9000",
+                  "reply": "{\"jsonrpc\":\"2.0\",\"id\":9000,\"result\":{}}"
+                },
+                {
+                  "event": "released",
+                  "connection": "c1",
+                  "generation": "g1",
+                  "requestId": "9001",
+                  "reply": "{\"jsonrpc\":\"2.0\",\"id\":9001,\"result\":{}}"
+                },
+                {
+                  "event": "closed",
+                  "connection": "c1"
+                },
+                {
+                  "event": "usage",
+                  "invocations": 1,
+                  "reservedBytes": 0,
+                  "reservedGenerations": 0,
+                  "activeInvocations": 0
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "errors": [],
+      "qualified": true
+    }
+  ],
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "suite",
+    "corpusHash",
+    "capabilities",
+    "records",
+    "errors",
+    "qualified"
+  ],
+  "properties": {
+    "formatVersion": {
+      "const": "0.1.0-draft.28"
+    },
+    "suite": {
+      "const": "workbench"
+    },
+    "corpusHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capabilities": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-capabilities.schema.json"
+        }
+      ]
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 1024,
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "caseId",
+              "operation",
+              "format",
+              "result",
+              "observed"
+            ],
+            "properties": {
+              "caseId": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "artifact-server"
+              },
+              "format": {
+                "const": "json"
+              },
+              "result": {
+                "enum": [ "pass", "fail", "unsupported", "error" ]
+              },
+              "observed": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-observation.schema.json"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "caseId",
+              "operation",
+              "format",
+              "result",
+              "observed"
+            ],
+            "properties": {
+              "caseId": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "artifact-client"
+              },
+              "format": {
+                "const": "json"
+              },
+              "result": {
+                "enum": [ "pass", "fail", "unsupported", "error" ]
+              },
+              "observed": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-observation.schema.json"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [ "phase", "message" ],
+        "properties": {
+          "phase": {
+            "enum": [ "spawn", "capabilities", "exchange", "shutdown" ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 16384,
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "qualified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

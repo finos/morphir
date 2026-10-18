@@ -1,0 +1,44 @@
+{
+  "operation": "artifact-server",
+  "scope": "Artifact-only non-object option refusal before SDK invocation or host reservation.",
+  "cases": 6,
+  "corpusSha256": "aee33ed06c9ec64f8edbd8c4d86d635499d8ceb31228caba6d0950bdc9dfaa75",
+  "expectedFromObservedOutput": false,
+  "authorSha256": "a5d7b416732b9a0f6da73014cfdd0bf18f0908b1e193a3a0b3c17b096497953e",
+  "sources": [
+    "SDK GenerateRequest.options HashMap<String,Value>",
+    "ArtifactError::InvalidRequest / artifact_rpc_error maps INVALID_PARAMS before state.artifacts.begin"
+  ],
+  "caseHashes": [
+    {
+      "id": "options-nonobject-null",
+      "inputSha256": "28b44c9763c5b1c21877e46c7c72eaf4b496f1ead1e5d498b421a642238daecf",
+      "expectedSha256": "678d02a6f90eaad3cd3215a849f0892bed9b2c85b9cb36984f7f33e8b4f71df0"
+    },
+    {
+      "id": "options-nonobject-boolean",
+      "inputSha256": "d6c1e08a4291ecb668afd804eb331147826aeee2dfba8d56e26b1a214556be93",
+      "expectedSha256": "678d02a6f90eaad3cd3215a849f0892bed9b2c85b9cb36984f7f33e8b4f71df0"
+    },
+    {
+      "id": "options-nonobject-number",
+      "inputSha256": "679626b42d45337a6573b365c84cac38a0d1763fb972a0a65beeca7056c7c131",
+      "expectedSha256": "678d02a6f90eaad3cd3215a849f0892bed9b2c85b9cb36984f7f33e8b4f71df0"
+    },
+    {
+      "id": "options-nonobject-string",
+      "inputSha256": "712b2cfb2d87de5ee90461968b0e4c3e9e8bc6688e91f1982b9dc0beaccc864e",
+      "expectedSha256": "678d02a6f90eaad3cd3215a849f0892bed9b2c85b9cb36984f7f33e8b4f71df0"
+    },
+    {
+      "id": "options-nonobject-empty-array",
+      "inputSha256": "d9d4236c2d31e03811c6a3be2ba4f4feb75eb2c4b75e80a948f5e0df93a931cc",
+      "expectedSha256": "678d02a6f90eaad3cd3215a849f0892bed9b2c85b9cb36984f7f33e8b4f71df0"
+    },
+    {
+      "id": "options-nonobject-nested-array",
+      "inputSha256": "e925fee113d42c6f1389460e2ad3990a791ed801cb4be578f976f3dec40eb54e",
+      "expectedSha256": "678d02a6f90eaad3cd3215a849f0892bed9b2c85b9cb36984f7f33e8b4f71df0"
+    }
+  ]
+}

@@ -6,6 +6,12 @@ use serde_json::ser::{PrettyFormatter, Serializer};
 
 pub(crate) mod strict;
 
+/// Parse literal JSON before any map or floating-point conversion can discard
+/// duplicate members or exact numeric evidence. Container depth is bounded.
+pub fn parse_exact_document(text: &str) -> Result<serde_json::Value, String> {
+    strict::parse_exact(text)
+}
+
 pub fn to_tab_json(value: &impl Serialize) -> String {
     let mut out = Vec::new();
     let mut serializer = Serializer::with_formatter(&mut out, PrettyFormatter::with_indent(b"\t"));

@@ -20,8 +20,8 @@ use morphir_daemon::DaemonError;
 use morphir_extension_sdk::{ExtensionCapabilities, ExtensionInfo};
 use morphir_host::{
     CallError, CapabilityMetadataScope, Channel, ChannelState, ExpectedChecks, ExpectedExtension,
-    GuestConnection, GuestSource, HostError, InvocationMode, InvocationPolicy, JsonRpcConnection,
-    ProviderOrigin, Resolved, Session,
+    GuestConnection, GuestResponsePolicy, GuestSource, HostError, InvocationMode, InvocationPolicy,
+    JsonRpcConnection, ProviderOrigin, Resolved, Session,
 };
 use morphir_host_native::process::{ProcessChannel, ProcessLaunch};
 use morphir_host_native::{CheckedConnection, InstalledSource, InstalledSourceError};
@@ -80,7 +80,20 @@ impl GuestSource for InstalledProvider {
     }
 
     async fn connect(&self, workspace: &Path) -> Result<Box<dyn GuestConnection>, HostError> {
-        match self.0.activate(workspace).await {
+        self.connect_with_response_policy(workspace, GuestResponsePolicy::Legacy)
+            .await
+    }
+
+    async fn connect_with_response_policy(
+        &self,
+        workspace: &Path,
+        policy: GuestResponsePolicy,
+    ) -> Result<Box<dyn GuestConnection>, HostError> {
+        match self
+            .0
+            .activate_with_response_policy(workspace, policy)
+            .await
+        {
             Ok(guest) => Ok(Box::new(guest.connection)),
             Err(error) => Err(HostError::Invalid(installed_failure_text(error))),
         }

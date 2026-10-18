@@ -158,6 +158,12 @@ name = "kb_acceptance"
 path = "tests/kb_acceptance.rs"
 harness = false
 
+# This binary also runs as a real installed SDK process fixture.
+[[test]]
+name = "ui_artifact_process"
+path = "tests/ui_artifact_process.rs"
+harness = false
+
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ version }-{ target }.{ archive-format }"
 pkg-fmt = "tgz"

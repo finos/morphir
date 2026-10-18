@@ -1,0 +1,47 @@
+{
+  "profile": "morphir/workbench/artifacts",
+  "contractVersion": "0.1.0-draft.1",
+  "description": "Independently authored producer-version semantic boundary expectations; not derived from a decoder or adapter.",
+  "cases": [
+    {
+      "version": "9007199254740991.0.0",
+      "accepted": true
+    },
+    {
+      "version": "0.9007199254740991.0",
+      "accepted": true
+    },
+    {
+      "version": "0.0.9007199254740991",
+      "accepted": true
+    },
+    {
+      "version": "1.2.3-9007199254740992000000000000000000000000+build.123",
+      "accepted": true
+    },
+    {
+      "version": "9007199254740992.0.0",
+      "accepted": false
+    },
+    {
+      "version": "0.9007199254740992.0",
+      "accepted": false
+    },
+    {
+      "version": "0.0.9007199254740992",
+      "accepted": false
+    },
+    {
+      "version": "18446744073709551615.0.0",
+      "accepted": false
+    },
+    {
+      "version": "v1.2.3",
+      "accepted": false
+    },
+    {
+      "version": "01.2.3",
+      "accepted": false
+    }
+  ]
+}

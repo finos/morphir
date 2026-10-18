@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/read-result.schema.json",
+  "title": "Artifact read result",
+  "description": "Exact negotiated artifact transfer draft; complete semantic rules and encoded bounds are normative in README.html",
+  "examples": [
+    {
+      "profile": "morphir/workbench/artifacts",
+      "contractVersion": "0.1.0-draft.1",
+      "generationId": "generation-1",
+      "artifactId": "artifact-1",
+      "offset": 0,
+      "nextOffset": 0,
+      "content": ""
+    }
+  ],
+  "type": "object",
+  "required": [
+    "profile",
+    "contractVersion",
+    "generationId",
+    "artifactId",
+    "offset",
+    "nextOffset",
+    "content"
+  ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/artifacts"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.1"
+    },
+    "generationId": {
+      "type": "string",
+      "not": {
+        "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "artifactId": {
+      "type": "string",
+      "not": {
+        "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "offset": {
+      "type": "integer",
+      "maximum": 16777216,
+      "minimum": 0
+    },
+    "nextOffset": {
+      "type": "integer",
+      "maximum": 16777216,
+      "minimum": 0
+    },
+    "content": {
+      "type": "string",
+      "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+      "maxLength": 87384
+    }
+  },
+  "additionalProperties": false
+}

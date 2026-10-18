@@ -1,5 +1,7 @@
 //! Workbench codec cases with parent-owned expectations and explicit adapters.
 
+mod artifact_client;
+mod artifacts;
 mod capability_executions;
 mod capability_policy;
 mod codec_comparison;
@@ -21,8 +23,8 @@ mod selected_scheme;
 mod worksheet;
 
 pub use contract::{
-    ADMISSION_VERSION, CAPABILITY_EXECUTIONS_VERSION, CAPABILITY_POLICY_VERSION,
-    CODEC_COMPARISON_VERSION, Capabilities, EXECUTIONS_VERSION, Format,
+    ADMISSION_VERSION, ARTIFACT_TRANSFER_VERSION, CAPABILITY_EXECUTIONS_VERSION,
+    CAPABILITY_POLICY_VERSION, CODEC_COMPARISON_VERSION, Capabilities, EXECUTIONS_VERSION, Format,
     HTTP_POLICY_BOUNDARY_VERSION, HTTP_POLICY_CLIENT_VERSION, HTTP_POLICY_PROVIDER_VERSION,
     INVOCATION_VERSION, MAX_VALUE_BYTES, NATIVE_CLIENT_VERSION, NATIVE_FRAMES_VERSION,
     NATIVE_OWNER_VERSION, NATIVE_POLICY_BOUNDARY_VERSION, NATIVE_POLICY_CLIENT_VERSION,
@@ -83,3 +85,6 @@ mod codec_comparison_tests;
 
 #[cfg(test)]
 mod worksheet_tests;
+
+#[cfg(test)]
+mod artifact_tests;

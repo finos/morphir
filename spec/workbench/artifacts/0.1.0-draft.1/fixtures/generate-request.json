@@ -1,0 +1,12 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "providerId": "playground",
+  "generation": {
+    "ir": {
+      "formatVersion": 4
+    },
+    "irVersion": "4",
+    "target": "fixture",
+    "options": {}
+  }
+}

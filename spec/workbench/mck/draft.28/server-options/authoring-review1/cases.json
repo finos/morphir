@@ -1,0 +1,539 @@
+{
+  "formatVersion": "0.1.0-draft.28",
+  "cases": [
+    {
+      "id": "options-nonobject-null",
+      "operation": "artifact-server",
+      "format": "json",
+      "input": {
+        "fixture": {
+          "producer": {
+            "id": "artifact-fixture",
+            "version": "0.1.0"
+          },
+          "offer": "exact",
+          "completion": "success",
+          "artifacts": [],
+          "diagnostics": []
+        },
+        "actions": [
+          {
+            "action": "connect",
+            "connection": "c1",
+            "authentication": "valid"
+          },
+          {
+            "action": "initialize",
+            "connection": "c1"
+          },
+          {
+            "action": "generate",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "2",
+            "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":null}}"
+          },
+          {
+            "action": "usage"
+          },
+          {
+            "action": "close",
+            "connection": "c1"
+          },
+          {
+            "action": "usage"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "sessionId": "session-fixture",
+          "providerId": "playground",
+          "events": [
+            {
+              "event": "connected",
+              "connection": "c1",
+              "status": "accepted"
+            },
+            {
+              "event": "initialized",
+              "connection": "c1",
+              "status": "initialized"
+            },
+            {
+              "event": "generated",
+              "connection": "c1",
+              "generation": "g1",
+              "requestId": "2",
+              "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32602,\"message\":\"Invalid artifact request.\",\"data\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"code\":\"artifacts.invalid_request\"}}}"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            },
+            {
+              "event": "closed",
+              "connection": "c1"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "options-nonobject-boolean",
+      "operation": "artifact-server",
+      "format": "json",
+      "input": {
+        "fixture": {
+          "producer": {
+            "id": "artifact-fixture",
+            "version": "0.1.0"
+          },
+          "offer": "exact",
+          "completion": "success",
+          "artifacts": [],
+          "diagnostics": []
+        },
+        "actions": [
+          {
+            "action": "connect",
+            "connection": "c1",
+            "authentication": "valid"
+          },
+          {
+            "action": "initialize",
+            "connection": "c1"
+          },
+          {
+            "action": "generate",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "2",
+            "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":true}}"
+          },
+          {
+            "action": "usage"
+          },
+          {
+            "action": "close",
+            "connection": "c1"
+          },
+          {
+            "action": "usage"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "sessionId": "session-fixture",
+          "providerId": "playground",
+          "events": [
+            {
+              "event": "connected",
+              "connection": "c1",
+              "status": "accepted"
+            },
+            {
+              "event": "initialized",
+              "connection": "c1",
+              "status": "initialized"
+            },
+            {
+              "event": "generated",
+              "connection": "c1",
+              "generation": "g1",
+              "requestId": "2",
+              "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32602,\"message\":\"Invalid artifact request.\",\"data\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"code\":\"artifacts.invalid_request\"}}}"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            },
+            {
+              "event": "closed",
+              "connection": "c1"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "options-nonobject-number",
+      "operation": "artifact-server",
+      "format": "json",
+      "input": {
+        "fixture": {
+          "producer": {
+            "id": "artifact-fixture",
+            "version": "0.1.0"
+          },
+          "offer": "exact",
+          "completion": "success",
+          "artifacts": [],
+          "diagnostics": []
+        },
+        "actions": [
+          {
+            "action": "connect",
+            "connection": "c1",
+            "authentication": "valid"
+          },
+          {
+            "action": "initialize",
+            "connection": "c1"
+          },
+          {
+            "action": "generate",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "2",
+            "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":0}}"
+          },
+          {
+            "action": "usage"
+          },
+          {
+            "action": "close",
+            "connection": "c1"
+          },
+          {
+            "action": "usage"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "sessionId": "session-fixture",
+          "providerId": "playground",
+          "events": [
+            {
+              "event": "connected",
+              "connection": "c1",
+              "status": "accepted"
+            },
+            {
+              "event": "initialized",
+              "connection": "c1",
+              "status": "initialized"
+            },
+            {
+              "event": "generated",
+              "connection": "c1",
+              "generation": "g1",
+              "requestId": "2",
+              "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32602,\"message\":\"Invalid artifact request.\",\"data\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"code\":\"artifacts.invalid_request\"}}}"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            },
+            {
+              "event": "closed",
+              "connection": "c1"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "options-nonobject-string",
+      "operation": "artifact-server",
+      "format": "json",
+      "input": {
+        "fixture": {
+          "producer": {
+            "id": "artifact-fixture",
+            "version": "0.1.0"
+          },
+          "offer": "exact",
+          "completion": "success",
+          "artifacts": [],
+          "diagnostics": []
+        },
+        "actions": [
+          {
+            "action": "connect",
+            "connection": "c1",
+            "authentication": "valid"
+          },
+          {
+            "action": "initialize",
+            "connection": "c1"
+          },
+          {
+            "action": "generate",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "2",
+            "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":\"preset\"}}"
+          },
+          {
+            "action": "usage"
+          },
+          {
+            "action": "close",
+            "connection": "c1"
+          },
+          {
+            "action": "usage"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "sessionId": "session-fixture",
+          "providerId": "playground",
+          "events": [
+            {
+              "event": "connected",
+              "connection": "c1",
+              "status": "accepted"
+            },
+            {
+              "event": "initialized",
+              "connection": "c1",
+              "status": "initialized"
+            },
+            {
+              "event": "generated",
+              "connection": "c1",
+              "generation": "g1",
+              "requestId": "2",
+              "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32602,\"message\":\"Invalid artifact request.\",\"data\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"code\":\"artifacts.invalid_request\"}}}"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            },
+            {
+              "event": "closed",
+              "connection": "c1"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "options-nonobject-empty-array",
+      "operation": "artifact-server",
+      "format": "json",
+      "input": {
+        "fixture": {
+          "producer": {
+            "id": "artifact-fixture",
+            "version": "0.1.0"
+          },
+          "offer": "exact",
+          "completion": "success",
+          "artifacts": [],
+          "diagnostics": []
+        },
+        "actions": [
+          {
+            "action": "connect",
+            "connection": "c1",
+            "authentication": "valid"
+          },
+          {
+            "action": "initialize",
+            "connection": "c1"
+          },
+          {
+            "action": "generate",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "2",
+            "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":[]}}"
+          },
+          {
+            "action": "usage"
+          },
+          {
+            "action": "close",
+            "connection": "c1"
+          },
+          {
+            "action": "usage"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "sessionId": "session-fixture",
+          "providerId": "playground",
+          "events": [
+            {
+              "event": "connected",
+              "connection": "c1",
+              "status": "accepted"
+            },
+            {
+              "event": "initialized",
+              "connection": "c1",
+              "status": "initialized"
+            },
+            {
+              "event": "generated",
+              "connection": "c1",
+              "generation": "g1",
+              "requestId": "2",
+              "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32602,\"message\":\"Invalid artifact request.\",\"data\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"code\":\"artifacts.invalid_request\"}}}"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            },
+            {
+              "event": "closed",
+              "connection": "c1"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "options-nonobject-nested-array",
+      "operation": "artifact-server",
+      "format": "json",
+      "input": {
+        "fixture": {
+          "producer": {
+            "id": "artifact-fixture",
+            "version": "0.1.0"
+          },
+          "offer": "exact",
+          "completion": "success",
+          "artifacts": [],
+          "diagnostics": []
+        },
+        "actions": [
+          {
+            "action": "connect",
+            "connection": "c1",
+            "authentication": "valid"
+          },
+          {
+            "action": "initialize",
+            "connection": "c1"
+          },
+          {
+            "action": "generate",
+            "connection": "c1",
+            "generation": "g1",
+            "requestId": "2",
+            "params": "{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"playground\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":[{\"nested\":1}]}}"
+          },
+          {
+            "action": "usage"
+          },
+          {
+            "action": "close",
+            "connection": "c1"
+          },
+          {
+            "action": "usage"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "sessionId": "session-fixture",
+          "providerId": "playground",
+          "events": [
+            {
+              "event": "connected",
+              "connection": "c1",
+              "status": "accepted"
+            },
+            {
+              "event": "initialized",
+              "connection": "c1",
+              "status": "initialized"
+            },
+            {
+              "event": "generated",
+              "connection": "c1",
+              "generation": "g1",
+              "requestId": "2",
+              "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32602,\"message\":\"Invalid artifact request.\",\"data\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"code\":\"artifacts.invalid_request\"}}}"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            },
+            {
+              "event": "closed",
+              "connection": "c1"
+            },
+            {
+              "event": "usage",
+              "invocations": 0,
+              "reservedBytes": 0,
+              "reservedGenerations": 0,
+              "activeInvocations": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

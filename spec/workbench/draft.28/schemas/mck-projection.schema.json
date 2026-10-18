@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-projection.schema.json",
+  "title": "Artifact transfer mck-projection",
+  "description": "Exact artifact-server evidence with independently authored byte hashes; semantic byte, work, authority and lifecycle rules are normative in README.html",
+  "examples": [
+    {
+      "sessionId": "session-fixture",
+      "providerId": "playground",
+      "events": [
+        {
+          "event": "connected",
+          "connection": "c1",
+          "status": "accepted"
+        },
+        {
+          "event": "initialized",
+          "connection": "c1",
+          "status": "initialized"
+        },
+        {
+          "event": "generated",
+          "connection": "c1",
+          "generation": "g1",
+          "requestId": "2",
+          "reply": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"status\":\"ready\",\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"sessionId\":\"session-fixture\",\"providerId\":\"playground\",\"generationId\":\"11111111-1111-4111-8111-111111111111\",\"producer\":{\"id\":\"artifact-fixture\",\"version\":\"0.1.0\"},\"target\":\"fixture\",\"irVersion\":\"4\",\"artifacts\":[{\"id\":\"00000000-0000-4000-8000-000000000001\",\"path\":\"data.bin\",\"kind\":\"binary\",\"byteLength\":0,\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"}],\"diagnostics\":[]}}"
+        },
+        {
+          "event": "usage",
+          "invocations": 1,
+          "reservedBytes": 0,
+          "reservedGenerations": 1,
+          "activeInvocations": 0
+        },
+        {
+          "event": "transferred",
+          "connection": "c1",
+          "generation": "g1",
+          "artifactIndex": 0,
+          "maxBytes": 65536,
+          "chunks": [],
+          "byteLength": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "event": "read",
+          "connection": "c1",
+          "requestId": "3000",
+          "reply": "{\"jsonrpc\":\"2.0\",\"id\":3000,\"result\":{\"profile\":\"morphir/workbench/artifacts\",\"contractVersion\":\"0.1.0-draft.1\",\"generationId\":\"11111111-1111-4111-8111-111111111111\",\"artifactId\":\"00000000-0000-4000-8000-000000000001\",\"offset\":0,\"nextOffset\":0,\"content\":\"\"}}"
+        },
+        {
+          "event": "released",
+          "connection": "c1",
+          "generation": "g1",
+          "requestId": "9000",
+          "reply": "{\"jsonrpc\":\"2.0\",\"id\":9000,\"result\":{}}"
+        },
+        {
+          "event": "released",
+          "connection": "c1",
+          "generation": "g1",
+          "requestId": "9001",
+          "reply": "{\"jsonrpc\":\"2.0\",\"id\":9001,\"result\":{}}"
+        },
+        {
+          "event": "closed",
+          "connection": "c1"
+        },
+        {
+          "event": "usage",
+          "invocations": 1,
+          "reservedBytes": 0,
+          "reservedGenerations": 0,
+          "activeInvocations": 0
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "sessionId", "providerId", "events" ],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "providerId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 512,
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "event", "connection", "status" ],
+            "properties": {
+              "event": {
+                "const": "connected"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "status": {
+                "enum": [ "accepted", "refused" ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "event", "connection", "status" ],
+            "properties": {
+              "event": {
+                "const": "initialized"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "status": {
+                "enum": [ "initialized", "refused" ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "event",
+              "connection",
+              "generation",
+              "requestId",
+              "reply"
+            ],
+            "properties": {
+              "event": {
+                "const": "generated"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$"
+              },
+              "reply": {
+                "type": "string",
+                "maxLength": 131072,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "event", "connection", "generation" ],
+            "properties": {
+              "event": {
+                "const": "started"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "event", "connection", "requestId", "reply" ],
+            "properties": {
+              "event": {
+                "const": "read"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$"
+              },
+              "reply": {
+                "type": "string",
+                "maxLength": 131072,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "event",
+              "connection",
+              "generation",
+              "artifactIndex",
+              "maxBytes",
+              "chunks",
+              "byteLength",
+              "sha256"
+            ],
+            "properties": {
+              "event": {
+                "const": "transferred"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "artifactIndex": {
+                "type": "integer",
+                "maximum": 255,
+                "minimum": 0
+              },
+              "maxBytes": {
+                "type": "integer",
+                "maximum": 65536,
+                "minimum": 1
+              },
+              "chunks": {
+                "type": "array",
+                "maxItems": 4096,
+                "minItems": 0,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "generationId",
+                    "artifactId",
+                    "offset",
+                    "nextOffset",
+                    "byteLength",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "generationId": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "minLength": 1
+                    },
+                    "artifactId": {
+                      "type": "string",
+                      "maxLength": 128,
+                      "minLength": 1
+                    },
+                    "offset": {
+                      "type": "integer",
+                      "maximum": 16777216,
+                      "minimum": 0
+                    },
+                    "nextOffset": {
+                      "type": "integer",
+                      "maximum": 16777216,
+                      "minimum": 0
+                    },
+                    "byteLength": {
+                      "type": "integer",
+                      "maximum": 65536,
+                      "minimum": 0
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "byteLength": {
+                "type": "integer",
+                "maximum": 16777216,
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "event",
+              "connection",
+              "generation",
+              "requestId",
+              "reply"
+            ],
+            "properties": {
+              "event": {
+                "const": "released"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "generation": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "requestId": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$"
+              },
+              "reply": {
+                "type": "string",
+                "maxLength": 131072,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "event", "connection", "reply" ],
+            "properties": {
+              "event": {
+                "const": "raw"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "reply": {
+                "type": "string",
+                "maxLength": 131072,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "event", "connection" ],
+            "properties": {
+              "event": {
+                "const": "closed"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "event",
+              "invocations",
+              "reservedBytes",
+              "reservedGenerations",
+              "activeInvocations"
+            ],
+            "properties": {
+              "event": {
+                "const": "usage"
+              },
+              "invocations": {
+                "type": "integer",
+                "maximum": 512,
+                "minimum": 0
+              },
+              "reservedBytes": {
+                "type": "integer",
+                "maximum": 67108864,
+                "minimum": 0
+              },
+              "reservedGenerations": {
+                "type": "integer",
+                "maximum": 64,
+                "minimum": 0
+              },
+              "activeInvocations": {
+                "type": "integer",
+                "maximum": 1,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "event", "state" ],
+            "properties": {
+              "event": {
+                "const": "producer"
+              },
+              "state": {
+                "enum": [ "held", "success", "failure" ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "event", "connection" ],
+            "properties": {
+              "event": {
+                "const": "connection-ended"
+              },
+              "connection": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

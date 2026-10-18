@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/artifacts/0.1.0-draft.1/release-result.schema.json",
+  "title": "Artifact release result",
+  "description": "Exact negotiated artifact transfer draft; complete semantic rules and encoded bounds are normative in README.html",
+  "examples": [
+    {}
+  ],
+  "type": "object",
+  "maxProperties": 0,
+  "additionalProperties": false
+}

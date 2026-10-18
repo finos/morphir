@@ -1,0 +1,2216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-projection.schema.json",
+  "title": "Artifact client evidence",
+  "description": "Exact scoped artifact-client input/evidence. Semantic capture, lifecycle, pre-allocation work and raw-frame rules are normative in README.html. Every object is closed",
+  "examples": [
+    {
+      "events": [
+        {
+          "kind": "effect",
+          "attempt": "A",
+          "index": 0,
+          "effect": "connect",
+          "argument": {
+            "signalAborted": false
+          }
+        },
+        {
+          "kind": "settled",
+          "attempt": "A",
+          "index": 0,
+          "settlement": "resolved"
+        },
+        {
+          "kind": "effect",
+          "attempt": "A",
+          "index": 1,
+          "effect": "initialize",
+          "argument": {
+            "frame": {
+              "kind": "text",
+              "source": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"morphir.session.initialize\",\"params\":{\"protocolVersion\":1,\"sessionId\":\"session-client\"}}"
+            }
+          }
+        },
+        {
+          "kind": "settled",
+          "attempt": "A",
+          "index": 1,
+          "settlement": "resolved"
+        },
+        {
+          "kind": "effect",
+          "attempt": "A",
+          "index": 2,
+          "effect": "generate",
+          "argument": {
+            "frame": {
+              "kind": "text",
+              "source": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"morphir.artifacts.generate\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"providerId\":\"provider-client\",\"generation\":{\"ir\":{\"formatVersion\":4},\"irVersion\":\"4\",\"target\":\"fixture\",\"options\":{}}}}"
+            }
+          }
+        },
+        {
+          "kind": "settled",
+          "attempt": "A",
+          "index": 2,
+          "settlement": "resolved"
+        },
+        {
+          "kind": "effect",
+          "attempt": "A",
+          "index": 3,
+          "effect": "read",
+          "argument": {
+            "frame": {
+              "kind": "text",
+              "source": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"morphir.artifacts.read\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"generationId\":\"generation-A\",\"artifactId\":\"artifact-A\",\"offset\":0,\"maxBytes\":65536}}"
+            }
+          }
+        },
+        {
+          "kind": "settled",
+          "attempt": "A",
+          "index": 3,
+          "settlement": "resolved"
+        },
+        {
+          "kind": "effect",
+          "attempt": "A",
+          "index": 4,
+          "effect": "digest",
+          "argument": {
+            "byteLength": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        {
+          "kind": "settled",
+          "attempt": "A",
+          "index": 4,
+          "settlement": "resolved"
+        },
+        {
+          "kind": "effect",
+          "attempt": "A",
+          "index": 5,
+          "effect": "release",
+          "argument": {
+            "frame": {
+              "kind": "text",
+              "source": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"morphir.artifacts.release\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"generationId\":\"generation-A\"}}"
+            }
+          }
+        },
+        {
+          "kind": "settled",
+          "attempt": "A",
+          "index": 5,
+          "settlement": "resolved"
+        },
+        {
+          "kind": "close",
+          "attempt": "A"
+        }
+      ],
+      "checkpoints": [
+        {
+          "actionIndex": 0,
+          "eventCount": 0,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "not-started",
+              "pending": [],
+              "signalAborted": null,
+              "terminal": {
+                "kind": "pending"
+              },
+              "closeCalls": 0
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 1,
+          "eventCount": 1,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "connecting",
+              "pending": [
+                {
+                  "index": 0,
+                  "effect": "connect"
+                }
+              ],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "pending"
+              },
+              "closeCalls": 0
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 2,
+          "eventCount": 3,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "initializing",
+              "pending": [
+                {
+                  "index": 1,
+                  "effect": "initialize"
+                }
+              ],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "pending"
+              },
+              "closeCalls": 0
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 3,
+          "eventCount": 5,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "generating",
+              "pending": [
+                {
+                  "index": 2,
+                  "effect": "generate"
+                }
+              ],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "pending"
+              },
+              "closeCalls": 0
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 4,
+          "eventCount": 7,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "receiving",
+              "pending": [
+                {
+                  "index": 3,
+                  "effect": "read"
+                }
+              ],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "pending"
+              },
+              "closeCalls": 0
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 5,
+          "eventCount": 9,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "verifying",
+              "pending": [
+                {
+                  "index": 4,
+                  "effect": "digest"
+                }
+              ],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "pending"
+              },
+              "closeCalls": 0
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 6,
+          "eventCount": 11,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "releasing",
+              "pending": [
+                {
+                  "index": 5,
+                  "effect": "release"
+                }
+              ],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "pending"
+              },
+              "closeCalls": 0
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 7,
+          "eventCount": 13,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "finished",
+              "pending": [],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "verified",
+                "cleanup": {
+                  "kind": "released",
+                  "generationId": "generation-A"
+                }
+              },
+              "closeCalls": 1
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 8,
+          "eventCount": 13,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "finished",
+              "pending": [],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "verified",
+                "cleanup": {
+                  "kind": "released",
+                  "generationId": "generation-A"
+                }
+              },
+              "closeCalls": 1
+            }
+          ],
+          "registry": {
+            "kind": "published",
+            "views": "views-A"
+          },
+          "actionResult": {
+            "kind": "published",
+            "views": "views-A",
+            "artifacts": [
+              {
+                "file": "file-0",
+                "path": "empty.bin",
+                "binary": true,
+                "encoding": "verified-bytes",
+                "byteLength": 0,
+                "previewState": "binary",
+                "content": {
+                  "utf16Length": 0,
+                  "utf8": {
+                    "byteLength": 0,
+                    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                },
+                "binaryPreview": {
+                  "byteLength": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "reference": {
+                  "views": "views-A",
+                  "file": "file-0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "actionIndex": 9,
+          "eventCount": 13,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "finished",
+              "pending": [],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "verified",
+                "cleanup": {
+                  "kind": "released",
+                  "generationId": "generation-A"
+                }
+              },
+              "closeCalls": 1
+            }
+          ],
+          "registry": {
+            "kind": "published",
+            "views": "views-A"
+          },
+          "actionResult": {
+            "kind": "download",
+            "files": [
+              {
+                "path": "empty.bin",
+                "bytes": {
+                  "byteLength": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "actionIndex": 10,
+          "eventCount": 13,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "finished",
+              "pending": [],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "verified",
+                "cleanup": {
+                  "kind": "released",
+                  "generationId": "generation-A"
+                }
+              },
+              "closeCalls": 1
+            }
+          ],
+          "registry": {
+            "kind": "published",
+            "views": "views-A"
+          },
+          "actionResult": {
+            "kind": "archive",
+            "archive": {
+              "encodedByteLength": 116,
+              "entries": [
+                {
+                  "path": "empty.bin",
+                  "bytes": {
+                    "byteLength": 0,
+                    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "actionIndex": 11,
+          "eventCount": 13,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "finished",
+              "pending": [],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "verified",
+                "cleanup": {
+                  "kind": "released",
+                  "generationId": "generation-A"
+                }
+              },
+              "closeCalls": 1
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        },
+        {
+          "actionIndex": 12,
+          "eventCount": 13,
+          "label": null,
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "finished",
+              "pending": [],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "verified",
+                "cleanup": {
+                  "kind": "released",
+                  "generationId": "generation-A"
+                }
+              },
+              "closeCalls": 1
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "refused",
+            "operation": "download",
+            "message": "These generated files are no longer available. Recompile to download them."
+          }
+        },
+        {
+          "actionIndex": 13,
+          "eventCount": 13,
+          "label": "released-original-empty-bytes",
+          "currentContext": {
+            "sourceId": "client-source",
+            "revision": 1,
+            "epoch": 1
+          },
+          "attempts": [
+            {
+              "id": "A",
+              "phase": "finished",
+              "pending": [],
+              "signalAborted": false,
+              "terminal": {
+                "kind": "verified",
+                "cleanup": {
+                  "kind": "released",
+                  "generationId": "generation-A"
+                }
+              },
+              "closeCalls": 1
+            }
+          ],
+          "registry": {
+            "kind": "empty"
+          },
+          "actionResult": {
+            "kind": "none"
+          }
+        }
+      ],
+      "attempts": [
+        {
+          "id": "A",
+          "capture": {
+            "profile": "morphir/workbench/artifacts",
+            "contractVersion": "0.1.0-draft.1",
+            "providerId": "provider-client",
+            "sessionId": "session-client",
+            "target": "fixture",
+            "irVersion": "4"
+          },
+          "phase": "finished",
+          "result": {
+            "kind": "verified",
+            "manifest": {
+              "profile": "morphir/workbench/artifacts",
+              "contractVersion": "0.1.0-draft.1",
+              "sessionId": "session-client",
+              "providerId": "provider-client",
+              "generationId": "generation-A",
+              "producer": {
+                "id": "artifact-fixture",
+                "version": "0.1.0"
+              },
+              "target": "fixture",
+              "irVersion": "4",
+              "diagnostics": []
+            },
+            "inventory": [
+              {
+                "id": "file-0",
+                "path": "empty.bin",
+                "declaredKind": "binary",
+                "bytes": {
+                  "byteLength": 0,
+                  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                "preview": {
+                  "kind": "binary",
+                  "prefix": {
+                    "byteLength": 0,
+                    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  }
+                }
+              }
+            ],
+            "cleanup": {
+              "kind": "released",
+              "generationId": "generation-A"
+            }
+          },
+          "closeCalls": 1,
+          "effects": {
+            "connect": 1,
+            "initialize": 1,
+            "generate": 1,
+            "read": 1,
+            "digest": 1,
+            "release": 1
+          }
+        }
+      ]
+    }
+  ],
+  "$ref": "#/$defs/ClientEvidence",
+  "$defs": {
+    "AttemptId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "ViewId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "ObservationLabel": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+      "maxLength": 64,
+      "minLength": 1
+    },
+    "FileAlias": {
+      "type": "string",
+      "pattern": "^file-(0|[1-9][0-9]{0,2})$",
+      "maxLength": 16,
+      "minLength": 6
+    },
+    "EffectIndex": {
+      "type": "integer",
+      "maximum": 4095,
+      "minimum": 0
+    },
+    "ActionIndex": {
+      "type": "integer",
+      "maximum": 511,
+      "minimum": 0
+    },
+    "Revision": {
+      "type": "integer",
+      "maximum": 2147483647,
+      "minimum": 0
+    },
+    "Epoch": {
+      "type": "integer",
+      "maximum": 2147483647,
+      "minimum": 0
+    },
+    "SourceIdentity": {
+      "type": "string",
+      "not": {
+        "pattern": "[\u0000-\u001F-]"
+      },
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "ByteCount": {
+      "type": "integer",
+      "maximum": 134217728,
+      "minimum": 0
+    },
+    "ExactCount": {
+      "type": "integer",
+      "maximum": 4096,
+      "minimum": 0
+    },
+    "Utf16Length": {
+      "type": "integer",
+      "maximum": 1048576,
+      "minimum": 0
+    },
+    "U7": {
+      "type": "integer",
+      "maximum": 127,
+      "minimum": 0
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "BoundedText": {
+      "type": "string",
+      "maxLength": 512,
+      "minLength": 0
+    },
+    "LocalContext": {
+      "type": "object",
+      "required": [ "sourceId", "revision", "epoch" ],
+      "properties": {
+        "sourceId": {
+          "$ref": "#/$defs/SourceIdentity"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "epoch": {
+          "$ref": "#/$defs/Epoch"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticPosition": {
+      "type": "object",
+      "required": [ "line", "character" ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 0
+        },
+        "character": {
+          "type": "integer",
+          "maximum": 4294967295,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "DiagnosticLocation": {
+      "type": "object",
+      "required": [ "uri", "range" ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "range": {
+          "type": "object",
+          "required": [ "start", "end" ],
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/DiagnosticPosition"
+            },
+            "end": {
+              "$ref": "#/$defs/DiagnosticPosition"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Diagnostic": {
+      "type": "object",
+      "required": [ "severity", "code", "message", "location" ],
+      "properties": {
+        "severity": {
+          "oneOf": [
+            {
+              "const": "error"
+            },
+            {
+              "const": "warning"
+            },
+            {
+              "const": "info"
+            },
+            {
+              "const": "hint"
+            }
+          ]
+        },
+        "code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "location": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/DiagnosticLocation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "FrameSegment": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "source" ],
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "byte", "count" ],
+          "properties": {
+            "kind": {
+              "const": "repeat-ascii"
+            },
+            "byte": {
+              "$ref": "#/$defs/U7"
+            },
+            "count": {
+              "$ref": "#/$defs/ByteCount"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FrameSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "source" ],
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "segments" ],
+          "properties": {
+            "kind": {
+              "const": "segments"
+            },
+            "segments": {
+              "type": "array",
+              "maxItems": 32,
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/FrameSegment"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "EffectKind": {
+      "oneOf": [
+        {
+          "const": "connect"
+        },
+        {
+          "const": "initialize"
+        },
+        {
+          "const": "generate"
+        },
+        {
+          "const": "read"
+        },
+        {
+          "const": "digest"
+        },
+        {
+          "const": "release"
+        }
+      ]
+    },
+    "CapturedBinding": {
+      "type": "object",
+      "required": [
+        "profile",
+        "contractVersion",
+        "providerId",
+        "sessionId",
+        "target",
+        "irVersion"
+      ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/artifacts"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "providerId": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "target": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "irVersion": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtifactCleanup": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "not-connected"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "not-retained"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "generationId" ],
+          "properties": {
+            "kind": {
+              "const": "released"
+            },
+            "generationId": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "generationId", "reason" ],
+          "properties": {
+            "kind": {
+              "const": "connection-closed"
+            },
+            "generationId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1048577,
+                  "minLength": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason": {
+              "oneOf": [
+                {
+                  "const": "pending-exchange"
+                },
+                {
+                  "const": "unknown-retention"
+                },
+                {
+                  "const": "release-failed"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ArtifactErrorCode": {
+      "oneOf": [
+        {
+          "const": "artifacts.invalid_request"
+        },
+        {
+          "const": "artifacts.invalid_identity"
+        },
+        {
+          "const": "artifacts.invalid_range"
+        },
+        {
+          "const": "artifacts.invalid_path"
+        },
+        {
+          "const": "artifacts.invalid_path_set"
+        },
+        {
+          "const": "artifacts.invalid_content"
+        },
+        {
+          "const": "artifacts.file_count"
+        },
+        {
+          "const": "artifacts.file_size"
+        },
+        {
+          "const": "artifacts.set_size"
+        },
+        {
+          "const": "artifacts.reply_limit"
+        },
+        {
+          "const": "artifacts.capacity"
+        },
+        {
+          "const": "artifacts.active_generation"
+        },
+        {
+          "const": "artifacts.unknown_handle"
+        },
+        {
+          "const": "artifacts.unavailable"
+        },
+        {
+          "const": "artifacts.generation_failed"
+        }
+      ]
+    },
+    "ArtifactClientFailure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "code" ],
+          "properties": {
+            "kind": {
+              "const": "invalid"
+            },
+            "code": {
+              "$ref": "#/$defs/ArtifactErrorCode"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "code", "rpcCode", "message" ],
+          "properties": {
+            "kind": {
+              "const": "remote"
+            },
+            "code": {
+              "$ref": "#/$defs/ArtifactErrorCode"
+            },
+            "rpcCode": {
+              "type": "integer",
+              "maximum": 2147483647,
+              "minimum": -2147483648
+            },
+            "message": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "VerificationFailure": {
+      "oneOf": [
+        {
+          "const": "obsolete"
+        },
+        {
+          "const": "inventory"
+        },
+        {
+          "const": "length"
+        },
+        {
+          "const": "digest"
+        },
+        {
+          "const": "digest-unavailable"
+        }
+      ]
+    },
+    "InputFailure": {
+      "oneOf": [
+        {
+          "const": "ill-formed-unicode"
+        },
+        {
+          "const": "nonfinite-number"
+        },
+        {
+          "const": "request-limit"
+        }
+      ]
+    },
+    "FailureEvidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "failure" ],
+          "properties": {
+            "kind": {
+              "const": "protocol"
+            },
+            "failure": {
+              "$ref": "#/$defs/ArtifactClientFailure"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "reason" ],
+          "properties": {
+            "kind": {
+              "const": "verification"
+            },
+            "reason": {
+              "$ref": "#/$defs/VerificationFailure"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "reason" ],
+          "properties": {
+            "kind": {
+              "const": "input"
+            },
+            "reason": {
+              "$ref": "#/$defs/InputFailure"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "message" ],
+          "properties": {
+            "kind": {
+              "const": "other"
+            },
+            "message": {
+              "$ref": "#/$defs/BoundedText"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "MeasuredBytes": {
+      "type": "object",
+      "required": [ "byteLength", "sha256" ],
+      "properties": {
+        "byteLength": {
+          "$ref": "#/$defs/ByteCount"
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MeasuredText": {
+      "type": "object",
+      "required": [ "utf16Length", "utf8" ],
+      "properties": {
+        "utf16Length": {
+          "$ref": "#/$defs/Utf16Length"
+        },
+        "utf8": {
+          "$ref": "#/$defs/MeasuredBytes"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PreviewEvidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "text" ],
+          "properties": {
+            "kind": {
+              "oneOf": [
+                {
+                  "const": "text"
+                },
+                {
+                  "const": "text-prefix"
+                }
+              ]
+            },
+            "text": {
+              "$ref": "#/$defs/MeasuredText"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "prefix" ],
+          "properties": {
+            "kind": {
+              "const": "binary"
+            },
+            "prefix": {
+              "$ref": "#/$defs/MeasuredBytes"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "invalid-utf8"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "OwnedFileEvidence": {
+      "type": "object",
+      "required": [ "id", "path", "declaredKind", "bytes", "preview" ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/FileAlias"
+        },
+        "path": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "declaredKind": {
+          "oneOf": [
+            {
+              "const": "utf8-text"
+            },
+            {
+              "const": "binary"
+            }
+          ]
+        },
+        "bytes": {
+          "$ref": "#/$defs/MeasuredBytes"
+        },
+        "preview": {
+          "$ref": "#/$defs/PreviewEvidence"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FileByteEvidence": {
+      "type": "object",
+      "required": [ "path", "bytes" ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "bytes": {
+          "$ref": "#/$defs/MeasuredBytes"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArchiveEvidence": {
+      "type": "object",
+      "required": [ "encodedByteLength", "entries" ],
+      "properties": {
+        "encodedByteLength": {
+          "$ref": "#/$defs/ByteCount"
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/FileByteEvidence"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "TransferPhase": {
+      "oneOf": [
+        {
+          "const": "captured"
+        },
+        {
+          "const": "connecting"
+        },
+        {
+          "const": "initializing"
+        },
+        {
+          "const": "generating"
+        },
+        {
+          "const": "receiving"
+        },
+        {
+          "const": "verifying"
+        },
+        {
+          "const": "releasing"
+        },
+        {
+          "const": "finished"
+        }
+      ]
+    },
+    "ManifestBinding": {
+      "type": "object",
+      "required": [
+        "profile",
+        "contractVersion",
+        "sessionId",
+        "providerId",
+        "generationId",
+        "producer",
+        "target",
+        "irVersion",
+        "diagnostics"
+      ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/artifacts"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "providerId": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "generationId": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "producer": {
+          "type": "object",
+          "required": [ "id", "version" ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            },
+            "version": {
+              "type": "string",
+              "maxLength": 1048577,
+              "minLength": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "target": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "irVersion": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "diagnostics": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/Diagnostic"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "manifest", "inventory", "cleanup" ],
+          "properties": {
+            "kind": {
+              "const": "verified"
+            },
+            "manifest": {
+              "$ref": "#/$defs/ManifestBinding"
+            },
+            "inventory": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "#/$defs/OwnedFileEvidence"
+              }
+            },
+            "cleanup": {
+              "$ref": "#/$defs/ArtifactCleanup"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "diagnostics", "cleanup" ],
+          "properties": {
+            "kind": {
+              "const": "generation-failed"
+            },
+            "diagnostics": {
+              "type": "array",
+              "maxItems": 4096,
+              "items": {
+                "$ref": "#/$defs/Diagnostic"
+              }
+            },
+            "cleanup": {
+              "$ref": "#/$defs/ArtifactCleanup"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "failure", "cleanup" ],
+          "properties": {
+            "kind": {
+              "const": "failed"
+            },
+            "failure": {
+              "$ref": "#/$defs/FailureEvidence"
+            },
+            "cleanup": {
+              "$ref": "#/$defs/ArtifactCleanup"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "cleanup" ],
+          "properties": {
+            "kind": {
+              "const": "discarded"
+            },
+            "cleanup": {
+              "$ref": "#/$defs/ArtifactCleanup"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "TerminalSummary": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "pending"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "construction-refused"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "cleanup" ],
+          "properties": {
+            "kind": {
+              "oneOf": [
+                {
+                  "const": "verified"
+                },
+                {
+                  "const": "generation-failed"
+                },
+                {
+                  "const": "failed"
+                },
+                {
+                  "const": "discarded"
+                }
+              ]
+            },
+            "cleanup": {
+              "$ref": "#/$defs/ArtifactCleanup"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CountsByEffectKind": {
+      "type": "object",
+      "required": [
+        "connect",
+        "initialize",
+        "generate",
+        "read",
+        "digest",
+        "release"
+      ],
+      "properties": {
+        "connect": {
+          "$ref": "#/$defs/ExactCount"
+        },
+        "initialize": {
+          "$ref": "#/$defs/ExactCount"
+        },
+        "generate": {
+          "$ref": "#/$defs/ExactCount"
+        },
+        "read": {
+          "$ref": "#/$defs/ExactCount"
+        },
+        "digest": {
+          "$ref": "#/$defs/ExactCount"
+        },
+        "release": {
+          "$ref": "#/$defs/ExactCount"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConnectArgument": {
+      "type": "object",
+      "required": [ "signalAborted" ],
+      "properties": {
+        "signalAborted": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WireArgument": {
+      "type": "object",
+      "required": [ "frame" ],
+      "properties": {
+        "frame": {
+          "$ref": "#/$defs/FrameSource"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClientEvent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "attempt", "index", "effect", "argument" ],
+          "properties": {
+            "kind": {
+              "const": "effect"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "index": {
+              "$ref": "#/$defs/EffectIndex"
+            },
+            "effect": {
+              "const": "connect"
+            },
+            "argument": {
+              "$ref": "#/$defs/ConnectArgument"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "attempt", "index", "effect", "argument" ],
+          "properties": {
+            "kind": {
+              "const": "effect"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "index": {
+              "$ref": "#/$defs/EffectIndex"
+            },
+            "effect": {
+              "oneOf": [
+                {
+                  "const": "initialize"
+                },
+                {
+                  "const": "generate"
+                },
+                {
+                  "const": "read"
+                },
+                {
+                  "const": "release"
+                }
+              ]
+            },
+            "argument": {
+              "$ref": "#/$defs/WireArgument"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "attempt", "index", "effect", "argument" ],
+          "properties": {
+            "kind": {
+              "const": "effect"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "index": {
+              "$ref": "#/$defs/EffectIndex"
+            },
+            "effect": {
+              "const": "digest"
+            },
+            "argument": {
+              "$ref": "#/$defs/MeasuredBytes"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "attempt", "index", "settlement" ],
+          "properties": {
+            "kind": {
+              "const": "settled"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "index": {
+              "$ref": "#/$defs/EffectIndex"
+            },
+            "settlement": {
+              "oneOf": [
+                {
+                  "const": "resolved"
+                },
+                {
+                  "const": "rejected"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "attempt" ],
+          "properties": {
+            "kind": {
+              "const": "close"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "attempt", "cleanup" ],
+          "properties": {
+            "kind": {
+              "const": "cancel-result"
+            },
+            "attempt": {
+              "$ref": "#/$defs/AttemptId"
+            },
+            "cleanup": {
+              "$ref": "#/$defs/ArtifactCleanup"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ViewEvidence": {
+      "type": "object",
+      "required": [
+        "file",
+        "path",
+        "binary",
+        "encoding",
+        "byteLength",
+        "previewState",
+        "content",
+        "binaryPreview",
+        "reference"
+      ],
+      "properties": {
+        "file": {
+          "$ref": "#/$defs/FileAlias"
+        },
+        "path": {
+          "type": "string",
+          "maxLength": 1048577,
+          "minLength": 0
+        },
+        "binary": {
+          "type": "boolean"
+        },
+        "encoding": {
+          "const": "verified-bytes"
+        },
+        "byteLength": {
+          "$ref": "#/$defs/ByteCount"
+        },
+        "previewState": {
+          "oneOf": [
+            {
+              "const": "text"
+            },
+            {
+              "const": "text-prefix"
+            },
+            {
+              "const": "binary"
+            },
+            {
+              "const": "invalid-utf8"
+            }
+          ]
+        },
+        "content": {
+          "$ref": "#/$defs/MeasuredText"
+        },
+        "binaryPreview": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MeasuredBytes"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reference": {
+          "type": "object",
+          "required": [ "views", "file" ],
+          "properties": {
+            "views": {
+              "$ref": "#/$defs/ViewId"
+            },
+            "file": {
+              "$ref": "#/$defs/FileAlias"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ActionResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "views", "artifacts" ],
+          "properties": {
+            "kind": {
+              "const": "published"
+            },
+            "views": {
+              "$ref": "#/$defs/ViewId"
+            },
+            "artifacts": {
+              "type": "array",
+              "maxItems": 4096,
+              "items": {
+                "$ref": "#/$defs/ViewEvidence"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "files" ],
+          "properties": {
+            "kind": {
+              "const": "download"
+            },
+            "files": {
+              "type": "array",
+              "maxItems": 4096,
+              "items": {
+                "$ref": "#/$defs/FileByteEvidence"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "archive" ],
+          "properties": {
+            "kind": {
+              "const": "archive"
+            },
+            "archive": {
+              "$ref": "#/$defs/ArchiveEvidence"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "operation", "message" ],
+          "properties": {
+            "kind": {
+              "const": "refused"
+            },
+            "operation": {
+              "oneOf": [
+                {
+                  "const": "publish"
+                },
+                {
+                  "const": "download"
+                },
+                {
+                  "const": "archive"
+                },
+                {
+                  "const": "mutate-copy"
+                }
+              ]
+            },
+            "message": {
+              "$ref": "#/$defs/BoundedText"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "AttemptCheckpoint": {
+      "type": "object",
+      "required": [
+        "id",
+        "phase",
+        "pending",
+        "signalAborted",
+        "terminal",
+        "closeCalls"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/AttemptId"
+        },
+        "phase": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TransferPhase"
+            },
+            {
+              "const": "not-started"
+            },
+            {
+              "const": "construction-refused"
+            }
+          ]
+        },
+        "pending": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "type": "object",
+            "required": [ "index", "effect" ],
+            "properties": {
+              "index": {
+                "$ref": "#/$defs/EffectIndex"
+              },
+              "effect": {
+                "$ref": "#/$defs/EffectKind"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "signalAborted": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "terminal": {
+          "$ref": "#/$defs/TerminalSummary"
+        },
+        "closeCalls": {
+          "$ref": "#/$defs/ExactCount"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClientCheckpoint": {
+      "type": "object",
+      "required": [
+        "actionIndex",
+        "eventCount",
+        "label",
+        "currentContext",
+        "attempts",
+        "registry",
+        "actionResult"
+      ],
+      "properties": {
+        "actionIndex": {
+          "$ref": "#/$defs/ActionIndex"
+        },
+        "eventCount": {
+          "$ref": "#/$defs/ExactCount"
+        },
+        "label": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ObservationLabel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentContext": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/LocalContext"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/AttemptCheckpoint"
+          }
+        },
+        "registry": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [ "kind" ],
+              "properties": {
+                "kind": {
+                  "const": "empty"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "kind", "views" ],
+              "properties": {
+                "kind": {
+                  "const": "published"
+                },
+                "views": {
+                  "$ref": "#/$defs/ViewId"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "actionResult": {
+          "$ref": "#/$defs/ActionResult"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AttemptEvidence": {
+      "type": "object",
+      "required": [
+        "id",
+        "capture",
+        "phase",
+        "result",
+        "closeCalls",
+        "effects"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/AttemptId"
+        },
+        "capture": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CapturedBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phase": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TransferPhase"
+            },
+            {
+              "const": "construction-refused"
+            }
+          ]
+        },
+        "result": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/RunResult"
+            },
+            {
+              "type": "object",
+              "required": [ "kind", "failure" ],
+              "properties": {
+                "kind": {
+                  "const": "construction-refused"
+                },
+                "failure": {
+                  "$ref": "#/$defs/FailureEvidence"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "closeCalls": {
+          "$ref": "#/$defs/ExactCount"
+        },
+        "effects": {
+          "$ref": "#/$defs/CountsByEffectKind"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClientEvidence": {
+      "type": "object",
+      "required": [ "events", "checkpoints", "attempts" ],
+      "properties": {
+        "events": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {
+            "$ref": "#/$defs/ClientEvent"
+          }
+        },
+        "checkpoints": {
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "$ref": "#/$defs/ClientCheckpoint"
+          }
+        },
+        "attempts": {
+          "type": "array",
+          "maxItems": 4,
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/AttemptEvidence"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

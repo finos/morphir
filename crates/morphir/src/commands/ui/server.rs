@@ -30,6 +30,7 @@ pub(crate) struct UiHostState {
     pub(crate) capabilities: SessionCapabilities,
     pub(crate) initial_view: Option<InitialView>,
     pub(crate) authority: String,
+    pub(crate) artifact_capacity: super::artifacts::HostArtifactCapacity,
 }
 
 pub struct BoundUiHost {
@@ -38,6 +39,7 @@ pub struct BoundUiHost {
     address: SocketAddr,
     launch_token: String,
     manifest: SessionManifest,
+    artifact_observer: super::artifacts::ArtifactUsageObserver,
 }
 
 impl BoundUiHost {
@@ -79,12 +81,15 @@ impl BoundUiHost {
         .validate()?;
         let initial_view = capabilities.initial_view;
         let manifest_copy = manifest.clone();
+        let artifact_capacity = super::artifacts::HostArtifactCapacity::default();
+        let artifact_observer = artifact_capacity.observer();
         let state = UiHostState {
             auth: Arc::new(auth),
             manifest,
             capabilities,
             initial_view,
             authority: address.to_string(),
+            artifact_capacity,
         };
         let router = Router::new()
             .route("/launch", get(exchange_launch_token))
@@ -99,6 +104,7 @@ impl BoundUiHost {
             address,
             launch_token,
             manifest: manifest_copy,
+            artifact_observer,
         })
     }
 
@@ -108,6 +114,12 @@ impl BoundUiHost {
 
     pub fn manifest(&self) -> &SessionManifest {
         &self.manifest
+    }
+
+    /// Read-only measurements for local host owners and qualification adapters.
+    /// This observer grants neither handles nor generation/publication authority.
+    pub fn artifact_observer(&self) -> super::artifacts::ArtifactUsageObserver {
+        self.artifact_observer.clone()
     }
 
     pub fn base_url(&self) -> String {

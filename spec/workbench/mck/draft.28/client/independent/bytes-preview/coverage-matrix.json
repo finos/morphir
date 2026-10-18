@@ -1,0 +1,209 @@
+{
+  "status": "independently authored; not adapter-qualified",
+  "cases": [
+    {
+      "id": "client-original-mixed-bom-crlf-invalid-text",
+      "family": "bytes",
+      "requirement": "Mixed original empty/all-octet/BOM-CRLF/invalid-UTF8 bytes survive owner, downloads and ZIP.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-original-chunk-boundaries",
+      "family": "bytes",
+      "requirement": "Maximum-chunk policy crosses exact boundaries with all inventory reads before digests.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-original-over-one-mib",
+      "family": "bytes",
+      "requirement": "Retained owner bytes match an independently frozen indexed recipe without repeated large observations.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-original-exact-sixteen-mib",
+      "family": "bytes",
+      "requirement": "Retained owner bytes match an independently frozen indexed recipe without repeated large observations.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-original-exact-sixtyfour-mib",
+      "family": "bytes",
+      "requirement": "Exact64MiB aggregate fits128MiB decoded/read work with four distinct file/chunk oracles.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-preview-invalid-utf8-after-prefix",
+      "family": "preview",
+      "requirement": "Invalid UTF8 beyond64KiB invalidates the whole preview while downloads preserve all original bytes.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-preview-paired-character-at-prefix",
+      "family": "preview",
+      "requirement": "Prefix truncation removes a trailing high surrogate without changing downloadable original UTF8.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-preview-exact-and-oneover-text-units",
+      "family": "preview",
+      "requirement": "Exact65536UTF16 text stays text; oneover is a bounded text-prefix.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-preview-equal-aggregate-allocation",
+      "family": "preview",
+      "requirement": "Seventeen files each receive floor1048576/17 preview allocation, including raw binary and text-prefix evidence.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-captures-caller-before-connect",
+      "family": "capture",
+      "requirement": "Post-start caller replacement cannot alter captured generation IR/options.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-captures-effect-functions-before-connect",
+      "family": "capture",
+      "requirement": "Replacing effect function properties cannot redirect captured connection/hash/current functions.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-captures-paired-unicode-input",
+      "family": "capture",
+      "requirement": "Paired supplementary Unicode keys/values are valid captured JSON.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-registry-original-byte-copy-isolation",
+      "family": "registry",
+      "requirement": "Mutated owner byte copies do not change later original downloads or ZIP entries.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-registry-clear-refuses-old-download-and-zip",
+      "family": "registry",
+      "requirement": "Clearing registry invalidates original view references for both download and archive.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-registry-renamed-path-refusal",
+      "family": "registry",
+      "requirement": "A valid byte reference cannot authorize a renamed path in a private view copy.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-registry-duplicate-reference-refusal",
+      "family": "registry",
+      "requirement": "An inventory-sized selection still refuses duplicate verified references.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-registry-complete-and-single-selection-rules",
+      "family": "registry",
+      "requirement": "Complete archive/download requires whole inventory; single-file download requires exactly one selected file.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-registry-replacement-refuses-old-owner",
+      "family": "registry",
+      "requirement": "Registry replacement refuses old references even when both owners have identical paths and bytes.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-registry-foreign-reference-refusal",
+      "family": "registry",
+      "requirement": "Forged foreign reference is refused despite matching content, metadata and selected current view path.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-registry-republication-does-not-merge-identities",
+      "family": "registry",
+      "requirement": "Two publications of the same verified owner remain distinct view identities.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-unicode-ir-value-high",
+      "family": "local-input",
+      "requirement": "Lone high surrogate in ir value refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-unicode-ir-key-high",
+      "family": "local-input",
+      "requirement": "Lone high surrogate in ir key refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-unicode-ir-value-low",
+      "family": "local-input",
+      "requirement": "Lone low surrogate in ir value refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-unicode-ir-key-low",
+      "family": "local-input",
+      "requirement": "Lone low surrogate in ir key refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-nonfinite-ir-nan",
+      "family": "local-input",
+      "requirement": "nan in ir refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-nonfinite-ir-positive-infinity",
+      "family": "local-input",
+      "requirement": "positive-infinity in ir refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-nonfinite-ir-negative-infinity",
+      "family": "local-input",
+      "requirement": "negative-infinity in ir refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-unicode-options-value-high",
+      "family": "local-input",
+      "requirement": "Lone high surrogate in options value refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-unicode-options-key-high",
+      "family": "local-input",
+      "requirement": "Lone high surrogate in options key refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-unicode-options-value-low",
+      "family": "local-input",
+      "requirement": "Lone low surrogate in options value refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-unicode-options-key-low",
+      "family": "local-input",
+      "requirement": "Lone low surrogate in options key refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-nonfinite-options-nan",
+      "family": "local-input",
+      "requirement": "nan in options refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-nonfinite-options-positive-infinity",
+      "family": "local-input",
+      "requirement": "positive-infinity in options refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    },
+    {
+      "id": "client-local-nonfinite-options-negative-infinity",
+      "family": "local-input",
+      "requirement": "negative-infinity in options refuses construction before capture or any effect.",
+      "adapterExecuted": false
+    }
+  ]
+}

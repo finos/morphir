@@ -1,0 +1,255 @@
+{
+  "contractVersion": "0.1.0-draft.28",
+  "profile": "morphir/workbench/artifacts",
+  "profileVersion": "0.1.0-draft.1",
+  "sourceRevision": "af2f3a266e299fb7182d0741f75e3af7153cb2c0",
+  "sourceTree": "62630aef58897917a8b67634d996aa8f4f53c026",
+  "sdkRevision": "ef4810782db135986e74c503a7bc3003834a3dd9",
+  "change": "Artifact-only options must be an object of named SDK options before reservation or invocation; arbitrary nested JSON remains literal. Legacy generation behavior is unchanged.",
+  "reviewComment": 4308717524,
+  "checkerSha256": "a93c2128a64a796d2e85d23e1e0b675eb5fa57ba41448251f83c21cf06936f39",
+  "serverAdapterSha256": "527651dd216ad6b28da074b4955ef3147ebcf9f6c97f3fc4a1af5a2110aba6e3",
+  "compiledSourceFiles": [
+    {
+      "path": "crates/morphir-mck/src/workbench/artifact_client.rs",
+      "sha256": "c30453555e6293fcd41174d7ea5f5bfc8a68b05d6a8d788eb520f0c8e0a0c3b9"
+    },
+    {
+      "path": "crates/morphir-mck/src/workbench/artifacts.rs",
+      "sha256": "682df9200748cfae7f0ddb9830239435a27279539e37aa3b6c46c13eae0f8b1d"
+    },
+    {
+      "path": "crates/morphir-mck/src/workbench/contract.rs",
+      "sha256": "646129d1a147534f005eb9899552e67565bd657da5778de700cbac29e0fec5d7"
+    },
+    {
+      "path": "crates/morphir-mck/src/workbench/corpus.rs",
+      "sha256": "7b96f8ba70abca53576a2e954c98971c7fab2203e93ba1379c34fa6110b3061e"
+    },
+    {
+      "path": "crates/morphir-mck/src/workbench/mod.rs",
+      "sha256": "77bdece4d2c17e2c7ce13a15b6abc4d219802d687bde3567eec944c588df5d74"
+    },
+    {
+      "path": "crates/morphir-mck/src/workbench/report.rs",
+      "sha256": "2f6d2174281a90afa8f21364d9b30b4454f8140503eddad281bb2cce9a74168e"
+    },
+    {
+      "path": "crates/morphir-mck/src/workbench/run.rs",
+      "sha256": "5c198ba4cdd01898e19ffac073bcd74da4f8a97c1e4ce7ced8ee86e5524bc871"
+    },
+    {
+      "path": "spec/workbench/draft.28/schemas/mck-capabilities.schema.json",
+      "sha256": "febdd40fe74dbdf3f2a2dfb3a00a8ade6ef08bc66cbefe04ccfc74b32a804c1e"
+    },
+    {
+      "path": "spec/workbench/draft.28/schemas/mck-client-input.schema.json",
+      "sha256": "7cbb147801545b28fb3c3b49934e6fa681c8ed6ce53933e923e4480c82a74fd6"
+    },
+    {
+      "path": "spec/workbench/draft.28/schemas/mck-client-observation.schema.json",
+      "sha256": "286eec29b31f53ece9c70aadb2ea18dfe71263e4d00a3297ca92dfddb4dfe59c"
+    },
+    {
+      "path": "spec/workbench/draft.28/schemas/mck-client-projection.schema.json",
+      "sha256": "af52da40de490a27926785394479dc272988222b7cc3c608bfde5a7cd6a32557"
+    },
+    {
+      "path": "spec/workbench/draft.28/schemas/mck-corpus.schema.json",
+      "sha256": "3cabf055b6ecf2929596cdb71b639c7bd6af8da2a4a1ec7fd608d7609b4d29e2"
+    },
+    {
+      "path": "spec/workbench/draft.28/schemas/mck-report.schema.json",
+      "sha256": "8f6dfdfe104e8d54e23dd26566f0e55f37e0442d2479f13209b348d201ba765c"
+    },
+    {
+      "path": "crates/morphir/src/commands/ui/artifacts/wire.rs",
+      "sha256": "47f0178cb47d867489383118133906d8e0da4f04e213bfabed9b7c099c0316e6"
+    },
+    {
+      "path": "spec/workbench/artifacts/0.1.0-draft.1/schemas/generate-request.schema.json",
+      "sha256": "0218327c2662764577d6e156702ee443053da57077894905b650a6f85832cf33"
+    }
+  ],
+  "server": [
+    {
+      "kit": "spec/workbench/mck/draft.28/server",
+      "cases": 103,
+      "corpusSha256": "adc2e0db5775c414f4f0f9bd8b84065246fe1c910ff7b7ad5ca9ef4a0342254f",
+      "reportSha256": "4550e94ff4539fcb6cd860dbe09e84e0cd94096e99acb6a65a4b4adf40c9fab5",
+      "qualified": true,
+      "independentSavedReportCheck": true
+    },
+    {
+      "kit": "spec/workbench/mck/draft.28/server-options",
+      "cases": 6,
+      "corpusSha256": "f414c2bb065408ea2a66231de9fe24b76ad20254eab0ed7d04a72e21ede73f1c",
+      "reportSha256": "7b1731d49504c57cba1dae079f52cbc1db30e23ac243b63db3d6792513e1221f",
+      "qualified": true,
+      "independentSavedReportCheck": true
+    }
+  ],
+  "client": {
+    "scope": "Recheck of immutable actual Bun/Node/Chromium reports using the current compiled schema/checker. These reports retain their original source/corpus and qualification labels; no actual runtime execution is relabeled.",
+    "originalQualification": "../client/qualification.json",
+    "corpusSha256": "ab810f6c007c33aacfc9e3c552f79cc179a73e9d77d2ea5e23d3396e8efc9191",
+    "reports": [
+      {
+        "runtime": "bun",
+        "reportSha256": "5415ea321f41c49516bb4558fca64c0082a1f04a5212e6fa0233cf4579d0861f",
+        "records": 102,
+        "independentSavedReportRecheck": true,
+        "actualImplementationRevision": "b8d3b9145815fa5cc0c466828337ad9cbc7d550b"
+      },
+      {
+        "runtime": "node",
+        "reportSha256": "c6d75c57c90f778ef87c5e31817971045ca7120130e8419d9d29f3f9eb53d4df",
+        "records": 102,
+        "independentSavedReportRecheck": true,
+        "actualImplementationRevision": "b8d3b9145815fa5cc0c466828337ad9cbc7d550b"
+      },
+      {
+        "runtime": "chromium",
+        "reportSha256": "9f380386c67aeffef585aec2c729b32cbd56c7e3b68d67d7dd1fa99b93e9c6bb",
+        "records": 102,
+        "independentSavedReportRecheck": true,
+        "actualImplementationRevision": "b8d3b9145815fa5cc0c466828337ad9cbc7d550b"
+      }
+    ]
+  },
+  "gates": {
+    "uiUnitTests": 117,
+    "actualAuthenticatedSdkHostTests": 3,
+    "sharedMckTests": 383,
+    "clippyAllTargetsAllFeatures": true,
+    "fullWorkbenchSchemaTask": true,
+    "rustFormat": true,
+    "sourceReview": "Root independently reviewed both constructors, moves and actual-host counters; no blocker."
+  },
+  "schemaLanguageEquivalence": {
+    "baseline": "f01b5732c17427b9c7536010b53c1469e960bb0e",
+    "annotations": "Description punctuation, examples and formatting do not affect accepted instances.",
+    "emptySchema": "JSON Schema true and {} accept the same instances.",
+    "reachableDefinitions": "Only definitions unreachable from each root schema were removed.",
+    "disjointTypeUnions": "Only unique disjoint JSON types changed oneOf to anyOf; integer and number were never treated as disjoint.",
+    "hexProof": "For every even length 2n there is a unique n=512q+r with 0<=r<=511; the blocked pattern consumes q blocks of 1024 lowercase hex characters and r pairs. Both accept exactly even-length lowercase hex, including empty.",
+    "hexCliRegressions": [
+      {
+        "name": "empty",
+        "characters": 0,
+        "expectedValid": true,
+        "exitCode": 0,
+        "cliOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "one-byte",
+        "characters": 2,
+        "expectedValid": true,
+        "exitCode": 0,
+        "cliOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "block-minus-two",
+        "characters": 1022,
+        "expectedValid": true,
+        "exitCode": 0,
+        "cliOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "block",
+        "characters": 1024,
+        "expectedValid": true,
+        "exitCode": 0,
+        "cliOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "block-plus-two",
+        "characters": 1026,
+        "expectedValid": true,
+        "exitCode": 0,
+        "cliOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "frozen-wide",
+        "characters": 131074,
+        "expectedValid": true,
+        "exitCode": 0,
+        "cliOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "maximum-even",
+        "characters": 1048576,
+        "expectedValid": true,
+        "exitCode": 0,
+        "cliOutputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "name": "maximum-odd",
+        "characters": 1048577,
+        "expectedValid": false,
+        "exitCode": 2,
+        "cliOutputSha256": "989119354b64ed318626da72ae3edb0814af365e283013a5af12589bb7a64dc4"
+      },
+      {
+        "name": "small-odd",
+        "characters": 1,
+        "expectedValid": false,
+        "exitCode": 2,
+        "cliOutputSha256": "97405dfb664b45782fb447fef5bed40c130fe4e9b2384ace61e1f87445d5fabe"
+      },
+      {
+        "name": "wide-odd",
+        "characters": 131073,
+        "expectedValid": false,
+        "exitCode": 2,
+        "cliOutputSha256": "9a3426d2e3c131f39e413fb5ed6f3bd29484375bde64ea4b8ebd964875d942f7"
+      },
+      {
+        "name": "uppercase",
+        "characters": 2,
+        "expectedValid": false,
+        "exitCode": 2,
+        "cliOutputSha256": "bba3205013a1f06d328239ee0aa3adf792428d893bf22794565ac9f03d231009"
+      },
+      {
+        "name": "nonhex",
+        "characters": 2,
+        "expectedValid": false,
+        "exitCode": 2,
+        "cliOutputSha256": "a900ce8d9d08bceef8c320dc8cbe854016424fdc7bd2a96beb4a48e0c4c53a7b"
+      }
+    ],
+    "semanticVerificationSha256": "c835d347a8ee0f91c78aad97b78c3c0bbd424de68a9212f07650ea373bd0eb22"
+  },
+  "logs": [
+    {
+      "name": "options-object-ui-full-green.log",
+      "sha256": "b1976d07a177fbd42cf5863ecd3b87c90ce2c910cdb5992a4d44d3ae3708376b"
+    },
+    {
+      "name": "options-object-host-green.log",
+      "sha256": "758e6c6d34e1d50b73e93dcd3bc66ec2b9c001df00a994fa2c59961797ab001e"
+    },
+    {
+      "name": "options-object-mck-final-green.log",
+      "sha256": "e308fc66df62340040bf3253f19c1d496c94f202d88470b2a8055da4451da0de"
+    },
+    {
+      "name": "options-object-clippy-green.log",
+      "sha256": "238786021bce1b7ce5c2361dcbcfa583acea1edb8545a9778b3b08ba366077fe"
+    },
+    {
+      "name": "options-object-all-schema-green.log",
+      "sha256": "c613be58bfc23f90968fe446b05a775603a8ba0d705849fd50af7e499a57fc8f"
+    },
+    {
+      "name": "options-object-fmt-green.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "options-object-hex-equivalence-green.log",
+      "sha256": "8f1c50e695a9068b2175d1b6c72daf1b5a07e3ea4b0d409abbe4bdec32b42597"
+    }
+  ],
+  "scope": "Source-bound parent host/checker follow-up. Original server103 and client102 corpora and historical receipts remain unchanged. Coordinated downstream pins and full packaged Proton saved-byte qualification are separate campaign gates."
+}
