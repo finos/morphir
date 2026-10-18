@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Exact scoped artifact-client input/evidence. Semantic capture, lifecycle, pre-allocation work and raw-frame rules are normative in README.html. Every object is closed.",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-observation.schema.json",
+  "title": "Artifact client observation",
+  "type": "object",
+  "required": [
+    "status",
+    "value"
+  ],
+  "properties": {
+    "status": {
+      "const": "ok"
+    },
+    "value": {
+      "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-projection.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

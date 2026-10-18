@@ -1,0 +1,404 @@
+[
+  {
+    "id": "client-selection-missing-profile",
+    "family": "selection",
+    "requirement": "Unavailable exact profile refuses construction with zero external effects.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-selection-wrong-exact-draft",
+    "family": "selection",
+    "requirement": "Unavailable exact profile refuses construction with zero external effects.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-selection-disconnected",
+    "family": "selection",
+    "requirement": "Unavailable exact profile refuses construction with zero external effects.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-request-one-mib-exact",
+    "family": "request-budget",
+    "requirement": "Exactly1MiB complete request is allowed and oneover refuses before connecting.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-request-one-mib-oneover",
+    "family": "request-budget",
+    "requirement": "Exactly1MiB complete request is allowed and oneover refuses before connecting.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-request-control-escaping-oneover",
+    "family": "request-budget",
+    "requirement": "JSON escape expansion counts toward the complete request before any connection.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-rejected-connect",
+    "family": "await-rejection",
+    "requirement": "Rejected connect settles once, exposes no owner and cleans only captured resources.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-rejected-initialize",
+    "family": "await-rejection",
+    "requirement": "Rejected initialize settles once, exposes no owner and cleans only captured resources.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-rejected-generate",
+    "family": "await-rejection",
+    "requirement": "Rejected generate settles once, exposes no owner and cleans only captured resources.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-rejected-read",
+    "family": "await-rejection",
+    "requirement": "Rejected read settles once, exposes no owner and cleans only captured resources.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-rejected-digest",
+    "family": "await-rejection",
+    "requirement": "Rejected digest settles once, exposes no owner and cleans only captured resources.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-rejected-release",
+    "family": "await-rejection",
+    "requirement": "Rejected release settles once, exposes no owner and cleans only captured resources.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-session",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest session cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-provider",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest provider cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-target",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest target cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-ir-version",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest ir-version cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-profile",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest profile cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-version",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest version cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-producer-core",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest producer-core cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-producer-identity",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest producer-identity cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-traversal-path",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest traversal-path cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-control-path",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest control-path cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-portable-collision",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest portable-collision cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-duplicate-handle",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest duplicate-handle cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-bad-digest",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest bad-digest cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-oneover-file",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest oneover-file cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-extra-field",
+    "family": "hostile-manifest",
+    "requirement": "Raw manifest extra-field cannot become retained or downloadable.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-duplicate-member",
+    "family": "literal-wire",
+    "requirement": "Raw literal duplicate-member is refused before lossy parsing can erase evidence.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-fractional-file",
+    "family": "literal-wire",
+    "requirement": "Raw literal fractional-file is refused before lossy parsing can erase evidence.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-underflow-file",
+    "family": "literal-wire",
+    "requirement": "Raw literal underflow-file is refused before lossy parsing can erase evidence.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-noncanonical-id",
+    "family": "literal-wire",
+    "requirement": "Raw literal noncanonical-id is refused before lossy parsing can erase evidence.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-illformed-unicode",
+    "family": "literal-wire",
+    "requirement": "Raw literal illformed-unicode is refused before lossy parsing can erase evidence.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-manifest-oneover-reply",
+    "family": "reply-budget",
+    "requirement": "Oneover128KiB complete raw reply is refused before parsing.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-remote-error-exact-code-message",
+    "family": "remote-error",
+    "requirement": "Remote signed i32 code and wire message survive typed failure without generic normalization.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-generation",
+    "family": "hostile-chunk",
+    "requirement": "Malformed chunk generation releases exact retained generation without hashing or exposing bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-artifact",
+    "family": "hostile-chunk",
+    "requirement": "Malformed chunk artifact releases exact retained generation without hashing or exposing bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-offset",
+    "family": "hostile-chunk",
+    "requirement": "Malformed chunk offset releases exact retained generation without hashing or exposing bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-progress",
+    "family": "hostile-chunk",
+    "requirement": "Malformed chunk progress releases exact retained generation without hashing or exposing bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-base64",
+    "family": "hostile-chunk",
+    "requirement": "Malformed chunk base64 releases exact retained generation without hashing or exposing bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-noncanonical-base64",
+    "family": "hostile-chunk",
+    "requirement": "Malformed chunk noncanonical-base64 releases exact retained generation without hashing or exposing bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-empty-progress",
+    "family": "hostile-chunk",
+    "requirement": "Malformed chunk empty-progress releases exact retained generation without hashing or exposing bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-extra-field",
+    "family": "hostile-chunk",
+    "requirement": "Malformed chunk extra-field releases exact retained generation without hashing or exposing bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-fractional-offset",
+    "family": "literal-wire",
+    "requirement": "Chunk literal fractional-offset preserves refusal evidence before rounding or duplicate erasure.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-underflow-offset",
+    "family": "literal-wire",
+    "requirement": "Chunk literal underflow-offset preserves refusal evidence before rounding or duplicate erasure.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-read-duplicate-offset",
+    "family": "literal-wire",
+    "requirement": "Chunk literal duplicate-offset preserves refusal evidence before rounding or duplicate erasure.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-digest-wrong-32",
+    "family": "verification",
+    "requirement": "A wrong-32 digest cannot create a verified owner; captured generation is released once.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-digest-short-31",
+    "family": "verification",
+    "requirement": "A short-31 digest cannot create a verified owner; captured generation is released once.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-digest-mutated-input",
+    "family": "verification",
+    "requirement": "Digest effect mutating its argument cannot establish byte integrity or expose output.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-generation-failed-diagnostics",
+    "family": "generation-failure",
+    "requirement": "Typed generator failure retains diagnostics and closes without reads, hashes or release.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-stale-after-connect",
+    "family": "stale-boundary",
+    "requirement": "After held connect settles, obsolete attempt cleans its captured resource and exposes no owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-stale-after-initialize",
+    "family": "stale-boundary",
+    "requirement": "After held initialize settles, obsolete attempt cleans its captured resource and exposes no owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-stale-after-generate",
+    "family": "stale-boundary",
+    "requirement": "After held generate settles, obsolete attempt cleans its captured resource and exposes no owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-stale-after-read",
+    "family": "stale-boundary",
+    "requirement": "After held read settles, obsolete attempt cleans its captured resource and exposes no owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-stale-after-digest",
+    "family": "stale-boundary",
+    "requirement": "After held digest settles, obsolete attempt cleans its captured resource and exposes no owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-stale-after-release",
+    "family": "stale-boundary",
+    "requirement": "After held release settles, obsolete attempt cleans its captured resource and exposes no owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-cancel-pending-initialize",
+    "family": "cancel-boundary",
+    "requirement": "Cancel pending initialize immediately closes its own socket; late reply cannot resurrect an owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-cancel-pending-generate",
+    "family": "cancel-boundary",
+    "requirement": "Cancel pending generate immediately closes its own socket; late reply cannot resurrect an owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-cancel-pending-read",
+    "family": "cancel-boundary",
+    "requirement": "Cancel pending read immediately closes its own socket; late reply cannot resurrect an owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-cancel-pending-connect-late-success",
+    "family": "cancel-boundary",
+    "requirement": "Late connect after cancellation is closed by its attempt without initialization or generation.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-cancel-pending-digest-release-once",
+    "family": "cancel-boundary",
+    "requirement": "Cancellation releases while hash is held, memoizes cleanup, then discards late verified result.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-old-generate-cannot-clear-new-owner",
+    "family": "attempt-isolation",
+    "requirement": "A delayed generate from old A releases only generation-A, preserving verified B and its downloadable bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-old-digest-cannot-clear-new-owner",
+    "family": "attempt-isolation",
+    "requirement": "A delayed digest from old A releases only generation-A, preserving verified B and its downloadable bytes.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-channel-closed-during-hash",
+    "family": "closed-channel",
+    "requirement": "A closed owner socket prevents publication even after valid digest, with exact actual close-call accounting.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-release-malformed-acknowledgement",
+    "family": "release-failure",
+    "requirement": "Malformed release acknowledgement closes captured socket and suppresses the already verified byte owner.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-literal-private-marker-caller-objects",
+    "family": "literal-capture",
+    "requirement": "Private-looking maps and duplicate-looking JSON strings remain exact ordinary IR/options through captured outbound requests.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-remote-mathematical-code",
+    "family": "literal-wire",
+    "requirement": "Signed remote codes retain exact mathematical i32 validation before Number conversion.",
+    "adapterExecuted": false
+  },
+  {
+    "id": "client-remote-oneover-i32-code",
+    "family": "literal-wire",
+    "requirement": "Signed remote codes retain exact mathematical i32 validation before Number conversion.",
+    "adapterExecuted": false
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "revision": 2,
+  "basis": "Independent source review: pinned UI962dc42 artifact-wire.ts204–208 integer defaults artifacts.invalid_range; artifact-transfer.ts521–522 read offset and427 signed RPC code call it without override. Normative profile requires rejection without a narrower classification.",
+  "productionChanged": false,
+  "actualOutputCopied": false,
+  "changes": [
+    {
+      "path": "/cases/77/expected/value/attempts/0/result/failure/failure/code",
+      "before": "artifacts.invalid_request",
+      "after": "artifacts.invalid_range"
+    },
+    {
+      "path": "/cases/78/expected/value/attempts/0/result/failure/failure/code",
+      "before": "artifacts.invalid_request",
+      "after": "artifacts.invalid_range"
+    },
+    {
+      "path": "/cases/101/expected/value/attempts/0/result/failure/failure/code",
+      "before": "artifacts.invalid_request",
+      "after": "artifacts.invalid_range"
+    }
+  ],
+  "priorCorpusSha256": "9c610f728a2fa4926fa893c1901189a04546b4770ccdddb325a48bbf3749eb87",
+  "correctedCorpusSha256": "ab810f6c007c33aacfc9e3c552f79cc179a73e9d77d2ea5e23d3396e8efc9191",
+  "inputsEventsCheckpointsLifecycleUnchanged": true
+}

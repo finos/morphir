@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-report.schema.json",
   "title": "Worksheet mck-report draft.27",
-  "description": "Exact artifact-server evidence with independently authored byte hashes; semantic byte, work, authority and lifecycle rules are normative in README.html",
+  "description": "Exact separately scoped artifact-server and artifact-client evidence. Semantic byte, work, authority and lifecycle rules are normative in README.html.",
   "examples": [
     {
       "formatVersion": "0.1.0-draft.28",
@@ -13,8 +13,12 @@
         "contractVersion": "0.1.0-draft.28",
         "binding": "example-rust-artifact-host",
         "language": "rust",
-        "operations": [ "artifact-server" ],
-        "formats": [ "json" ]
+        "operations": [
+          "artifact-server"
+        ],
+        "formats": [
+          "json"
+        ]
       },
       "records": [
         {
@@ -138,45 +142,110 @@
       "maxItems": 1024,
       "minItems": 1,
       "items": {
-        "type": "object",
-        "required": [ "caseId", "operation", "format", "result", "observed" ],
-        "properties": {
-          "caseId": {
-            "type": "string",
-            "maxLength": 128,
-            "minLength": 1
-          },
-          "operation": {
-            "const": "artifact-server"
-          },
-          "format": {
-            "const": "json"
-          },
-          "result": {
-            "enum": [ "pass", "fail", "unsupported", "error" ]
-          },
-          "observed": {
-            "anyOf": [
-              {
-                "type": "null"
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "caseId",
+              "operation",
+              "format",
+              "result",
+              "observed"
+            ],
+            "properties": {
+              "caseId": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
               },
-              {
-                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-observation.schema.json"
+              "operation": {
+                "const": "artifact-server"
+              },
+              "format": {
+                "const": "json"
+              },
+              "result": {
+                "enum": [
+                  "pass",
+                  "fail",
+                  "unsupported",
+                  "error"
+                ]
+              },
+              "observed": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-observation.schema.json"
+                  }
+                ]
               }
-            ]
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "caseId",
+              "operation",
+              "format",
+              "result",
+              "observed"
+            ],
+            "properties": {
+              "caseId": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "artifact-client"
+              },
+              "format": {
+                "const": "json"
+              },
+              "result": {
+                "enum": [
+                  "pass",
+                  "fail",
+                  "unsupported",
+                  "error"
+                ]
+              },
+              "observed": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-observation.schema.json"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
           }
-        },
-        "additionalProperties": false
+        ]
       }
     },
     "errors": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": [ "phase", "message" ],
+        "required": [
+          "phase",
+          "message"
+        ],
         "properties": {
           "phase": {
-            "enum": [ "spawn", "capabilities", "exchange", "shutdown" ]
+            "enum": [
+              "spawn",
+              "capabilities",
+              "exchange",
+              "shutdown"
+            ]
           },
           "message": {
             "type": "string",

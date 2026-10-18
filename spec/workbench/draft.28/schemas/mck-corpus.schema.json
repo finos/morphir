@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-corpus.schema.json",
   "title": "Artifact transfer mck-corpus",
-  "description": "Exact artifact-server evidence with independently authored byte hashes; semantic byte, work, authority and lifecycle rules are normative in README.html",
+  "description": "Exact separately scoped artifact-server and artifact-client evidence. Semantic byte, work, authority and lifecycle rules are normative in README.html.",
   "examples": [
     {
       "formatVersion": "0.1.0-draft.28",
@@ -170,7 +170,10 @@
     }
   ],
   "type": "object",
-  "required": [ "formatVersion", "cases" ],
+  "required": [
+    "formatVersion",
+    "cases"
+  ],
   "properties": {
     "formatVersion": {
       "const": "0.1.0-draft.28"
@@ -180,28 +183,68 @@
       "maxItems": 1024,
       "minItems": 1,
       "items": {
-        "type": "object",
-        "required": [ "id", "operation", "format", "input", "expected" ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "maxLength": 128,
-            "minLength": 1
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "operation",
+              "format",
+              "input",
+              "expected"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "artifact-server"
+              },
+              "format": {
+                "const": "json"
+              },
+              "input": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-input.schema.json"
+              },
+              "expected": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-observation.schema.json"
+              }
+            },
+            "additionalProperties": false
           },
-          "operation": {
-            "const": "artifact-server"
-          },
-          "format": {
-            "const": "json"
-          },
-          "input": {
-            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-input.schema.json"
-          },
-          "expected": {
-            "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-observation.schema.json"
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "operation",
+              "format",
+              "input",
+              "expected"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "operation": {
+                "const": "artifact-client"
+              },
+              "format": {
+                "const": "json"
+              },
+              "input": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-input.schema.json"
+              },
+              "expected": {
+                "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.28/mck-client-observation.schema.json"
+              }
+            },
+            "additionalProperties": false
           }
-        },
-        "additionalProperties": false
+        ]
       }
     }
   },

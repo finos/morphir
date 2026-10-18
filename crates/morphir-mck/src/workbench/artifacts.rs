@@ -129,14 +129,14 @@ pub(super) fn validate_input(value: &Value) -> Result<usize, String> {
     Ok(expansion)
 }
 
-fn identity(value: &Value) -> Result<&str, String> {
+pub(super) fn identity(value: &Value) -> Result<&str, String> {
     let text = value.as_str().ok_or("artifact identity must be a string")?;
     if text.is_empty() || text.len() > 128 || text.chars().any(char::is_control) {
         return Err("artifact identity exceeds portable bounds".into());
     }
     Ok(text)
 }
-fn producer_version(value: &Value) -> Result<(), String> {
+pub(super) fn producer_version(value: &Value) -> Result<(), String> {
     let text = value
         .as_str()
         .ok_or("artifact producer version must be a string")?;
@@ -151,7 +151,7 @@ fn producer_version(value: &Value) -> Result<(), String> {
     Ok(())
 }
 
-fn portable_paths(items: &[Value]) -> Result<(), String> {
+pub(super) fn portable_paths(items: &[Value]) -> Result<(), String> {
     let key = |path: &str| path.nfkc().case_fold().nfc().collect::<String>();
     let mut files = BTreeSet::new();
     let mut directories = BTreeMap::new();
@@ -215,7 +215,7 @@ fn portable_paths(items: &[Value]) -> Result<(), String> {
     Ok(())
 }
 /// Exact decimal integrality, independent of a floating-point conversion.
-fn integer(value: &Value, bound: usize) -> Result<usize, String> {
+pub(super) fn integer(value: &Value, bound: usize) -> Result<usize, String> {
     let token = value
         .as_number()
         .ok_or("artifact count must be numeric")?
@@ -250,7 +250,7 @@ fn integer(value: &Value, bound: usize) -> Result<usize, String> {
         .filter(|v| *v <= bound)
         .ok_or_else(|| "artifact count exceeds bounds".into())
 }
-fn signed_rpc_code(value: &Value) -> Result<i32, String> {
+pub(super) fn signed_rpc_code(value: &Value) -> Result<i32, String> {
     let token = value
         .as_number()
         .ok_or("artifact RPC error code is not numeric")?
@@ -649,6 +649,9 @@ fn check(name: &str, value: &Value) -> Result<(), String> {
             include_str!("../../../../spec/workbench/draft.28/schemas/mck-capabilities.schema.json"),
             include_str!("../../../../spec/workbench/draft.28/schemas/mck-corpus.schema.json"),
             include_str!("../../../../spec/workbench/draft.28/schemas/mck-report.schema.json"),
+            include_str!("../../../../spec/workbench/draft.28/schemas/mck-client-input.schema.json"),
+            include_str!("../../../../spec/workbench/draft.28/schemas/mck-client-projection.schema.json"),
+            include_str!("../../../../spec/workbench/draft.28/schemas/mck-client-observation.schema.json"),
             include_str!("../../../../spec/workbench/artifacts/0.1.0-draft.1/schemas/generate-result.schema.json"),
             include_str!("../../../../spec/workbench/artifacts/0.1.0-draft.1/schemas/read-result.schema.json"),
         ];
@@ -656,7 +659,7 @@ fn check(name: &str, value: &Value) -> Result<(), String> {
         resources.iter().map(|schema|{
             let id=schema["$id"].as_str().expect("artifact schemaID");
             let name=match id.rsplit('/').next().expect("schema filename") {
-                "mck-input.schema.json"=>"mck-input","mck-projection.schema.json"=>"mck-projection","mck-observation.schema.json"=>"mck-observation","mck-capabilities.schema.json"=>"mck-capabilities","mck-corpus.schema.json"=>"mck-corpus","mck-report.schema.json"=>"mck-report","generate-result.schema.json"=>"generate-result","read-result.schema.json"=>"read-result",_=>unreachable!("fixed schema")};
+                "mck-input.schema.json"=>"mck-input","mck-projection.schema.json"=>"mck-projection","mck-observation.schema.json"=>"mck-observation","mck-capabilities.schema.json"=>"mck-capabilities","mck-corpus.schema.json"=>"mck-corpus","mck-report.schema.json"=>"mck-report","mck-client-input.schema.json"=>"mck-client-input","mck-client-projection.schema.json"=>"mck-client-projection","mck-client-observation.schema.json"=>"mck-client-observation","generate-result.schema.json"=>"generate-result","read-result.schema.json"=>"read-result",_=>unreachable!("fixed schema")};
             let mut options=jsonschema::options();options.with_retriever(OfflineOnly);
             for resource in &resources {options.with_resource(resource["$id"].as_str().expect("schemaID"),jsonschema::Resource::from_contents(resource.clone()).expect("resource"));}
             (name,options.build(schema).expect("artifact validator"))

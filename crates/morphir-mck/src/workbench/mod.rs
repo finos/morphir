@@ -1,5 +1,6 @@
 //! Workbench codec cases with parent-owned expectations and explicit adapters.
 
+mod artifact_client;
 mod artifacts;
 mod capability_executions;
 mod capability_policy;

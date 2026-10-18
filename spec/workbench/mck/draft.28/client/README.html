@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main><h1>Artifact client compatibility kit</h1><p class="meta">Shared Morphir MCK · exact0.1.0-draft.28 · scoped artifact-client ·102 independently authored cases</p><nav class="toc"><ul><li><a href="#scope">Scope and evidence</a></li><li><a href="#workflow">Actual production workflow</a></li><li><a href="#inputs">Closed controlled inputs</a></li><li><a href="#bounds">Pre-allocation bounds</a></li><li><a href="#owners">Original bytes, preview and registry</a></li><li><a href="#evidence">Lossless and typed observations</a></li><li><a href="#provenance">Independent authored provenance</a></li><li><a href="#status">Qualification and source boundaries</a></li></ul></nav><section id="scope"><h2>Scope and evidence</h2><p>The <code>artifact-client</code> operation in exact MCK <code>0.1.0-draft.28</code> qualifies the actual Workbench asynchronous transfer attempt, verified byte owner and download registry for <a href="../../../artifacts/0.1.0-draft.1/README.html">morphir/workbench/artifacts 0.1.0-draft.1</a>. It is a separate scoped kit from the unchanged103-case artifact-server kit. A pure manifest decoder does not satisfy this client claim.</p><p>The adapter drives production owners through controlled effects. The shared Rust MCK independently validates closed evidence, reconciles its raw outbound requests and compares it with102 source-authored fixed expectations. Expected values and case names are never adapter inputs. Byte recipes, whole-file hashes, previews and transitions were authored before adapter observations. This kit adds no remote method, publication write, durable persistence or SDK format change.</p></section>
+<section id="workflow"><h2>Actual production workflow</h2><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 290" role="img" aria-labelledby="flow-title flow-desc" style="width:100%;height:auto"><title id="flow-title">Independent client qualification boundaries</title><desc id="flow-desc">Authored cases feed the shared Rust checker and controlled TypeScript effects. Effects drive the production transfer attempt, which owns verified bytes and registry output. The adapter returns measured evidence to the checker.</desc><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="currentColor"/></marker></defs><g fill="none" stroke="currentColor" stroke-width="1.5"><rect x="15" y="25" width="230" height="65" rx="7"/><rect x="320" y="25" width="235" height="65" rx="7"/><rect x="625" y="25" width="220" height="65" rx="7"/><rect x="320" y="190" width="235" height="65" rx="7"/><rect x="625" y="190" width="220" height="65" rx="7"/><path d="M245 55H315M555 55H620M735 90V185M625 222H560M320 222H130V95" marker-end="url(#arrow)"/></g><g fill="currentColor" text-anchor="middle" font-family="system-ui" font-size="16"><text x="130" y="51">Independent fixed cases</text><text x="130" y="75">recipes + expected transitions</text><text x="437" y="51">Controlled effect ports</text><text x="437" y="75">hold / deliver / reject</text><text x="735" y="51">Production attempt</text><text x="735" y="75">captured resource ownership</text><text x="735" y="216">Verified owner + registry</text><text x="735" y="240">actual bytes / preview / ZIP</text><text x="437" y="216">Measured evidence</text><text x="437" y="240">single shared Rust checker</text></g></svg><details><summary>Mermaid source</summary><pre><code class="language-json">flowchart LR
+  Cases[Independent fixed cases] --&gt; Ports[Held production effect ports]
+  Ports --&gt; Attempt[ArtifactTransferAttempt]
+  Attempt --&gt; Owner[VerifiedArtifactSet and registry]
+  Owner --&gt; Evidence[Actual bytes and effect evidence]
+  Evidence --&gt; Checker[Shared Rust MCK checker]
+  Cases --&gt; Checker</code></pre></details><p>Each attempt captures provider/profile/session/target/IR, cloned caller JSON, source identity/revision/epoch and bound effect functions synchronously. It owns one authenticated connection. Initialization uses existing protocol v1. The controller generates once, reads every file in inventory order with maximum65536-byte chunks, hashes every complete file in order, releases its exact retained generation and closes its own channel before exposing a verified owner. Empty files require one handle read. This maximum-chunk operational scope does not restrict other clients permitted by the wire profile.</p><p>Every connect, initialize, generate, read, digest and release promise can be held, resolved or rejected. Staleness and cancellation are checked after awaited work. Pending old A and completed new B retain distinct channels and owners. A late A result can release only A. Explicit registry clear/replacement invalidates old download references. Changing current context alone does not revoke an already completed verified owner; application source reconciliation supplies that separate policy.</p></section>
+<section id="inputs"><h2>Closed controlled inputs</h2><p><a href="../../../draft.28/schemas/mck-client-input.schema.json">Input schema</a> defines at most4 attempt definitions and512 actions. Effects are referenced by attempt, sequential index and actual kind. A delivery must match an existing unsettled effect before data expands. Each case starts every definition exactly once and finishes every run/cancel/effect promise with all owned channels closed. Only intermediate checkpoints may be pending.</p><p>Recipes are literal lowercase hex, cycle-u8, repeat-u8 and chunk-indexed-u8. The indexed formula is byte[i]=(i modulo256) XOR ((floor(i/65536)+seed) modulo256), so adjacent chunks differ. Raw hostile replies retain complete text or at most32 lossless literal/repeated-ASCII segments. JSON duplicates, exact numeric tokens and malformed escaped Unicode reach the actual production decoder without a lossy JSON intermediary.</p><p>Optional local repeated-ASCII values default to none. At most4 recipes and1048577 aggregate units apply to existing paths before construction, followed by at most8 explicit surrogate/nonfinite faults. Path steps must exist after pre-start caller replacements and earlier recipes/faults. A key fault must name a final existing object member. Shape validation requires no repeated-string or malformed-Unicode allocation. Typed input refusals distinguish ill-formed-unicode, nonfinite-number and request-limit.</p></section>
+<section id="bounds"><h2>Pre-allocation bounds</h2><table><thead><tr><th>Boundary</th><th>Exact bound</th></tr></thead><tbody><tr><td>Shared files and framing</td><td>16MiB corpus;1024 cases; compact input/evidence each1MiB; frame overhead1KiB; aggregate observations16MiB; report32MiB. Historical limits unchanged.</td></tr><tr><td>Recipe data</td><td>16MiB+1 per negative fixture file,64MiB+1 per fixture,257 files. Production acceptance stays16MiB/file,64MiB/set,256files.</td></tr><tr><td>Decoded/read work</td><td>128MiB/case,512MiB/corpus. Reserve fixture bytes on start,65536 per explicit read and maxReads×65536 for a drain. At most4096 reads/effects/events.</td></tr><tr><td>Serialized reply work</td><td>Separately128MiB/case,512MiB/corpus. Charge complete canonical initialization/manifest/release wrappers with maximum-u64 IDs. Every canonical read reserves maximum base64 plus the longest actual metadata wrapper. Charge explicit raw replies and local-value JSON escaping separately in the same budget.</td></tr><tr><td>Observation copies</td><td>Separately128MiB/case,512MiB/corpus. Charge owner, publication, copied bytes, download and ZIP materialization conservatively even when a selection may fail.</td></tr><tr><td>Wire frames</td><td>Generation request1MiB, control request16KiB, reply128KiB. Negative reply recipes may be exactly one byte over. Input recipe literal segments16KiB; complete observed text/literals may use the frame limit within1MiB evidence.</td></tr><tr><td>Derived comparison</td><td>8MiB, separately from saved evidence. Reserve full evidence plus every frame expansion before allocation; then check exact derived serialization. Keep complete raw evidence and direct structural comparison, without a frame-hash substitute.</td></tr></tbody></table><p>Checked addition/multiplication precede recipe, repeat or frame expansion. Local values count JSON escape widths as well as decoded units: quote/backslash and controls8/9/10/12/13 use2 bytes, other C0 units use6, other ASCII uses1. All scalar counter/revision/range and signed-i32 error-code validation uses exact mathematical integers. Fractions and nonzero underflow cannot round into acceptance. Correlation IDs retain the existing unsigned-integer JSON syntax.</p></section>
+<section id="owners"><h2>Original bytes, preview and registry</h2><p>Actual SHA-256 effects measure the buffers supplied by production. Final owner, download and decompressed ZIP evidence measures original bytes rather than copying manifest digests. A producer utf8-text declaration does not prove valid text. Whole-file strict UTF-8 validation preserves BOM and detects invalid suffixes beyond the visible prefix. Invalid text keeps its original bytes downloadable and returns invalid-utf8 preview.</p><p>Owner text/binary preview prefixes are at most65536 UTF-16 units/bytes. A text prefix never ends at a high surrogate. Registry preview allocation is equal per file: min(65536,floor(1048576/max(1,fileCount))). Binary view content is empty and has a bounded original-byte prefix. Download/ZIP references must match the actual current publication, file inventory and exact verified paths. Mutating a returned byte copy cannot modify the private owner. ZIP entry names, lengths and hashes are exact; container encoding need not be byte-identical.</p></section>
+<section id="evidence"><h2>Lossless and typed observations</h2><p><a href="../../../draft.28/schemas/mck-client-observation.schema.json">Observation</a> and <a href="../../../draft.28/schemas/mck-client-projection.schema.json">evidence schemas</a> require actual effect/settlement/close/cancel events, a checkpoint after every action, the current context, pending effects, registry state and terminal attempts. Verified results include actual manifest provenance and measured file inventory. Failure/discarded results expose no verified owner. Cleanup is closed: not-connected, not-retained, released exact generation, or connection-closed with known/unknown generation and a typed reason.</p><p>The checker independently parses outbound frames, validates capture/ranges/correlation and normalizes only valid request IDs to effect ordinals. Inbound reply behavior is qualified through fixed controlled-input expectations and actual terminal/effect evidence; this client checker does not claim to reparse unsaved inbound replies. Generation/artifact identities remain exact captured literals. Arbitrary caller IR/options keep private-looking keys and strings intact through live and saved boundaries.</p><p>Saved evidence retains bounded UI explanations losslessly. Compatibility comparison omits only generic other.message and registry refusal message, while comparing typed protocol/input/verification reasons, operation/outcome/cleanup and remote RPC messages exactly. A generic failure cannot satisfy a typed expectation. Archive encoded length is bounded evidence but excluded from compatibility equality; exact entries remain compared.</p></section>
+<section id="provenance"><h2>Independent authored provenance</h2><p>The102 cases comprise an initial empty-file workflow,34 separately authored byte/preview/capture/registry/local-fault cases, and67 boundary/hostile-wire/await/lifecycle cases. <a href="independent/bytes-preview/publication-receipt.json">Independent publication receipt</a>, <a href="independent/bytes-preview/authored-manifest.json">34-case freeze</a>, <a href="independent/boundary-lifecycle/manifest.json">67-case freeze</a> and their portable author sources preserve provenance. <a href="independent/boundary-lifecycle/refusal-review2-correction.json">Review2 correction</a> records exactly3 expected failure-code leaves changed by independent source review. Inputs, events, checkpoints and lifecycle expectations did not change. Original review1 evidence remains immutable.</p><pre><code class="language-bash">bun spec/workbench/mck/draft.28/client/independent/reproduce.ts .dev/client-author-reproduction
+morphir mck workbench run --kit spec/workbench/mck/draft.28/client \
+  --adapter PATH_TO_PRODUCTION_CLIENT_ADAPTER --report .dev/client-report.json
+morphir mck workbench check --kit spec/workbench/mck/draft.28/client \
+  --report .dev/client-report.json</code></pre><p>The author reproduction tool only emits and verifies static data. It is not a compatibility runner. Shared infrastructure tests using authored responses qualify the loader/checker/report mechanics, not a client implementation.</p></section>
+<section id="status"><h2>Qualification and source boundaries</h2><ul><li><input type="checkbox" checked disabled> Closed schemas, independent checker/model and102 fixed cases.</li><li><input type="checkbox" checked disabled> Existing-path/canonical-reply-work/literal-report extraction regressions and source review.</li><li><input type="checkbox" checked disabled> Full382 shared MCK tests,25 focused client tests, clippy and portable byte-identical reproduction.</li><li><input type="checkbox" disabled> Final source-bound actual Bun/Node/Chromium102-case reports and independent saved-report checks.</li><li><input type="checkbox" checked disabled> Separate authenticated installed Rust process and actual Chromium saved-byte boundary lanes.</li><li><input type="checkbox" disabled> Complete packaged Proton file/ZIP saves and final coordinated pins/landing.</li></ul><p>Checker source is <code>crates/morphir-mck/src/workbench/artifact_client.rs</code> with the existing shared contract/corpus/run/report engine. Production client ownership lives in <a href="https://github.com/finos/morphir-moonbit/tree/b80f7380e84f80ebc1dba2e18f0f5260f6145aff/apps/morphir-workbench/browser">Workbench source</a>. Upstream pure decoder sources are pinned separately and do not replace the actual asynchronous-owner qualification. The103-case server role, installed-process lane, browser saves and client role remain distinct claims. Generated, retained, verified, downloaded and published files remain different states.</p></section></main>
+</body>
+</html>

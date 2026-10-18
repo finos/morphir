@@ -104,6 +104,8 @@ pub enum Format {
 pub enum Operation {
     #[serde(rename = "artifact-server")]
     ArtifactServer,
+    #[serde(rename = "artifact-client")]
+    ArtifactClient,
     #[serde(rename = "worksheet-evaluate")]
     WorksheetEvaluate,
     #[serde(rename = "worksheet-validate")]
@@ -155,13 +157,13 @@ pub enum Operation {
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
         if version == ARTIFACT_TRANSFER_VERSION {
-            return if self == Self::ArtifactServer {
+            return if matches!(self, Self::ArtifactServer | Self::ArtifactClient) {
                 Ok(())
             } else {
                 Err("operation is not defined by this Workbench draft".into())
             };
         }
-        if self == Self::ArtifactServer {
+        if matches!(self, Self::ArtifactServer | Self::ArtifactClient) {
             return Err("operation is not defined by this Workbench draft".into());
         }
         if version == WORKSHEET_VERSION {
@@ -242,6 +244,7 @@ impl Operation {
         if matches!(
             self,
             Self::ArtifactServer
+                | Self::ArtifactClient
                 | Self::WorksheetEvaluate
                 | Self::WorksheetValidate
                 | Self::TranscodeInvocations
@@ -435,8 +438,27 @@ pub enum Observation {
 
 impl Observation {
     pub(super) fn parse(value: Value) -> Result<Self, String> {
-        let observation: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
-        Ok(observation)
+        // `Value::Deserialize` can reinterpret ordinary private-looking maps
+        // when serde_json's raw_value/arbitrary_precision features are unified.
+        // The literal-aware boundary has already decoded this document. Move
+        // its arbitrary value subtree directly, rather than deserializing twice.
+        let Value::Object(mut members) = value else {
+            return Err("Workbench observation must be an object".into());
+        };
+        if members.len() != 2 {
+            return Err("Workbench observation has missing or unknown members".into());
+        }
+        match members.remove("status") {
+            Some(Value::String(status)) if status == "ok" => members
+                .remove("value")
+                .map(|value| Self::Ok { value })
+                .ok_or_else(|| "Workbench ok observation requires value".into()),
+            Some(Value::String(status)) if status == "invalid" => match members.remove("code") {
+                Some(Value::String(code)) => Ok(Self::Invalid { code }),
+                _ => Err("Workbench invalid observation requires a string code".into()),
+            },
+            _ => Err("unsupported Workbench observation status".into()),
+        }
     }
 
     pub(super) fn validate_for(&self, operation: Operation) -> Result<(), String> {
@@ -445,7 +467,10 @@ impl Observation {
                 projection_for(value, operation)?;
             }
             Self::Invalid { code } => {
-                if operation == Operation::ArtifactServer {
+                if matches!(
+                    operation,
+                    Operation::ArtifactServer | Operation::ArtifactClient
+                ) {
                     return Err("artifact domain refusals belong in the observed transcript".into());
                 }
                 if matches!(
@@ -557,6 +582,7 @@ impl Observation {
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
     match operation {
         Operation::ArtifactServer => super::artifacts::projection(value),
+        Operation::ArtifactClient => super::artifact_client::projection(value),
         Operation::WorksheetEvaluate | Operation::WorksheetValidate => {
             super::worksheet::projection(value, operation)
         }

@@ -106,6 +106,7 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                 )
                 .and_then(|value| {
                     if case.operation() == super::contract::Operation::ArtifactServer { super::artifacts::validate_observation_shape(&value)?; }
+                    if case.operation() == super::contract::Operation::ArtifactClient { super::artifact_client::validate_observation_shape(&value)?; }
                     if matches!(case.operation(),super::contract::Operation::WorksheetEvaluate | super::contract::Operation::WorksheetValidate) {super::worksheet::validate_observation_shape(&value)?;}
                     if matches!(case.operation(), super::contract::Operation::TranscodeInvocations | super::contract::Operation::CompareValues) { super::codec_comparison::validate_observation_shape(&value)?; }
                     if case.operation() == super::contract::Operation::ValidateHttpPolicyBoundary { super::http_policy::Kit::Boundary.observation(&value)?; }
@@ -141,7 +142,7 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                     Observation::parse(value)
                 })
                 .and_then(|observation| {
-                    observation.validate_for(case.operation())?;
+                    case.validate_observation(&observation)?;
                     let bytes = encoded_size(&observation, observation_budget)?;
                     observation_budget -= bytes;
                     case.expected

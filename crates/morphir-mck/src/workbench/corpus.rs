@@ -39,6 +39,16 @@ impl Case {
     pub(super) fn operation(&self) -> Operation {
         self.operation.unwrap_or(Operation::DecodeValue)
     }
+    pub(super) fn validate_observation(&self, observation: &Observation) -> Result<(), String> {
+        observation.validate_for(self.operation())?;
+        if self.operation() == Operation::ArtifactClient {
+            let Observation::Ok { value } = observation else {
+                return Err("client refusals belong in evidence".into());
+            };
+            super::artifact_client::validate_for_input(&self.input, value)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Deserialize)]
@@ -189,14 +199,41 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         value = crate::json::strict::parse_exact(text)?;
         super::worksheet::validate_corpus_shape(&value)?;
     }
+    let mut literal_artifact_expected = None;
     if value["formatVersion"] == super::contract::ARTIFACT_TRANSFER_VERSION {
         value = crate::json::strict::parse_exact(text)?;
         super::artifacts::validate_corpus_shape(&value)?;
+        // Preserve client caller IR/options and independently authored expected
+        // subtrees exactly. Re-entering Value::Deserialize can reinterpret
+        // legitimate marker-looking objects as numbers or parsed RawValue.
+        let cases = value["cases"].as_array_mut().expect("schema-checked cases");
+        literal_inputs = Some(
+            cases
+                .iter_mut()
+                .map(|case| std::mem::take(&mut case["input"]))
+                .collect(),
+        );
+        literal_artifact_expected = Some(
+            cases
+                .iter_mut()
+                .map(|case| {
+                    std::mem::replace(
+                        &mut case["expected"],
+                        serde_json::json!({"status":"ok","value":null}),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
     }
     let mut document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
     if let Some(inputs) = literal_inputs {
         for (case, input) in document.cases.iter_mut().zip(inputs) {
             case.input = input;
+        }
+    }
+    if let Some(expected) = literal_artifact_expected {
+        for (case, expected) in document.cases.iter_mut().zip(expected) {
+            case.expected = Observation::parse(expected)?;
         }
     }
     version(&document.format_version)?;
@@ -205,6 +242,7 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     }
     let mut ids = BTreeSet::new();
     let mut artifact_expansion = 0usize;
+    let mut client_work = [0usize; 3];
     for case in &document.cases {
         if (document.format_version == VERSION) != case.operation.is_none() {
             return Err(
@@ -218,7 +256,20 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::ArtifactServer {
+        let input_len = if case.operation() == Operation::ArtifactClient {
+            for (total, work) in client_work
+                .iter_mut()
+                .zip(super::artifact_client::validate_input(&case.input)?.work())
+            {
+                *total = total
+                    .checked_add(work)
+                    .ok_or("client corpus work overflow")?;
+                if *total > super::artifact_client::MAX_CORPUS_WORK {
+                    return Err("client corpus exceeds work budget".into());
+                }
+            }
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::ArtifactServer {
             artifact_expansion = artifact_expansion
                 .checked_add(super::artifacts::validate_input(&case.input)?)
                 .ok_or("artifact corpus expansion overflow")?;
@@ -360,6 +411,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         case.expected
             .validate_expected_for(case.operation())
             .map_err(|e| format!("case {} expected: {e}", case.id))?;
+        if case.operation() == Operation::ArtifactClient {
+            case.validate_observation(&case.expected)
+                .map_err(|e| format!("case {} input-bound expectation: {e}", case.id))?;
+        }
     }
     Ok(Corpus {
         version: document.format_version,
