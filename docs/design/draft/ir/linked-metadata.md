@@ -302,6 +302,17 @@ Predicates come from an explicit Morphir declaration closure. Its contract deter
 
 ### Declarations live in the provider IR
 
+The proposed [typed trait contract](https://github.com/finos/morphir/blob/main/spec/conceptual/traits/contract.html)
+uses this declaration boundary when projecting conceptual applications. A conceptual trait definition does not
+replace a native predicate declaration: the mapping must identify the provider's actual value declaration,
+its payload type and its declared subject roles. Conceptual target IDs need an explicit mapping to representable
+IR nodes; a dictionary concept without that mapping does not acquire a fabricated IR address. The asserting
+artifact owns an external attachment while the mapped IR node remains its subject. Unknown descriptive
+applications can be retained without claiming validation, and unavailable required trait semantics prevent a
+consumer from claiming that interpretation. This mapping preserves the existing context grammar, complete
+`assertionSources` contributor sets, conflicting facts and publication/authentication rules. It grants no
+implicit acquisition and adopts no new IR revision.
+
 The declaration closure is derived from the provider's own V4 facts, not from a separate closure file. A publishable `Library` has public value **definitions**; its `$meta.@graph` can describe each definition, whose public output signature supplies the declared data type. A `Specs` document can write the same facts directly in a value specification's `annotations.facts`. Both carriers expand through the ordinary context grammar and identify the predicate with a Node URI. The finite `morphir/metadata` schema vocabulary is built into this proposed revision so interpreting a declaration does not depend on recursively loading a declaration for `subject-role` itself.
 
 These equivalent fragments say that `deprecated` is boolean data usable on value specifications and definitions. The surrounding Library defines a public `lifecycle/deprecated` value whose `outputType` is `morphir/SDK:basics#bool`.

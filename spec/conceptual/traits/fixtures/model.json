@@ -1,0 +1,365 @@
+{
+  "recordVersion": "0.1.0-draft.1",
+  "profile": "morphir-conceptual/0.1.0-draft.1",
+  "model": {
+    "id": "urn:example:trait-model",
+    "revision": "model-1"
+  },
+  "dependencies": [],
+  "requiredSemantics": [],
+  "sources": [
+    {
+      "recordVersion": "0.1.0-draft.1",
+      "id": "urn:example:trait-source",
+      "document": {
+        "id": "urn:example:source-document",
+        "revision": "source-1"
+      },
+      "resolution": "retained",
+      "locator": "fixture:trait-authoring",
+      "fragments": [
+        {
+          "anchor": "urn:example:trait-source#wording",
+          "text": "Quantity keeps its meaning before encoding is chosen.\n\n  Keep this wording.\n"
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "recordVersion": "0.1.0-draft.1",
+      "id": "urn:example:concept:quantity",
+      "revision": "e1",
+      "kind": "concept",
+      "name": "concept:quantity",
+      "sourceRefs": [
+        {
+          "sourceId": "urn:example:trait-source",
+          "anchor": "urn:example:trait-source#wording"
+        }
+      ],
+      "content": {
+        "definition": "An amount counted in units.",
+        "aliases": [
+          "Quantity"
+        ]
+      }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1",
+      "id": "urn:example:type:quantity",
+      "revision": "e1",
+      "kind": "declaration",
+      "name": "type:quantity",
+      "sourceRefs": [
+        {
+          "sourceId": "urn:example:trait-source",
+          "anchor": "urn:example:trait-source#wording"
+        }
+      ],
+      "content": {
+        "role": "type",
+        "typeParameters": [],
+        "visibility": "transparent",
+        "representation": {
+          "state": "known",
+          "type": "morphir/SDK:basics#int",
+          "access": "public"
+        }
+      }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1",
+      "id": "urn:example:member:quantity",
+      "revision": "e1",
+      "kind": "declaration",
+      "name": "member:quantity",
+      "sourceRefs": [
+        {
+          "sourceId": "urn:example:trait-source",
+          "anchor": "urn:example:trait-source#wording"
+        }
+      ],
+      "content": {
+        "role": "parameter",
+        "parent": {
+          "state": "resolved",
+          "modelId": "urn:example:trait-model",
+          "modelRevision": "model-1",
+          "entityId": "urn:example:function:accept",
+          "entityRevision": "e1"
+        },
+        "type": "morphir/SDK:basics#int"
+      }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1",
+      "id": "urn:example:function:accept",
+      "revision": "e1",
+      "kind": "declaration",
+      "name": "function:accept",
+      "sourceRefs": [
+        {
+          "sourceId": "urn:example:trait-source",
+          "anchor": "urn:example:trait-source#wording"
+        }
+      ],
+      "content": {
+        "role": "function",
+        "typeParameters": [],
+        "signature": {
+          "inputs": {
+            "quantity": "morphir/SDK:basics#int"
+          },
+          "output": "morphir/SDK:basics#int"
+        }
+      }
+    }
+  ],
+  "relationships": [],
+  "capabilities": [],
+  "projectionGaps": [],
+  "traits": {
+    "recordVersion": "0.1.0-draft.1",
+    "profile": "morphir-traits/0.1.0-draft.1",
+    "definitions": [
+      {
+        "recordVersion": "0.1.0-draft.1",
+        "id": "urn:example:trait:label",
+        "revision": "d1",
+        "name": "label",
+        "targets": [
+          "model",
+          "module",
+          "concept",
+          "type",
+          "member",
+          "function",
+          "operation",
+          "serviceBinding"
+        ],
+        "payloadSchema": {
+          "artifact": {
+            "id": "urn:example:trait-payloads",
+            "revision": "types-1"
+          },
+          "fqName": "example/traits:payload#label",
+          "typeArguments": [],
+          "dataProfile": "morphir-metadata-json/0.1.0-draft.1"
+        },
+        "interpretation": {
+          "kind": "descriptive"
+        },
+        "multiplicity": "many",
+        "sourceRefs": [
+          {
+            "sourceId": "urn:example:trait-source",
+            "anchor": "urn:example:trait-source#wording"
+          }
+        ]
+      },
+      {
+        "recordVersion": "0.1.0-draft.1",
+        "id": "urn:example:trait:elaboration",
+        "revision": "d1",
+        "name": "elaboration",
+        "targets": [
+          "concept",
+          "type",
+          "member"
+        ],
+        "payloadSchema": {
+          "artifact": {
+            "id": "urn:example:trait-payloads",
+            "revision": "types-1"
+          },
+          "fqName": "example/traits:payload#elaboration",
+          "typeArguments": [],
+          "dataProfile": "morphir-metadata-json/0.1.0-draft.1"
+        },
+        "interpretation": {
+          "kind": "descriptive"
+        },
+        "multiplicity": "many",
+        "sourceRefs": [
+          {
+            "sourceId": "urn:example:trait-source",
+            "anchor": "urn:example:trait-source#wording"
+          }
+        ]
+      },
+      {
+        "recordVersion": "0.1.0-draft.1",
+        "id": "urn:example:trait:encoding",
+        "revision": "d1",
+        "name": "encoding",
+        "targets": [
+          "type"
+        ],
+        "payloadSchema": {
+          "artifact": {
+            "id": "urn:example:trait-payloads",
+            "revision": "types-1"
+          },
+          "fqName": "example/traits:payload#encoding",
+          "typeArguments": [],
+          "dataProfile": "morphir-metadata-json/0.1.0-draft.1"
+        },
+        "interpretation": {
+          "kind": "semantic",
+          "profiles": [
+            "urn:example:encoding-rules/0.1.0-draft.1"
+          ]
+        },
+        "multiplicity": "one",
+        "sourceRefs": [
+          {
+            "sourceId": "urn:example:trait-source",
+            "anchor": "urn:example:trait-source#wording"
+          }
+        ]
+      },
+      {
+        "recordVersion": "0.1.0-draft.1",
+        "id": "urn:example:trait:related-concept",
+        "revision": "d1",
+        "name": "related-concept",
+        "targets": [
+          "type",
+          "member"
+        ],
+        "payloadSchema": {
+          "artifact": {
+            "id": "urn:example:trait-payloads",
+            "revision": "types-1"
+          },
+          "fqName": "example/traits:payload#concept-link",
+          "typeArguments": [],
+          "dataProfile": "morphir-metadata-json/0.1.0-draft.1"
+        },
+        "interpretation": {
+          "kind": "descriptive"
+        },
+        "multiplicity": "many",
+        "sourceRefs": [
+          {
+            "sourceId": "urn:example:trait-source",
+            "anchor": "urn:example:trait-source#wording"
+          }
+        ],
+        "referenceBindings": [
+          {
+            "path": "",
+            "targetKind": "concept",
+            "profile": "morphir-entity-reference-data/0.1.0-draft.1"
+          }
+        ]
+      },
+      {
+        "recordVersion": "0.1.0-draft.1",
+        "id": "urn:example:trait:foreign-condition",
+        "revision": "d1",
+        "name": "foreign-condition",
+        "targets": [
+          "type",
+          "member"
+        ],
+        "payloadSchema": {
+          "artifact": {
+            "id": "urn:example:trait-payloads",
+            "revision": "types-1"
+          },
+          "fqName": "example/traits:payload#foreign-condition",
+          "typeArguments": [],
+          "dataProfile": "morphir-metadata-json/0.1.0-draft.1"
+        },
+        "interpretation": {
+          "kind": "semantic",
+          "profiles": [
+            "urn:example:foreign-condition/0.1.0-draft.1"
+          ]
+        },
+        "multiplicity": "many",
+        "sourceRefs": [
+          {
+            "sourceId": "urn:example:trait-source",
+            "anchor": "urn:example:trait-source#wording"
+          }
+        ]
+      },
+      {
+        "recordVersion": "0.1.0-draft.1",
+        "id": "urn:example:trait:prompt",
+        "revision": "d1",
+        "name": "prompt",
+        "targets": [
+          "operation",
+          "serviceBinding"
+        ],
+        "payloadSchema": {
+          "artifact": {
+            "id": "urn:example:trait-payloads",
+            "revision": "types-1"
+          },
+          "fqName": "example/traits:payload#prompt",
+          "typeArguments": [],
+          "dataProfile": "morphir-metadata-json/0.1.0-draft.1"
+        },
+        "interpretation": {
+          "kind": "descriptive"
+        },
+        "multiplicity": "many",
+        "sourceRefs": [
+          {
+            "sourceId": "urn:example:trait-source",
+            "anchor": "urn:example:trait-source#wording"
+          }
+        ]
+      }
+    ],
+    "applications": [
+      {
+        "recordVersion": "0.1.0-draft.1",
+        "id": "urn:example:application:label",
+        "revision": "a1",
+        "definition": {
+          "state": "resolved",
+          "modelId": "urn:example:trait-model",
+          "modelRevision": "model-1",
+          "entityId": "urn:example:trait:label",
+          "entityRevision": "d1"
+        },
+        "target": {
+          "kind": "type",
+          "ref": {
+            "state": "resolved",
+            "modelId": "urn:example:trait-model",
+            "modelRevision": "model-1",
+            "entityId": "urn:example:type:quantity",
+            "entityRevision": "e1"
+          }
+        },
+        "interpretation": {
+          "kind": "descriptive"
+        },
+        "payload": "Quantity",
+        "sourceRefs": [
+          {
+            "sourceId": "urn:example:trait-source",
+            "anchor": "urn:example:trait-source#wording"
+          }
+        ],
+        "provenance": {
+          "origin": "authored",
+          "agent": "fixture-author",
+          "sourceRefs": [
+            {
+              "sourceId": "urn:example:trait-source",
+              "anchor": "urn:example:trait-source#wording"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

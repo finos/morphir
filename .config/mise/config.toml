@@ -557,6 +557,9 @@ run = [
     "bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/model/tsconfig.json",
     "bun test spec/conceptual/model/fixture-builders.test.ts",
     "jsonschema validate website/static/schemas/morphir-ir-v4.json spec/conceptual/model/fixtures/prose-only.ir.json spec/conceptual/model/fixtures/mixed.ir.json spec/conceptual/model/fixtures/identity-implementation.ir.json",
+    "bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/traits/tsconfig.json",
+    "bun test spec/conceptual/traits/fixture-integrity.test.ts",
+    "jsonschema validate website/static/schemas/morphir-ir-v4.json spec/conceptual/traits/fixtures/payload-types.ir.json",
 ]
 
 [tasks."vendor:morphir-web"]
