@@ -21,7 +21,10 @@ pub(super) trait Testee {
 impl Testee for Session {
     fn exchange(&mut self, request: &Value) -> Result<Value, String> {
         let response = if request["contractVersion"]
-            == super::contract::NATIVE_POLICY_BOUNDARY_VERSION
+            == super::contract::HTTP_POLICY_BOUNDARY_VERSION
+            || request["contractVersion"] == super::contract::HTTP_POLICY_CLIENT_VERSION
+            || request["contractVersion"] == super::contract::HTTP_POLICY_PROVIDER_VERSION
+            || request["contractVersion"] == super::contract::NATIVE_POLICY_BOUNDARY_VERSION
             || request["contractVersion"] == super::contract::NATIVE_POLICY_CLIENT_VERSION
             || request["contractVersion"] == super::contract::NATIVE_POLICY_OWNER_VERSION
             || request["contractVersion"] == super::contract::EXECUTIONS_VERSION

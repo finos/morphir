@@ -6,5 +6,74 @@
 <title>Document title</title>
 <!--
   Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
-  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main><h1>Authenticated HTTP checking-policy provider qualification</h1><p class="meta">Exact Workbench MCK 0.1.0-draft.25</p><nav class="toc" aria-label="Contents"><ul><li><a href="#scope">Scope</a></li><li><a href="#input">Closed inputs</a></li><li><a href="#projection">Closed observations</a></li><li><a href="#bounds">Bounds and checking</a></li><li><a href="#evidence">Evidence limits</a></li></ul></nav><section id="scope"><h2>Scope</h2><p>JSON operation <code>run-http-policy-provider</code>, exact version <code>0.1.0-draft.25</code>. The adapter performs real loopback HTTP requests through the production gateway, production provider, actual Node workers and selected Scheme evaluator. The upstream authentication endpoint is a controlled dependency. Claims about a production Rust daemon, another provider, another runtime or packaged platform do not follow.</p><p>The <a href="../mck/draft.25/cases.json">22 fixed cases</a> and expected projections are parent-owned and authored before production adapter execution. Source fixtures reuse independent capability-execution fixtures where applicable. No case ID or expectation is sent to the adapter.</p></section><section id="input"><h2>Closed inputs</h2><p>The exact input has opaque submission and closed actions. Initial authentication role is session. Actions session, submit, submit-lost-reply and shutdown have no other fields. Wait, query, cancel, release, query-lost-reply and release-lost-reply have a zero-based execution index 0–3. Authenticate has nullable sessionId and changes the controlled upstream endpoint. Replace-submission has opaque submission and only changes the caller fixture for future submits. At most four submit attempts occur. A literal providerId equal to provider resolves once to the actual provider ID returned by the first descriptor. Other provider IDs remain untouched. No version, policy, runtime or source rewriting is allowed.</p><p>All fixture action syntax is validated before execution. Unknown operations or infrastructure members reject. Source text and opaque HTTP bodies remain implementation input, even when deliberately malformed.</p></section><section id="projection"><h2>Closed observations</h2><p>The projection has requests, executions, workers and nullable infrastructure failure. Request summaries record operation, actual HTTP status, bounded error code or null, and addressed execution index or null. Wait performs actual queries until a terminal receipt and emits one final wait summary. Lost-reply operations invoke the real operation then physically discard response delivery; their summary has status:null and code:null. A trusted observer can retain the actual accepted plan and receipt after delivery loss. This is instrumentation, not recovered client knowledge or a claim of a physical network fault. Executions retain actual plan, last observed receipt and release success. Actual host/provider/initial session IDs normalize to fixture roles host/provider/session, and accepted execution/snapshot/plan identities normalize by acceptance order, preserving relationships. Changed authority is never normalized back to the original role. Workers record actual started/exited counts and policies read from actual posted selected requests. No predicted transition substitutes for observation. Shutdown produces no HTTP summary and preserves the last observed execution receipt.</p></section><section id="bounds"><h2>Bounds and checking</h2><p>Existing shared framing limits apply: compact input and projection at most1MiB, corpus16MiB and1024cases, aggregate observations16MiB, report32MiB. Client/provider actions are at most32 and requests128. Fixed traces retain at most four accepted plans. Identity, plan and diagnostic limits retain UTF-16 semantics after schema code-point checks. Provider plan/receipt identities must agree, accepted owner-scoped execution and plan IDs cannot repeat, terminal values must be canonical, and observed worker exits cannot exceed starts.</p><p>One shared Rust runner performs capability negotiation, fixture validation, bounded observation validation and comparison. Independent saved-report checking recomputes the exact corpus SHA-256, ordered case inventory, capabilities, verdicts and qualification. Replaying expected responses proves checker infrastructure only.</p><pre><code class="language-bash">morphir mck workbench run --kit spec/workbench/mck/draft.25 --adapter /path/to/adapter --report report.json
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Authenticated HTTP checking-policy provider qualification</h1><p class="meta">Exact Workbench MCK 0.1.0-draft.25</p><nav class="toc" aria-label="Contents"><ul><li><a href="#scope">Scope</a></li><li><a href="#input">Closed inputs</a></li><li><a href="#projection">Closed observations</a></li><li><a href="#bounds">Bounds and checking</a></li><li><a href="#evidence">Evidence limits</a></li></ul></nav><section id="scope"><h2>Scope</h2><p>JSON operation <code>run-http-policy-provider</code>, exact version <code>0.1.0-draft.25</code>. The adapter performs real loopback HTTP requests through the production gateway, production provider, actual Node workers and selected Scheme evaluator. The upstream authentication endpoint is a controlled dependency. Claims about a production Rust daemon, another provider, another runtime or packaged platform do not follow.</p><p>The <a href="../mck/draft.25/cases.json">29 fixed cases</a> and expected projections are parent-owned and authored before production adapter execution. Source fixtures reuse independent capability-execution fixtures where applicable. No case ID or expectation is sent to the adapter.</p></section><section id="input"><h2>Closed inputs</h2><p>The exact input has opaque submission and closed actions. Initial authentication role is session. Actions session, submit, submit-lost-reply and shutdown have no other fields. Wait, query, cancel, release, query-lost-reply and release-lost-reply have a zero-based execution index 0–3. Authenticate has nullable sessionId and changes the controlled upstream endpoint. Replace-submission has opaque submission and only changes the caller fixture for future submits. At most four submit attempts occur. A literal providerId equal to provider resolves once to the actual provider ID returned by the first descriptor. Other provider IDs remain untouched. No version, policy, runtime or source rewriting is allowed.</p><p>All fixture action syntax is validated before execution. Unknown operations or infrastructure members reject. Source text and opaque HTTP bodies remain implementation input, even when deliberately malformed.</p></section><section id="projection"><h2>Closed observations</h2><p>The projection has requests, executions, workers and nullable infrastructure failure. Request summaries record operation, actual HTTP status, bounded error code or null, and addressed execution index or null. Wait performs actual queries until a terminal receipt and emits one final wait summary. Lost-reply operations invoke the real operation then physically discard response delivery; their summary has status:null and code:null. A trusted observer can retain the actual accepted plan and receipt after delivery loss. This is instrumentation, not recovered client knowledge or a claim of a physical network fault. Executions retain actual plan, last observed receipt and release success. Actual host/provider/initial session IDs normalize to fixture roles host/provider/session, and accepted execution/snapshot/plan identities normalize by acceptance order, preserving relationships. Changed authority is never normalized back to the original role. Workers record actual started/exited counts and policies read from actual posted selected requests. No predicted transition substitutes for observation. Shutdown produces no HTTP summary and preserves the last observed execution receipt.</p></section><section id="bounds"><h2>Bounds and checking</h2><p>Existing shared framing limits apply: compact input and projection at most1MiB, corpus16MiB and1024cases, aggregate observations16MiB, report32MiB. Client/provider actions are at most32 and requests128. Fixed traces retain at most four accepted plans. Identity, plan and diagnostic limits retain UTF-16 semantics after schema code-point checks. Provider plan/receipt identities must agree, accepted owner-scoped execution and plan IDs cannot repeat, terminal values must be canonical, and observed worker exits cannot exceed starts.</p><p>One shared Rust runner performs capability negotiation, fixture validation, bounded observation validation and comparison. Independent saved-report checking recomputes the exact corpus SHA-256, ordered case inventory, capabilities, verdicts and qualification. Replaying expected responses proves checker infrastructure only.</p><pre><code class="language-bash">morphir mck workbench run --kit spec/workbench/mck/draft.25 --adapter /path/to/adapter --report report.json
 morphir mck workbench check --kit spec/workbench/mck/draft.25 --report report.json</code></pre></section><section id="evidence"><h2>Evidence limits</h2><p>Controlled client effects do not establish authentication or actual execution. Actual provider traces identify the gateway, worker and provider used, and retain the selected runtime's bounds. Live browser, packaged Proton, physical transport fault and supported daemon regression checks need separate receipts. Frozen HTTP host draft.1, native mappings, execution receipts and earlier MCK14–22 remain separately qualified. Native compilation never enables a connected execution policy offer.</p></section></main></body></html>
