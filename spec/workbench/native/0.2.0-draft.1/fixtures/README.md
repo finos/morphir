@@ -8,7 +8,10 @@ fixtures and additional runtime expectations are exercised by exact
 [MCK draft.16](../../../mck/draft.16/README.md), using the shared Rust runner and
 explicit implementation adapters. The original abstract lifecycle traces remain unexecuted. Concrete client lifecycle
 scenarios run separately in exact [MCK draft.17](../../../mck/draft.17/README.md).
-Owner lifecycle and packaged platform qualification remain pending.
+Controlled owner lifecycle scenarios run separately in exact
+[MCK draft.18](../../../mck/draft.18/README.md). That evidence uses controlled
+dependencies. Native caller provenance, real OS picker behavior and packaged-platform
+conformance remain pending and require separate acceptance evidence.
 These files' presence,
 valid JSON syntax, and the separate schema fixtures establish no implementation,
 transport, operating-system, or packaged-platform qualification. No additional
