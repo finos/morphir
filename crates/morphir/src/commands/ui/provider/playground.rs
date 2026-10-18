@@ -102,6 +102,19 @@ pub(super) trait ExtensionInvoker: Send + Sync {
         request: GenerateRequest,
     ) -> Result<GenerateResult, CliError>;
 
+    /// Explicit opt-in to artifact-sized replies and exactly one invocation.
+    /// Implementations cannot silently fall back to a retrying legacy path.
+    async fn generate_artifacts(
+        &self,
+        _working_directory: &Path,
+        _resolved: &Resolved,
+        _request: GenerateRequest,
+    ) -> Result<GenerateResult, CliError> {
+        Err(CliError::Extension {
+            message: "Artifact generation response policy is unavailable.".into(),
+        })
+    }
+
     /// Forget any state held for `provider`, after an invocation outlived the
     /// playground's patience.
     ///
@@ -294,7 +307,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         &self,
         params: PlaygroundGenerateParams,
     ) -> Result<PlaygroundGenerateResult, CliError> {
-        let generated = self.invoke_generation(params).await?;
+        let generated = self
+            .invoke_generation(params, GenerationInvocation::Legacy)
+            .await?;
         Ok(PlaygroundGenerateResult {
             success: generated.result.success,
             artifacts: generated
@@ -316,16 +331,24 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         &self,
         params: crate::commands::ui::artifacts::ArtifactGenerationInput,
     ) -> Result<Option<SdkGeneration>, CliError> {
-        self.invoke_generation(params.into_playground())
+        self.invoke_generation(params.into_playground(), GenerationInvocation::Artifacts)
             .await
             .map(Some)
     }
+}
+
+/// Artifact calls own a fresh session; ordinary generation keeps pool reuse.
+#[derive(Clone, Copy)]
+enum GenerationInvocation {
+    Legacy,
+    Artifacts,
 }
 
 impl NativePlaygroundProvider {
     async fn invoke_generation(
         &self,
         params: PlaygroundGenerateParams,
+        invocation_kind: GenerationInvocation,
     ) -> Result<SdkGeneration, CliError> {
         // A target is a backend, and the key selects a frontend for a source
         // language, so generate resolves against every provider.
@@ -353,13 +376,26 @@ impl NativePlaygroundProvider {
         // Artifacts stay in the response. Unlike `morphir generate`, nothing
         // is published to an output directory; the web app offers each
         // artifact as a download.
-        let invocation = self
-            .invoker
-            .generate(&self.working_directory, &resolved, request);
+        let invocation = async {
+            match invocation_kind {
+                GenerationInvocation::Legacy => {
+                    self.invoker
+                        .generate(&self.working_directory, &resolved, request)
+                        .await
+                }
+                GenerationInvocation::Artifacts => {
+                    self.invoker
+                        .generate_artifacts(&self.working_directory, &resolved, request)
+                        .await
+                }
+            }
+        };
         match bounded(invocation, self.timeout).await? {
             Invocation::Answered(result) => Ok(SdkGeneration { producer, result }),
             Invocation::TimedOut => {
-                self.invoker.abandon(&provider_id).await;
+                if matches!(invocation_kind, GenerationInvocation::Legacy) {
+                    self.invoker.abandon(&provider_id).await;
+                }
                 Ok(SdkGeneration {
                     producer,
                     result: GenerateResult {
@@ -924,6 +960,14 @@ mod tests {
                 .push(request.clone());
             crate::extensions::invoke_backend(working_directory, resolved, request).await
         }
+        async fn generate_artifacts(
+            &self,
+            working_directory: &Path,
+            resolved: &Resolved,
+            request: GenerateRequest,
+        ) -> Result<GenerateResult, CliError> {
+            self.generate(working_directory, resolved, request).await
+        }
     }
 
     /// An invoker that never answers within the caller's patience, recording
@@ -955,6 +999,16 @@ mod tests {
         }
 
         async fn generate(
+            &self,
+            _working_directory: &Path,
+            _resolved: &Resolved,
+            _request: GenerateRequest,
+        ) -> Result<GenerateResult, CliError> {
+            tokio::time::sleep(self.delay).await;
+            unreachable!("the playground gives up before this invoker answers")
+        }
+
+        async fn generate_artifacts(
             &self,
             _working_directory: &Path,
             _resolved: &Resolved,
@@ -1402,6 +1456,35 @@ mod tests {
                 .lock()
                 .expect("the log is never poisoned"),
             vec!["example-frontend".to_owned()]
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn artifact_timeout_does_not_abandon_the_independent_legacy_pool() {
+        let invoker = Arc::new(SleepingInvoker::new(Duration::from_secs(600)));
+        let fixture = fixture(
+            with_backend(GenerateResult {
+                success: true,
+                artifacts: vec![],
+                diagnostics: vec![],
+            }),
+            invoker.clone(),
+        );
+        let generated = fixture
+            .provider
+            .generate_artifacts(generate_params("avro", IR_VERSION).try_into().unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!generated.result.success);
+        assert!(
+            generated.result.diagnostics[0]
+                .message
+                .contains("timed out")
+        );
+        assert!(
+            invoker.abandoned.lock().unwrap().is_empty(),
+            "artifact timeout must only drop its owned session"
         );
     }
 

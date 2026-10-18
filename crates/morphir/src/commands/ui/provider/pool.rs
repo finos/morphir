@@ -1,9 +1,11 @@
 //! Warm guests for the playground, one per provider id.
 //!
 //! The one-shot extension boundary pays activation and the MEP handshake on
-//! every call; for an installed extension that is a process spawn per click.
+//! every call; negotiated artifact generation deliberately uses this path
+//! with an explicit larger response policy and no retry. An installed
+//! extension starts a fresh process for each artifact generation.
 //! [`PooledInvoker`] keeps one guest per provider in a
-//! [`morphir_host::Pool`] and answers every playground compile and generate
+//! [`morphir_host::Pool`] and answers ordinary playground compile and generate
 //! over it. A native-direct provider has no guest to keep, so it goes
 //! one-shot, through the same functions `morphir compile` and `morphir
 //! generate` call.
@@ -20,7 +22,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use morphir_extension_sdk::protocol::methods;
 use morphir_extension_sdk::{CompileRequest, CompileResult, GenerateRequest, GenerateResult};
-use morphir_host::{CallError, HostConfig, InvocationMode, Pool, Resolved};
+use morphir_host::{CallError, GuestResponsePolicy, HostConfig, InvocationMode, Pool, Resolved};
 use serde::{Serialize, de::DeserializeOwned};
 
 use super::playground::ExtensionInvoker;
@@ -177,6 +179,31 @@ impl ExtensionInvoker for PooledInvoker {
             _ => {
                 self.call(working_directory, resolved, methods::GENERATE, &request)
                     .await
+            }
+        }
+    }
+
+    async fn generate_artifacts(
+        &self,
+        working_directory: &Path,
+        resolved: &Resolved,
+        request: GenerateRequest,
+    ) -> Result<GenerateResult, CliError> {
+        match resolved.invocation_mode() {
+            InvocationMode::NativeDirect => {
+                crate::extensions::invoke_backend(working_directory, resolved, request).await
+            }
+            _ => {
+                let connection = resolved
+                    .connect_with_response_policy(
+                        working_directory,
+                        GuestResponsePolicy::GeneratedArtifacts,
+                    )
+                    .await
+                    .map_err(|error| CliError::Extension {
+                        message: error.to_string(),
+                    })?;
+                guest::call_once(connection, &resolved.info().id, methods::GENERATE, request).await
             }
         }
     }
@@ -430,6 +457,27 @@ mod tests {
             CliError::Extension { message } => message,
             other => panic!("expected an extension error, got {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn artifact_generation_refuses_sources_without_explicit_response_policy() {
+        let temp = tempfile::tempdir().unwrap();
+        let script = Arc::new(Script::default());
+        let registry = registry(&script, None);
+        let error = invoker()
+            .generate_artifacts(
+                temp.path(),
+                &backend(&registry, InvocationPolicy::ProtocolOnly),
+                GenerateRequest {
+                    ir: json!({}),
+                    target: "gleam".into(),
+                    options: HashMap::new(),
+                },
+            )
+            .await
+            .unwrap_err();
+        assert!(message(error).contains("response policy"));
+        assert_eq!(script.opens(), 0, "must not fall back to the legacy source");
     }
 
     // A native-direct provider is an in-process function call: there is no
