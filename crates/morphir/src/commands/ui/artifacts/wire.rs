@@ -15,7 +15,23 @@ pub struct ArtifactGenerationInput {
     ir: Value,
     ir_version: GenerationIrVersion,
     target: GenerationTarget,
-    options: Value,
+    options: ArtifactGenerationOptions,
+}
+
+/// The SDK accepts named options. Preserve arbitrary JSON only inside that
+/// validated map instead of silently replacing a caller's non-object value.
+#[derive(Debug)]
+struct ArtifactGenerationOptions(serde_json::Map<String, Value>);
+impl ArtifactGenerationOptions {
+    fn parse(value: Value) -> Result<Self, ArtifactError> {
+        match value {
+            Value::Object(options) => Ok(Self(options)),
+            _ => Err(ArtifactError::InvalidRequest),
+        }
+    }
+    fn into_json(self) -> Value {
+        Value::Object(self.0)
+    }
 }
 impl ArtifactGenerationInput {
     pub fn target(&self) -> &GenerationTarget {
@@ -29,7 +45,7 @@ impl ArtifactGenerationInput {
             ir: self.ir,
             ir_version: self.ir_version.as_str().to_owned(),
             target: self.target.as_str().to_owned(),
-            options: self.options,
+            options: self.options.into_json(),
         }
     }
 }
@@ -40,7 +56,7 @@ impl TryFrom<PlaygroundGenerateParams> for ArtifactGenerationInput {
             ir: params.ir,
             ir_version: GenerationIrVersion::parse(&params.ir_version)?,
             target: GenerationTarget::parse(&params.target)?,
-            options: params.options,
+            options: ArtifactGenerationOptions::parse(params.options)?,
         })
     }
 }
@@ -78,7 +94,9 @@ pub fn decode_generate(raw: &str) -> Result<ArtifactGenerateRequest, ArtifactErr
             ir: generation.remove("ir").expect("closed ir"),
             ir_version,
             target,
-            options: generation.remove("options").expect("closed options"),
+            options: ArtifactGenerationOptions::parse(
+                generation.remove("options").expect("closed options"),
+            )?,
         },
     })
 }

@@ -52,7 +52,10 @@
           "maxLength": 128,
           "minLength": 1
         },
-        "options": true
+        "options": {
+          "description": "Named SDK generation options, preserving arbitrary nested JSON values. Non-object options are refused before backend invocation",
+          "type": "object"
+        }
       },
       "additionalProperties": false
     }

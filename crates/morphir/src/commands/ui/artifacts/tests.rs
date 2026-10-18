@@ -1,6 +1,7 @@
 use super::*;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use morphir_extension_sdk::Artifact;
+use serde_json::{Value, json};
 
 fn artifact(path: &str, content: &str, binary: bool) -> Artifact {
     Artifact {
@@ -353,6 +354,37 @@ fn literal_generation_inputs_remain_objects_even_with_serde_private_marker_keys(
         request.options["$serde_json::private::RawValue"],
         r#"{"x":1,"x":2}"#
     );
+}
+
+#[test]
+fn artifact_generation_options_require_an_object_before_invocation() {
+    for options in [
+        Value::Null,
+        json!(true),
+        json!(0),
+        json!("preset"),
+        json!([]),
+        json!([{"nested":1}]),
+    ] {
+        let params = crate::commands::ui::protocol::PlaygroundGenerateParams {
+            ir: json!({"formatVersion":4}),
+            ir_version: "4".into(),
+            target: "fixture".into(),
+            options: options.clone(),
+        };
+        assert!(
+            matches!(
+                ArtifactGenerationInput::try_from(params),
+                Err(ArtifactError::InvalidRequest)
+            ),
+            "direct options: {options}"
+        );
+        let raw = json!({"contractVersion":CONTRACT_VERSION,"providerId":"playground","generation":{"ir":{"formatVersion":4},"irVersion":"4","target":"fixture","options":options}}).to_string();
+        assert!(
+            matches!(decode_generate(&raw), Err(ArtifactError::InvalidRequest)),
+            "raw options: {options}"
+        );
+    }
 }
 
 #[test]

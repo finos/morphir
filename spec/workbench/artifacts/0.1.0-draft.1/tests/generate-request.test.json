@@ -33,6 +33,134 @@
         "unknown": true
       },
       "valid": false
+    },
+    {
+      "description": "Non-object options are refused: null",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "providerId": "playground",
+        "generation": {
+          "ir": {
+            "formatVersion": 4
+          },
+          "irVersion": "4",
+          "target": "fixture",
+          "options": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Non-object options are refused: boolean",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "providerId": "playground",
+        "generation": {
+          "ir": {
+            "formatVersion": 4
+          },
+          "irVersion": "4",
+          "target": "fixture",
+          "options": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Non-object options are refused: number",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "providerId": "playground",
+        "generation": {
+          "ir": {
+            "formatVersion": 4
+          },
+          "irVersion": "4",
+          "target": "fixture",
+          "options": 0
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Non-object options are refused: string",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "providerId": "playground",
+        "generation": {
+          "ir": {
+            "formatVersion": 4
+          },
+          "irVersion": "4",
+          "target": "fixture",
+          "options": "preset"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Non-object options are refused: empty array",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "providerId": "playground",
+        "generation": {
+          "ir": {
+            "formatVersion": 4
+          },
+          "irVersion": "4",
+          "target": "fixture",
+          "options": []
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Non-object options are refused: nested array",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "providerId": "playground",
+        "generation": {
+          "ir": {
+            "formatVersion": 4
+          },
+          "irVersion": "4",
+          "target": "fixture",
+          "options": [
+            {
+              "nested": 1
+            }
+          ]
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Object options preserve arbitrary nested JSON data",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "providerId": "playground",
+        "generation": {
+          "ir": {
+            "formatVersion": 4
+          },
+          "irVersion": "4",
+          "target": "fixture",
+          "options": {
+            "nested": [
+              null,
+              true,
+              1,
+              "preset",
+              {
+                "literal": {
+                  "$serde_json::private::Number": "1"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "valid": true
     }
   ]
 }

@@ -141,6 +141,39 @@ fn artifact_mck_authored_corpus_and_report_checker_are_self_consistent() {
         assert!(result.is_err(), "forged {pointer}");
     }
 }
+
+/// This is checker infrastructure over independently authored refusals. The
+/// separate actual adapter run establishes the production host behavior.
+#[test]
+fn artifact_nonobject_options_kit_has_independent_zero_invocation_evidence() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../spec/workbench/mck/draft.28/server-options");
+    let corpus = load(&path).unwrap();
+    assert_eq!(corpus.case_count(), 6);
+    let answers = corpus
+        .cases
+        .iter()
+        .map(|case| serde_json::to_value(&case.expected).unwrap())
+        .collect();
+    let report = execute(&corpus, &mut AuthoredEvidence(answers));
+    assert!(report.qualified, "{:?}", report.errors);
+    check_report(&path, &Report::from_json(&report.to_json()).unwrap()).unwrap();
+    for field in [
+        "invocations",
+        "reservedBytes",
+        "reservedGenerations",
+        "activeInvocations",
+    ] {
+        let mut forged = serde_json::to_value(&report).unwrap();
+        forged["records"][0]["observed"]["value"]["events"][3][field] = json!(1);
+        assert!(
+            Report::from_json(&forged.to_string())
+                .and_then(|report| check_report(&path, &report))
+                .is_err(),
+            "{field}"
+        );
+    }
+}
 #[test]
 fn artifact_mck_bounds_fixture_work_before_adapter_execution() {
     let corpus = load(&kit()).unwrap();

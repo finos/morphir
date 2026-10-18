@@ -154,6 +154,7 @@ async fn authenticated_literal_ir_and_options_reach_actual_sdk_backend_unchanged
     )
     .await
     .unwrap();
+    let observer = host.artifact_observer();
     let url = host.base_url();
     let launch = host.launch_url();
     let task = tokio::spawn(host.serve());
@@ -183,6 +184,29 @@ async fn authenticated_literal_ir_and_options_reach_actual_sdk_backend_unchanged
         json!({"protocolVersion":1,"sessionId":"fixture-session"}),
     )
     .await;
+    for (index, options) in [
+        Value::Null,
+        json!(true),
+        json!(0),
+        json!("preset"),
+        json!([]),
+        json!([{"nested":1}]),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let result = exchange(&mut socket,100+index as u64,"morphir.artifacts.generate",json!({"contractVersion":"0.1.0-draft.1","providerId":"playground","generation":{"ir":{"formatVersion":4},"irVersion":"4","target":artifact_fixture::TARGET,"options":options}})).await;
+        assert_eq!(
+            result["error"]["code"], -32602,
+            "non-object options: {options}"
+        );
+        assert_eq!(result["error"]["data"]["code"], "artifacts.invalid_request");
+        assert_eq!(invocations.load(Ordering::SeqCst), 0);
+        assert!(requests.lock().unwrap().is_empty());
+        assert_eq!(observer.snapshot().active_invocations(), 0);
+        assert_eq!(observer.snapshot().reserved_generations(), 0);
+        assert_eq!(observer.snapshot().reserved_bytes(), 0);
+    }
     let literal_ir = json!({"formatVersion":4,"nested":{"$serde_json::private::Number":"1"}});
     let literal_option = json!({"$serde_json::private::RawValue":"{\"x\":1,\"x\":2}"});
     let result=exchange(&mut socket,2,"morphir.artifacts.generate",json!({"contractVersion":"0.1.0-draft.1","providerId":"playground","generation":{"ir":literal_ir,"irVersion":"4","target":artifact_fixture::TARGET,"options":{"literal":literal_option}}})).await;
