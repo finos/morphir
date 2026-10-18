@@ -1,0 +1,61 @@
+{
+  "recordVersion": "0.1.0-draft.1", "profile": "morphir-conceptual/0.1.0-draft.1",
+  "model": { "id": "urn:example:clauses", "revision": "m1" },
+  "dependencies": [], "requiredSemantics": [], "sources": [],
+  "entities": [
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:type:quantity", "revision": "t1", "kind": "declaration", "name": "Quantity", "sourceRefs": [],
+      "content": { "role": "type", "typeParameters": [], "visibility": "transparent", "representation": { "state": "known", "type": "morphir/SDK:basics#int", "access": "public" } },
+      "definition": { "state": "completeSpecification" }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:type:interval", "revision": "t1", "kind": "declaration", "name": "Interval", "sourceRefs": [],
+      "content": { "role": "type", "typeParameters": [], "visibility": "transparent", "representation": { "state": "known", "type": { "Record": { "fields": { "lower": "morphir/SDK:basics#int", "upper": "morphir/SDK:basics#int" } } }, "access": "public" } },
+      "definition": { "state": "completeSpecification" }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:function:remaining", "revision": "f1", "kind": "declaration", "name": "remaining", "sourceRefs": [],
+      "content": { "role": "function", "typeParameters": [], "signature": { "inputs": { "outstanding": "morphir/SDK:basics#int", "returned": "morphir/SDK:basics#int" }, "output": "morphir/SDK:basics#int" } },
+      "definition": { "state": "completeSpecification" }, "implementation": { "state": "unbound" }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:clause:quantity", "revision": "c1", "kind": "contract", "name": "Nonnegative quantity", "sourceRefs": [],
+      "content": {
+        "clauseKind": "refinement", "subject": { "state": "resolved", "modelId": "urn:example:clauses", "modelRevision": "m1", "entityId": "urn:example:type:quantity", "entityRevision": "t1" },
+        "notation": { "profile": "urn:example:scalar-source/0.1.0-draft.1", "text": "self >= 0" },
+        "binders": [{ "id": "self", "role": "self", "name": "self", "type": "morphir/SDK:basics#int" }],
+        "expression": { "state": "resolved", "profile": "urn:example:scalar/0.1.0-draft.1", "ast": { "gte": [{ "binder": "self" }, { "int": "0" }] } }
+      }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:clause:interval", "revision": "c1", "kind": "contract", "name": "Ordered interval", "sourceRefs": [],
+      "content": {
+        "clauseKind": "invariant", "subject": { "state": "resolved", "modelId": "urn:example:clauses", "modelRevision": "m1", "entityId": "urn:example:type:interval", "entityRevision": "t1" },
+        "notation": { "profile": "urn:example:scalar-source/0.1.0-draft.1", "text": "self.lower <= self.upper" },
+        "binders": [{ "id": "self", "role": "self", "name": "self", "type": { "Record": { "fields": { "lower": "morphir/SDK:basics#int", "upper": "morphir/SDK:basics#int" } } } }],
+        "expression": { "state": "resolved", "profile": "urn:example:scalar/0.1.0-draft.1", "ast": { "lte": [{ "field": [{ "binder": "self" }, "lower"] }, { "field": [{ "binder": "self" }, "upper"] }] } }
+      }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:clause:remaining-pre", "revision": "c1", "kind": "contract", "name": "Return does not exceed balance", "sourceRefs": [],
+      "content": {
+        "clauseKind": "precondition", "subject": { "state": "resolved", "modelId": "urn:example:clauses", "modelRevision": "m1", "entityId": "urn:example:function:remaining", "entityRevision": "f1" },
+        "notation": { "profile": "urn:example:scalar-source/0.1.0-draft.1", "text": "returned <= outstanding" },
+        "binders": [{ "id": "outstanding", "role": "argument", "position": 0, "name": "outstanding", "type": "morphir/SDK:basics#int" }, { "id": "returned", "role": "argument", "position": 1, "name": "returned", "type": "morphir/SDK:basics#int" }],
+        "expression": { "state": "resolved", "profile": "urn:example:scalar/0.1.0-draft.1", "ast": { "lte": [{ "binder": "returned" }, { "binder": "outstanding" }] } }
+      }
+    },
+    {
+      "recordVersion": "0.1.0-draft.1", "id": "urn:example:clause:remaining-post", "revision": "c1", "kind": "contract", "name": "Subtract returned amount", "sourceRefs": [],
+      "content": {
+        "clauseKind": "postcondition", "subject": { "state": "resolved", "modelId": "urn:example:clauses", "modelRevision": "m1", "entityId": "urn:example:function:remaining", "entityRevision": "f1" },
+        "notation": { "profile": "urn:example:scalar-source/0.1.0-draft.1", "text": "result == outstanding - returned" },
+        "binders": [{ "id": "outstanding", "role": "argument", "position": 0, "name": "outstanding", "type": "morphir/SDK:basics#int" }, { "id": "returned", "role": "argument", "position": 1, "name": "returned", "type": "morphir/SDK:basics#int" }, { "id": "result", "role": "result", "name": "result", "type": "morphir/SDK:basics#int" }],
+        "expression": { "state": "resolved", "profile": "urn:example:scalar/0.1.0-draft.1", "ast": { "equal": [{ "binder": "result" }, { "subtract": [{ "binder": "outstanding" }, { "binder": "returned" }] }] } }
+      }
+    }
+  ],
+  "relationships": [],
+  "capabilities": [{ "recordVersion": "0.1.0-draft.1", "id": "urn:example:capability:scalar", "provider": { "id": "urn:example:future-scalar-adapter", "revision": "p1" }, "profile": "morphir-conceptual/0.1.0-draft.1", "operations": ["inspect", "check"], "semanticProfiles": ["urn:example:scalar/0.1.0-draft.1"], "limits": { "bytes": 4194304, "depth": 128, "values": 100000 } }],
+  "projectionGaps": []
+}
