@@ -96,8 +96,8 @@ fn worksheet_fixed_corpora_are_independent_and_scoped() {
         assert_eq!(
             corpus.case_count(),
             match scope {
-                "" => 108,
-                "evaluate" => 46,
+                "" => 109,
+                "evaluate" => 47,
                 "validate" => 62,
                 _ => unreachable!(),
             }
