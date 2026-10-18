@@ -20,16 +20,15 @@ import {
 let packages : Array[String] = [
   "pkgs/morphir-sdk", "pkgs/morphir-ir", "pkgs/morphir-scheme", "pkgs/morphir-execution",
   "pkgs/morphir-engine", "pkgs/morphir-host", "pkgs/morphir-core", "pkgs/morphir-moonbit-bindings",
-  "pkgs/morphir-metadata", "pkgs/morphir-moonbit", "pkgs/morphir-typing", "pkgs/morphir-sdk-spec", "apps/morphir",
-  "apps/morphir-workbench",
-  "apps/morphir-extension",
+  "pkgs/morphir-metadata", "pkgs/morphir-moonbit", "pkgs/morphir-typing", "pkgs/morphir-sdk-spec",
+  "apps/morphir", "apps/morphir-workbench", "apps/morphir-extension",
 ]
 
 ///|
 /// Modules whose root directory is not a package: they need `moon.mod` and a `moon.work` entry, but no
 /// `moon.pkg`.
 let modules : Array[String] = [
-  "pkgs/morphir-elm", "pkgs/morphir-typing-tools", "apps/morphir-site",
+  "pkgs/morphir-elm", "pkgs/morphir-typing-tools", "pkgs/morphir-conceptual", "apps/morphir-site",
 ]
 
 ///|
