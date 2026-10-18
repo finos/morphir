@@ -53,6 +53,7 @@ This document provides a reference for all available mise tasks in the Morphir M
 | `mise run test:moonbit-frontend` | Compare original Boolean MoonBit, Scheme and generated libraries across four targets in debug and release; requires pinned `MOON_HOME` and retains identities | All |
 | `mise run test:supervision` | Verify process-tree cleanup, cancellation, deadlines and bounded diagnostics on Linux, macOS and Windows | All |
 | `mise run test:embedding` | Install embedding dependencies and Chromium, then test Node, installed npm and browser hosts | All |
+| `mise run test:wasm-hosts` | Opt-in MoonBit component boundary checks in Wasmtime, jco/Node and Chromium; optional pinned native Wasmoon checkout. See [scope and evidence](../tests/wasm-host/README.md) | Platforms with the pinned tool releases and Chromium |
 
 ### Utility Tasks
 
@@ -69,6 +70,7 @@ This document provides a reference for all available mise tasks in the Morphir M
 | Task | Description | Platform |
 |------|-------------|----------|
 | `mise run setup:workbench` | Install workbench npm dependencies and Chromium; `--ci` adds Linux system dependencies | All |
+| `mise run setup:wasm-hosts` | Install the optional component qualification dependencies and Chromium | Platforms supported by Playwright |
 | `mise run setup:hooks` | Install git hooks for pre-push validation (idempotent, auto-runs on directory entry) | All |
 
 ### Site Tasks

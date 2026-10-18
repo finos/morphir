@@ -1,0 +1,342 @@
+///|
+/// Opt-in component qualification. No production adapter or CI runtime selection.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+let build = ".dev/wasm-host-qualification"
+
+///|
+async fn checked(program : String, args : Array[String]) -> String {
+  let arguments = args.join(" ")
+  @stdio.stderr.write("[wasm-host] \{program} \{arguments}\n")
+  let (code, output, errors) = @async.with_timeout(180000, async fn() {
+    @process.collect_output(program, args)
+  })
+  @stdio.stderr.write(errors.text())
+  if code != 0 {
+    @stdio.stderr.write(output.text())
+    fail("Qualification command failed, exit \{code}: \{program}")
+  }
+  output.text()
+}
+
+///|
+async fn wasm_tools(args : Array[String]) -> String {
+  checked("mise", ["exec", "wasm-tools@1.259.0", "--", "wasm-tools"] + args)
+}
+
+///|
+async fn wasmtime(args : Array[String]) -> String {
+  checked(
+    "mise",
+    ["exec", "aqua:bytecodealliance/wasmtime@49.0.3", "--", "wasmtime"] + args,
+  )
+}
+
+///|
+enum LifetimeWorld {
+  Resources
+  Callbacks
+}
+
+///|
+async fn build_lifetime_world(world : LifetimeWorld) -> Unit {
+  let (name, package, declarations) = match world {
+    Resources =>
+      ("resources", "gen/interface/morphir/lifetime-probe/sessions", 7)
+    Callbacks => ("callbacks", "gen/world/callbacks", 1)
+  }
+  let guest = build + "/" + name + "-guest"
+  checked("mise", [
+    "exec", "github:bytecodealliance/wit-bindgen@0.63.0", "--", "wit-bindgen", "moonbit",
+    "tests/wasm-host/lifetimes.wit", "--world", name, "--out-dir", guest, "--derive-eq",
+    "--derive-debug",
+  ])
+  |> ignore
+  @fs.write_file(guest + "/moon.work", "members = [\".\"]\n")
+  // Keep generated resource helpers. Only replace the generated implementation
+  // declarations, exactly as for the original world stub.
+  let lines : Array[String] = []
+  let mut removed = 0
+  for
+    line in @fs.read_file(guest + "/" + package + "/top.mbt").text().split("\n") {
+    if line.has_prefix("declare pub fn ") {
+      removed += 1
+    } else {
+      lines.push(line.to_owned())
+    }
+  }
+  guard removed == declarations else {
+    fail("Unexpected generated " + name + " implementation declarations")
+  }
+  @fs.write_file(
+    guest + "/" + package + "/top.mbt",
+    lines.join("\n") +
+    "\n" +
+    @fs.read_file("tests/wasm-host/" + name + ".mbt").text(),
+  )
+  match world {
+    Callbacks =>
+      @fs.write_file(
+        guest + "/" + package + "/moon.pkg",
+        "import { \"morphir/lifetime-probe/interface/morphir/lifetime-probe/host\", }\nwarnings = \"-44\"\n",
+      )
+    Resources => ()
+  }
+  checked("moon", ["-C", guest, "build", "--target", "wasm", "--release"])
+  |> ignore
+  wasm_tools([
+    "component",
+    "embed",
+    "tests/wasm-host/lifetimes.wit",
+    "--world",
+    name,
+    guest + "/_build/wasm/release/build/gen/gen.wasm",
+    "--encoding",
+    "utf16",
+    "--output",
+    build + "/" + name + ".core.wasm",
+  ])
+  |> ignore
+  wasm_tools([
+    "component",
+    "new",
+    build + "/" + name + ".core.wasm",
+    "--output",
+    build + "/" + name + ".component.wasm",
+  ])
+  |> ignore
+  wasm_tools(["validate", build + "/" + name + ".component.wasm"]) |> ignore
+  checked("node", [
+    "tests/wasm-host/node_modules/@bytecodealliance/jco/dist/jco.js",
+    "transpile",
+    build + "/" + name + ".component.wasm",
+    "-o",
+    build + "/js",
+    "--base64-cutoff",
+    "0",
+    "--instantiation",
+    "async",
+  ])
+  |> ignore
+}
+
+///|
+async fn native_probe(checkout : String) -> Json {
+  let source = @fs.realpath(checkout)
+  let revision = checked("git", ["-C", source, "rev-parse", "HEAD"])
+  guard revision.trim() == "5490d6bf1cc293c1a3adc42dd3583e607b1ec631" else {
+    fail("Wasmoon must be the source revision qualified by the hosting study")
+  }
+  // Keep generated probe code in our own build directory. Never install a probe
+  // into the supplied source checkout or rewrite its build rules.
+  let native = build + "/native"
+  let probe = native + "/probe"
+  @fs.mkdir(probe, recursive=true, allow_exist=true)
+  let members = [Json::string("./probe")]
+  for
+    module_ in [
+      "wasm_core", "wasm_component", "wasm_milkir", "milkir", "vcode", "regalloc",
+      "vcode_regalloc", "x64_target", "aarch64_target", "wasmoon_jit", "wasmoon",
+    ] {
+    members.push(Json::string(source + "/modules/" + module_))
+  }
+  @fs.write_file(
+    native + "/moon.work",
+    "members = " + Json::array(members).stringify() + "\n",
+  )
+  @fs.write_file(
+    probe + "/moon.mod",
+    "name = \"morphir/wasmoon-host-probe\"\nimport { \"Milky2018/wasmoon@0.16.0\", \"moonbitlang/async@0.22.4\", }\n",
+  )
+  @fs.write_file(
+    probe + "/moon.pkg",
+    "import { \"Milky2018/wasmoon/component\", \"moonbitlang/async\", \"moonbitlang/async/fs\", \"moonbitlang/core/env\", \"moonbitlang/core/json\", }\npkgtype(kind: \"executable\")\n",
+  )
+  @fs.write_file(
+    probe + "/main.mbt",
+    @fs.read_file("tests/wasm-host/wasmoon.mbt").text(),
+  )
+  let component = @fs.realpath(build + "/probe.component.wasm")
+  let resources = @fs.realpath(build + "/resources.component.wasm")
+  let callbacks = @fs.realpath(build + "/callbacks.component.wasm")
+  let output = checked("moon", [
+    "-C", probe, "run", ".", "--target", "native", "--", component, resources, callbacks,
+  ])
+  let report = @json.parse(output)
+  guard report is Object(fields) else {
+    fail("Native probe did not return an evidence object")
+  }
+  fields["sourceRevision"] = Json::string(revision.trim().to_owned())
+  fields["sourceDiff"] = Json::string(
+    checked("git", ["-C", source, "diff", "HEAD", "--"]),
+  )
+  @fs.write_file(build + "/wasmoon-report.json", report.stringify() + "\n")
+  report
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  if args == ["setup"] {
+    checked("bun", ["install", "--frozen-lockfile", "--cwd", "tests/wasm-host"])
+    |> ignore
+    checked("bun", [
+      "run", "--cwd", "tests/wasm-host", "playwright", "install", "chromium",
+    ])
+    |> ignore
+    return
+  }
+  guard args.is_empty() else {
+    fail("Usage: moonx scripts/wasm-host-check.mbtx [setup]")
+  }
+  @fs.mkdir(build, recursive=true, allow_exist=true)
+  // Remove the completion record first so a failed rerun cannot look successful.
+  if @fs.exists(build + "/run.ion") {
+    @fs.remove(build + "/run.ion")
+  }
+  let compiler = checked("moon", ["version", "--all"])
+  guard compiler.contains("0.10.15+943464bfa") else {
+    fail("MoonBit 0.10.15+943464bfa required")
+  }
+  // These fixture sources are copied into generated modules outside moon.work.
+  for fixture in ["guest", "resources", "callbacks", "wasmoon"] {
+    let path = "tests/wasm-host/" + fixture + ".mbt"
+    guard checked("moonfmt", [path]) == @fs.read_file(path).text() else {
+      fail("Format the fixture with moonfmt -w " + path)
+    }
+  }
+  checked("bun", ["install", "--frozen-lockfile", "--cwd", "tests/wasm-host"])
+  |> ignore
+  checked("bun", ["check", "--project", "tests/wasm-host/tsconfig.json"])
+  |> ignore
+  let generator = checked("mise", [
+    "exec", "github:bytecodealliance/wit-bindgen@0.63.0", "--", "wit-bindgen", "--version",
+  ])
+  checked("mise", [
+    "exec",
+    "github:bytecodealliance/wit-bindgen@0.63.0",
+    "--",
+    "wit-bindgen",
+    "moonbit",
+    "tests/wasm-host/probe.wit",
+    "--out-dir",
+    build + "/guest",
+    "--derive-eq",
+    "--derive-debug",
+  ])
+  |> ignore
+  @fs.write_file(build + "/guest/moon.work", "members = [\".\"]\n")
+  @fs.write_file(
+    build + "/guest/gen/world/probe/top.mbt",
+    @fs.read_file("tests/wasm-host/guest.mbt").text(),
+  )
+  checked("moon", [
+    "-C",
+    build + "/guest",
+    "build",
+    "--target",
+    "wasm",
+    "--release",
+  ])
+  |> ignore
+  wasm_tools([
+    "component",
+    "embed",
+    "tests/wasm-host/probe.wit",
+    build + "/guest/_build/wasm/release/build/gen/gen.wasm",
+    "--encoding",
+    "utf16",
+    "--output",
+    build + "/probe.core.wasm",
+  ])
+  |> ignore
+  wasm_tools([
+    "component",
+    "new",
+    build + "/probe.core.wasm",
+    "--output",
+    build + "/probe.component.wasm",
+  ])
+  |> ignore
+  wasm_tools(["validate", build + "/probe.component.wasm"]) |> ignore
+  let wit = wasm_tools(["component", "wit", build + "/probe.component.wasm"])
+  @fs.write_file(build + "/component.wit", wit)
+  let reference = wasmtime([
+    "run",
+    "--invoke",
+    "exchange({label: \"Morphir 😀\", payload: [224,1,0,234,33,42], encoding: ion-binary})",
+    build + "/probe.component.wasm",
+  ])
+  guard reference.trim() ==
+    "ok({label: \"Morphir 😀\", payload: [224, 1, 0, 234, 33, 42], encoding: ion-binary})" else {
+    fail("Wasmtime reference changed: " + reference)
+  }
+  @fs.write_file(build + "/wasmtime.txt", reference)
+  checked("node", [
+    "tests/wasm-host/node_modules/@bytecodealliance/jco/dist/jco.js",
+    "transpile",
+    build + "/probe.component.wasm",
+    "-o",
+    build + "/js",
+    "--base64-cutoff",
+    "0",
+  ])
+  |> ignore
+  build_lifetime_world(Resources)
+  build_lifetime_world(Callbacks)
+  checked("bun", [
+    "build",
+    "tests/wasm-host/browser-entry.mts",
+    "--target",
+    "browser",
+    "--outfile",
+    build + "/checks.js",
+  ])
+  |> ignore
+  checked("node", ["tests/wasm-host/node.mts", build]) |> ignore
+  checked("node", ["tests/wasm-host/browser.mts", build]) |> ignore
+  let native = match @env.get_env_var("MORPHIR_WASMOON_CHECKOUT") {
+    Some(checkout) => native_probe(checkout)
+    None =>
+      Json({
+        "status": "not-run",
+        "reason": "MORPHIR_WASMOON_CHECKOUT not supplied",
+      })
+  }
+  let report = Json::object(
+    Map::from_array([
+      ("study", Json::string("morphir-ukvn.5.55.7")),
+      (
+        "scope",
+        Json::string(
+          "component-boundary-fixture; not full MEP or production adapter qualification",
+        ),
+      ),
+      ("moonbit", Json::string(compiler)),
+      ("witBindgen", Json::string(generator)),
+      ("wasmTools", Json::string(wasm_tools(["--version"]))),
+      ("wasmtime", Json::string(wasmtime(["--version"]))),
+      ("jco", Json::string("1.39.0")),
+      ("reference", Json::string(reference)),
+      ("node", @fs.read_file(build + "/node-report.json").json()),
+      ("browser", @fs.read_file(build + "/browser-report.json").json()),
+      ("wasmoon", native),
+    ]),
+  )
+  // JSON spelling is also valid Ion text. Individual JS test reports deliberately
+  // remain JSON for direct inspection by JavaScript test tooling.
+  @fs.write_file(build + "/run.ion", report.stringify() + "\n")
+  println(
+    "Component study completed; inspect per-host support statuses: " +
+    build +
+    "/run.ion",
+  )
+}

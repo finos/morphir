@@ -1,5 +1,6 @@
 import type { AddressInfo } from 'node:net';
 import type { createBrowserToolchain as BrowserFactory } from '../browser.mjs';
+import type * as Assembly from '../assembly.mjs';
 import assert from "node:assert/strict";
 import {createServer} from "node:http";
 import {readFile} from "node:fs/promises";
@@ -25,7 +26,16 @@ try {
     const {createBrowserToolchain}=await import(new URL('/browser.mjs', location.href).href) as { createBrowserToolchain: typeof BrowserFactory };
     const tools=createBrowserToolchain();
     try {
+      const {pinPackage,assemblyIdentity,executeAssembly}=await import(new URL('/assembly.mjs',location.href).href) as typeof Assembly;
       const info=await tools.request({operation:'info'});
+      const dependency=await pinPackage({name:'browser/library',role:'library',dependencies:[],input:{kind:'source',files:[
+        ['lib.mbt','pub fn twice(n : Int32) -> Int32 { n * 2 }']]}});
+      const root=await pinPackage({name:'browser/main',role:'library',dependencies:[{name:'math',pin:dependency.pin}],input:{kind:'source',files:[
+        ['main.mbt','pub fn answer() -> Int32 { @math.twice(21) }']]}});
+      const packages=[root,dependency];
+      const assembled=await executeAssembly(tools,{root:root.pin,packages,identity:await assemblyIdentity(info.compilerVersion,packages),
+        target:'wasm',exports:['answer']});
+      const assemblyValue=(await tools.request({operation:'run',artifact:assembled.artifact,export:'answer'})).value;
       const results=[];
       for (const target of ['wasm','wasm-gc'] as const) {
         const built=await tools.request({operation:'compile',files:[['main.mbt','pub fn answer() -> Int { 42 }']],exports:['answer'],target});
@@ -39,9 +49,9 @@ try {
       setTimeout(()=>controller.abort(),50);
       let cancellation;
       try {await running;} catch(e) {cancellation=e instanceof Error ? e.name : String(e); }
-      return {mode:info.mode,results,invalid:invalid.successful,diagnostics:invalid.diagnostics.length,cancellation};
+      return {mode:info.mode,assemblyValue,results,invalid:invalid.successful,diagnostics:invalid.diagnostics.length,cancellation};
     } finally {tools.dispose();}
   });
-  assert.deepEqual(result,{mode:'embedded',results:[42,42],invalid:false,diagnostics:1,cancellation:'AbortError'});
+  assert.deepEqual(result,{mode:'embedded',assemblyValue:42,results:[42,42],invalid:false,diagnostics:1,cancellation:'AbortError'});
   console.log('Browser embedded compilation, execution, diagnostics and cancellation passed');
 } finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}

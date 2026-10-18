@@ -67,6 +67,7 @@ async fn main {
       run("bun", ["run", "--cwd", "apps/morphir-workbench", "test:browser"])
     }
     "test-embedding" => {
+      run("moon", ["update"])
       install(".")
       install("pkgs/morphir-host/embedding")
       run("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"])
@@ -110,7 +111,7 @@ async fn main {
     "check" => {
       for
         path in [
-          ".", "apps/morphir-workbench", "apps/morphir-site", "pkgs/morphir-host/embedding",
+          ".", "apps/morphir-workbench", "apps/morphir-site", "pkgs/morphir-host/embedding", "tests/wasm-host",
           "pkgs/morphir-elm/scripts",
         ] {
         install(path)

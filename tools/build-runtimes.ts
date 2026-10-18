@@ -8,7 +8,7 @@ const root = new URL('../', import.meta.url);
 for (const directory of ['apps/morphir/build-provider/', 'pkgs/morphir-host/runners/', 'pkgs/morphir-host/embedding/']) {
   const base = new URL(directory, root);
   for (const name of readdirSync(base)) {
-    if (!name.endsWith('.mts') || name.startsWith('test-') || name === 'build.mts' || name === 'browser-worker.mts') continue;
+    if (!name.endsWith('.mts') || name.endsWith('.d.mts') || name.startsWith('test-') || name === 'build.mts' || name === 'browser-worker.mts') continue;
     await checkedBuild({ entrypoints: [fileURLToPath(new URL(name, base))], outdir: fileURLToPath(base),
       target: directory.includes('embedding') && !name.startsWith('node') ? 'browser' : 'node',
       naming: '[name].mjs', external: ['./*.mjs', '../dist/*'], tsconfig: fileURLToPath(new URL('../tsconfig.node.json', import.meta.url)),

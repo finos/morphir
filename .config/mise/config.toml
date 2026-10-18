@@ -297,6 +297,14 @@ run = "moonx scripts/typescript-tooling.mbtx test-workbench"
 description = "Test Node, npm and browser embedding"
 run = "moonx scripts/typescript-tooling.mbtx test-embedding"
 
+[tasks."setup:wasm-hosts"]
+description = "Install the optional component qualification dependencies and Chromium"
+run = "moonx scripts/wasm-host-check.mbtx setup"
+
+[tasks."test:wasm-hosts"]
+description = "Opt-in MoonBit component boundary checks in Wasmtime, Node and Chromium"
+run = "moonx scripts/wasm-host-check.mbtx"
+
 [tasks."test:compiler"]
 description = "Compile libraries and validate private build leases"
 run = "moonx scripts/typescript-tooling.mbtx test-compiler"

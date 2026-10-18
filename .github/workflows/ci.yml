@@ -97,6 +97,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+      - name: Set up cached MoonBit for packaged planner construction
+        uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for package construction
+        run: moon update
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -128,6 +132,7 @@ jobs:
           bun install --frozen-lockfile --cwd apps/morphir-site
           bun install --frozen-lockfile --cwd pkgs/morphir-host/embedding
           bun install --frozen-lockfile --cwd pkgs/morphir-elm/scripts
+          bun install --frozen-lockfile --cwd tests/wasm-host
       - name: Check every TypeScript project
         run: bun check --all
       - name: Prove checker and checked builds reject invalid types

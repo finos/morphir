@@ -1,0 +1,85 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-host/assembly"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn plan(PackagePin, Array[Package]) -> Plan raise AssemblyError
+
+// Errors
+pub(all) suberror AssemblyError {
+  InvalidPackageName(String)
+  InvalidDigest(String)
+  InvalidAlias(String)
+  DuplicateAlias(PackagePin, String)
+  DuplicatePackage(String)
+  MissingPackage(Referrer, PackagePin)
+  RevisionMismatch(Referrer, PackagePin, PackagePin)
+  DependencyCycle(Array[PackagePin])
+} derive(@debug.Debug)
+pub fn AssemblyError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub struct Dependency {
+  // private fields
+} derive(Compare, Eq, @debug.Debug)
+pub fn Dependency::compare(Self, Self) -> Int
+pub fn Dependency::equal(Self, Self) -> Bool
+pub fn Dependency::import_name(Self) -> String
+pub fn Dependency::new(String, PackagePin) -> Self raise AssemblyError
+pub fn Dependency::not_equal(Self, Self) -> Bool
+pub fn Dependency::op_ge(Self, Self) -> Bool
+pub fn Dependency::op_gt(Self, Self) -> Bool
+pub fn Dependency::op_le(Self, Self) -> Bool
+pub fn Dependency::op_lt(Self, Self) -> Bool
+pub fn Dependency::target(Self) -> PackagePin
+pub fn Dependency::to_repr(Self) -> @debug.Repr
+
+pub struct Package {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn Package::dependencies(Self) -> Array[Dependency]
+pub fn Package::equal(Self, Self) -> Bool
+pub fn Package::new(PackagePin, Array[Dependency]) -> Self raise AssemblyError
+pub fn Package::not_equal(Self, Self) -> Bool
+pub fn Package::pin(Self) -> PackagePin
+pub fn Package::to_repr(Self) -> @debug.Repr
+
+pub struct PackagePin {
+  // private fields
+} derive(Compare, Eq, @debug.Debug)
+pub fn PackagePin::compare(Self, Self) -> Int
+pub fn PackagePin::equal(Self, Self) -> Bool
+pub fn PackagePin::name(Self) -> String
+pub fn PackagePin::new(String, String) -> Self raise AssemblyError
+pub fn PackagePin::not_equal(Self, Self) -> Bool
+pub fn PackagePin::op_ge(Self, Self) -> Bool
+pub fn PackagePin::op_gt(Self, Self) -> Bool
+pub fn PackagePin::op_le(Self, Self) -> Bool
+pub fn PackagePin::op_lt(Self, Self) -> Bool
+pub fn PackagePin::sha256(Self) -> String
+pub fn PackagePin::to_repr(Self) -> @debug.Repr
+
+pub struct Plan {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn Plan::equal(Self, Self) -> Bool
+pub fn Plan::not_equal(Self, Self) -> Bool
+pub fn Plan::packages(Self) -> Array[Package]
+pub fn Plan::root(Self) -> PackagePin
+pub fn Plan::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Referrer {
+  SelectedRoot
+  SuppliedAssembly
+  DependencyOf(PackagePin)
+} derive(Eq, @debug.Debug)
+pub fn Referrer::equal(Self, Self) -> Bool
+pub fn Referrer::not_equal(Self, Self) -> Bool
+pub fn Referrer::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

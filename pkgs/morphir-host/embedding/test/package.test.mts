@@ -19,11 +19,17 @@ test("installed npm package compiles without a CLI",()=>{
     npm(["install","--prefix",directory,"--cache",join(directory,"cache"),"--ignore-scripts","--offline","--no-audit","--no-fund",...tarballs]);
     writeFileSync(join(directory,"check.mjs"), `
       import {createNodeToolchain} from '@morphir/moonbit-toolchain/node';
+      import {pinPackage,assemblyIdentity,executeAssembly,compilerVersion} from '@morphir/moonbit-toolchain';
       const tools=createNodeToolchain();
       try {
         const built=await tools.request({operation:'compile',files:[['main.mbt','pub fn answer() -> Int { 42 }']],exports:['answer']});
         const result=await tools.request({operation:'run',artifact:built.artifact,export:'answer'});
         if(result.value!==42) throw new Error('Unexpected result');
+        const dependency=await pinPackage({name:'installed/library',role:'library',dependencies:[],input:{kind:'source',files:[['lib.mbt','pub fn twice(n : Int32) -> Int32 { n * 2 }']]}});
+        const root=await pinPackage({name:'installed/main',role:'library',dependencies:[{name:'math',pin:dependency.pin}],input:{kind:'source',files:[['main.mbt','pub fn answer() -> Int32 { @math.twice(21) }']]}});
+        const packages=[root,dependency];
+        const assembly=await executeAssembly(tools,{root:root.pin,packages,identity:await assemblyIdentity(compilerVersion,packages),target:'wasm',exports:['answer']});
+        if((await tools.request({operation:'run',artifact:assembly.artifact,export:'answer'})).value!==42) throw new Error('Unexpected assembly result');
         console.log('installed embedding passed');
       } finally {tools.dispose();}
     `);

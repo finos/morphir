@@ -12,6 +12,9 @@
     },
     {
       "path": "./tsconfig.tooling.json"
+    },
+    {
+      "path": "./tests/wasm-host/tsconfig.json"
     }
   ]
 }

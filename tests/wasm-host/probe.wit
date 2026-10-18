@@ -1,0 +1,26 @@
+package morphir:host-probe@0.1.0;
+
+/// Qualification fixture only. This is not a proposed MEP binding.
+world probe {
+  enum codec {
+    ion-binary,
+    morphir-json,
+  }
+
+  record packet {
+    label: string,
+    payload: list<u8>,
+    encoding: codec,
+  }
+
+  variant probe-error {
+    refused(string),
+    closed,
+  }
+
+  export exchange: func(input: packet) -> result<packet, probe-error>;
+  export calls: func() -> u32;
+  export close: func();
+  export trap: func();
+  export spin: func();
+}

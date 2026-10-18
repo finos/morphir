@@ -1,12 +1,22 @@
 import { execFileSync } from "node:child_process";
 import {checkedBuild} from "../../../tools/build.ts";
 import {fileURLToPath} from "node:url";
-import {readFile} from "node:fs/promises";
+import {readFile, mkdir, copyFile} from "node:fs/promises";
 import {createRequire} from "node:module";
 
 const require = createRequire(import.meta.url);
 const compilerPath = require.resolve("@moonbit/moonc-worker");
 const source = await readFile(compilerPath, "utf8");
+
+// Ship the pure MoonBit planner with the host adapter. Consumers need no MoonBit
+// installation. Compilation here is package construction, never runtime work.
+const build = fileURLToPath(new URL("./_build/", import.meta.url));
+execFileSync("moon", ["build", "--target", "js", "--release", "--target-dir", build,
+  fileURLToPath(new URL("./bridge", import.meta.url))], {stdio: "inherit"});
+await mkdir(new URL("./dist/", import.meta.url), {recursive: true});
+await copyFile(`${build}/js/release/build/finos/morphir-host/embedding/bridge/bridge.js`,
+  new URL("./dist/bridge.mjs", import.meta.url));
+await copyFile(new URL("./bridge.d.mts", import.meta.url), new URL("./dist/bridge.d.mts", import.meta.url));
 
 await checkedBuild({entrypoints: [fileURLToPath(new URL("./browser-worker.mts", import.meta.url))],
   outdir: fileURLToPath(new URL("./dist/", import.meta.url)),

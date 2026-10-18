@@ -1,8 +1,9 @@
 import type { BrowserWorkerPort, CompilerFactory, Interface, NodeWorkerPort, Options, Request, RequestOptions, Result, ResultFor, Toolchain, WorkerReply, WorkerRequest } from './api.mjs';
 export type * from './api.mjs';
+export * from './assembly.mjs';
 export const compilerVersion = "0.10.15+943464bfa";
 export const capabilities = Object.freeze({protocolVersion: 1, mode: "embedded",
-  operations: Object.freeze(["info", "compile", "run"]), targets: Object.freeze(["wasm", "wasm-gc"])});
+  operations: Object.freeze(["info", "compile", "build", "link", "run"]), targets: Object.freeze(["wasm", "wasm-gc"])});
 
 const aborted = () => new DOMException("Cancelled", "AbortError");
 const check = (signal?: AbortSignal) => { if (signal?.aborted) throw aborted(); };
@@ -21,11 +22,14 @@ export function createEmbeddedToolchain(createCompiler: CompilerFactory, {import
     active(signal);
     switch (request.operation) {
       case "info": return {...capabilities, compilerVersion, supported: true, available: true};
+      case "build":
       case "compile": {
         const compiler = await createCompiler();
         active(signal);
         const {files, package: pkg = "morphir/embedded", target = "wasm", exports = [],
-          interfaces = [], indirectInterfaces = [], standardInterfaces = [], cores = [], isMain = false} = request;
+          interfaces = [], indirectInterfaces = [], standardInterfaces = [], cores = [], isMain = false,
+          optimization = "optimized"} = request;
+        if (optimization !== "optimized" && optimization !== "unoptimized") throw new TypeError("Invalid optimization");
         if (!capabilities.targets.includes(target)) throw new Error(`Unsupported embedded target: ${target}`);
         if (!Array.isArray(files) || files.length === 0 || files.some(f => !Array.isArray(f) || f.length !== 2 || f.some(v => typeof v !== "string")))
           throw new TypeError("files must be nonempty [path, source] pairs");
@@ -34,17 +38,34 @@ export function createEmbeddedToolchain(createCompiler: CompilerFactory, {import
         const mi = (entries: Interface[]): Interface[] => entries.map(([name, data]) => [name, bytes(data)]);
         const built = await compiler.buildPackage({mbtFiles: files, miFiles: mi(interfaces),
           indirectImportMiFiles: mi(indirectInterfaces), stdMiFiles: mi(standardInterfaces),
-          target, pkg, pkgSources: [], isMain, errorFormat: "json", enableValueTracing: false, noOpt: false});
+          target, pkg, pkgSources: [], isMain, errorFormat: "json", enableValueTracing: false, noOpt: optimization === "unoptimized"});
         active(signal);
         const diagnostics = (built.diagnostics ?? []).map(text => {
           try { return JSON.parse(text); } catch { return {message: text}; }
         });
-        if (!built.core) return {successful: false, diagnostics, artifact: null};
+        // Some compiler releases can return partial outputs alongside errors.
+        const errors = diagnostics.some(d => d && typeof d === "object" && 'level' in d && d.level === "error");
+        if (!built.core || errors) return request.operation === "build"
+          ? {successful: false, diagnostics} : {successful: false, diagnostics, artifact: null};
+        if (request.operation === "build") return {successful: true, diagnostics, interface: built.mi, core: built.core};
         const linked = await compiler.linkCore({coreFiles: [...cores.map(core => bytes(core)), built.core], main: pkg,
           pkgSources: [], target, exportedFunctions: exports, outputFormat: "wasm", testMode: false,
-          debug: false, noOpt: false, sourceMap: false, sources: Object.fromEntries(files), stopOnMain: true});
+          debug: false, noOpt: optimization === "unoptimized", sourceMap: false, sources: Object.fromEntries(files), stopOnMain: true});
         active(signal);
         return {successful: true, diagnostics, interface: built.mi, core: built.core, artifact: {target, bytes: linked.result}};
+      }
+      case "link": {
+        const {package: pkg, target, cores, exports, optimization = "optimized"} = request;
+        if (!capabilities.targets.includes(target) || typeof pkg !== "string" || !pkg ||
+          !Array.isArray(cores) || !cores.length || !Array.isArray(exports) || exports.some(e => typeof e !== "string") ||
+          (optimization !== "optimized" && optimization !== "unoptimized")) throw new TypeError("Invalid link request");
+        const compiler = await createCompiler();
+        active(signal);
+        const linked = await compiler.linkCore({coreFiles: cores.map(bytes), main: pkg, target,
+          pkgSources: [], exportedFunctions: exports, outputFormat: "wasm", testMode: false,
+          debug: false, noOpt: optimization === "unoptimized", sourceMap: false, sources: {}, stopOnMain: true});
+        active(signal);
+        return {artifact: {target, bytes: linked.result}};
       }
       case "run": {
         const artifact = request.artifact;

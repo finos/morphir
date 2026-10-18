@@ -2,8 +2,8 @@
 export type Target = 'wasm' | 'wasm-gc';
 export type Interface = [name: string, bytes: Uint8Array<ArrayBuffer>];
 export interface Artifact { target: Target; bytes: Uint8Array<ArrayBuffer>; }
-export interface CompileRequest {
-  operation: 'compile';
+export interface BuildRequest {
+  operation: 'build';
   files: [path: string, source: string][];
   package?: string;
   target?: Target;
@@ -13,6 +13,16 @@ export interface CompileRequest {
   standardInterfaces?: Interface[];
   cores?: Uint8Array<ArrayBuffer>[];
   isMain?: boolean;
+  optimization?: 'optimized' | 'unoptimized';
+}
+export interface CompileRequest extends Omit<BuildRequest, 'operation'> { operation: 'compile'; }
+export interface LinkRequest {
+  operation: 'link';
+  package: string;
+  target: Target;
+  cores: Uint8Array<ArrayBuffer>[];
+  exports: string[];
+  optimization?: 'optimized' | 'unoptimized';
 }
 export interface RunRequest {
   operation: 'run';
@@ -22,7 +32,14 @@ export interface RunRequest {
   args?: (number | bigint)[];
 }
 export interface InfoRequest { operation: 'info'; }
-export type Request = CompileRequest | RunRequest | InfoRequest;
+export type Request = CompileRequest | BuildRequest | LinkRequest | RunRequest | InfoRequest;
+export interface BuildResult {
+  successful: boolean;
+  diagnostics: unknown[];
+  interface?: Uint8Array<ArrayBuffer>;
+  core?: Uint8Array<ArrayBuffer>;
+}
+export interface LinkResult { artifact: Artifact; }
 export interface CompileResult {
   successful: boolean;
   diagnostics: unknown[];
@@ -40,8 +57,8 @@ export interface InfoResult {
   supported: boolean;
   available: boolean;
 }
-export type Result = CompileResult | RunResult | InfoResult;
-export type ResultFor<R extends Request> = R extends CompileRequest ? CompileResult : R extends RunRequest ? RunResult : InfoResult;
+export type Result = CompileResult | BuildResult | LinkResult | RunResult | InfoResult;
+export type ResultFor<R extends Request> = R extends CompileRequest ? CompileResult : R extends BuildRequest ? BuildResult : R extends LinkRequest ? LinkResult : R extends RunRequest ? RunResult : InfoResult;
 export interface Options { imports?: WebAssembly.Imports; }
 export interface RequestOptions { signal?: AbortSignal; }
 export interface Toolchain {
@@ -53,12 +70,12 @@ export interface Compiler {
   buildPackage(request: {
     mbtFiles: CompileRequest['files']; miFiles: Interface[]; indirectImportMiFiles: Interface[];
     stdMiFiles: Interface[]; target: Target; pkg: string; pkgSources: never[]; isMain: boolean;
-    errorFormat: 'json'; enableValueTracing: false; noOpt: false;
+    errorFormat: 'json'; enableValueTracing: false; noOpt: boolean;
   }): Promise<{ diagnostics?: string[]; core?: Uint8Array<ArrayBuffer>; mi?: Uint8Array<ArrayBuffer> }>;
   linkCore(request: {
     coreFiles: Uint8Array<ArrayBuffer>[]; main: string; pkgSources: never[]; target: Target;
     exportedFunctions: string[]; outputFormat: 'wasm'; testMode: false; debug: false;
-    noOpt: false; sourceMap: false; sources: Record<string, string>; stopOnMain: true;
+    noOpt: boolean; sourceMap: false; sources: Record<string, string>; stopOnMain: true;
   }): Promise<{ result: Uint8Array<ArrayBuffer> }>;
 }
 export type CompilerFactory = () => Compiler | Promise<Compiler>;

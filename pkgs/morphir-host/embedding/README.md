@@ -1,5 +1,59 @@
 # Embedded MoonBit tooling
 
+## Supplied library assembly
+
+`pinPackage`, `assemblyIdentity` and `executeAssembly` build an explicitly supplied
+package graph. The packaged pure MoonBit planner validates every package, even
+unused packages, and returns dependency order. The asynchronous host adapter
+checks the actual content pins and compiler/core/SDK context, builds source
+packages, reuses matching prebuilt interfaces/cores, then links each core once.
+No registry resolver, installed compiler process or synchronous engine wait is
+involved. Node workers and browser workers use the same executor.
+
+```ts
+import {pinPackage, assemblyIdentity, executeAssembly, compilerVersion}
+  from '@morphir/moonbit-toolchain';
+
+const library = await pinPackage({
+  name: 'example/library', role: 'library', dependencies: [],
+  input: {kind: 'source', files: [['library.mbt',
+    'pub fn twice(n : Int32) -> Int32 { n * 2 }']]},
+});
+const root = await pinPackage({
+  name: 'example/main', role: 'library',
+  dependencies: [{name: 'math', pin: library.pin}],
+  input: {kind: 'source', files: [['main.mbt',
+    'pub fn answer() -> Int32 { @math.twice(21) }']]},
+});
+const packages = [root, library];
+const result = await executeAssembly(tools, {
+  root: root.pin, packages, target: 'wasm', exports: ['answer'],
+  identity: await assemblyIdentity(compilerVersion, packages),
+}, {signal});
+```
+
+`tools` is an acquired toolchain and `signal` is an optional cancellation signal.
+Its owner disposes it. Explicit exports are retention roots in the selected
+package; define exported wrappers for required registrations. Required package
+initialization remains the linker's responsibility. `optimized` is the default;
+`unoptimized` passes the pinned compiler's `noOpt` setting through both stages.
+It does not claim that all linker elimination is disabled.
+
+Package content hashes use the versioned `morphir-assembly-package-v1` canonical
+JSON tuple encoded as UTF-8: name, role, sorted exact imports and sorted source
+files, or prebuilt interface/core bytes plus build context. Core/SDK set hashes
+use `morphir-assembly-set-v1` over sorted names, import names/targets and actual
+assets, excluding their context assertions to avoid circular hashes. Every
+prebuilt context must separately match those verified set hashes, compiler
+revision, target and optimization. Empty sets are explicit hashes, suitable for
+programs that require no standard-library assets. These identities establish
+content consistency, not authorship or execution authority.
+
+Low-level providers also expose `build` and `link`. Existing `compile` continues
+to build and link one package. The assembly executor retains package-scoped
+diagnostics and refuses partial outputs or a missing retained export. Worker
+cancellation and disposal retain the lifecycle rules below.
+
 `@morphir/moonbit-toolchain` embeds the pinned MoonBit package compiler and a Wasm
 execution adapter in browser and non-browser applications. It requires no system
 MoonBit installation or Morphir CLI. Morphir owns these host adapters;

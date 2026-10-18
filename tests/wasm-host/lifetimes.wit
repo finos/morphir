@@ -1,0 +1,29 @@
+package morphir:lifetime-probe@0.1.0;
+
+/// Explicit host capability. No filesystem or network access is implied.
+interface host {
+  observe: func(label: string, payload: list<u8>) -> result<u32, string>;
+}
+
+interface sessions {
+  resource session {
+    constructor(label: string);
+    read: func() -> string;
+  }
+
+  read-borrowed: func(value: borrow<session>) -> string;
+  take: func(value: own<session>) -> string;
+  live: func() -> u32;
+  dropped: func() -> u32;
+}
+
+/// Resource ownership independently of generic host-import support.
+world resources {
+  export sessions;
+}
+
+/// Callbacks independently of resource support in an embedding API.
+world callbacks {
+  import host;
+  export notify: func(label: string, payload: list<u8>) -> result<u32, string>;
+}
