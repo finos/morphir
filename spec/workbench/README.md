@@ -175,8 +175,10 @@ The accepted and rejected structural fixtures are language-neutral. The
 goldens through the shared Rust `morphir mck workbench` commands and explicit
 implementation adapters. Its test negotiation does not change host capabilities.
 The separate draft.2 kit adds declared-type validation with bounded constructor
-registry closure. Ion binary/reverse-encode goldens, SDK comparison and execution
-receipts remain pending in the shared runner.
+registry closure. The exact [codec and comparison kit](draft.26/README.html) adds independent Ion
+binary/reverse-encoding fixtures and typed-value comparison expectations through
+production adapters. Existing execution receipt qualification remains separately
+versioned; this kit adds no runtime or host capability claim.
 There is no second compatibility checker here. Complete the shared fixture
 intersection and connected host acceptance before advertising an extension.
 

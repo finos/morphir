@@ -1,0 +1,40 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.26/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Accepted fixed shape",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.26",
+        "binding": "fixed",
+        "language": "test",
+        "operations": [
+          "transcode-invocations",
+          "compare-values"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed shape rejects unknown member",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.26",
+        "binding": "fixed",
+        "language": "test",
+        "operations": [
+          "transcode-invocations",
+          "compare-values"
+        ],
+        "formats": [
+          "json"
+        ],
+        "unknown": true
+      },
+      "valid": false
+    }
+  ]
+}

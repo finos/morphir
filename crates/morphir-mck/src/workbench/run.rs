@@ -20,8 +20,8 @@ pub(super) trait Testee {
 
 impl Testee for Session {
     fn exchange(&mut self, request: &Value) -> Result<Value, String> {
-        let response = if request["contractVersion"]
-            == super::contract::HTTP_POLICY_BOUNDARY_VERSION
+        let response = if request["contractVersion"] == super::contract::CODEC_COMPARISON_VERSION
+            || request["contractVersion"] == super::contract::HTTP_POLICY_BOUNDARY_VERSION
             || request["contractVersion"] == super::contract::HTTP_POLICY_CLIENT_VERSION
             || request["contractVersion"] == super::contract::HTTP_POLICY_PROVIDER_VERSION
             || request["contractVersion"] == super::contract::NATIVE_POLICY_BOUNDARY_VERSION
@@ -103,6 +103,7 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                 "format":case.format,"input":case.input}),
                 )
                 .and_then(|value| {
+                    if matches!(case.operation(), super::contract::Operation::TranscodeInvocations | super::contract::Operation::CompareValues) { super::codec_comparison::validate_observation_shape(&value)?; }
                     if case.operation() == super::contract::Operation::ValidateHttpPolicyBoundary { super::http_policy::Kit::Boundary.observation(&value)?; }
                     if case.operation() == super::contract::Operation::RunHttpPolicyClient { super::http_policy::Kit::Client.observation(&value)?; }
                     if case.operation() == super::contract::Operation::RunHttpPolicyProvider { super::http_policy::Kit::Provider.observation(&value)?; }

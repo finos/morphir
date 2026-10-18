@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.26/mck-projection.schema.json",
+  "title": "Workbench codec and comparison mck-projection draft.26",
+  "description": "Exact offline codec-transcoding and typed-value comparison qualification. Input source decoding, reverse encoding and comparison belong to an explicit production adapter; fixed expected projections belong to the parent kit. This draft adds no live runtime claim",
+  "examples": [
+    {
+      "targetFormat": "json",
+      "invocations": {
+        "profile": "morphir-invocations-v1",
+        "calls": [
+          {
+            "id": "call",
+            "entry": "fixture:main#echo",
+            "arguments": [
+              {
+                "type": "int",
+                "value": "42"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "targetFormat", "invocations" ],
+      "properties": {
+        "targetFormat": {
+          "enum": [ "json", "ion-text", "ion-binary" ]
+        },
+        "invocations": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.1/invocations.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "matches", "mismatchPath" ],
+      "properties": {
+        "matches": {
+          "type": "boolean"
+        },
+        "mismatchPath": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "const": ""
+            },
+            {
+              "type": "string",
+              "not": {
+                "pattern": "~(?:[^01]|$)"
+              },
+              "pattern": "^/",
+              "maxLength": 65536
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
