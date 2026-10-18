@@ -1,0 +1,22 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.23/http-policy-boundary-projection.schema.json",
+  "tests": [
+    {
+      "description": "Published fixed infrastructure",
+      "data": {
+        "accepted": true,
+        "policy": null
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed root rejects extra member",
+      "data": {
+        "accepted": true,
+        "policy": null,
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

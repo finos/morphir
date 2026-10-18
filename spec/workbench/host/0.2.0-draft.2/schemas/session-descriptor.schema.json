@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.2/session-descriptor.schema.json",
+  "title": "Authenticated Workbench host descriptor with capability checking policies",
+  "description": "Exact authenticated HTTP host 0.2.0-draft.2; transport authority and retained plan equality require semantic validation",
+  "examples": [
+    {
+      "profile": "morphir/workbench/host",
+      "contractVersion": "0.2.0-draft.2",
+      "offer": {
+        "profile": "morphir/workbench/executions",
+        "contractVersion": "0.2.0-draft.1",
+        "hostId": "host",
+        "sessionId": "session",
+        "providerId": "scheme",
+        "operations": [ "query", "cancel" ]
+      },
+      "capabilityChecks": {
+        "profile": "morphir/workbench/admission",
+        "contractVersion": "0.1.0-draft.1",
+        "runtime": "scheme",
+        "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+        "policies": [ "strict", "permissive" ]
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "profile", "contractVersion", "offer", "capabilityChecks" ],
+  "properties": {
+    "profile": {
+      "const": "morphir/workbench/host"
+    },
+    "contractVersion": {
+      "const": "0.2.0-draft.2"
+    },
+    "offer": {
+      "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/offer.schema.json"
+    },
+    "capabilityChecks": {
+      "type": "object",
+      "required": [
+        "profile",
+        "contractVersion",
+        "runtime",
+        "evaluator",
+        "policies"
+      ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/admission"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "runtime": {
+          "const": "scheme"
+        },
+        "evaluator": {
+          "const": "scheme-portable-v1/shared-sdk/bounded"
+        },
+        "policies": {
+          "const": [ "strict", "permissive" ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.2/submission.schema.json",
+  "title": "Workbench host submission request with capability checking policies",
+  "description": "Exact authenticated HTTP host 0.2.0-draft.2; transport authority and retained plan equality require semantic validation",
+  "examples": [
+    {
+      "contractVersion": "0.2.0-draft.2",
+      "model": "{\"formatVersion\":3,\"distribution\":[\"Library\",[],[],{\"modules\":[]}]}",
+      "entry": "sample:main#add",
+      "inputs": {
+        "format": "json",
+        "source": "[{\"type\":\"int\",\"value\":\"2\"}]"
+      },
+      "runtime": "scheme",
+      "providerId": "scheme"
+    }
+  ],
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "model",
+    "entry",
+    "inputs",
+    "runtime",
+    "providerId"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "0.2.0-draft.2"
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 1048576,
+      "minLength": 1
+    },
+    "entry": {
+      "type": "string",
+      "maxLength": 1024,
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object",
+      "required": [ "format", "source" ],
+      "properties": {
+        "format": {
+          "enum": [ "json", "ion-text" ]
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 1048576,
+          "minLength": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "const": "scheme"
+    },
+    "providerId": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "admission": {
+      "$ref": "https://morphir.finos.org/spec/workbench/admission/0.1.0-draft.1/selection.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

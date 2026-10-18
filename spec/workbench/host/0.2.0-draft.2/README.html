@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Authenticated HTTP capability checking policies</h1>
+<p class="meta">morphir/workbench/host · exact 0.2.0-draft.2</p>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#scope">Scope and negotiation</a></li><li><a href="#submission">Immutable submission</a></li><li><a href="#authority">Authentication and authority</a></li><li><a href="#lifecycle">Execution lifecycle</a></li><li><a href="#bounds">Bounds and validation</a></li><li><a href="#evidence">Independent evidence</a></li></ul></nav>
+<section id="scope"><h2>Scope and negotiation</h2>
+<p>This exact HTTP mapping adds checking-policy negotiation to the frozen <a href="../0.2.0-draft.1/README.md">host draft.1</a>. The descriptor has exactly <code>profile</code>, <code>contractVersion</code>, <code>offer</code>, <code>capabilityChecks</code>. Its profile is <code>morphir/workbench/host</code> and version is <code>0.2.0-draft.2</code>. The offer retains the exact <code>morphir/workbench/executions</code> <code>0.2.0-draft.1</code> identity and operation contract.</p>
+<p>The checking offer has exactly profile <code>morphir/workbench/admission</code>, contractVersion <code>0.1.0-draft.1</code>, runtime <code>scheme</code>, evaluator <code>scheme-portable-v1/shared-sdk/bounded</code>, and policies <code>[&quot;strict&quot;,&quot;permissive&quot;]</code> in that order. The admission spelling is a frozen wire identifier. User-facing documentation and controls use capability checking.</p>
+<p>Unknown profiles, prereleases, build suffixes, runtimes, evaluators, policies and members reject. A descriptor is received through an authenticated HTTP session. Compilation capability, a native MEP offer, a Rust protocol v1 descriptor with executions disabled, or an unauthenticated body cannot create this offer. Strict-only providers continue to publish their qualified draft.1 mapping. Explicit permissive requests never fall back to strict, another provider, another runtime or a local evaluator.</p></section>
+<section id="submission"><h2>Immutable submission</h2>
+<p>The exact draft.2 request has required <code>contractVersion</code>, <code>model</code>, <code>entry</code>, <code>inputs</code>, <code>runtime</code>, <code>providerId</code>, and optional <code>admission</code>. Runtime must be Scheme and providerId must equal the negotiated provider. Inputs have exactly format <code>json</code> or <code>ion-text</code> and source text. No paths, caller manifests, caller plan IDs or accepted boundaries are allowed.</p>
+<p>Omitting the selection resolves once to strict. Explicit selection has exactly the frozen capability-policy profile, version and policy. The client copies source, entry, arguments and selection synchronously before any await. The authenticated host validates request framing, authority, decoding, complete selected public boundary and arguments before accepting. Strict checks the model according to its existing rules. Permissive permits unreachable unsupported code while keeping all mandatory model, type, argument and resource checks. Reached unsupported code remains a terminal evaluation failure.</p>
+<p>The initial reply has exactly <code>identity</code>, <code>calls</code>, <code>receipt</code>, <code>plan</code>. Calls is exactly <code>[&quot;workbench&quot;]</code>. Receipt is the unchanged initial executions draft.1 receipt. Plan is the <a href="../../execution-plan/0.2.0-draft.1/README.md">execution-plan draft.1</a> projection. All identity fields must agree with the negotiated authority and with each other. Runtime, evaluator, policy and selected boundary must agree with the captured submission. The client rejects rebinding or reuse of an accepted authority-scoped execution or plan ID, even with a new snapshot ID.</p></section>
+<section id="authority"><h2>Authentication and authority</h2>
+<p>Authentication is a transport responsibility, separate from descriptor shape. The gateway checks the current authenticated session and selected provider for every operation. A rejected or expired credential cannot mutate an execution. A changed host, session, provider, operation inventory or checking offer cannot replace the selection of an accepted execution. Authentication secrets are never included in execution plans, receipts or compatibility projections.</p>
+<p>The provider retains the accepted plan and immutable input snapshot. A worker claims that exact retained selection once. A claim checks owner authority, execution/plan identity, runtime, policy and provider. A second exact claim rejects. A mismatched claim rejects without consuming the valid claim. Workers use the real selected Scheme evaluator, echo the retained plan and publish typed outcomes through the host's captured-context validator after confirmed completion. No supplied terminal or proxy response establishes actual execution.</p></section>
+<section id="lifecycle"><h2>Execution lifecycle</h2>
+<p>Query, cancellation, release, their bodies and receipts remain the frozen host draft.1 forms. Query never re-executes. Cancellation acknowledgement is separate from terminal cancellation and may race with a value or failure. Release follows confirmed terminal completion; cleanup failure remains separate from the primary terminal outcome.</p>
+<p>A lost submit reply leaves submission uncertain. The client cannot safely retry, silently submit elsewhere or manufacture an identity. A lost query reply preserves the accepted cursor and selection. Same-authority reconnection can query the same execution without a new claim. A changed offer or expired authentication preserves retained evidence and cannot fabricate success, cancellation or cleanup. Release and shutdown retain once-only execution semantics, including after a lost reply.</p></section>
+<section id="bounds"><h2>Bounds and validation</h2>
+<table><thead><tr><th>Item</th><th>Bound</th></tr></thead><tbody><tr><td>UTF-8 request and reply frames</td><td>1 MiB before parsing, source decoding or state mutation</td></tr><tr><td>Source and arguments</td><td>Existing host and selected Scheme decoder limits; source is opaque to schema and runner</td></tr><tr><td>Identity and plan IDs</td><td>1–128 UTF-16 code units</td></tr><tr><td>Entry</td><td>1–1024 UTF-16 code units and existing selected entry rules</td></tr><tr><td>Revision</td><td>Integer 0–2147483647</td></tr><tr><td>Client accepted identity history</td><td>At most 256 per session; capacity checked before submission effects</td></tr></tbody></table>
+<p>Reject malformed UTF-8, duplicate JSON members, extra members, retired job aliases and over-budget whole frames. UTF-8 limits include leading whitespace before normalization. Schema code-point bounds do not replace UTF-16 semantic bounds. Reserve the complete initial reply before owner publication. A refusal must leave accepted identity allocation, worker claims and provider execution unchanged.</p></section>
+<section id="evidence"><h2>Independent evidence</h2>
+<p>Shared Rust MCK owns exact fixed inputs and expectations. Boundary checks qualify production decoders, controlled client traces qualify production request capture and state transitions, and provider traces qualify the real owner/evaluator. Controlled fixtures alone establish no authentication, network, worker isolation or packaged platform claim.</p>
+<p>Actual authenticated gateway requests, selected Node worker logs, typed terminal publication, browser workflows and packaged Proton workflows require separate receipts. Those receipts identify the actual gateway/provider and platform. They establish no production Rust v1 daemon policy support, generated browser backend capability or unevidenced operating system support. Frozen host draft.1, native drafts.1 and .2, executions and all earlier MCK kits remain separately qualified.</p></section>
+</main></body></html>

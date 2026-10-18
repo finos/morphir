@@ -1,0 +1,86 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.25/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "Published fixed infrastructure",
+      "data": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed root rejects extra member",
+      "data": {
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider"
+        },
+        "actions": [
+          {
+            "op": "session"
+          },
+          {
+            "op": "submit"
+          },
+          {
+            "op": "wait",
+            "execution": 0
+          },
+          {
+            "op": "query",
+            "execution": 0
+          },
+          {
+            "op": "release",
+            "execution": 0
+          },
+          {
+            "op": "shutdown"
+          }
+        ],
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

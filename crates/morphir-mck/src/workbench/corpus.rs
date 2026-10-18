@@ -84,7 +84,7 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
             .as_str()
             .ok_or("Workbench formatVersion must be a string")?,
     )?;
-    let literal_inputs = if value["formatVersion"] == super::contract::EXECUTIONS_VERSION {
+    let mut literal_inputs = if value["formatVersion"] == super::contract::EXECUTIONS_VERSION {
         value = crate::json::strict::parse_exact(text)?;
         super::executions::validate_corpus_shape(&value)?;
         // Negative traces can contain any literal JSON, including serde-private
@@ -145,6 +145,28 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         // interpret private arbitrary-precision/raw-value marker objects.
         super::native_frames::validate_corpus_shape(&value)?;
     }
+    let http_kit = match value["formatVersion"].as_str() {
+        Some(super::contract::HTTP_POLICY_BOUNDARY_VERSION) => {
+            Some(super::http_policy::Kit::Boundary)
+        }
+        Some(super::contract::HTTP_POLICY_CLIENT_VERSION) => Some(super::http_policy::Kit::Client),
+        Some(super::contract::HTTP_POLICY_PROVIDER_VERSION) => {
+            Some(super::http_policy::Kit::Provider)
+        }
+        _ => None,
+    };
+    if let Some(kit) = http_kit {
+        value = crate::json::strict::parse_exact(text)?;
+        kit.corpus(&value)?;
+        literal_inputs = Some(
+            value["cases"]
+                .as_array_mut()
+                .expect("schema-checked cases")
+                .iter_mut()
+                .map(|case| std::mem::replace(&mut case["input"], Value::Null))
+                .collect(),
+        );
+    }
     let mut document: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
     if let Some(inputs) = literal_inputs {
         for (case, input) in document.cases.iter_mut().zip(inputs) {
@@ -169,7 +191,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::ValidateNativePolicyBoundary {
+        let input_len = if let Some(kit) = http_kit {
+            kit.input(&case.input)?;
+            encoded_size(&case.input, MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::ValidateNativePolicyBoundary {
             super::native_policy_boundary::validate_input(&case.input)?;
             encoded_size(&case.input, MAX_INPUT_BYTES)?
         } else if case.operation() == Operation::RunNativePolicyClient {

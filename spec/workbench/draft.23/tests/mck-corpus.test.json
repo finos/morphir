@@ -1,0 +1,108 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.23/mck-corpus.schema.json",
+  "tests": [
+    {
+      "description": "Published fixed infrastructure",
+      "data": {
+        "formatVersion": "0.1.0-draft.23",
+        "cases": [
+          {
+            "id": "descriptor-offer-0",
+            "operation": "validate-http-policy-boundary",
+            "format": "json",
+            "input": {
+              "kind": "descriptor",
+              "encoding": "utf8",
+              "source": "{\"profile\":\"morphir/workbench/host\",\"contractVersion\":\"0.2.0-draft.2\",\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"provider\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}",
+              "context": {
+                "sessionId": "session",
+                "offer": {
+                  "profile": "morphir/workbench/executions",
+                  "contractVersion": "0.2.0-draft.1",
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "operations": [
+                    "query",
+                    "cancel"
+                  ]
+                },
+                "submission": {
+                  "contractVersion": "0.2.0-draft.2",
+                  "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                  "entry": "selected:main#answer",
+                  "inputs": {
+                    "format": "json",
+                    "source": "[]"
+                  },
+                  "runtime": "scheme",
+                  "providerId": "provider"
+                }
+              }
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "accepted": true,
+                "policy": null
+              }
+            }
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed root rejects extra member",
+      "data": {
+        "formatVersion": "0.1.0-draft.23",
+        "cases": [
+          {
+            "id": "descriptor-offer-0",
+            "operation": "validate-http-policy-boundary",
+            "format": "json",
+            "input": {
+              "kind": "descriptor",
+              "encoding": "utf8",
+              "source": "{\"profile\":\"morphir/workbench/host\",\"contractVersion\":\"0.2.0-draft.2\",\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"provider\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}",
+              "context": {
+                "sessionId": "session",
+                "offer": {
+                  "profile": "morphir/workbench/executions",
+                  "contractVersion": "0.2.0-draft.1",
+                  "hostId": "host",
+                  "sessionId": "session",
+                  "providerId": "provider",
+                  "operations": [
+                    "query",
+                    "cancel"
+                  ]
+                },
+                "submission": {
+                  "contractVersion": "0.2.0-draft.2",
+                  "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+                  "entry": "selected:main#answer",
+                  "inputs": {
+                    "format": "json",
+                    "source": "[]"
+                  },
+                  "runtime": "scheme",
+                  "providerId": "provider"
+                }
+              }
+            },
+            "expected": {
+              "status": "ok",
+              "value": {
+                "accepted": true,
+                "policy": null
+              }
+            }
+          }
+        ],
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

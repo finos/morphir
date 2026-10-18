@@ -1,0 +1,28 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.23/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "Published fixed infrastructure",
+      "data": {
+        "status": "ok",
+        "value": {
+          "accepted": true,
+          "policy": null
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed root rejects extra member",
+      "data": {
+        "status": "ok",
+        "value": {
+          "accepted": true,
+          "policy": null
+        },
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

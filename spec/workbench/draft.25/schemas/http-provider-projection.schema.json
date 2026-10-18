@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.25/http-provider-projection.schema.json",
+  "title": "Workbench HTTP checking-policy http-provider-projection draft.25",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "requests": [
+        {
+          "operation": "session",
+          "status": 200,
+          "code": null,
+          "execution": null
+        },
+        {
+          "operation": "submit",
+          "status": 200,
+          "code": null,
+          "execution": 0
+        },
+        {
+          "operation": "wait",
+          "status": 200,
+          "code": null,
+          "execution": 0
+        },
+        {
+          "operation": "query",
+          "status": 200,
+          "code": null,
+          "execution": 0
+        },
+        {
+          "operation": "release",
+          "status": 200,
+          "code": null,
+          "execution": 0
+        }
+      ],
+      "executions": [
+        {
+          "plan": {
+            "profile": "morphir/workbench/execution-plan",
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution-1",
+              "snapshotId": "snapshot-1"
+            },
+            "planId": "plan-1",
+            "runtime": "scheme",
+            "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+            "admission": {
+              "profile": "morphir/workbench/admission",
+              "contractVersion": "0.1.0-draft.1",
+              "policy": "strict"
+            },
+            "boundary": {
+              "definitions": [],
+              "entries": [
+                {
+                  "inputs": [],
+                  "name": "selected:main#answer",
+                  "output": {
+                    "type": "int"
+                  }
+                }
+              ]
+            }
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution-1",
+              "snapshotId": "snapshot-1"
+            },
+            "sequence": 2,
+            "state": "terminal",
+            "cancelRequested": false,
+            "outcomes": {
+              "contractVersion": "0.1.0-draft.5",
+              "calls": [
+                {
+                  "id": "workbench",
+                  "outcome": {
+                    "status": "returned",
+                    "value": {
+                      "type": "int",
+                      "value": "42"
+                    }
+                  }
+                }
+              ],
+              "cleanup": null,
+              "extensions": null
+            }
+          },
+          "released": true
+        }
+      ],
+      "workers": {
+        "started": 1,
+        "exited": 1,
+        "policies": [ "strict" ]
+      },
+      "failure": null
+    }
+  ],
+  "type": "object",
+  "required": [ "requests", "executions", "workers", "failure" ],
+  "properties": {
+    "requests": {
+      "type": "array",
+      "maxItems": 128,
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [ "operation", "status", "code", "execution" ],
+        "properties": {
+          "operation": {
+            "enum": [
+              "session",
+              "submit",
+              "wait",
+              "query",
+              "cancel",
+              "release"
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "maximum": 599,
+                "minimum": 100
+              }
+            ]
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1
+              }
+            ]
+          },
+          "execution": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "executions": {
+      "type": "array",
+      "maxItems": 4,
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [ "plan", "receipt", "released" ],
+        "properties": {
+          "plan": {
+            "$ref": "https://morphir.finos.org/spec/workbench/execution-plan/0.2.0-draft.1/plan.schema.json"
+          },
+          "receipt": {
+            "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/receipt.schema.json"
+          },
+          "released": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "workers": {
+      "type": "object",
+      "required": [ "started", "exited", "policies" ],
+      "properties": {
+        "started": {
+          "type": "integer",
+          "maximum": 4,
+          "minimum": 0
+        },
+        "exited": {
+          "type": "integer",
+          "maximum": 4,
+          "minimum": 0
+        },
+        "policies": {
+          "type": "array",
+          "maxItems": 4,
+          "minItems": 0,
+          "items": {
+            "enum": [ "strict", "permissive" ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "failure": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [ "stage", "code" ],
+          "properties": {
+            "stage": {
+              "enum": [ "fixture", "projection" ]
+            },
+            "code": {
+              "type": "string",
+              "maxLength": 128,
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

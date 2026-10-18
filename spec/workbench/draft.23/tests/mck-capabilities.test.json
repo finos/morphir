@@ -1,0 +1,38 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.23/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "Published fixed infrastructure",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.23",
+        "binding": "independent-fixed",
+        "language": "moonbit",
+        "operations": [
+          "validate-http-policy-boundary"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "Closed root rejects extra member",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.23",
+        "binding": "independent-fixed",
+        "language": "moonbit",
+        "operations": [
+          "validate-http-policy-boundary"
+        ],
+        "formats": [
+          "json"
+        ],
+        "extra": true
+      },
+      "valid": false
+    }
+  ]
+}

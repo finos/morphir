@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.23/mck-input.schema.json",
+  "title": "Workbench HTTP checking-policy mck-input draft.23",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "kind": "descriptor",
+      "encoding": "utf8",
+      "source": "{\"profile\":\"morphir/workbench/host\",\"contractVersion\":\"0.2.0-draft.2\",\"offer\":{\"profile\":\"morphir/workbench/executions\",\"contractVersion\":\"0.2.0-draft.1\",\"hostId\":\"host\",\"sessionId\":\"session\",\"providerId\":\"provider\",\"operations\":[\"query\",\"cancel\"]},\"capabilityChecks\":{\"profile\":\"morphir/workbench/admission\",\"contractVersion\":\"0.1.0-draft.1\",\"runtime\":\"scheme\",\"evaluator\":\"scheme-portable-v1/shared-sdk/bounded\",\"policies\":[\"strict\",\"permissive\"]}}",
+      "context": {
+        "sessionId": "session",
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [ "query", "cancel" ]
+        },
+        "submission": {
+          "contractVersion": "0.2.0-draft.2",
+          "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+          "entry": "selected:main#answer",
+          "inputs": {
+            "format": "json",
+            "source": "[]"
+          },
+          "runtime": "scheme",
+          "providerId": "provider"
+        }
+      }
+    }
+  ],
+  "type": "object",
+  "required": [ "kind", "encoding", "source", "context" ],
+  "properties": {
+    "kind": {
+      "enum": [ "descriptor", "submit", "submission-reply" ]
+    },
+    "encoding": {
+      "enum": [ "utf8", "hex" ]
+    },
+    "source": {
+      "type": "string"
+    },
+    "context": {
+      "type": "object",
+      "required": [ "sessionId", "offer", "submission" ],
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "minLength": 1
+        },
+        "offer": {
+          "$ref": "https://morphir.finos.org/spec/workbench/executions/0.2.0-draft.1/offer.schema.json"
+        },
+        "submission": {
+          "$ref": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.2/submission.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "generate": {
+      "type": "object",
+      "required": [ "prefix" ],
+      "properties": {
+        "prefix": {
+          "type": "object",
+          "required": [ "repeat", "count" ],
+          "properties": {
+            "repeat": {
+              "const": " "
+            },
+            "count": {
+              "type": "integer",
+              "maximum": 1048576,
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

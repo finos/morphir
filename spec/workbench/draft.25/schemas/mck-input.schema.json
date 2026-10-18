@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.25/mck-input.schema.json",
+  "title": "Workbench HTTP checking-policy mck-input draft.25",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "submission": {
+        "contractVersion": "0.2.0-draft.2",
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "entry": "selected:main#answer",
+        "inputs": {
+          "format": "json",
+          "source": "[]"
+        },
+        "runtime": "scheme",
+        "providerId": "provider"
+      },
+      "actions": [
+        {
+          "op": "session"
+        },
+        {
+          "op": "submit"
+        },
+        {
+          "op": "wait",
+          "execution": 0
+        },
+        {
+          "op": "query",
+          "execution": 0
+        },
+        {
+          "op": "release",
+          "execution": 0
+        },
+        {
+          "op": "shutdown"
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "submission", "actions" ],
+  "properties": {
+    "submission": true,
+    "actions": {
+      "type": "array",
+      "maxItems": 32,
+      "minItems": 0,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [ "op" ],
+            "properties": {
+              "op": {
+                "enum": [ "session", "submit", "shutdown", "submit-lost-reply" ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "execution" ],
+            "properties": {
+              "op": {
+                "enum": [
+                  "wait",
+                  "query",
+                  "cancel",
+                  "release",
+                  "query-lost-reply",
+                  "release-lost-reply"
+                ]
+              },
+              "execution": {
+                "type": "integer",
+                "maximum": 3,
+                "minimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "sessionId" ],
+            "properties": {
+              "op": {
+                "const": "authenticate"
+              },
+              "sessionId": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 1
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [ "op", "submission" ],
+            "properties": {
+              "op": {
+                "const": "replace-submission"
+              },
+              "submission": true
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

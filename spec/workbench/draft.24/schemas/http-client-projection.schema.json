@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.24/http-client-projection.schema.json",
+  "title": "Workbench HTTP checking-policy http-client-projection draft.24",
+  "description": "Exact HTTP checking-policy qualification. Controlled fixtures do not establish network authentication or actual execution; provider worker and platform evidence is separate",
+  "examples": [
+    {
+      "steps": [
+        {
+          "action": "initialize",
+          "active": false,
+          "polling": false,
+          "releasePending": false,
+          "uncertainSubmission": false,
+          "suspended": false,
+          "execution": null,
+          "attempts": [
+            {
+              "id": "init",
+              "status": "returned",
+              "success": true,
+              "submissionUnknown": false,
+              "executionTransport": false
+            }
+          ]
+        },
+        {
+          "action": "evaluate",
+          "active": false,
+          "polling": false,
+          "releasePending": false,
+          "uncertainSubmission": false,
+          "suspended": false,
+          "execution": {
+            "state": "terminal",
+            "sequence": 2,
+            "cancelRequested": false,
+            "connected": true
+          },
+          "attempts": [
+            {
+              "id": "init",
+              "status": "returned",
+              "success": true,
+              "submissionUnknown": false,
+              "executionTransport": false
+            },
+            {
+              "id": "run",
+              "status": "returned",
+              "success": true,
+              "submissionUnknown": false,
+              "executionTransport": false
+            }
+          ]
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/api/workbench/session",
+          "status": 200,
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/api/workbench/submit",
+          "status": 200,
+          "body": {
+            "contractVersion": "0.2.0-draft.2",
+            "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            },
+            "runtime": "scheme",
+            "providerId": "provider"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/workbench/query",
+          "status": 200,
+          "body": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution-1",
+              "snapshotId": "snapshot-1"
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/workbench/release",
+          "status": 200,
+          "body": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution-1",
+              "snapshotId": "snapshot-1"
+            }
+          }
+        }
+      ],
+      "acceptedPlans": [
+        {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution-1",
+            "snapshotId": "snapshot-1"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "strict"
+          },
+          "boundary": {
+            "definitions": [],
+            "entries": [
+              {
+                "inputs": [],
+                "name": "selected:main#answer",
+                "output": {
+                  "type": "int"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "type": "object",
+  "required": [ "steps", "requests", "acceptedPlans" ],
+  "properties": {
+    "steps": {
+      "type": "array",
+      "maxItems": 32,
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [
+          "action",
+          "active",
+          "polling",
+          "releasePending",
+          "uncertainSubmission",
+          "suspended",
+          "execution",
+          "attempts"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "initialize",
+              "evaluate",
+              "resume",
+              "cancel",
+              "release",
+              "deliver",
+              "mutate",
+              "authenticate"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "polling": {
+            "type": "boolean"
+          },
+          "releasePending": {
+            "type": "boolean"
+          },
+          "uncertainSubmission": {
+            "type": "boolean"
+          },
+          "suspended": {
+            "type": "boolean"
+          },
+          "execution": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "state",
+                  "sequence",
+                  "cancelRequested",
+                  "connected"
+                ],
+                "properties": {
+                  "state": {
+                    "enum": [ "submitted", "running", "terminal" ]
+                  },
+                  "sequence": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 0
+                  },
+                  "cancelRequested": {
+                    "type": "boolean"
+                  },
+                  "connected": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "attempts": {
+            "type": "array",
+            "maxItems": 32,
+            "minItems": 0,
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "status",
+                "success",
+                "submissionUnknown",
+                "executionTransport"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "minLength": 1
+                },
+                "status": {
+                  "enum": [ "pending", "returned", "rejected" ]
+                },
+                "success": {
+                  "enum": [ null, true, false ]
+                },
+                "submissionUnknown": {
+                  "type": "boolean"
+                },
+                "executionTransport": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "requests": {
+      "type": "array",
+      "maxItems": 128,
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": [ "method", "path", "status", "body" ],
+        "properties": {
+          "method": {
+            "enum": [ "GET", "POST" ]
+          },
+          "path": {
+            "enum": [
+              "/api/workbench/session",
+              "/api/workbench/submit",
+              "/api/workbench/query",
+              "/api/workbench/cancel",
+              "/api/workbench/release"
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "maximum": 599,
+                "minimum": 100
+              }
+            ]
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.2/submission.schema.json"
+              },
+              {
+                "$ref": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.1/identity-request.schema.json"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "acceptedPlans": {
+      "type": "array",
+      "maxItems": 4,
+      "minItems": 0,
+      "items": {
+        "$ref": "https://morphir.finos.org/spec/workbench/execution-plan/0.2.0-draft.1/plan.schema.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}

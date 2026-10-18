@@ -1,0 +1,502 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/host/0.2.0-draft.2/submission-reply.schema.json",
+  "tests": [
+    {
+      "description": "Exact policy mapping",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "plan": {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Required identity",
+      "data": {
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "plan": {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Required calls",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "plan": {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Required receipt",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "plan": {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Required plan",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed root",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "plan": {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        },
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Closed plan",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "plan": {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          },
+          "extra": true
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No claimed evaluator",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "plan": {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "unqualified",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No retired job receipt",
+      "data": {
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "scheme",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "workbench"
+        ],
+        "receipt": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null,
+          "jobId": "job"
+        },
+        "plan": {
+          "profile": "morphir/workbench/execution-plan",
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "scheme",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "planId": "plan-1",
+          "runtime": "scheme",
+          "evaluator": "scheme-portable-v1/shared-sdk/bounded",
+          "admission": {
+            "profile": "morphir/workbench/admission",
+            "contractVersion": "0.1.0-draft.1",
+            "policy": "permissive"
+          },
+          "boundary": {
+            "entries": [
+              {
+                "name": "selected:main#answer",
+                "inputs": [],
+                "output": {
+                  "type": "int"
+                }
+              }
+            ],
+            "definitions": []
+          }
+        }
+      },
+      "valid": false
+    }
+  ]
+}
