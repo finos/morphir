@@ -24,7 +24,7 @@
     {
       "path": "fixtures/linked-provider.fragment.json",
       "bytes": 1094,
-      "sha256": "a266e1bc67a5f0fadbd2eccabfdecd781b4a011e3519591e560319698d959178"
+      "sha256": "0de5fceba675bccf4f48b9c3bb39fb56012c480b5e8532a72aeae68285a3839c"
     },
     {
       "path": "fixtures/unknown-descriptive.ion",

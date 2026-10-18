@@ -27,7 +27,7 @@
                       "TypeSpecification",
                       "TypeDefinition"
                     ],
-                    "object-form": "data",
+                    "object-form": "json",
                     "interpreter": "descriptive"
                   }
                 }
