@@ -1,6 +1,19 @@
 ///|
+priv enum SubmissionMode {
+  WholeModel
+  SelectedScheme
+}
+
+///|
+priv enum WorkerClaim {
+  WholeModel
+  SelectedScheme(@executions.SchemeSelection)
+}
+
+///|
 struct Record {
   identity : Json
+  claim : WorkerClaim
   mut last_pid : Int32
   mut child : @process.Process?
   mut task : @async.Task[Unit]?
@@ -96,6 +109,27 @@ fn response(status : Int32, value : Json) -> Json {
 ///|
 /// Business bodies stay raw until the shared duplicate-aware host decoder.
 pub fn Service::request(self : Service, path : String, body : String?) -> Json {
+  self.request_with(path, body, WholeModel)
+}
+
+///|
+/// Policy-aware dispatch is separate from the frozen whole-model mapping.
+/// Only the native bridge that negotiated the new mapping calls this method.
+pub fn Service::policy_request(
+  self : Service,
+  path : String,
+  body : String?,
+) -> Json {
+  self.request_with(path, body, SelectedScheme)
+}
+
+///|
+fn Service::request_with(
+  self : Service,
+  path : String,
+  body : String?,
+  mode : SubmissionMode,
+) -> Json {
   try {
     guard !self.uncertain else {
       raise Invalid("workbench.worker_unconfirmed_exit")
@@ -113,8 +147,12 @@ pub fn Service::request(self : Service, path : String, body : String?) -> Json {
       body is Some(body) else {
       raise Invalid("workbench.native_operation")
     }
-    let value = self.command({ "op": path, "body": body })
-    self.apply(path, body, value)
+    let op = match (path, mode) {
+      ("submit", SelectedScheme) => "submit-native-policy"
+      _ => path
+    }
+    let value = self.command({ "op": op, "body": body })
+    self.apply(path, body, value, mode~)
     response(200, value)
   } catch {
     error => {
@@ -263,7 +301,10 @@ async fn Service::run(self : Service, record : Record) -> Unit {
   }
   let mut code = -1
   try {
-    let request = self.command({ "op": "claim", "identity": record.identity })
+    let request = match record.claim {
+      WholeModel => self.command({ "op": "claim", "identity": record.identity })
+      SelectedScheme(selection) => self.host.claim_selected(selection)
+    }
     let input = frame(request.stringify())
     @async.with_task_group(async fn(group) {
       let (stdin, writer) = @process.write_to_process()
@@ -301,7 +342,20 @@ async fn Service::run(self : Service, record : Record) -> Unit {
         try {
           let n = frame_length(reader.read_exactly(4))
           let source = @utf8.decode(reader.read_exactly(n))
-          let value = @executions.decode(source)
+          let raw = @executions.decode(source)
+          let value = match record.claim {
+            WholeModel => raw
+            SelectedScheme(selection) => {
+              guard raw is Object(fields) &&
+                fields.length() == 2 &&
+                fields.get("executionPlan") == Some(selection.projection()) &&
+                fields.get("terminalOutcomes") is Some(outcomes) else {
+                record.stop("workbench.worker_selection")
+                raise Invalid("workbench.worker_selection")
+              }
+              outcomes
+            }
+          }
           // Typed and structural evidence admission precedes result capture.
           ignore(@protocol.Outcomes::from_json(value))
           record.captured = Some(value)
@@ -476,11 +530,18 @@ fn Service::apply(
   path : String,
   body : String,
   value : Json,
+  mode~ : SubmissionMode = WholeModel,
 ) -> Unit raise {
   if path == "submit" {
     let identity = field(value, "identity")
+    let claim = match mode {
+      WholeModel => WorkerClaim::WholeModel
+      SelectedScheme =>
+        WorkerClaim::SelectedScheme(self.host.scheme_selection(identity))
+    }
     let record : Record = {
       identity,
+      claim,
       last_pid: 0,
       child: None,
       task: None,
@@ -550,6 +611,25 @@ pub fn Service::native_request(
   operation : String,
   payload : Json,
 ) -> Bytes {
+  self.native_request_with(operation, payload, WholeModel)
+}
+
+///|
+pub fn Service::native_policy_request(
+  self : Service,
+  operation : String,
+  payload : Json,
+) -> Bytes {
+  self.native_request_with(operation, payload, SelectedScheme)
+}
+
+///|
+fn Service::native_request_with(
+  self : Service,
+  operation : String,
+  payload : Json,
+  mode : SubmissionMode,
+) -> Bytes {
   if self.closed || self.uncertain {
     return @reply.failure(@reply.Unavailable, @reply.NoEffect)
   }
@@ -562,8 +642,12 @@ pub fn Service::native_request(
   }
   try {
     let body = payload.stringify()
+    let op = match (path, mode) {
+      ("submit", SelectedScheme) => "submit-native-policy"
+      _ => path
+    }
     let result = self.host.handle(
-      ({ "op": path, "body": body } : Json).stringify(),
+      ({ "op": op, "body": body } : Json).stringify(),
     )
     if field(result, "ok") == Json::boolean(false) {
       // The shared owner validates and constructs receipts before mutating its
@@ -577,8 +661,11 @@ pub fn Service::native_request(
       raise Invalid("workbench.native_shape")
     }
     let value = field(result, "value")
-    self.apply(path, body, value)
-    @reply.success(operation, value)
+    self.apply(path, body, value, mode~)
+    match mode {
+      WholeModel => @reply.success(operation, value)
+      SelectedScheme => @reply.success_policy(operation, value)
+    }
   } catch {
     _ => @reply.failure(@reply.Unavailable, @reply.UnknownEffect)
   }

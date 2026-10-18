@@ -38,7 +38,10 @@ async test "replacement open rechecks the trusted page after awaited cleanup" {
     let released = Ref(false)
     let waiting = @async.CondVar::Cond()
     let release = @async.CondVar::Cond()
-    let factory : (String) -> ExecutionsService raise = fn(id) {
+    let factory : (String, @request.Contract) -> ExecutionsService raise = fn(
+      id,
+      _contract,
+    ) {
       created.push(id)
       {
         offer: fn() {

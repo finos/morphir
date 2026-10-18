@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { once } from 'node:events';
 import type { Core } from '../browser/contracts.ts';
-import { runNativeClientTrace } from '../browser/native-client-trace.ts';
+import {
+  runNativeClientTrace,
+  runNativePolicyClientTrace,
+} from '../browser/native-client-trace.ts';
 import { isRecord } from '../../../types/data.ts';
 import { nativeClientBrowser } from './native-client-browser.ts';
 
@@ -31,10 +34,15 @@ if (browserMode && !driverPath)
   throw new Error(
     'Set MORPHIR_WORKBENCH_CLIENT_DRIVER to the checked browser driver',
   );
+const mapping = process.env.MORPHIR_WORKBENCH_CLIENT_MAPPING ?? 'executions';
+if (mapping !== 'executions' && mapping !== 'capability-checks')
+  throw new Error('Invalid explicit native client MCK mapping');
+const policy = mapping === 'capability-checks';
 const browser = browserMode
-  ? await nativeClientBrowser(compiled, driverPath!)
+  ? await nativeClientBrowser(compiled, driverPath!, mapping)
   : null;
-const version = '0.1.0-draft.17';
+const version = policy ? '0.1.0-draft.21' : '0.1.0-draft.17';
+const operation = policy ? 'run-native-policy-client' : 'run-native-client';
 function closed(value: Record<string, unknown>, keys: string[]) {
   if (Object.keys(value).sort().join(',') !== [...keys].sort().join(','))
     throw new Error('Invalid MCK request shape');
@@ -73,19 +81,20 @@ async function handle(line: string) {
       binding:
         'morphir-moonbit-native-client-' + (browserMode ? 'chromium' : 'node'),
       language: 'typescript',
-      operations: ['run-native-client'],
+      operations: [operation],
       formats: ['json'],
     };
   }
   closed(request, ['id', 'op', 'suite', 'contractVersion', 'format', 'input']);
-  if (request.op !== 'run-native-client' || request.format !== 'json')
+  if (request.op !== operation || request.format !== 'json')
     throw new Error('Unsupported client MCK operation');
+  const run = policy ? runNativePolicyClientTrace : runNativeClientTrace;
   return {
     id: request.id,
     status: 'ok',
     value: await (browser
       ? browser.run(request.input)
-      : runNativeClientTrace(request.input, core())),
+      : run(request.input, core())),
   };
 }
 async function serve() {

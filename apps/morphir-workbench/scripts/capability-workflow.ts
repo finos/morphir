@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { openSample } from './workbench-steps.ts';
+import { isRecord } from '../../../types/data.ts';
 
 type ControlledWindow = Window & { capabilityTest: { hold: boolean; release: (() => void) | null; completed: Record<string, number> } };
 
@@ -240,4 +241,206 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     assert.deepEqual(errors, []);
     console.log('Standalone capability workflow passed: strict default, opt-in, reached failure, unsupported boundary, captured policy, stale results, JSON/Ion drafts, source-profile separation, keyboard and responsive layout.');
   } finally { await page.close(); }
+}
+
+interface DesktopPolicyControls {
+  completed: Record<string, number>;
+  results: import('../browser/contracts.ts').WorkResult[];
+  frames: { operation: string; payload?: Record<string, unknown>; contractVersion: string }[];
+  holdSubmit: boolean;
+  release: (() => void) | null;
+  restore: () => void;
+}
+type DesktopPolicyWindow = Window & { desktopPolicyTest: DesktopPolicyControls };
+
+/** Actual packaged bridge, native owner and Scheme workers. Only reply delivery is controlled. */
+export async function desktopCapabilityWorkflow(page: import('playwright').Page) {
+  const controls = () => page.evaluate(() => {
+    const state: DesktopPolicyControls = { completed: {}, results: [], frames: [], holdSubmit: false, release: null, restore() {} };
+    Object.assign(window, { desktopPolicyTest: state });
+    const request = globalThis.morphirWorkbench.request.bind(globalThis.morphirWorkbench);
+    const bridge = window.__MoonBit__!.core!;
+    const invoke = bridge.invokeOp!.bind(bridge);
+    bridge.invokeOp = async (name, source) => {
+      const frame = name === 'app:workbench_native' ? JSON.parse(source) : null;
+      if (frame?.operation.startsWith('execution.')) state.frames.push(frame);
+      const raw = await invoke(name, source);
+      if (frame?.operation === 'execution.submit' && state.holdSubmit) {
+        return new Promise(resolve => { state.release = () => { state.holdSubmit = false; state.release = null; resolve(raw); }; });
+      }
+      return raw;
+    };
+    globalThis.morphirWorkbench.request = (data, receive) => request(data, source => {
+      const result = JSON.parse(source);
+      if (result.operation !== 'execution-progress') {
+        state.completed[data.operation] = (state.completed[data.operation] ?? 0) + 1;
+        if (data.operation === 'evaluate') state.results.push(result);
+      }
+      receive(source);
+    });
+    state.restore = () => { globalThis.morphirWorkbench.request = request; bridge.invokeOp = invoke; };
+  });
+  const state = () => page.evaluate(() => {
+    const { completed, results, frames } = (window as unknown as DesktopPolicyWindow).desktopPolicyTest;
+    return { completed, results, frames };
+  });
+  const paint = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const policy = page.getByRole('combobox', { name: 'Capability checks', exact: true });
+  const run = page.getByRole('button', { name: 'Evaluate', exact: true });
+  const fixture = fileURLToPath(new URL('../fixtures/capability-execution.json', import.meta.url));
+  // Keep the dormant branch fixture, adding an unused parameter so the UI
+  // exposes its JSON/Ion input controls. The direct owner probe uses the original.
+  const uiFixture = (await readFile(fixture, 'utf8')).replace('\"inputTypes\": {}', '\"inputTypes\": {\"unused\": \"morphir/SDK:basics#int\"}');
+  const selection = { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: 'permissive' };
+  const importModel = async (content?: string) => {
+    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    const before = (await state()).completed.inspect ?? 0;
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
+    await (await chooser).setFiles({ name: 'capability-execution.json', mimeType: 'application/json', buffer: Buffer.from(content ?? uiFixture) });
+    await page.waitForFunction(before => ((window as unknown as DesktopPolicyWindow).desktopPolicyTest.completed.inspect ?? 0) > before, before);
+    await paint();
+    await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+    await page.locator('.tree-item[title="selected:main#answer"]').click();
+    await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
+    await paint();
+  };
+  const finish = async (before: number) => {
+    await page.waitForFunction(before => ((window as unknown as DesktopPolicyWindow).desktopPolicyTest.completed.evaluate ?? 0) > before, before);
+    await paint();
+  };
+  const evaluate = async () => {
+    const before = (await state()).completed.evaluate ?? 0;
+    await run.click(); await finish(before);
+    return (await state()).results.at(-1)!;
+  };
+  const resultJson = () => page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value);
+  const readPolicy = async () => {
+    await page.locator('.captured-policy').filter({ hasText: 'As code executes' }).waitFor();
+    const result = (await state()).results.at(-1)!;
+    assert.deepEqual(result.admission, selection);
+    const plan = result.executionPlan;
+    assert.ok(isRecord(plan));
+    assert.equal(plan.runtime, 'scheme');
+    assert.equal(plan.evaluator, 'scheme-portable-v1/shared-sdk/bounded');
+    assert.deepEqual(plan.admission, selection);
+    assert.deepEqual(plan.identity, result.execution!.identity);
+    assert.deepEqual(plan.boundary, { entries: [{ name: 'selected:main#answer', inputs: [{ type: 'int' }], output: { type: 'int' } }], definitions: [] });
+  };
+  await controls();
+  try {
+    const direct = await page.evaluate(async model => {
+      const call = async (operation: string, sessionId: string | null, payload?: unknown) => {
+        const frame = { profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.2', operation,
+          ...(sessionId === null ? {} : { sessionId }), ...(payload === undefined ? {} : { payload }) };
+        const source = await window.__MoonBit__!.core!.invokeOp!('app:workbench_native', JSON.stringify(frame));
+        const decoded = JSON.parse(globalThis.morphirWorkbenchExecutions(JSON.stringify({ op: 'native-policy-response', source, operation, sessionId })));
+        if (!decoded.ok) throw new Error(`The actual native reply failed validation: ${decoded.code}`);
+        return decoded.value;
+      };
+      const opened = await call('session.open', null);
+      if (!opened.ok) throw new Error('Cannot open the packaged checking session');
+      const descriptor = opened.value;
+      const base = { contractVersion: '0.2.0-draft.1', model, entry: 'selected:main#answer', runtime: 'scheme', providerId: descriptor.offer.providerId };
+      const strict = await call('execution.submit', descriptor.sessionId, { ...base, inputs: { format: 'json', source: '[]' } });
+      const runs = [];
+      for (const format of ['json', 'ion-text']) {
+        const accepted = await call('execution.submit', descriptor.sessionId, { ...base, inputs: { format, source: '[]' },
+          admission: { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: 'permissive' } });
+        if (!accepted.ok) throw new Error('Actual native permissive submission was refused');
+        const body = { contractVersion: '0.2.0-draft.1', identity: accepted.value.identity };
+        let terminal = accepted.value.receipt;
+        for (let attempt = 0; attempt < 300 && terminal.state !== 'terminal'; attempt++) {
+          const observed = await call('execution.query', descriptor.sessionId, body);
+          if (!observed.ok) throw new Error('Actual native query was refused');
+          terminal = observed.value;
+          if (terminal.state !== 'terminal') await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        if (terminal.state !== 'terminal') throw new Error('The real Scheme worker did not become terminal');
+        const released = await call('execution.release', descriptor.sessionId, body);
+        runs.push({ format, accepted: accepted.value, terminal, released });
+      }
+      return { strict, runs };
+    }, await readFile(fixture, 'utf8'));
+    assert.equal(direct.strict.ok, false, 'The actual owner defaults omitted policy to whole-model checks');
+    assert.equal(direct.strict.error.effect, 'none');
+    for (const run of direct.runs) {
+      assert.deepEqual(run.accepted.plan.admission, selection);
+      assert.deepEqual(run.accepted.plan.identity, run.accepted.identity);
+      assert.equal(run.accepted.plan.runtime, 'scheme');
+      assert.equal(run.accepted.plan.evaluator, 'scheme-portable-v1/shared-sdk/bounded');
+      assert.deepEqual(run.terminal.outcomes.calls, [{ id: 'workbench', outcome: { status: 'returned', value: { type: 'int', value: '42' } } }]);
+      assert.deepEqual(run.released, { ok: true, operation: 'execution.release', value: { released: true } });
+    }
+    assert.notEqual(direct.runs[0]!.accepted.identity.executionId, direct.runs[1]!.accepted.identity.executionId);
+    assert.notEqual(direct.runs[0]!.accepted.plan.planId, direct.runs[1]!.accepted.plan.planId);
+    await importModel();
+    assert.equal(await policy.inputValue(), 'strict');
+    assert.equal(await policy.locator('option[value="permissive"]').evaluate(e => (e as HTMLOptionElement).disabled), false);
+    const initialSubmits = (await state()).frames.filter(f => f.operation === 'execution.submit').length;
+    assert.equal((await evaluate()).success, false, 'Whole-model checks refuse the dormant unsupported operation');
+    assert.equal((await state()).frames.filter(f => f.operation === 'execution.submit').length, initialSubmits, 'Client preflight refuses the unsupported whole model before a native effect');
+    await policy.selectOption('permissive'); await paint();
+    for (const mode of ['JSON', 'Ion']) {
+      await page.getByRole('button', { name: `${mode} inputs`, exact: true }).click();
+      const argumentsSource = mode === 'Ion' ? '[7]' : '[{\"type\":\"int\",\"value\":\"7\"}]';
+      await page.getByRole('textbox', { name: 'Function arguments', exact: true }).fill(argumentsSource);
+      const result = await evaluate();
+      assert.equal(result.success, true);
+      assert.deepEqual(result.typed, { type: 'int', value: '42' });
+      assert.deepEqual(result.admission, selection);
+      await readPolicy();
+      await page.getByRole('button', { name: 'Result JSON', exact: true }).click();
+      assert.deepEqual(JSON.parse(await resultJson()), { type: 'int', value: '42' });
+      const submission = (await state()).frames.filter(f => f.operation === 'execution.submit').at(-1)!;
+      assert.equal(submission.contractVersion, '0.2.0-draft.2');
+      assert.deepEqual(submission.payload?.admission, selection);
+      assert.deepEqual(submission.payload?.inputs, { format: mode === 'Ion' ? 'ion-text' : 'json', source: argumentsSource });
+    }
+    await policy.selectOption('strict'); await paint();
+    await page.locator('.evaluation-result.stale .captured-policy').filter({ hasText: 'As code executes' }).waitFor();
+    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    assert.equal(await policy.inputValue(), 'strict');
+    await page.locator('.captured-policy').filter({ hasText: 'As code executes' }).waitFor();
+
+    // Hold only the real accepted reply. Cancellation still uses the packaged
+    // bridge and owner, and cannot rewrite an already captured Returned outcome.
+    await policy.selectOption('permissive'); await paint();
+    await page.evaluate(() => { (window as unknown as DesktopPolicyWindow).desktopPolicyTest.holdSubmit = true; });
+    const beforeCancel = await state();
+    await run.click();
+    await page.waitForFunction(() => !!(window as unknown as DesktopPolicyWindow).desktopPolicyTest.release);
+    assert.equal(await policy.isDisabled(), true, 'An accepted pending selection cannot be edited');
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.evaluate(() => { (window as unknown as DesktopPolicyWindow).desktopPolicyTest.release!(); });
+    await finish(beforeCancel.completed.evaluate ?? 0);
+    const afterCancel = await state();
+    assert.ok(afterCancel.frames.filter(f => f.operation === 'execution.cancel').length > beforeCancel.frames.filter(f => f.operation === 'execution.cancel').length, 'Cancellation crosses the real native bridge');
+    await readPolicy();
+    assert.equal(await policy.inputValue(), 'permissive');
+    await policy.selectOption('strict'); await paint();
+    await page.locator('.captured-policy').filter({ hasText: 'As code executes' }).waitFor();
+
+    const reached = uiFixture.replace('"condition": false', '"condition": true');
+    await importModel(reached);
+    await policy.selectOption('permissive'); await paint();
+    const failed = await evaluate();
+    assert.equal(failed.success, false);
+    await page.locator('.evaluation-result').filter({ hasText: 'execution.unsupported_reached' }).waitFor();
+    await readPolicy();
+    const frames = (await state()).frames;
+    for (const operation of ['execution.submit', 'execution.query', 'execution.cancel', 'execution.release']) assert.ok(frames.some(frame => frame.operation === operation), `Actual packaged ${operation} was exercised`);
+  } finally {
+    await page.evaluate(() => { const state = (window as unknown as DesktopPolicyWindow).desktopPolicyTest; state.release?.(); state.restore(); });
+  }
+  await page.reload();
+  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  await controls();
+  try {
+    await importModel();
+    assert.equal(await policy.inputValue(), 'strict', 'A new native page starts with whole-model checks');
+    assert.equal(await page.locator('.captured-policy').count(), 0, 'Reload never relabels a prior accepted result');
+  } finally { await page.evaluate(() => (window as unknown as DesktopPolicyWindow).desktopPolicyTest.restore()); }
+  console.log('Packaged Proton capability workflow passed: actual native owner/workers, strict preflight, permissive JSON/Ion, captured policy, cancellation, reached-operation failure, navigation and fresh-page strict default. No OS picker claim.');
 }

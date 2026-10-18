@@ -39,10 +39,12 @@ export interface WorkResult {
   terminalOutcomes?: Json;
   /** Untrusted wire selection, checked against the captured capability policy. */
   admission?: Json;
+  executionPlan?: Json;
   operation?: string;
   message?: string;
   connected?: boolean;
   capabilityEvaluator?: string;
+  capabilityRuntime?: 'standalone' | 'native';
   catalog?: Catalog;
   frontends?: Language[];
   targets?: Target[];
@@ -94,7 +96,16 @@ export interface ExecutionDescriptor {
   operations: string[];
   offer: Json;
 }
-export interface NativeDescriptor extends ExecutionDescriptor { sessionId: string; }
+/** An explicit contract selection. No protocol downgrade follows a failed handshake. */
+export type NativeMapping = 'executions' | 'capability-checks';
+export interface CapabilityCheckingOffer {
+  profile: 'morphir/workbench/admission';
+  contractVersion: '0.1.0-draft.1';
+  runtime: 'scheme';
+  evaluator: 'scheme-portable-v1/shared-sdk/bounded';
+  policies: ['strict', 'permissive'];
+}
+export interface NativeDescriptor extends ExecutionDescriptor { sessionId: string; capabilityChecks?: CapabilityCheckingOffer; }
 export type NativeReply<T> = { ok: true; operation: string; value: T } |
   { ok: false; error: { code: string; message: string; effect: string } };
 export interface CoreReply<T = Json> {
@@ -110,6 +121,9 @@ export interface ExecutionTransport {
   nativeRequest?(source: string): Promise<string>;
 }
 export interface ExecutionOptions {
+  nativeMapping?: NativeMapping;
+  /** Trusted diagnostics hook. The client retains only its current accepted plan. */
+  onAcceptedPlan?: (plan: Json) => void;
   fetchFn?: Fetch;
   core?: Core;
   pause?: () => Promise<void>;

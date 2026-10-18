@@ -3,6 +3,7 @@ pkgtype(kind: "executable")
 supported_targets = "native"
 
 import {
+  "finos/morphir-workbench-native-session/request",
   "moonbitlang/async",
   "moonbitlang/async/stdio",
   "moonbit-community/proton",

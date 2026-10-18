@@ -1,9 +1,10 @@
-import type { Core, CoreReply, Execution, ExecutionDescriptor, ExecutionOptions, ExecutionTransport, Json, NativeReply, Progress, WorkRequest, WorkResult } from './contracts.ts';
+import type { Core, CoreReply, Execution, ExecutionDescriptor, ExecutionOptions, ExecutionTransport, Json, NativeMapping, NativeReply, Progress, WorkRequest, WorkResult } from './contracts.ts';
 import { workbenchError } from '../../../types/data.ts';
 import type { WorkbenchError } from '../../../types/data.ts';
 import { HttpExecutionTransport, executionFrameLimit as limit } from './execution-transport.ts';
 // The compiled MoonBit cursor owns every receipt decision across transports.
 const version = '0.2.0-draft.1';
+const nativePolicyVersion = '0.2.0-draft.2';
 const bytes = (text: string) => new TextEncoder().encode(text).byteLength;
 const exact = (value: unknown, keys: string[]) => !!value && typeof value === 'object' && !Array.isArray(value) &&
   Object.keys(value).sort().join(',') === [...keys].sort().join(',');
@@ -13,6 +14,9 @@ type ExecutionChannel =
   | { kind: 'http'; request: NonNullable<ExecutionTransport['request']> };
 
 export class ExecutionClient {
+  readonly nativeMapping: NativeMapping;
+  acceptedPlan: Json | null = null;
+  private readonly onAcceptedPlan?: (plan: Json) => void;
   sessionId: string;
   private channel: ExecutionChannel;
   core: Core;
@@ -33,14 +37,17 @@ export class ExecutionClient {
   lastError?: WorkbenchError;
   cancelling: { generation: number; promise: Promise<void> } | null = null;
   constructor(sessionId: string, { fetchFn = fetch, core = command => globalThis.morphirWorkbenchExecutions(command),
-    pause = () => new Promise(resolve => setTimeout(resolve, 150)), authenticate, timeout = 10000, transport }: ExecutionOptions = {}) {
+    pause = () => new Promise(resolve => setTimeout(resolve, 150)), authenticate, timeout = 10000, transport, nativeMapping = 'executions', onAcceptedPlan }: ExecutionOptions = {}) {
     this.sessionId = sessionId;
+    this.nativeMapping = nativeMapping;
+    this.onAcceptedPlan = onAcceptedPlan;
     const selected: ExecutionTransport = transport ?? new HttpExecutionTransport({ fetchFn, timeout });
     if (typeof selected.nativeRequest === 'function' && typeof selected.nativeDescriptor === 'function') {
       this.channel = { kind: 'native', descriptor: () => selected.nativeDescriptor!(), request: source => selected.nativeRequest!(source) };
     } else if (selected.nativeRequest || selected.nativeDescriptor || typeof selected.request !== 'function') {
       throw new Error('Execution transports require either paired native operations or an HTTP request operation.');
     } else {
+      if (nativeMapping !== 'executions') throw new Error('Capability checking policies require the qualified native mapping.');
       this.channel = { kind: 'http', request: (...args) => selected.request!(...args) };
     }
     this.core = core;
@@ -60,7 +67,9 @@ export class ExecutionClient {
   }
   command<T = Json>(command: unknown): CoreReply<T> {
     const reply: CoreReply<T> = JSON.parse(this.core(JSON.stringify(command)));
-    if (!reply.ok) throw new Error(`Host execution evidence was rejected (${reply.code || 'invalid'}).`);
+    if (!reply.ok) throw new Error(reply.code === 'workbench.host_session_capacity'
+      ? 'This desktop session has reached its execution limit. Reopen the application page.'
+      : `Host execution evidence was rejected (${reply.code || 'invalid'}).`);
     if (reply.execution) { this.execution = reply.execution; this.result = reply.result ?? null; }
     return reply;
   }
@@ -68,7 +77,7 @@ export class ExecutionClient {
     let value = body;
     if (this.channel.kind === 'native') {
       if (!['submit', 'query', 'cancel', 'release'].includes(path)) throw new Error('Unknown native execution operation.');
-      value = { profile: 'morphir/workbench/native', contractVersion: version,
+      value = { profile: 'morphir/workbench/native', contractVersion: this.nativeMapping === 'capability-checks' ? nativePolicyVersion : version,
         operation: `execution.${path}`, sessionId: this.sessionId, payload: body };
     }
     const source = value === undefined ? undefined : JSON.stringify(value);
@@ -88,7 +97,7 @@ export class ExecutionClient {
       }
       if (typeof text !== 'string') throw new Error('The native host returned an invalid raw execution reply.');
       if (text.length > limit || bytes(text) > limit) throw new Error('Native execution response exceeds the 1-MiB frame limit.');
-      const reply = this.command<NativeReply<T>>({ op: 'native-response', source: text,
+      const reply = this.command<NativeReply<T>>({ op: this.nativeMapping === 'capability-checks' ? 'native-policy-response' : 'native-response', source: text,
         operation: `execution.${path}`, sessionId: this.sessionId }).value;
       if (!reply.ok) {
         throw Object.assign(new Error(reply.error.message), { native: true, code: reply.error.code,
@@ -122,7 +131,7 @@ export class ExecutionClient {
       const source = await this.channel.descriptor();
       if (typeof source !== 'string') throw new Error('The native descriptor must be raw JSON text.');
       if (source.length > limit || bytes(source) > limit) throw new Error('Native descriptor exceeds the 1-MiB limit.');
-      const value = this.command<ExecutionDescriptor>({ op: 'native-descriptor', source, sessionId: this.sessionId }).value;
+      const value = this.command<ExecutionDescriptor>({ op: this.nativeMapping === 'capability-checks' ? 'native-policy-descriptor' : 'native-descriptor', source, sessionId: this.sessionId }).value;
       return Object.hasOwn(value, 'offer') ? value : null;
     }
     const value = await this.request<ExecutionDescriptor>('session', undefined, optional);
@@ -142,35 +151,55 @@ export class ExecutionClient {
     return Object.assign(error, { execution: this.execution, executionTransport: true });
   }
   async execute(request: Pick<WorkRequest, 'source' | 'entry' | 'arguments' | 'argumentsIon' | 'executionMode' | 'admission'>, progress: Progress = () => {}): Promise<WorkResult> {
-    if (request.executionMode === 'capability' || request.admission != null) {
+    // Capture before release, authentication, page checks or any host effect.
+    const captured = structuredClone(request);
+    const policyMapping = this.channel.kind === 'native' && this.nativeMapping === 'capability-checks';
+    if (!policyMapping && (captured.executionMode === 'capability' || captured.admission != null)) {
       throw new Error('This host mapping does not offer checking-policy selection.');
     }
     if (!this.offer) throw new Error('This host does not offer execution evaluation.');
     if (this.active || this.polling) throw new Error('A host execution is already active. Resume it instead of submitting again.');
     if (this.uncertainSubmission) throw new Error('Submission status is unknown. No second execution was submitted. Reopen the host session to recover.');
     if (this.execution && this.execution.state !== 'terminal') throw new Error('A host execution is already active. Resume it instead of submitting again.');
-    if (this.releasePending) {
-      try { await this.release(); } catch (cause) { const error = workbenchError(cause); throw this.disconnected(error); }
-    }
-    this.progress = progress;
-    const body = { contractVersion: version, model: request.source, entry: request.entry,
-      inputs: { format: typeof request.argumentsIon === 'string' ? 'ion-text' : 'json',
-        source: typeof request.argumentsIon === 'string' ? request.argumentsIon : JSON.stringify(request.arguments) } };
-    // Check bounds before sending: an oversized request has no uncertain host effect.
+    const provider = this.offer.offer;
+    const body = { contractVersion: version, model: captured.source, entry: captured.entry,
+      inputs: { format: typeof captured.argumentsIon === 'string' ? 'ion-text' : 'json',
+        source: typeof captured.argumentsIon === 'string' ? captured.argumentsIon : JSON.stringify(captured.arguments) },
+      ...(policyMapping ? { runtime: 'scheme', providerId: typeof provider === 'object' && provider !== null && !Array.isArray(provider) ? provider.providerId : undefined,
+        ...(captured.admission != null ? { admission: captured.admission } : {}) } : {}) };
+    const capturedBody = JSON.stringify(body);
+    // Check frame bounds before parsing the captured selection, then validate
+    // it before any submission or cleanup.
     this.encodeRequest('submit', body);
+    if (policyMapping) this.command({ op: 'validate-native-policy', offer: this.offer.offer, body: capturedBody });
+    // Reserve this attempt before cleanup can yield, so another click cannot
+    // enter the same pending release and create a second accepted execution.
     ++this.generation;
     this.active = true;
     this.cancelOnSubmit = false;
-    let submitted: { identity: Json; calls: string[]; receipt: Json } | null;
-    try { submitted = await this.request<{ identity: Json; calls: string[]; receipt: Json }>('submit', body); }
+    if (this.releasePending) {
+      try { await this.release(); } catch (cause) {
+        this.active = false;
+        const error = workbenchError(cause); throw this.disconnected(error);
+      }
+    }
+    this.progress = progress;
+    let submitted: { identity: Json; calls: string[]; receipt: Json; plan?: Json } | null;
+    try { submitted = await this.request<{ identity: Json; calls: string[]; receipt: Json; plan?: Json }>('submit', body); }
     catch (cause) { const error = workbenchError(cause);
       this.active = false;
       if (!error.rejected) { this.uncertainSubmission = true; error.submissionUnknown = true; error.executionTransport = true; }
       throw error;
     }
     try {
-      if (!submitted || !exact(submitted, ['identity', 'calls', 'receipt']) || !Array.isArray(submitted.calls) || submitted.calls.length !== 1 || submitted.calls[0] !== 'workbench') throw new Error('Invalid host submission envelope.');
-      this.command({ op: 'start', offer: this.offer.offer, identity: submitted.identity, calls: ['workbench'], receipt: submitted.receipt });
+      if (!submitted || !exact(submitted, policyMapping ? ['identity', 'calls', 'receipt', 'plan'] : ['identity', 'calls', 'receipt']) || !Array.isArray(submitted.calls) || submitted.calls.length !== 1 || submitted.calls[0] !== 'workbench') throw new Error('Invalid host submission envelope.');
+      this.command({ op: policyMapping ? 'start-native-policy' : 'start', offer: this.offer.offer, identity: submitted.identity, calls: ['workbench'], receipt: submitted.receipt,
+        ...(policyMapping ? { body: capturedBody, plan: submitted.plan } : {}) });
+      if (policyMapping) {
+        this.acceptedPlan = structuredClone(submitted.plan!);
+        // Diagnostic observation cannot roll back a validated accepted execution.
+        try { this.onAcceptedPlan?.(structuredClone(this.acceptedPlan)); } catch { /* Observer owns its failures. */ }
+      }
     } catch (cause) { const error = workbenchError(cause);
       this.active = false; this.uncertainSubmission = true;
       throw Object.assign(error, { submissionUnknown: true, executionTransport: true });
@@ -236,7 +265,7 @@ export class ExecutionClient {
       const descriptor = await this.descriptor();
       if (descriptor === null) throw new Error('This session no longer offers execution evaluation.');
       if (this.offer?.profile === 'morphir/workbench/native' &&
-          (descriptor.profile !== this.offer.profile || descriptor.operations.join(',') !== this.offer.operations.join(','))) {
+          (JSON.stringify(descriptor, ['profile','contractVersion','sessionId','operations','offer','hostId','providerId','capabilityChecks','runtime','evaluator','policies']) !== JSON.stringify(this.offer, ['profile','contractVersion','sessionId','operations','offer','hostId','providerId','capabilityChecks','runtime','evaluator','policies']))) {
         throw new Error('The native session capabilities changed. Reopen the application page.');
       }
       this.command({ op: 'reconnect', offer: descriptor.offer });

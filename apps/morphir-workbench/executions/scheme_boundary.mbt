@@ -1,4 +1,60 @@
 ///|
+fn scheme_request(
+  raw : Json,
+  provider : Json,
+) -> (@data.IRUnit, @protocol.Suite, @execution.CapabilityPolicy) raise {
+  guard raw is Object(body) else { raise Invalid("workbench.host_shape") }
+  let names = [
+    "contractVersion", "model", "entry", "inputs", "runtime", "providerId",
+  ]
+  let policy = if body.contains("admission") {
+    names.push("admission")
+    scheme_policy(body["admission"])
+  } else {
+    @execution.Strict
+  }
+  ignore(closed(raw, names))
+  version(body)
+  if body["runtime"] != Json::string("scheme") || body["providerId"] != provider {
+    raise Invalid("workbench.host_selection_mismatch")
+  }
+  let inputs = closed(body["inputs"], ["format", "source"])
+  let source = string(inputs["source"])
+  let arguments = match inputs["format"] {
+    String("json") => decode(source)
+    String("ion-text") => {
+      admit_ion_structure(source)
+      @arguments.ion_arguments(Json::null(), source, true)
+    }
+    _ => raise Invalid("workbench.host_format")
+  }
+  let suite = @protocol.Suite::from_json({
+    "profile": "morphir-invocations-v1",
+    "calls": [
+      { "id": "workbench", "entry": body["entry"], "arguments": arguments },
+    ],
+  })
+  let unit = @data.IRUnit::new(
+    "workbench",
+    @migration.to_current(@versioned.read(string(body["model"]))),
+  )
+  (unit, suite, policy)
+}
+
+///|
+fn native_request_plan(
+  body : String,
+  offer : Json,
+) -> @execution.SchemePlan raise {
+  let authority = @receipts.Offer::from_json(offer).to_json()
+  let (unit, suite, policy) = scheme_request(
+    decode(body),
+    @wire.field(authority, "providerId"),
+  )
+  @execution.plan_scheme_capabilities(unit, suite, policy~)
+}
+
+///|
 fn scheme_policy(value : Json) -> @execution.CapabilityPolicy raise {
   let fields = closed(value, ["profile", "contractVersion", "policy"])
   if fields["contractVersion"] != Json::string("0.1.0-draft.1") {
@@ -75,47 +131,42 @@ fn Host::scheme_command(
   op : String,
   fields : Map[String, Json],
 ) -> Json raise {
+  if op == "submit-native-policy" {
+    ignore(closed(Json::object(fields), ["op", "body"]))
+    let (unit, suite, policy) = scheme_request(
+      decode(string(fields["body"])),
+      @wire.field(self.owner.offer().to_json(), "providerId"),
+    )
+    let prepared : Ref[Json?] = Ref(None)
+    ignore(
+      self.owner.submit_scheme(
+        unit,
+        suite,
+        policy~,
+        validate_projection=Some(fn(receipt, projection) raise {
+          let value : Json = {
+            "identity": receipt.identity().to_json(),
+            "calls": ["workbench"],
+            "receipt": receipt.to_json(),
+            "plan": scheme_projection(projection),
+          }
+          // Reserve the actual complete native reply, including the selected
+          // boundary, before the owner publishes an accepted execution.
+          ignore(@native_reply.success_policy("execution.submit", value))
+          prepared.val = Some(value)
+        }),
+      ),
+    )
+    guard prepared.val is Some(value) else {
+      abort("Prepared native submission")
+    }
+    return value
+  }
   if op == "submit-scheme" {
     ignore(closed(Json::object(fields), ["op", "body"]))
-    let raw = decode(string(fields["body"]))
-    guard raw is Object(body) else { raise Invalid("workbench.host_shape") }
-    let names = [
-      "contractVersion", "model", "entry", "inputs", "runtime", "providerId",
-    ]
-    let policy = if body.contains("admission") {
-      names.push("admission")
-      scheme_policy(body["admission"])
-    } else {
-      @execution.Strict
-    }
-    ignore(closed(raw, names))
-    version(body)
-    let authority = closed(self.owner.offer().to_json(), [
-      "profile", "contractVersion", "hostId", "sessionId", "providerId", "operations",
-    ])
-    if body["runtime"] != Json::string("scheme") ||
-      body["providerId"] != authority["providerId"] {
-      raise Invalid("workbench.host_selection_mismatch")
-    }
-    let inputs = closed(body["inputs"], ["format", "source"])
-    let source = string(inputs["source"])
-    let arguments = match inputs["format"] {
-      String("json") => decode(source)
-      String("ion-text") => {
-        admit_ion_structure(source)
-        @arguments.ion_arguments(Json::null(), source, true)
-      }
-      _ => raise Invalid("workbench.host_format")
-    }
-    let suite = @protocol.Suite::from_json({
-      "profile": "morphir-invocations-v1",
-      "calls": [
-        { "id": "workbench", "entry": body["entry"], "arguments": arguments },
-      ],
-    })
-    let unit = @data.IRUnit::new(
-      "workbench",
-      @migration.to_current(@versioned.read(string(body["model"]))),
+    let (unit, suite, policy) = scheme_request(
+      decode(string(fields["body"])),
+      @wire.field(self.owner.offer().to_json(), "providerId"),
     )
     return self.scheme_submission(
       self.owner.submit_scheme(unit, suite, policy~),
@@ -228,4 +279,44 @@ pub fn evaluate_scheme_claim(request : Json) -> Json raise {
   guard result is Object(reply) else { raise Invalid("workbench.host_shape") }
   reply["executionPlan"] = fields["plan"]
   result
+}
+
+///|
+/// Captured from the execution owner, never constructed from a renderer echo.
+/// The projection is private; callers receive independent copies.
+pub struct SchemeSelection {
+  priv plan : @owner.SchemeExecutionProjection
+}
+
+///|
+pub fn Host::scheme_selection(
+  self : Host,
+  identity : Json,
+) -> SchemeSelection raise {
+  { plan: self.owner.describe_scheme(@receipts.Identity::from_json(identity)), }
+}
+
+///|
+pub fn SchemeSelection::projection(self : SchemeSelection) -> Json raise {
+  decode(scheme_projection(self.plan).stringify())
+}
+
+///|
+pub fn Host::claim_selected(
+  self : Host,
+  selection : SchemeSelection,
+) -> Json raise {
+  self.scheme_command("claim-scheme", {
+    "op": "claim-scheme",
+    "identity": selection.plan.identity.to_json(),
+    "selection": {
+      "planId": selection.plan.plan_id,
+      "providerId": @wire.field(selection.plan.identity.to_json(), "providerId"),
+      "runtime": "scheme",
+      "policy": match selection.plan.policy {
+        Strict => "strict"
+        Permissive => "permissive"
+      },
+    },
+  })
 }

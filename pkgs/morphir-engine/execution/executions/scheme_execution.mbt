@@ -32,8 +32,9 @@ pub fn Session::submit_scheme(
   unit : @data.IRUnit,
   suite : @protocol.Suite,
   policy~ : @execution.CapabilityPolicy = Strict,
+  validate_projection~ : ((@receipts.Receipt, SchemeExecutionProjection) -> Unit raise)? = None,
 ) -> @receipts.Receipt raise {
-  self.submit_with(unit, suite, Some(policy))
+  self.submit_with(unit, suite, Some(policy), validate_projection~)
 }
 
 ///|
@@ -61,7 +62,13 @@ pub fn Session::describe_scheme(
   self : Session,
   identity : @receipts.Identity,
 ) -> SchemeExecutionProjection raise {
-  let execution = self.lookup(identity)
+  self.lookup(identity).scheme_projection()
+}
+
+///|
+fn Execution::scheme_projection(
+  execution : Execution,
+) -> SchemeExecutionProjection raise {
   guard execution.kind is Scheme(plan_id, runtime, policy, _) else {
     raise Invalid("workbench.host_execution_kind")
   }

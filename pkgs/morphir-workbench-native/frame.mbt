@@ -92,15 +92,25 @@ pub async fn worker() -> Unit {
     raise Invalid("workbench.worker_trailing_input")
   }
   let request = @executions.decode(source)
-  guard request is Object(fields) &&
-    fields.get("operation") == Some(Json::string("evaluate")) &&
-    fields.get("executionMode") == Some(Json::string("typed")) else {
-    raise Invalid("workbench.worker_operation")
+  let reply = if request is Object(fields) &&
+    fields.get("operation") == Some(Json::string("evaluate-scheme-execution")) {
+    @executions.evaluate_scheme_claim(request)
+  } else {
+    guard request is Object(fields) &&
+      fields.get("operation") == Some(Json::string("evaluate")) &&
+      fields.get("executionMode") == Some(Json::string("typed")) else {
+      raise Invalid("workbench.worker_operation")
+    }
+    @pipeline.execute(request)
   }
-  let reply = @pipeline.execute(request)
   guard reply is Object(fields) &&
     fields.get("terminalOutcomes") is Some(outcomes) else {
     raise Invalid("workbench.worker_outcomes")
   }
-  @stdio.stdout.write(frame(outcomes.stringify()))
+  let result : Json = if fields.contains("executionPlan") {
+    { "executionPlan": fields["executionPlan"], "terminalOutcomes": outcomes }
+  } else {
+    outcomes
+  }
+  @stdio.stdout.write(frame(result.stringify()))
 }

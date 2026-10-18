@@ -40,12 +40,36 @@ page-bound native protocol uses one typed Proton command, restricted to the bund
 checks Proton's native origin/page context; navigation revokes the binding and
 window shutdown closes it. The UI labels this mode **Desktop local**.
 
-The bundled host and renderer use `morphir/workbench/native` `0.2.0-draft.1` through
+The bundled host and renderer use `morphir/workbench/native` `0.2.0-draft.2` through
 `app:workbench_native`. Each invocation carries complete raw JSON request and
 reply text. Production codecs bound the full UTF-8 envelope, reject duplicate
 members and validate closed operation payloads. Session open/check returns a
 public descriptor with the actual service's stable executions offer directly
-nested. Replies correlate to the exact originating invocation and operation.
+nested. Its closed `capabilityChecks` offer identifies the exact bounded Scheme
+evaluator and the supported checking policies. Replies correlate to the exact
+originating invocation and operation. The frozen `0.2.0-draft.1` mapping remains
+strict and does not accept checking-policy fields.
+
+Typed functions default to **Whole model before running**. A qualified native
+session also offers **As code executes**, which permits represented unsupported
+code to remain dormant and reports `execution.unsupported_reached` if reached.
+Both policies retain whole-source integrity, resource and identity checks and the
+complete selected input/output type closure. This changes validation timing; it
+does not add evaluator features or perform tree shaking.
+
+The renderer captures source, entry, JSON/Ion arguments and policy before any
+await. The owner captures its provider, rich snapshot, selected boundary and
+policy once; its isolated child reconstructs that selection and echoes the
+accepted plan. Both host and client validate typed terminal outcomes against the
+captured boundary. UI edits, reconnection and cancellation cannot replace the
+accepted selection. A mismatched or replayed accepted plan is an uncertain
+submission, never an automatic retry. Native reply size is reserved before owner
+acceptance, so a prepublication rejection creates no execution.
+
+The renderer retains one current accepted plan and at most 256 accepted identity
+and plan-id pairs per page. It refuses another submission before a host effect
+when that observation budget is full; reopen the application page to start a
+fresh session. Release frees execution evidence but retains replay protection.
 
 Errors carry explicit `none` or `unknown` effects, with fixed public messages.
 Caller/frame rejection proves no effect. The shared execution owner's returned
@@ -68,10 +92,11 @@ survive late cancellation; cleanup failures remain separate evidence.
 
 Linux has separate CEF-free native process acceptance. Linux and Windows retain
 browser workers pending independent packaged GUI/lifecycle qualification.
-The accepted public wire mapping is in use by the bundled pair. Independent
-reply/client/owner lifecycle MCK and fresh packaged-target qualification remain
-required before advertising public native-profile conformance. No additional
-platform is enabled by this migration.
+The policy mapping is scoped to the independently checked boundary/client/owner
+MCK drafts 20, 21 and 22. Controlled fixtures remain distinct from actual worker,
+OS picker and packaged GUI evidence. The policy-aware HTTP mapping is separate
+work; native negotiation never upgrades a connected host. No additional platform
+is enabled by this mapping.
 
 On macOS Apple Silicon, the `workspace` capability enables **Open workspace** in
 the explorer. The native OS picker grants one read-only root per page session.

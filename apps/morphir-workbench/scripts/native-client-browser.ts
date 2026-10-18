@@ -8,6 +8,7 @@ import type * as Trace from '../browser/native-client-trace.ts';
 export async function nativeClientBrowser(
   compiled: string,
   driverPath: string,
+  mapping: 'executions' | 'capability-checks' = 'executions',
 ) {
   const driver = readFileSync(driverPath);
   const server = createServer((request, response) => {
@@ -48,14 +49,14 @@ export async function nativeClientBrowser(
         await page.goto(url);
         await page.addScriptTag({ url: url + '/core.js' });
         return await page.evaluate(
-          async ({ input, url }) => {
+          async ({ input, url, mapping }) => {
             const trace = (await import(url + '/trace.js')) as typeof Trace;
-            return trace.runNativeClientTrace(
-              input,
-              globalThis.morphirWorkbenchExecutions,
-            );
+            const run = mapping === 'capability-checks'
+              ? trace.runNativePolicyClientTrace
+              : trace.runNativeClientTrace;
+            return run(input, globalThis.morphirWorkbenchExecutions);
           },
-          { input, url },
+          { input, url, mapping },
         );
       } finally {
         await page.close();

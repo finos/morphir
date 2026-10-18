@@ -80,6 +80,9 @@ fn Aliases::execution_value(self : Aliases, value : Json) -> Json {
   if fields.get("identity") is Some(identity) {
     fields["identity"] = self.identity(identity)
   }
+  if fields.get("plan") is Some(plan) {
+    fields["plan"] = self.execution_value(plan)
+  }
   if fields.get("receipt") is Some(receipt) {
     fields["receipt"] = self.execution_value(receipt)
   }

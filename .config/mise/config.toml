@@ -212,6 +212,14 @@ run = "moonx scripts/workbench-native-client-mck.mbtx"
 description = "Opt-in production native owner lifecycle through the shared Rust MCK"
 run = "moonx scripts/workbench-native-owner-mck.mbtx"
 
+[tasks."test:workbench-native-policy-mck"]
+description = "Opt-in exact native checking-policy boundary and owner qualification through the shared Rust MCK"
+run = "moonx scripts/workbench-native-policy-mck.mbtx"
+
+[tasks."test:workbench-native-policy-client-mck"]
+description = "Opt-in exact native checking-policy client qualification in Node and Chromium"
+run = "moonx scripts/workbench-native-policy-client-mck.mbtx"
+
 [tasks."setup:site"]
 description = "Install site build dependencies and Chromium for the smoke test"
 run = "moonx scripts/typescript-tooling.mbtx setup-site"

@@ -71,3 +71,27 @@ caller provenance, filesystem containment or races, actual native worker
 scheduling/exit, or packaged platform conformance. Real worker, bridge, workspace
 and packaged acceptance remain separate. Live native `0.2.0-draft.1` and historical MCK
 drafts.1 through .9 stay unchanged.
+
+## Native capability checking policies
+
+The bundled desktop host selects exact native `0.2.0-draft.2` for qualified
+macOS Apple Silicon sessions. The older exact mapping retains whole-model checks.
+The new mapping captures the selected bounded Scheme evaluator, provider and
+checking policy in an accepted `execution-plan` `0.2.0-draft.1` projection.
+Omitted policy resolves to strict once. Unsupported behavior can remain dormant
+under an explicit permissive policy, but reaching it fails evaluation.
+
+The same executable runs the selected Scheme claim in an isolated child. Its
+rich captured snapshot and returned plan are checked before terminal publication,
+and the host validates actual typed outcomes against its retained boundary.
+Session replacement, navigation and shutdown keep their existing revocation and
+confirmed-exit requirements. A new contract does not grant caller or workspace
+authority. New exact MCK adapters never modify frozen contract behavior.
+
+The opt-in shared Rust gates require an explicit runner and kit:
+`mise run test:workbench-native-policy-mck` accepts draft 20 or 22;
+`mise run test:workbench-native-policy-client-mck` accepts draft 21.
+`MORPHIR_MCK_BIN`, `MORPHIR_WORKBENCH_KIT` and
+`MORPHIR_WORKBENCH_EVIDENCE` select the runner, exact fixed corpus and reports.
+The runner owns fixtures, expectations and independent checks. Controlled owner
+IO does not establish OS dialog, process or packaged-platform support.

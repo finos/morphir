@@ -1,0 +1,135 @@
+///|
+/// Qualify exact native checking-policy boundaries and controlled owner traces
+/// with the independently authored parent corpus. This is not platform evidence.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn checked(program : String, args : Array[String]) -> Unit {
+  let code = @process.run(
+    program,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if code != 0 {
+    @sys.exit(1)
+  }
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+async fn main {
+  guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
+    @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
+    @stdio.stderr.write(
+      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and exact draft.20 or draft.22 kit.\n",
+    )
+    @sys.exit(1)
+  }
+  let corpus = @fs.read_file(kit + "/cases.json").json()
+  let boundary = field(corpus, "formatVersion") ==
+    Json::string("0.1.0-draft.20")
+  guard (
+      boundary ||
+      field(corpus, "formatVersion") == Json::string("0.1.0-draft.22")
+    ) &&
+    field(corpus, "cases") is Array(cases) &&
+    !cases.is_empty() &&
+    cases.all(case => {
+      field(case, "format") == Json::string("json") &&
+      field(case, "operation") ==
+      Json::string(
+        if boundary {
+          "validate-native-policy-boundary"
+        } else {
+          "run-native-policy-owner"
+        },
+      )
+    }) else {
+    @stdio.stderr.write(
+      "The native checking-policy kit does not select an exact supported mapping.\n",
+    )
+    @sys.exit(1)
+  }
+  let evidence = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
+    if boundary {
+      ".dev/native-policy-boundary-mck/reports"
+    } else {
+      ".dev/native-policy-owner-mck/reports"
+    },
+  )
+  let build = @env.get_env_var("MORPHIR_NATIVE_POLICY_BUILD").unwrap_or(
+    ".dev/native-policy-mck/build",
+  )
+  @fs.mkdir(evidence, recursive=true, allow_exist=true)
+  let adapter_package = if boundary {
+    "apps/morphir-workbench/mck"
+  } else {
+    "pkgs/morphir-workbench-native/mck"
+  }
+  let targets = if boundary { ["js", "native"] } else { ["native"] }
+  for target in targets {
+    checked("moon", [
+      "test", adapter_package, "--target", target, "--target-dir", build,
+    ])
+    for mode in ["debug", "release"] {
+      checked(
+        "moon",
+        [
+          "build",
+          adapter_package + "/" + target,
+          "--target",
+          target,
+          "--target-dir",
+          build,
+        ] +
+        (if mode == "release" { ["--release"] } else { [] }),
+      )
+      let qualified_package = if boundary {
+        "finos/morphir-workbench/mck"
+      } else {
+        "finos/morphir-workbench-native/mck"
+      }
+      let artifact = "\{build}/\{target}/\{mode}/build/\{qualified_package}/\{target}/\{target}" +
+        (if target == "js" { ".js" } else { ".exe" })
+      let report = "\{evidence}/\{target}-\{mode}.json"
+      checked(
+        runner,
+        [
+          "--no-banner", "mck", "workbench", "run", "--kit", kit, "--report", report,
+        ] +
+        (if target == "js" {
+          ["--adapter", "node", "--adapter-arg", artifact]
+        } else {
+          ["--adapter", artifact]
+        }),
+      )
+      checked(runner, [
+        "--no-banner", "mck", "workbench", "check", "--kit", kit, "--report", report,
+      ])
+      let result = @fs.read_file(report).json()
+      guard field(result, "qualified") == Json::boolean(true) &&
+        field(result, "records") is Array(records) &&
+        records.length() == cases.length() else {
+        @sys.exit(1)
+      }
+    }
+  }
+  @stdio.stdout.write(
+    "Exact native checking-policy MCK reports pass and were independently checked.\n",
+  )
+}

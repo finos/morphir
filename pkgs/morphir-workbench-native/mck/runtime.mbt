@@ -60,6 +60,10 @@ priv struct ControlledExecutions {
 ///|
 priv struct Runtime {
   group : @async.TaskGroup[Unit]
+  contract : @request.Contract
+  accepted_plans : Array[Json]
+  selected_results : Array[Json]
+  claims : Map[String, SelectedClaim]
   input : Json
   aliases : Aliases
   roots : Map[String, MemoryRoot]
@@ -82,7 +86,11 @@ priv struct Runtime {
 }
 
 ///|
-fn Runtime::new(group : @async.TaskGroup[Unit], input : Json) -> Runtime raise {
+fn Runtime::new(
+  group : @async.TaskGroup[Unit],
+  input : Json,
+  contract~ : @request.Contract = Executions,
+) -> Runtime raise {
   let roots = Map([])
   for root in array(field(input, "roots"), 8) {
     let files = Map([])
@@ -118,6 +126,10 @@ fn Runtime::new(group : @async.TaskGroup[Unit], input : Json) -> Runtime raise {
   }
   {
     group,
+    contract,
+    accepted_plans: [],
+    selected_results: [],
+    claims: Map([]),
     input,
     aliases: Aliases::new(),
     roots,
@@ -311,7 +323,7 @@ fn Runtime::frame(self : Runtime, action : Json) -> (String, Json)? {
   let operation = text(field(action, "operation"))
   let frame : Map[String, Json] = {
     "profile": "morphir/workbench/native",
-    "contractVersion": "0.2.0-draft.1",
+    "contractVersion": self.contract.version(),
     "operation": Json::string(operation),
   }
   if operation == "session.open" {
@@ -386,7 +398,11 @@ fn Runtime::launch(
       fn() raise { caller(self.context) },
       async fn() { self.choose() },
     )
-    let reply = @reply.decode(@utf8.encode(response), operation).to_json()
+    let reply = (if self.contract == @request.CapabilityChecks {
+      @reply.decode_policy(@utf8.encode(response), operation)
+    } else {
+      @reply.decode(@utf8.encode(response), operation)
+    }).to_json()
     if field(reply, "ok") == Json::boolean(true) {
       let value = field(reply, "value")
       if operation == "session.open" || operation == "session.check" {
@@ -458,6 +474,7 @@ async fn Runtime::execute(self : Runtime, owner : @bridge.Owner) -> Json {
         delivery = Json::string(
           self.deliver(self.gates[text(field(action, "id"))]),
         )
+      "claim" | "evaluate" => self.selected_action(action)
       "complete" =>
         completion = self.complete(
           text(field(action, "execution")),
@@ -488,6 +505,11 @@ async fn Runtime::execute(self : Runtime, owner : @bridge.Owner) -> Json {
     "unusedPickers": self.pickers.length() - self.picker_position,
     "usedCleanups": self.used_cleanups,
     "unusedCleanups": self.cleanups.length() - self.used_cleanups,
+  }
+  if self.contract == @request.CapabilityChecks {
+    guard observation is Object(fields) else { abort("Owner projection") }
+    fields["acceptedPlans"] = Json::array(self.accepted_plans.copy())
+    fields["selectedResults"] = Json::array(self.selected_results.copy())
   }
   ignore(canonical(observation))
   // Final observation precedes teardown. Cleanup cannot append events or mutate

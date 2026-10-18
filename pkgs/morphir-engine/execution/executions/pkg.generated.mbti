@@ -45,7 +45,7 @@ pub fn Session::query(Self, @finos/morphir-execution/executions.Identity) -> @fi
 pub fn Session::release(Self, @finos/morphir-execution/executions.Identity) -> Unit raise
 pub fn Session::replan_scheme(Self, @finos/morphir-execution/executions.Identity, String, String, SchemeRuntime, @execution.CapabilityPolicy) -> @finos/morphir-execution/executions.Receipt raise
 pub fn Session::submit(Self, @data.IRUnit, @morphir-execution.Suite) -> @finos/morphir-execution/executions.Receipt raise
-pub fn Session::submit_scheme(Self, @data.IRUnit, @morphir-execution.Suite, policy? : @execution.CapabilityPolicy) -> @finos/morphir-execution/executions.Receipt raise
+pub fn Session::submit_scheme(Self, @data.IRUnit, @morphir-execution.Suite, policy? : @execution.CapabilityPolicy, validate_projection? : ((@finos/morphir-execution/executions.Receipt, SchemeExecutionProjection) -> Unit raise)?) -> @finos/morphir-execution/executions.Receipt raise
 
 // Type aliases
 

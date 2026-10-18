@@ -149,42 +149,68 @@ pub async fn handle_line(source : String) -> Json? {
     n <= 9007199254740991.0 &&
     @wire.is_integral_number(id) &&
     field(request, "suite") == Json::string("workbench") &&
-    field(request, "contractVersion") == Json::string("0.1.0-draft.18") else {
+    (
+      field(request, "contractVersion") == Json::string("0.1.0-draft.18") ||
+      field(request, "contractVersion") == Json::string("0.1.0-draft.22")
+    ) else {
     abort("native owner MCK: invalid negotiation")
   }
+  let policy = field(request, "contractVersion") ==
+    Json::string("0.1.0-draft.22")
   if capability {
     return Some({
       "id": id,
       "suite": "workbench",
-      "contractVersion": "0.1.0-draft.18",
+      "contractVersion": field(request, "contractVersion"),
       "binding": "morphir-moonbit-native-owner",
       "language": "moonbit",
-      "operations": ["run-native-owner"],
+      "operations": if policy {
+        ["run-native-policy-owner"]
+      } else {
+        ["run-native-owner"]
+      },
       "formats": ["json"],
     })
   }
-  guard field(request, "op") == Json::string("run-native-owner") &&
+  guard field(request, "op") ==
+    Json::string(
+      if policy {
+        "run-native-policy-owner"
+      } else {
+        "run-native-owner"
+      },
+    ) &&
     field(request, "format") == Json::string("json") else {
     abort("native owner MCK: unsupported operation")
   }
-  let value = run_owner(field(request, "input"))
+  let value = run_owner(
+    field(request, "input"),
+    contract=if policy { CapabilityChecks } else { Executions },
+  )
   Some({ "id": id, "status": "ok", "value": value })
 }
 
 ///|
-async fn run_owner(input : Json) -> Json {
-  admit_input(input)
+async fn run_owner(
+  input : Json,
+  contract~ : @request.Contract = Executions,
+) -> Json {
+  if contract == @request.CapabilityChecks {
+    admit_policy_owner_input(input)
+  } else {
+    admit_input(input)
+  }
   let observation = Ref(Json::null())
   @async.with_task_group(async fn(group) {
-    let runtime = Runtime::new(group, input)
-    let executions : ((String) -> @bridge.ExecutionsService raise)? = if field(
+    let runtime = Runtime::new(group, input, contract~)
+    let executions : ((String, @request.Contract) -> @bridge.ExecutionsService raise)? = if field(
         field(input, "services"),
         "executions",
       ) ==
       Json::string("disabled") {
       None
     } else {
-      Some(fn(session) raise { runtime.executions(session) })
+      Some(fn(session, _contract) raise { runtime.executions(session) })
     }
     let workspace : (() -> @workspace.Service)? = if boolean(
         field(field(input, "services"), "workspace"),
@@ -193,7 +219,11 @@ async fn run_owner(input : Json) -> Json {
     } else {
       None
     }
-    let owner = @bridge.Owner::with_services(group, { executions, workspace, })
+    let owner = @bridge.Owner::with_services(
+      group,
+      { executions, workspace, },
+      contract~,
+    )
     observation.val = runtime.execute(owner)
   })
   observation.val

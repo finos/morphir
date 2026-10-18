@@ -124,6 +124,9 @@ fn Runtime::execution_request(
     "execution.release" => "release"
     _ => return @reply.failure(@reply.InvalidRequest, @reply.NoEffect)
   }
+  if self.contract == @request.CapabilityChecks {
+    return self.policy_execution_request(service, operation, payload, path)
+  }
   try {
     let result = service.host.handle(
       ({ "op": path, "body": payload.stringify() } : Json).stringify(),

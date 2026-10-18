@@ -98,7 +98,7 @@ fn policy_scope_model() -> Model {
     executions_available: false,
     evaluation_runtime: @evaluation.TypedInvocation,
     evaluation_policy: @capabilities.CapabilityPolicy::Strict,
-    local_evaluator: Some(@capabilities.SchemePortable),
+    capability_runtime: Standalone(@capabilities.SchemePortable),
     model: {
       "capabilityEvaluations": {
         "evaluator": "scheme-portable-v1/shared-sdk/bounded",
@@ -156,13 +156,8 @@ test "local checking offer is scoped to the actual evaluator entry and complete 
     incompatible in [
       { ..model, connected: true, },
       { ..model, executions_available: true, },
-      { ..model, local_evaluator: None, },
-      {
-        ..model,
-        local_evaluator: @capabilities.Evaluator::from_json(
-          Json::string("some-other-evaluator"),
-        ),
-      },
+      { ..model, capability_runtime: Unavailable, },
+      { ..model, capability_runtime: Native(@capabilities.SchemePortable), },
       { ..model, selected: "value|unsupported", },
       { ..model, selected: "value|private", },
       { ..model, evaluation_runtime: @evaluation.LocalScheme, },
@@ -251,7 +246,7 @@ test "bounded local descriptions preserve existing strict entries without granti
   let model = { ..base, selected: "value|outside", }
   assert_true(
     field(
-      evaluation_profile(model.model, model.selected, true, standalone=true),
+      evaluation_profile(model.model, model.selected, true, capabilities=true),
       "supported",
     ) ==
     Json::boolean(true),
@@ -263,4 +258,44 @@ test "bounded local descriptions preserve existing strict entries without granti
     @cmd.Emit(fn(_) { @cmd.none }),
   )
   assert_eq(after.evaluation_policy, @capabilities.CapabilityPolicy::Strict)
+}
+
+///|
+test "native checking policy requires both a scoped session offer and selected boundary" {
+  let model = {
+    ..policy_scope_model(),
+    executions_available: true,
+    capability_runtime: Native(@capabilities.SchemePortable),
+  }
+  assert_true(checking_available(model))
+  assert_false(checking_available({ ..model, selected: "value|unsupported", }))
+  assert_false(checking_available({ ..model, selected: "value|private", }))
+  assert_false(checking_available({ ..model, executions_available: false, }))
+  assert_false(checking_available({ ..model, connected: true, }))
+  assert_false(
+    checking_available({ ..model, capability_runtime: Unavailable, }),
+  )
+  let (after, _) = update(
+    model,
+    EvaluationPolicy(@capabilities.CapabilityPolicy::Permissive),
+    @cmd.Emit(fn(_) { @cmd.none }),
+  )
+  assert_eq(after.evaluation_policy, @capabilities.CapabilityPolicy::Permissive)
+}
+
+///|
+test "native runtime selection refuses local inspection claims without session checking authority" {
+  let claims : Json = {
+    "capabilityEvaluator": "scheme-portable-v1/shared-sdk/bounded",
+    "nativeSession": true,
+    "executionsAvailable": true,
+  }
+  assert_true(capability_runtime(claims) is Unavailable)
+  let validated : Json = {
+    "capabilityEvaluator": "scheme-portable-v1/shared-sdk/bounded",
+    "capabilityRuntime": "native",
+    "nativeSession": true,
+    "executionsAvailable": true,
+  }
+  assert_true(capability_runtime(validated) is Native(_))
 }

@@ -441,7 +441,7 @@ pub fn view(
         @html.p(
           class="small muted",
           if incompatible {
-            "The selected checking policy is unavailable for this runtime or function. Choose whole-model checks or return to a supported local typed function. Your inputs are retained."
+            "The selected checking policy is unavailable for this runtime or function. Choose whole-model checks or return to a supported typed function. Your inputs are retained."
           } else {
             "Checking as code executes is unavailable for this runtime or function. Whole-model checks remain selected."
           },

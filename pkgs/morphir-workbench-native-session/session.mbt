@@ -27,7 +27,7 @@ pub fn Caller::admit(
 ///|
 enum State {
   Idle
-  Active(String, String)
+  Active(String, String, @request.Contract)
   Closed
 }
 
@@ -37,18 +37,24 @@ pub struct Session {
   priv mut next : Int32
   priv executions : Bool
   priv workspace : Bool
+  priv contract : @request.Contract
 }
 
 ///|
 pub fn Session::new(
   executions~ : Bool = false,
   workspace~ : Bool = false,
+  contract~ : @request.Contract = Executions,
 ) -> Session {
-  { state: Idle, next: 0, executions, workspace, }
+  { state: Idle, next: 0, executions, workspace, contract, }
 }
 
 ///|
-fn Session::descriptor(self : Session, id : String) -> Json {
+fn Session::descriptor(
+  self : Session,
+  id : String,
+  contract : @request.Contract,
+) -> Json {
   let operations : Array[Json] = []
   if self.executions {
     operations.push(Json::string("executions"))
@@ -58,7 +64,7 @@ fn Session::descriptor(self : Session, id : String) -> Json {
   }
   {
     "ok": true,
-    "bridgeVersion": "0.2.0-draft.1",
+    "bridgeVersion": contract.version(),
     "sessionId": id,
     "operations": Json::array(operations),
   }
@@ -73,12 +79,20 @@ pub fn Session::open(
   caller : Caller,
   version : String,
 ) -> Json raise Invalid {
-  guard version == "0.2.0-draft.1" else {
+  let contract = @request.Contract::from_string(version) catch {
+    _ => raise Rejected("workbench.native_version")
+  }
+  guard contract == @request.Executions || self.contract == contract else {
     raise Rejected("workbench.native_version")
   }
   match self.state {
     Closed => raise Rejected("workbench.native_closed")
-    Active(page, id) if page == caller.page => return self.descriptor(id)
+    Active(page, id, accepted) if page == caller.page => {
+      guard accepted == contract else {
+        raise Rejected("workbench.native_version")
+      }
+      return self.descriptor(id, accepted)
+    }
     _ => ()
   }
   guard self.next < 2147483647 else {
@@ -86,8 +100,8 @@ pub fn Session::open(
   }
   self.next += 1
   let id = "proton-session-" + self.next.to_string()
-  self.state = Active(caller.page, id)
-  self.descriptor(id)
+  self.state = Active(caller.page, id, contract)
+  self.descriptor(id, contract)
 }
 
 ///|
@@ -95,13 +109,15 @@ pub fn Session::check(
   self : Session,
   caller : Caller,
   id : String,
+  contract~ : @request.Contract? = None,
 ) -> Json raise Invalid {
-  guard self.state is Active(page, current) &&
+  guard self.state is Active(page, current, accepted) &&
     page == caller.page &&
-    current == id else {
+    current == id &&
+    (contract is None || contract == Some(accepted)) else {
     raise Rejected("workbench.native_stale_session")
   }
-  self.descriptor(current)
+  self.descriptor(current, accepted)
 }
 
 ///|

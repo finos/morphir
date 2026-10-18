@@ -116,3 +116,45 @@ test "qualified operations are independent and stable within the native page ses
     assert_eq(session.check(caller("one"), id(first)), first)
   }
 }
+
+///|
+test "native checking mapping is captured by page and cannot silently renegotiate" {
+  let qualified = Session::new(
+    executions=true,
+    contract=@request.CapabilityChecks,
+  )
+  let first = qualified.open(caller("one"), "0.2.0-draft.2")
+  assert_eq(fields(first)["bridgeVersion"], Json::string("0.2.0-draft.2"))
+  assert_eq(qualified.open(caller("one"), "0.2.0-draft.2"), first)
+  for version in ["0.2.0-draft.1", "0.2.0-draft.2+build"] {
+    let rejected = try {
+      ignore(qualified.open(caller("one"), version))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(rejected)
+    assert_eq(qualified.check(caller("one"), id(first)), first)
+  }
+  let crossed = try {
+    ignore(
+      qualified.check(
+        caller("one"),
+        id(first),
+        contract=Some(@request.Executions),
+      ),
+    )
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(crossed)
+  let strict_only = Session::new(executions=true)
+  let refused = try {
+    ignore(strict_only.open(caller("one"), "0.2.0-draft.2"))
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(refused)
+}

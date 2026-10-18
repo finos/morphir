@@ -47,7 +47,8 @@ pub fn handle_line(source : String) -> Json? raise {
   // embedded native source bytes. Historical adapters retain their parser.
   let request = if field(request, "contractVersion") ==
     Json::string("0.1.0-draft.15") ||
-    field(request, "contractVersion") == Json::string("0.1.0-draft.16") {
+    field(request, "contractVersion") == Json::string("0.1.0-draft.16") ||
+    field(request, "contractVersion") == Json::string("0.1.0-draft.20") {
     @wire.parse(source)
   } else {
     request
@@ -84,6 +85,7 @@ pub fn handle(request : Json) -> Json {
     ["id", "op", "suite", "contractVersion", "format", "input"]
   }
   let version = field(request, "contractVersion")
+  let draft20 = version == Json::string("0.1.0-draft.20")
   let draft16 = version == Json::string("0.1.0-draft.16")
   let draft15 = version == Json::string("0.1.0-draft.15")
   let draft14 = version == Json::string("0.1.0-draft.14")
@@ -101,7 +103,8 @@ pub fn handle(request : Json) -> Json {
       draft4 ||
       draft14 ||
       draft15 ||
-      draft16
+      draft16 ||
+      draft20
     ) else {
     return invalid(id, "workbench.invalid_request")
   }
@@ -112,7 +115,9 @@ pub fn handle(request : Json) -> Json {
       "contractVersion": version,
       "binding": "morphir-moonbit",
       "language": "moonbit",
-      "operations": if draft16 {
+      "operations": if draft20 {
+        ["validate-native-policy-boundary"]
+      } else if draft16 {
         ["validate-native-reply"]
       } else if draft15 {
         ["validate-native-frame"]
@@ -134,12 +139,19 @@ pub fn handle(request : Json) -> Json {
       } else {
         ["decode-value"]
       },
-      "formats": if draft14 || draft15 || draft16 {
+      "formats": if draft14 || draft15 || draft16 || draft20 {
         ["json"]
       } else {
         ["json", "ion-text"]
       },
     }
+  }
+  if draft20 {
+    guard op == Json::string("validate-native-policy-boundary") &&
+      field(request, "format") == Json::string("json") else {
+      return invalid(id, "workbench.invalid_request")
+    }
+    return native_policy_boundary(id, field(request, "input"))
   }
   if draft16 {
     guard op == Json::string("validate-native-reply") &&

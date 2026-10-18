@@ -225,6 +225,13 @@ struct EvaluationDraft {
 } derive(Eq)
 
 ///|
+enum CapabilityRuntime {
+  Unavailable
+  Standalone(@capabilities.Evaluator)
+  Native(@capabilities.Evaluator)
+} derive(Eq)
+
+///|
 struct Model {
   history : Array[Location]
   explorer : Bool
@@ -260,7 +267,7 @@ struct Model {
   selected : String
   evaluation_runtime : @evaluation.Runtime
   evaluation_policy : @capabilities.CapabilityPolicy
-  local_evaluator : @capabilities.Evaluator?
+  capability_runtime : CapabilityRuntime
   evaluation_host_execution : Bool
   evaluation_mode : @evaluation.InputMode
   result_mode : @result.Mode
@@ -476,7 +483,7 @@ fn initial() -> Model {
     selected: "",
     evaluation_runtime: @evaluation.LocalScheme,
     evaluation_policy: @capabilities.CapabilityPolicy::Strict,
-    local_evaluator: None,
+    capability_runtime: Unavailable,
     evaluation_host_execution: false,
     evaluation_mode: @evaluation.Fields,
     result_mode: @result.Value,
@@ -1379,7 +1386,7 @@ fn select(model : Model, selected : String) -> Model {
     model.model,
     selected,
     model.evaluation_runtime.is_typed(),
-    standalone=local_capabilities(model),
+    capabilities=capability_descriptions(model),
   )
   {
     ..model,
@@ -1647,7 +1654,7 @@ fn update_core(
         model.model,
         model.selected,
         evaluation_runtime.is_typed(),
-        standalone=local_capabilities(model),
+        capabilities=capability_descriptions(model),
       )
       // Invalidate the request ID as well as resetting the argument document.
       // A held reply from the previous runtime must not replace this result.
@@ -1715,7 +1722,7 @@ fn update_core(
         model.model,
         model.selected,
         model.evaluation_runtime.is_typed(),
-        standalone=local_capabilities(model),
+        capabilities=capability_descriptions(model),
       )
       let evaluation_arguments = @arguments.convert_inputs(
         profile,
@@ -1765,7 +1772,7 @@ fn update_core(
         model.model,
         model.selected,
         model.evaluation_runtime.is_typed(),
-        standalone=local_capabilities(model),
+        capabilities=capability_descriptions(model),
       )
       if (
           model.evaluation_runtime.is_typed() &&
@@ -1885,7 +1892,7 @@ fn update_core(
             (
               "admission",
               if model.evaluation_runtime.is_typed() &&
-                local_capabilities(model) {
+                checking_available(model) {
                 @capabilities.selection_to_json(model.evaluation_policy)
               } else {
                 Json::null()
@@ -1903,7 +1910,7 @@ fn update_core(
               "executionMode",
               Json::string(
                 if model.evaluation_runtime.is_typed() &&
-                  local_capabilities(model) {
+                  checking_available(model) {
                   "capability"
                 } else if model.evaluation_runtime.is_typed() {
                   "typed"
@@ -2804,15 +2811,7 @@ fn update_core(
           ..model,
           busy: false,
           connected: field(result, "connected") == Json::boolean(true),
-          local_evaluator: if field(result, "connected") != Json::boolean(true) &&
-            field(result, "executionsAvailable") != Json::boolean(true) &&
-            field(result, "nativeSession") != Json::boolean(true) {
-            @capabilities.Evaluator::from_json(
-              field(result, "capabilityEvaluator"),
-            )
-          } else {
-            None
-          },
+          capability_runtime: capability_runtime(result),
           executions_available: field(result, "executionsAvailable") ==
           Json::boolean(true),
           workspace_available: field(result, "workspaceAvailable") ==
@@ -3861,7 +3860,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
             model.model,
             model.selected,
             model.evaluation_runtime.is_typed(),
-            standalone=local_capabilities(model),
+            capabilities=capability_descriptions(model),
           ),
           document_key: "evaluation-" +
           model.model_revision.to_string() +
@@ -4191,17 +4190,57 @@ fn explorer_props(model : Model) -> @explorer.Props {
 }
 
 ///|
-fn local_capabilities(model : Model) -> Bool {
-  !model.connected &&
-  !model.executions_available &&
-  model.local_evaluator is Some(_)
+fn capability_runtime(result : Json) -> CapabilityRuntime {
+  guard field(result, "connected") != Json::boolean(true) &&
+    @capabilities.Evaluator::from_json(field(result, "capabilityEvaluator"))
+    is Some(evaluator) else {
+    return Unavailable
+  }
+  if field(result, "nativeSession") == Json::boolean(true) {
+    if field(result, "executionsAvailable") == Json::boolean(true) &&
+      text(result, "capabilityRuntime") == "native" {
+      Native(evaluator)
+    } else {
+      Unavailable
+    }
+  } else if field(result, "executionsAvailable") != Json::boolean(true) {
+    Standalone(evaluator)
+  } else {
+    Unavailable
+  }
+}
+
+///|
+fn capability_evaluator(model : Model) -> @capabilities.Evaluator? {
+  if model.connected {
+    return None
+  }
+  match model.capability_runtime {
+    Standalone(evaluator) =>
+      if model.executions_available {
+        None
+      } else {
+        Some(evaluator)
+      }
+    Native(evaluator) =>
+      if model.executions_available {
+        Some(evaluator)
+      } else {
+        None
+      }
+    Unavailable => None
+  }
+}
+
+///|
+fn capability_descriptions(model : Model) -> Bool {
+  capability_evaluator(model) is Some(_)
 }
 
 ///|
 fn checking_available(model : Model) -> Bool {
   guard model.evaluation_runtime.is_typed() &&
-    local_capabilities(model) &&
-    model.local_evaluator is Some(evaluator) else {
+    capability_evaluator(model) is Some(evaluator) else {
     return false
   }
   @capabilities.supports_checks(
@@ -4219,12 +4258,12 @@ fn evaluation_profile(
   data : Json,
   selected : String,
   typed : Bool,
-  standalone~ : Bool = false,
+  capabilities~ : Bool = false,
 ) -> Json {
   let profiles = if typed {
     let manifest = field(
       data,
-      if standalone {
+      if capabilities {
         "capabilityEvaluations"
       } else {
         "typedEvaluations"
@@ -4235,14 +4274,14 @@ fn evaluation_profile(
       selected.strip_prefix("value|").unwrap_or(selected[:]).to_owned(),
     )
     if entry == Json::null() {
-      // A bounded local description inventory must not remove a previously
+      // A bounded capability description inventory must not remove a previously
       // supported strict entry from the complete generated manifest. It grants
-      // no permissive offer; checking_available uses the selected local closure.
+      // no permissive offer; checking_available checks the selected entry and evaluator.
       let legacy = field(
         field(field(data, "typedEvaluations"), "entries"),
         selected.strip_prefix("value|").unwrap_or(selected[:]).to_owned(),
       )
-      if standalone && field(legacy, "supported") == Json::boolean(true) {
+      if capabilities && field(legacy, "supported") == Json::boolean(true) {
         return legacy
       }
       return object([

@@ -274,6 +274,7 @@ async fn main {
     }
     count += 1
   })
+  count += policy_acceptance(executable)
   println(
     (
       {
@@ -284,4 +285,116 @@ async fn main {
         "lateCancellation": true,
       } : Json).stringify(),
   )
+}
+
+///|
+fn selected_body(source : String, policy : String?, format : String) -> Json {
+  let fields : Map[String, Json] = {
+    "contractVersion": "0.2.0-draft.1",
+    "model": source,
+    "entry": "selected:main#answer",
+    "runtime": "scheme",
+    "providerId": "moonbit-scheme",
+    "inputs": { "format": format, "source": "[]" },
+  }
+  if policy is Some(policy) {
+    fields["admission"] = {
+      "profile": "morphir/workbench/admission",
+      "contractVersion": "0.1.0-draft.1",
+      "policy": policy,
+    }
+  }
+  Json::object(fields)
+}
+
+///|
+async fn policy_acceptance(executable : String) -> Int32 {
+  let model = @fs.read_file(
+    "apps/morphir-workbench/fixtures/capability-execution.json",
+  ).text()
+  let mut count = 0
+  @async.with_task_group(async fn(group) {
+    let service = @native.Service::new(group, executable, "native-checking")
+    defer service.close()
+    for policy in [None, Some("strict")] {
+      let rejected = service.policy_request(
+        "submit",
+        Some(selected_body(model, policy, "json").stringify()),
+      )
+      assert_eq(@wire.field(rejected, "status"), Json::number(400))
+      assert_eq(@wire.field(service.stats(), "retained"), Json::number(0))
+      count += 1
+    }
+    for format in ["json", "ion-text"] {
+      for taken in [false, true] {
+        let changed = @executions.decode(model)
+        let library = @wire.field(
+          @wire.field(changed, "distribution"),
+          "Library",
+        )
+        let module_def = @wire.field(
+          @wire.field(
+            @wire.field(@wire.field(library, "def"), "modules"),
+            "main",
+          ),
+          "Public",
+        )
+        let definition = @wire.field(
+          @wire.field(@wire.field(module_def, "values"), "answer"),
+          "Public",
+        )
+        let expression = @wire.field(definition, "ExpressionBody")
+        guard @wire.field(@wire.field(expression, "body"), "IfThenElse")
+          is Object(branch) else {
+          abort("Policy fixture")
+        }
+        branch["condition"] = Json::boolean(taken)
+        let payload = selected_body(
+          changed.stringify(),
+          Some("permissive"),
+          format,
+        )
+        let accepted = value(
+          service.policy_request("submit", Some(payload.stringify())),
+        )
+        let id = @wire.field(accepted, "identity")
+        let captured = @wire.field(accepted, "plan")
+        assert_eq(
+          @wire.field(@wire.field(captured, "admission"), "policy"),
+          Json::string("permissive"),
+        )
+        // Edits to caller-owned inputs after acceptance cannot change the worker.
+        guard payload is Object(fields) else { abort("Payload") }
+        fields["admission"] = {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "strict",
+        }
+        fields["model"] = Json::string("{}")
+        let result = outcome(terminal(service, id))
+        if taken {
+          assert_eq(@wire.field(result, "status"), Json::string("failed"))
+          assert_eq(
+            @wire.field(@wire.field(result, "failure"), "code"),
+            Json::string("execution.unsupported_reached"),
+          )
+        } else {
+          assert_eq(result, {
+            "status": "returned",
+            "value": { "type": "int", "value": "42" },
+          })
+        }
+        ignore(value(service.policy_request("release", Some(request(id)))))
+        count += 1
+      }
+    }
+    assert_eq(@wire.field(service.stats(), "active"), Json::number(0))
+    for child in @wire.array(@wire.field(service.stats(), "children")) {
+      assert_eq(@wire.field(child, "exited"), Json::boolean(true))
+      assert_eq(@wire.field(child, "residentBytes"), Json::number(-1))
+    }
+    service.shutdown()
+    assert_eq(@wire.field(service.stats(), "retained"), Json::number(0))
+  })
+  count
 }

@@ -1,17 +1,20 @@
-import type { Adapter, Core, CoreReply, Invoke, ExecutionOptions, NativeBridge, NativeDescriptor, NativeOperations, NativeReply, Progress, WorkRequest, WorkResult } from './contracts.ts';
+import type { Adapter, Core, CoreReply, Invoke, ExecutionOptions, NativeBridge, NativeDescriptor, NativeMapping, NativeOperations, NativeReply, Progress, WorkRequest, WorkResult } from './contracts.ts';
 // Bundled page-bound native protocol. Capability advertisement and platform
 // qualification remain separate from using the accepted wire contract here.
 import { ExecutionClient } from './execution-session.ts';
 import { NativeWorkspaceClient } from './native-workspace.ts';
 export const nativeBridgeVersion = '0.2.0-draft.1';
+export const nativePolicyBridgeVersion = '0.2.0-draft.2';
+export const nativeVersion = (mapping: NativeMapping) => mapping === 'capability-checks' ? nativePolicyBridgeVersion : nativeBridgeVersion;
 const limit = 1048576;
 // Validation closes both objects. Compare every descriptor/offer field in a fixed
 // order so equivalent JSON member order does not look like changed authority.
 const descriptorText = (value: NativeDescriptor) => JSON.stringify(value,
-  ['profile', 'contractVersion', 'sessionId', 'operations', 'offer', 'hostId', 'providerId']);
+  ['profile', 'contractVersion', 'sessionId', 'operations', 'offer', 'hostId', 'providerId', 'capabilityChecks', 'runtime', 'evaluator', 'policies']);
 const bytes = (source: string) => new TextEncoder().encode(source).byteLength;
 
 export class NativeSession {
+  readonly mapping: NativeMapping;
   invoke: Invoke;
   timeout: number;
   core: Core;
@@ -19,12 +22,13 @@ export class NativeSession {
   disposed: boolean;
   operations: string[];
   descriptor?: string;
-  constructor(invoke: Invoke, timeout = 10000, core: Core = command => globalThis.morphirWorkbenchExecutions(command)) {
+  constructor(invoke: Invoke, timeout = 10000, core: Core = command => globalThis.morphirWorkbenchExecutions(command), mapping: NativeMapping = 'executions') {
+    this.mapping = mapping;
     this.invoke = invoke; this.timeout = timeout; this.core = core;
     this.id = null; this.disposed = false; this.operations = [];
   }
   encode(operation: string, payload?: unknown) {
-    const frame: { profile: string; contractVersion: string; operation: string; sessionId?: string | null; payload?: unknown } = { profile: 'morphir/workbench/native', contractVersion: nativeBridgeVersion, operation };
+    const frame: { profile: string; contractVersion: string; operation: string; sessionId?: string | null; payload?: unknown } = { profile: 'morphir/workbench/native', contractVersion: nativeVersion(this.mapping), operation };
     if (operation !== 'session.open') frame.sessionId = this.id;
     if (payload !== undefined) frame.payload = payload;
     const source = JSON.stringify(frame);
@@ -33,7 +37,7 @@ export class NativeSession {
   }
   admit<T>(source: unknown, operation: string, sessionId: string | null): NativeReply<T> {
     if (typeof source !== 'string' || source.length > limit || bytes(source) > limit) throw new Error('The native host returned an invalid raw reply.');
-    const decoded: CoreReply<NativeReply<T>> = JSON.parse(this.core(JSON.stringify({ op: 'native-response', source, operation, sessionId })));
+    const decoded: CoreReply<NativeReply<T>> = JSON.parse(this.core(JSON.stringify({ op: this.mapping === 'capability-checks' ? 'native-policy-response' : 'native-response', source, operation, sessionId })));
     if (!decoded.ok) throw new Error(`The native reply is incompatible (${decoded.code || 'invalid'}).`);
     return decoded.value;
   }
@@ -118,7 +122,7 @@ export class NativeAdapter {
   workspace?: NativeWorkspaceClient;
   constructor(local: Adapter, invoke: Invoke, timeout?: number, executionOptions: ExecutionOptions = {}) {
     this.local = local;
-    this.session = new NativeSession(invoke, timeout, executionOptions.core);
+    this.session = new NativeSession(invoke, timeout, executionOptions.core, executionOptions.nativeMapping);
     this.runtimeLabel = 'Desktop local';
     this.epoch = 0;
     this.disposed = false;
@@ -127,7 +131,7 @@ export class NativeAdapter {
   current(epoch: number) {
     if (this.disposed || epoch !== this.epoch) throw new Error('Discarded. The desktop request is no longer current.');
   }
-  async initialize() {
+  async initialize(): Promise<WorkResult> {
     const epoch = ++this.epoch;
     await this.session.open();
     this.current(epoch);
@@ -143,17 +147,23 @@ export class NativeAdapter {
       this.current(epoch);
     }
     if (this.session.operations.includes('workspace')) this.workspace = new NativeWorkspaceClient(this.session, this.local);
-    return { ...result, nativeSession: true, workspaceAvailable: !!this.workspace, executionsAvailable: !!this.executionsAvailable, message: 'Desktop local · ready to compile' };
+    return { ...result, capabilityEvaluator: this.session.mapping === 'capability-checks' && this.executionsAvailable ? 'scheme-portable-v1/shared-sdk/bounded' : undefined, capabilityRuntime: this.session.mapping === 'capability-checks' && this.executionsAvailable ? 'native' : undefined, nativeSession: true, workspaceAvailable: !!this.workspace, executionsAvailable: !!this.executionsAvailable, message: 'Desktop local · ready to compile' };
   }
   async execute(request: WorkRequest, progress?: Progress): Promise<WorkResult> {
-    if (request.executionMode === 'capability' || request.admission != null) {
+    // Snapshot all source/input/policy data before checking page authority.
+    request = structuredClone(request);
+    if (this.session.mapping !== 'capability-checks' && (request.executionMode === 'capability' || request.admission != null)) {
+      throw new Error('This native session does not offer checking-policy selection.');
+    }
+    if ((request.executionMode === 'capability' || request.admission != null) &&
+        (request.operation !== 'evaluate' || !this.executionsAvailable)) {
       throw new Error('This native session does not offer checking-policy selection.');
     }
     const epoch = ++this.epoch;
     await this.session.check();
     this.current(epoch);
     if (this.executionsAvailable && (request.operation === 'resume-execution' ||
-        (request.operation === 'evaluate' && request.executionMode === 'typed'))) {
+        (request.operation === 'evaluate' && (request.executionMode === 'typed' || request.executionMode === 'capability')))) {
       const currentProgress: Progress = execution => {
         if (!this.disposed && epoch === this.epoch) progress?.(execution);
       };
@@ -193,5 +203,5 @@ export function selectLocalAdapter(location: Pick<Location, 'href'>, local: Adap
   return new NativeAdapter(local, (name, payload) => {
     if (typeof bridge?.core?.invokeOp !== 'function') throw new Error('The desktop command bridge is unavailable.');
     return bridge.core.invokeOp(name, payload);
-  });
+  }, undefined, { nativeMapping: 'capability-checks' });
 }

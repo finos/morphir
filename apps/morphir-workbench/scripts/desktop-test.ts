@@ -11,6 +11,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { basename, join, relative, sep } from 'node:path';
 import { elmWorkflow, moonbitWorkflow, libraryWorkflow, stringWorkflow, supportedWorkflow } from './elm-workflow.ts';
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.ts';
+import { desktopCapabilityWorkflow } from './capability-workflow.ts';
 
 // CEF cancels CDP directory enumeration even though ordinary file uploads work.
 // Replay the selected files at the DOM input boundary; production readFiles,
@@ -51,6 +52,12 @@ try {
   assert.ok(page, 'Packaged Proton asset page is present');
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
+  if (!process.argv[3]) {
+    // A previous smoke may have left an inspected model or explicit standalone
+    // page. Begin ordinary qualification with a fresh production native page.
+    const entry = new URL(page.url()); entry.searchParams.delete('mode');
+    await page.goto(entry.href);
+  }
   // Optional continuation after choosing this fixture with the real OS picker.
   // No test bridge accepts a filesystem path or bypasses user folder selection.
   if (process.argv[3]) {
@@ -84,9 +91,9 @@ try {
   const originalUrl = page.url();
   const native = async <T = NativeDescriptor,>(operation: string, fields: Record<string,string> = {}): Promise<NativeReply<T>> => {
     const raw = await page.evaluate(async ([operation, fields]) => {
-    const frame = { profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.1', operation: `session.${operation}`, ...fields };
+    const frame = { profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.2', operation: `session.${operation}`, ...fields };
     const source = await window.__MoonBit__!.core!.invokeOp!('app:workbench_native', JSON.stringify(frame));
-    const admitted = JSON.parse(globalThis.morphirWorkbenchExecutions(JSON.stringify({ op: 'native-response', source,
+    const admitted = JSON.parse(globalThis.morphirWorkbenchExecutions(JSON.stringify({ op: 'native-policy-response', source,
       operation: operation === 'unknown' ? 'session.open' : `session.${operation}`,
       sessionId: operation === 'open' || operation === 'unknown' ? null : fields.sessionId })));
     if (!admitted.ok) throw new Error(`Native smoke reply admission failed: ${admitted.code}`);
@@ -104,7 +111,12 @@ try {
   assert.deepEqual(firstSession.operations, ['executions', 'workspace'], 'The packaged host offers owned native evaluation executions and read-only workspace grants');
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Desktop local');
   assert.deepEqual(value(await native('check', { sessionId: firstSession.sessionId })), firstSession);
+  assert.equal(firstSession.contractVersion, '0.2.0-draft.2');
+  assert.deepEqual(firstSession.capabilityChecks, { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', runtime: 'scheme', evaluator: 'scheme-portable-v1/shared-sdk/bounded', policies: ['strict', 'permissive'] });
   denied(await native('open', { contractVersion: '0.1.0-draft.2' }), 'invalid_request');
+  const crossed = await native('open', { contractVersion: '0.2.0-draft.1' });
+  assert.ok(!crossed.ok, 'The accepted page contract cannot downgrade to the frozen mapping');
+  assert.deepEqual(value(await native('check', { sessionId: firstSession.sessionId })), firstSession, 'A refused cross-version negotiation preserves the page authority');
   denied(await native('close', { sessionId: 'not-this-session' }), 'unauthorized');
   denied(await native('unknown'), 'invalid_request');
   await assert.rejects(page.evaluate(() => window.__MoonBit__!.core!.invokeOp!('app:workbench_native', { operation: 'session.open' } as unknown as string)));
@@ -116,7 +128,7 @@ try {
     const access = await page.evaluate(async () => {
       if (typeof window.__MoonBit__?.core?.invokeOp !== 'function') return 'absent';
       return await Promise.race([
-        Promise.resolve(window.__MoonBit__.core.invokeOp('app:workbench_native', JSON.stringify({ profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.1', operation: 'session.open' }))).then(() => 'allowed', () => 'rejected'),
+        Promise.resolve(window.__MoonBit__.core.invokeOp('app:workbench_native', JSON.stringify({ profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.2', operation: 'session.open' }))).then(() => 'allowed', () => 'rejected'),
         new Promise<string>(resolve => setTimeout(() => resolve('timeout'), 5000)),
       ]);
     });
@@ -237,6 +249,7 @@ try {
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), { type: 'int', value: '1234567890123456789012345678901234567890' });
   const nativeExecutionCalls = await page.evaluate(() => globalThis.nativeExecutionCalls);
   for (const operation of ['submit', 'query', 'release']) assert.ok(nativeExecutionCalls.includes(operation), `Native ${operation} was used by real typed evaluation`);
+  await desktopCapabilityWorkflow(page);
   // The shared project workflow deliberately reloads the document for storage
   // acceptance, so check this page's native-call recorder before those reloads.
   await elmWorkflow(page, { nativeDownloads: false, selectFolder: selectCefFolder });

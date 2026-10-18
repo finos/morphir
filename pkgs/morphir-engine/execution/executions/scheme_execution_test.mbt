@@ -399,3 +399,69 @@ test "Scheme accepted boundary bytes count toward retained quota" {
   let exact = @host.Session::new(offer(), max_bytes=base + boundary_size)
   ignore(exact.submit_scheme(source, calls))
 }
+
+///|
+test "failed submission projection validation does not publish or consume an execution identity" {
+  let session = @host.Session::new(offer())
+  let rejected = scheme_rejected(
+    fn() raise {
+      ignore(
+        session.submit_scheme(
+          capability_execution_unit(),
+          suite(),
+          policy=@execution.Permissive,
+          validate_projection=Some(fn(_, _) raise {
+            raise @host.Invalid("workbench.native_projection_limit")
+          }),
+        ),
+      )
+    },
+    "workbench.native_projection_limit",
+  )
+  assert_true(rejected)
+  let accepted = session.submit_scheme(
+    capability_execution_unit(),
+    suite(),
+    policy=@execution.Permissive,
+    validate_projection=Some(fn(receipt, projection) raise {
+      assert_true(receipt.identity() == projection.identity)
+      assert_eq(projection.policy, @execution.Permissive)
+    }),
+  )
+  assert_eq(accepted.identity().execution_id().to_string(), "execution-1")
+  let retained = session.describe_scheme(accepted.identity())
+  assert_eq(retained.policy, @execution.Permissive)
+}
+
+///|
+test "reentrant projection validation cannot overwrite another accepted execution" {
+  let session = @host.Session::new(offer())
+  let nested : Ref[@receipts.Receipt?] = Ref(None)
+  let rejected = scheme_rejected(
+    fn() raise {
+      ignore(
+        session.submit_scheme(
+          capability_execution_unit(),
+          suite(),
+          policy=@execution.Permissive,
+          validate_projection=Some(fn(_, _) raise {
+            nested.val = Some(session.submit_scheme(unit(), suite()))
+          }),
+        ),
+      )
+    },
+    "workbench.host_submission_changed",
+  )
+  assert_true(rejected)
+  guard nested.val is Some(accepted) else { abort("Nested accepted execution") }
+  assert_eq(accepted.identity().execution_id().to_string(), "execution-1")
+  let original = session.query(accepted.identity())
+  assert_true(original.identity() == accepted.identity())
+  let next = session.submit_scheme(
+    capability_execution_unit(),
+    suite(),
+    policy=@execution.Permissive,
+  )
+  assert_eq(next.identity().execution_id().to_string(), "execution-2")
+  assert_eq(session.query(accepted.identity()).to_json(), original.to_json())
+}

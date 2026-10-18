@@ -12,7 +12,7 @@ pub(all) struct ExecutionsService {
 /// A present factory enables the corresponding capability. The owner publishes
 /// it only after construction and awaited predecessor cleanup succeed.
 pub(all) struct ServiceFactories {
-  executions : ((String) -> ExecutionsService raise)?
+  executions : ((String, @request.Contract) -> ExecutionsService raise)?
   workspace : (() -> @workspace.Service)?
 }
 
@@ -34,14 +34,19 @@ pub fn Owner::new(
   executable : String,
   executions~ : Bool,
   workspace~ : Bool,
+  contract~ : @request.Contract = Executions,
 ) -> Owner {
-  let execution_factory : ((String) -> ExecutionsService raise)? = if executions {
-    Some(fn(id) raise {
+  let execution_factory : ((String, @request.Contract) -> ExecutionsService raise)? = if executions {
+    Some(fn(id, selected_contract) raise {
       let service = @native.Service::new(group, executable, id)
       {
         offer: fn() { service.offer() },
         request: fn(operation, payload) {
-          service.native_request(operation, payload)
+          match selected_contract {
+            Executions => service.native_request(operation, payload)
+            CapabilityChecks =>
+              service.native_policy_request(operation, payload)
+          }
         },
         close: fn() { service.close() },
         shutdown: async fn() { service.shutdown() },
@@ -55,10 +60,11 @@ pub fn Owner::new(
   } else {
     None
   }
-  Owner::with_services(group, {
-    executions: execution_factory,
-    workspace: workspace_factory,
-  })
+  Owner::with_services(
+    group,
+    { executions: execution_factory, workspace: workspace_factory, },
+    contract~,
+  )
 }
 
 ///|
@@ -67,11 +73,13 @@ pub fn Owner::new(
 pub fn Owner::with_services(
   group : @async.TaskGroup[Unit],
   factories : ServiceFactories,
+  contract~ : @request.Contract = Executions,
 ) -> Owner {
   {
     session: @session.Session::new(
       executions=factories.executions is Some(_),
       workspace=factories.workspace is Some(_),
+      contract~,
     ),
     group,
     factories,
@@ -97,11 +105,15 @@ fn raw(bytes : Bytes) -> String {
 }
 
 ///|
-fn Owner::descriptor(self : Owner, id : String) -> Json raise {
+fn Owner::descriptor(
+  self : Owner,
+  id : String,
+  contract : @request.Contract,
+) -> Json raise {
   let operations : Array[Json] = []
   let fields : Map[String, Json] = {
     "profile": "morphir/workbench/native",
-    "contractVersion": "0.2.0-draft.1",
+    "contractVersion": contract.version(),
     "sessionId": Json::string(id),
     "operations": Json::array(operations),
   }
@@ -111,6 +123,9 @@ fn Owner::descriptor(self : Owner, id : String) -> Json raise {
     }
     operations.push(Json::string("executions"))
     fields["offer"] = (service.offer)()
+    if contract is CapabilityChecks {
+      fields["capabilityChecks"] = @reply.policy_offer()
+    }
   }
   if self.factories.workspace is Some(_) {
     guard self.workspaces.contains(id) else {
@@ -136,7 +151,16 @@ pub async fn Owner::request(
     guard source.length() <= 1048576 else {
       return raw(@reply.failure(@reply.Limit, effect))
     }
-    let frame = @request.decode(@utf8.encode(source))
+    let frame = @request.decode_current(@utf8.encode(source))
+    let contract = frame.contract()
+    fn success(operation : String, value : Json) -> String raise {
+      raw(
+        match contract {
+          Executions => @reply.success(operation, value)
+          CapabilityChecks => @reply.success_policy(operation, value)
+        },
+      )
+    }
     let value = frame.to_json()
     let operation = frame.operation()
     category = @reply.Unauthorized
@@ -144,7 +168,7 @@ pub async fn Owner::request(
     if operation == "session.open" {
       // Opening can replace a previous page and invalidate its authority.
       effect = @reply.UnknownEffect
-      let id = text(self.session.open(current, "0.2.0-draft.1"), "sessionId")
+      let id = text(self.session.open(current, contract.version()), "sessionId")
       for (old_id, old) in self.workspaces.to_array() {
         if old_id != id {
           old.close()
@@ -164,23 +188,23 @@ pub async fn Owner::request(
       // Shutdown can yield while a replacement page opens. Re-admit both the
       // current trusted page and this original session before creating services.
       category = @reply.Unauthorized
-      ignore(self.session.check(caller(), id))
+      ignore(self.session.check(caller(), id, contract=Some(contract)))
       category = @reply.Unavailable
       if self.factories.executions is Some(factory) &&
         !self.services.contains(id) {
-        self.services[id] = factory(id)
+        self.services[id] = factory(id, contract)
       }
       if self.factories.workspace is Some(factory) &&
         !self.workspaces.contains(id) {
         self.workspaces[id] = factory()
       }
-      return raw(@reply.success(operation, self.descriptor(id)))
+      return success(operation, self.descriptor(id, contract))
     }
     let id = text(value, "sessionId")
-    ignore(self.session.check(current, id))
+    ignore(self.session.check(current, id, contract=Some(contract)))
     if operation == "session.check" {
       category = @reply.Unavailable
-      return raw(@reply.success(operation, self.descriptor(id)))
+      return success(operation, self.descriptor(id, contract))
     }
     if operation == "session.close" {
       effect = @reply.UnknownEffect
@@ -194,7 +218,7 @@ pub async fn Owner::request(
         (service.shutdown)()
         self.services.remove(id)
       }
-      return raw(@reply.success(operation, {}))
+      return success(operation, {})
     }
     category = @reply.Unavailable
     guard value is Object(fields) else { abort("Admitted native request") }
@@ -217,13 +241,13 @@ pub async fn Owner::request(
       category = @reply.Unavailable
       let path = choose()
       category = @reply.Unauthorized
-      ignore(self.session.check(caller(), id))
+      ignore(self.session.check(caller(), id, contract=Some(contract)))
       category = @reply.Conflict
       guard service.finish_choose(ticket, path) is Object(result) else {
         abort("Workspace picker result")
       }
       result.remove("ok")
-      return raw(@reply.success(operation, Json::object(result)))
+      return success(operation, Json::object(result))
     }
     raw(service.native_request(operation, payload))
   } catch {

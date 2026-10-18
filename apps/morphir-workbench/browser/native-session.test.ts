@@ -2,7 +2,8 @@ import type { Adapter, Invoke, Json, WorkRequest } from './contracts.ts';
 import type { bridge as bridgeType } from './native-test-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NativeAdapter, NativeSession, NativeExecutionTransport, nativeBridgeVersion, selectLocalAdapter } from './native-session.ts';
+import { NativeAdapter, NativeSession, NativeExecutionTransport, nativeBridgeVersion, nativePolicyBridgeVersion, selectLocalAdapter } from './native-session.ts';
+import { ExecutionClient } from './execution-session.ts';
 import { core, descriptor, bridge, failure, success } from './native-test-fixture.ts';
 
 globalThis.morphirWorkbenchExecutions = core();
@@ -29,7 +30,7 @@ test('native initialization preserves bridge receiver and uses correlated raw en
   const calls: { operation: string; sessionId?: string; profile: string }[] = []; const worker = local();
   const native = { core: { invokeOp(name: string, source: string) {
     assert.equal(this, native.core); assert.equal(name, 'app:workbench_native');
-    const frame = JSON.parse(source); calls.push(frame); return success(frame.operation, descriptor);
+    const frame = JSON.parse(source); calls.push(frame); return success(frame.operation, { ...descriptor, contractVersion: nativePolicyBridgeVersion });
   } } };
   const adapter = selectLocalAdapter(new URL('https://proton.localhost/index.html'), worker, native);
   const reply = await adapter.initialize();
@@ -165,4 +166,196 @@ test('native mapping refuses checking-policy requests before any local fallback'
   ]) await assert.rejects(adapter.execute(request), /does not offer checking-policy/);
   assert.equal(worker.calls.length, 0);
   adapter.dispose();
+});
+
+const checkingOffer = {
+  profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', runtime: 'scheme',
+  evaluator: 'scheme-portable-v1/shared-sdk/bounded', policies: ['strict', 'permissive'],
+};
+const policyDescriptor = () => ({ ...executionDescriptor(), contractVersion: nativePolicyBridgeVersion, capabilityChecks: checkingOffer });
+const policyModel = JSON.stringify({ formatVersion: 4, distribution: { Library: { packageName: 'client', dependencies: {}, def: { modules: { main: { Public: { types: {}, values: { answer: { Public: { doc: '', ExpressionBody: { inputTypes: {}, outputType: 'morphir/SDK:basics#int', body: { Literal: { IntegerLiteral: 42 } } } } } } } } } } } } });
+const policySelection = (policy = 'strict') => ({ profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy });
+const policyAccepted = (policy = 'strict') => {
+  const identity = { hostId: 'host', sessionId: descriptor.sessionId, providerId: 'scheme', executionId: 'execution', snapshotId: 'snapshot' };
+  const receipt = { contractVersion: nativeBridgeVersion, identity, sequence: 0, state: 'submitted', cancelRequested: false, outcomes: null };
+  return { identity, calls: ['workbench'], receipt, plan: { profile: 'morphir/workbench/execution-plan', contractVersion: nativeBridgeVersion, identity, planId: 'plan', runtime: 'scheme', evaluator: checkingOffer.evaluator,
+    admission: policySelection(policy), boundary: { entries: [{ name: 'client:main#answer', inputs: [], output: { type: 'int' } }], definitions: [] } } };
+};
+
+test('production native mapping requires its exact checking descriptor without downgrade', async () => {
+  const worker = local(); let calls = 0;
+  const adapter = selectLocalAdapter(new URL('https://proton.localhost/index.html'), worker, { core: { invokeOp: bridge(() => { ++calls; return descriptor; }) } });
+  await assert.rejects(adapter.initialize(), /incompatible/);
+  assert.equal(calls, 1);
+  assert.equal(worker.calls.length, 0);
+});
+
+test('native policy checks capture source and selection before a held authority check', async () => {
+  const d = policyDescriptor(), accepted = policyAccepted('permissive'), pending = deferred();
+  const worker = local(); let hold = false; let submitted: Record<string, Json> | undefined;
+  const adapter = new NativeAdapter(worker, bridge(f => {
+    if (f.operation === 'session.check' && hold) { hold = false; return pending.promise; }
+    if (f.operation.startsWith('session.')) return d;
+    if (f.operation === 'execution.submit') { submitted = f.payload; return accepted; }
+    if (f.operation === 'execution.release') return { released: true };
+    return { ...accepted.receipt, sequence: 1, state: 'terminal', outcomes: { contractVersion: '0.1.0-draft.5', calls: [{ id: 'workbench', outcome: { status: 'returned', value: { type: 'int', value: '42' } } }], cleanup: null, extensions: null } };
+  }), 1000, { core: core(), nativeMapping: 'capability-checks', pause: async () => {} });
+  assert.equal((await adapter.initialize()).capabilityRuntime, 'native');
+  const request: WorkRequest = { operation: 'evaluate', executionMode: 'capability', source: policyModel, entry: 'client:main#answer', arguments: [], admission: policySelection('permissive') };
+  hold = true;
+  const running = adapter.execute(request);
+  request.source = '{}'; request.entry = 'other:main#entry'; request.arguments = [123]; request.admission = policySelection('strict');
+  pending.resolve!(d);
+  const result = await running;
+  assert.equal(result.success, true);
+  assert.equal(submitted!.model, policyModel);
+  assert.equal(submitted!.entry, 'client:main#answer');
+  assert.deepEqual(submitted!.inputs, { format: 'json', source: '[]' });
+  assert.deepEqual(submitted!.admission, policySelection('permissive'));
+  assert.deepEqual(result.admission, policySelection('permissive'));
+  assert.deepEqual(result.executionPlan, accepted.plan);
+  assert.deepEqual(adapter.executions!.acceptedPlan, accepted.plan);
+  assert.equal(worker.calls.length, 0);
+  adapter.dispose();
+  assert.deepEqual(adapter.executions!.acceptedPlan, accepted.plan);
+});
+
+test('native policy authority includes the checking evaluator and complete policy inventory', async () => {
+  const d = policyDescriptor();
+  for (const capabilityChecks of [{ ...checkingOffer, evaluator: 'other' }, { ...checkingOffer, policies: ['strict'] }, { ...checkingOffer, runtime: 'other' }]) {
+    const s = new NativeSession(bridge(f => f.operation === 'session.open' ? d : { ...d, capabilityChecks }), 1000, core(), 'capability-checks');
+    await s.open(); await assert.rejects(s.check());
+  }
+  const reversed = { ...d, capabilityChecks: Object.fromEntries(Object.entries(checkingOffer).reverse()), offer: Object.fromEntries(Object.entries(d.offer).reverse()) };
+  const s = new NativeSession(bridge(f => f.operation === 'session.open' ? d : reversed), 1000, core(), 'capability-checks');
+  await s.open(); await s.check();
+});
+
+test('a changed accepted policy cannot become an accepted plan or permit auto retry', async () => {
+  const worker = local(); let submissions = 0; const d = policyDescriptor();
+  const adapter = new NativeAdapter(worker, bridge(f => {
+    if (f.operation.startsWith('session.')) return d;
+    if (f.operation === 'execution.submit') { ++submissions; return policyAccepted('strict'); }
+    throw new Error('Unexpected operation');
+  }), 1000, { core: core(), nativeMapping: 'capability-checks' });
+  await adapter.initialize();
+  const request: WorkRequest = { operation: 'evaluate', executionMode: 'capability', source: policyModel, entry: 'client:main#answer', arguments: [], admission: policySelection('permissive') };
+  await assert.rejects(adapter.execute(request));
+  assert.equal(adapter.executions!.uncertainSubmission, true);
+  assert.equal(adapter.executions!.acceptedPlan, null);
+  await assert.rejects(adapter.execute(request), /unknown/);
+  assert.equal(submissions, 1); assert.equal(worker.calls.length, 0);
+  adapter.dispose();
+});
+
+test('execution selection is frozen across pending release and cleanup reserves the next attempt', async () => {
+  const d = policyDescriptor(), pending = deferred<string>(); let releases = 0; let submits = 0;
+  let accepted = policyAccepted('permissive'); const bodies: Json[] = [];
+  const client = new ExecutionClient(descriptor.sessionId, { core: core(), nativeMapping: 'capability-checks', pause: async () => {}, transport: {
+    async nativeDescriptor() { return JSON.stringify(d); },
+    async nativeRequest(source) {
+      const frame = JSON.parse(source);
+      if (frame.operation === 'execution.release') {
+        ++releases;
+        if (releases === 1) return failure('unavailable', 'unknown');
+        if (releases === 2) return pending.promise;
+        return success(frame.operation, { released: true });
+      }
+      if (frame.operation === 'execution.submit') {
+        ++submits; bodies.push(frame.payload); accepted = policyAccepted('permissive');
+        accepted.identity.executionId = `execution-${submits}`;
+        accepted.identity.snapshotId = `snapshot-${submits}`;
+        accepted.plan.planId = `plan-${submits}`;
+        return success(frame.operation, accepted);
+      }
+      return success(frame.operation, { ...accepted.receipt, sequence: 1, state: 'terminal', outcomes: { contractVersion: '0.1.0-draft.5', calls: [{ id: 'workbench', outcome: { status: 'returned', value: { type: 'int', value: '42' } } }], cleanup: null, extensions: null } });
+    },
+  } });
+  await client.initialize();
+  const request: WorkRequest = { operation: 'evaluate', executionMode: 'capability', source: policyModel, entry: 'client:main#answer', arguments: [], admission: policySelection('permissive') };
+  await client.execute(request);
+  assert.equal(client.releasePending, true);
+  const second = client.execute(request);
+  assert.equal(client.active, true);
+  request.source = '{}'; request.entry = 'different:main#answer'; request.arguments = [123]; request.admission = policySelection('strict');
+  await assert.rejects(client.execute(request), /already active/);
+  pending.resolve!(success('execution.release', { released: true }));
+  assert.equal((await second).success, true);
+  assert.equal(submits, 2);
+  assert.deepEqual(bodies[1], bodies[0]);
+  assert.deepEqual(client.acceptedPlan, accepted.plan);
+});
+
+test('a native page without execution authority refuses policies before local work', async () => {
+  const worker = local();
+  const d = { ...descriptor, contractVersion: nativePolicyBridgeVersion };
+  const adapter = new NativeAdapter(worker, bridge(() => d), 1000, { core: core(), nativeMapping: 'capability-checks' });
+  await adapter.initialize();
+  await assert.rejects(adapter.execute({ operation: 'evaluate', executionMode: 'capability', source: policyModel, entry: 'client:main#answer', arguments: [] }), /does not offer/);
+  assert.equal(worker.calls.length, 0);
+  adapter.dispose();
+});
+
+test('a released identity cannot be accepted as a fresh desktop execution', async () => {
+  const d = policyDescriptor(), accepted = policyAccepted();
+  let submits = 0, queries = 0, releases = 0, publications = 0, observed = 0;
+  const client = new ExecutionClient(descriptor.sessionId, { core: core(), nativeMapping: 'capability-checks',
+    onAcceptedPlan() { ++observed; throw new Error('Diagnostic observer failed'); }, pause: async () => {}, transport: {
+    async nativeDescriptor() { return JSON.stringify(d); },
+    async nativeRequest(source) {
+      const frame = JSON.parse(source);
+      if (frame.operation === 'execution.submit') { ++submits; return success(frame.operation, accepted); }
+      if (frame.operation === 'execution.release') { ++releases; return success(frame.operation, { released: true }); }
+      ++queries;
+      return success(frame.operation, { ...accepted.receipt, sequence: 1, state: 'terminal', outcomes: { contractVersion: '0.1.0-draft.5', calls: [{ id: 'workbench', outcome: { status: 'returned', value: { type: 'int', value: '42' } } }], cleanup: null, extensions: null } });
+    },
+  } });
+  await client.initialize();
+  const request: WorkRequest = { operation: 'evaluate', executionMode: 'capability', source: policyModel, entry: 'client:main#answer', arguments: [] };
+  assert.equal((await client.execute(request, () => { ++publications; })).success, true);
+  assert.equal(client.uncertainSubmission, false);
+  assert.equal(observed, 1);
+  const completedPublications = publications;
+  await assert.rejects(client.execute(request, () => { ++publications; }), /rejected/);
+  assert.equal(client.uncertainSubmission, true);
+  assert.equal(observed, 1);
+  assert.deepEqual(client.acceptedPlan, accepted.plan);
+  assert.equal(publications, completedPublications);
+  assert.equal(submits, 2); assert.equal(queries, 1); assert.equal(releases, 1);
+  await assert.rejects(client.execute(request), /unknown/);
+  assert.equal(submits, 2);
+});
+
+test('a fresh execution cannot reuse an accepted plan or rebind an accepted execution id', async () => {
+  for (const reused of ['plan', 'execution']) {
+    const d = policyDescriptor(); let submits = 0, queries = 0, observed = 0;
+    let accepted = policyAccepted();
+    const client = new ExecutionClient(descriptor.sessionId, { core: core(), nativeMapping: 'capability-checks', onAcceptedPlan() { ++observed; }, pause: async () => {}, transport: {
+      async nativeDescriptor() { return JSON.stringify(d); },
+      async nativeRequest(source) {
+        const frame = JSON.parse(source);
+        if (frame.operation === 'execution.submit') {
+          ++submits; accepted = policyAccepted();
+          if (submits > 1) {
+            accepted.identity.snapshotId = 'fresh-snapshot';
+            if (reused === 'plan') accepted.identity.executionId = 'fresh-execution';
+            else accepted.plan.planId = 'fresh-plan';
+          }
+          return success(frame.operation, accepted);
+        }
+        if (frame.operation === 'execution.release') return success(frame.operation, { released: true });
+        ++queries;
+        return success(frame.operation, { ...accepted.receipt, sequence: 1, state: 'terminal', outcomes: { contractVersion: '0.1.0-draft.5', calls: [{ id: 'workbench', outcome: { status: 'returned', value: { type: 'int', value: '42' } } }], cleanup: null, extensions: null } });
+      },
+    } });
+    await client.initialize();
+    const request: WorkRequest = { operation: 'evaluate', executionMode: 'capability', source: policyModel, entry: 'client:main#answer', arguments: [] };
+    await client.execute(request);
+    const retained = structuredClone(client.acceptedPlan);
+    await assert.rejects(client.execute(request), /rejected/);
+    assert.equal(client.uncertainSubmission, true);
+    assert.equal(observed, 1);
+    assert.deepEqual(client.acceptedPlan, retained);
+    assert.equal(queries, 1);
+  }
 });

@@ -18,6 +18,7 @@ fn with_native_session(app : @proton.App) -> @proton.App {
           context.task_group(),
           context.application_executable,
           executions=@native.desktop_supported(),
+          contract=@request.CapabilityChecks,
           workspace=@native.desktop_supported() && @workspace.supported(),
         ),
       )

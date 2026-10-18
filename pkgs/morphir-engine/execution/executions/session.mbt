@@ -80,6 +80,7 @@ fn Session::submit_with(
   unit : @data.IRUnit,
   suite : @protocol.Suite,
   policy : @execution.CapabilityPolicy?,
+  validate_projection~ : ((@receipts.Receipt, SchemeExecutionProjection) -> Unit raise)? = None,
 ) -> @receipts.Receipt raise {
   if self.executions.length() >= self.max_executions || self.next == 2147483647 {
     raise Invalid("workbench.host_capacity")
@@ -145,6 +146,17 @@ fn Session::submit_with(
     cursor,
     reserved,
     kind,
+  }
+  let candidate_sequence = self.next
+  // The selected transport may reserve its complete accepted projection before
+  // publication. Rejection here creates no execution and consumes no identity.
+  if validate_projection is Some(validate) {
+    validate(initial, execution.scheme_projection())
+  }
+  // A trusted validator can call back into this owner. A nested acceptance must
+  // never let the outer candidate overwrite its identity or captured snapshot.
+  guard self.next == candidate_sequence else {
+    raise Invalid("workbench.host_submission_changed")
   }
   // All operations that can raise precede changes to the owner.
   self.executions[key(identity)] = execution

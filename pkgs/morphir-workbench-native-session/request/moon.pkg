@@ -2,3 +2,8 @@ import {
   "finos/morphir-ir/wire",
   "moonbitlang/core/encoding/utf8",
 }
+
+import {
+  "finos/morphir-workbench-native-session/request",
+  "moonbitlang/core/encoding/utf8",
+} for "test"

@@ -2,12 +2,14 @@ import type {
   Adapter,
   Core,
   Json,
+  NativeMapping,
   Progress,
   WorkRequest,
   WorkResult,
 } from './contracts.ts';
 import { isRecord, workbenchError } from '../../../types/data.ts';
-import { NativeAdapter } from './native-session.ts';
+import { NativeAdapter, nativeVersion } from './native-session.ts';
+import { decodeCapabilityPolicy } from './capabilities.ts';
 
 /** Offline delivery control around the shipped client. Contains no expected results. */
 export interface ClientTraceInput {
@@ -15,6 +17,9 @@ export interface ClientTraceInput {
     model: string;
     entry: string;
     inputs: { format: 'json' | 'ion-text'; source: string };
+    runtime?: string;
+    providerId?: string;
+    admission?: Json;
   };
   inspectionSuccess: boolean;
   checkSource: string;
@@ -75,7 +80,7 @@ function text(value: unknown, max: number, token = false): string {
     return fail();
   return value;
 }
-export function admitClientTrace(value: unknown): ClientTraceInput {
+export function admitClientTrace(value: unknown, mapping: NativeMapping = 'executions'): ClientTraceInput {
   const root = object(value, [
     'evaluation',
     'inspectionSuccess',
@@ -85,7 +90,13 @@ export function admitClientTrace(value: unknown): ClientTraceInput {
   ]);
   if (new TextEncoder().encode(JSON.stringify(value)).length > 491520)
     return fail();
-  const e = object(root.evaluation, ['model', 'entry', 'inputs']);
+  const policy = mapping === 'capability-checks';
+  const hasPolicy = isRecord(root.evaluation) && Object.hasOwn(root.evaluation, 'admission');
+  const e = object(root.evaluation, policy ? ['model', 'entry', 'inputs', 'runtime', 'providerId', ...(hasPolicy ? ['admission'] : [])] : ['model', 'entry', 'inputs']);
+  if (policy) {
+    if (!text(e.runtime, 128) || !text(e.providerId, 128)) return fail();
+    if (hasPolicy && decodeCapabilityPolicy(e.admission) === null) return fail();
+  }
   const inputs = object(e.inputs, ['format', 'source']);
   if (inputs.format !== 'json' && inputs.format !== 'ion-text') return fail();
   const source = text(inputs.source, 16384);
@@ -176,6 +187,7 @@ export function admitClientTrace(value: unknown): ClientTraceInput {
       model: text(e.model, 262144),
       entry: text(e.entry, 512),
       inputs: { format: inputs.format, source },
+      ...(policy ? { runtime: String(e.runtime), providerId: String(e.providerId), ...(hasPolicy ? { admission: JSON.parse(JSON.stringify(e.admission)) as Json } : {}) } : {}),
     },
     inspectionSuccess: root.inspectionSuccess,
     checkSource: text(root.checkSource, 393216),
@@ -241,7 +253,13 @@ async function quiescent() {
   });
 }
 export async function runNativeClientTrace(raw: unknown, core: Core) {
-  const input = admitClientTrace(raw);
+  return runClientTrace(raw, core, 'executions');
+}
+export async function runNativePolicyClientTrace(raw: unknown, core: Core) {
+  return runClientTrace(raw, core, 'capability-checks');
+}
+async function runClientTrace(raw: unknown, core: Core, mapping: NativeMapping) {
+  const input = admitClientTrace(raw, mapping);
   let recording = true;
   let checkSource = input.checkSource;
   let wireCalls = 0;
@@ -263,6 +281,7 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
       return fail();
   }
   const requests: string[] = [];
+  const acceptedPlans: Json[] = [];
   const progress: string[] = [];
   const publishProgress: Progress = (execution) => {
     const value = clientTraceJson(execution);
@@ -304,7 +323,7 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
         Object.keys(frame).sort().join(',') ===
           'contractVersion,operation,profile,sessionId' &&
         frame.profile === 'morphir/workbench/native' &&
-        frame.contractVersion === '0.2.0-draft.1' &&
+        frame.contractVersion === nativeVersion(mapping) &&
         typeof frame.sessionId === 'string'
       )
         return checkSource;
@@ -337,7 +356,7 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
       );
     },
     60000,
-    { core, pause: () => new Promise<void>((resolve) => pauses.push(resolve)) },
+    { core, nativeMapping: mapping, onAcceptedPlan: plan => acceptedPlans.push(plan), pause: () => new Promise<void>((resolve) => pauses.push(resolve)) },
   );
   const launch = (id: string, call: () => Promise<WorkResult | void>) => {
     attempts.set(id, { id, status: 'pending', error: null, result: null });
@@ -409,9 +428,14 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
           break;
         case 'evaluate': {
           const e = input.evaluation;
+          if (mapping === 'capability-checks') {
+            const offer = adapter.executions?.offer?.offer;
+            if (e.runtime !== 'scheme' || (isRecord(offer) && e.providerId !== offer.providerId)) return fail();
+          }
           const request: WorkRequest = {
             operation: 'evaluate',
-            executionMode: 'typed',
+            executionMode: mapping === 'capability-checks' ? 'capability' : 'typed',
+            ...(e.admission !== undefined ? { admission: e.admission } : {}),
             source: e.model,
             entry: e.entry,
             ...(e.inputs.format === 'ion-text'
@@ -474,6 +498,7 @@ export async function runNativeClientTrace(raw: unknown, core: Core) {
       localCalls: [...localCalls],
       consumed: consumed.size,
       remaining: input.invocations.length - consumed.size,
+      ...(mapping === 'capability-checks' ? { acceptedPlans: [...acceptedPlans] } : {}),
     };
   } finally {
     recording = false;
