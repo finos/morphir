@@ -281,7 +281,9 @@ struct Model {
   host_draft : EvaluationDraft?
   model_revision : Int32
   output : Json
-  worksheet_output : Json
+  worksheet_capture : @worksheet.WorksheetRequest?
+  worksheet_report : @worksheet.WorksheetReport?
+  worksheet_reveal : String
   model : Json
   generated : Bool
   generated_state : @generated.State
@@ -291,7 +293,6 @@ struct Model {
   revision : Int32
   worksheet_revision : Int32
   output_revision : Int32
-  worksheet_output_revision : Int32
   connected : Bool
   executions_available : Bool
   workspace_available : Bool
@@ -334,6 +335,7 @@ enum Msg {
   EvaluationPolicy(@capabilities.CapabilityPolicy)
   EvaluationMode(@evaluation.InputMode)
   ResultMode(@result.Mode)
+  Worksheet(@worksheet_view.Action)
   EvaluationEdit(@arguments.Edit)
   EvaluationArguments(String)
   Evaluate
@@ -497,7 +499,9 @@ fn initial() -> Model {
     host_draft: None,
     model_revision: 0,
     output: Json::null(),
-    worksheet_output: Json::null(),
+    worksheet_capture: None,
+    worksheet_report: None,
+    worksheet_reveal: "",
     model: Json::null(),
     generated: false,
     generated_state: @generated.State::new(),
@@ -507,7 +511,6 @@ fn initial() -> Model {
     revision: 0,
     worksheet_revision: 0,
     output_revision: -1,
-    worksheet_output_revision: -1,
     connected: connected_mode(),
     executions_available: false,
     workspace_available: false,
@@ -1210,6 +1213,25 @@ fn editor_language(model : Model) -> String {
 /// Morphir host and the worksheet get the text of one source.
 fn compile_request(model : Model, operation : String) -> Json {
   let fields : Array[(String, Json)] = [("operation", Json::string(operation))]
+  if operation == "worksheet" {
+    fields.push(
+      (
+        "worksheetRequest",
+        Json::string(
+          (
+            {
+              "profile": @worksheet.PROFILE,
+              "contractVersion": @worksheet.CONTRACT_VERSION,
+              "source": {
+                "id": "worksheet-source",
+                "revision": model.worksheet_revision,
+                "text": model.worksheet_source,
+              },
+            } : Json).stringify(),
+        ),
+      ),
+    )
+  }
   if model.worksheet || model.connected {
     fields.push(
       (
@@ -1234,6 +1256,20 @@ fn compile_request(model : Model, operation : String) -> Json {
   )
   fields.push(("target", Json::string(model.target)))
   object(fields)
+}
+
+///|
+fn worksheet_matches(
+  model : Model,
+  source : @worksheet.CapturedWorksheetSource,
+) -> Bool {
+  source.to_json() ==
+  (
+    {
+      "id": "worksheet-source",
+      "revision": model.worksheet_revision,
+      "text": model.worksheet_source,
+    } : Json)
 }
 
 ///|
@@ -1524,6 +1560,7 @@ fn update_core(
             ..model,
             worksheet_source: source,
             worksheet_revision: model.worksheet_revision + 1,
+            worksheet_reveal: "",
           }
         } else {
           let project = active_project(model)
@@ -2386,6 +2423,22 @@ fn update_core(
 
       let request_id = model.request_id + 1
       let request = compile_request(model, operation)
+      let worksheet_capture = if operation == "worksheet" {
+        Some(
+          @worksheet.WorksheetRequest::decode(text(request, "worksheetRequest")),
+        ) catch {
+          _ =>
+            return (
+              {
+                ..model,
+                status: "Worksheet source exceeds its limits or is invalid.",
+              },
+              @cmd.none,
+            )
+        }
+      } else {
+        None
+      }
       let model = note(
         model,
         operation_label(operation),
@@ -2414,6 +2467,7 @@ fn update_core(
         {
           ..model,
           request_id,
+          worksheet_capture,
           busy: true,
           started: now_ms(),
           status: if operation == "workspace" {
@@ -2452,6 +2506,74 @@ fn update_core(
             ("success", Json::boolean(false)),
             ("message", Json::string("Invalid host response")),
           ])
+      }
+      if operation == "worksheet" {
+        let report = try {
+          let captured = model.worksheet_capture.unwrap()
+          @worksheet.WorksheetReport::decode(
+            captured,
+            text(result, "worksheetReport"),
+          )
+        } catch {
+          _ =>
+            return (
+              {
+                ..note(
+                  model,
+                  "Worksheet",
+                  @bottom_panel.Error,
+                  if text(result, "message") == "" {
+                    "The worksheet returned an invalid report."
+                  } else {
+                    text(result, "message")
+                  },
+                ),
+                busy: false,
+                worksheet_capture: None,
+                status: "Worksheet failed",
+              },
+              @cmd.none,
+            )
+        }
+        let current = worksheet_matches(model, report.source())
+        let completion = field(report.to_json(), "completion")
+        let summary = if text(completion, "status") == "cancelled" {
+          "Worksheet cancelled"
+        } else if text(completion, "status") == "failed" {
+          "Worksheet stopped: " + text(field(completion, "failure"), "message")
+        } else {
+          "Worksheet finished"
+        }
+        let model = reported(
+          model,
+          "Worksheet",
+          "worksheet",
+          revision,
+          @worksheet_view.diagnostics(report),
+        )
+        let model = produced(
+          model,
+          "Worksheet",
+          @bottom_panel.Info,
+          summary,
+          report
+          .observations()
+          .map(row => row.expression() + "  ⇒  " + row.preview()),
+        )
+        return (
+          {
+            ..model,
+            busy: false,
+            worksheet_capture: None,
+            worksheet_report: Some(report),
+            status: if current {
+              summary
+            } else {
+              summary + " for an earlier revision"
+            },
+          },
+          @cmd.none,
+        )
       }
       if text(result, "operation") == "execution-progress" {
         let host_execution = field(result, "execution")
@@ -2845,58 +2967,6 @@ fn update_core(
         return (restore_all(initialized), @cmd.none)
       }
       let compiled = field(result, "ir") != Json::null()
-      let worksheet_result = field(result, "results") != Json::null()
-      if worksheet_result {
-        let results = items(field(result, "results"))
-        let model = produced(
-          model,
-          label,
-          @bottom_panel.Info,
-          "Worksheet · " +
-          results.length().to_string() +
-          " expressions" +
-          (if revision == model.worksheet_revision {
-            ""
-          } else {
-            " · earlier revision"
-          }),
-          results.map(entry => {
-            text(entry, "expression") + "  ⇒  " + text(entry, "value")
-          }),
-        )
-        let model = note(
-          model,
-          label,
-          if revision == model.worksheet_revision {
-            @bottom_panel.Info
-          } else {
-            @bottom_panel.Warning
-          },
-          "Request " +
-          request_id.to_string() +
-          " finished in " +
-          took +
-          (if revision == model.worksheet_revision {
-            ""
-          } else {
-            " for an earlier worksheet revision"
-          }),
-        )
-        return (
-          {
-            ..model,
-            busy: false,
-            worksheet_output: result,
-            worksheet_output_revision: revision,
-            status: if revision == model.worksheet_revision {
-              "Worksheet finished"
-            } else {
-              "Finished for an earlier worksheet revision"
-            },
-          },
-          @cmd.none,
-        )
-      }
       let artifacts = items(field(result, "artifacts"))
       let summary : Array[String] = [model_summary(result)]
       if text(result, "value") != "" {
@@ -3086,6 +3156,12 @@ fn update_core(
       )
     }
     Cancel => {
+      if model.worksheet_capture is Some(_) && model.busy {
+        return (
+          { ..model, status: "Stopping worksheet…", },
+          @cmd.custom_cmd(_ => cancel_host()),
+        )
+      }
       if host_execution_pending(model) {
         return (
           { ..model, status: "Requesting host cancellation…", },
@@ -3210,7 +3286,49 @@ fn update_core(
         ),
         @cmd.custom_cmd(_ => download_ir(model_source(model.model))),
       )
-    Panel(Reveal(place)) => (reveal(model, place), @cmd.none)
+    Worksheet(Reveal(source, range)) => {
+      if !worksheet_matches(model, source) || !model.worksheet {
+        return (
+          {
+            ..model,
+            status: "Source changed. Run the worksheet again to navigate.",
+          },
+          @cmd.none,
+        )
+      }
+      let nonce = model.reveal_nonce + 1
+      (
+        {
+          ..model,
+          worksheet_reveal: @worksheet_view.reveal(source, range, nonce),
+          reveal_nonce: nonce,
+        },
+        @cmd.none,
+      )
+    }
+    Panel(Reveal(place)) => {
+      if place.path == "worksheet.scm" {
+        if model.worksheet &&
+          model.worksheet_report is Some(report) &&
+          worksheet_matches(model, report.source()) {
+          let nonce = model.reveal_nonce + 1
+          return (
+            {
+              ..model,
+              worksheet_reveal: place.line.to_string() +
+              ":" +
+              place.column.to_string() +
+              ":" +
+              nonce.to_string(),
+              reveal_nonce: nonce,
+            },
+            @cmd.none,
+          )
+        }
+        return (model, @cmd.none)
+      }
+      (reveal(model, place), @cmd.none)
+    }
     Panel(CopyDetails(report)) =>
       (
         model,
@@ -3436,24 +3554,9 @@ fn sidebar(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 
 ///|
 fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
-  let output = if model.worksheet {
-    model.worksheet_output
-  } else {
-    model.output
-  }
-  let revision = if model.worksheet {
-    model.worksheet_revision
-  } else {
-    model.revision
-  }
-  let output_revision = if model.worksheet {
-    model.worksheet_output_revision
-  } else {
-    model.output_revision
-  }
-  let results = items(field(output, "results"))
+  let output = model.output
   let body : Array[@html.Html] = []
-  if text(output, "value") != "" {
+  if !model.worksheet && text(output, "value") != "" {
     body.push(
       @html.div(class="run-value", [
         @html.span(class="muted small", "Result"),
@@ -3461,16 +3564,21 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       ]),
     )
   }
-  if model.worksheet && field(output, "results") != Json::null() {
-    if results.is_empty() {
-      body.push(@html.p(class="muted", "No expressions to run."))
-    }
-    for result in results {
+  if model.worksheet {
+    if model.worksheet_report is Some(report) {
       body.push(
-        @html.div(class="worksheet-result", [
-          @html.pre(class="expression", text(result, "expression")),
-          @html.pre(class="value", text(result, "value")),
-        ]),
+        @worksheet_view.view(
+          report,
+          worksheet_matches(model, report.source()),
+          emit.map(action => Worksheet(action)),
+        ),
+      )
+    } else {
+      body.push(
+        @html.p(
+          class="muted",
+          "Run the worksheet to see expression results and typed details.",
+        ),
       )
     }
   } else if model.generated {
@@ -3504,7 +3612,14 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       }),
     )
   }
-  let stale = output_revision >= 0 && output_revision != revision
+  let stale = if model.worksheet {
+    match model.worksheet_report {
+      Some(report) => !worksheet_matches(model, report.source())
+      None => false
+    }
+  } else {
+    model.output_revision >= 0 && model.output_revision != model.revision
+  }
   @html.section(class="panel output-panel", [
     @html.div(class="panel-heading", [
       @html.div(class="tabs", [
@@ -3571,8 +3686,8 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
     )
   }
   // One action leads the toolbar: run when this layout can run, else compile.
-  let runnable = !model.connected &&
-    (model.worksheet || model.language == "scheme")
+  let runnable = model.worksheet ||
+    (!model.connected && model.language == "scheme")
   @html.div(class="experience playground", [
     @html.div(class="experience-heading", [
       @html.div([
@@ -3597,12 +3712,7 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         ),
         @html.button(
           class=if model.worksheet { "selected" } else { "" },
-          disabled=model.connected,
-          title=if model.connected {
-            "The connected v1 protocol does not offer evaluation"
-          } else {
-            ""
-          },
+          title="Run Scheme expressions locally",
           attrs=@html.Attrs::build().aria_pressed(model.worksheet.to_string()),
           on_click=emit(Layout(true)),
           "Worksheet",
@@ -3649,7 +3759,7 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           on_click=emit(Cancel),
           if host_execution_pending(model) {
             "Cancel"
-          } else if model.connected {
+          } else if model.connected && !model.worksheet {
             "Discard"
           } else {
             "Cancel"
@@ -3665,10 +3775,10 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         @html.button(
           class=if runnable { "primary" } else { "secondary" },
           disabled=model.busy ||
-            model.connected ||
-            !model.available ||
+            (model.connected && !model.worksheet) ||
+            (!model.worksheet && !model.available) ||
             (!model.worksheet && model.language != "scheme"),
-          title=if model.connected {
+          title=if model.connected && !model.worksheet {
             "This host does not advertise an evaluation method"
           } else if !model.worksheet && model.language != "scheme" {
             "Compile, then select a public function in Model Explorer to enter inputs and evaluate"
@@ -3743,12 +3853,17 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
                 label: "Source editor",
                 read_only: false,
                 marks: if model.worksheet {
-                  ""
+                  if model.worksheet_report is Some(report) &&
+                    worksheet_matches(model, report.source()) {
+                    @worksheet_view.marks(report)
+                  } else {
+                    ""
+                  }
                 } else {
                   model.problem_marks.get(source_name(model)).unwrap_or("")
                 },
                 reveal: if model.worksheet {
-                  ""
+                  model.worksheet_reveal
                 } else {
                   model.reveal
                 },
@@ -3762,10 +3877,10 @@ fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
     ),
     @html.p(
       class="muted small footnote",
-      if model.connected {
+      if model.worksheet {
+        "Worksheets run locally. Typed details describe returned values; they are not inferred source types."
+      } else if model.connected {
         "Compile and generate use the connected Morphir v1 protocol."
-      } else if model.worksheet {
-        "Scheme worksheet results are dynamic values; this runtime does not infer Scala-style types."
       } else if model.language == "moonbit" {
         "Compile the selected MoonBit profile, then select a public function in Model Explorer to enter inputs and evaluate."
       } else if model.language != "scheme" {
@@ -4517,7 +4632,7 @@ fn in_project_view(
 
 ///|
 fn runnable(model : Model) -> Bool {
-  !model.connected && (model.worksheet || model.language == "scheme")
+  model.worksheet || (!model.connected && model.language == "scheme")
 }
 
 ///|

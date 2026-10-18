@@ -1,5 +1,7 @@
 ---
 extends: default
+ignore: |
+  .dev/
 
 rules:
   line-length:

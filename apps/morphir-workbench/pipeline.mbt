@@ -62,19 +62,16 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
       if language != "scheme" {
         raise @scheme.Invalid("The local worksheet supports Scheme only")
       }
-      let runtime = @scheme.Runtime::new()
-      let results = @scheme.parse_program(source).map(form => {
-        @wire.obj([
-          ("expression", @wire.text(form.to_source())),
-          (
-            "value",
-            @wire.text(@scheme.value_to_string(runtime.eval(form.to_source()))),
-          ),
-        ])
-      })
+      let captured = @worksheet.WorksheetRequest::decode(
+        @wire.string(@wire.field(request, "worksheetRequest")),
+      )
+      if captured.source().text() != source {
+        raise @protocol.Invalid("worksheet.source_mismatch")
+      }
+      let report = captured.evaluate()
       return @wire.obj([
         ("success", Json::boolean(true)),
-        ("results", Json::array(results)),
+        ("worksheetReport", Json::string(report.to_json().stringify())),
       ])
     }
     let imported = if operation == "inspect" &&

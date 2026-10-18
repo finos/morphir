@@ -59,6 +59,23 @@ backend. Worksheet evaluates each Scheme expression in a fresh session shared
 within one run. These are dynamic Scheme values, without type inference or
 Scala/JVM dependency resolution. Definitions do not survive a later run.
 
+Worksheet results retain the exact source text, identity and revision captured
+when **Run worksheet** starts. Each expression links back to its full source
+selection. **Typed details** shows the existing portable value and terminal
+outcome, including exact integers, Float64 bits and UTF-16 text. These describe
+returned values; they are not inferred source types. Editing keeps earlier
+results visible but disables their source links and marks until another run.
+Runtime failures keep the completed prefix; a value without a portable
+representation keeps its Scheme preview and an explicit projection failure.
+
+Worksheets run in a local browser worker in standalone, connected and desktop
+shells. Cancellation stops that owned worker and retains a captured cancellation
+report without claiming partial results. Timeout and worker failure remain
+distinct outcomes. The bounded `morphir/workbench/worksheet` `0.1.0-draft.1`
+profile carries these observations without adding a connected-v1 RPC method.
+Previews, diagnostics and typed projection enforce their budgets during
+traversal, including shared Scheme values that could otherwise expand enormously.
+
 The local worker compiles through `@engine.Engine` with the MoonBit and Elm providers: discover, plan and
 `execute_content`. Generation uses the engine backends `scheme`, `elm` and `moonbit`. A request carries `source`
 (one file) or `project` (`name`, `languageId`, `files[]`, optional `frontendProvider`, `frontendProfile`,

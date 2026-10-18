@@ -32,27 +32,37 @@ test "compiled model executes through the IR backend and imports again" {
 }
 
 ///|
+fn worksheet_request(source : String) -> Json {
+  {
+    "operation": "worksheet",
+    "source": source,
+    "worksheetRequest": (
+      {
+        "profile": "morphir/workbench/worksheet",
+        "contractVersion": "0.1.0-draft.1",
+        "source": { "id": "worksheet-source", "revision": 0, "text": source },
+      } : Json).stringify(),
+  }
+}
+
+///|
 test "worksheet keeps definitions within a run and isolates subsequent runs" {
   let result = @pipeline.execute(
-    @wire.obj([
-      ("operation", @wire.text("worksheet")),
-      (
-        "source",
-        @wire.text("(define (square x) (* x x)) (square 7) (+ 1/3 2/3)"),
-      ),
-    ]),
+    worksheet_request("(define (square x) (* x x)) (square 7) (+ 1/3 2/3)"),
   )
   assert_eq(@wire.field(result, "success"), Json::boolean(true))
-  let results = @wire.array(@wire.field(result, "results"))
-  assert_eq(@wire.field(results[1], "value"), @wire.text("49"))
-  assert_eq(@wire.field(results[2], "value"), @wire.text("1"))
-  let isolated = @pipeline.execute(
-    @wire.obj([
-      ("operation", @wire.text("worksheet")),
-      ("source", @wire.text("(square 7)")),
-    ]),
+  let report = @json.parse(@wire.string(@wire.field(result, "worksheetReport")))
+  let results = @wire.array(@wire.field(report, "observations"))
+  assert_eq(@wire.field(results[1], "preview"), @wire.text("49"))
+  assert_eq(@wire.field(results[2], "preview"), @wire.text("1"))
+  let isolated = @pipeline.execute(worksheet_request("(square 7)"))
+  let stopped = @json.parse(
+    @wire.string(@wire.field(isolated, "worksheetReport")),
   )
-  assert_eq(@wire.field(isolated, "success"), Json::boolean(false))
+  assert_eq(
+    @wire.field(@wire.field(stopped, "completion"), "status"),
+    @wire.text("failed"),
+  )
 }
 
 ///|

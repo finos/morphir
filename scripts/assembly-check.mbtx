@@ -6,7 +6,6 @@ import {
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/stdio",
-  "moonbitlang/core/env",
 }
 
 ///|
@@ -33,10 +32,9 @@ async fn run(command : String, args : Array[String]) -> Unit {
 
 ///|
 async fn main {
-  let core_home = match @env.get_env_var("MOON_HOME") {
-    Some(path) => path
-    None => output("mise", ["where", "http:moonbit"]).trim().to_owned()
-  }
+  let core_root = output("moon", ["run", "scripts/moonbit-core.mbtx", "check"])
+    .trim()
+    .to_owned()
   let directory = @fs.tmpdir(prefix="morphir-assembly-qualification-")
   @stdio.stdout.write("Assembly qualification workspace: " + directory + "\n")
   // Keep a failed run for diagnosis; remove successful test publications only
@@ -49,13 +47,7 @@ async fn main {
   )
   @fs.write_file(
     directory + "/core-graph.json",
-    output("moon", [
-      "-C",
-      core_home + "/lib/core",
-      "tree",
-      "--package",
-      "--json",
-    ]),
+    output("moon", ["-C", core_root, "tree", "--package", "--json"]),
   )
   @fs.write_file(
     directory + "/sdk-build.txt",
@@ -65,7 +57,7 @@ async fn main {
   )
   run("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"])
   run("node", [
-    "pkgs/morphir-host/embedding/test/generated.mts", directory, core_home,
+    "pkgs/morphir-host/embedding/test/generated.mts", directory, core_root,
   ])
   if !@fs.exists(".dev") {
     @fs.mkdir(".dev", recursive=true)

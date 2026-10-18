@@ -11,6 +11,7 @@ const requestedMode = new URLSearchParams(location.search).get('mode');
 const connected = requestedMode === 'connected' || (!requestedMode && document.querySelector<HTMLMetaElement>('meta[name="morphir-host-mode"]')?.content === 'connected');
 let adapter: Adapter = local;
 let generation = 0;
+let activeRequest: { operation: string } | null = null;
 
 globalThis.morphirWorkbench = {
   connected,
@@ -18,6 +19,7 @@ globalThis.morphirWorkbench = {
   get runtimeLabel() { return adapter.runtimeLabel || 'Browser local'; },
   async request(request, receive) {
     const current = ++generation;
+    activeRequest = { operation: request.operation };
     try {
       let result;
       if (request.operation === 'initialize') {
@@ -42,11 +44,11 @@ globalThis.morphirWorkbench = {
         ...(error.executionTransport ? { executionTransport: true } : {}),
         ...(error.submissionUnknown ? { submissionUnknown: true } : {}),
         ...(Array.isArray(error.diagnostics) && error.diagnostics.length ? { diagnostics: error.diagnostics } : {}) }));
-    }
+    } finally { if (current === generation) activeRequest = null; }
   },
   cancel() {
     const hostExecution = adapter.executions?.active || (adapter.executions?.execution && adapter.executions.execution.state !== 'terminal');
-    if (!hostExecution) ++generation;
+    if (!hostExecution && activeRequest?.operation !== 'worksheet') ++generation;
     Promise.resolve(adapter.cancel()).catch(() => { /* The active observer reports retained disconnection evidence. */ });
   },
   importModel(receive) {

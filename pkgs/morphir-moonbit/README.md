@@ -205,8 +205,11 @@ MOON_HOME="$HOME/.moon" mise exec -- node \
   pkgs/morphir-moonbit/scripts/test-compiler.mts pkgs/morphir-sdk
 ```
 
-`MOON_HOME` must identify a complete installation containing compiler and core
-version `0.10.15+943464bfa`. The SDK argument supplies an explicit source tree.
+`MOON_HOME` must identify the compiler installation `0.10.15+943464bfa`.
+`mise exec` selects the separately pinned, corrected upstream core through
+`MOON_CORE_OVERRIDE`; run `mise run setup:core` before the acceptance task.
+The core source identity is recorded in `tools/moonbit-core-pin.json`.
+The SDK argument supplies an explicit source tree.
 Compiler acceptance copies that tree to a private workspace and uses `--frozen`;
 it performs no dependency acquisition. It builds the emitted multi-module fixture
 on native, JS, WASM and WASM-GC and checks exact scalar results through the exported

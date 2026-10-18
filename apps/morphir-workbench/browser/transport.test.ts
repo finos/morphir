@@ -143,7 +143,7 @@ test('worker cancellation terminates active execution and a new execution gets a
 test('worker execution deadline ends the execution', async () => {
   let terminated = false;
   const adapter = new LocalAdapter(() => ({ postMessage() {}, terminate() { terminated = true; } }), 5);
-  await assert.rejects(adapter.execute({ operation: 'worksheet', source: '(+ 1 2)' }), /timed out/);
+  await assert.rejects(adapter.execute({ operation: 'run', source: '(+ 1 2)' }), /timed out/);
   assert.equal(terminated, true);
 });
 

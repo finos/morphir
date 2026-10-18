@@ -9,6 +9,12 @@ export function core() {
   if (!context.morphirWorkbenchExecutions) throw new Error('Missing compiled core');
   return context.morphirWorkbenchExecutions;
 }
+export function worksheetCore(): Core {
+  const context: { TextEncoder: typeof TextEncoder; TextDecoder: typeof TextDecoder; console: typeof console; morphirWorkbenchWorksheet?: Core } = { TextEncoder, TextDecoder, console };
+  runInNewContext(compiled, context);
+  if (!context.morphirWorkbenchWorksheet) throw new Error('Missing compiled worksheet core');
+  return context.morphirWorkbenchWorksheet;
+}
 export const version = '0.2.0-draft.1';
 export const descriptor = { profile: 'morphir/workbench/native', contractVersion: version,
   sessionId: 'proton-session-1', operations: [] };

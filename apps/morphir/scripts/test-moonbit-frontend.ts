@@ -7,6 +7,7 @@ import {delimiter, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {compilerIdentity, stableVersion} from '../build-provider/capabilities.mts';
 import {excluded, hash, treeIdentity} from '../build-provider/identity.mts';
+import {checkedCore} from '../build-provider/core.mts';
 import {includeDependencyPath} from '../build-provider/paths.mts';
 
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
@@ -17,7 +18,7 @@ const moonc = join(home, 'bin', process.platform === 'win32' ? 'moonc.exe' : 'mo
 const env: NodeJS.ProcessEnv = {...process.env, MOON_HOME: home, MOONBIT_NEW_NATIVE: '0', PATH: join(home, 'bin') + delimiter + process.env.PATH};
 delete env.MOON_WORK;
 assert.ok(execFileSync(moonc, ['-v'], {encoding: 'utf8', env}).trim().startsWith('v' + stableVersion));
-assert.match(readFileSync(join(home, 'lib/core/moon.mod'), 'utf8'), /version\s*=\s*"0\.10\.15\+943464bfa"/);
+const core = checkedCore(home, stableVersion);
 const sdk = resolve(process.env.MORPHIR_FRONTEND_SDK || join(repository, 'pkgs/morphir-sdk'));
 assert.match(readFileSync(join(sdk, 'moon.mod'), 'utf8'), /name\s*=\s*"finos\/morphir-sdk"/);
 assert.match(readFileSync(join(sdk, 'moon.mod'), 'utf8'), /version\s*=\s*"0\.1\.0"/);
@@ -166,7 +167,7 @@ try {
   const identities = {
     successful: true, profile: output.profile, parserVersion: output.parserVersion,
     compilerVersion: stableVersion, compilerIdentity: compilerIdentity(home),
-    coreIdentity: treeIdentity(join(home, 'lib/core'), {core: true}),
+    coreIdentity: treeIdentity(core, {core: true}),
     frontendIdentity: treeIdentity(join(repository, 'pkgs/morphir-moonbit-frontend')),
     generatorIdentity: treeIdentity(join(repository, 'pkgs/morphir-moonbit')),
     parserIdentity: treeIdentity(join(repository, '.mooncakes/moonbitlang/parser')),

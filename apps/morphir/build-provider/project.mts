@@ -9,6 +9,7 @@ import {join,dirname} from 'node:path';
 import {includeDependencyPath} from './paths.mjs';
 import {treeIdentity} from './identity.mjs';
 import {assertRuntime,stableVersion} from './capabilities.mjs';
+import {checkedCore} from './core.mjs';
 
 export async function buildLibrary(request: BuildRequest, requestPath: string, {driver=[], retain=false, capability=null}: { driver?: SourceMember[]; retain?: boolean; capability?: Capability | null } = {}): Promise<BuildEvidence> {
 const workspace=join(dirname(requestPath),'workspace');
@@ -17,10 +18,11 @@ const semanticPin='bc99af69a8b24d391311fae3822a87eafef3c334';
 const excluded=new Set(['.git','node_modules','.mooncakes','_build']);
 const deadline=Date.now()+request.timeout;
 const check=()=>{assert.ok(!request.cancelFile||!existsSync(request.cancelFile),'build.cancelled');assert.ok(Date.now()<deadline,'build.deadline');};
+const selectedCore=checkedCore(realpathSync(request.compilerHome),compilerVersion,request.toolchainPin?.targets.includes('llvm')?'compiler-home':'inherit-override',check);
 const hash=(value: BinaryLike)=>createHash('sha256').update(value).digest('hex');
 const tree=(root: string,options: TreeOptions={})=>treeIdentity(root,{...options,check});
 async function execute(program: string,args: string[],cwd: string,home: string) {
-  check();const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:home,MOONBIT_NEW_NATIVE:"0"};
+  check();const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:home,MOON_CORE_OVERRIDE:selectedCore,MOONBIT_NEW_NATIVE:"0"};
   delete env.MOON_WORK;
   for(const key of ['CC','CXX','CFLAGS','CPPFLAGS','LDFLAGS','MOONBIT_CC'])delete env[key];
   let result;
@@ -53,9 +55,8 @@ try {
   if(capability)assert.ok(actualVersion.startsWith('v'+compilerVersion+' '),'execution.compiler_version');
   else assert.match(actualVersion,/^v0\.10\.15\+943464bfa /);
   if(capability) { assert.equal(capability.target,request.target);assertRuntime(capability); }
-  assert.equal(manifest(join(home,'lib/core')).version,compilerVersion,'Matching core version required');
   const compilerIdentity=hash(Buffer.concat([readFileSync(moonc),readFileSync(moon)]));
-  const coreIdentity=tree(join(home,'lib/core'),{core:true});
+  const coreIdentity=tree(selectedCore,{core:true});
   if(request.toolchainPin) { assert.equal(compilerIdentity,request.toolchainPin.compilerIdentity);assert.equal(coreIdentity,request.toolchainPin.coreIdentity); }
   mkdirSync(workspace);const project=join(workspace,'generated');mkdirSync(project);
   const snapshot=JSON.parse(request.snapshot);const seen=new Set();
@@ -139,7 +140,7 @@ try {
   assert.equal(tree(project),frozenSource,'Generated source changed during build');
   if(driver.length)assert.equal(tree(join(workspace,'driver')),frozenConfiguredDriver,'Driver changed during build');
   assert.equal(hash(Buffer.concat([readFileSync(moonc),readFileSync(moon)])),compilerIdentity,'Compiler changed during build');
-  assert.equal(tree(join(home,'lib/core'),{core:true}),coreIdentity,'Core source changed during build');
+  assert.equal(tree(selectedCore,{core:true}),coreIdentity,'Core source changed during build');
   for(const dep of roots) {assert.equal(tree(dep.copied),dep.sourceIdentity,'Copied dependency changed');assert.equal(tree(dep.supplied),dep.sourceIdentity,'Supplied dependency changed');}
   check();
   const evidence: BuildEvidence={successful:true,frozen:true,leaseId:request.leaseId,projectId:request.projectId,contract:request.contract,sourceIdentity:request.sourceIdentity,target:request.target,compilerVersion,compilerIdentity,coreIdentity,buildIdentity,dependencies:identities};

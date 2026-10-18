@@ -1,0 +1,9 @@
+supported_targets = "js"
+
+import {
+  "finos/morphir-workbench/worksheet",
+  "finos/morphir-execution" @execution,
+  "finos/morphir-workbench/browser/bottom-panel" @bottom_panel,
+  "moonbit-community/rabbita/html",
+  "moonbit-community/rabbita/cmd",
+}

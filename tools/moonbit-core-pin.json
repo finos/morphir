@@ -1,0 +1,13 @@
+{
+  "profile": "morphir/moonbit/core-pin",
+  "contractVersion": "0.1.0-draft.1",
+  "compilerVersion": "0.10.15+943464bfa",
+  "coreCommit": "a951c067f909286603efada85c379197d589dc61",
+  "archiveUrl": "https://codeload.github.com/moonbitlang/core/tar.gz/a951c067f909286603efada85c379197d589dc61",
+  "archiveSha256": "37284b6d262d5d3aeef4fb3a5115e2b796e648238e023588ecd76b453b3802b0",
+  "sourceSha256": "08e98b8ae1089b5d8b68086e07441df0e44c7fb87d6464ac408825bd8e974af8",
+  "sourceFiles": 1185,
+  "sourceManifestVersion": "0.1.0",
+  "bootstrapWindowsCoreSha256": "05556b27b156348950ea88ae6838032c8b478ae532b18b3929387d1da4c18d55",
+  "targets": ["js", "wasm", "wasm-gc", "native"]
+}

@@ -8,6 +8,8 @@ export interface WorkRequest {
   source?: string;
   sourceBase64?: string;
   sourceCodec?: string;
+  /** Exact worksheet profile request captured before dispatch. */
+  worksheetRequest?: string;
   arguments?: Json;
   argumentsIon?: string;
   entry?: string;
@@ -37,6 +39,8 @@ export interface WorkResult {
   value?: Json;
   typed?: { type: string; value?: Json; [field: string]: Json | undefined };
   terminalOutcomes?: Json;
+  /** Raw canonical worksheet profile report, validated against its capture. */
+  worksheetReport?: string;
   /** Untrusted wire selection, checked against the captured capability policy. */
   admission?: Json;
   executionPlan?: Json;

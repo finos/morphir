@@ -1,5 +1,6 @@
 import {
   "finos/morphir-workbench/capabilities",
+  "finos/morphir-workbench/worksheet",
   "finos/morphir-ir" @ir,
   "finos/morphir-ir/versions/v4/json" @codec,
   "finos/morphir-ir/versioned/json" @versioned,

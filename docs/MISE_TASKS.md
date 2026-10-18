@@ -5,6 +5,23 @@ order: 35
 
 This document provides a reference for all available mise tasks in the Morphir Moonbit monorepo.
 
+## Pinned compiler and core
+
+The compiler remains `0.10.15+943464bfa`. The repository separately pins the official
+core commit `a951c067f909286603efada85c379197d589dc61`, which fixes incorrect parsing
+of long decimal integers on Wasm GC. The source archive, SHA-256 and complete source
+digest are recorded in [the core pin](../tools/moonbit-core-pin.json).
+
+`mise install` and entering an activated mise shell acquire and verify the corrected
+core under `.dev/toolchains/`. `MOON_CORE_OVERRIDE` selects it for ordinary `moon`
+and `moonx` commands. In a shell without mise activation, use `mise exec -- moon …`.
+The project selects mise's pinned compiler directory as `MOON_HOME`. Setup updates
+its Mooncakes registry before compiling the portable selector, including on a fresh
+installation. Windows first runs the minimal compiler/core bootstrap explicitly.
+The setup does not replace the core in a shared `MOON_HOME`. An absent or altered
+workspace core fails validation. The separate LLVM qualification keeps its own
+compiler/core pair.
+
 ## Task Categories
 
 ### Linting Tasks
@@ -61,6 +78,7 @@ This document provides a reference for all available mise tasks in the Morphir M
 | Task | Description | Platform |
 |------|-------------|----------|
 | `mise run check` | Run all checks (lint + test + build) | All |
+| `mise run check:core` | Verify corrected-core source bytes, provenance and exact decimal parsing | All |
 | `mise run clean` | Clean build artifacts | All |
 | `mise run validate` | Run all validation checks | All |
 | `mise run validate:packages` | Verify package structure is valid | All |
@@ -71,6 +89,7 @@ This document provides a reference for all available mise tasks in the Morphir M
 | Task | Description | Platform |
 |------|-------------|----------|
 | `mise run setup:workbench` | Install workbench npm dependencies and Chromium; `--ci` adds Linux system dependencies | All |
+| `mise run setup:core` | Acquire, verify and bundle the immutable corrected core in this workspace | All |
 | `mise run setup:wasm-hosts` | Install the optional component qualification dependencies and Chromium | Platforms supported by Playwright |
 | `mise run setup:hooks` | Install git hooks for pre-push validation (idempotent, auto-runs on directory entry) | All |
 

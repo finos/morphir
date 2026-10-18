@@ -1,4 +1,10 @@
 ///|
+test "inexact zero printing preserves its sign" {
+  assert_eq(@scheme.value_to_string(@scheme.eval_program("-0.0")), "-0.0")
+  assert_eq(@scheme.value_to_string(@scheme.eval_program("0.0")), "0.0")
+}
+
+///|
 test "lexical closures, exact arithmetic and tail recursion" {
   assert_eq(
     @scheme.value_to_string(

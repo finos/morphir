@@ -342,6 +342,13 @@ pub fn Runtime::eval(self : Runtime, source : String) -> Value raise {
 }
 
 ///|
+/// Evaluate an already read top-level form in this runtime. An enclosing
+/// with_budget call shares its resource allowance across a complete worksheet.
+pub fn Runtime::eval_datum(self : Runtime, form : Datum) -> Value raise {
+  self.with_budget(runtime => runtime.evaluate(form, 0))
+}
+
+///|
 pub fn Runtime::call(
   self : Runtime,
   procedure : Value,

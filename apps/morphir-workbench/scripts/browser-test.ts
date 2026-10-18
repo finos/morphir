@@ -312,7 +312,7 @@ try {
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(let loop ((x 0)) (loop (+ x 1)))');
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.getByRole('status').filter({ hasText: 'Cancelled' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /cancelled/i }).waitFor();
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(+ 2 2)');
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
@@ -615,8 +615,16 @@ try {
   await back.click();
   await page.getByRole('button', {name:'Compile',exact:true}).waitFor();
   assert.equal(rpcCalls.length, callsBeforeNavigation, 'Back is local UI navigation and adds no RPC');
-  assert.equal(await page.getByRole('button', { name: 'Worksheet', exact: true }).isEnabled(), false);
+  assert.equal(await page.getByRole('button', { name: 'Worksheet', exact: true }).isEnabled(), true);
   assert.equal(await page.getByRole('button', { name: 'Compile & run', exact: true }).isEnabled(), false);
+  const callsBeforeWorksheet = rpcCalls.length;
+  await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Source editor' }).fill('(+ 20 22)');
+  await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
+  await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
+  assert.deepEqual(await page.locator('.worksheet-result .value').allTextContents(), ['42']);
+  assert.equal(rpcCalls.length, callsBeforeWorksheet, 'Connected worksheets use the real local worker without new RPC');
+  await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(total 3)');
   assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).count(),0,'Connected v1 does not expose unnegotiated source profiles');
   const connectedLanguage = page.getByRole('combobox', {name:'Language',exact:true});

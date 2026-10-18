@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -31,10 +31,14 @@ jobs:
         with:
           install_args: http:moonbit
           cache: false
+      - name: Acquire corrected core after a fresh install
+        run: mise run setup:core
+      - name: Verify corrected core selection after a fresh install
+        run: mise run check:core
       - name: Update Mooncakes registry for script dependencies
-        run: moon update
+        run: mise exec -- moon update
       - name: Check MoonBit script execution
-        run: moonx scripts/ci-gate.mbtx --self-test
+        run: mise exec -- moonx scripts/ci-gate.mbtx --self-test
 
   native:
     name: Full native (${{ matrix.os }})

@@ -159,6 +159,9 @@ export class NativeAdapter {
         (request.operation !== 'evaluate' || !this.executionsAvailable)) {
       throw new Error('This native session does not offer checking-policy selection.');
     }
+    // Worksheets use only captured local source and own a browser worker.
+    // Native session epochs must not discard that worker's cancellation report.
+    if (request.operation === 'worksheet') return this.local.execute(request);
     const epoch = ++this.epoch;
     await this.session.check();
     this.current(epoch);

@@ -100,6 +100,7 @@ async fn main {
   }
   // Only child compiler processes receive this installation. Defaults stay intact.
   @env.set_env_var("MOON_HOME", home)
+  @env.unset_env_var("MOON_CORE_OVERRIDE")
   @env.set_env_var(
     "PATH",
     home + "/bin:" + @env.get_env_var("PATH").unwrap_or(""),

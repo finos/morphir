@@ -2,6 +2,7 @@ import type { Core, NativeBridge, WorkRequest, Artifact } from '../apps/morphir-
 
 declare global {
   var morphirWorkbenchExecutions: Core;
+  var morphirWorkbenchWorksheet: Core;
   var morphirWorkbenchDecode: Core;
   var morphirWorkbenchExecutionHost: (offer: string) => Core;
   var __MoonBit__: NativeBridge | undefined;

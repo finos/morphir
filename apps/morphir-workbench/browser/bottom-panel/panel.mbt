@@ -1401,7 +1401,7 @@ fn diagnostics_view(
           @html.ul(
             class="tool-list",
             report.diagnostics.mapi((index, d) => {
-              diagnostic_row(state, report, index, d, emit)
+              diagnostic_row(state, report, index, d, current, emit)
             }),
           )
         },
@@ -1417,6 +1417,7 @@ fn diagnostic_row(
   report : Report,
   index : Int32,
   d : Diagnostic,
+  current : Bool,
   emit : @cmd.Emit[Action],
 ) -> @html.Html {
   let key = "diagnostic-" + report.id.to_string() + "-" + index.to_string()
@@ -1426,6 +1427,7 @@ fn diagnostic_row(
     Some(place) =>
       @html.button(
         class="tool-location tool-reveal",
+        disabled=report.scope == "worksheet" && !current,
         title=d.coordinates,
         on_click=emit(Reveal(place)),
         d.location,
@@ -1463,6 +1465,7 @@ fn diagnostic_row(
               Some(place) =>
                 @html.button(
                   class="tool-reveal",
+                  disabled=report.scope == "worksheet" && !current,
                   attrs=@html.Attrs::build().aria_label("Open " + d.location),
                   on_click=emit(Reveal(place)),
                   d.location,

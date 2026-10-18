@@ -281,7 +281,7 @@ fn builtin(
       arity(args, 0, name)
       Unit
     }
-    "error" => raise Invalid(args.map(value_to_string).join(" "))
+    "error" => raise Invalid(error_arguments_preview(args))
     _ => raise Unbound(name)
   }
 }

@@ -58,9 +58,7 @@ async fn main {
   guard output(home + "/bin/moonc", ["-v"]).has_prefix("v" + version + " ") else {
     abort("Pinned compiler required")
   }
-  guard @fs.read_file(home + "/lib/core/moon.mod").text().contains(version) else {
-    abort("Matching complete core required")
-  }
+  ignore(output("moon", ["run", "scripts/moonbit-core.mbtx", "check"]))
   let root = @fs.tmpdir(prefix="morphir-native-otel-build-")
   defer @fs.rmdir(root, recursive=true)
   let adapter = root + "/adapter"
@@ -161,7 +159,8 @@ async fn main {
         #|const [repo,home,binary,source]=process.argv.slice(1);
         #|const {fileIdentity,treeIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/identity.mjs')));
         #|const {compilerIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/capabilities.mjs')));
-        #|console.log(JSON.stringify({compilerIdentity:compilerIdentity(home),coreIdentity:treeIdentity(join(home,'lib/core'),{core:true}),binaryIdentity:fileIdentity(binary),sourceIdentity:treeIdentity(source)}));
+        #|const {checkedCore}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/core.mjs')));
+        #|console.log(JSON.stringify({compilerIdentity:compilerIdentity(home),coreIdentity:treeIdentity(checkedCore(home,'0.10.15+943464bfa'),{core:true}),binaryIdentity:fileIdentity(binary),sourceIdentity:treeIdentity(source)}));
       ),
       repo,
       home,

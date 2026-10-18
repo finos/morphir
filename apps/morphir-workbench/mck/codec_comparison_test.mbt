@@ -55,12 +55,20 @@ test "expanded codec framing does not relax historical or absolute line limits" 
     "format": "ion-text",
     "input": " ".repeat(2097152),
   }).stringify()
-  for line in [old_request, " ".repeat(3146753)] {
+  let draft26 = Json::object({
+      "id": 1,
+      "op": "capabilities",
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.26",
+    }).stringify() +
+    " ".repeat(3146753)
+  for line in [old_request, draft26, " ".repeat(8389633)] {
     let rejected = try {
       @mck.handle_line(line) |> ignore
       false
     } catch {
-      _ => true
+      @execution.Invalid("workbench.mck_frame_limit") => true
+      _ => false
     }
     assert_true(rejected)
   }

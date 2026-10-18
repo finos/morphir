@@ -1,0 +1,314 @@
+///|
+/// Acquire and verify a workspace-owned core without changing MOON_HOME.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/x@0.5.5/path",
+  "moonbitlang/x@0.5.5/path/win32" @winpath,
+}
+
+///|
+fn join(root : String, relative : String) -> String {
+  let mut path = @path.Path(root)
+  for part in relative.split("/") {
+    if part != "" {
+      path = path.join(@path.Path(part.to_owned()))
+    }
+  }
+  path.to_string()
+}
+
+///|
+fn field(value : Json, key : String) -> Json {
+  guard value is Object(fields) else { abort("Expected core pin object") }
+  fields[key]
+}
+
+///|
+fn text(value : Json, key : String) -> String {
+  guard field(value, key) is String(text) else {
+    abort("Missing core pin field: " + key)
+  }
+  text
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+}
+
+///|
+fn provenance(pin : Json) -> Json {
+  let selected : Map[String, Json] = Map([])
+  for
+    key in [
+      "profile", "contractVersion", "compilerVersion", "coreCommit", "archiveUrl",
+      "archiveSha256", "sourceSha256", "sourceFiles", "sourceManifestVersion", "targets",
+    ] {
+    selected[key] = field(pin, key)
+  }
+  Json::object(selected)
+}
+
+///|
+async fn command(
+  program : String,
+  args : Array[String],
+  cwd~ : String = ".",
+) -> String {
+  let (code, out, err) = @process.collect_output(program, args, cwd~)
+  guard code == 0 else { fail(program + ": " + out.text() + err.text()) }
+  out.text().trim().to_owned()
+}
+
+///|
+async fn source_files(
+  root : String,
+  relative : String,
+  paths : Array[String],
+) -> Unit {
+  for name in @fs.readdir(join(root, relative), include_hidden=true) {
+    let path = if relative == "" { name } else { relative + "/" + name }
+    if path == "_build" {
+      continue
+    }
+    match @fs.kind(join(root, path), follow_symlink=false) {
+      Directory => source_files(root, path, paths)
+      Regular => paths.push(path)
+      _ => fail("Unexpected entry in pinned core: " + path)
+    }
+  }
+}
+
+///|
+async fn source_identity(root : String) -> (String, Int32) {
+  let paths : Array[String] = []
+  source_files(root, "", paths)
+  paths.sort_by((left, right) => left.lexical_compare(right))
+  let manifest = StringBuilder()
+  for path in paths {
+    manifest.write_string(
+      path + "\u0000" + digest(@fs.read_file(join(root, path)).binary()) + "\n",
+    )
+  }
+  (digest(@utf8.encode(manifest.to_string())), paths.length())
+}
+
+///|
+async fn verify(root : String, pin : Json, bundles~ : Bool = true) -> Unit {
+  let (actual, count) = source_identity(root)
+  guard actual == text(pin, "sourceSha256") &&
+    field(pin, "sourceFiles") == Json::number(count.to_double()) else {
+    fail(
+      "Pinned core source identity differs: " +
+      actual +
+      " (" +
+      count.to_string() +
+      " files); preserve the directory and investigate",
+    )
+  }
+  if bundles {
+    for target in ["js", "wasm", "wasm-gc", "native"] {
+      for component in ["prelude", "bigint"] {
+        for extension in [".mi", ".core"] {
+          guard @fs.exists(
+            join(
+              root,
+              "_build/" +
+              target +
+              "/release/bundle/" +
+              component +
+              "/" +
+              component +
+              extension,
+            ),
+          ) else {
+            fail(
+              "Pinned core bundle is missing: " +
+              target +
+              "/" +
+              component +
+              extension,
+            )
+          }
+        }
+      }
+      guard @fs.exists(
+        join(root, "_build/" + target + "/release/bundle/core.core"),
+      ) else {
+        fail("Pinned combined core bundle is missing: " + target)
+      }
+    }
+  }
+}
+
+///|
+async fn self_test() -> Unit {
+  for
+    root in [
+      "C:\\workspace", "\\\\server\\share", "\\\\?\\C:\\workspace", "\\\\?\\UNC\\server\\share",
+    ] {
+    let @winpath.Path(actual) = @winpath.Path(root).join(@winpath.Path("core"))
+    assert_eq(actual, root + "\\core")
+  }
+  let root = @fs.tmpdir(prefix="morphir-core-check-")
+  defer @fs.rmdir(root, recursive=true)
+  @fs.write_file(join(root, "value.mbt"), "original")
+  let (original, count) = source_identity(root)
+  let pin : Json = { "sourceSha256": original, "sourceFiles": count }
+  verify(root, pin, bundles=false)
+  @fs.mkdir(join(root, "_build"))
+  @fs.write_file(join(root, "_build/generated"), "not source")
+  verify(root, pin, bundles=false)
+  @fs.write_file(join(root, "value.mbt"), "changed")
+  let rejected = try {
+    verify(root, pin, bundles=false)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
+  @fs.write_file(join(root, "value.mbt"), "original")
+  @fs.write_file(join(root, "extra.mbt"), "added")
+  let rejected = try {
+    verify(root, pin, bundles=false)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
+  println("Pinned core source tampering and added files reject")
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:]
+  if args == ["--self-test"] {
+    self_test()
+    return
+  }
+  guard args == ["setup"] || args == ["check"] else {
+    fail("Usage: moonbit-core.mbtx setup|check|--self-test")
+  }
+  let repository = @fs.realpath(".")
+  let pin = @json.parse(
+    @fs.read_file(join(repository, "tools/moonbit-core-pin.json")).text(),
+  )
+  guard text(pin, "profile") == "morphir/moonbit/core-pin" &&
+    text(pin, "contractVersion") == "0.1.0-draft.1" else {
+    fail("Unknown core pin profile")
+  }
+  let commit = text(pin, "coreCommit")
+  guard commit.length() == 40 &&
+    commit.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+    fail("Invalid immutable core commit")
+  }
+  let parent = join(repository, ".dev/toolchains")
+  let destination = join(parent, "moonbit-core-" + commit)
+  let core = join(destination, "core")
+  if args == ["check"] {
+    guard @env.get_env_var("MOON_CORE_OVERRIDE") is Some(selected) &&
+      @fs.realpath(selected) == @fs.realpath(core) else {
+      fail(
+        "Ordinary commands must select the workspace core through MOON_CORE_OVERRIDE",
+      )
+    }
+  }
+  let compiler = command("moonc", ["-v"])
+  guard compiler.has_prefix("v" + text(pin, "compilerVersion") + " ") else {
+    fail("Pinned compiler required")
+  }
+  if !@fs.exists(parent) {
+    @fs.mkdir(parent, recursive=true)
+  }
+  let lock = @fs.open(
+    join(parent, "core-setup.lock"),
+    mode=ReadWrite,
+    create_mode=OpenOrCreate,
+  )
+  defer lock.close()
+  lock.lock(Exclusive)
+  if @fs.exists(destination) {
+    verify(core, pin)
+  } else {
+    guard args == ["setup"] else {
+      fail("Pinned core absent; run mise run setup:core")
+    }
+    let scratch = @fs.tmpdir(prefix="morphir-core-download-")
+    defer @fs.rmdir(scratch, recursive=true)
+    let stage = join(
+      parent,
+      "stage-" + digest(@utf8.encode(scratch))[0:16].to_owned(),
+    )
+    @fs.mkdir(stage)
+    defer (if @fs.exists(stage) { @fs.rmdir(stage, recursive=true) })
+    let archive = join(scratch, "core.tar.gz")
+    ignore(
+      command("curl", [
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--max-time",
+        "120",
+        "--output",
+        archive,
+        text(pin, "archiveUrl"),
+      ]),
+    )
+    guard @fs.file_size(archive) <= 16777216L &&
+      digest(@fs.read_file(archive).binary()) == text(pin, "archiveSha256") else {
+      fail("Core archive checksum differs")
+    }
+    let staged_core = join(stage, "core")
+    @fs.mkdir(staged_core)
+    // The sole upstream README symlink is materialized identically on every OS,
+    // including Windows hosts without symlink privileges. Source bytes agree.
+    ignore(
+      command("tar", [
+        "-xf",
+        archive,
+        "--strip-components",
+        "1",
+        "--exclude",
+        "core-" + commit + "/lazy_list/README.md",
+        "-C",
+        staged_core,
+      ]),
+    )
+    @fs.write_file(
+      join(staged_core, "lazy_list/README.md"),
+      @fs.read_file(join(staged_core, "lazy_list/README.mbt.md")),
+    )
+    verify(staged_core, pin, bundles=false)
+    // Only children use the staged core; no shared toolchain directory changes.
+    let previous = @env.get_env_var("MOON_CORE_OVERRIDE")
+    @env.set_env_var("MOON_CORE_OVERRIDE", staged_core)
+    defer (match previous {
+      Some(value) => @env.set_env_var("MOON_CORE_OVERRIDE", value)
+      None => @env.unset_env_var("MOON_CORE_OVERRIDE")
+    })
+    ignore(
+      command("moon", [
+        "-C", staged_core, "bundle", "--warn-list", "-a", "--all",
+      ]),
+    )
+    verify(staged_core, pin)
+    @fs.write_file(join(stage, "provenance.json"), provenance(pin).stringify())
+    @fs.rename(stage, destination)
+  }
+  // The marker alone is never sufficient: every check above recomputes all
+  // actual source bytes against the tracked, independently verified digest.
+  guard provenance(
+      @json.parse(@fs.read_file(join(destination, "provenance.json")).text()),
+    ) ==
+    provenance(pin) else {
+    fail("Core provenance differs")
+  }
+  println(core)
+}

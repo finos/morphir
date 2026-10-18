@@ -7,6 +7,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {release,version as osVersion} from 'node:os';
 import {hash,fileIdentity,treeIdentity} from './identity.mjs';
+import {checkedCore} from './core.mjs';
 export const stableVersion='0.10.15+943464bfa';
 export function run(program: string,args: string[],timeout=10000) {
   const result=spawnSync(program,args,{encoding:'utf8',timeout,maxBuffer:1048576,env:{...process.env,MOONBIT_NEW_NATIVE:'0'}});
@@ -42,7 +43,7 @@ export function capabilities(request: CapabilityRequest) {
   }
   const moonc=join(home,'bin',process.platform==='win32'?'moonc.exe':'moonc');
   assert.ok(run(moonc,['-v'],timeout).startsWith('v'+version+' '),'execution.compiler_version');
-  const core=join(home,'lib/core');assert.equal(readFileSync(join(core,'moon.mod'),'utf8').match(/^\s*version\s*=\s*"([^"]+)"/m)?.[1],version,'execution.core_version');
+  const core=checkedCore(home,version,pin?.targets.includes('llvm')?'compiler-home':'inherit-override');
   const compiler=compilerIdentity(home), coreHash=treeIdentity(core,{core:true});
   if(pin) {assert.equal(compiler,pin.compilerIdentity,'execution.compiler_identity');assert.equal(coreHash,pin.coreIdentity,'execution.core_identity');}
   const allowed=pin?.targets||['js','wasm-gc','native'];

@@ -113,6 +113,28 @@ fn valid_model_error(code : String) -> Bool {
 }
 
 ///|
+/// A shared aggregate budget across separately returned portable values. Failed
+/// acceptance leaves the previous budget unchanged.
+pub struct ValueBudget {
+  priv remaining : Int32
+}
+
+///|
+pub fn ValueBudget::new() -> ValueBudget {
+  { remaining: 100000, }
+}
+
+///|
+pub fn ValueBudget::accept(
+  self : ValueBudget,
+  value : Value,
+) -> ValueBudget raise {
+  let remaining = Ref(self.remaining)
+  validate_value(value, 0, remaining)
+  { remaining: remaining.val, }
+}
+
+///|
 fn validate_value(
   value : Value,
   depth : Int32,

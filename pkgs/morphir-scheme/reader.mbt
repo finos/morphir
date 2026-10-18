@@ -12,6 +12,36 @@ pub extend Located with Eq::{equal, not_equal}
 pub extend Located with @debug.Debug::{to_repr}
 
 ///|
+/// An exact top-level form span in Unicode scalar coordinates. Only the reader
+/// constructs spans; consumers convert coordinates against the original source.
+pub struct RangedForm {
+  priv form : Datum
+  priv start : Int32
+  priv end : Int32
+} derive(Eq, Debug)
+
+///|
+pub extend RangedForm with Eq::{equal, not_equal}
+
+///|
+pub extend RangedForm with @debug.Debug::{to_repr}
+
+///|
+pub fn RangedForm::datum(self : RangedForm) -> Datum {
+  self.form
+}
+
+///|
+pub fn RangedForm::scalar_start(self : RangedForm) -> Int32 {
+  self.start
+}
+
+///|
+pub fn RangedForm::scalar_end(self : RangedForm) -> Int32 {
+  self.end
+}
+
+///|
 priv struct Reader {
   chars : Array[Char]
   mut index : Int32
@@ -268,6 +298,27 @@ pub fn parse_program(source : String) -> Array[Datum] raise {
   reader.skip(0)
   while reader.index < reader.chars.length() {
     forms.push(reader.read(0))
+    reader.skip(0)
+  }
+  forms
+}
+
+///|
+/// Parse all forms before returning. Spans exclude surrounding comments and
+/// whitespace, include original delimiters and quotes, and never use printed
+/// datum lengths to infer source boundaries.
+pub fn parse_program_ranged(source : String) -> Array[RangedForm] raise {
+  let reader = Reader::{
+    chars: source.iter().collect(),
+    index: 0,
+    record: None,
+  }
+  let forms : Array[RangedForm] = []
+  reader.skip(0)
+  while reader.index < reader.chars.length() {
+    let start = reader.index
+    let form = reader.read(0)
+    forms.push({ form, start, end: reader.index, })
     reader.skip(0)
   }
   forms

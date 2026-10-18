@@ -2,6 +2,7 @@ import type { Adapter, Catalog, CoreReply, Diagnostic, ExecutionOptions, Languag
 import { isRecord, workbenchError } from '../../../types/data.ts';
 import { ExecutionClient } from './execution-session.ts';
 import { captureLocalEvaluation, matchesCapabilityPolicy } from './capabilities.ts';
+import { WorksheetCapture } from './worksheet.ts';
 // Browser host boundary. Private operation envelopes never go onto Morphir RPC.
 export class LocalAdapter {
   workerFactory: () => WorkerPort;
@@ -27,9 +28,15 @@ export class LocalAdapter {
     return { success: true, operation: 'initialize', connected: false, capabilityEvaluator: catalog.capabilityEvaluator, catalog: { ...catalog, frontends: catalog.frontends, targets: catalog.targets }, projects: [], message: 'Browser local · ready to compile' };
   }
   execute(request: WorkRequest, _progress?: Progress): Promise<WorkResult> {
+    request = structuredClone(request);
     this.cancel();
     let selection;
-    try { selection = captureLocalEvaluation(request); }
+    let worksheet: WorksheetCapture | null;
+    try {
+      selection = captureLocalEvaluation(request);
+      worksheet = request.operation === 'worksheet' ? WorksheetCapture.from(request) : null;
+      if (worksheet) request.worksheetRequest = worksheet.request;
+    }
     catch (error) { return Promise.reject(error); }
     if (request.sourceBase64 !== undefined && (typeof request.sourceBase64 !== 'string' || request.sourceBase64.length > Math.ceil(16 * 1024 * 1024 / 3) * 4 ||
         request.operation !== 'inspect' || !['morphir-json', 'ion-text', 'ion-binary'].includes(request.sourceCodec ?? ''))) {
@@ -55,16 +62,29 @@ export class LocalAdapter {
     return new Promise<WorkResult>((resolve, reject) => {
       const worker = this.workerFactory();
       const id = ++this.nextId;
+      let settled = false;
       const finish = (error: unknown, result?: WorkResult) => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         worker.terminate();
         if (this.active?.id === id) this.active = null;
         if (error) reject(error); else resolve(result!);
       };
-      const timer = setTimeout(() => finish(new Error('Local execution timed out after 15 seconds.')), this.timeout);
-      this.active = { id, cancel: () => finish(new Error('Cancelled')) };
+      const terminated = (reason: 'cancelled' | 'timeout' | 'worker-failed', message: string) => {
+        if (settled) return;
+        try { worksheet ? finish(null, worksheet.terminated(reason)) : finish(new Error(message)); }
+        catch (error) { finish(error); }
+      };
+      const timer = setTimeout(() => terminated('timeout', 'Local execution timed out after 15 seconds.'), this.timeout);
+      this.active = { id, cancel: () => terminated('cancelled', 'Cancelled') };
       worker.onmessage = ({ data }) => {
-        if (data.id !== id) return;
+        if (settled || data.id !== id) return;
+        if (worksheet) {
+          try { finish(null, worksheet.validate(data.result)); }
+          catch (error) { finish(error); }
+          return;
+        }
         if (selection.kind === 'capability' && (data.result.success || data.result.terminalOutcomes || data.result.admission)) {
           if (!matchesCapabilityPolicy(selection, data.result.admission)) {
             finish(new Error('The local runtime returned a different checking policy.'));
@@ -73,8 +93,11 @@ export class LocalAdapter {
         }
         finish(null, data.result);
       };
-      worker.onerror = () => finish(new Error('The local runtime worker failed.'));
-      try { worker.postMessage({ id, request }); } catch (cause) { const error = workbenchError(cause); finish(error); }
+      worker.onerror = () => terminated('worker-failed', 'The local runtime worker failed.');
+      try { worker.postMessage({ id, request }); } catch (cause) {
+        if (worksheet) terminated('worker-failed', 'The local runtime worker failed.');
+        else finish(workbenchError(cause));
+      }
     });
   }
   cancel() { this.active?.cancel(); }
@@ -235,6 +258,8 @@ export class ConnectedAdapter {
       if (request.operation !== 'evaluate') throw new Error('Checking-policy selection is available only for evaluation.');
     }
     if (request.operation === 'resume-execution') return this.executions!.resume(progress);
+    // Worksheets remain local even when compilation uses a connected host.
+    if (request.operation === 'worksheet') return this.local.execute(request);
     if (request.operation === 'evaluate' && this.executionsAvailable) return this.executions!.execute(request, progress);
     const epoch = this.epoch;
     const stillCurrent = () => { if (epoch !== this.epoch) throw new Error("Discarded. The host may still be working."); };

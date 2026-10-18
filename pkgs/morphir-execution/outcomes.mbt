@@ -158,7 +158,7 @@ fn outcome_failure(
 }
 
 ///|
-fn TerminalOutcome::to_json(self : TerminalOutcome) -> Json {
+pub fn TerminalOutcome::to_json(self : TerminalOutcome) -> Json {
   match self {
     Returned(value) => { "status": "returned", "value": value.to_json() }
     ModelError(code) => { "status": "model-error", "code": code }
@@ -232,6 +232,32 @@ fn terminal_outcome(
 }
 
 ///|
+pub fn TerminalOutcome::validate(self : TerminalOutcome) -> Unit raise {
+  match self {
+    Returned(value) => {
+      if value is ModelError(_) {
+        raise Invalid("workbench.invalid_outcome")
+      }
+      validate_value(value, 0, Ref(100000))
+    }
+    ModelError(code) =>
+      if !valid_model_error(code) {
+        raise Invalid("execution.model_error_code")
+      }
+    Failed(failure) => failure.validate(false)
+    Cancelled => ()
+  }
+}
+
+///|
+/// Decode the existing terminal shape without fabricating a nonempty call list.
+pub fn TerminalOutcome::from_json(value : Json) -> TerminalOutcome raise {
+  let outcome = terminal_outcome(@text.read_ion(value.stringify()[:]), true)
+  outcome.validate()
+  outcome
+}
+
+///|
 pub fn Outcomes::validate(self : Outcomes) -> Unit raise {
   if self.calls.is_empty() || self.calls.length() > 1000 {
     raise Invalid("execution.result_count")
@@ -242,20 +268,7 @@ pub fn Outcomes::validate(self : Outcomes) -> Unit raise {
       raise Invalid("execution.call_identity")
     }
     seen[call.id] = true
-    match call.outcome {
-      Returned(value) => {
-        if value is ModelError(_) {
-          raise Invalid("workbench.invalid_outcome")
-        }
-        validate_value(value, 0, Ref(100000))
-      }
-      ModelError(code) =>
-        if !valid_model_error(code) {
-          raise Invalid("execution.model_error_code")
-        }
-      Failed(failure) => failure.validate(false)
-      Cancelled => ()
-    }
+    call.outcome.validate()
   }
   if self.cleanup is Some(failure) {
     failure.validate(true)

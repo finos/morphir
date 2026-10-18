@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { isWithin, includeDependencyPath } from '../../../apps/morphir/build-provider/paths.mts';
+import {checkedCore} from '../../../apps/morphir/build-provider/core.mts';
 
 assert.ok(process.argv[2], 'Supply the SDK source directory as an argument');
 const suppliedSdk=resolve(process.argv[2]);
@@ -15,8 +16,7 @@ assert.ok(coreHome,'Set MOON_HOME to the pinned compiler/core installation');
 const moon=join(coreHome,'bin',process.platform==='win32'?'moon.exe':'moon');
 const moonc=join(coreHome,'bin',process.platform==='win32'?'moonc.exe':'moonc');
 const expectedCompiler = 'v0.10.15+943464bfa';
-const coreManifest=readFileSync(join(coreHome,'lib/core/moon.mod'),'utf8');
-assert.match(coreManifest,/version\s*=\s*"0\.10\.15\+943464bfa"/);
+const core=checkedCore(coreHome,'0.10.15+943464bfa');
 const compiler = execFileSync(moonc, ['-v'], {encoding:'utf8'}).trim();
 assert.ok(compiler.startsWith(expectedCompiler), `Compiler must be ${expectedCompiler}, got ${compiler}`);
 const output = JSON.parse(execFileSync(moon, ['run', 'pkgs/morphir-moonbit/acceptance', '--target', 'native'], {cwd:repository, encoding:'utf8', maxBuffer:16777216}));
@@ -249,7 +249,7 @@ try {
     assert.notEqual(result.status,0,`${hidden} was incorrectly exported`);
     assert.ok((result.stdout+result.stderr).includes(symbols.get('pricing:'+hidden)!.name));
   }
-  const coreDigest=digestTree(join(coreHome,'lib/core'),true);
+  const coreDigest=digestTree(core,true);
   // Exercise the complete configured pipeline with substantial current and historical IR.
   execFileSync(moon,['build','--target','native'],{cwd:repository,stdio:'pipe'});
   const cli=join(repository,'_build/native/debug/build/morphir/morphir','morphir.exe');

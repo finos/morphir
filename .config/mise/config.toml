@@ -35,7 +35,7 @@ postinstall = """
 {% if os() != "windows" %}
 bash -c 'set -euo pipefail; export PATH="$MISE_TOOL_INSTALL_PATH/bin:$PATH"; curl -fsSL https://cli.moonbitlang.com/install/unix.sh | MOON_HOME="$MISE_TOOL_INSTALL_PATH" bash -s -- "$MISE_TOOL_VERSION"'
 {% else %}
-echo MoonBit archive installed
+pwsh -NoProfile -File "{{config_root}}/tools/bootstrap-moonbit-windows.ps1"
 {% endif %}
 """
 
@@ -48,6 +48,23 @@ windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/
 [env]
 # Environment variables for the project
 _.path = ["./node_modules/.bin"]
+MOON_HOME = { value = "{{ tools['http:moonbit'].path }}", tools = true }
+MOON_CORE_OVERRIDE = "{{config_root}}/.dev/toolchains/moonbit-core-a951c067f909286603efada85c379197d589dc61/core"
+
+[tasks."setup:core"]
+description = "Verify and bundle the immutable corrected core in this workspace"
+run = ["moon update", "moon run scripts/moonbit-core.mbtx setup"]
+run_windows = [
+  'pwsh -NoProfile -File "{{config_root}}/tools/bootstrap-moonbit-windows.ps1" -ToolchainHome "{{ tools["http:moonbit"].path }}"',
+  "moon update",
+  "moon run scripts/moonbit-core.mbtx setup",
+]
+# The setup script must compile before the workspace core exists.
+env = { MOON_CORE_OVERRIDE = false }
+
+[tasks."check:core"]
+description = "Verify actual corrected-core sources and decimal parsing"
+run = ["moon run scripts/moonbit-core.mbtx check", "moon run scripts/moonbit-core.mbtx --self-test", "moon run tests/fixtures/core-pin/decimal.mbtx --target wasm-gc"]
 
 [tasks.check]
 description = "Run lint, CI policy tests, workspace tests and builds"
@@ -57,6 +74,7 @@ run = "moonx scripts/check.mbtx"
 description = "Test focused CI selection and fail-closed aggregate gates"
 run = [
   "actionlint",
+  "moon run scripts/moonbit-core.mbtx --self-test",
   "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx",
   "moonx scripts/ci-changes.mbtx --self-test",
   "moonx scripts/ci-gate.mbtx --self-test",
@@ -270,7 +288,8 @@ run = [
 
 [hooks]
 # Automatically setup git hooks when entering the directory
-enter = "mise run setup:hooks"
+enter = ["mise run setup:core", "mise run setup:hooks"]
+postinstall = "mise run setup:core"
 
 [settings]
 # Enable experimental features

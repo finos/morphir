@@ -543,8 +543,12 @@ Run the scalar CLI acceptance with:
 ```sh
 mise exec -- bun install --frozen-lockfile
 mise exec -- bun run build:runtimes
-MOON_HOME=/path/to/pinned/moon-home node apps/morphir/scripts/test-execution.ts
+mise run setup:core
+MOON_HOME=/path/to/pinned/moon-home mise exec -- node apps/morphir/scripts/test-execution.ts
 ```
+
+The ordinary stable provider requires `MOON_CORE_OVERRIDE` to select the verified
+workspace core. `mise exec` supplies it; an absent or empty selection rejects.
 
 For the LLVM lane, prepare an isolated compiler/core installation, bundle its
 LLVM core, and supply `--home` and `--toolchain-pin`. The explicit JSON pin

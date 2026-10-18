@@ -6,7 +6,8 @@
   "scripts": {
     "build": "bun --check scripts/build.ts",
     "dev": "bun --check scripts/serve.ts",
-    "test": "node --test browser/transport.test.ts browser/execution-descriptor.test.ts browser/http-policy.test.ts browser/native-session.test.ts browser/native-client-trace.test.ts browser/native-workspace.test.ts browser/artifact-download.test.ts scripts/server.test.ts scripts/execution-provider.test.ts scripts/capability-execution.test.ts scripts/http-policy-budget.test.ts browser/editor/marks.test.ts browser/project-io.test.ts",
+    "test": "node --test browser/transport.test.ts browser/worksheet.test.ts browser/execution-descriptor.test.ts browser/http-policy.test.ts browser/native-session.test.ts browser/native-client-trace.test.ts browser/native-workspace.test.ts browser/artifact-download.test.ts scripts/server.test.ts scripts/execution-provider.test.ts scripts/capability-execution.test.ts scripts/http-policy-budget.test.ts browser/editor/marks.test.ts browser/project-io.test.ts",
+    "test:worksheet": "bun --check scripts/worksheet-browser-test.ts",
     "test:browser": "node scripts/browser-test.ts"
   },
   "devDependencies": {

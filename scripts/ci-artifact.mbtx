@@ -86,9 +86,10 @@ async fn context(kind : String) -> Json {
         #|if(kind==='native-cli'){
         #| const {compilerIdentity,stableVersion,run}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/capabilities.mjs')));
         #| const {treeIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/identity.mjs')));
+        #| const {checkedCore}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/core.mjs')));
         #| assert.ok(run(join(home,'bin/moonc'),['-v']).startsWith('v'+stableVersion+' '));
-        #| assert.equal(readFileSync(join(home,'lib/core/moon.mod'),'utf8').match(/^\s*version\s*=\s*"([^"]+)"/m)?.[1],stableVersion);
-        #| Object.assign(value,{compilerVersion:stableVersion,compilerIdentity:compilerIdentity(home),coreSourceIdentity:treeIdentity(join(home,'lib/core'),{core:true,includeBuild:false})});
+        #| const core=checkedCore(home,stableVersion);
+        #| Object.assign(value,{compilerVersion:stableVersion,compilerIdentity:compilerIdentity(home),coreSourceIdentity:treeIdentity(core,{core:true,includeBuild:false})});
         #|}
         #|console.log(JSON.stringify(value));
       ),

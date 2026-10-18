@@ -143,7 +143,10 @@ MORPHIR_PROVIDER_RECEIPTS=.dev/installed-provider \
 mise exec rust@1.98.1 -- mise run test:installed-provider
 ```
 
-Set `MOON_HOME` to that complete MoonBit installation. The gate checks the clean
+Set `MOON_HOME` to that complete MoonBit compiler installation and run
+`mise run setup:core`. The mise task supplies `MOON_CORE_OVERRIDE` for the
+separately pinned corrected core; stable providers reject an absent or empty
+selection and verify actual source bytes. The gate checks the clean
 shared source revision, builds its locked service and fixture exporter, packs
 and installs the npm CLI without repository scripts, and copies a freshly built
 native CLI into the temporary installation. Each adversarial case receives

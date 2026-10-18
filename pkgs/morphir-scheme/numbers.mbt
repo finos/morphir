@@ -94,6 +94,10 @@ pub fn Number::to_text(self : Number) -> String {
     Integer(value) => value.to_string()
     Rational(n, d) => n.to_string() + "/" + d.to_string()
     Real(value) => {
+      // JavaScript's numeric printer drops the sign of zero.
+      if value.reinterpret_as_uint64() == 0x8000000000000000UL {
+        return "-0.0"
+      }
       let text = value.to_string()
       if text.contains(".") || text.contains("e") || text.contains("E") {
         text

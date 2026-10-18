@@ -1,0 +1,20 @@
+///|
+import {
+  "moonbitlang/core/bigint",
+}
+
+///|
+fn main raise {
+  for digits in [3149, 3150, 3151, 5983, 10000] {
+    let text = "9".repeat(digits)
+    let expected = @bigint.BigInt::from_int(10).pow(
+        @bigint.BigInt::from_int(digits),
+      ) -
+      @bigint.BigInt::from_int(1)
+    let actual = @bigint.BigInt::from_string(text)
+    assert_eq(actual, expected)
+    assert_eq(actual.to_string(), text)
+    assert_eq(@bigint.BigInt::from_string("-" + text), -expected)
+  }
+  println("Pinned core decimal parsing is exact")
+}

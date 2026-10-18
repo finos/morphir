@@ -152,10 +152,12 @@ export class CodeEditor extends HTMLElement {
     const reveal = this.dataset.reveal ?? '';
     // A reveal waits until the view holds the current document for the current key; it is recorded only once moved.
     if (reveal && reveal !== lastReveal && this.documentKey === key && this.view.state.doc.toString() === this.pendingValue) {
-      const [line = NaN, column = NaN] = reveal.split(':').map(Number);
+      const [line = NaN, column = NaN, , endLine, endColumn] = reveal.split(':').map(Number);
       if (Number.isFinite(line) && Number.isFinite(column)) {
         const anchor = position(this.view.state.doc, line, column);
-        this.view.dispatch({ selection: { anchor }, scrollIntoView: true });
+        const head = endLine !== undefined && endColumn !== undefined && Number.isFinite(endLine) && Number.isFinite(endColumn)
+          ? position(this.view.state.doc, endLine, endColumn) : anchor;
+        this.view.dispatch({ selection: { anchor, head }, scrollIntoView: true });
         this.view.focus();
         lastReveal = reveal;
       }

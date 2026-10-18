@@ -65,6 +65,7 @@ async fn main {
       run("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"])
       run("bun", ["run", "--cwd", "apps/morphir-workbench", "test"])
       run("bun", ["run", "--cwd", "apps/morphir-workbench", "test:browser"])
+      run("bun", ["run", "--cwd", "apps/morphir-workbench", "test:worksheet"])
     }
     "test-embedding" => {
       run("moon", ["update"])
@@ -88,10 +89,10 @@ async fn main {
       run("bun", ["run", "build:runtimes"])
       for
         script in [
-          "apps/morphir/build-provider/test-capability-pins.mts", "apps/morphir/build-provider/test-supervision.mts",
-          "pkgs/morphir-moonbit/scripts/test-compiler.mts", "apps/morphir/scripts/test-library-provider.ts",
-          "apps/morphir/scripts/test-execution.ts", "apps/morphir/scripts/test-execution-faults.ts",
-          "apps/morphir/scripts/test-rich-execution.ts",
+          "apps/morphir/build-provider/test-capability-pins.mts", "apps/morphir/build-provider/test-core-pin.mts",
+          "apps/morphir/build-provider/test-supervision.mts", "pkgs/morphir-moonbit/scripts/test-compiler.mts",
+          "apps/morphir/scripts/test-library-provider.ts", "apps/morphir/scripts/test-execution.ts",
+          "apps/morphir/scripts/test-execution-faults.ts", "apps/morphir/scripts/test-rich-execution.ts",
         ] {
         let args = [script]
         if script.has_suffix("test-compiler.mts") {
@@ -111,8 +112,8 @@ async fn main {
     "check" => {
       for
         path in [
-          ".", "apps/morphir-workbench", "apps/morphir-site", "pkgs/morphir-host/embedding", "tests/wasm-host",
-          "pkgs/morphir-elm/scripts",
+          ".", "apps/morphir-workbench", "apps/morphir-site", "pkgs/morphir-host/embedding",
+          "tests/wasm-host", "pkgs/morphir-elm/scripts",
         ] {
         install(path)
       }

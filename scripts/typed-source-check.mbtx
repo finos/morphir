@@ -7,6 +7,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/x@0.5.5/path",
   "moonrockz/ion@0.5.0/json" @ion_json,
   "moonrockz/ion@0.5.0/ion",
   "moonrockz/ion@0.5.0/binary",
@@ -70,8 +71,16 @@ async fn main {
   let compiler_hash = @crypto.bytes_to_hex_string(
     @crypto.sha256(@fs.read_file(home + "/bin/moonc" + suffix).binary()),
   )
-  let core_manifest = @fs.read_file(home + "/lib/core/moon.mod").text()
-  assert_true(core_manifest.contains("0.10.15+943464bfa"))
+  let core = command("moon", ["run", "scripts/moonbit-core.mbtx", "check"])
+    .trim()
+    .to_owned()
+  let core_manifest = @fs.read_file(
+    @path.Path(core).join(@path.Path("moon.mod")).to_string(),
+  ).text()
+  let core_pin = @json.parse(
+    @fs.read_file(repository + "/tools/moonbit-core-pin.json").text(),
+  )
+  assert_true(core_manifest.contains("version = \"0.1.0\""))
   let output = @json.parse(
     command("moon", [
       "run", "pkgs/morphir-moonbit-frontend/typed-acceptance", "--target", "native",
@@ -87,8 +96,14 @@ async fn main {
   let private_probes = []
   for model in array(field(output, "models")) {
     let id = string(field(model, "id"))
-    let model_id = id.strip_prefix("current").map(s => s.to_owned()).unwrap_or(id)
-    let kind = model_id.strip_prefix("supported").map(s => s.to_owned()).unwrap_or(model_id)
+    let model_id = id
+      .strip_prefix("current")
+      .map(s => s.to_owned())
+      .unwrap_or(id)
+    let kind = model_id
+      .strip_prefix("supported")
+      .map(s => s.to_owned())
+      .unwrap_or(model_id)
     let model_tests = StringBuilder()
     let original = workspace + "/original-" + id
     let generated = workspace + "/generated-" + id
@@ -233,8 +248,10 @@ async fn main {
         .replace(old="CALL_GE", new=g("ge")),
       )
       model_tests.write_string(
-        "test \"ordered String calls select exact Int32 boundaries\" {\n  let low = @int.to_int32(@integer.parse(\"-2147483648\")).unwrap()\n  let high = @int.to_int32(@integer.parse(\"2147483647\")).unwrap()\n  for (a, b, expected) in [(\"b\", \"aa\", -2147483648), (\"aa\", \"b\", 2147483647), (\"😀\", \"\\u{e000}a\", -2147483648), (\"\", \"\", 2147483647)] {\n    assert_eq(@oordered.choose(a, b, -2147483648, 2147483647), expected)\n    assert_eq(@integer.to_string(@int.from_int32(CALL_CHOOSE(@sdk.Text::from_string(a))(@sdk.Text::from_string(b))(low)(high))), expected.to_string())\n  }\n}\n"
-        .replace(old="CALL_CHOOSE", new=g("choose")),
+        "test \"ordered String calls select exact Int32 boundaries\" {\n  let low = @int.to_int32(@integer.parse(\"-2147483648\")).unwrap()\n  let high = @int.to_int32(@integer.parse(\"2147483647\")).unwrap()\n  for (a, b, expected) in [(\"b\", \"aa\", -2147483648), (\"aa\", \"b\", 2147483647), (\"😀\", \"\\u{e000}a\", -2147483648), (\"\", \"\", 2147483647)] {\n    assert_eq(@oordered.choose(a, b, -2147483648, 2147483647), expected)\n    assert_eq(@integer.to_string(@int.from_int32(CALL_CHOOSE(@sdk.Text::from_string(a))(@sdk.Text::from_string(b))(low)(high))), expected.to_string())\n  }\n}\n".replace(
+          old="CALL_CHOOSE",
+          new=g("choose"),
+        ),
       )
       model_tests.write_string(
         "test \"ordered entries reject malformed UTF-16 in either position without repair\" {\n  for units in [[55296], [56320], [56320, 55296], [55296, 97]] {\n    let invalid = @sdk.Text::from_units(units.map(u => u.to_uint16()))\n    let empty = @sdk.Text::from_string(\"\")\n    try { ignore(invalid.to_string()); fail(\"Expected host conversion refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n    for (a, b) in [(invalid, empty), (empty, invalid)] {\n      try { ignore(CALL_LT(a)(b)); fail(\"Expected source UTF-16 refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n      try { ignore(CALL_LE(a)(b)); fail(\"Expected source UTF-16 refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n      try { ignore(CALL_GT(a)(b)); fail(\"Expected source UTF-16 refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n      try { ignore(CALL_GE(a)(b)); fail(\"Expected source UTF-16 refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n    }\n  }\n}\n"
@@ -252,8 +269,21 @@ async fn main {
         .replace(old="CALL_SHORT", new=g("short")),
       )
     }
-    let original_alias = if ["foundation", "strings", "bounded", "ordered", "orderedbounded"].contains(kind) { kind } else { model_id }
-    tests.write_string(model_tests.to_string().split("@o" + original_alias).join("@o" + id).split("test \"").join("test \"" + id + ": "))
+    let original_alias = if [
+        "foundation", "strings", "bounded", "ordered", "orderedbounded",
+      ].contains(kind) {
+      kind
+    } else {
+      model_id
+    }
+    tests.write_string(
+      model_tests
+      .to_string()
+      .split("@o" + original_alias)
+      .join("@o" + id)
+      .split("test \"")
+      .join("test \"" + id + ": "),
+    )
   }
   let consumer = workspace + "/consumer"
   @fs.mkdir(consumer, allow_exist=true)
@@ -327,6 +357,7 @@ async fn main {
       "compiler": compiler,
       "compilerSha256": compiler_hash,
       "coreManifest": core_manifest,
+      "corePin": core_pin,
       "parser": "0.4.5",
       "lexer": "0.4.3",
       "classicSemanticPin": "bc99af69a8b24d391311fae3822a87eafef3c334",
@@ -334,7 +365,9 @@ async fn main {
       "lanes": lanes,
       "sdkFiles": identities,
       "models": output,
-      "supportedProfiles": ["moonbit-model-library-v1", "moonbit-model-library-2026-10-17"],
+      "supportedProfiles": [
+        "moonbit-model-library-v1", "moonbit-model-library-2026-10-17",
+      ],
       "scope": "Local original source, Scheme, generated direct consumers and private access. Installed qualification remains a separate task.",
     } : Json)
   let ion = @ion_json.to_ion(receipt)

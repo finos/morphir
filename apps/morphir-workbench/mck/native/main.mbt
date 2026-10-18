@@ -11,7 +11,7 @@ async fn main {
         pending.clear()
       } else {
         pending.push(byte)
-        if pending.length() > 3146752 {
+        if pending.length() > 8389632 {
           abort("workbench: NDJSON line exceeds the MCK framing budget")
         }
       }

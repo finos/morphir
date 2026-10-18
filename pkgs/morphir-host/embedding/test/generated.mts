@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import {readFile, mkdir, writeFile, readdir} from 'node:fs/promises';
-import {join, resolve, basename, dirname} from 'node:path';
+import {readFile, mkdir, writeFile, readdir, realpath} from 'node:fs/promises';
+import {join, resolve, basename, dirname, relative, isAbsolute, sep} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import type {PackageAsset, PackageDescription, PackageImport, PackagePin} from '../assembly.mjs';
 import {assemblyIdentity, pinPackage, executeAssembly, sha256} from '../assembly.mjs';
@@ -13,15 +13,19 @@ import {compilerVersion} from '../index.mjs';
 // executes none of those compiler commands; it supplies their exact inputs to the
 // embedded compiler, then consumes saved artifacts in a separate process.
 const directory=resolve(process.argv[2] ?? '.dev/assembly-qualification');
-const coreHome=process.argv[3];
-assert.ok(coreHome,'Supply the pinned core asset directory');
+assert.ok(process.argv[3],'Supply the checked active core asset directory');
+const coreRoot=await realpath(process.argv[3]);
+const corePin=JSON.parse(await readFile(new URL('../../../../tools/moonbit-core-pin.json',import.meta.url),'utf8'));
+assert.equal(corePin.profile,'morphir/moonbit/core-pin');
+assert.equal(corePin.contractVersion,'0.1.0-draft.1');
+assert.equal(corePin.compilerVersion,compilerVersion);
 interface Generated {package:string;modules:number;modelIon:number[];symbols:{fqname:string;name:string}[];artifacts:{path:string;content:string|number[]}[];}
 interface CoreGraph {nodes:{module:string;version:string;rel:string}[];edges:{from:number;to:number;alias:string;kinds:string[]}[];}
 const generated:Generated=JSON.parse(await readFile(join(directory,'generated.json'),'utf8'));
 const graph:CoreGraph=JSON.parse(await readFile(join(directory,'core-graph.json'),'utf8'));
 assert.equal(generated.modules,3);
-assert.ok(graph.nodes.every(p => p.module === 'moonbitlang/core' && p.version === compilerVersion));
-const bundle=join(coreHome,'lib/core/_build/wasm/release/bundle');
+assert.ok(graph.nodes.every(p => p.module === 'moonbitlang/core' && p.version === corePin.sourceManifestVersion));
+const bundle=join(coreRoot,'_build/wasm/release/bundle');
 const placeholder=(name:string):PackagePin=>({name,sha256:'0'.repeat(64)});
 const coreNames=graph.nodes.map(n=>`${n.module}/${n.rel}`);
 const coreIndex=new Map(coreNames.map((name,index)=>[name,index]));
@@ -49,10 +53,12 @@ function imported(value:string):PackageImport {
   const separator=value.lastIndexOf(':');
   assert.ok(separator>0,`Expected aliased interface: ${value}`);
   const path=value.slice(0,separator), name=value.slice(separator+1);
-  const corePath=/^\$(?:MOON_HOME|MOON_TOOLCHAIN_ROOT)\/lib\/core\/_build\/wasm\/release\/bundle\/(.+)$/.exec(path);
-  if (corePath) {
-    const relative=corePath[1]!;
-    return {name,pin:placeholder('moonbitlang/core/'+dirname(relative).replaceAll('\\','/'))};
+  const corePath=relative(bundle,resolve(path));
+  if (corePath && corePath !== '..' && !corePath.startsWith('..'+sep) && !isAbsolute(corePath)) {
+    assert.ok(corePath.endsWith('.mi'),`Unexpected core interface: ${path}`);
+    const packageName='moonbitlang/core/'+dirname(corePath).split(sep).join('/');
+    assert.ok(coreIndex.has(packageName),`Unknown core package: ${packageName}`);
+    return {name,pin:placeholder(packageName)};
   }
   const pkg=sdkOutputs.get(path);assert.ok(pkg,`Unexpected non-core dependency: ${path}`);
   return {name,pin:placeholder(pkg)};

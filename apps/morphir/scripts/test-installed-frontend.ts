@@ -85,6 +85,7 @@ export function testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llv
     const capability=capabilities({compilerHome,toolchainPin,timeout:10000});
     assert.ok(capability.targets.some(t=>t.target===target),'Required original compiler lane unavailable: '+target);
     const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:compilerHome,MOONBIT_NEW_NATIVE:'0',PATH:join(compilerHome,'bin')+delimiter+process.env.PATH};delete env.MOON_WORK;
+    if(target==='llvm')delete env.MOON_CORE_OVERRIDE;
     const oracle=run(join(compilerHome,'bin/moon'),['test','--frozen','--target',target,...(mode==='release'?['--release']:[])],{cwd:original,env});
     assert.match(oracle.stdout,/Total tests: 4, passed: 4, failed: 0/);
     writeFileSync(join(output,id+'-original.log'),oracle.stdout+'\n'+oracle.stderr);

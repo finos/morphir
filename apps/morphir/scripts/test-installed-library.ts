@@ -25,6 +25,7 @@ export function testInstalledLibrary({run,root,receipts,cli,helper,cwd,home,llvm
     const capability=capabilities({compilerHome,toolchainPin,timeout:10000});
     assert.ok(capability.targets.some(t=>t.target===target),'Required library lane unavailable: '+target);
     const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:compilerHome,MOONBIT_NEW_NATIVE:'0',PATH:join(compilerHome,'bin')+delimiter+process.env.PATH};delete env.MOON_WORK;
+    if(target==='llvm')delete env.MOON_CORE_OVERRIDE;
     return [target,{compilerHome,capability,env}];
   }));
   const models=[],visibility: Visibility[]=[];
@@ -253,6 +254,7 @@ export function testInstalledNaming({run,root,receipts,cli,helper,cwd,home,llvmH
     const capability=capabilities({compilerHome,toolchainPin:pin,timeout:10000});
     assert.ok(capability.targets.some(t=>t.target===target),'Required naming lane unavailable: '+target);
     const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:compilerHome,MOONBIT_NEW_NATIVE:'0',PATH:join(compilerHome,'bin')+delimiter+process.env.PATH};delete env.MOON_WORK;
+    if(target==='llvm')delete env.MOON_CORE_OVERRIDE;
     return [target,{compilerHome,capability,env}];
   }));
   const rowsFor=(model: {entries: import('../../../tests/cli-contracts.ts').FixtureEntry[]},prefix: string)=>model.entries.flatMap(e=>e.arguments.map((args,i)=>({id:e.original+'-'+i,original:e.original,entry:prefix+e.semantic,arguments:args,expected:e.expected[i]!})));

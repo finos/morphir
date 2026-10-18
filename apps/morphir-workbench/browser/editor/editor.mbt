@@ -10,7 +10,7 @@ pub(all) struct Props {
   read_only : Bool
   /// JSON `[{line, column, endLine, endColumn, message}]` with one-based display columns.
   marks : String
-  /// `<line>:<column>:<nonce>` to move the cursor there; empty for none.
+  /// `<line>:<column>:<nonce>[:<endLine>:<endColumn>]` to reveal a caret or selection.
   reveal : String
 }
 

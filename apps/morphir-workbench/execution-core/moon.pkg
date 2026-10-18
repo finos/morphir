@@ -4,4 +4,5 @@ pkgtype(kind: "executable")
 
 import {
   "finos/morphir-workbench/executions",
+  "finos/morphir-workbench/worksheet",
 }
