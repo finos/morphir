@@ -1,0 +1,3488 @@
+{
+  "corpusVersion": "0.1.0-draft.1",
+  "profile": "morphir-traits/0.1.0-draft.1",
+  "status": "reference-only",
+  "environment": {
+    "artifacts": [
+      {
+        "id": "urn:example:trait-payloads",
+        "revision": "types-1",
+        "path": "fixtures/payload-types.ir.json"
+      }
+    ],
+    "dataProfile": "morphir-metadata-json/0.1.0-draft.1",
+    "availableSemanticProfiles": [],
+    "graphRequiredSemantics": []
+  },
+  "cases": [
+    {
+      "id": "traits-0001",
+      "description": "A known descriptive label has a typed payload and exact target.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications"
+      },
+      "expected": {
+        "outcome": "valid",
+        "payload": "valid",
+        "interpretation": "descriptive",
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0002",
+      "description": "Known semantic data remains retained when its required interpreter is absent.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "availableSemanticProfiles": [],
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "traits.unsupported_semantics",
+            "path": "/traits/applications/0/interpretation"
+          }
+        ],
+        "preserved": true,
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0003",
+      "description": "A supplied interpreter can admit a typed semantic application without executing a program.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "availableSemanticProfiles": [
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ],
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "valid",
+        "payload": "valid",
+        "interpretation": "supported",
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0004",
+      "description": "An unknown descriptive application is preserved without a validation claim.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "inspect",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:future",
+              "revision": "a1",
+              "definition": {
+                "state": "unresolved",
+                "locator": "urn:example:future-trait",
+                "expectedKind": "traitDefinition",
+                "reason": "The declaration was not supplied."
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "label": "Retain me."
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid-with-gaps",
+        "preservedApplications": [
+          "urn:example:application:future"
+        ],
+        "gaps": [
+          "traits.unresolved_definition"
+        ],
+        "semanticValidationClaimed": false
+      }
+    },
+    {
+      "id": "traits-0005",
+      "description": "An unknown semantic application cannot be ignored when a check is requested.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:future",
+              "revision": "a1",
+              "definition": {
+                "state": "unresolved",
+                "locator": "urn:example:future-trait",
+                "expectedKind": "traitDefinition",
+                "reason": "The declaration was not supplied."
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:future/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "label": "Retain me."
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "availableSemanticProfiles": [],
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:future/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "traits.unresolved_definition",
+            "path": "/traits/applications/0/definition"
+          }
+        ],
+        "preserved": true,
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0006",
+      "description": "Encoding is misplaced on a function.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "function",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:function:accept",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.target_kind",
+            "path": "/traits/applications/0/target"
+          }
+        ],
+        "executionEvidenceAdded": false,
+        "expectedKinds": [
+          "type"
+        ],
+        "actualKind": "function"
+      }
+    },
+    {
+      "id": "traits-0007",
+      "description": "Claiming that a function is a type does not satisfy a type target.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:function:accept",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.target_identity_kind",
+            "path": "/traits/applications/0/target"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0008",
+      "description": "A wrong payload field type fails before missing-interpreter admission.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": "one"
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "availableSemanticProfiles": [],
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.payload_type",
+            "path": "/traits/applications/0/payload/arity"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0009",
+      "description": "A missing required record field is invalid.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity"
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.payload_type",
+            "path": "/traits/applications/0/payload"
+          }
+        ],
+        "executionEvidenceAdded": false,
+        "missingField": "arity"
+      }
+    },
+    {
+      "id": "traits-0010",
+      "description": "A closed payload record rejects an extra field.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1,
+                "extra": true
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.payload_type",
+            "path": "/traits/applications/0/payload/extra"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0011",
+      "description": "The definition reference selects an exact revision, never the latest.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d2"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.reference_revision",
+            "path": "/traits/applications/0/definition"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0012",
+      "description": "The subject reference selects an exact model revision.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-2",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.reference_revision",
+            "path": "/traits/applications/0/target/ref"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0013",
+      "description": "A declared resolved subject that is absent is invalid.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:missing",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.reference_missing",
+            "path": "/traits/applications/0/target/ref"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0014",
+      "description": "An intentionally unresolved subject stays visible during inspection.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "inspect",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "unresolved",
+                  "locator": "https://example.invalid/types/Quantity",
+                  "expectedKind": "declaration",
+                  "reason": "No dependency supplied."
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid-with-gaps",
+        "gaps": [
+          "traits.unresolved_target"
+        ],
+        "preserved": true,
+        "acquisitions": [],
+        "semanticValidationClaimed": false
+      }
+    },
+    {
+      "id": "traits-0015",
+      "description": "A known semantic definition cannot be downgraded by the application.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.interpretation_mismatch",
+            "path": "/traits/applications/0/interpretation"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0016",
+      "description": "Distinct single-valued proposals remain inspectable with both sources.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "inspect",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            },
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding-other",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Count",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "imported",
+                "agent": "other-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "valid-with-gaps",
+        "gaps": [
+          "traits.application_conflict"
+        ],
+        "retainedApplications": [
+          "urn:example:application:encoding",
+          "urn:example:application:encoding-other"
+        ],
+        "provenanceAgents": [
+          "fixture-author",
+          "other-author"
+        ],
+        "selectedApplication": null
+      }
+    },
+    {
+      "id": "traits-0017",
+      "description": "A consumer requiring one encoding refuses conflicting values.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "selectOne",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            },
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding-other",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Count",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "imported",
+                "agent": "other-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:encoding-rules/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "refused",
+        "diagnostics": [
+          {
+            "code": "traits.application_conflict",
+            "path": "/traits/applications/1",
+            "relatedPath": "/traits/applications/0"
+          }
+        ],
+        "retainedApplications": [
+          "urn:example:application:encoding",
+          "urn:example:application:encoding-other"
+        ],
+        "artifactProduced": false
+      }
+    },
+    {
+      "id": "traits-0018",
+      "description": "Two authored assertions of equal data retain distinct provenance.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            },
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label-other",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "imported",
+                "agent": "other-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid",
+        "payload": "valid",
+        "interpretation": "descriptive",
+        "executionEvidenceAdded": false,
+        "retainedApplications": [
+          "urn:example:application:label",
+          "urn:example:application:label-other"
+        ],
+        "distinctPayloads": 1,
+        "provenanceAgents": [
+          "fixture-author",
+          "other-author"
+        ]
+      }
+    },
+    {
+      "id": "traits-0019",
+      "description": "Application IDs cannot be duplicated even when payloads agree.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            },
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.duplicate_id",
+            "path": "/traits/applications/1/id",
+            "relatedPath": "/traits/applications/0/id"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0020",
+      "description": "An absent source fragment is invalid provenance.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:missing"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.source_missing",
+            "path": "/traits/applications/0/sourceRefs/0"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0021",
+      "description": "A changed payload artifact revision cannot use the supplied old schema.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "definitions": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:trait:label",
+              "revision": "d1",
+              "name": "label",
+              "targets": [
+                "model",
+                "module",
+                "concept",
+                "type",
+                "member",
+                "function",
+                "operation",
+                "serviceBinding"
+              ],
+              "payloadSchema": {
+                "artifact": {
+                  "id": "urn:example:trait-payloads",
+                  "revision": "types-2"
+                },
+                "fqName": "example/traits:payload#label",
+                "typeArguments": [],
+                "dataProfile": "morphir-metadata-json/0.1.0-draft.1"
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "multiplicity": "many",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ]
+            }
+          ],
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.reference_revision",
+            "path": "/traits/definitions/0/payloadSchema/artifact"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0022",
+      "description": "Definition and application record drafts match exactly.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.2",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "traits.unsupported_record_version",
+            "path": "/traits/applications/0/recordVersion"
+          }
+        ],
+        "preserved": true,
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0023",
+      "description": "Unknown critical members prevent required interpretation.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              },
+              "critical": [
+                "futureRule"
+              ],
+              "futureRule": {
+                "name": "unimplemented"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "traits.unsupported_critical",
+            "path": "/traits/applications/0/critical/0"
+          }
+        ],
+        "preserved": true,
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0024",
+      "description": "Rich round-trips preserve unknown Ion payloads without interpreting them.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "roundTrip",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:future",
+              "revision": "a1",
+              "definition": {
+                "state": "unresolved",
+                "locator": "urn:example:future-trait",
+                "expectedKind": "traitDefinition",
+                "reason": "The declaration was not supplied."
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "label": "Retain me."
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "codecs": [
+          "ion-text",
+          "ion-binary"
+        ],
+        "ionInsertions": [
+          {
+            "path": "/traits/applications/0/payload",
+            "asset": "fixtures/unknown-descriptive.ion"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "preserved",
+        "ion": {
+          "annotations": [
+            "future_trait"
+          ],
+          "preciseCount": "9007199254740993",
+          "decimalLexeme": "123.4500",
+          "symbolText": "pending",
+          "nullType": "string"
+        },
+        "semanticValidationClaimed": false
+      }
+    },
+    {
+      "id": "traits-0025",
+      "description": "Bare IR export exposes loss of the typed extension.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "exportBareIr"
+      },
+      "expected": {
+        "outcome": "refused",
+        "diagnostics": [
+          {
+            "code": "data.lossy_conversion",
+            "path": ""
+          }
+        ],
+        "artifactProduced": false
+      }
+    },
+    {
+      "id": "traits-0026",
+      "description": "A dictionary elaboration question does not imply compiler recovery.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:elaboration",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:elaboration",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "concept",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:concept:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "aspect": "representation",
+                "question": "Which units are allowed?",
+                "rationale": "The concept is agreed; its representation is open."
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid",
+        "payload": "valid",
+        "interpretation": "descriptive",
+        "executionEvidenceAdded": false,
+        "domainElaboration": "retained",
+        "compilerRecoveryAdded": false
+      }
+    },
+    {
+      "id": "traits-0027",
+      "description": "A concept link resolves in the explicit model and grants no assignability.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:concept-link",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:related-concept",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "state": "resolved",
+                "model-id": "urn:example:trait-model",
+                "model-revision": "model-1",
+                "entity-id": "urn:example:concept:quantity",
+                "entity-revision": "e1"
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid",
+        "payload": "valid",
+        "interpretation": "descriptive",
+        "executionEvidenceAdded": false,
+        "resolvedReferences": [
+          "urn:example:concept:quantity"
+        ],
+        "assignabilityEstablished": false
+      }
+    },
+    {
+      "id": "traits-0028",
+      "description": "A payload reference at the wrong revision fails independently of its string fields.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:concept-link",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:related-concept",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "state": "resolved",
+                "model-id": "urn:example:trait-model",
+                "model-revision": "model-1",
+                "entity-id": "urn:example:concept:quantity",
+                "entity-revision": "e2"
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.reference_revision",
+            "path": "/traits/applications/0/payload/entity-revision"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0029",
+      "description": "Smithy-inspired conditions retain documented foreign semantics without claiming JMESPath support.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:condition",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:foreign-condition",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:foreign-condition/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "name": "positive",
+                "documentation": "The quantity must be positive.",
+                "expression": "@ > `0`",
+                "expression-profile": "urn:example:jmespath-unqualified/0.1.0-draft.1",
+                "data-view-profile": "urn:example:smithy-data-view-unqualified/0.1.0-draft.1",
+                "expected-result": true,
+                "source-trait-id": "urn:example:source:conditions"
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "imported",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "availableSemanticProfiles": [],
+        "graphRequiredSemantics": [
+          "morphir-traits/0.1.0-draft.1",
+          "urn:example:foreign-condition/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "traits.unsupported_semantics",
+            "path": "/traits/applications/0/interpretation"
+          }
+        ],
+        "preserved": true,
+        "executionEvidenceAdded": false,
+        "generatedSignatureChanged": false,
+        "serializationCheckAdded": false
+      }
+    },
+    {
+      "id": "traits-0030",
+      "description": "A prompt retains raw placeholders and descriptive selection guidance while its service target is unresolved.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "inspect",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:prompt",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:prompt",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "serviceBinding",
+                "profile": "urn:example:service-bindings/0.1.0-draft.1",
+                "ref": {
+                  "state": "unresolved",
+                  "locator": "urn:example:service",
+                  "expectedKind": "serviceBinding",
+                  "reason": "Service binding profile is not implemented."
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "name": "explain",
+                "description": "Explain a quantity.",
+                "template": "Explain {{quantity}}.",
+                "template-profile": "urn:example:smithy-placeholder-unqualified/0.1.0-draft.1",
+                "arguments-ref": null,
+                "prefer-when": "When the user asks for help."
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid-with-gaps",
+        "gaps": [
+          "traits.unresolved_target",
+          "traits.unsupported_target_profile"
+        ],
+        "rawTemplate": "Explain {{quantity}}.",
+        "preferWhen": "When the user asks for help.",
+        "expanded": false,
+        "semanticValidationClaimed": false
+      }
+    },
+    {
+      "id": "traits-0031",
+      "description": "A required service application refuses unsupported target semantics.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:prompt",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:prompt",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "serviceBinding",
+                "profile": "urn:example:service-bindings/0.1.0-draft.1",
+                "ref": {
+                  "state": "unresolved",
+                  "locator": "urn:example:service",
+                  "expectedKind": "serviceBinding",
+                  "reason": "Service binding profile is not implemented."
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "name": "explain",
+                "description": "Explain a quantity.",
+                "template": "Explain {{quantity}}.",
+                "template-profile": "urn:example:smithy-placeholder-unqualified/0.1.0-draft.1",
+                "arguments-ref": null,
+                "prefer-when": null
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "traits.unsupported_target_profile",
+            "path": "/traits/applications/0/target/profile"
+          }
+        ],
+        "preserved": true,
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0032",
+      "description": "A model target selects the model snapshot without inventing an entity.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "model",
+                "model": {
+                  "id": "urn:example:trait-model",
+                  "revision": "model-1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid",
+        "payload": "valid",
+        "interpretation": "descriptive",
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0033",
+      "description": "A module target selects the supplied IR artifact and module node.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "module",
+                "artifact": {
+                  "id": "urn:example:trait-payloads",
+                  "revision": "types-1"
+                },
+                "node": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload"
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid",
+        "payload": "valid",
+        "interpretation": "descriptive",
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0034",
+      "description": "A member target keeps its identified declaration and parent.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "member",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:member:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid",
+        "payload": "valid",
+        "interpretation": "descriptive",
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0035",
+      "description": "A requested neighboring trait profile draft is unsupported.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "requestedProfile": "morphir-traits/0.1.0-draft.2"
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "traits.unsupported_profile",
+            "path": "/requestedProfile"
+          }
+        ],
+        "preserved": true,
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0036",
+      "description": "M1-only readers preserve the extension but refuse required M2 semantics.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "inspect",
+        "requiredSemantics": [
+          "morphir-traits/0.1.0-draft.1"
+        ],
+        "availableSemanticProfiles": [
+          "morphir-conceptual/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "conceptual.unsupported_semantics",
+            "path": "/requiredSemantics/0"
+          }
+        ],
+        "preserved": true,
+        "semanticValidationClaimed": false
+      }
+    },
+    {
+      "id": "traits-0037",
+      "description": "Required semantic use must be recorded in graph admission requirements.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:encoding",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:encoding",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "semantic",
+                "profiles": [
+                  "urn:example:encoding-rules/0.1.0-draft.1"
+                ]
+              },
+              "payload": {
+                "tag": "Quantity",
+                "arity": 1
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "graphRequiredSemantics": []
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.missing_required_semantics",
+            "path": "/graphRequiredSemantics"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0038",
+      "description": "A reference projection keeps the external assertion owner distinct from its mapped IR subject.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "projectLinkedMetadata",
+        "linkedProjection": {
+          "provider": {
+            "artifact": {
+              "id": "urn:example:linked-provider",
+              "revision": "provider-1"
+            },
+            "fragment": "fixtures/linked-provider.fragment.json",
+            "admission": "fixture-assumed"
+          },
+          "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+          "subjectMappings": [
+            {
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "artifact": {
+                "id": "urn:example:trait-payloads",
+                "revision": "types-1"
+              },
+              "node": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label"
+            }
+          ],
+          "owner": {
+            "artifact": {
+              "id": "urn:example:review",
+              "revision": "review-1"
+            },
+            "carrier": "documentGraph"
+          },
+          "definition": {
+            "state": "resolved",
+            "modelId": "urn:example:trait-model",
+            "modelRevision": "model-1",
+            "entityId": "urn:example:trait:label",
+            "entityRevision": "d1"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "preserved",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label",
+            "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+            "object": {
+              "@value": "Quantity",
+              "@type": "@json"
+            }
+          }
+        ],
+        "assertionOwner": {
+          "artifact": {
+            "id": "urn:example:review",
+            "revision": "review-1"
+          },
+          "carrier": "documentGraph"
+        },
+        "sourceAgents": [
+          "fixture-author"
+        ],
+        "providerAuthenticationClaimed": false,
+        "semanticValidationClaimed": false
+      }
+    },
+    {
+      "id": "traits-0039",
+      "description": "A conceptual identity without an explicit IR node mapping cannot be fabricated into an IR URI.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "projectLinkedMetadata",
+        "linkedProjection": {
+          "provider": {
+            "artifact": {
+              "id": "urn:example:linked-provider",
+              "revision": "provider-1"
+            },
+            "fragment": "fixtures/linked-provider.fragment.json",
+            "admission": "fixture-assumed"
+          },
+          "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+          "subjectMappings": [],
+          "owner": {
+            "artifact": {
+              "id": "urn:example:review",
+              "revision": "review-1"
+            },
+            "carrier": "documentGraph"
+          },
+          "definition": {
+            "state": "resolved",
+            "modelId": "urn:example:trait-model",
+            "modelRevision": "model-1",
+            "entityId": "urn:example:trait:label",
+            "entityRevision": "d1"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "refused",
+        "diagnostics": [
+          {
+            "code": "traits.unmapped_subject",
+            "path": "/linkedProjection/subjectMappings"
+          }
+        ],
+        "artifactProduced": false
+      }
+    },
+    {
+      "id": "traits-0040",
+      "description": "Publication cannot trust a provider merely because a fixture names its revision.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "publishLinkedMetadata",
+        "linkedProjection": {
+          "provider": {
+            "artifact": {
+              "id": "urn:example:linked-provider",
+              "revision": "provider-1"
+            },
+            "fragment": "fixtures/linked-provider.fragment.json",
+            "admission": "unverified"
+          },
+          "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+          "subjectMappings": [
+            {
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "artifact": {
+                "id": "urn:example:trait-payloads",
+                "revision": "types-1"
+              },
+              "node": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label"
+            }
+          ],
+          "owner": {
+            "artifact": {
+              "id": "urn:example:review",
+              "revision": "review-1"
+            },
+            "carrier": "documentGraph"
+          },
+          "definition": {
+            "state": "resolved",
+            "modelId": "urn:example:trait-model",
+            "modelRevision": "model-1",
+            "entityId": "urn:example:trait:label",
+            "entityRevision": "d1"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "refused",
+        "diagnostics": [
+          {
+            "code": "traits.provider_unverified",
+            "path": "/linkedProjection/provider"
+          }
+        ],
+        "artifactProduced": false,
+        "acquisitions": []
+      }
+    },
+    {
+      "id": "traits-0041",
+      "description": "A URI-looking typed payload stays data rather than acquiring a referenced resource.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "projectLinkedMetadata",
+        "linkedProjection": {
+          "provider": {
+            "artifact": {
+              "id": "urn:example:linked-provider",
+              "revision": "provider-1"
+            },
+            "fragment": "fixtures/linked-provider.fragment.json",
+            "admission": "fixture-assumed"
+          },
+          "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+          "subjectMappings": [
+            {
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "artifact": {
+                "id": "urn:example:trait-payloads",
+                "revision": "types-1"
+              },
+              "node": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label"
+            }
+          ],
+          "owner": {
+            "artifact": {
+              "id": "urn:example:review",
+              "revision": "review-1"
+            },
+            "carrier": "documentGraph"
+          },
+          "definition": {
+            "state": "resolved",
+            "modelId": "urn:example:trait-model",
+            "modelRevision": "model-1",
+            "entityId": "urn:example:trait:label",
+            "entityRevision": "d1"
+          }
+        },
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "preserved",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label",
+            "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+            "object": {
+              "@value": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label",
+              "@type": "@json"
+            }
+          }
+        ],
+        "acquisitions": [],
+        "semanticValidationClaimed": false
+      }
+    },
+    {
+      "id": "traits-0042",
+      "description": "External attachments retain conflicting data and all contributors.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "projectLinkedMetadata",
+        "linkedProjection": {
+          "provider": {
+            "artifact": {
+              "id": "urn:example:linked-provider",
+              "revision": "provider-1"
+            },
+            "fragment": "fixtures/linked-provider.fragment.json",
+            "admission": "fixture-assumed"
+          },
+          "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+          "subjectMappings": [
+            {
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "artifact": {
+                "id": "urn:example:trait-payloads",
+                "revision": "types-1"
+              },
+              "node": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label"
+            }
+          ],
+          "owner": {
+            "artifact": {
+              "id": "urn:example:review",
+              "revision": "review-1"
+            },
+            "carrier": "documentGraph"
+          },
+          "definition": {
+            "state": "resolved",
+            "modelId": "urn:example:trait-model",
+            "modelRevision": "model-1",
+            "entityId": "urn:example:trait:label",
+            "entityRevision": "d1"
+          }
+        },
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            },
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:other-label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Count",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "imported",
+                "agent": "other-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "preserved",
+        "facts": [
+          {
+            "subject": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label",
+            "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+            "object": {
+              "@value": "Quantity",
+              "@type": "@json"
+            }
+          },
+          {
+            "subject": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label",
+            "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+            "object": {
+              "@value": "Count",
+              "@type": "@json"
+            }
+          }
+        ],
+        "sourceAgents": [
+          "fixture-author",
+          "other-author"
+        ],
+        "selectedValue": null,
+        "semanticValidationClaimed": false
+      }
+    },
+    {
+      "id": "traits-0043",
+      "description": "Changed application provenance remains inspectable with its retained source snapshot.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "inspect",
+        "linkedProjection": {
+          "provider": {
+            "artifact": {
+              "id": "urn:example:linked-provider",
+              "revision": "provider-1"
+            },
+            "fragment": "fixtures/linked-provider.fragment.json",
+            "admission": "fixture-assumed"
+          },
+          "predicate": "morphir://ir/pkg/example/traits?format=4.1.0#/module/payload/value/label",
+          "subjectMappings": [
+            {
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "artifact": {
+                "id": "urn:example:trait-payloads",
+                "revision": "types-1"
+              },
+              "node": "morphir://ir/pkg/example/traits?format=4.0.0#/module/payload/type/label"
+            }
+          ],
+          "owner": {
+            "artifact": {
+              "id": "urn:example:review",
+              "revision": "review-1"
+            },
+            "carrier": "documentGraph"
+          },
+          "definition": {
+            "state": "resolved",
+            "modelId": "urn:example:trait-model",
+            "modelRevision": "model-1",
+            "entityId": "urn:example:trait:label",
+            "entityRevision": "d1"
+          }
+        },
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "imported",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ],
+                "foreignId": "urn:example:foreign:label"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid",
+        "sourceDocument": {
+          "id": "urn:example:source-document",
+          "revision": "source-1"
+        },
+        "sourceText": "Quantity keeps its meaning before encoding is chosen.\n\n  Keep this wording.\n",
+        "foreignId": "urn:example:foreign:label",
+        "trust": "unassessed",
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0044",
+      "description": "A dictionary payload reference resolves through one declared and explicitly supplied snapshot.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "dependencies": [
+          {
+            "model": {
+              "id": "urn:example:dictionary",
+              "revision": "dict-1"
+            },
+            "inputId": "urn:example:dictionary-input"
+          }
+        ],
+        "modelInputs": [
+          {
+            "model": {
+              "id": "urn:example:dictionary",
+              "revision": "dict-1"
+            },
+            "inputId": "urn:example:dictionary-input",
+            "path": "fixtures/dictionary.json"
+          }
+        ],
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:external-concept",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:related-concept",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "state": "resolved",
+                "model-id": "urn:example:dictionary",
+                "model-revision": "dict-1",
+                "entity-id": "urn:example:dictionary:quantity",
+                "entity-revision": "concept-1"
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "valid",
+        "resolvedReferences": [
+          "urn:example:dictionary:quantity"
+        ],
+        "resolvedModels": [
+          {
+            "id": "urn:example:dictionary",
+            "revision": "dict-1"
+          }
+        ],
+        "assignabilityEstablished": false,
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0045",
+      "description": "An absent declared dictionary input is invalid and never fetched.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "dependencies": [
+          {
+            "model": {
+              "id": "urn:example:dictionary",
+              "revision": "dict-1"
+            },
+            "inputId": "urn:example:dictionary-input"
+          }
+        ],
+        "modelInputs": [],
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:external-concept",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:related-concept",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": {
+                "state": "resolved",
+                "model-id": "urn:example:dictionary",
+                "model-revision": "dict-1",
+                "entity-id": "urn:example:dictionary:quantity",
+                "entity-revision": "concept-1"
+              },
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.reference_missing",
+            "path": "/dependencies/0"
+          }
+        ],
+        "acquisitions": [],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0046",
+      "description": "A schema cannot supply type arguments to a zero-parameter alias.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "validateApplications",
+        "traits": {
+          "definitions": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:trait:label",
+              "revision": "d1",
+              "name": "label",
+              "targets": [
+                "model",
+                "module",
+                "concept",
+                "type",
+                "member",
+                "function",
+                "operation",
+                "serviceBinding"
+              ],
+              "payloadSchema": {
+                "artifact": {
+                  "id": "urn:example:trait-payloads",
+                  "revision": "types-1"
+                },
+                "fqName": "example/traits:payload#label",
+                "typeArguments": [
+                  "morphir/SDK:basics#int"
+                ],
+                "dataProfile": "morphir-metadata-json/0.1.0-draft.1"
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "multiplicity": "many",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "diagnostics": [
+          {
+            "code": "traits.type_arity",
+            "path": "/traits/definitions/0/payloadSchema/typeArguments"
+          }
+        ],
+        "executionEvidenceAdded": false
+      }
+    },
+    {
+      "id": "traits-0047",
+      "description": "Unknown descriptive members on a known application retain their payload verbatim.",
+      "input": {
+        "graph": "fixtures/model.json",
+        "operation": "roundTrip",
+        "traits": {
+          "applications": [
+            {
+              "recordVersion": "0.1.0-draft.1",
+              "id": "urn:example:application:label",
+              "revision": "a1",
+              "definition": {
+                "state": "resolved",
+                "modelId": "urn:example:trait-model",
+                "modelRevision": "model-1",
+                "entityId": "urn:example:trait:label",
+                "entityRevision": "d1"
+              },
+              "target": {
+                "kind": "type",
+                "ref": {
+                  "state": "resolved",
+                  "modelId": "urn:example:trait-model",
+                  "modelRevision": "model-1",
+                  "entityId": "urn:example:type:quantity",
+                  "entityRevision": "e1"
+                }
+              },
+              "interpretation": {
+                "kind": "descriptive"
+              },
+              "payload": "Quantity",
+              "sourceRefs": [
+                {
+                  "sourceId": "urn:example:trait-source",
+                  "anchor": "urn:example:trait-source#wording"
+                }
+              ],
+              "provenance": {
+                "origin": "authored",
+                "agent": "fixture-author",
+                "sourceRefs": [
+                  {
+                    "sourceId": "urn:example:trait-source",
+                    "anchor": "urn:example:trait-source#wording"
+                  }
+                ]
+              },
+              "futureNote": {
+                "language": "example",
+                "text": "Keep  two spaces.\n"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "preserved",
+        "futureNote": {
+          "language": "example",
+          "text": "Keep  two spaces.\n"
+        },
+        "semanticValidationClaimed": false
+      }
+    }
+  ]
+}

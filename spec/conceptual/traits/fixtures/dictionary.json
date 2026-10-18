@@ -1,0 +1,28 @@
+{
+  "recordVersion": "0.1.0-draft.1",
+  "profile": "morphir-conceptual/0.1.0-draft.1",
+  "model": {
+    "id": "urn:example:dictionary",
+    "revision": "dict-1"
+  },
+  "dependencies": [],
+  "requiredSemantics": [],
+  "sources": [],
+  "entities": [
+    {
+      "recordVersion": "0.1.0-draft.1",
+      "id": "urn:example:dictionary:quantity",
+      "revision": "concept-1",
+      "kind": "concept",
+      "name": "Quantity",
+      "sourceRefs": [],
+      "content": {
+        "definition": "An amount counted in units.",
+        "aliases": []
+      }
+    }
+  ],
+  "relationships": [],
+  "capabilities": [],
+  "projectionGaps": []
+}

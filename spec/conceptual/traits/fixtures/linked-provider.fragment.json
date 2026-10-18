@@ -1,0 +1,41 @@
+{
+  "distribution": {
+    "Specs": {
+      "packageName": "example/traits",
+      "dependencies": {},
+      "spec": {
+        "modules": {
+          "payload": {
+            "types": {
+              "label": {
+                "TypeAliasSpecification": {
+                  "typeParams": [],
+                  "typeExp": "morphir/SDK:string#string"
+                }
+              }
+            },
+            "values": {
+              "label": {
+                "inputs": {},
+                "output": "example/traits:payload#label",
+                "annotations": {
+                  "@context": {
+                    "@vocab": "morphir://ir/pkg/morphir/metadata?format=4.1.0#/module/schema/value/"
+                  },
+                  "facts": {
+                    "subject-role": [
+                      "TypeSpecification",
+                      "TypeDefinition"
+                    ],
+                    "object-form": "json",
+                    "interpreter": "descriptive"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

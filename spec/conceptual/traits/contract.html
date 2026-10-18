@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Typed trait declaration and application contract</h1>
+<p class="meta">morphir-ukvn.7.7.2 · M2 · 18 October 2026 · Proposed exact draft 0.1.0-draft.1</p>
+<p class="note">This reference design defines <code>morphir-traits/0.1.0-draft.1</code>. Its vocabulary, record spelling and mappings are local proposals under the pinned design direction. They do not freeze the DSL or claim maintainer approval. The corpus contains authored observations, not results from a trait validator.</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#scope">Scope and composition</a></li><li><a href="#declarations">Trait declarations</a></li>
+<li><a href="#applications">Applications and ownership</a></li><li><a href="#targets">Target kinds</a></li>
+<li><a href="#payloads">Types and references</a></li><li><a href="#validation">Validation and admission</a></li>
+<li><a href="#preservation">Preservation and conflicts</a></li><li><a href="#linked">Linked metadata mapping</a></li>
+<li><a href="#consumers">Consumer boundaries</a></li><li><a href="#corpus">Reference cases and checks</a></li>
+<li><a href="#open">Open decisions</a></li><li><a href="#sources">Pinned authority</a></li>
+</ul></nav>
+<section id="scope"><h2>Scope and composition</h2>
+<p>A trait declaration names a payload type, permitted targets and any required interpretation. An application attaches one payload to one identified subject. A stored application can be useful before a consumer knows how to interpret it. A consumer must report that gap when the requested operation needs its meaning.</p>
+<p>The exact profile is <code>morphir-traits/0.1.0-draft.1</code>; records use <code>recordVersion: "0.1.0-draft.1"</code>. These versions are independent of the M1 conceptual profile, model revisions, provider releases, IR format, expression profiles and transport versions. Prereleases match exactly. Future released versions follow the repository SemVer policy and established version libraries; M2 implements no negotiation.</p>
+<p>The existing <a href="../model/contract.html">M1 graph</a> gains an optional <code>traits</code> member with <code>{recordVersion, profile, definitions: TraitDefinition[], applications: TraitApplication[]}</code>. This is an extension of the graph already retained in rich IRUnit metadata. It introduces neither a new envelope nor a Distribution variant. Rich IRUnit and MEP MorphirModel remain distinct existing carriers. MEP transport projection requires its own explicit mapping and loss checks.</p>
+<p>An M1 reader preserves this unknown member as Ion data. If any application requires semantic interpretation, the graph's <code>requiredSemantics</code> must include this exact trait profile and every required application profile. A request to validate even descriptive traits also explicitly admits the trait profile. An M1-only reader must then report unsupported; merely retaining <code>traits</code> is never validation. An optional descriptive extension need not make ordinary M1 inspection fail. Required semantics gate interpretation, not lossless storage; inspection can expose unsupported applications as gaps without claiming their validation. A containing graph may mark <code>traits</code> critical when any use of the graph requires understanding the extension. An omitted required admission entry is malformed under M2, not permission to ignore the application.</p>
+<p>All M1 rules for case-sensitive IDs, exact opaque revisions, sources, unknown members and <code>critical</code> apply. Definition and application IDs are unique across the containing graph's existing record lists and both trait lists. Nested records inherit the outer version. A changed definition or payload requires a changed revision and model snapshot; a rename alone does not create a new logical identity.</p>
+</section>
+<section id="declarations"><h2>Trait declarations</h2>
+<p>Every field below is required unless marked optional. Records retain unrecognized noncritical members without interpreting them. Trait definitions are declarations in the conceptual extension; they are not automatically native linked-metadata predicate declarations.</p>
+<table><thead><tr><th>Field</th><th>Type and rule</th></tr></thead><tbody>
+<tr><td><code>recordVersion</code>, <code>id</code>, <code>revision</code>, <code>name</code></td><td>Exact draft version, namespaced nonempty opaque identity, nonempty opaque content revision and display name. Aliases and names never replace the identity.</td></tr>
+<tr><td><code>targets</code></td><td>Nonempty set of distinct target kinds from the finite table below. No selector language or source-language applicability inference.</td></tr>
+<tr><td><code>payloadSchema</code></td><td><code>{artifact: {id, revision}, fqName, typeArguments: Type[], dataProfile}</code>. References a type specification in explicitly supplied Morphir IR, with concrete v4 type arguments and exact arity.</td></tr>
+<tr><td><code>interpretation</code></td><td><code>{kind: "descriptive"}</code> or <code>{kind: "semantic", profiles: Id[]}</code>. Semantic profiles form a nonempty set of exact versioned capabilities. Descriptive data never changes program meaning by itself.</td></tr>
+<tr><td><code>multiplicity</code></td><td><code>"many"</code> or <code>"one"</code>. One means a consumer needs one distinct value for the same resolved definition and subject; it does not authorize overwriting competing assertions.</td></tr>
+<tr><td><code>sourceRefs</code></td><td>M1 SourceRef list; every source and anchor must exist locally.</td></tr>
+<tr><td><code>referenceBindings?</code></td><td>List of <code>{path, targetKind, profile}</code>. Each RFC 6901 path selects a payload reference encoded by the named exact profile. Bindings belong to the declaration, never to a payload's arbitrary strings. This draft's bounded reference profile is specified below.</td></tr>
+<tr><td><code>descriptive?</code>, <code>critical?</code></td><td>M1 extension and admission rules.</td></tr>
+</tbody></table>
+<p>Definitions have stable IDs such as <code>urn:example:trait:encoding</code>. A resolved application reference uses M1's five-field reference shape; its entity ID selects a trait definition in the extension and its entity revision selects that definition's exact revision. The M2 resolver recognizes this record kind without adding it to M1's built-in entity vocabulary. A declaration that is absent at a claimed resolved identity is invalid. An intentionally unresolved declaration remains a visible gap.</p>
+</section>
+<section id="applications"><h2>Applications and ownership</h2>
+<table><thead><tr><th>Field</th><th>Type and rule</th></tr></thead><tbody>
+<tr><td><code>recordVersion</code>, <code>id</code>, <code>revision</code></td><td>Exact draft version and stable application identity/revision. Separate assertions keep separate IDs even when their payloads agree.</td></tr>
+<tr><td><code>definition</code></td><td>M1 resolved reference to a trait definition; or unresolved reference with <code>expectedKind: "traitDefinition"</code>, locator and reason.</td></tr>
+<tr><td><code>target</code></td><td>Exactly one target variant from the next section. Its stated kind is checked against the actual resolved subject.</td></tr>
+<tr><td><code>interpretation</code></td><td>Same tagged shape as the declaration. When resolved, must equal the declaration's requirement, comparing profile sets without order. An application cannot downgrade a semantic declaration. For an unresolved declaration this is a retained author claim, never proof that it is descriptive.</td></tr>
+<tr><td><code>payload</code></td><td>One Ion value. Known fixtures use the declared data profile; unknown rich values remain losslessly retainable.</td></tr>
+<tr><td><code>sourceRefs</code>, <code>provenance</code></td><td>M1 SourceRefs and <code>{origin: "authored" | "imported" | "derived", agent: String, sourceRefs: SourceRef[], foreignId?: Id, derivedFrom?: ResolvedRef[]}</code>. Derived origin requires a nonempty exact input-reference list. Imported IDs remain verbatim when supplied. These fields assert provenance without authenticating it.</td></tr>
+<tr><td><code>descriptive?</code>, <code>critical?</code></td><td>Retained extensions and explicit required interpretation.</td></tr>
+</tbody></table>
+<p>The containing model owns the application assertion. The target may belong to another exact model dependency; this neither edits that dependency nor grants its author approval. SourceRefs refer to the asserting model's sources, not an ambient source with a matching name. A dependency resolves only through M1's declared, caller-supplied closure. Revision or digest pins establish identity; authority requires a separate trust decision. Retained source text keeps its exact whitespace and final newline.</p>
+</section>
+<section id="targets"><h2>Target kinds</h2>
+<table><thead><tr><th>Kind and target shape</th><th>Required subject</th></tr></thead><tbody>
+<tr><td><code>{kind: "model", model: {id, revision}}</code></td><td>The exact local or explicitly supplied dependent model snapshot, without a fabricated entity.</td></tr>
+<tr><td><code>{kind: "concept", ref}</code></td><td>M1 concept entity.</td></tr>
+<tr><td><code>{kind: "type", ref}</code></td><td>M1 declaration with role type.</td></tr>
+<tr><td><code>{kind: "member", ref}</code></td><td>M1 declaration with role field, parameter or result, and a resolved parent of the appropriate type/function role. This does not create a standalone IR node for a field.</td></tr>
+<tr><td><code>{kind: "function", ref}</code></td><td>M1 declaration with role function. A body is not required.</td></tr>
+<tr><td><code>{kind: "module", artifact: {id, revision}, node}</code></td><td>A module Node URI in exactly the supplied IR artifact. URI format identifies the IR format, not the artifact's content revision.</td></tr>
+<tr><td><code>{kind: "operation" | "serviceBinding", profile, ref}</code></td><td>An identified subject under a separately declared exact target profile. M1 does not define these entity kinds. The profile must define their identity and applicability rules before application validation can succeed.</td></tr>
+</tbody></table>
+<p>References reuse M1 resolved/unresolved distinctions. For unresolved targets, expectedKind must agree with the proposed kind: concept, declaration for type/member/function, or the profile's operation/serviceBinding kind. Resolved references with missing records, wrong actual kinds or mismatched revisions are invalid. An unknown target kind is retained but unsupported, never coerced to the nearest known kind. An unresolved target or unavailable target profile can support inspection with gaps, but cannot satisfy validation or generation.</p>
+<p>These are Morphir applicability categories, not a claim that a foreign trait can use every category. Importers must retain source-specific applicability restrictions and require the relevant mapping profile. A Smithy operation is not silently relabeled as a pure function. Module and service scopes do not create implicit inheritance: each application targets one subject unless a separately qualified semantic profile explicitly defines propagation.</p>
+</section>
+<section id="payloads"><h2>Types and references</h2>
+<p><a href="fixtures/payload-types.ir.json">The payload artifact</a> is an ordinary formatVersion 4 Specs document. It declares label, elaboration, encoding, concept-link, foreign-condition, prompt and string-map using existing TypeAliasSpecification, Record, Reference and SDK types. Its artifact ID/revision comes from the explicit case environment. A schema points to the actual declaration by FQName. Labels, fixture paths and type names cannot establish revision identity or trigger a package download.</p>
+<p><code>morphir-metadata-json/0.1.0-draft.1</code> is a proposed exact name for this corpus's reuse of the bounded existing linked-metadata/decorator data mapping, not a new type system or a claim that a codec advertises that name. String and Bool retain their JSON scalar types; Int requires an exact integer. The corpus uses small exact integers only. Records have exactly their declared fields; lists and tuples use ordered arrays; Unit and Maybe None use typed null; Maybe Some uses the inner value; custom values use constructor-tag arrays. String-keyed Dict uses JSON objects. Other Dict key types, higher-order values, unsupported recursive data profiles and opaque types without a public data mapping are unsupported rather than reinterpreted. Morphir type structure, arity and closure remain authoritative. This exact data profile supplies intrinsic meanings for the SDK scalar and collection type identities listed here; no ambient SDK checkout is consulted. Other referenced declarations require an explicitly supplied exact artifact closure. Wider number transport and recursive validation limits belong to their owning profiles.</p>
+<p>Typed null is a present payload, distinct from an absent application. Application lists are not JSON-LD property arrays. The linked projection wraps each whole structured payload with <code>@json</code>, preserving lists, records, constructor arrays and null as one typed object. URI-looking strings inside those objects stay data.</p>
+<p>The proposed <code>morphir-entity-reference-data/0.1.0-draft.1</code> binding translates a closed record's <code>state</code>, <code>model-id</code>, <code>model-revision</code>, <code>entity-id</code> and <code>entity-revision</code> fields to M1's resolved reference. State must be <code>resolved</code>; all identity/revision fields are nonempty and must resolve exactly. The hyphenated fields follow canonical IR Name spelling. The declaration's binding selects the record and supplies its expected target kind. All binding paths must exist. This bounded profile does not interpret arbitrary strings or synthesize missing imports. Its unresolved-record and collection-path variants remain open; unresolved subjects and definitions already use M1's full unresolved variant.</p>
+<p>The related-concept declaration applies that binding to its entire payload. The prompt's optional arguments record is retained data until a future prompt profile declares and validates its argument bindings. Merely resembling a reference does not resolve it. This deliberate gap keeps a representable foreign record separate from verified template semantics.</p>
+</section>
+<section id="validation"><h2>Validation and admission</h2>
+<p>A future consumer reports each stage separately. The reference corpus authors expected observations for these stages but does not implement them.</p>
+<ol>
+<li>Admit exact record and requested profile versions; check required members, variants, uniqueness and critical members. Reject duplicate wire members before decoding discards occurrences.</li>
+<li>Resolve declaration, target, schema artifact and sources in the explicit dependency closure. Check revisions, actual target kind, permitted target set and schema type-argument arity. Intentionally unresolved references remain gaps; unexpectedly absent resolved references are invalid.</li>
+<li>Validate the payload against the resolved Morphir type and selected data profile, including declared reference bindings. Unsupported data mapping is not a valid value.</li>
+<li>Check application/declaration interpretation agreement and graph admission requirements. Validate basic supported payload shapes even when a semantic interpreter is unavailable; a wrong-typed arity must not become accepted because an interpreter is missing.</li>
+<li>Admit all required exact semantic and subject profiles before a requested check, export or generation. A supported profile advertisement alone is not evidence that execution succeeded. Run semantic rules only within their qualified consumer and record its result separately.</li>
+<li>Preserve competing assertions. A consumer requiring one distinct value must resolve its conflict explicitly or refuse; list order gives no precedence.</li>
+</ol>
+<p>Inspection may return <code>valid-with-gaps</code> for unknown descriptive applications, unresolved references, unavailable subject profiles or conflicts. Validation returns <code>valid</code>, <code>invalid</code> or <code>unsupported</code>; preservation returns <code>preserved</code>; a requested lossy export or ambiguous selection can return <code>refused</code>. A valid attachment does not prove its payload's domain claim, its source's authority, an implementation's behavior or a protocol's conformance.</p>
+<p>Diagnostic codes are local proposals with a <code>traits.</code> prefix. Their suffixes identify <code>target_kind</code>, <code>target_identity_kind</code>, <code>payload_type</code>, <code>reference_revision</code>, <code>reference_missing</code>, <code>type_arity</code>, <code>source_missing</code>, <code>duplicate_id</code>, <code>interpretation_mismatch</code>, <code>missing_required_semantics</code>, <code>unsupported_semantics</code>, <code>unsupported_target_profile</code>, <code>unsupported_record_version</code>, <code>unsupported_profile</code>, <code>unsupported_critical</code>, <code>unresolved_definition</code>, <code>unresolved_target</code>, <code>application_conflict</code>, <code>unmapped_subject</code> and <code>provider_unverified</code>. Missing-schema and unsupported-mapping diagnostics remain separately identifiable as <code>reference_missing</code> and <code>unsupported_data_profile</code>. M1-only admission retains <code>conceptual.unsupported_semantics</code>, and bare export uses the existing <code>data.lossy_conversion</code>.</p>
+<p>Each diagnostic has a code and RFC 6901 path selecting the materialized graph or case operation input; an optional relatedPath identifies the earlier conflicting record. Missing-field diagnostics select the parent and name the missing field. Diagnostics compare as sets; record order matters only for identifying a later duplicate. Fatal malformed input precedes optional gap reports. Cases isolate the intended observation and do not forbid other relevant inspection gaps.</p>
+</section>
+<section id="preservation"><h2>Preservation and conflicts</h2>
+<p>Unknown definitions, applications, members and descriptive Ion values survive rich round-trips with their exact identities, revisions, annotations, numeric precision, decimal scale, symbols, typed nulls, order and source text. Unknown semantic requirements also remain retainable; a requested interpretation that needs them returns unsupported. No checkpoint, signature extraction or public projection may silently drop the graph extension.</p>
+<p>Two assertions can carry equal values and different provenance. Keep both applications and contributors even when a normalized fact set coalesces their values. Distinct values remain distinct. For this JSON subset, object member order does not change data identity, while array order does; no equality is invented for unsupported Ion or semantic profiles. A single-value constraint concerns a resolved definition revision and exact subject snapshot. A changed definition revision or different target revision cannot silently participate in the same selection.</p>
+<p>No last-writer-wins or automatic source ranking is defined. Inspection retains conflicts; selectOne refuses unresolved ambiguity. A later explicit resolution must record its authority and preserve rejected/historical assertions according to the owning transformation's rules. Changed definition, source, subject or artifact revisions require reassessment of dependent evidence. They do not rewrite historical applications or grant current proof.</p>
+<p>Bare IR has no general place for conceptual applications. Export must expose the loss and refuse unless an explicit loss-authorizing operation exists. Occupied rich metadata owners follow M1's refusal rule rather than overwriting unrelated data. M2 adds no such loss authorization or multi-profile metadata merger.</p>
+</section>
+<section id="linked"><h2>Linked metadata mapping</h2>
+<p>A conceptual application maps to linked metadata only through an explicit predicate mapping and a representable IR subject. <a href="../../../docs/design/draft/ir/linked-metadata.md">The existing linked-metadata contract</a> owns its context grammar, assertion carriers, publication, authentication and data mapping. M2 neither widens that grammar nor registers conceptual IDs as IR Node URIs.</p>
+<p>A mapped predicate must be a real value declaration in the provider IR. Its public output type supplies the data schema; the provider's native schema facts declare allowed subject roles, object form and interpreter. A published Library uses public value definitions and an authenticated inventory. A Specs fragment can describe a value specification. A sidecar closure or this conceptual TraitDefinition is never substituted for those provider declarations.</p>
+<p><a href="fixtures/linked-provider.fragment.json">The authored provider fragment</a> illustrates a label predicate with native schema facts in a proposed future V4 document. It deliberately has no formatVersion and is not a valid 4.0.0 document, publishable Library or proof of authenticated provider restore. The complete <a href="fixtures/payload-types.ir.json">4.0.0 payload artifact</a> only provides ordinary type specifications. The two inputs have separate exact fixture identities.</p>
+<p>The projection recipe binds one exact definition reference to the predicate URI and exact provider artifact, then supplies explicit conceptual-target-to-IR-node mappings, and assertion owner artifact/revision plus carrier. A fixture's <code>fixture-assumed</code> admission marker is author-provided reference setup, never production trust. Publication with an unverified provider refuses before emitting an artifact. Matching digest bytes or a revision string alone cannot authenticate a publisher.</p>
+<p>The target node becomes the fact subject; the containing asserting artifact owns the assertion. An external attachment uses that artifact's document graph and does not edit the subject artifact. Retain each application ID and source mapping alongside the projection so conceptual ownership and source text remain recoverable. The current linked-metadata assertion identity mechanism, when selected, supplies its own identifiers; M2 does not introduce another assertion envelope or replace implicit subject rules.</p>
+<p>Each entire data payload is one typed <code>@json</code> object. Node links use the existing explicit object-form and context rules only when the declared mapping chooses that form. A raw URI string in a payload remains literal data. A concept without an agreed IR mapping produces <code>unmapped_subject</code>; it must not be assigned a fabricated declaration address.</p>
+<p>Linked metadata retains graph conflicts and all contributors. <code>assertionSources</code> entries remain complete replacement contributor sets for their exact selectors, not incremental additions. Projection may not erase an unknown contributor when updating a known one. Context imports remain explicit, finite, confined and pinned under the existing grammar. Publication binds local and foreign nodes to verified artifact revisions and inventories its contexts; missing providers do not trigger ambient file or network acquisition. Named graphs and general RDF exchange remain separately scoped work.</p>
+</section>
+<section id="consumers"><h2>Consumer boundaries</h2>
+<table><thead><tr><th>Consumer</th><th>Reusable input</th><th>What remains unqualified</th></tr></thead><tbody>
+<tr><td>Dictionary</td><td>Concept/definition identities, elaboration questions, typed related-concept payload and revision-pinned reference binding.</td><td>Dictionary publication, relation vocabularies, SKOS/OWL exchange and reasoning. A link grants no assignability, conversion or contract satisfaction.</td></tr>
+<tr><td>Frontend and portable model</td><td>Versioned records, explicit gaps, target rules, typed payload artifact and preserved source/provenance.</td><td>DSL spelling, parser/compiler recovery, codecs, resolution and application validator. Domain elaboration is independent of editor holes and incomplete bodies.</td></tr>
+<tr><td>IR/SDK self-specification</td><td>Encoding trait distinguishes typed tag/arity data from the separate required rule interpreter.</td><td>The example is a storage contract, not a complete encoding descriptor language or executable structural rule. It retires no schema gate and implements no arbitrary callback.</td></tr>
+<tr><td>Smithy</td><td>Foreign-condition and prompt records retain documentation, expression/template profile, data-view profile, source ID and optional fields.</td><td>Full source inventory, exact foreign revision qualification, service subject profile, JMESPath evaluation, prompt argument resolution and all RPC v2 JSON/CBOR generation and wire behavior.</td></tr>
+<tr><td>Linked metadata</td><td>Explicit typed fact projection with separate owner and subject, real provider declaration fragment and no implicit acquisition.</td><td>Future revision adoption, authenticated publication and production integration. Existing metadata MCK cases remain the authority for context and contributor behavior.</td></tr>
+</tbody></table>
+<p>The foreign-condition example is Smithy-inspired data, not an imported normative Smithy model: its foreign source ID and unqualified expression/data-view profiles are example URNs. It preserves the pinned design's condition boundaries without claiming a complete source mapping. The prompt example keeps <code>{{quantity}}</code> unchanged and <code>prefer-when</code> as descriptive guidance. It does not create an executable workflow or silently translate a foreign expression to Morphir arithmetic. Unsupported service applicability stays visible even though the payload type is representable.</p>
+<p>There is one shared compatibility runner, Rust <code>morphir mck</code>. A future adapter can consume these reference cases after its operation protocol is registered. This corpus is not yet a runnable MCK suite and its local integrity test is not another compatibility runner. No downstream task is complete merely because these upstream fixtures exist.</p>
+</section>
+<section id="corpus"><h2>Reference cases and checks</h2>
+<p><a href="cases.json">cases.json</a> contains 47 independently authored observations. The environment supplies one exact IR artifact, a data-profile name and empty default semantic admission requirements. Cases using semantic traits supply their graph requirements explicitly. Each case starts with <a href="fixtures/model.json">model.json</a>. If input.traits supplies definitions or applications, it replaces that complete list in the graph; omitted lists remain unchanged. If input.dependencies is present it replaces the graph dependency list, and input.modelInputs supplies exactly the named model snapshots. Graph requiredSemantics uses input.graphRequiredSemantics when supplied, otherwise the environment's graphRequiredSemantics. Operation input requiredSemantics is a separate request. This composition describes fixture construction only; it never derives expected observations.</p>
+<p>Diagnostic paths select the resulting graph or explicit operation input. Available semantic profiles default to the empty environment set and can be overridden explicitly. Case 0003 assumes a qualified interpreter as reference input; this repository provides none. Round-trip cases insert the literal Ion asset at the named pointer before the requested operation. No test computes those observations by calling a validator under test.</p>
+<table><thead><tr><th>Cases</th><th>Review obligations</th></tr></thead><tbody>
+<tr><td>0001–0015</td><td>Typed descriptive and semantic applications; missing interpreter; unknown declarations; wrong targets/types/fields; exact revisions; unresolved targets; no semantic downgrade.</td></tr>
+<tr><td>0016–0025</td><td>Conflict inspection/refusal, equal-data provenance, duplicate IDs, source and schema revision failures, exact drafts, critical members, Ion preservation and lossy export.</td></tr>
+<tr><td>0026–0037</td><td>Dictionary elaboration/references; foreign expression and raw prompt gaps; model/module/member targets; profile admission; M1-only refusal and missing required semantics.</td></tr>
+<tr><td>0038–0043</td><td>External owner/subject separation; missing mapping; unverified provider refusal; literal URI data; conflicting attachments; retained source identity/text.</td></tr>
+<tr><td>0044–0047</td><td>Explicit dictionary dependency, absent input without acquisition, type-argument arity and unknown descriptive members.</td></tr>
+</tbody></table>
+<pre><code class="language-bash">bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/traits/tsconfig.json
+bun test spec/conceptual/traits/fixture-integrity.test.ts
+jsonschema validate website/static/schemas/morphir-ir-v4.json spec/conceptual/traits/fixtures/payload-types.ir.json</code></pre>
+<p>Local tests check inventoried bytes, referenced assets, diagnostic locations, existing IR recipe composition, and review-document structure. The JSON Schema command checks only the complete payload IR's existing v4 shape. These checks do not execute target validation, type checking, round-trips, refusal behavior, publication, conflict resolution or interpreter admission. Expected observations are fixed review data. A passing integrity test establishes no runtime trait conformance.</p>
+</section>
+<section id="open"><h2>Open decisions</h2>
+<ul>
+<li>Final trait/profile names, <code>traits</code> extension spelling, application syntax and reference-binding vocabulary require review. No DSL punctuation is chosen here.</li>
+<li>The bounded reference-data profile covers resolved scalar references only. Generic reference traversal, unresolved payload references, target selectors and inheritance remain separate decisions.</li>
+<li>Operation/serviceBinding identity and applicability profiles belong to their owners. Their names in a target list do not count as support. Prompt argument binding and complete Smithy source inventories remain open.</li>
+<li>Native predicate mapping identifiers, application-to-assertion identity mapping, publication packaging and revision migration need consumer integration. A conceptual declaration does not enroll a trusted provider.</li>
+<li>Full Ion typed-data validation, recursive shape limits, wide-number JSON policy, semantic equality and generic trait parameter policy need qualified profiles. The finite corpus uses concrete payload schemas and claims no complete parity.</li>
+<li>Conflict resolution authority and historical evidence reassessment use existing conceptual provenance principles; no automatic merge, trust hierarchy or current-evidence promotion is defined.</li>
+</ul>
+</section>
+<section id="sources"><h2>Pinned authority</h2>
+<p>The plan pins <code>morphir-ukvn.7</code> draft 0.16. The supplied design export is draft 0.17, SHA-256 <code>4aa58738d4269878979b6ade07215c76673b0b2764b80fa92e679ee404a0a606</code>. Comparison with draft 0.16 recovered from Dolt commit <code>borao0gq7lgnik74qkgr7e5fjskshh8a</code> changes only the subtitle, review-status wording and task-ownership paragraph. Smithy typed extensions, self-specification, domain elaboration and dictionary semantics are unchanged. Its task-2 handoff is <code>morphir-ukvn.7.7.2</code>. This contract reads that pinned authority and makes no fresh external specification claims.</p>
+<ul>
+<li><a href="../model/contract.html">M1 conceptual model contract</a> at baseline <code>b0ac9d14cfa7886763cc41b45b38089d77c5e1dd</code>, exact profile <code>morphir-conceptual/0.1.0-draft.1</code>.</li>
+<li><a href="../../../docs/design/draft/ir/linked-metadata.md">Linked metadata design</a> and <a href="../../ir/mck/metadata-contract-draft.md">fixed metadata cases</a> at that baseline. Context cases 0026–0047, preservation/source cases 0013–0023 and data/admission cases 0048–0073 remain separate reusable authority.</li>
+<li><a href="../../../website/static/schemas/morphir-ir-v4.json">Existing v4 IR schema</a>, used only to verify complete payload declarations; no 4.1.0 adoption is implied.</li>
+</ul>
+</section>
+
+</main>
+</body>
+</html>

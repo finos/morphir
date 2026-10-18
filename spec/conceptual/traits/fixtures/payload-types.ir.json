@@ -1,0 +1,134 @@
+{
+  "formatVersion": 4,
+  "distribution": {
+    "Specs": {
+      "packageName": "example/traits",
+      "dependencies": {},
+      "spec": {
+        "modules": {
+          "payload": {
+            "types": {
+              "label": {
+                "TypeAliasSpecification": {
+                  "typeParams": [],
+                  "typeExp": "morphir/SDK:string#string"
+                }
+              },
+              "elaboration": {
+                "TypeAliasSpecification": {
+                  "typeParams": [],
+                  "typeExp": {
+                    "Record": {
+                      "fields": {
+                        "aspect": "morphir/SDK:string#string",
+                        "question": "morphir/SDK:string#string",
+                        "rationale": "morphir/SDK:string#string"
+                      }
+                    }
+                  }
+                }
+              },
+              "encoding": {
+                "TypeAliasSpecification": {
+                  "typeParams": [],
+                  "typeExp": {
+                    "Record": {
+                      "fields": {
+                        "tag": "morphir/SDK:string#string",
+                        "arity": "morphir/SDK:basics#int"
+                      }
+                    }
+                  }
+                }
+              },
+              "concept-link": {
+                "TypeAliasSpecification": {
+                  "typeParams": [],
+                  "typeExp": {
+                    "Record": {
+                      "fields": {
+                        "state": "morphir/SDK:string#string",
+                        "model-id": "morphir/SDK:string#string",
+                        "model-revision": "morphir/SDK:string#string",
+                        "entity-id": "morphir/SDK:string#string",
+                        "entity-revision": "morphir/SDK:string#string"
+                      }
+                    }
+                  }
+                }
+              },
+              "foreign-condition": {
+                "TypeAliasSpecification": {
+                  "typeParams": [],
+                  "typeExp": {
+                    "Record": {
+                      "fields": {
+                        "name": "morphir/SDK:string#string",
+                        "documentation": "morphir/SDK:string#string",
+                        "expression": "morphir/SDK:string#string",
+                        "expression-profile": "morphir/SDK:string#string",
+                        "data-view-profile": "morphir/SDK:string#string",
+                        "expected-result": "morphir/SDK:basics#bool",
+                        "source-trait-id": "morphir/SDK:string#string"
+                      }
+                    }
+                  }
+                }
+              },
+              "prompt": {
+                "TypeAliasSpecification": {
+                  "typeParams": [],
+                  "typeExp": {
+                    "Record": {
+                      "fields": {
+                        "name": "morphir/SDK:string#string",
+                        "description": "morphir/SDK:string#string",
+                        "template": "morphir/SDK:string#string",
+                        "template-profile": "morphir/SDK:string#string",
+                        "arguments-ref": {
+                          "Reference": [
+                            "morphir/SDK:maybe#maybe",
+                            {
+                              "Record": {
+                                "fields": {
+                                  "state": "morphir/SDK:string#string",
+                                  "model-id": "morphir/SDK:string#string",
+                                  "model-revision": "morphir/SDK:string#string",
+                                  "entity-id": "morphir/SDK:string#string",
+                                  "entity-revision": "morphir/SDK:string#string"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "prefer-when": {
+                          "Reference": [
+                            "morphir/SDK:maybe#maybe",
+                            "morphir/SDK:string#string"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "string-map": {
+                "TypeAliasSpecification": {
+                  "typeParams": [],
+                  "typeExp": {
+                    "Reference": [
+                      "morphir/SDK:dict#dict",
+                      "morphir/SDK:string#string",
+                      "morphir/SDK:string#string"
+                    ]
+                  }
+                }
+              }
+            },
+            "values": {}
+          }
+        }
+      }
+    }
+  }
+}

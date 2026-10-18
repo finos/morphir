@@ -1,0 +1,35 @@
+{
+  "manifestVersion": "0.1.0-draft.1",
+  "assets": [
+    {
+      "path": "cases.json",
+      "bytes": 113290,
+      "sha256": "44eb1045d01f234515f49ad249b5c339a5e33e48dbe4e8cb4a9bd68977260c9a"
+    },
+    {
+      "path": "fixtures/model.json",
+      "bytes": 9867,
+      "sha256": "6deddbbda6349e0a1d384097ebd83e0e3dea5807fac5361479e20be4b1f37a58"
+    },
+    {
+      "path": "fixtures/dictionary.json",
+      "bytes": 630,
+      "sha256": "954a67f422e21e4f9529b73de24094c721904b9ef0c08fb17c9a010b94a333f1"
+    },
+    {
+      "path": "fixtures/payload-types.ir.json",
+      "bytes": 4869,
+      "sha256": "578ac6a9cfd4cf4a60e2a1f5946bdb8f8920a7210659362d7769c944bddf3e5f"
+    },
+    {
+      "path": "fixtures/linked-provider.fragment.json",
+      "bytes": 1094,
+      "sha256": "0de5fceba675bccf4f48b9c3bb39fb56012c480b5e8532a72aeae68285a3839c"
+    },
+    {
+      "path": "fixtures/unknown-descriptive.ion",
+      "bytes": 110,
+      "sha256": "e65c064cae2fb55e05729da6200caaff27c69b244fefcd6851ff9f570df57fcf"
+    }
+  ]
+}
