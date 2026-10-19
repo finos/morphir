@@ -1,0 +1,199 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:conflicting-model-id:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:conflicting-model-id:main",
+      "revision": "fixture-1",
+      "text": "model Rules {\nmodule Types {\ntype alias Quantity = Int\n}\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "conflicting-model-id:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:conflicting-model-id:main",
+            "revision": "fixture-1",
+            "text": "model Rules {\nmodule Types {\ntype alias Quantity = Int\n}\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "conflicting-model-id:quantity:declaration",
+            "span": {
+              "sourceId": "source:conflicting-model-id:main",
+              "start": 29,
+              "end": 54,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "conflicting-model-id:quantity:type",
+              "span": {
+                "sourceId": "source:conflicting-model-id:main",
+                "start": 51,
+                "end": 54,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [
+    {
+      "regionId": "conflicting-model-id:r1",
+      "model": {
+        "id": "urn:other:model",
+        "revision": "model-1",
+        "metadata": {
+          "intent": "Keep reviewed context",
+          "requirements": [
+            "urn:requirement:remaining"
+          ],
+          "custom": {
+            "owner": "domain-review"
+          }
+        }
+      }
+    }
+  ],
+  "regions": [
+    {
+      "id": "source:conflicting-model-id:main:root",
+      "sourceId": "source:conflicting-model-id:main",
+      "span": {
+        "sourceId": "source:conflicting-model-id:main",
+        "start": 0,
+        "end": 59,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "conflicting-model-id:r1"
+        }
+      ]
+    },
+    {
+      "id": "conflicting-model-id:r1",
+      "sourceId": "source:conflicting-model-id:main",
+      "span": {
+        "sourceId": "source:conflicting-model-id:main",
+        "start": 0,
+        "end": 59,
+        "unit": "utf8-byte"
+      },
+      "kind": "model",
+      "form": "block",
+      "name": [
+        "Rules"
+      ],
+      "parentId": "source:conflicting-model-id:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "conflicting-model-id:r2"
+        }
+      ]
+    },
+    {
+      "id": "conflicting-model-id:r2",
+      "sourceId": "source:conflicting-model-id:main",
+      "span": {
+        "sourceId": "source:conflicting-model-id:main",
+        "start": 14,
+        "end": 57,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "conflicting-model-id:r1",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "conflicting-model-id:r2",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "conflicting-model-id:fragment",
+        "nodeId": "conflicting-model-id:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

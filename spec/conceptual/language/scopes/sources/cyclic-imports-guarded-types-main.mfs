@@ -1,0 +1,8 @@
+module A exposing (type TypeA) {
+import B as B;
+type TypeA = MakeA B.TypeB
+}
+module B exposing (type TypeB) {
+import A as A;
+type TypeB = MakeB A.TypeA
+}

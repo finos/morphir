@@ -1,0 +1,271 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:two-dependency-revisions:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [
+    {
+      "slot": "old",
+      "resolvedNodeId": "release:sdk:1",
+      "packageName": "morphir/SDK",
+      "revision": "1.0.0",
+      "exportTable": [
+        {
+          "path": "collections/list",
+          "moduleName": "data/sequences"
+        }
+      ],
+      "symbols": [
+        {
+          "id": "urn:scopes:symbol:sdk-list",
+          "moduleName": "data/sequences",
+          "name": "List",
+          "canonicalName": "list",
+          "visibility": "public",
+          "category": "type",
+          "links": [
+            {
+              "kind": "contract",
+              "id": "urn:contract:quantity",
+              "revision": "contract-1"
+            }
+          ],
+          "provenance": [
+            {
+              "id": "urn:design:lending",
+              "revision": "review-1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slot": "new",
+      "resolvedNodeId": "release:sdk:2",
+      "packageName": "morphir/SDK",
+      "revision": "2.0.0",
+      "exportTable": [
+        {
+          "path": "collections/list",
+          "moduleName": "data/sequences"
+        }
+      ],
+      "symbols": [
+        {
+          "id": "urn:scopes:symbol:sdk-list",
+          "moduleName": "data/sequences",
+          "name": "List",
+          "canonicalName": "list",
+          "visibility": "public",
+          "category": "type",
+          "links": [
+            {
+              "kind": "contract",
+              "id": "urn:contract:quantity",
+              "revision": "contract-1"
+            }
+          ],
+          "provenance": [
+            {
+              "id": "urn:design:lending",
+              "revision": "review-1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "source:two-dependency-revisions:main",
+      "revision": "fixture-1",
+      "text": "module Use {\nimport old::Collections.List as Old;\n// lookup old-use\nimport new::Collections.List as New;\n// lookup new-use\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "two-dependency-revisions:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:two-dependency-revisions:main",
+            "revision": "fixture-1",
+            "text": "module Use {\nimport old::Collections.List as Old;\n// lookup old-use\nimport new::Collections.List as New;\n// lookup new-use\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:two-dependency-revisions:main:root",
+      "sourceId": "source:two-dependency-revisions:main",
+      "span": {
+        "sourceId": "source:two-dependency-revisions:main",
+        "start": 0,
+        "end": 125,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "two-dependency-revisions:r1"
+        }
+      ]
+    },
+    {
+      "id": "two-dependency-revisions:r1",
+      "sourceId": "source:two-dependency-revisions:main",
+      "span": {
+        "sourceId": "source:two-dependency-revisions:main",
+        "start": 0,
+        "end": 125,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:two-dependency-revisions:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "old"
+        },
+        {
+          "kind": "reference",
+          "id": "old-use"
+        },
+        {
+          "kind": "import",
+          "id": "new"
+        },
+        {
+          "kind": "reference",
+          "id": "new-use"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [
+    {
+      "id": "old",
+      "regionId": "two-dependency-revisions:r1",
+      "span": {
+        "sourceId": "source:two-dependency-revisions:main",
+        "start": 13,
+        "end": 49,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "dependency",
+        "slot": "old",
+        "exportPath": "collections/list",
+        "authoredPath": [
+          "Collections",
+          "List"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "Old"
+      }
+    },
+    {
+      "id": "new",
+      "regionId": "two-dependency-revisions:r1",
+      "span": {
+        "sourceId": "source:two-dependency-revisions:main",
+        "start": 68,
+        "end": 104,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "dependency",
+        "slot": "new",
+        "exportPath": "collections/list",
+        "authoredPath": [
+          "Collections",
+          "List"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "New"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "old-use",
+      "regionId": "two-dependency-revisions:r1",
+      "span": {
+        "sourceId": "source:two-dependency-revisions:main",
+        "start": 68,
+        "end": 68,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "Old",
+        "List"
+      ],
+      "category": "type",
+      "localBinders": []
+    },
+    {
+      "id": "new-use",
+      "regionId": "two-dependency-revisions:r1",
+      "span": {
+        "sourceId": "source:two-dependency-revisions:main",
+        "start": 123,
+        "end": 123,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "New",
+        "List"
+      ],
+      "category": "type",
+      "localBinders": []
+    }
+  ]
+}

@@ -1,0 +1,1965 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "status": "reference-only",
+  "cases": [
+    {
+      "id": "same-file-blocks",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/same-file-blocks.input.json",
+        "sources": [
+          {
+            "asset": "sources/same-file-blocks-main.mfs",
+            "id": "source:same-file-blocks:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/same-file-blocks.expected.json"
+      }
+    },
+    {
+      "id": "successive-headers",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/successive-headers.input.json",
+        "sources": [
+          {
+            "asset": "sources/successive-headers-main.mfs",
+            "id": "source:successive-headers:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/successive-headers.expected.json"
+      }
+    },
+    {
+      "id": "split-files",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/split-files.input.json",
+        "sources": [
+          {
+            "asset": "sources/split-files-types.mfs",
+            "id": "source:split-files:types",
+            "revision": "fixture-1"
+          },
+          {
+            "asset": "sources/split-files-returns.mfs",
+            "id": "source:split-files:returns",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/split-files.expected.json"
+      }
+    },
+    {
+      "id": "reordered-files",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/reordered-files.input.json",
+        "sources": [
+          {
+            "asset": "sources/reordered-files-returns.mfs",
+            "id": "source:reordered-files:returns",
+            "revision": "fixture-1"
+          },
+          {
+            "asset": "sources/reordered-files-types.mfs",
+            "id": "source:reordered-files:types",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/reordered-files.expected.json"
+      }
+    },
+    {
+      "id": "forward-import",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/forward-import.input.json",
+        "sources": [
+          {
+            "asset": "sources/forward-import-main.mfs",
+            "id": "source:forward-import:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/forward-import.expected.json"
+      }
+    },
+    {
+      "id": "namespace-nested",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/namespace-nested.input.json",
+        "sources": [
+          {
+            "asset": "sources/namespace-nested-main.mfs",
+            "id": "source:namespace-nested:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/namespace-nested.expected.json"
+      }
+    },
+    {
+      "id": "namespace-dotted",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/namespace-dotted.input.json",
+        "sources": [
+          {
+            "asset": "sources/namespace-dotted-main.mfs",
+            "id": "source:namespace-dotted:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/namespace-dotted.expected.json"
+      }
+    },
+    {
+      "id": "namespace-qualified",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/namespace-qualified.input.json",
+        "sources": [
+          {
+            "asset": "sources/namespace-qualified-main.mfs",
+            "id": "source:namespace-qualified:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/namespace-qualified.expected.json"
+      }
+    },
+    {
+      "id": "sibling-namespace-headers",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/sibling-namespace-headers.input.json",
+        "sources": [
+          {
+            "asset": "sources/sibling-namespace-headers-main.mfs",
+            "id": "source:sibling-namespace-headers:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/sibling-namespace-headers.expected.json"
+      }
+    },
+    {
+      "id": "namespace-block-restoration",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/namespace-block-restoration.input.json",
+        "sources": [
+          {
+            "asset": "sources/namespace-block-restoration-main.mfs",
+            "id": "source:namespace-block-restoration:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/namespace-block-restoration.expected.json"
+      }
+    },
+    {
+      "id": "module-block-closes-header",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/module-block-closes-header.input.json",
+        "sources": [
+          {
+            "asset": "sources/module-block-closes-header-main.mfs",
+            "id": "source:module-block-closes-header:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/module-block-closes-header.expected.json"
+      }
+    },
+    {
+      "id": "model-wrapper-preserves-context",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/model-wrapper-preserves-context.input.json",
+        "sources": [
+          {
+            "asset": "sources/model-wrapper-preserves-context-main.mfs",
+            "id": "source:model-wrapper-preserves-context:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/model-wrapper-preserves-context.expected.json"
+      }
+    },
+    {
+      "id": "module-only-preserves-context",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/module-only-preserves-context.input.json",
+        "sources": [
+          {
+            "asset": "sources/module-only-preserves-context-main.mfs",
+            "id": "source:module-only-preserves-context:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/module-only-preserves-context.expected.json"
+      }
+    },
+    {
+      "id": "missing-model-context",
+      "stage": "structure",
+      "input": {
+        "facts": "fixtures/missing-model-context.input.json",
+        "sources": [
+          {
+            "asset": "sources/missing-model-context-main.mfs",
+            "id": "source:missing-model-context:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.structure.missing-model-context",
+            "path": "/context"
+          }
+        ]
+      }
+    },
+    {
+      "id": "conflicting-model-metadata",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/conflicting-model-metadata.input.json",
+        "sources": [
+          {
+            "asset": "sources/conflicting-model-metadata-main.mfs",
+            "id": "source:conflicting-model-metadata:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.model-context-conflict",
+            "path": "/modelBindings/0/model/metadata"
+          }
+        ]
+      }
+    },
+    {
+      "id": "conflicting-model-id",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/conflicting-model-id.input.json",
+        "sources": [
+          {
+            "asset": "sources/conflicting-model-id-main.mfs",
+            "id": "source:conflicting-model-id:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.model-context-conflict",
+            "path": "/modelBindings/0/model/id"
+          }
+        ]
+      }
+    },
+    {
+      "id": "conflicting-model-name",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/conflicting-model-name.input.json",
+        "sources": [
+          {
+            "asset": "sources/conflicting-model-name-main.mfs",
+            "id": "source:conflicting-model-name:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.model-name-conflict",
+            "path": "/context/model/qualifiedName"
+          }
+        ]
+      }
+    },
+    {
+      "id": "namespace-does-not-select-package",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/namespace-does-not-select-package.input.json",
+        "sources": [
+          {
+            "asset": "sources/namespace-does-not-select-package-main.mfs",
+            "id": "source:namespace-does-not-select-package:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/namespace-does-not-select-package.expected.json"
+      }
+    },
+    {
+      "id": "selected-public-name",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/selected-public-name.input.json",
+        "sources": [
+          {
+            "asset": "sources/selected-public-name-main.mfs",
+            "id": "source:selected-public-name:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/selected-public-name.expected.json"
+      }
+    },
+    {
+      "id": "unprefixed-import-is-not-relative",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/unprefixed-import-is-not-relative.input.json",
+        "sources": [
+          {
+            "asset": "sources/unprefixed-import-is-not-relative-main.mfs",
+            "id": "source:unprefixed-import-is-not-relative:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unknown-module",
+            "path": "/imports/0/target"
+          }
+        ]
+      }
+    },
+    {
+      "id": "import-before-point",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/import-before-point.input.json",
+        "sources": [
+          {
+            "asset": "sources/import-before-point-main.mfs",
+            "id": "source:import-before-point:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unknown-qualifier",
+            "path": "/references/0/path"
+          }
+        ]
+      }
+    },
+    {
+      "id": "inherited-import",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/inherited-import.input.json",
+        "sources": [
+          {
+            "asset": "sources/inherited-import-main.mfs",
+            "id": "source:inherited-import:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/inherited-import.expected.json"
+      }
+    },
+    {
+      "id": "late-parent-import",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/late-parent-import.input.json",
+        "sources": [
+          {
+            "asset": "sources/late-parent-import-main.mfs",
+            "id": "source:late-parent-import:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unknown-qualifier",
+            "path": "/references/0/path"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sibling-import-isolation",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/sibling-import-isolation.input.json",
+        "sources": [
+          {
+            "asset": "sources/sibling-import-isolation-main.mfs",
+            "id": "source:sibling-import-isolation:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unknown-qualifier",
+            "path": "/references/0/path"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reopened-import-isolation",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/reopened-import-isolation.input.json",
+        "sources": [
+          {
+            "asset": "sources/reopened-import-isolation-one.mfs",
+            "id": "source:reopened-import-isolation:one",
+            "revision": "fixture-1"
+          },
+          {
+            "asset": "sources/reopened-import-isolation-two.mfs",
+            "id": "source:reopened-import-isolation:two",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unknown-qualifier",
+            "path": "/references/0/path"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reopened-disjoint-exports",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/reopened-disjoint-exports.input.json",
+        "sources": [
+          {
+            "asset": "sources/reopened-disjoint-exports-one.mfs",
+            "id": "source:reopened-disjoint-exports:one",
+            "revision": "fixture-1"
+          },
+          {
+            "asset": "sources/reopened-disjoint-exports-two.mfs",
+            "id": "source:reopened-disjoint-exports:two",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/reopened-disjoint-exports.expected.json"
+      }
+    },
+    {
+      "id": "identical-import-redundancy",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/identical-import-redundancy.input.json",
+        "sources": [
+          {
+            "asset": "sources/identical-import-redundancy-main.mfs",
+            "id": "source:identical-import-redundancy:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/identical-import-redundancy.expected.json"
+      }
+    },
+    {
+      "id": "conflicting-imports",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/conflicting-imports.input.json",
+        "sources": [
+          {
+            "asset": "sources/conflicting-imports-main.mfs",
+            "id": "source:conflicting-imports:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.import-conflict",
+            "path": "/imports/1",
+            "relatedPaths": [
+              "/imports/0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "selected-local-collision",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/selected-local-collision.input.json",
+        "sources": [
+          {
+            "asset": "sources/selected-local-collision-main.mfs",
+            "id": "source:selected-local-collision:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.import-declaration-conflict",
+            "path": "/imports/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "binder-shadowing",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/binder-shadowing.input.json",
+        "sources": [
+          {
+            "asset": "sources/binder-shadowing-main.mfs",
+            "id": "source:binder-shadowing:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/binder-shadowing.expected.json"
+      }
+    },
+    {
+      "id": "dependency-export-alias",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/dependency-export-alias.input.json",
+        "sources": [
+          {
+            "asset": "sources/dependency-export-alias-main.mfs",
+            "id": "source:dependency-export-alias:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/dependency-export-alias.expected.json"
+      }
+    },
+    {
+      "id": "two-dependency-revisions",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/two-dependency-revisions.input.json",
+        "sources": [
+          {
+            "asset": "sources/two-dependency-revisions-main.mfs",
+            "id": "source:two-dependency-revisions:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/two-dependency-revisions.expected.json"
+      }
+    },
+    {
+      "id": "unknown-dependency-slot",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/unknown-dependency-slot.input.json",
+        "sources": [
+          {
+            "asset": "sources/unknown-dependency-slot-main.mfs",
+            "id": "source:unknown-dependency-slot:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unknown-dependency-slot",
+            "path": "/imports/0/target"
+          }
+        ]
+      }
+    },
+    {
+      "id": "private-dependency-module",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/private-dependency-module.input.json",
+        "sources": [
+          {
+            "asset": "sources/private-dependency-module-main.mfs",
+            "id": "source:private-dependency-module:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unexported-module",
+            "path": "/imports/0/target"
+          }
+        ]
+      }
+    },
+    {
+      "id": "private-dependency-symbol",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/private-dependency-symbol.input.json",
+        "sources": [
+          {
+            "asset": "sources/private-dependency-symbol-main.mfs",
+            "id": "source:private-dependency-symbol:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.private-symbol",
+            "path": "/references/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-module",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/unknown-module.input.json",
+        "sources": [
+          {
+            "asset": "sources/unknown-module-main.mfs",
+            "id": "source:unknown-module:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unknown-module",
+            "path": "/imports/0/target"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-selected-name",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/unknown-selected-name.input.json",
+        "sources": [
+          {
+            "asset": "sources/unknown-selected-name-main.mfs",
+            "id": "source:unknown-selected-name:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.unknown-export",
+            "path": "/imports/0/mode/selectors/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "private-unit-symbol",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/private-unit-symbol.input.json",
+        "sources": [
+          {
+            "asset": "sources/private-unit-symbol-main.mfs",
+            "id": "source:private-unit-symbol:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.private-symbol",
+            "path": "/references/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "type-import-no-constructor",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/type-import-no-constructor.input.json",
+        "sources": [
+          {
+            "asset": "sources/type-import-no-constructor-main.mfs",
+            "id": "source:type-import-no-constructor:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unknown-name",
+            "path": "/references/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "opaque-constructor-export",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/opaque-constructor-export.input.json",
+        "sources": [
+          {
+            "asset": "sources/opaque-constructor-export-main.mfs",
+            "id": "source:opaque-constructor-export:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.opaque-constructor",
+            "path": "/regions/1/exports/1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "public-opaque-alias",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/public-opaque-alias.input.json",
+        "sources": [
+          {
+            "asset": "sources/public-opaque-alias-main.mfs",
+            "id": "source:public-opaque-alias:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "observation": "fixtures/public-opaque-alias.expected.json"
+      }
+    },
+    {
+      "id": "constructor-owner-must-export",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/constructor-owner-must-export.input.json",
+        "sources": [
+          {
+            "asset": "sources/constructor-owner-must-export-main.mfs",
+            "id": "source:constructor-owner-must-export:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.constructor-owner-private",
+            "path": "/regions/1/exports/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "public-private-type-leak",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/public-private-type-leak.input.json",
+        "sources": [
+          {
+            "asset": "sources/public-private-type-leak-main.mfs",
+            "id": "source:public-private-type-leak:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.private-type-in-public-signature",
+            "path": "/symbols/1",
+            "relatedPaths": [
+              "/symbols/0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "transparent-alias-private-leak",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/transparent-alias-private-leak.input.json",
+        "sources": [
+          {
+            "asset": "sources/transparent-alias-private-leak-main.mfs",
+            "id": "source:transparent-alias-private-leak:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.private-type-in-public-signature",
+            "path": "/symbols/1",
+            "relatedPaths": [
+              "/symbols/0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "import-is-not-reexport",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/import-is-not-reexport.input.json",
+        "sources": [
+          {
+            "asset": "sources/import-is-not-reexport-main.mfs",
+            "id": "source:import-is-not-reexport:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.not-owned-export",
+            "path": "/regions/2/exports/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "duplicate-export-selector",
+      "stage": "visibility",
+      "input": {
+        "facts": "fixtures/duplicate-export-selector.input.json",
+        "sources": [
+          {
+            "asset": "sources/duplicate-export-selector-main.mfs",
+            "id": "source:duplicate-export-selector:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.visibility.duplicate-selector",
+            "path": "/regions/1/exports/1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "normalized-symbol-collision",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/normalized-symbol-collision.input.json",
+        "sources": [
+          {
+            "asset": "sources/normalized-symbol-collision-main.mfs",
+            "id": "source:normalized-symbol-collision:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.normalized-name-collision",
+            "path": "/symbols/1",
+            "relatedPaths": [
+              "/symbols/0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "normalized-module-collision",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/normalized-module-collision.input.json",
+        "sources": [
+          {
+            "asset": "sources/normalized-module-collision-main.mfs",
+            "id": "source:normalized-module-collision:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.normalized-module-collision",
+            "path": "/regions/2",
+            "relatedPaths": [
+              "/regions/1"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "initialisms-stay-distinct",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/initialisms-stay-distinct.input.json",
+        "sources": [
+          {
+            "asset": "sources/initialisms-stay-distinct-main.mfs",
+            "id": "source:initialisms-stay-distinct:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/initialisms-stay-distinct.expected.json"
+      }
+    },
+    {
+      "id": "type-constructor-same-name",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/type-constructor-same-name.input.json",
+        "sources": [
+          {
+            "asset": "sources/type-constructor-same-name-main.mfs",
+            "id": "source:type-constructor-same-name:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/type-constructor-same-name.expected.json"
+      }
+    },
+    {
+      "id": "constructor-name-collision",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/constructor-name-collision.input.json",
+        "sources": [
+          {
+            "asset": "sources/constructor-name-collision-main.mfs",
+            "id": "source:constructor-name-collision:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.duplicate-constructor",
+            "path": "/symbols/3",
+            "relatedPaths": [
+              "/symbols/1"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "unguarded-alias-cycle",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/unguarded-alias-cycle.input.json",
+        "sources": [
+          {
+            "asset": "sources/unguarded-alias-cycle-main.mfs",
+            "id": "source:unguarded-alias-cycle:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.unproductive-alias-cycle",
+            "path": "/symbols/0",
+            "relatedPaths": [
+              "/symbols/1"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "cyclic-imports-guarded-types",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/cyclic-imports-guarded-types.input.json",
+        "sources": [
+          {
+            "asset": "sources/cyclic-imports-guarded-types-main.mfs",
+            "id": "source:cyclic-imports-guarded-types:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/cyclic-imports-guarded-types.expected.json"
+      }
+    },
+    {
+      "id": "empty-source",
+      "stage": "structure",
+      "input": {
+        "facts": "fixtures/empty-source.input.json",
+        "sources": [
+          {
+            "asset": "sources/empty-source-empty.mfs",
+            "id": "source:empty-source:empty",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "observation": "fixtures/empty-source.expected.json"
+      }
+    },
+    {
+      "id": "utf8-crlf-source",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/utf8-crlf-source.input.json",
+        "sources": [
+          {
+            "asset": "sources/utf8-crlf-source-main.mfs",
+            "id": "source:utf8-crlf-source:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/utf8-crlf-source.expected.json"
+      }
+    },
+    {
+      "id": "duplicate-unit-symbol-id",
+      "stage": "structure",
+      "input": {
+        "facts": "fixtures/duplicate-unit-symbol-id.input.json",
+        "sources": [
+          {
+            "asset": "sources/duplicate-unit-symbol-id-main.mfs",
+            "id": "source:duplicate-unit-symbol-id:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.structure.duplicate-id",
+            "path": "/symbols/1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-source-member",
+      "stage": "structure",
+      "input": {
+        "facts": "fixtures/missing-source-member.input.json",
+        "sources": [
+          {
+            "asset": "sources/missing-source-member-main.mfs",
+            "id": "source:missing-source-member:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.structure.source-membership",
+            "path": "/context/sourceSet/1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cyclic-region-parent",
+      "stage": "structure",
+      "input": {
+        "facts": "fixtures/cyclic-region-parent.input.json",
+        "sources": [
+          {
+            "asset": "sources/cyclic-region-parent-main.mfs",
+            "id": "source:cyclic-region-parent:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.structure.region-cycle",
+            "path": "/regions/1/parentId"
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-required-context",
+      "stage": "structure",
+      "input": {
+        "facts": "fixtures/missing-required-context.input.json",
+        "sources": [
+          {
+            "asset": "sources/missing-required-context-main.mfs",
+            "id": "source:missing-required-context:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.structure.missing-unit-id",
+            "path": "/context"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-critical-member",
+      "stage": "capability",
+      "input": {
+        "facts": "fixtures/unknown-critical-member.input.json",
+        "sources": [
+          {
+            "asset": "sources/unknown-critical-member-main.mfs",
+            "id": "source:unknown-critical-member:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "scopes.unsupported.critical-member",
+            "path": "/futureSemantics"
+          }
+        ]
+      }
+    },
+    {
+      "id": "explicit-constructor-import",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/explicit-constructor-import.input.json",
+        "sources": [
+          {
+            "asset": "sources/explicit-constructor-import-main.mfs",
+            "id": "source:explicit-constructor-import:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/explicit-constructor-import.expected.json"
+      }
+    },
+    {
+      "id": "same-node-two-slots",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/same-node-two-slots.input.json",
+        "sources": [
+          {
+            "asset": "sources/same-node-two-slots-main.mfs",
+            "id": "source:same-node-two-slots:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/same-node-two-slots.expected.json"
+      }
+    },
+    {
+      "id": "model-qualified-name",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/model-qualified-name.input.json",
+        "sources": [
+          {
+            "asset": "sources/model-qualified-name-main.mfs",
+            "id": "source:model-qualified-name:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/model-qualified-name.expected.json"
+      }
+    },
+    {
+      "id": "model-wrapper-reopened",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/model-wrapper-reopened.input.json",
+        "sources": [
+          {
+            "asset": "sources/model-wrapper-reopened-one.mfs",
+            "id": "source:model-wrapper-reopened:one",
+            "revision": "fixture-1"
+          },
+          {
+            "asset": "sources/model-wrapper-reopened-two.mfs",
+            "id": "source:model-wrapper-reopened:two",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/model-wrapper-reopened.expected.json"
+      }
+    },
+    {
+      "id": "explicit-empty-export-list",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/explicit-empty-export-list.input.json",
+        "sources": [
+          {
+            "asset": "sources/explicit-empty-export-list-main.mfs",
+            "id": "source:explicit-empty-export-list:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "resolved",
+        "observation": "fixtures/explicit-empty-export-list.expected.json"
+      }
+    },
+    {
+      "id": "inherited-import-conflict",
+      "stage": "scope",
+      "input": {
+        "facts": "fixtures/inherited-import-conflict.input.json",
+        "sources": [
+          {
+            "asset": "sources/inherited-import-conflict-main.mfs",
+            "id": "source:inherited-import-conflict:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.resolve.import-conflict",
+            "path": "/imports/1",
+            "relatedPaths": [
+              "/imports/0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-profile",
+      "stage": "capability",
+      "input": {
+        "facts": "fixtures/unknown-profile.input.json",
+        "sources": [
+          {
+            "asset": "sources/unknown-profile-main.mfs",
+            "id": "source:unknown-profile:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "scopes.unsupported.profile",
+            "path": "/profile"
+          }
+        ]
+      }
+    },
+    {
+      "id": "syntax-same-file-blocks",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/same-file-blocks-main.mfs",
+            "id": "source:same-file-blocks:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "syntax": "fixtures/syntax-same-file-blocks.syntax.json"
+      }
+    },
+    {
+      "id": "syntax-successive-headers",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/successive-headers-main.mfs",
+            "id": "source:successive-headers:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "syntax": "fixtures/syntax-successive-headers.syntax.json"
+      }
+    },
+    {
+      "id": "syntax-namespace-nested",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/namespace-nested-main.mfs",
+            "id": "source:namespace-nested:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "syntax": "fixtures/syntax-namespace-nested.syntax.json"
+      }
+    },
+    {
+      "id": "syntax-model-wrapper-preserves-context",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/model-wrapper-preserves-context-main.mfs",
+            "id": "source:model-wrapper-preserves-context:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "syntax": "fixtures/syntax-model-wrapper-preserves-context.syntax.json"
+      }
+    },
+    {
+      "id": "syntax-explicit-constructor-import",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/explicit-constructor-import-main.mfs",
+            "id": "source:explicit-constructor-import:main",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "syntax": "fixtures/syntax-explicit-constructor-import.syntax.json"
+      }
+    },
+    {
+      "id": "package-keyword",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/package-keyword.mfs",
+            "id": "source:package-keyword",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.syntax.enclosing-keyword",
+            "span": {
+              "sourceId": "source:package-keyword",
+              "start": 0,
+              "end": 0,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "namespace-inside-module",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/namespace-inside-module.mfs",
+            "id": "source:namespace-inside-module",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.syntax.invalid-nesting",
+            "span": {
+              "sourceId": "source:namespace-inside-module",
+              "start": 15,
+              "end": 15,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "model-inside-module",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/model-inside-module.mfs",
+            "id": "source:model-inside-module",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.syntax.invalid-nesting",
+            "span": {
+              "sourceId": "source:model-inside-module",
+              "start": 15,
+              "end": 15,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "wildcard-import",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/wildcard-import.mfs",
+            "id": "source:wildcard-import",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.syntax.wildcard-selector",
+            "span": {
+              "sourceId": "source:wildcard-import",
+              "start": 36,
+              "end": 36,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "implicit-import-alias",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/implicit-import-alias.mfs",
+            "id": "source:implicit-import-alias",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.syntax.explicit-import-mode",
+            "span": {
+              "sourceId": "source:implicit-import-alias",
+              "start": 13,
+              "end": 13,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "include-not-selected",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/include-not-selected.mfs",
+            "id": "source:include-not-selected",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.syntax.include-not-selected",
+            "span": {
+              "sourceId": "source:include-not-selected",
+              "start": 0,
+              "end": 0,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "declaration-after-sibling-block",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/declaration-after-sibling-block.mfs",
+            "id": "source:declaration-after-sibling-block",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.syntax.declaration-without-module",
+            "span": {
+              "sourceId": "source:declaration-after-sibling-block",
+              "start": 41,
+              "end": 41,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reserved-l2-identifier",
+      "stage": "syntax",
+      "input": {
+        "sources": [
+          {
+            "asset": "sources/reserved-l2-identifier.mfs",
+            "id": "source:reserved-l2-identifier",
+            "revision": "fixture-1"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "scopes.syntax.reserved-identifier",
+            "span": {
+              "sourceId": "source:reserved-l2-identifier",
+              "start": 18,
+              "end": 18,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "file-layout-equivalence": [
+      "same-file-blocks",
+      "successive-headers",
+      "split-files",
+      "reordered-files",
+      "forward-import"
+    ],
+    "forward-imports": [
+      "same-file-blocks",
+      "successive-headers",
+      "split-files",
+      "reordered-files",
+      "forward-import"
+    ],
+    "explicit-exports": [
+      "same-file-blocks",
+      "successive-headers",
+      "split-files",
+      "reordered-files",
+      "forward-import",
+      "explicit-empty-export-list"
+    ],
+    "namespace-equivalence": [
+      "namespace-nested",
+      "namespace-dotted",
+      "namespace-qualified"
+    ],
+    "package-context": [
+      "namespace-nested",
+      "namespace-dotted",
+      "namespace-qualified",
+      "namespace-does-not-select-package"
+    ],
+    "header-siblings": [
+      "sibling-namespace-headers"
+    ],
+    "block-restoration": [
+      "namespace-block-restoration"
+    ],
+    "mixed-header-block": [
+      "namespace-block-restoration",
+      "module-block-closes-header"
+    ],
+    "model-wrapper": [
+      "model-wrapper-preserves-context",
+      "module-only-preserves-context",
+      "model-qualified-name",
+      "model-wrapper-reopened"
+    ],
+    "model-metadata": [
+      "model-wrapper-preserves-context",
+      "module-only-preserves-context",
+      "model-wrapper-reopened"
+    ],
+    "no-model-module-prefix": [
+      "model-wrapper-preserves-context"
+    ],
+    "model-context-errors": [
+      "missing-model-context",
+      "conflicting-model-metadata",
+      "conflicting-model-id",
+      "conflicting-model-name",
+      "model-qualified-name"
+    ],
+    "selected-imports": [
+      "selected-public-name"
+    ],
+    "absolute-unit-imports": [
+      "unprefixed-import-is-not-relative"
+    ],
+    "import-timing": [
+      "import-before-point",
+      "late-parent-import"
+    ],
+    "inherited-imports": [
+      "inherited-import",
+      "late-parent-import",
+      "inherited-import-conflict"
+    ],
+    "import-isolation": [
+      "sibling-import-isolation",
+      "reopened-import-isolation"
+    ],
+    "reopening": [
+      "reopened-import-isolation",
+      "reopened-disjoint-exports",
+      "model-wrapper-reopened"
+    ],
+    "export-union": [
+      "reopened-disjoint-exports"
+    ],
+    "import-conflicts": [
+      "identical-import-redundancy",
+      "conflicting-imports",
+      "selected-local-collision",
+      "inherited-import-conflict"
+    ],
+    "binder-shadowing": [
+      "binder-shadowing"
+    ],
+    "dependency-export-table": [
+      "dependency-export-alias"
+    ],
+    "binding-identity": [
+      "dependency-export-alias",
+      "two-dependency-revisions",
+      "same-node-two-slots"
+    ],
+    "dependency-errors": [
+      "unknown-dependency-slot",
+      "private-dependency-module",
+      "private-dependency-symbol"
+    ],
+    "unknown-imports": [
+      "unknown-module",
+      "unknown-selected-name"
+    ],
+    "private-access": [
+      "private-unit-symbol"
+    ],
+    "default-private": [
+      "private-unit-symbol",
+      "explicit-empty-export-list"
+    ],
+    "constructor-access": [
+      "type-import-no-constructor",
+      "constructor-owner-must-export",
+      "explicit-constructor-import"
+    ],
+    "opaque-access": [
+      "opaque-constructor-export",
+      "public-opaque-alias"
+    ],
+    "public-surface-closure": [
+      "public-private-type-leak",
+      "transparent-alias-private-leak"
+    ],
+    "no-reexport": [
+      "import-is-not-reexport"
+    ],
+    "export-errors": [
+      "duplicate-export-selector"
+    ],
+    "normalized-collisions": [
+      "normalized-symbol-collision",
+      "normalized-module-collision"
+    ],
+    "source-name-conversion": [
+      "initialisms-stay-distinct"
+    ],
+    "category-separation": [
+      "type-constructor-same-name",
+      "explicit-constructor-import"
+    ],
+    "constructor-collision": [
+      "constructor-name-collision"
+    ],
+    "alias-cycles": [
+      "unguarded-alias-cycle"
+    ],
+    "module-cycles": [
+      "cyclic-imports-guarded-types"
+    ],
+    "guarded-recursion": [
+      "cyclic-imports-guarded-types"
+    ],
+    "structure-positive": [
+      "empty-source"
+    ],
+    "utf8-spans": [
+      "utf8-crlf-source"
+    ],
+    "structure-negative": [
+      "duplicate-unit-symbol-id",
+      "missing-source-member",
+      "cyclic-region-parent",
+      "missing-required-context"
+    ],
+    "capability-boundaries": [
+      "unknown-critical-member",
+      "unknown-profile"
+    ],
+    "syntax-positive": [
+      "syntax-same-file-blocks",
+      "syntax-successive-headers",
+      "syntax-namespace-nested",
+      "syntax-model-wrapper-preserves-context",
+      "syntax-explicit-constructor-import"
+    ],
+    "syntax-negative": [
+      "package-keyword",
+      "namespace-inside-module",
+      "model-inside-module",
+      "wildcard-import",
+      "implicit-import-alias",
+      "include-not-selected",
+      "declaration-after-sibling-block",
+      "reserved-l2-identifier"
+    ]
+  },
+  "equivalenceGroups": [
+    {
+      "id": "file-layout",
+      "cases": [
+        "same-file-blocks",
+        "successive-headers",
+        "split-files",
+        "reordered-files",
+        "forward-import"
+      ]
+    },
+    {
+      "id": "namespace-forms",
+      "cases": [
+        "namespace-nested",
+        "namespace-dotted",
+        "namespace-qualified"
+      ]
+    },
+    {
+      "id": "wrapper-carrier",
+      "cases": [
+        "model-wrapper-preserves-context",
+        "module-only-preserves-context"
+      ]
+    }
+  ]
+}

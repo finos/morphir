@@ -1,0 +1,4 @@
+module Types {
+type alias LoanId = Int
+type alias Loan_Id = Int
+}

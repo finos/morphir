@@ -1,0 +1,281 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:sibling-namespace-headers:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:sibling-namespace-headers:main",
+      "revision": "fixture-1",
+      "text": "namespace Loans;\nmodule Types {\ntype alias Loan = Int\n}\nnamespace Accounting;\nmodule Types {\ntype alias Entry = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "sibling-namespace-headers:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:sibling-namespace-headers:main",
+            "revision": "fixture-1",
+            "text": "namespace Loans;\nmodule Types {\ntype alias Loan = Int\n}\nnamespace Accounting;\nmodule Types {\ntype alias Entry = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "sibling-namespace-headers:loan:declaration",
+            "span": {
+              "sourceId": "source:sibling-namespace-headers:main",
+              "start": 32,
+              "end": 53,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Loan",
+            "typeParameters": [],
+            "value": {
+              "id": "sibling-namespace-headers:loan:type",
+              "span": {
+                "sourceId": "source:sibling-namespace-headers:main",
+                "start": 50,
+                "end": 53,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "sibling-namespace-headers:entry:declaration",
+            "span": {
+              "sourceId": "source:sibling-namespace-headers:main",
+              "start": 93,
+              "end": 115,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Entry",
+            "typeParameters": [],
+            "value": {
+              "id": "sibling-namespace-headers:entry:type",
+              "span": {
+                "sourceId": "source:sibling-namespace-headers:main",
+                "start": 112,
+                "end": 115,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:sibling-namespace-headers:main:root",
+      "sourceId": "source:sibling-namespace-headers:main",
+      "span": {
+        "sourceId": "source:sibling-namespace-headers:main",
+        "start": 0,
+        "end": 118,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "sibling-namespace-headers:r1"
+        },
+        {
+          "kind": "region",
+          "id": "sibling-namespace-headers:r3"
+        }
+      ]
+    },
+    {
+      "id": "sibling-namespace-headers:r1",
+      "sourceId": "source:sibling-namespace-headers:main",
+      "span": {
+        "sourceId": "source:sibling-namespace-headers:main",
+        "start": 0,
+        "end": 56,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Loans"
+      ],
+      "parentId": "source:sibling-namespace-headers:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "sibling-namespace-headers:r2"
+        }
+      ]
+    },
+    {
+      "id": "sibling-namespace-headers:r2",
+      "sourceId": "source:sibling-namespace-headers:main",
+      "span": {
+        "sourceId": "source:sibling-namespace-headers:main",
+        "start": 17,
+        "end": 56,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "sibling-namespace-headers:r1",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:loan"
+        }
+      ],
+      "exports": []
+    },
+    {
+      "id": "sibling-namespace-headers:r3",
+      "sourceId": "source:sibling-namespace-headers:main",
+      "span": {
+        "sourceId": "source:sibling-namespace-headers:main",
+        "start": 56,
+        "end": 118,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Accounting"
+      ],
+      "parentId": "source:sibling-namespace-headers:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "sibling-namespace-headers:r4"
+        }
+      ]
+    },
+    {
+      "id": "sibling-namespace-headers:r4",
+      "sourceId": "source:sibling-namespace-headers:main",
+      "span": {
+        "sourceId": "source:sibling-namespace-headers:main",
+        "start": 78,
+        "end": 118,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "sibling-namespace-headers:r3",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:entry"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:loan",
+      "moduleRegionId": "sibling-namespace-headers:r2",
+      "name": "Loan",
+      "canonicalName": "loan",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "sibling-namespace-headers:fragment",
+        "nodeId": "sibling-namespace-headers:loan:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:entry",
+      "moduleRegionId": "sibling-namespace-headers:r4",
+      "name": "Entry",
+      "canonicalName": "entry",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "sibling-namespace-headers:fragment",
+        "nodeId": "sibling-namespace-headers:entry:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

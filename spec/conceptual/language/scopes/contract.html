@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Scopes, modules, imports and exports</h1>
+<p class="meta">L2 · morphir-ukvn.7.5 · morphir-scopes/0.1.0-draft.1 · 19 October 2026</p>
+<p>Give the parser and resolver one bounded source-organization contract. Namespace spelling and file layout do not choose package ownership. Modules collect declarations across the complete supplied source set, while each contribution keeps its lexical imports. This package publishes grammar, constructed scope facts and independently authored observations. It implements no parser, resolver, semantic checker or compatibility runner.</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#profile">Profile and decisions</a></li><li><a href="#syntax">Container and export syntax</a></li>
+<li><a href="#regions">Lexical regions and reopening</a></li><li><a href="#context">Build and model context</a></li>
+<li><a href="#names">Names and identities</a></li><li><a href="#imports">Import lookup</a></li>
+<li><a href="#exports">Public surfaces and opacity</a></li><li><a href="#records">Constructed records</a></li>
+<li><a href="#observations">Observations and diagnostics</a></li><li><a href="#fixtures">Fixtures and handoff</a></li>
+</ul></nav>
+<section id="profile"><h2>Profile and decisions</h2>
+<p><code>morphir-scopes/0.1.0-draft.1</code> is an exact prerelease profile, independent of the IR format and composed with <a href="../contract.html">L1</a> <code>morphir-declarations/0.1.0-draft.1</code>. Its local choices make the parent conceptual design draft 0.17 consumable. They do not claim maintainer approval of a complete language. The source keyword is <code>namespace</code>; <code>package</code> is not a second layer or an accepted synonym in this profile. <code>.mfs</code> identifies authored source, including contract-focused files. <code>.morphir</code> remains reserved for a future model package whose container encoding is undecided.</p>
+<table><thead><tr><th>Decision in this profile</th><th>Boundary</th></tr></thead><tbody>
+<tr><td>Namespace blocks and semicolon headers; qualified modules; optional explicit model wrapper.</td><td>One naming layer outside model. No namespace inside model/module, nested modules or nested models.</td></tr>
+<tr><td>Explicit category-aware <code>exposing</code> lists; omitted list means private declarations.</td><td>No wildcard, import-driven re-export or inferred public surface.</td></tr>
+<tr><td>Same-unit fully qualified module imports and explicit dependency-slot imports.</td><td>No filesystem import, network fetch, ambient package search or textual include.</td></tr>
+<tr><td>Closed supplied source set and explicit output-model snapshot.</td><td>No inferred package split, model ID generation or metadata erasure.</td></tr>
+</tbody></table>
+<p>General implementation bodies, explicit function generic punctuation, text/templates, contract/trait/requirement authoring and module composition remain with their owning tasks. L2 does not select their grammar. A later profile may add supported families through a versioned adapter without widening L1's closed declaration union.</p>
+</section>
+<section id="syntax"><h2>Container and export syntax</h2>
+<p><a href="grammar.ebnf">grammar.ebnf</a> defines the container grammar and its L1 join. A namespace or module uses either braces or a mandatory header semicolon. Model wrappers use braces. Namespace/module paths contain one or more L1 ASCII upper identifiers separated by dots; a model has one upper identifier. Imports end in a semicolon. Exports and selected imports use <code>type T</code>, <code>fn f</code> or <code>constructor T.C</code>. The data selector for <code>fn</code> has kind <code>value</code>.</p>
+<pre><code class="language-moonbit">namespace Finos.Lending;
+module Types exposing (type Quantity, type Choice, constructor Choice.Yes) {
+  type alias Quantity = Int
+  type Choice = Yes | No
+}
+module Returns exposing (fn remaining);
+import Finos.Lending.Types as Types;
+import sdk::Collections.List as List;
+fn remaining(outstanding: Types.Quantity, returned: Types.Quantity) -&gt; Int</code></pre>
+<p>A module alias is explicit: <code>import Finos.Lending.Types as Types;</code>. A selected import is explicit: <code>import Finos.Lending.Types exposing (type Quantity);</code>. These are separate forms in this profile. An import without either form, a wildcard or a combined <code>as</code>/<code>exposing</code> form is rejected. Importing a type never implicitly imports a constructor. Constructor selectors identify the owning type even if type and constructor share a spelling.</p>
+<p>L2 adds <code>namespace</code>, <code>model</code>, <code>module</code>, <code>import</code>, <code>as</code>, <code>exposing</code> and <code>constructor</code> to L1's reserved keywords within the composite profile. They cannot be lower identifiers there. A complete declaration ends before a following container/import keyword, separator semicolon or owning region boundary. Standalone L1 retains its own reserved set; the composite restriction does not silently revise that profile. No statement is terminated merely by a newline.</p>
+</section>
+<section id="regions"><h2>Lexical regions and reopening</h2>
+<p>A file starts with an empty source namespace, independently of the build's IR Package name. A namespace header selects a sibling prefix relative to its enclosing lexical base. <code>namespace Loans;</code> followed by <code>namespace Accounting;</code> at file root selects Loans and Accounting, never Loans.Accounting. Inside a namespace block, headers are relative to that block's base, not the previous sibling header. A namespace block extends the currently active prefix and restores the exact prior region on exit.</p>
+<p>A module path is relative to its enclosing namespace; at file root it is fully qualified within the compilation unit. A module header ends before the next sibling module, namespace or model item, or the end of its owning block/file. A block module ends at its brace. Following sibling modules never nest implicitly. A model wrapper groups modules and conceptual context, but its name adds no module path segment. Namespace declarations inside a model or module and declarations outside modules are syntax errors in this bounded profile.</p>
+<p>Structural brace nesting and a selected header region are distinct. A sibling module declaration of either form closes the previous module header. Thus <code>module A; ... module B { ... }</code> returns to the owning namespace/file after B, not A; further core declarations need another module. A top-level namespace item also closes a selected module header before being interpreted in its enclosing namespace, rather than becoming a namespace nested inside that module. By contrast, <code>namespace A; namespace B { ... }</code> enters A.B and restores A on exit. A namespace header replaces the current sibling header relative to the surrounding brace/file base. No block restores an already-closed module header.</p>
+<p>Regions carry ordered entries. Collect all declarations in the complete supplied source set before resolving imports or references, allowing forward references and cyclic module-import graphs. An import is effective only for following entries and child regions entered after it. A later enclosing import does not retroactively affect an earlier child. Closing a block restores inherited bindings; starting a sibling header ends the prior header's local imports.</p>
+<p>Reopening a canonical module merges disjoint declarations and unions explicit exports, retaining each contribution's source, region and import environment. Repeated exports of the same owned declaration across contributions are redundant and accepted; duplicate selectors within one list are diagnosed. Duplicate declarations in the same category or distinct authored module paths that normalize to the same canonical path are errors, never last-writer-wins merges. The same authored module path may reopen. A type and its constructor may share a local spelling because their categories differ.</p>
+<p>Constructor collision keys are module, constructor category and canonical local Name. The owning type ID checks ownership, not an extra naming namespace: <code>type A = Same</code> and <code>type B = Same</code> in one module conflict. Type A and constructor A may coexist in their distinct categories.</p>
+<p>Reordering sources or splitting/combining files preserves resolved semantics only when the explicit build context, declaration IDs and every contribution's namespace/import environment are retained. A new file does not inherit the old file's header or imports. File extensions and filenames do not determine module identities.</p>
+</section>
+<section id="context"><h2>Build and model context</h2>
+<p>The input names one compilation unit, one explicit canonical IR Package name, a closed list of source IDs and one output-model snapshot. Each source ID occurs once and names supplied exact bytes/revision; adapters normalize filesystem aliases before this boundary and reject inconsistent duplicate membership. The contract performs no path discovery or I/O. Changing a namespace cannot change package ownership. Multi-package compilation requires separately declared units and dependency edges.</p>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 190" role="img" aria-labelledby="ownership-title ownership-desc" style="width:100%;height:auto">
+<title id="ownership-title">Explicit ownership and source naming remain separate</title><desc id="ownership-desc">The build supplies the IR package and model snapshot. Source namespaces supply module paths. A dependency slot supplies a resolved node and export table. Resolved references retain these distinct identities.</desc>
+<g fill="none" stroke="currentColor"><rect x="5" y="10" width="235" height="75" rx="5"/><rect x="260" y="10" width="235" height="75" rx="5"/><rect x="515" y="10" width="240" height="75" rx="5"/><rect x="155" y="125" width="450" height="55" rx="5"/><path d="M122 85V105H250V125 M377 85V125 M635 85V105H510V125"/></g>
+<g fill="currentColor" text-anchor="middle" font-family="system-ui" font-size="14"><text x="122" y="38">Build: package + model</text><text x="122" y="61">explicit unit ownership</text><text x="377" y="38">Source: namespace + module</text><text x="377" y="61">lexical declarations</text><text x="635" y="38">Dependency slot</text><text x="635" y="61">resolved node + export table</text><text x="380" y="148">Resolved identity retains binding and canonical IR names</text><text x="380" y="168">Aliases and file moves do not replace the target</text></g></svg>
+<p>A model wrapper resolves its source-qualified name from namespace plus model name. A supplied <code>modelBindings</code> record associates each wrapper region with an existing model ID, exact revision and metadata snapshot. It must agree with <code>context.model</code>, including any qualified name. That optional qualifiedName is an authored source-model path, not an IR FQName or PackageName. Conflicting IDs, revisions, names or metadata properties are diagnostics; no model is synthesized or silently selected. Snapshot metadata is preserved, not interpreted as executable source. Identical wrapper bindings may reopen. Merging newly authored conceptual metadata belongs to the M1/L9 adapter, which must supply one coherent snapshot before this boundary.</p>
+<p>Module-only source requires the same explicit output-model context and retains it unchanged, including required intent, requirements, contracts and provenance. It needs no fake model wrapper. A model wrapper named LendingRules containing module Returns is not equivalent to a standalone module LendingRules. Missing context is a structured context diagnostic, never an inferred artifact from a filename. Empty modules and empty supplied source files are valid when context is complete.</p>
+</section>
+<section id="names"><h2>Names and identities</h2>
+<p>Keep authored identifiers, canonical IR Names and stable declaration IDs separate. Dots delimit source path components. Each component becomes one canonical Name under the source-spelling rule below; components join with <code>/</code> for ModuleName. Preserve the build PackageName independently. The IR FQName encoding remains <code>package:module#local</code>; a constructor also retains its owning type identity and category. See <a href="../../../../docs/spec/draft/names.md">IR naming</a>. Scope resolution never lowercases a complete qualified path or infers a package/module split from it.</p>
+<details><summary>Exact ASCII source-spelling normalization</summary>
+<p>This profile uses the existing camel/Pascal segmentation direction, applied as source spelling rather than permissive canonical decoding. Split an identifier at underscores, discarding empty chunks. Within each chunk scan left-to-right: a single uppercase letter flushes the current word and starts a lowercase word; a run of two or more uppercase letters is one initialism. If such a run is followed by a lowercase letter, its last uppercase letter starts the next word. Lowercase letters and digits append to the current word; after an emitted initialism, subsequent digits start a new word. Flush a final word. Serialize ordinary words lowercase and initialisms uppercase, joining segments with hyphens. Reject an empty result. This fixes source conversion separately from decoding already-canonical names.</p>
+<table><thead><tr><th>Source</th><th>Canonical Name</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>LoanId</code>, <code>Loan_Id</code></td><td><code>loan-id</code></td><td>A collision if distinct declarations or module spellings occupy the same category/path.</td></tr>
+<tr><td><code>LoanID</code></td><td><code>loan-ID</code></td><td>Distinct from ordinary word id.</td></tr>
+<tr><td><code>USD</code>, <code>Usd</code></td><td><code>USD</code>, <code>usd</code></td><td>Distinct names, not a case-insensitive merge.</td></tr>
+<tr><td><code>HTTP2Parser</code>, <code>Account2Id</code>, <code>A</code></td><td><code>HTTP-2-parser</code>, <code>account2-id</code>, <code>a</code></td><td>Digit and single-capital boundaries are explicit.</td></tr>
+</tbody></table>
+<p>Canonical facts in constructed inputs are authored adapter inputs, not normalization results calculated by fixture builders. A production adapter must validate the supplied spelling/canonical association against this rule. Existing canonical Name readers remain unchanged; feeding a raw source token to a canonical-first decoder is not this adapter.</p>
+</details>
+<p>Symbol IDs name existing logical declarations; L1 fragment/node references retain syntax identity and exact source spans. Reference observations preserve original IDs, links, refinements, contracts and provenance. Source-only rewrites require refreshed source revisions/spans and an explicit identity mapping, as in L1/M1. This contract promises neither automatic edit-stable node IDs nor semantic identity based only on normalized spelling.</p>
+</section>
+<section id="imports"><h2>Import lookup</h2>
+<p>Unprefixed import paths are fully qualified module paths inside the current unit, even under a namespace. <code>import Types as T;</code> does not search the current namespace for Types. Use the complete path. A dependency import <code>sdk::Collections.List</code> selects the exact supplied dependency slot <code>sdk</code>, normalizes the authored public path to <code>collections/list</code>, then looks that key up in the slot's Package export table. An alias may map it to internal module <code>data/sequences</code>. Never bypass that table by looking up the internal path directly.</p>
+<p>Dependency slots bind explicit resolved-node IDs, revisions and IR Package names. Two slots may bind different releases with the same IR Package name. A resolved target must retain the slot and resolved-node binding alongside its IR FQName; FQName alone cannot distinguish those graph instances. Unknown slots, unavailable export paths, missing exported modules or private declarations are diagnostics, with no fallback to another package, file or network. Package acquisition and version solving are outside this contract.</p>
+<p>A module alias grants qualified lookup of public declarations, not unqualified names. Selected imports grant only explicitly selected public names in their own category. Alias bindings occupy the module-qualifier namespace; selected type/value/constructor bindings use their declaration categories. Distinct bindings for the same key in an effective lexical environment are errors, including inherited conflicts; they are not shadowed by import order. Repeating the identical target binding under the same key is accepted redundancy and retains both source records. A selected import colliding with a current-module declaration in the same category is an error. Different categories remain distinct.</p>
+<p>Lookup uses an explicitly supplied local binder first for an unqualified reference, then the collected current-module declarations and applicable explicit imports. Binder shadowing does not authorize conflicting import declarations. Qualified references require their module alias; no implicit parent-module or namespace search exists. Probes carry an expected category, and constructor probes include the owning type ID. Arbitrary longer dotted reference paths are unsupported by this lookup profile rather than guessed as implicit imports.</p>
+<p>Cyclic module imports do not imply recursive values or alias validity. L4 separately rejects unproductive type-alias cycles and validates constructor-guarded recursion under L1. No bodyless function becomes callable through an import. Initializer/evaluation cycles and implementation availability are separate semantic/capability checks.</p>
+</section>
+<section id="exports"><h2>Public surfaces and opacity</h2>
+<p>Declaration exports, constructor access and package-level module exports are different boundaries. An omitted module <code>exposing</code> list means no public declarations; <code>exposing ()</code> is explicitly empty. Current-module declarations remain usable by all contributions of that same module. Imports from another module, including the same unit, require explicit declaration exports. A dependency additionally requires an entry in its Package export table.</p>
+<p>Exports name owned declarations collected across the whole module, so a header can export a later declaration or one in another contribution. They cannot export an imported declaration. An unknown target, wrong category, repeated selector within one list or import-only target is rejected. Exporting a constructor requires exporting its owning type and the constructor being public under that type's L1 <code>constructorAccess</code>. Opaque custom constructors and opaque-alias representations never become public through a selector. No wildcard implicitly exposes them.</p>
+<p>The public signature graph must be closed over accessible public type identities. A public transparent alias or function signature that exposes a private type is rejected, including a transitive private dependency. Public opaque types hide their representation dependencies; consumers see only the public nominal specification. L4 derives those dependencies from L1 declarations and checks them; independently authored visibility fixtures state expected failures without implementing that checker here. Changing source visibility does not publish a package or supply implementations.</p>
+</section>
+<section id="records"><h2>Constructed records</h2>
+<p><a href="types.ts">types.ts</a> defines fixture-facing records. They are scope facts and references to L1 nodes, not a replacement parser AST or a widened core declaration union. Required arrays remain arrays so deliberately duplicated or invalid inputs can be represented. Raw structural-negative JSON need not satisfy the TypeScript input type.</p>
+<table><thead><tr><th>Record</th><th>Required interpretation boundary</th></tr></thead><tbody>
+<tr><td>ScopeInput/context</td><td>Exact profiles, one explicit unit/package/model, closed sourceSet, explicit typeEnvironment, supplied dependencies and all indexed records.</td></tr>
+<tr><td>TypeEnvironment</td><td>Supplied named-type IDs, authored paths, arities and visibility. env.json is fixture context, not a language prelude, SDK inventory or execution capability.</td></tr>
+<tr><td>Region/Entry</td><td>One source-backed file root per supplied source; namespace/model/module children with ordered region/import/symbol/reference entries. Parents and entries agree and the region graph is acyclic.</td></tr>
+<tr><td>ScopeSymbol</td><td>Logical ID, owning module contribution, authored/canonical name, category, exact L1 fragment/node reference, original links/provenance. Constructor includes ownerTypeId.</td></tr>
+<tr><td>ModelBinding</td><td>Wrapper region to explicit model snapshot association. Module-only input needs no binding and keeps context.model.</td></tr>
+<tr><td>Dependency</td><td>Exact slot/resolved-node/revision, IR package, complete supplied Package export table and public/private symbol inventory. Incomplete inventories must not masquerade as definitive unknown-symbol results.</td></tr>
+<tr><td>ScopeImport</td><td>Unit module path or dependency slot/public export path, plus exactly one explicit alias or selected-name mode.</td></tr>
+<tr><td>ScopeReference</td><td>Lookup point, category, one unqualified component or alias plus local component, supplied lexical binders. A zero-width span may locate a constructed lookup probe; the probe is not an invented expression statement.</td></tr>
+<tr><td>BindingObservation</td><td>Independently authored symbol or binder target. Symbol target retains canonical names and the unit/dependency binding, links and provenance.</td></tr>
+</tbody></table>
+<p>The explicit named-type environment is the final type-lookup fallback after local binders, module declarations and imports. It supplies the fixture-only public abstract type Int. No implicit prelude is assumed; type identities and visibility are supplied, while numeric semantics and IR projection mappings are outside this package. A consumer requiring those mappings must obtain them explicitly. The pinned <a href="env.json">env.json</a> is copied into each constructed input, so a resolver need not fetch context from a hidden file.</p>
+<p>Locations reuse L1 half-open UTF-8 byte spans into exact source text/revision. Sources and L1 fragment source records agree byte-for-byte. L1 fragments are extracted declaration projections under the composite profile; their full container sources are not standalone L1 fragment inputs. Region spans contain their entries; nested parent spans may overlap children. Empty/end-of-file probes are allowed. Required references exist; syntax IDs are unique within their L1 fragment. Duplicate unit symbol IDs are structural errors. A declaration belongs to one module contribution, while imports never clone or move it.</p>
+<p>Unit symbol IDs are unique within the compilation unit. Dependency symbol identities are keyed by resolved-node ID plus symbol ID, not globally across all supplied slots. The same logical symbol ID may occur in different release nodes, and two slots may repeat one exact node. Repeated inventories for the same resolved node must agree on revision and content. Reference observations preserve the selected slot as well as node, revision and symbol ID.</p>
+<p>Optional <code>critical</code> fields follow L1's record-local rule: distinct present required-member names, unknown critical members yield unsupported, malformed known members are rejected. Unknown uncritical data may be retained for rich preservation; it does not create a recognized symbol family. L9/D4/H6 own future versioned categories, payloads and lookup rules. A requested unknown family/profile must report unsupported.</p>
+</section>
+<section id="observations"><h2>Observations and diagnostics</h2>
+<table><thead><tr><th>Stage</th><th>Reference outcome</th><th>Owning implementation</th></tr></thead><tbody>
+<tr><td>syntax</td><td>Container source accepted with an authored parse-only outline, or rejected with a source diagnostic.</td><td>L3's container adapter joined to L1.</td></tr>
+<tr><td>structure</td><td>Accepted/rejected record shape, graph references, unique identities and valid byte locations.</td><td>Scope decoding boundary.</td></tr>
+<tr><td>scope</td><td>Resolved modules and lookup targets, or rejected naming/import/context/alias-cycle case.</td><td>L4 with explicit context and L1 semantic rules.</td></tr>
+<tr><td>visibility</td><td>Accepted public surface or rejected export/private/opaque/public-signature case.</td><td>L4's visibility and projection boundary.</td></tr>
+<tr><td>capability</td><td>Unsupported required profile/family or unsupported interpretation.</td><td>Consuming operation.</td></tr>
+</tbody></table>
+<p>Stable primary diagnostic codes use <code>scopes.syntax.*</code>, <code>scopes.structure.*</code>, <code>scopes.resolve.*</code>, <code>scopes.visibility.*</code> or <code>scopes.unsupported.*</code>. A source diagnostic carries an exact span. A facts diagnostic carries an existing JSON Pointer into its supplied input and may identify related locations. Human wording and additional noncontradictory diagnostics may vary. Alias-cycle rejection is semantic, not a parser failure. Resource exhaustion is a separate inconclusive failure, never an accepted or resolved observation.</p>
+<p>Syntax cases have source-only inputs and a parse-only <code>SyntaxOutline</code> oracle containing regions, imports, L1 fragments and declaration-node associations. They contain no logical symbol IDs, model snapshots, lookup probes, links or provenance to invent from source. Regions use declaration entries referring to L1 nodes, not semantic symbol entries. Syntax/region/import node IDs may be bijectively renamed while preserving all references; exact source IDs, byte spans, spellings, declaration structure and L1 binder origins must agree. A separate scope adapter consumes explicit semantic identity/model bindings and lookup probes from constructed inputs. Probe comments are retained source, never instructions to synthesize references.</p>
+<p>Expected tables, bindings and diagnostics are literal independently authored assets. Integrity tests verify pinned bytes, references, locations and required coverage, but do not run a name resolver or calculate expected semantic results. Later implementation adapters report actual results through the existing shared conformance machinery; this package creates no second runner or current compatibility claim.</p>
+</section>
+<section id="fixtures"><h2>Fixtures and handoff</h2>
+<p><a href="cases.json">cases.json</a> records source/facts/expected assets and requirement coverage. <a href="assets.json">assets.json</a> pins byte lengths and SHA-256 hashes for the whole reference package. Literal <code>.mfs</code> sources preserve LF/CRLF, Unicode comments and exact final newlines. Source cases carry identities/revisions independently of their authored facts.</p>
+<p><a href="fixture-builders.ts">Fixture builders</a> clone or append supplied records without resolving names, assigning identities, normalizing spelling or fetching files. The same-file, split-file, reordered-file and header/block variants share independently written semantic observations while retaining different source locations. Negative cases preserve the original invalid inputs instead of repairing them in a helper.</p>
+<pre><code class="language-bash">mise run conceptual:fixtures-check
+bun test spec/conceptual/language/scopes/fixture-builders.test.ts \
+  spec/conceptual/language/scopes/fixture-integrity.test.ts</code></pre>
+<p>L3 consumes the container grammar and source/fact examples. L4 consumes constructed facts, explicit dependency export tables and scope/visibility outcomes without waiting for L3. L8 consumes source IDs, regions and locations without confusing recovery nodes with conceptual gaps. Tree-sitter issue <a href="https://github.com/finos/morphir/issues/1083">#1083</a> can extend the declaration subset from this contract; a CST is not semantic qualification. L9 supplies conceptual-family metadata and expression adapters, preserving existing model and declaration IDs.</p>
+<p>The landed repository package is canonical. Bead <code>morphir-ukvn.7.5</code> mirrors the reviewed HTML, while the parent conceptual design remains in <code>morphir-ukvn.7</code>. The prose, tables and embedded diagram render standalone. Running the corpus and following relative source links requires the adjacent pinned repository assets.</p>
+</section>
+
+</main>
+</body>
+</html>

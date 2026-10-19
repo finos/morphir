@@ -1,0 +1,6 @@
+module Use {
+import old::Collections.List as Old;
+// lookup old-use
+import new::Collections.List as New;
+// lookup new-use
+}

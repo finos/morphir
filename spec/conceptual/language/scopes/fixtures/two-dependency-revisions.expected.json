@@ -1,0 +1,85 @@
+{
+  "outcome": "resolved",
+  "modules": [
+    {
+      "moduleName": "use",
+      "symbolIds": [],
+      "exports": []
+    }
+  ],
+  "references": [
+    {
+      "referenceId": "old-use",
+      "target": {
+        "kind": "symbol",
+        "symbolId": "urn:scopes:symbol:sdk-list",
+        "binding": {
+          "kind": "dependency",
+          "slot": "old",
+          "resolvedNodeId": "release:sdk:1",
+          "revision": "1.0.0"
+        },
+        "packageName": "morphir/SDK",
+        "moduleName": "data/sequences",
+        "canonicalName": "list",
+        "category": "type",
+        "links": [
+          {
+            "kind": "contract",
+            "id": "urn:contract:quantity",
+            "revision": "contract-1"
+          }
+        ],
+        "provenance": [
+          {
+            "id": "urn:design:lending",
+            "revision": "review-1"
+          }
+        ]
+      }
+    },
+    {
+      "referenceId": "new-use",
+      "target": {
+        "kind": "symbol",
+        "symbolId": "urn:scopes:symbol:sdk-list",
+        "binding": {
+          "kind": "dependency",
+          "slot": "new",
+          "resolvedNodeId": "release:sdk:2",
+          "revision": "2.0.0"
+        },
+        "packageName": "morphir/SDK",
+        "moduleName": "data/sequences",
+        "canonicalName": "list",
+        "category": "type",
+        "links": [
+          {
+            "kind": "contract",
+            "id": "urn:contract:quantity",
+            "revision": "contract-1"
+          }
+        ],
+        "provenance": [
+          {
+            "id": "urn:design:lending",
+            "revision": "review-1"
+          }
+        ]
+      }
+    }
+  ],
+  "model": {
+    "id": "urn:scopes:model:lending",
+    "revision": "model-1",
+    "metadata": {
+      "intent": "Keep reviewed context",
+      "requirements": [
+        "urn:requirement:remaining"
+      ],
+      "custom": {
+        "owner": "domain-review"
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+module Types exposing (type Quantity) {
+type alias Quantity = Int
+}
+module Use {
+import Types as T;
+}

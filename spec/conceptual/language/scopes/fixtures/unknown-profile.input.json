@@ -1,0 +1,103 @@
+{
+  "profile": "morphir-scopes/0.2.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:unknown-profile:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:unknown-profile:main",
+      "revision": "fixture-1",
+      "text": "module Empty {\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "unknown-profile:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:unknown-profile:main",
+            "revision": "fixture-1",
+            "text": "module Empty {\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:unknown-profile:main:root",
+      "sourceId": "source:unknown-profile:main",
+      "span": {
+        "sourceId": "source:unknown-profile:main",
+        "start": 0,
+        "end": 17,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "unknown-profile:r1"
+        }
+      ]
+    },
+    {
+      "id": "unknown-profile:r1",
+      "sourceId": "source:unknown-profile:main",
+      "span": {
+        "sourceId": "source:unknown-profile:main",
+        "start": 0,
+        "end": 17,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Empty"
+      ],
+      "parentId": "source:unknown-profile:main:root",
+      "entries": [],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [],
+  "references": []
+}

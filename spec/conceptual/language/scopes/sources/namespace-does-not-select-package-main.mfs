@@ -1,0 +1,4 @@
+namespace Other.Organization;
+module Types {
+type alias Quantity = Int
+}

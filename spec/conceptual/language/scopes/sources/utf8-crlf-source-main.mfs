@@ -1,0 +1,4 @@
+// π 😀
+module Types {
+type alias Quantity = Int
+}

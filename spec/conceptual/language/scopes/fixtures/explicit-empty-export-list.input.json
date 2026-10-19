@@ -1,0 +1,103 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:explicit-empty-export-list:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:explicit-empty-export-list:main",
+      "revision": "fixture-1",
+      "text": "module Empty exposing () {\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "explicit-empty-export-list:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:explicit-empty-export-list:main",
+            "revision": "fixture-1",
+            "text": "module Empty exposing () {\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:explicit-empty-export-list:main:root",
+      "sourceId": "source:explicit-empty-export-list:main",
+      "span": {
+        "sourceId": "source:explicit-empty-export-list:main",
+        "start": 0,
+        "end": 29,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "explicit-empty-export-list:r1"
+        }
+      ]
+    },
+    {
+      "id": "explicit-empty-export-list:r1",
+      "sourceId": "source:explicit-empty-export-list:main",
+      "span": {
+        "sourceId": "source:explicit-empty-export-list:main",
+        "start": 0,
+        "end": 29,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Empty"
+      ],
+      "parentId": "source:explicit-empty-export-list:main:root",
+      "entries": [],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [],
+  "references": []
+}

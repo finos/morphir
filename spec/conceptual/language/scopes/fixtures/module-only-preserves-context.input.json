@@ -1,0 +1,162 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:module-only-preserves-context:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:module-only-preserves-context:main",
+      "revision": "fixture-1",
+      "text": "module Finos.Lending.Returns {\ntype alias Quantity = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "module-only-preserves-context:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:module-only-preserves-context:main",
+            "revision": "fixture-1",
+            "text": "module Finos.Lending.Returns {\ntype alias Quantity = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "module-only-preserves-context:quantity:declaration",
+            "span": {
+              "sourceId": "source:module-only-preserves-context:main",
+              "start": 31,
+              "end": 56,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "module-only-preserves-context:quantity:type",
+              "span": {
+                "sourceId": "source:module-only-preserves-context:main",
+                "start": 53,
+                "end": 56,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:module-only-preserves-context:main:root",
+      "sourceId": "source:module-only-preserves-context:main",
+      "span": {
+        "sourceId": "source:module-only-preserves-context:main",
+        "start": 0,
+        "end": 59,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "module-only-preserves-context:r1"
+        }
+      ]
+    },
+    {
+      "id": "module-only-preserves-context:r1",
+      "sourceId": "source:module-only-preserves-context:main",
+      "span": {
+        "sourceId": "source:module-only-preserves-context:main",
+        "start": 0,
+        "end": 59,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Finos",
+        "Lending",
+        "Returns"
+      ],
+      "parentId": "source:module-only-preserves-context:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "module-only-preserves-context:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "module-only-preserves-context:fragment",
+        "nodeId": "module-only-preserves-context:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

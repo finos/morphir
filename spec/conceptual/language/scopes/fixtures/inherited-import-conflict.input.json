@@ -1,0 +1,219 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:inherited-import-conflict:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:inherited-import-conflict:main",
+      "revision": "fixture-1",
+      "text": "module Types {\n}\nmodule Other {\n}\nnamespace Finos;\nimport Types as T;\nmodule Use {\nimport Other as T;\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "inherited-import-conflict:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:inherited-import-conflict:main",
+            "revision": "fixture-1",
+            "text": "module Types {\n}\nmodule Other {\n}\nnamespace Finos;\nimport Types as T;\nmodule Use {\nimport Other as T;\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:inherited-import-conflict:main:root",
+      "sourceId": "source:inherited-import-conflict:main",
+      "span": {
+        "sourceId": "source:inherited-import-conflict:main",
+        "start": 0,
+        "end": 104,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "inherited-import-conflict:r1"
+        },
+        {
+          "kind": "region",
+          "id": "inherited-import-conflict:r2"
+        },
+        {
+          "kind": "region",
+          "id": "inherited-import-conflict:r3"
+        }
+      ]
+    },
+    {
+      "id": "inherited-import-conflict:r1",
+      "sourceId": "source:inherited-import-conflict:main",
+      "span": {
+        "sourceId": "source:inherited-import-conflict:main",
+        "start": 0,
+        "end": 17,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:inherited-import-conflict:main:root",
+      "entries": [],
+      "exports": []
+    },
+    {
+      "id": "inherited-import-conflict:r2",
+      "sourceId": "source:inherited-import-conflict:main",
+      "span": {
+        "sourceId": "source:inherited-import-conflict:main",
+        "start": 17,
+        "end": 34,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Other"
+      ],
+      "parentId": "source:inherited-import-conflict:main:root",
+      "entries": [],
+      "exports": []
+    },
+    {
+      "id": "inherited-import-conflict:r3",
+      "sourceId": "source:inherited-import-conflict:main",
+      "span": {
+        "sourceId": "source:inherited-import-conflict:main",
+        "start": 34,
+        "end": 104,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos"
+      ],
+      "parentId": "source:inherited-import-conflict:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "inherited"
+        },
+        {
+          "kind": "region",
+          "id": "inherited-import-conflict:r4"
+        }
+      ]
+    },
+    {
+      "id": "inherited-import-conflict:r4",
+      "sourceId": "source:inherited-import-conflict:main",
+      "span": {
+        "sourceId": "source:inherited-import-conflict:main",
+        "start": 70,
+        "end": 104,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "inherited-import-conflict:r3",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "local"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [
+    {
+      "id": "inherited",
+      "regionId": "inherited-import-conflict:r3",
+      "span": {
+        "sourceId": "source:inherited-import-conflict:main",
+        "start": 51,
+        "end": 69,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "T"
+      }
+    },
+    {
+      "id": "local",
+      "regionId": "inherited-import-conflict:r4",
+      "span": {
+        "sourceId": "source:inherited-import-conflict:main",
+        "start": 83,
+        "end": 101,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Other"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "T"
+      }
+    }
+  ],
+  "references": []
+}

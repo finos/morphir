@@ -1,0 +1,159 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:missing-required-context:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:missing-required-context:main",
+      "revision": "fixture-1",
+      "text": "module Types {\ntype alias Quantity = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "missing-required-context:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:missing-required-context:main",
+            "revision": "fixture-1",
+            "text": "module Types {\ntype alias Quantity = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "missing-required-context:quantity:declaration",
+            "span": {
+              "sourceId": "source:missing-required-context:main",
+              "start": 15,
+              "end": 40,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "missing-required-context:quantity:type",
+              "span": {
+                "sourceId": "source:missing-required-context:main",
+                "start": 37,
+                "end": 40,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:missing-required-context:main:root",
+      "sourceId": "source:missing-required-context:main",
+      "span": {
+        "sourceId": "source:missing-required-context:main",
+        "start": 0,
+        "end": 43,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "missing-required-context:r1"
+        }
+      ]
+    },
+    {
+      "id": "missing-required-context:r1",
+      "sourceId": "source:missing-required-context:main",
+      "span": {
+        "sourceId": "source:missing-required-context:main",
+        "start": 0,
+        "end": 43,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:missing-required-context:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "missing-required-context:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "missing-required-context:fragment",
+        "nodeId": "missing-required-context:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

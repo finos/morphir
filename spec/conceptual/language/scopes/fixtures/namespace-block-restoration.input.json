@@ -1,0 +1,281 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:namespace-block-restoration:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:namespace-block-restoration:main",
+      "revision": "fixture-1",
+      "text": "namespace Finos;\nnamespace Lending {\nmodule Types {\ntype alias Quantity = Int\n}\n}\nmodule Audit {\ntype alias Audit = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "namespace-block-restoration:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:namespace-block-restoration:main",
+            "revision": "fixture-1",
+            "text": "namespace Finos;\nnamespace Lending {\nmodule Types {\ntype alias Quantity = Int\n}\n}\nmodule Audit {\ntype alias Audit = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "namespace-block-restoration:quantity:declaration",
+            "span": {
+              "sourceId": "source:namespace-block-restoration:main",
+              "start": 52,
+              "end": 77,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "namespace-block-restoration:quantity:type",
+              "span": {
+                "sourceId": "source:namespace-block-restoration:main",
+                "start": 74,
+                "end": 77,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "namespace-block-restoration:audit:declaration",
+            "span": {
+              "sourceId": "source:namespace-block-restoration:main",
+              "start": 97,
+              "end": 119,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Audit",
+            "typeParameters": [],
+            "value": {
+              "id": "namespace-block-restoration:audit:type",
+              "span": {
+                "sourceId": "source:namespace-block-restoration:main",
+                "start": 116,
+                "end": 119,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:namespace-block-restoration:main:root",
+      "sourceId": "source:namespace-block-restoration:main",
+      "span": {
+        "sourceId": "source:namespace-block-restoration:main",
+        "start": 0,
+        "end": 122,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "namespace-block-restoration:r1"
+        }
+      ]
+    },
+    {
+      "id": "namespace-block-restoration:r1",
+      "sourceId": "source:namespace-block-restoration:main",
+      "span": {
+        "sourceId": "source:namespace-block-restoration:main",
+        "start": 0,
+        "end": 122,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos"
+      ],
+      "parentId": "source:namespace-block-restoration:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "namespace-block-restoration:r2"
+        },
+        {
+          "kind": "region",
+          "id": "namespace-block-restoration:r4"
+        }
+      ]
+    },
+    {
+      "id": "namespace-block-restoration:r2",
+      "sourceId": "source:namespace-block-restoration:main",
+      "span": {
+        "sourceId": "source:namespace-block-restoration:main",
+        "start": 17,
+        "end": 82,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "block",
+      "name": [
+        "Lending"
+      ],
+      "parentId": "namespace-block-restoration:r1",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "namespace-block-restoration:r3"
+        }
+      ]
+    },
+    {
+      "id": "namespace-block-restoration:r3",
+      "sourceId": "source:namespace-block-restoration:main",
+      "span": {
+        "sourceId": "source:namespace-block-restoration:main",
+        "start": 37,
+        "end": 80,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "namespace-block-restoration:r2",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": []
+    },
+    {
+      "id": "namespace-block-restoration:r4",
+      "sourceId": "source:namespace-block-restoration:main",
+      "span": {
+        "sourceId": "source:namespace-block-restoration:main",
+        "start": 82,
+        "end": 122,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Audit"
+      ],
+      "parentId": "namespace-block-restoration:r1",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:audit"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "namespace-block-restoration:r3",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "namespace-block-restoration:fragment",
+        "nodeId": "namespace-block-restoration:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:audit",
+      "moduleRegionId": "namespace-block-restoration:r4",
+      "name": "Audit",
+      "canonicalName": "audit",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "namespace-block-restoration:fragment",
+        "nodeId": "namespace-block-restoration:audit:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

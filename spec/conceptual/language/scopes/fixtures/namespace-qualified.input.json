@@ -1,0 +1,167 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:namespace-qualified:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:namespace-qualified:main",
+      "revision": "fixture-1",
+      "text": "module Finos.Lending.Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "namespace-qualified:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:namespace-qualified:main",
+            "revision": "fixture-1",
+            "text": "module Finos.Lending.Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "namespace-qualified:quantity:declaration",
+            "span": {
+              "sourceId": "source:namespace-qualified:main",
+              "start": 54,
+              "end": 79,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "namespace-qualified:quantity:type",
+              "span": {
+                "sourceId": "source:namespace-qualified:main",
+                "start": 76,
+                "end": 79,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:namespace-qualified:main:root",
+      "sourceId": "source:namespace-qualified:main",
+      "span": {
+        "sourceId": "source:namespace-qualified:main",
+        "start": 0,
+        "end": 82,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "namespace-qualified:r1"
+        }
+      ]
+    },
+    {
+      "id": "namespace-qualified:r1",
+      "sourceId": "source:namespace-qualified:main",
+      "span": {
+        "sourceId": "source:namespace-qualified:main",
+        "start": 0,
+        "end": 82,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Finos",
+        "Lending",
+        "Types"
+      ],
+      "parentId": "source:namespace-qualified:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "namespace-qualified:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "namespace-qualified:fragment",
+        "nodeId": "namespace-qualified:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

@@ -1,0 +1,169 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:duplicate-export-selector:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:duplicate-export-selector:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Quantity, type Quantity) {\ntype alias Quantity = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "duplicate-export-selector:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:duplicate-export-selector:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Quantity, type Quantity) {\ntype alias Quantity = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "duplicate-export-selector:quantity:declaration",
+            "span": {
+              "sourceId": "source:duplicate-export-selector:main",
+              "start": 55,
+              "end": 80,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "duplicate-export-selector:quantity:type",
+              "span": {
+                "sourceId": "source:duplicate-export-selector:main",
+                "start": 77,
+                "end": 80,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:duplicate-export-selector:main:root",
+      "sourceId": "source:duplicate-export-selector:main",
+      "span": {
+        "sourceId": "source:duplicate-export-selector:main",
+        "start": 0,
+        "end": 83,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "duplicate-export-selector:r1"
+        }
+      ]
+    },
+    {
+      "id": "duplicate-export-selector:r1",
+      "sourceId": "source:duplicate-export-selector:main",
+      "span": {
+        "sourceId": "source:duplicate-export-selector:main",
+        "start": 0,
+        "end": 83,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:duplicate-export-selector:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        },
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "duplicate-export-selector:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "duplicate-export-selector:fragment",
+        "nodeId": "duplicate-export-selector:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

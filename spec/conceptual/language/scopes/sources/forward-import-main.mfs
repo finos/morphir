@@ -1,0 +1,8 @@
+namespace Finos.Lending;
+module Returns {
+import Finos.Lending.Types as Types;
+// lookup use
+}
+module Types exposing (type Quantity) {
+type alias Quantity = Int
+}

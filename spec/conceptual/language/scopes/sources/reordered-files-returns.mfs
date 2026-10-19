@@ -1,0 +1,5 @@
+namespace Finos.Lending;
+module Returns {
+import Finos.Lending.Types as Types;
+// lookup use
+}

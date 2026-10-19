@@ -1,0 +1,151 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:model-wrapper-preserves-context:main",
+      "revision": "fixture-1",
+      "text": "namespace Finos.Lending;\nmodel LendingRules {\nmodule Returns {\ntype alias Quantity = Int\n}\n}\n"
+    }
+  ],
+  "regions": [
+    {
+      "id": "source:model-wrapper-preserves-context:main:root",
+      "sourceId": "source:model-wrapper-preserves-context:main",
+      "span": {
+        "sourceId": "source:model-wrapper-preserves-context:main",
+        "start": 0,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-preserves-context:r1"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-preserves-context:r1",
+      "sourceId": "source:model-wrapper-preserves-context:main",
+      "span": {
+        "sourceId": "source:model-wrapper-preserves-context:main",
+        "start": 0,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos",
+        "Lending"
+      ],
+      "parentId": "source:model-wrapper-preserves-context:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-preserves-context:r2"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-preserves-context:r2",
+      "sourceId": "source:model-wrapper-preserves-context:main",
+      "span": {
+        "sourceId": "source:model-wrapper-preserves-context:main",
+        "start": 25,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "model",
+      "form": "block",
+      "name": [
+        "LendingRules"
+      ],
+      "parentId": "model-wrapper-preserves-context:r1",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-preserves-context:r3"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-preserves-context:r3",
+      "sourceId": "source:model-wrapper-preserves-context:main",
+      "span": {
+        "sourceId": "source:model-wrapper-preserves-context:main",
+        "start": 46,
+        "end": 91,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Returns"
+      ],
+      "parentId": "model-wrapper-preserves-context:r2",
+      "entries": [
+        {
+          "kind": "declaration",
+          "id": "model-wrapper-preserves-context:quantity:declaration"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "fragments": [
+    {
+      "id": "model-wrapper-preserves-context:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:model-wrapper-preserves-context:main",
+            "revision": "fixture-1",
+            "text": "namespace Finos.Lending;\nmodel LendingRules {\nmodule Returns {\ntype alias Quantity = Int\n}\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "model-wrapper-preserves-context:quantity:declaration",
+            "span": {
+              "sourceId": "source:model-wrapper-preserves-context:main",
+              "start": 63,
+              "end": 88,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "model-wrapper-preserves-context:quantity:type",
+              "span": {
+                "sourceId": "source:model-wrapper-preserves-context:main",
+                "start": 85,
+                "end": 88,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "imports": [],
+  "declarations": [
+    {
+      "category": "type",
+      "moduleRegionId": "model-wrapper-preserves-context:r3",
+      "fragmentId": "model-wrapper-preserves-context:fragment",
+      "nodeId": "model-wrapper-preserves-context:quantity:declaration"
+    }
+  ]
+}

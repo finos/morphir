@@ -1,0 +1,6 @@
+namespace Finos.Lending;
+model LendingRules {
+module Types exposing (type Other) {
+type alias Other = Int
+}
+}

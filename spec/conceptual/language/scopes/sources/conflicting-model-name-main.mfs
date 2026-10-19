@@ -1,0 +1,5 @@
+model Rules {
+module Types {
+type alias Quantity = Int
+}
+}

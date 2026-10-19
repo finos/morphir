@@ -1,0 +1,7 @@
+module Types exposing (type Quantity) {
+type alias Quantity = Int
+}
+module A;
+import Types as T;
+module B;
+// lookup leak
