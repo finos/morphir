@@ -1,0 +1,38 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:opaque-scalar",
+      "revision": "fixture-1",
+      "text": "opaque type alias LoanId = String"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "opaque-scalar:n2",
+      "span": {
+        "sourceId": "source:opaque-scalar",
+        "start": 0,
+        "end": 33,
+        "unit": "utf8-byte"
+      },
+      "kind": "opaque-alias",
+      "name": "LoanId",
+      "typeParameters": [],
+      "representation": {
+        "id": "opaque-scalar:n1",
+        "span": {
+          "sourceId": "source:opaque-scalar",
+          "start": 27,
+          "end": 33,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "String"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

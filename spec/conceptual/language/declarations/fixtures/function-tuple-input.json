@@ -1,0 +1,90 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:function-tuple-input",
+      "revision": "fixture-1",
+      "text": "fn accept(pair: (Int, String)) -> Bool"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "function-tuple-input:n6",
+      "span": {
+        "sourceId": "source:function-tuple-input",
+        "start": 0,
+        "end": 38,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "accept",
+      "typeParameters": [],
+      "inputs": [
+        {
+          "id": "function-tuple-input:n4",
+          "span": {
+            "sourceId": "source:function-tuple-input",
+            "start": 10,
+            "end": 29,
+            "unit": "utf8-byte"
+          },
+          "name": "pair",
+          "type": {
+            "id": "function-tuple-input:n3",
+            "span": {
+              "sourceId": "source:function-tuple-input",
+              "start": 16,
+              "end": 29,
+              "unit": "utf8-byte"
+            },
+            "kind": "tuple",
+            "elements": [
+              {
+                "id": "function-tuple-input:n1",
+                "span": {
+                  "sourceId": "source:function-tuple-input",
+                  "start": 17,
+                  "end": 20,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "Int"
+                ],
+                "arguments": []
+              },
+              {
+                "id": "function-tuple-input:n2",
+                "span": {
+                  "sourceId": "source:function-tuple-input",
+                  "start": 22,
+                  "end": 28,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "String"
+                ],
+                "arguments": []
+              }
+            ]
+          }
+        }
+      ],
+      "output": {
+        "id": "function-tuple-input:n5",
+        "span": {
+          "sourceId": "source:function-tuple-input",
+          "start": 34,
+          "end": 38,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Bool"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

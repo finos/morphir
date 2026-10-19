@@ -1,0 +1,2 @@
+type alias First = Int
+type alias Second = First

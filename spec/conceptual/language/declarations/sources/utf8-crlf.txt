@@ -1,0 +1,2 @@
+// π 😀
+type alias Quantity = Int

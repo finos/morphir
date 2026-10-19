@@ -1,0 +1,48 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:function-output-binder",
+      "revision": "fixture-1",
+      "text": "fn produce() -> a"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "function-output-binder:n3",
+      "span": {
+        "sourceId": "source:function-output-binder",
+        "start": 0,
+        "end": 17,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "produce",
+      "typeParameters": [
+        {
+          "id": "function-output-binder:n2",
+          "span": {
+            "sourceId": "source:function-output-binder",
+            "start": 16,
+            "end": 17,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "implicit"
+        }
+      ],
+      "inputs": [],
+      "output": {
+        "id": "function-output-binder:n1",
+        "span": {
+          "sourceId": "source:function-output-binder",
+          "start": 16,
+          "end": 17,
+          "unit": "utf8-byte"
+        },
+        "kind": "variable",
+        "name": "a"
+      }
+    }
+  ]
+}

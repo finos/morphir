@@ -1,0 +1,81 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:generic-pair",
+      "revision": "fixture-1",
+      "text": "type alias Pair a b = (a, b)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "generic-pair:n6",
+      "span": {
+        "sourceId": "source:generic-pair",
+        "start": 0,
+        "end": 28,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Pair",
+      "typeParameters": [
+        {
+          "id": "generic-pair:n4",
+          "span": {
+            "sourceId": "source:generic-pair",
+            "start": 16,
+            "end": 17,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "declared"
+        },
+        {
+          "id": "generic-pair:n5",
+          "span": {
+            "sourceId": "source:generic-pair",
+            "start": 18,
+            "end": 19,
+            "unit": "utf8-byte"
+          },
+          "name": "b",
+          "origin": "declared"
+        }
+      ],
+      "value": {
+        "id": "generic-pair:n3",
+        "span": {
+          "sourceId": "source:generic-pair",
+          "start": 22,
+          "end": 28,
+          "unit": "utf8-byte"
+        },
+        "kind": "tuple",
+        "elements": [
+          {
+            "id": "generic-pair:n1",
+            "span": {
+              "sourceId": "source:generic-pair",
+              "start": 23,
+              "end": 24,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "a"
+          },
+          {
+            "id": "generic-pair:n2",
+            "span": {
+              "sourceId": "source:generic-pair",
+              "start": 26,
+              "end": 27,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "b"
+          }
+        ]
+      }
+    }
+  ]
+}

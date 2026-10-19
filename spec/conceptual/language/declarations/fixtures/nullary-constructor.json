@@ -1,0 +1,38 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:nullary-constructor",
+      "revision": "fixture-1",
+      "text": "type A = B"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "nullary-constructor:n2",
+      "span": {
+        "sourceId": "source:nullary-constructor",
+        "start": 0,
+        "end": 10,
+        "unit": "utf8-byte"
+      },
+      "kind": "custom",
+      "name": "A",
+      "typeParameters": [],
+      "constructorAccess": "module-policy",
+      "constructors": [
+        {
+          "id": "nullary-constructor:n1",
+          "span": {
+            "sourceId": "source:nullary-constructor",
+            "start": 9,
+            "end": 10,
+            "unit": "utf8-byte"
+          },
+          "name": "B",
+          "arguments": []
+        }
+      ]
+    }
+  ]
+}

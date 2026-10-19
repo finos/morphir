@@ -1,0 +1,38 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:utf8-crlf",
+      "revision": "fixture-1",
+      "text": "// π 😀\r\ntype alias Quantity = Int\r\n"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "utf8-crlf:n2",
+      "span": {
+        "sourceId": "source:utf8-crlf",
+        "start": 12,
+        "end": 37,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Quantity",
+      "typeParameters": [],
+      "value": {
+        "id": "utf8-crlf:n1",
+        "span": {
+          "sourceId": "source:utf8-crlf",
+          "start": 34,
+          "end": 37,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Int"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

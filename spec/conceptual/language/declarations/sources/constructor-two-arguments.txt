@@ -1,0 +1,1 @@
+type Pairing = Pair Int String

@@ -1,0 +1,63 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:function-valued-output",
+      "revision": "fixture-1",
+      "text": "fn choose() -> Int -> Bool"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "function-valued-output:n4",
+      "span": {
+        "sourceId": "source:function-valued-output",
+        "start": 0,
+        "end": 26,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "choose",
+      "typeParameters": [],
+      "inputs": [],
+      "output": {
+        "id": "function-valued-output:n3",
+        "span": {
+          "sourceId": "source:function-valued-output",
+          "start": 15,
+          "end": 26,
+          "unit": "utf8-byte"
+        },
+        "kind": "function",
+        "input": {
+          "id": "function-valued-output:n1",
+          "span": {
+            "sourceId": "source:function-valued-output",
+            "start": 15,
+            "end": 18,
+            "unit": "utf8-byte"
+          },
+          "kind": "named",
+          "path": [
+            "Int"
+          ],
+          "arguments": []
+        },
+        "output": {
+          "id": "function-valued-output:n2",
+          "span": {
+            "sourceId": "source:function-valued-output",
+            "start": 22,
+            "end": 26,
+            "unit": "utf8-byte"
+          },
+          "kind": "named",
+          "path": [
+            "Bool"
+          ],
+          "arguments": []
+        }
+      }
+    }
+  ]
+}

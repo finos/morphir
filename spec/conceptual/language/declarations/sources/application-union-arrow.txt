@@ -1,0 +1,1 @@
+type alias Choice a = List a | Int -> Bool

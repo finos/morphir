@@ -1,0 +1,105 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:guarded-recursion",
+      "revision": "fixture-1",
+      "text": "type A = Wrap B\ntype B = End | More A"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "guarded-recursion:n3",
+      "span": {
+        "sourceId": "source:guarded-recursion",
+        "start": 0,
+        "end": 15,
+        "unit": "utf8-byte"
+      },
+      "kind": "custom",
+      "name": "A",
+      "typeParameters": [],
+      "constructorAccess": "module-policy",
+      "constructors": [
+        {
+          "id": "guarded-recursion:n2",
+          "span": {
+            "sourceId": "source:guarded-recursion",
+            "start": 9,
+            "end": 15,
+            "unit": "utf8-byte"
+          },
+          "name": "Wrap",
+          "arguments": [
+            {
+              "id": "guarded-recursion:n1",
+              "span": {
+                "sourceId": "source:guarded-recursion",
+                "start": 14,
+                "end": 15,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "B"
+              ],
+              "arguments": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "guarded-recursion:n7",
+      "span": {
+        "sourceId": "source:guarded-recursion",
+        "start": 16,
+        "end": 37,
+        "unit": "utf8-byte"
+      },
+      "kind": "custom",
+      "name": "B",
+      "typeParameters": [],
+      "constructorAccess": "module-policy",
+      "constructors": [
+        {
+          "id": "guarded-recursion:n4",
+          "span": {
+            "sourceId": "source:guarded-recursion",
+            "start": 25,
+            "end": 28,
+            "unit": "utf8-byte"
+          },
+          "name": "End",
+          "arguments": []
+        },
+        {
+          "id": "guarded-recursion:n6",
+          "span": {
+            "sourceId": "source:guarded-recursion",
+            "start": 31,
+            "end": 37,
+            "unit": "utf8-byte"
+          },
+          "name": "More",
+          "arguments": [
+            {
+              "id": "guarded-recursion:n5",
+              "span": {
+                "sourceId": "source:guarded-recursion",
+                "start": 36,
+                "end": 37,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "A"
+              ],
+              "arguments": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
