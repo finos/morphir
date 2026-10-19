@@ -247,6 +247,27 @@ pub struct CaptureExpectation {
     projection: ProjectionDescriptor,
 }
 impl CaptureExpectation {
+    /// Validate an actual release acknowledgement for this exact capture. Two
+    /// calls can establish the protocol's immediate idempotent release; this
+    /// proves neither memory reclamation nor another connection's authority.
+    pub fn verify_release(&self, exchange: &Exchange<'_>) -> Result<(), TransferError> {
+        let Parameters::Release { capture } = exchange.request.parameters() else {
+            return Err(TransferError::Method);
+        };
+        if capture != &self.capture {
+            return Err(TransferError::Capture);
+        }
+        let result = reply(exchange)?;
+        if result.as_object().is_none_or(|fields| fields.len() != 4)
+            || result["profile"] != "morphir/workbench/model-originals"
+            || result["contractVersion"] != "0.1.0-draft.1"
+            || result["status"] != "released"
+            || result["captureId"].as_str() != Some(self.capture.as_str())
+        {
+            return Err(InvalidFrame::Shape.into());
+        }
+        Ok(())
+    }
     pub fn parse(ready: &str) -> Result<Self, TransferError> {
         let ready = parse(ready, MAX_REPLY_BYTES)?;
         Self::from_value(&ready)

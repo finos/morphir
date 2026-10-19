@@ -25,6 +25,11 @@ pub use projection::{
     CheckedProjectionEvidence, ComparisonResource, ExpectedProjection, ModelRelease,
     ProjectionError, ProjectionWorkLimits,
 };
+mod transcript;
+pub use transcript::{
+    CaptureCompletion, CheckedCaptureTranscript, ConnectedCaptureExpectation,
+    ExpectedProjectionState, Transcript, TranscriptError, TranscriptLimits,
+};
 
 /// Inclusive bound on the complete JSON-RPC request, before parsing.
 pub const MAX_REQUEST_BYTES: usize = 16 * 1024;

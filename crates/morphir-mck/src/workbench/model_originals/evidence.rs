@@ -254,6 +254,9 @@ pub struct CheckedOriginalsEvidence {
     capture: CaptureInventory,
 }
 impl CheckedOriginalsEvidence {
+    pub fn projection_status(&self) -> super::ProjectionStatus {
+        self.capture.projection_status()
+    }
     pub fn inventory(&self) -> &Inventory {
         self.capture.inventory()
     }
