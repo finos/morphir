@@ -1,7 +1,7 @@
 //! Fixed peer frames exercise the independent checker, not a production adapter.
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use morphir_mck::workbench::model_originals::{
-    CaptureExpectation, Exchange, Parameters, Request, TransferError,
+    CaptureExpectation, Exchange, Parameters, Request, SessionId, TransferError,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -35,6 +35,73 @@ fn capture_expectation_rejects_companions_in_a_primary_only_summary() {
     let mut summary = packet["cases"][0]["expected"]["summary"].clone();
     summary["coverage"] = json!({"kind":"primary"});
     assert!(CaptureExpectation::parse(&summary.to_string()).is_err());
+}
+
+#[test]
+fn ready_summary_matches_the_capture_request_and_independent_session() {
+    let packet = packet();
+    let request = Request::parse(&packet["cases"][0]["input"]["request"].to_string()).unwrap();
+    let session = SessionId::new("session-A").unwrap();
+    let summary = &packet["cases"][0]["expected"]["summary"];
+    assert!(
+        CaptureExpectation::parse_for_request(&summary.to_string(), &request, &session).is_ok()
+    );
+    let other = SessionId::new("another-session").unwrap();
+    assert!(matches!(
+        CaptureExpectation::parse_for_request(&summary.to_string(), &request, &other),
+        Err(TransferError::Binding)
+    ));
+    for pointer in [
+        "/binding/source/providerId",
+        "/binding/source/locator",
+        "/binding/projectId",
+    ] {
+        let mut changed = summary.clone();
+        *changed.pointer_mut(pointer).unwrap() = json!("different");
+        assert!(matches!(
+            CaptureExpectation::parse_for_request(&changed.to_string(), &request, &session),
+            Err(TransferError::Binding)
+        ));
+    }
+    let inventory = inventory_request(0, 2, 1);
+    assert!(matches!(
+        CaptureExpectation::parse_for_request(&summary.to_string(), &inventory, &session),
+        Err(TransferError::Method)
+    ));
+}
+
+#[test]
+fn capture_scope_and_projection_request_are_distinct_from_available_bytes() {
+    let packet = packet();
+    let summary = &packet["cases"][0]["expected"]["summary"];
+    let session = SessionId::new("session-A").unwrap();
+    for (field, value) in [("scope", "primary"), ("semantic", "none")] {
+        let mut raw = packet["cases"][0]["input"]["request"].clone();
+        raw["params"][field] = json!(value);
+        let request = Request::parse(&raw.to_string()).unwrap();
+        assert!(
+            CaptureExpectation::parse_for_request(&summary.to_string(), &request, &session)
+                .is_err()
+        );
+    }
+    let request = Request::parse(&packet["cases"][0]["input"]["request"].to_string()).unwrap();
+    let mut changed = summary.clone();
+    changed["projection"] = json!({"status":"not-requested"});
+    assert!(
+        CaptureExpectation::parse_for_request(&changed.to_string(), &request, &session).is_err()
+    );
+    let mut no_semantic = packet["cases"][0]["input"]["request"].clone();
+    no_semantic["params"]["semantic"] = json!("none");
+    let no_semantic = Request::parse(&no_semantic.to_string()).unwrap();
+    assert!(
+        CaptureExpectation::parse_for_request(&changed.to_string(), &no_semantic, &session).is_ok()
+    );
+    // Originals may remain ready when the independently requested projection
+    // cannot be produced. An unavailable projection is a valid scoped outcome.
+    changed["projection"] = json!({"status":"unavailable","reason":"invalid_model"});
+    assert!(
+        CaptureExpectation::parse_for_request(&changed.to_string(), &request, &session).is_ok()
+    );
 }
 
 #[test]

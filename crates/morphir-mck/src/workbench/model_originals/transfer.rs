@@ -3,9 +3,9 @@
 //! original/model owner. Those decisions require actual host/client evidence.
 use super::inventory::{EntryContent, Summary, count, hash, ready_metadata};
 use super::{
-    CaptureId, EntryId, InvalidFrame, Inventory, InventoryEntry, InventoryError, InventoryIndex,
-    Parameters, ProjectId, ProviderId, ReadTarget, Request, RequestId, Root, Schema, SessionId,
-    SourceIdentity, SourceLocator, parse, validate,
+    CaptureId, CaptureScope, EntryId, InvalidFrame, Inventory, InventoryEntry, InventoryError,
+    InventoryIndex, Parameters, ProjectId, ProviderId, ReadTarget, Request, RequestId, Root,
+    Schema, SemanticRequest, SessionId, SourceIdentity, SourceLocator, parse, validate,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Deserialize;
@@ -23,6 +23,8 @@ pub enum TransferError {
     Method,
     RequestIdentity,
     Binding,
+    CaptureScope,
+    SemanticRequest,
     Capture,
     Progress,
     Pagination,
@@ -50,6 +52,8 @@ impl fmt::Display for TransferError {
             Self::Method => "exchange has the wrong model-originals method",
             Self::RequestIdentity => "reply does not preserve the exact request identity",
             Self::Binding => "reply differs from its expected session/source/project binding",
+            Self::CaptureScope => "ready coverage differs from the requested capture scope",
+            Self::SemanticRequest => "projection status differs from the requested semantic mode",
             Self::Capture => "exchange differs from its expected capture",
             Self::Progress => "exchange does not make exact contiguous progress",
             Self::Pagination => "inventory page is not the largest permitted prefix",
@@ -207,7 +211,49 @@ pub struct CaptureExpectation {
 impl CaptureExpectation {
     pub fn parse(ready: &str) -> Result<Self, TransferError> {
         let ready = parse(ready, MAX_REPLY_BYTES)?;
-        let (roots, summary) = ready_metadata(&ready)?;
+        Self::from_value(&ready)
+    }
+    /// Bind a ready result to the independently supplied current session and
+    /// actual capture request. This verifies metadata correspondence; the caller
+    /// still checks the enclosing RPC reply, source facts and current authority.
+    pub fn parse_for_request(
+        ready: &str,
+        request: &Request,
+        session: &SessionId,
+    ) -> Result<Self, TransferError> {
+        let Parameters::Capture {
+            source,
+            project,
+            scope,
+            semantic,
+        } = request.parameters()
+        else {
+            return Err(TransferError::Method);
+        };
+        let ready = parse(ready, MAX_REPLY_BYTES)?;
+        let expected = Self::from_value(&ready)?;
+        if &expected.binding.session != session
+            || &expected.binding.source != source
+            || &expected.binding.project != project
+        {
+            return Err(TransferError::Binding);
+        }
+        let coverage = match ready["coverage"]["kind"].as_str() {
+            Some("primary") => CaptureScope::Primary,
+            Some("complete") => CaptureScope::Complete,
+            _ => return Err(InvalidFrame::Shape.into()),
+        };
+        if coverage != *scope {
+            return Err(TransferError::CaptureScope);
+        }
+        match (semantic, ready["projection"]["status"].as_str()) {
+            (SemanticRequest::None, Some("not-requested"))
+            | (SemanticRequest::Projection, Some("available" | "unavailable")) => Ok(expected),
+            _ => Err(TransferError::SemanticRequest),
+        }
+    }
+    fn from_value(ready: &Value) -> Result<Self, TransferError> {
+        let (roots, summary) = ready_metadata(ready)?;
         let binding = Binding::parse(&ready["binding"])?;
         let capture = CaptureId::parse(&ready["captureId"])?;
         let projection_bytes = if ready["projection"]["status"] == "available" {

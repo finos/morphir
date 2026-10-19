@@ -66,12 +66,14 @@ macro_rules! bounded_identity {
             pub fn as_str(&self) -> &str {
                 &self.0
             }
-            fn parse(value: &Value) -> Result<Self, InvalidFrame> {
-                let text = value.as_str().ok_or(InvalidFrame::Identity)?;
+            pub fn new(text: &str) -> Result<Self, InvalidFrame> {
                 if text.is_empty() || text.len() > $limit || text.chars().any(char::is_control) {
                     return Err(InvalidFrame::Identity);
                 }
                 Ok(Self(text.to_owned()))
+            }
+            fn parse(value: &Value) -> Result<Self, InvalidFrame> {
+                Self::new(value.as_str().ok_or(InvalidFrame::Identity)?)
             }
         }
     };
