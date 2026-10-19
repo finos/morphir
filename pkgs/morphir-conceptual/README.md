@@ -97,8 +97,8 @@ or ambiguous union membership are reported instead of guessed.
 Run the focused suite from the repository root:
 
 ```bash
-moon test -p finos/morphir-conceptual/intent --target wasm
-moon test -p finos/morphir-conceptual/intent --target wasm-gc
-moon test -p finos/morphir-conceptual/intent --target js
-moon test -p finos/morphir-conceptual/intent --target native
+moon test --target wasm -p finos/morphir-conceptual/validation/admission finos/morphir-conceptual/model finos/morphir-conceptual/intent
+moon test --target wasm-gc -p finos/morphir-conceptual/validation/admission finos/morphir-conceptual/model finos/morphir-conceptual/intent
+moon test --target js -p finos/morphir-conceptual/validation/admission finos/morphir-conceptual/model finos/morphir-conceptual/intent
+moon test --target native -p finos/morphir-conceptual/validation/admission finos/morphir-conceptual/model finos/morphir-conceptual/intent
 ```
