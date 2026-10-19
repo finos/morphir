@@ -66,11 +66,15 @@ jobs:
       telemetry: true
       workbench: true
 
+  packaged:
+    name: Actual packaged fallback
+    uses: ./.github/workflows/ci-packaged.yml
+
   qualification-ok:
     name: qualification-ok
     runs-on: ubuntu-latest
     if: always()
-    needs: [setup, native, installed]
+    needs: [setup, native, installed, packaged]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
@@ -80,7 +84,7 @@ jobs:
       - name: Require the full matrix and bind its candidate receipt
         env:
           CI_NEEDS: ${{ toJSON(needs) }}
-          CI_REQUIRED_JOBS: '["setup","native","installed"]'
+          CI_REQUIRED_JOBS: '["setup","native","installed","packaged"]'
         run: moonx scripts/ci-gate.mbtx --qualification
       - name: Retain exact candidate qualification receipt
         uses: actions/upload-artifact@v7

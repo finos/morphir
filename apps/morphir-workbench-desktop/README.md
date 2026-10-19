@@ -33,6 +33,59 @@ publish a release. CLI, framework and CEF helper versions must match. Supported
 Proton source-built platforms are macOS Apple Silicon, Linux x64 and Windows
 x64. This slice's actual desktop verification is on macOS Apple Silicon.
 
+The package icon is a deterministic 512-pixel PNG rendered from the existing
+Morphir SVG mark with the exact locked `@resvg/resvg-js` dependency. Frontend
+builds verify the PNG and its source/rendering receipt before packaging. To
+regenerate it after an intentional artwork or renderer change, run from the
+repository root:
+
+```sh
+bun --check apps/morphir-workbench-desktop/scripts/build-icon.ts
+```
+
+`tools/packaged-targets-pin.json` records the intended Linux x64 and Windows x64
+runner, Proton, CEF and Linux packaging-tool content pins. These pins prepare
+qualification; they do not establish a successful packaged run on either OS.
+The existing Windows bootstrap remains the source of the corrected compiler
+and standard-library setup.
+
+From the repository root, the portable build command is:
+
+```sh
+mise run check:workbench-package-pins
+mise run build:workbench-packaged -- linux-x64
+# On Windows x64 with the MSVC developer environment:
+mise run build:workbench-packaged -- windows-x64
+```
+
+Windows also requires CMake on PATH. The command uses its archive engine through
+an owned adapter for pinned CEF setup. Packaging adds MSVC's `/bigobj` option to
+the child compiler environment for the generated application's large object
+file, preserving inherited compiler flags. These options do not affect Linux.
+
+Linux requires the Proton CEF development libraries, patchelf and the display
+dependencies described in the qualification plan. The build command acquires
+and verifies the AppImage builder and its runtime, checks actual CLI/CEF
+requirements, and refuses to reuse previous package evidence. It writes a
+build-only receipt. `mise run test:workbench-packaged -- <target>` runs the
+actual package acceptance afterward, under `xvfb-run -a` on Linux. The opt-in
+full qualification workflow builds and accepts Linux x64 and Windows x64 and
+requires both source-bound receipts. The fallback test reuses the installed
+CLI's process-group/Windows Job supervisor to own only its package fixture.
+It verifies an empty native descriptor, unavailable native effects, real
+browser-worker compilation and typed fields/JSON/Ion, session revocation,
+hostile-origin refusal, standalone mode and actual window close. Passing this
+test does not enable native workers or workspace grants on these targets.
+The fresh temporary profile must be removed after an unsignalled zero exit and
+confirmed owned-process quiescence. Receipts distinguish application removal
+from bounded harness removal of that exact observed directory. The harness
+checks root/profile identities, refuses replacements and unknown profiles,
+and retains failed-run files for diagnosis. Harness file removal never counts
+as normal application exit or native-worker lifecycle qualification.
+Nonprofile temporary siblings, such as AppImage extraction directories, are
+preserved and reported separately. Their presence does not grant cleanup
+authority, and the enclosing scratch directory is retained with them.
+
 The packaged frontend uses Proton's secure application asset origin. Compilation
 and explicitly selected Local Scheme evaluation use the shared browser workers.
 Typed invocation uses native-owned child workers on macOS Apple Silicon. Its

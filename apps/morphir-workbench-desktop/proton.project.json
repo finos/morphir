@@ -11,6 +11,7 @@
   "package": {
     "product_name": "Morphir Workbench",
     "version": "0.1.0",
+    "icons": ["assets/morphir-icon.png"],
     "output": "_build/package"
   }
 }

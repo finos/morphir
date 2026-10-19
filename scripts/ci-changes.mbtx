@@ -293,6 +293,7 @@ async fn self_test() -> Unit {
     (["scripts/conformance-check.mbtx"], true, false, ["conformance"]),
     ([".github/workflows/ci.yml"], true, true, suites),
     ([".github/workflows/qualification.yml"], true, true, suites),
+    ([".github/workflows/ci-packaged.yml"], true, true, suites),
     (["scripts/ci-changes.mbtx"], true, false, suites),
     (["moon.work"], true, true, suites),
     (["pkgs/morphir-moonbit/moon.mod"], true, true, backend),

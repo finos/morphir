@@ -1,0 +1,1129 @@
+///|
+/// Build the actual host package. A build receipt is not GUI qualification.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+enum PackageTarget {
+  LinuxX64
+  WindowsX64
+} derive(Eq)
+
+///|
+fn PackageTarget::parse(value : String) -> PackageTarget raise {
+  match value {
+    "linux-x64" => LinuxX64
+    "windows-x64" => WindowsX64
+    _ => fail("Expected linux-x64 or windows-x64")
+  }
+}
+
+///|
+fn PackageTarget::name(self : PackageTarget) -> String {
+  match self {
+    LinuxX64 => "linux-x64"
+    WindowsX64 => "windows-x64"
+  }
+}
+
+///|
+fn PackageTarget::host(self : PackageTarget) -> String {
+  match self {
+    LinuxX64 => "linux:x64"
+    WindowsX64 => "win32:x64"
+  }
+}
+
+///|
+fn PackageTarget::formats(self : PackageTarget) -> Array[String] {
+  match self {
+    LinuxX64 => ["--format", "appimage"]
+    WindowsX64 => ["--format", "app", "--format", "zip"]
+  }
+}
+
+///|
+fn field(value : Json, key : String) -> Json {
+  match value {
+    Object(fields) => fields.get(key).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+fn text(value : Json, key : String) -> String raise {
+  guard field(value, key) is String(value) else {
+    fail("Missing pin field: " + key)
+  }
+  value
+}
+
+///|
+struct Digest(String)
+
+///|
+fn Digest::parse(value : String) -> Digest raise {
+  guard value.length() == 64 else { fail("Expected SHA-256 pin") }
+  for character in value {
+    guard (character >= '0' && character <= '9') ||
+      (character >= 'a' && character <= 'f') else {
+      fail("Expected lowercase SHA-256 pin")
+    }
+  }
+  Digest(value)
+}
+
+///|
+fn Digest::matches(self : Digest, bytes : Bytes) -> Bool {
+  let Digest(expected) = self
+  @crypto.bytes_to_hex_string(@crypto.sha256(bytes)) == expected
+}
+
+///|
+fn selected_pin(pins : Json, target : PackageTarget) -> Json raise {
+  guard field(pins, "formatVersion") == Json::number(1) &&
+    field(pins, "targets") is Array(entries) &&
+    entries.length() == 2 else {
+    fail("Expected the two target package pins")
+  }
+  let mut selected = None
+  let seen : Array[PackageTarget] = []
+  for entry in entries {
+    let found = PackageTarget::parse(text(entry, "target"))
+    guard !seen.contains(found) else { fail("Duplicate target pin") }
+    seen.push(found)
+    ignore(Digest::parse(text(entry, "cefSha256")))
+    if found == target {
+      selected = Some(entry)
+    }
+  }
+  guard selected is Some(pin) else { fail("Missing target pin") }
+  pin
+}
+
+///|
+fn check_requirements(pins : Json, pin : Json, actual : Json) -> Unit raise {
+  let proton = field(pins, "proton")
+  guard text(actual, "proton_version") == text(proton, "version") &&
+    text(actual, "platform") == text(pin, "cefPlatform") &&
+    text(actual, "cef_archive") == text(pin, "cefArchive") &&
+    text(actual, "cef_sha256") == text(pin, "cefSha256") &&
+    field(actual, "layout_version") == field(proton, "layoutVersion") else {
+    fail(
+      "Installed Proton/CEF requirements differ from the reviewed target pins",
+    )
+  }
+}
+
+///|
+async fn output(
+  program : String,
+  args : Array[String],
+  cwd~ : String = ".",
+) -> String {
+  let (status, out, err) = @process.collect_output(program, args, cwd~)
+  guard status == 0 else {
+    fail(program + " failed: " + err.text() + out.text())
+  }
+  out.text().trim().to_owned()
+}
+
+///|
+async fn checked(
+  program : String,
+  args : Array[String],
+  cwd~ : String = ".",
+  environment~ : Map[String, String]? = None,
+) -> Unit {
+  let status = @process.run(
+    program,
+    args,
+    cwd~,
+    extra_env=environment.unwrap_or(Map([])),
+    inherit_env=environment is None,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  guard status == 0 else {
+    fail(program + " failed with status " + status.to_string())
+  }
+}
+
+///|
+fn package_environment(
+  target : PackageTarget,
+  inherited : Map[String, String],
+) -> Map[String, String] raise {
+  let scoped = inherited.copy()
+  if target == WindowsX64 {
+    let mut original : String? = None
+    for key in inherited.keys().to_array() {
+      if key.to_lower() == "cl" {
+        guard original is None else {
+          fail("Ambiguous MSVC compiler environment")
+        }
+        original = inherited.get(key)
+        scoped.remove(key)
+      }
+    }
+    // MSVC's documented option accommodates the generated application's many
+    // object sections. Keep inherited compiler flags and scope it to packaging.
+    scoped.set(
+      "CL",
+      match original {
+        Some(flags) if !flags.trim().is_empty() => flags + " /bigobj"
+        _ => "/bigobj"
+      },
+    )
+  }
+  scoped
+}
+
+///|
+async fn copy_executable(source : String, destination : String) -> String {
+  let bytes = @fs.read_file(source).binary()
+  let hash = @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+  @fs.write_file(destination, bytes)
+  guard Digest::parse(hash).matches(@fs.read_file(destination).binary()) else {
+    fail("Staged executable bytes differ from the original")
+  }
+  hash
+}
+
+///|
+async fn probe_archive(
+  program : String,
+  environment : Map[String, String],
+  evidence : String,
+) -> Unit {
+  let scratch = @fs.tmpdir(prefix="morphir cef archive probe ")
+  let unpacked = scratch + "/unpacked"
+  @fs.mkdir(unpacked)
+  @fs.write_file(scratch + "/probe.txt", "CEF archive probe\n")
+  let archive = scratch + "/probe.tar.bz2"
+  @async.with_timeout(30000, () => {
+    for
+      (phase, args) in [
+        ("create", ["-cjf", archive, "-C", scratch, "probe.txt"]),
+        ("extract", ["-xjf", archive, "-C", unpacked]),
+      ] {
+      let progress : Json = {
+        "phase": phase,
+        "extractor": program,
+        "scratch": scratch,
+        "qualification": "none",
+      }
+      @fs.write_file(evidence + "/archive-probe.json", progress.stringify())
+      let status = @process.run(
+        program,
+        args,
+        extra_env=environment,
+        inherit_env=false,
+        stdout=@stdio.stdout,
+        stderr=@stdio.stderr,
+      )
+      guard status == 0 else {
+        fail("Small archive probe failed during " + phase)
+      }
+    }
+  })
+  guard @fs.read_file(unpacked + "/probe.txt").binary() ==
+    b"CEF archive probe\n" else {
+    fail("Small archive round-trip changed its bytes")
+  }
+  @fs.rmdir(scratch, recursive=true)
+  let result : Json = {
+    "passed": true,
+    "extractor": program,
+    "qualification": "none",
+  }
+  @fs.write_file(evidence + "/archive-probe.json", result.stringify())
+  println("Small archive round-trip passed; actual CEF setup is still required")
+}
+
+///|
+async fn cef_progress(
+  pid : Int32,
+  temporary : String,
+  archive : String,
+  evidence : String,
+  sample : Int32,
+) -> Unit {
+  let processes : Array[Json] = []
+  for
+    filter in [
+      "PID eq " + pid.to_string(),
+      "IMAGENAME eq tar.exe",
+      "IMAGENAME eq bzip2.exe",
+    ] {
+    let (status, out, _) = @process.collect_output("tasklist.exe", [
+      "/FI", filter, "/FO", "CSV", "/NH", "/V",
+    ])
+    let text = out.text()
+    let length = if text.length() > 8192 { 8192 } else { text.length() }
+    let bounded = text[:length].to_owned()
+    processes.push({ "filter": filter, "status": status, "output": bounded })
+  }
+  let files : Array[Json] = []
+  let entries = @fs.readdir(temporary)
+  let count = if entries.length() > 8 { 8 } else { entries.length() }
+  for entry in entries[:count] {
+    let directory = temporary + "/" + entry
+    if @fs.kind(directory, follow_symlink=false) != Directory {
+      continue
+    }
+    for
+      relative in [
+        archive + ".tar.bz2",
+        archive + "/CMakeLists.txt",
+        archive + "/include/cef_app.h",
+        archive + "/Release/libcef.dll",
+        archive + "/Release/chrome_elf.dll",
+      ] {
+      let path = directory + "/" + relative
+      if @fs.exists(path) && @fs.kind(path, follow_symlink=false) is Regular {
+        files.push({ "path": path, "bytes": @fs.file_size(path).to_string() })
+      }
+    }
+  }
+  let progress : Json = {
+    "sample": sample,
+    "protonPid": pid,
+    "qualification": "none",
+    "processes": processes,
+    "files": files,
+  }
+  let line = progress.stringify() + "\n"
+  @fs.write_file(evidence + "/cef-progress.json", line)
+  let log = evidence + "/cef-process-progress.log"
+  let prior = if @fs.exists(log) { @fs.read_file(log).text() } else { "" }
+  @fs.write_file(log, prior + line)
+  println("CEF process progress sample " + sample.to_string() + " recorded")
+}
+
+///|
+async fn setup_windows_cef(
+  desktop : String,
+  evidence : String,
+  archive : String,
+  archive_sha256 : String,
+) -> Unit {
+  // A failed setup may be retried before build.json exists. Keep diagnostics
+  // local to this invocation and never mistake an earlier probe for this run.
+  @fs.write_file(evidence + "/cef-process-progress.log", "")
+  for name in ["cef-progress.json", "archive-probe.json", "cef-extractor.json"] {
+    let path = evidence + "/" + name
+    if @fs.exists(path) {
+      @fs.remove(path)
+    }
+  }
+  let cmake = output("where.exe", ["cmake"]).split("\n").to_array()[0]
+    .trim()
+    .to_owned()
+  let cmake_version = output(cmake, ["--version"])
+  guard @env.get_env_var("PATH") is Some(previous_path) else {
+    fail("Missing build tool search path")
+  }
+  let original_link = output("where.exe", ["link"]).split("\n").to_array()[0]
+    .trim()
+    .to_owned()
+  // Pass one explicit environment block to the native child processes. Windows
+  // treats environment names without case, so remove all inherited spellings.
+  let scoped_env = @env.get_env_vars()
+  for key in scoped_env.keys().to_array() {
+    if key.to_lower() == "path" || key.to_lower() == "tar_options" {
+      scoped_env.remove(key)
+    }
+  }
+  scoped_env.set("Path", previous_path)
+  scoped_env.set("MORPHIR_CEF_CMAKE", cmake)
+  scoped_env.set("MORPHIR_CEF_ARCHIVE_SHA256", archive_sha256)
+  let (link_status, link_search, link_error) = @process.collect_output(
+    "where.exe",
+    ["link"],
+    extra_env=scoped_env,
+    inherit_env=false,
+  )
+  let diagnostic = @fs.read_file(evidence + "/archive-tools.log").text() +
+    "\nCEF extraction engine: " +
+    cmake +
+    "\n" +
+    cmake_version +
+    "\nTAR_OPTIONS: removed\nPreserved linker: " +
+    original_link +
+    "\nScoped linker search:\n" +
+    link_search.text() +
+    link_error.text() +
+    "\n"
+  @fs.write_file(evidence + "/archive-tools.log", diagnostic)
+  println(diagnostic)
+  guard link_status == 0 &&
+    link_search.text().split("\n").to_array()[0].trim() == original_link else {
+    fail("Scoped archive selection must preserve the native linker selection")
+  }
+  let proton = output("where.exe", ["proton_cli"]).split("\n").to_array()[0]
+    .trim()
+    .to_owned()
+  let temporary = @fs.tmpdir(prefix="morphir-cef-setup-")
+  let launcher = temporary + "/launcher"
+  @fs.mkdir(launcher)
+  let build = temporary + "/adapter-build"
+  checked("moon", [
+    "build", "scripts/workbench-cef-extract.mbtx", "--target", "native", "--release",
+    "--target-dir", build,
+  ])
+  let adapter = build +
+    "/workbench-cef-extract.mbtx/native/release/build/single/single.exe"
+  let proxy = launcher + "/tar.exe"
+  let staged_proton = launcher + "/proton_cli.exe"
+  let proxy_sha256 = copy_executable(adapter, proxy)
+  let proton_sha256 = copy_executable(proton, staged_proton)
+  // CreateProcess searches the calling executable's directory first. Stage
+  // only owned copies; never replace the runner's tar or installed Proton.
+  checked(proxy, ["--self-test"])
+  @async.with_timeout(30000, () => {
+    let status = @process.run(
+      proxy,
+      ["--roundtrip"],
+      extra_env=scoped_env,
+      inherit_env=false,
+      stdout=@stdio.stdout,
+      stderr=@stdio.stderr,
+    )
+    guard status == 0 else { fail("Native CEF extraction roundtrip failed") }
+  })
+  let extractor : Json = {
+    "revision": output("git", ["rev-parse", "HEAD"]),
+    "qualification": "none",
+    "adapterSha256": proxy_sha256,
+    "protonSha256": proton_sha256,
+    "cmake": cmake,
+    "cmakeVersion": cmake_version,
+    "cmakeSha256": @crypto.bytes_to_hex_string(
+      @crypto.sha256(@fs.read_file(cmake).binary()),
+    ),
+    "archiveSha256": archive_sha256,
+    "archiveRoundtripPassed": true,
+    "installedExecutablesUnchanged": true,
+  }
+  @fs.write_file(evidence + "/cef-extractor.json", extractor.stringify() + "\n")
+  // The setup owns this temporary root. Inspection never traverses the runner's
+  // other temporary directories; failed setup leaves its files for diagnosis.
+  for key in scoped_env.keys().to_array() {
+    if key.to_lower() == "temp" || key.to_lower() == "tmp" {
+      scoped_env.remove(key)
+    }
+  }
+  scoped_env.set("TEMP", temporary)
+  scoped_env.set("TMP", temporary)
+  let status : Int32 = @async.with_timeout(720000, () => {
+    @async.with_task_group(group => {
+      let child = @process.spawn(
+        group,
+        staged_proton,
+        ["cef", "setup"],
+        cwd=desktop,
+        extra_env=scoped_env,
+        inherit_env=false,
+        stdout=@stdio.stdout,
+        stderr=@stdio.stderr,
+      )
+      group.spawn_bg(() => {
+        let mut sample = 0
+        while true {
+          @async.with_timeout(10000, () => {
+            cef_progress(child.pid, temporary, archive, evidence, sample)
+          }) catch {
+            error if @async.is_being_cancelled() => raise error
+            _ => println("CEF diagnostics unavailable for this sample")
+          }
+          sample += 1
+          @async.sleep(30000)
+        }
+      })
+      let status = child.wait()
+      group.return_immediately(status)
+      status
+    })
+  })
+  guard status == 0 else {
+    fail("CEF setup failed with status " + status.to_string())
+  }
+  @fs.rmdir(temporary, recursive=true)
+}
+
+///|
+async fn acquire_tool(pin : Json, destination : String) -> Unit {
+  let digest = Digest::parse(text(pin, "sha256"))
+  if @fs.exists(destination) {
+    guard @fs.kind(destination, follow_symlink=false) is Regular &&
+      digest.matches(@fs.read_file(destination).binary()) else {
+      fail(
+        "Existing tool differs from pin; refusing to replace it: " + destination,
+      )
+    }
+  } else {
+    let scratch = @fs.tmpdir(prefix="morphir-package-tool-")
+    defer @fs.rmdir(scratch, recursive=true)
+    let download = scratch + "/download"
+    checked("curl", [
+      "--fail",
+      "--location",
+      "--silent",
+      "--show-error",
+      "--max-time",
+      "180",
+      "--max-filesize",
+      "33554432",
+      "--output",
+      download,
+      text(pin, "url"),
+    ])
+    guard @fs.file_size(download) <= 32L * 1024L * 1024L else {
+      fail("Package tool download exceeds its bound")
+    }
+    let bytes = @fs.read_file(download).binary()
+    guard digest.matches(bytes) else {
+      fail("Package tool checksum differs from the reviewed pin")
+    }
+    @fs.write_file(destination, bytes)
+  }
+  @fs.chmod(destination, 0o755)
+}
+
+///|
+let acceptance_checks : Json = [
+  "empty-descriptor-and-unavailable-native-effects", "native-fallback:compile-fields-json-ion-unsupported-boundary",
+  "reload-and-close-revoke-old-session", "hostile-origin-denied", "standalone:compile-fields-json-ion-unsupported-boundary",
+  "actual-browser-workers-exit", "real-window-close-and-profile-cleanup",
+]
+
+///|
+fn check_temporary_retention(retention : Json) -> Unit raise {
+  guard retention is Object(fields) else {
+    fail("Missing temporary retention evidence")
+  }
+  if field(retention, "kind") == Json("empty") && fields.length() == 1 {
+    return
+  }
+  guard field(retention, "kind") == Json("preserved") &&
+    fields.length() == 3 &&
+    field(retention, "root") is String(root) &&
+    !root.is_empty() &&
+    field(retention, "entries") is Array(entries) &&
+    !entries.is_empty() else {
+    fail("Inconsistent temporary retention evidence")
+  }
+  let seen : Array[String] = []
+  for entry in entries {
+    guard entry is String(name) &&
+      !name.is_empty() &&
+      name != "." &&
+      name != ".." &&
+      !name.contains("/") &&
+      !name.contains("\\") &&
+      !name.has_prefix("proton-cef-") &&
+      !seen.contains(name) else {
+      fail("Only distinct nonprofile temporary names may be preserved")
+    }
+    seen.push(name)
+  }
+}
+
+///|
+fn check_acceptance(
+  receipt : Json,
+  target : PackageTarget,
+  revision : String,
+) -> Unit raise {
+  let build = field(receipt, "build")
+  guard field(receipt, "profile") == Json("morphir/workbench/packaged-fallback") &&
+    field(receipt, "formatVersion") == Json(1) &&
+    field(receipt, "target") == Json(target.name()) &&
+    field(receipt, "passed") == Json(true) &&
+    field(receipt, "checks") == acceptance_checks &&
+    field(receipt, "forcedCleanup") == Json(false) &&
+    field(receipt, "profileRemoved") == Json(true) &&
+    field(receipt, "entryExit") ==
+    ({ "code": 0, "signal": Json::null() } : Json) &&
+    field(build, "profile") == Json("morphir/workbench/packaged-build") &&
+    field(build, "status") == Json("built") &&
+    field(build, "qualification") == Json("build-only") &&
+    field(build, "revision") == Json(revision) &&
+    field(build, "target") == Json(target.name()) else {
+    fail(
+      "Incomplete, failed or wrong-candidate packaged fallback receipt: " +
+      target.name(),
+    )
+  }
+  guard field(receipt, "workersStarted") is Number(started, ..) &&
+    started >= 8 &&
+    started == started.to_int().to_double() &&
+    field(receipt, "workersClosed") == Json(started) else {
+    fail("Actual browser worker cleanup was not demonstrated")
+  }
+  let cleanup = field(receipt, "profileCleanup")
+  check_temporary_retention(field(cleanup, "temporaryRetention"))
+  guard field(receipt, "profiles") is Array([String(name)]) &&
+    name.has_prefix("proton-cef-") &&
+    name.length() <= 256 &&
+    !name.contains("/") &&
+    !name.contains("\\") &&
+    !name.contains(":") &&
+    field(receipt, "quiescent") == Json(true) &&
+    field(cleanup, "after") ==
+    Json("normal-entry-exit-and-owned-process-quiescence") &&
+    field(cleanup, "profileRemoved") == Json(true) &&
+    field(cleanup, "maxAttempts") == Json(4) &&
+    field(cleanup, "retryDelayMs") == Json(100) &&
+    (
+      (
+        field(cleanup, "cleanupActor") == Json("none") &&
+        field(cleanup, "appSelfRemoved") == Json(true) &&
+        field(cleanup, "beforeCleanup") == Json::array([])
+      ) ||
+      (
+        field(cleanup, "cleanupActor") == Json("harness") &&
+        field(cleanup, "appSelfRemoved") == Json(false) &&
+        field(cleanup, "beforeCleanup") == field(receipt, "profiles")
+      )
+    ) else {
+    fail("Missing or inconsistent owned-profile cleanup evidence")
+  }
+  guard field(receipt, "files") is Array(files) &&
+    !files.is_empty() &&
+    files.length() <= 10000 else {
+    fail("Missing package inventory")
+  }
+  let seen : Array[String] = []
+  for file in files {
+    let path = text(file, "path")
+    guard !path.is_empty() &&
+      !path.contains("\\") &&
+      !path.contains(":") &&
+      path.split("/").all(part => part != "" && part != "." && part != "..") &&
+      !seen.contains(path) else {
+      fail("Invalid or repeated package inventory path")
+    }
+    seen.push(path)
+    ignore(Digest::parse(text(file, "sha256")))
+  }
+}
+
+///|
+async fn candidate() -> String {
+  let revision = output("git", ["rev-parse", "HEAD"])
+  if @env.get_env_var("GITHUB_SHA") is Some(expected) {
+    guard revision == expected else {
+      fail("Checkout differs from the workflow candidate")
+    }
+  }
+  guard output("git", ["status", "--porcelain", "--untracked-files=normal"]).is_empty() else {
+    fail("Clean committed candidate required")
+  }
+  revision
+}
+
+///|
+async fn accept(
+  target : PackageTarget,
+  pins : Json,
+  pins_source : String,
+) -> Unit {
+  guard output("bun", ["--print", "process.platform+':'+process.arch"]) ==
+    target.host() else {
+    fail("Actual selected host required for acceptance")
+  }
+  let revision = candidate()
+  let directory = ".dev/packaged-targets/" + target.name()
+  let build = @fs.read_file(directory + "/build.json").json()
+  guard field(build, "revision") == Json(revision) &&
+    field(build, "target") == Json(target.name()) &&
+    field(build, "pinsSha256") ==
+    Json(@crypto.bytes_to_hex_string(@crypto.sha256(@utf8.encode(pins_source)))) &&
+    field(build, "corePin") == @fs.read_file(text(pins, "toolchainPin")).json() else {
+    fail("Build receipt differs from the selected source/core/tool pins")
+  }
+  check_requirements(
+    pins,
+    selected_pin(pins, target),
+    field(build, "cefRequirements"),
+  )
+  // The app acceptance reuses the installed CLI's qualified process-group and
+  // Windows Job adapter. It owns only its package fixture and performs actual
+  // CEF page assertions; no root JavaScript task orchestrator is introduced.
+  @async.with_timeout(660000, () => {
+    checked("bun", [
+      "--check",
+      "apps/morphir-workbench/scripts/desktop-platform-test.ts",
+      target.name(),
+      directory,
+    ])
+  })
+  guard candidate() == revision else {
+    fail("Candidate changed during acceptance")
+  }
+  check_acceptance(
+    @fs.read_file(directory + "/acceptance.json").json(),
+    target,
+    revision,
+  )
+}
+
+///|
+async fn aggregate(
+  directory : String,
+  pins : Json,
+  pins_source : String,
+) -> Unit {
+  let revision = candidate()
+  let receipts : Array[Json] = []
+  for target in [LinuxX64, WindowsX64] {
+    let receipt = @fs.read_file(
+      directory + "/packaged-" + target.name() + "/acceptance.json",
+    ).json()
+    check_acceptance(receipt, target, revision)
+    let build = field(receipt, "build")
+    guard field(build, "pinsSha256") ==
+      Json(
+        @crypto.bytes_to_hex_string(@crypto.sha256(@utf8.encode(pins_source))),
+      ) &&
+      field(build, "corePin") ==
+      @fs.read_file(text(pins, "toolchainPin")).json() else {
+      fail("Matrix uses different tool/source pins")
+    }
+    check_requirements(
+      pins,
+      selected_pin(pins, target),
+      field(build, "cefRequirements"),
+    )
+    receipts.push(receipt)
+  }
+  @fs.mkdir(".dev/packaged-targets", recursive=true, allow_exist=true)
+  let result : Json = {
+    "profile": "morphir/workbench/packaged-fallback-matrix",
+    "formatVersion": 1,
+    "revision": revision,
+    "passed": true,
+    "targets": receipts,
+  }
+  @fs.write_file(".dev/packaged-targets/matrix.json", result.stringify() + "\n")
+  println(
+    "Both actual target receipts pass on the same candidate; native operation enablement remains separate",
+  )
+}
+
+///|
+fn self_test(pins : Json) -> Unit raise {
+  let inherited : Map[String, String] = {
+    "Path": "native-tools",
+    "cl": "/nologo",
+  }
+  let windows = package_environment(WindowsX64, inherited)
+  guard windows.get("CL") == Some("/nologo /bigobj") &&
+    windows.get("cl") is None &&
+    windows.get("Path") == Some("native-tools") &&
+    inherited.get("cl") == Some("/nologo") &&
+    inherited.get("CL") is None else {
+    fail(
+      "Windows object options must preserve the original compiler environment",
+    )
+  }
+  guard package_environment(LinuxX64, inherited) == inherited &&
+    package_environment(WindowsX64, Map([])).get("CL") == Some("/bigobj") else {
+    fail(
+      "MSVC options must be Windows-only and include the empty-environment case",
+    )
+  }
+  try package_environment(WindowsX64, { "CL": "/O2", "cl": "/Od" }) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Case-colliding compiler environment must be refused")
+  }
+  for target in [LinuxX64, WindowsX64] {
+    let pin = selected_pin(pins, target)
+    let actual : Json = {
+      "proton_version": text(field(pins, "proton"), "version"),
+      "platform": text(pin, "cefPlatform"),
+      "cef_archive": text(pin, "cefArchive"),
+      "cef_sha256": text(pin, "cefSha256"),
+      "layout_version": field(field(pins, "proton"), "layoutVersion"),
+    }
+    check_requirements(pins, pin, actual)
+    try check_requirements(pins, pin, { "proton_version": "0.0.0" }) catch {
+      _ => ()
+    } noraise {
+      _ => fail("Wrong runtime must be refused")
+    }
+  }
+  try PackageTarget::parse("darwin-arm64") catch {
+    _ => ()
+  } noraise {
+    _ => fail("Cross-host build must not qualify a selected target")
+  }
+  try Digest::parse("invalid") catch {
+    _ => ()
+  } noraise {
+    _ => fail("Invalid digest must be refused")
+  }
+  let pin = Digest::parse(
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  )
+  guard pin.matches(b"") && !pin.matches(b"changed") else {
+    fail("Checksum validation must compare actual bytes")
+  }
+  let fixture : Json = {
+    "profile": "morphir/workbench/packaged-fallback",
+    "formatVersion": 1,
+    "target": "linux-x64",
+    "passed": true,
+    "checks": acceptance_checks,
+    "forcedCleanup": false,
+    "profileRemoved": true,
+    "quiescent": true,
+    "profiles": ["proton-cef-fixture"],
+    "profileCleanup": {
+      "after": "normal-entry-exit-and-owned-process-quiescence",
+      "profileRemoved": true,
+      "maxAttempts": 4,
+      "retryDelayMs": 100,
+      "cleanupActor": "none",
+      "appSelfRemoved": true,
+      "beforeCleanup": [],
+      "temporaryRetention": { "kind": "empty" },
+    },
+    "entryExit": { "code": 0, "signal": Json::null() },
+    "workersStarted": 8,
+    "workersClosed": 8,
+    "build": {
+      "profile": "morphir/workbench/packaged-build",
+      "status": "built",
+      "qualification": "build-only",
+      "revision": "candidate",
+      "target": "linux-x64",
+    },
+    "files": [
+      {
+        "path": "app.AppImage",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      },
+    ],
+  }
+  check_acceptance(fixture, LinuxX64, "candidate")
+  for (target, revision) in [(WindowsX64, "candidate"), (LinuxX64, "wrong")] {
+    try check_acceptance(fixture, target, revision) catch {
+      _ => ()
+    } noraise {
+      _ => fail("Accepted wrong target or candidate")
+    }
+  }
+  for
+    (key, value) in [
+      ("passed", Json(false)),
+      ("forcedCleanup", Json(true)),
+      ("profileRemoved", Json(false)),
+      ("quiescent", Json(false)),
+      ("profileCleanup", Json::null()),
+      ("workersClosed", Json(7)),
+      ("checks", Json::array([])),
+      ("files", Json::array([])),
+    ] {
+    guard @json.parse(fixture.stringify()) is Object(fields) else {
+      abort("Fixture object")
+    }
+    fields.set(key, value)
+    try check_acceptance(Json::object(fields), LinuxX64, "candidate") catch {
+      _ => ()
+    } noraise {
+      _ => fail("Accepted missing/failed qualification evidence: " + key)
+    }
+  }
+  for
+    (actor, removed, names) in [
+      ("harness", false, ["proton-cef-fixture"]),
+      ("harness", true, ["proton-cef-fixture"]),
+      ("none", false, []),
+      ("other", false, ["proton-cef-fixture"]),
+      ("harness", false, []),
+    ] {
+    guard @json.parse(fixture.stringify()) is Object(fields) &&
+      fields.get("profileCleanup") is Some(Object(cleanup)) else {
+      abort("Cleanup fixture object")
+    }
+    cleanup.set("cleanupActor", Json(actor))
+    cleanup.set("appSelfRemoved", Json(removed))
+    cleanup.set("beforeCleanup", Json::array(names.map(Json::string)))
+    fields.set("profileCleanup", Json::object(cleanup))
+    let accepted = try {
+      check_acceptance(Json::object(fields), LinuxX64, "candidate")
+      true
+    } catch {
+      _ => false
+    }
+    guard accepted ==
+      (actor == "harness" && !removed && names == ["proton-cef-fixture"]) else {
+      fail("Cleanup evidence must distinguish actual removal from the actor")
+    }
+  }
+  for
+    (retention, valid) in [
+      (
+        (
+          {
+            "kind": "preserved",
+            "root": "/tmp/fixture",
+            "entries": ["appimage_extracted_fixture"],
+          } : Json),
+        true,
+      ),
+      (Json::null(), false),
+      (({ "kind": "empty", "entries": [] } : Json), false),
+      (({ "kind": "deleted" } : Json), false),
+      (
+        ({ "kind": "preserved", "root": "/tmp/fixture", "entries": [] } : Json),
+        false,
+      ),
+      (
+        ({ "kind": "preserved", "root": "", "entries": ["other"] } : Json),
+        false,
+      ),
+      (
+        (
+          {
+            "kind": "preserved",
+            "root": "/tmp/fixture",
+            "entries": ["proton-cef-other"],
+          } : Json),
+        false,
+      ),
+      (
+        (
+          {
+            "kind": "preserved",
+            "root": "/tmp/fixture",
+            "entries": ["other", "other"],
+          } : Json),
+        false,
+      ),
+      (
+        (
+          {
+            "kind": "preserved",
+            "root": "/tmp/fixture",
+            "entries": ["../other"],
+          } : Json),
+        false,
+      ),
+    ] {
+    guard @json.parse(fixture.stringify()) is Object(fields) &&
+      fields.get("profileCleanup") is Some(Object(cleanup)) else {
+      abort("Retention fixture object")
+    }
+    cleanup.set("temporaryRetention", retention)
+    fields.set("profileCleanup", Json::object(cleanup))
+    let accepted = try {
+      check_acceptance(Json::object(fields), LinuxX64, "candidate")
+      true
+    } catch {
+      _ => false
+    }
+    guard accepted == valid else {
+      fail("Temporary retention must preserve only named nonprofile entries")
+    }
+  }
+  println(
+    "Package pin, runtime mismatch and checksum checks passed; no host package built",
+  )
+}
+
+///|
+async fn main {
+  let pins_path = "tools/packaged-targets-pin.json"
+  let pins_source = @fs.read_file(pins_path).text()
+  let pins = @json.parse(pins_source)
+  let args = @env.args()[1:]
+  if args == ["--self-test"] {
+    self_test(pins)
+    checked("moonx", ["scripts/workbench-cef-extract.mbtx", "--self-test"])
+    return
+  }
+  if args == ["--probe-archive"] {
+    let evidence = @fs.realpath(".") + "/.dev/packaged-targets/archive-probe"
+    @fs.mkdir(evidence, recursive=true, allow_exist=true)
+    probe_archive("tar", @env.get_env_vars(), evidence)
+    return
+  }
+  if args is ["accept", target] {
+    accept(PackageTarget::parse(target), pins, pins_source)
+    return
+  }
+  if args is ["aggregate", directory] {
+    aggregate(directory, pins, pins_source)
+    return
+  }
+  guard args is ["build", target] else {
+    fail(
+      "Usage: workbench-packaged-targets.mbtx --self-test | --probe-archive | build|accept <linux-x64|windows-x64> | aggregate <receipt-directory>",
+    )
+  }
+  let target = PackageTarget::parse(target)
+  let pin = selected_pin(pins, target)
+  guard output("bun", ["--print", "process.platform+':'+process.arch"]) ==
+    target.host() else {
+    fail(
+      "Build this package on its actual selected operating system and architecture",
+    )
+  }
+  let revision = output("git", ["rev-parse", "HEAD"])
+  guard output("git", ["status", "--porcelain", "--untracked-files=normal"]).is_empty() else {
+    fail(
+      "Commit the candidate sources before creating source-bound package evidence",
+    )
+  }
+  if @env.get_env_var("GITHUB_SHA") is Some(expected) {
+    guard revision == expected else {
+      fail("Checkout differs from the workflow candidate")
+    }
+  }
+  let compiler = @fs.read_file(text(pins, "toolchainPin")).json()
+  let version = output("moonc", ["-v"])
+  guard version.has_prefix("v" + text(compiler, "compilerVersion") + " ") else {
+    fail("Pinned compiler required")
+  }
+  checked("mise", ["run", "check:core"])
+  let root = @fs.realpath(".")
+  let evidence = root + "/.dev/packaged-targets/" + target.name()
+  @fs.mkdir(evidence, recursive=true, allow_exist=true)
+  guard !@fs.exists(evidence + "/package") &&
+    !@fs.exists(evidence + "/build.json") else {
+    fail(
+      "Use a fresh candidate workspace; refusing to reuse earlier package evidence",
+    )
+  }
+  @env.set_env_var("PROTON_NO_UPDATE_CHECK", "1")
+  if target == LinuxX64 {
+    let tools = field(pins, "linuxTools")
+    @fs.mkdir(evidence + "/tools", allow_exist=true)
+    acquire_tool(field(tools, "appimagetool"), evidence + "/tools/appimagetool")
+    acquire_tool(field(tools, "runtime"), evidence + "/tools/runtime")
+    @env.set_env_var(
+      "PATH",
+      evidence + "/tools:" + @env.get_env_var("PATH").unwrap_or(""),
+    )
+    @env.set_env_var("APPIMAGETOOL_RUNTIME_FILE", evidence + "/tools/runtime")
+    @env.set_env_var("APPIMAGE_EXTRACT_AND_RUN", "1")
+  }
+  checked("bun", ["install", "--frozen-lockfile"])
+  checked(
+    "bun",
+    ["install", "--frozen-lockfile"],
+    cwd=root + "/apps/morphir-workbench",
+  )
+  checked("bun", ["run", "build:runtimes"])
+  checked("moon", [
+    "install",
+    "moonbit-community/proton_cli@" + text(field(pins, "proton"), "version"),
+  ])
+  let desktop = root + "/apps/morphir-workbench-desktop"
+  @env.unset_env_var("MOON_WORK")
+  checked("moon", ["update"], cwd=desktop)
+  let requirements = @json.parse(
+    output("proton_cli", ["cef", "requirements"], cwd=desktop),
+  )
+  check_requirements(pins, pin, requirements)
+  if target == WindowsX64 {
+    let locations = output("where.exe", ["tar"])
+    let version = output("tar", ["--version"])
+    let archive_tools = "tar search results:\n" +
+      locations +
+      "\nSelected tar version:\n" +
+      version +
+      "\n"
+    @fs.write_file(evidence + "/archive-tools.log", archive_tools)
+    println(archive_tools)
+  }
+  // A stalled archive extractor must leave evidence and fail before the outer
+  // job deadline, so the always-run artifact step can retain the diagnostics.
+  let setup_progress : Json = {
+    "revision": revision,
+    "target": target.name(),
+    "stage": "cef-setup",
+    "qualification": "none",
+    "cefRequirements": requirements,
+  }
+  @fs.write_file(
+    evidence + "/build-progress.json",
+    setup_progress.stringify() + "\n",
+  )
+  match target {
+    WindowsX64 =>
+      setup_windows_cef(
+        desktop,
+        evidence,
+        text(pin, "cefArchive"),
+        text(pin, "cefSha256"),
+      )
+    LinuxX64 =>
+      @async.with_timeout(720000, () => {
+        checked("proton_cli", ["cef", "setup"], cwd=desktop)
+      })
+  }
+  let package_progress : Json = {
+    "revision": revision,
+    "target": target.name(),
+    "stage": "package",
+    "qualification": "none",
+    "cefRequirements": requirements,
+    "nativeCompilerOptions": if target == WindowsX64 {
+      ["/bigobj"]
+    } else {
+      []
+    },
+  }
+  @fs.write_file(
+    evidence + "/build-progress.json",
+    package_progress.stringify() + "\n",
+  )
+  checked(
+    "proton_cli",
+    ["package", "--release", "--output", evidence + "/package"] +
+    target.formats(),
+    cwd=desktop,
+    environment=Some(package_environment(target, @env.get_env_vars())),
+  )
+  guard output("git", ["rev-parse", "HEAD"]) == revision &&
+    output("git", ["status", "--porcelain", "--untracked-files=normal"]).is_empty() else {
+    fail("Candidate sources changed while packaging; refusing a build receipt")
+  }
+  let receipt : Json = {
+    "profile": "morphir/workbench/packaged-build",
+    "formatVersion": 1,
+    "status": "built",
+    "qualification": "build-only",
+    "revision": revision,
+    "target": target.name(),
+    "compiler": version,
+    "corePin": compiler,
+    "runnerImage": @env.get_env_var("ImageVersion").unwrap_or("local"),
+    "cefRequirements": requirements,
+    "nativeCompilerOptions": if target == WindowsX64 {
+      ["/bigobj"]
+    } else {
+      []
+    },
+    "pinsSha256": @crypto.bytes_to_hex_string(
+      @crypto.sha256(@utf8.encode(pins_source)),
+    ),
+    "outputDirectory": evidence + "/package",
+  }
+  @fs.write_file(evidence + "/build.json", receipt.stringify() + "\n")
+  println("Package built; actual CEF fallback acceptance is still required")
+}

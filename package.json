@@ -9,6 +9,7 @@
     "test:types": "bun --check tools/typecheck-test.ts"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
     "@types/bun": "1.4.3",
     "@types/node": "24.19.2",
     "typescript": "7.0.2"

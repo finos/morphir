@@ -1,0 +1,177 @@
+///|
+/// Narrow tar-compatible adapter for Proton's pinned Windows CEF setup.
+/// CMake's archive engine avoids the runner's external MSYS bzip2 pipe.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+struct Extraction {
+  archive : String
+  destination : String
+}
+
+///|
+fn parse(args : ArrayView[String]) -> Extraction? {
+  match args {
+    ["-xjf", archive, "-C", destination] if !archive.is_empty() &&
+      !destination.is_empty() => Some({ archive, destination, })
+    _ => None
+  }
+}
+
+///|
+async fn archive_digest(path : String) -> String {
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  let hasher = @crypto.SHA256::new()
+  let buffer = FixedArray::make(1024 * 1024, b'\x00')
+  while file.read(buffer) is n && n > 0 {
+    hasher.update(buffer.unsafe_reinterpret_as_bytes()[:n])
+  }
+  @crypto.bytes_to_hex_string(hasher.finalize())
+}
+
+///|
+async fn extract(
+  request : Extraction,
+  cmake : String,
+  expected : String,
+) -> Unit {
+  let destination = @fs.realpath(request.destination)
+  let archive = @fs.realpath(request.archive)
+  // Proton creates the compressed archive in its own extraction directory.
+  // Reject other shapes rather than implementing a general tar command.
+  let normalized = archive.replace_all(old="\\", new="/")
+  let parent = destination.replace_all(old="\\", new="/").trim_end(chars="/")
+  guard normalized.has_prefix(parent + "/") &&
+    !normalized.strip_prefix(parent + "/").unwrap().contains("/") &&
+    normalized.has_suffix(".tar.bz2") &&
+    @fs.kind(request.archive, follow_symlink=false) is Regular &&
+    @fs.file_size(archive) <= 256L * 1024L * 1024L &&
+    archive_digest(archive) == expected else {
+    fail(
+      "CEF extraction requires the exact pinned archive in its owned directory",
+    )
+  }
+  let environment = @env.get_env_vars()
+  // The Windows archive engine must work without Git's external bzip2. CMake
+  // and system DLLs remain reachable through their ordinary executable paths.
+  if @async.platform is Windows {
+    guard @env.get_env_var("SystemRoot") is Some(system_root) &&
+      !system_root.is_empty() else {
+      fail("Windows CEF extraction requires SystemRoot")
+    }
+    for key in environment.keys().to_array() {
+      if key.to_lower() == "path" {
+        environment.remove(key)
+      }
+    }
+    environment.set("Path", system_root + "\\System32")
+  }
+  println("Extracting pinned CEF archive with CMake's archive engine")
+  let status = @process.run(
+    cmake,
+    ["-E", "tar", "xjf", archive],
+    cwd=destination,
+    extra_env=environment,
+    inherit_env=false,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  guard status == 0 else {
+    abort("CMake CEF extraction failed: " + status.to_string())
+  }
+}
+
+///|
+async fn roundtrip(cmake : String) -> Unit {
+  let root = @fs.tmpdir(prefix="morphir-cef-cmake-probe-")
+  defer @fs.rmdir(root, recursive=true)
+  let original = root + "/original files"
+  let extracted = root + "/extracted files"
+  @fs.mkdir(original)
+  @fs.mkdir(extracted)
+  let bytes = @utf8.encode("CEF native archive probe\n\u{0000}exact bytes\r\n")
+  @fs.write_file(original + "/probe.bin", bytes)
+  let archive = root + "/probe.tar.bz2"
+  guard @process.run(
+      cmake,
+      ["-E", "tar", "cjf", archive, "probe.bin"],
+      cwd=original,
+      stdout=@stdio.stdout,
+      stderr=@stdio.stderr,
+    ) ==
+    0 else {
+    abort("Archive probe creation failed")
+  }
+  // Use the exact same-parent shape that Proton passes to its tar helper.
+  @fs.write_file(extracted + "/probe.tar.bz2", @fs.read_file(archive).binary())
+  extract(
+    { archive: extracted + "/probe.tar.bz2", destination: extracted, },
+    cmake,
+    archive_digest(archive),
+  )
+  guard @fs.read_file(extracted + "/probe.bin").binary() == bytes else {
+    abort("Archive probe bytes changed")
+  }
+  @fs.remove(extracted + "/probe.bin")
+  try
+    extract(
+      { archive: extracted + "/probe.tar.bz2", destination: extracted, },
+      cmake,
+      String::make(64, '0'),
+    )
+  catch {
+    _ => ()
+  } noraise {
+    _ => abort("A mismatched archive digest was accepted")
+  }
+  guard !@fs.exists(extracted + "/probe.bin") else {
+    abort("A mismatched archive created output")
+  }
+  println(
+    "CMake archive roundtrip and checksum refusal passed; no actual host package qualified",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:]
+  if args == ["--self-test"] {
+    guard parse(["-xjf", "input.tar.bz2", "-C", "output"]) is Some(_) else {
+      abort("Valid extraction refused")
+    }
+    for
+      invalid in [
+        [],
+        ["-xf", "input", "-C", "output"],
+        ["-xjf", "input", "-C", "output", "extra"],
+        ["-xjf", "", "-C", "output"],
+      ] {
+      guard parse(invalid) is None else {
+        abort("Unsupported archive command accepted")
+      }
+    }
+    println("Narrow CEF archive command refusal checks passed")
+    return
+  }
+  guard @env.get_env_var("MORPHIR_CEF_CMAKE") is Some(cmake) else {
+    abort("Missing configured CMake executable")
+  }
+  if args == ["--roundtrip"] {
+    roundtrip(cmake)
+    return
+  }
+  guard parse(args) is Some(request) &&
+    @env.get_env_var("MORPHIR_CEF_ARCHIVE_SHA256") is Some(expected) else {
+    abort("Only Proton's configured CEF extraction is supported")
+  }
+  extract(request, cmake, expected)
+}

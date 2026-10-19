@@ -1,0 +1,100 @@
+name: Packaged fallback qualification
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Actual package (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: linux-x64
+          - os: windows-2022
+            target: windows-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      PROTON_NO_UPDATE_CHECK: '1'
+      ANGLE_DEFAULT_PLATFORM: swiftshader
+      _CL_: /utf-8
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare the Windows native compiler
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+        with:
+          arch: amd64
+      - uses: ./.github/actions/setup-moonbit
+        with:
+          tools: http:moonbit bun node
+      - name: Refresh Linux package indexes
+        if: runner.os == 'Linux'
+        run: sudo apt-get update
+      - name: Install Linux CEF, display and packaging prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y build-essential pkg-config libx11-dev libxrandr-dev libgtk-3-dev libwebkit2gtk-4.1-dev libnotify-dev libnss3 libgbm1 libasound2t64 xvfb xauth openbox patchelf
+      - name: Update pinned script dependencies
+        run: moon update
+      - name: Check package pins and refusal cases
+        run: mise run check:workbench-package-pins
+      - name: Build the complete actual host package
+        timeout-minutes: 35
+        run: mise run build:workbench-packaged -- ${{ matrix.target }}
+      - name: Accept the actual Linux AppImage under Xvfb
+        if: runner.os == 'Linux'
+        timeout-minutes: 15
+        run: xvfb-run -a mise run test:workbench-packaged -- ${{ matrix.target }}
+      - name: Accept the actual Windows portable package
+        if: runner.os == 'Windows'
+        timeout-minutes: 15
+        run: mise run test:workbench-packaged -- ${{ matrix.target }}
+      - name: Retain the package and source-bound evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: packaged-${{ matrix.target }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            .dev/packaged-targets/${{ matrix.target }}/*.json
+            .dev/packaged-targets/${{ matrix.target }}/*.log
+            .dev/packaged-targets/${{ matrix.target }}/*.png
+            .dev/packaged-targets/${{ matrix.target }}/package/*.AppImage
+            .dev/packaged-targets/${{ matrix.target }}/package/*.zip
+
+  packaged-ok:
+    name: packaged-ok
+    if: always()
+    needs: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update pinned script dependencies
+        run: moon update
+      - name: Require both host jobs to succeed
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+          CI_REQUIRED_JOBS: '["package"]'
+        run: moonx scripts/ci-gate.mbtx
+      - name: Recover this run's exact target evidence
+        uses: actions/download-artifact@v8
+        with:
+          pattern: packaged-*
+          path: .dev/packaged-matrix
+      - name: Reject absent, failed, partial or wrong-candidate receipts
+        run: moonx scripts/workbench-packaged-targets.mbtx aggregate .dev/packaged-matrix
+      - name: Retain the exact candidate matrix receipt
+        uses: actions/upload-artifact@v7
+        with:
+          name: packaged-matrix-${{ github.sha }}
+          path: .dev/packaged-targets/matrix.json
+          if-no-files-found: error
+          retention-days: 7

@@ -25,6 +25,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { openSample } from './workbench-steps.ts';
 import { capabilityWorkflow } from './capability-workflow.ts';
 import { connectedCapabilityWorkflow } from './connected-capability-workflow.ts';
+import { fallbackWorkerWorkflow } from './desktop-fallback-workflow.ts';
 import { modelDocumentWorkflow } from './model-document-workflow.ts';
 
 // Opt-in acceptance uses a real Rust binary and an isolated provider/workspace.
@@ -966,6 +967,46 @@ try {
   assert.equal(await componentPage.locator('#component-fixture').evaluate(editor => (editor as CodeEditor).value), '(+ 3 4)', 'Read-only documents reject editing');
   assert.equal(await componentPage.locator('#component-fixture').evaluate(editor => { editor.remove(); return (editor as CodeEditor).view; }), null, 'Unmount destroys CodeMirror');
   await componentPage.close();
+  // This fixture models only the empty native negotiation. Real packaged OS
+  // qualification still runs the same workflow against the actual host.
+  const nativeFallback = await browser.newContext();
+  try {
+    await nativeFallback.route('https://proton.localhost/**', async route => {
+      const request = new URL(route.request().url());
+      const origin = new URL(url);
+      const response = await route.fetch({ url: new URL(request.pathname + request.search, origin).href,
+        headers: { ...route.request().headers(), host: origin.host, origin: origin.origin, 'sec-fetch-site': 'same-origin' } });
+      await route.fulfill({ response });
+    });
+    await nativeFallback.addInitScript(() => {
+      const descriptor = { profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.2',
+        sessionId: 'browser-fallback-1', operations: [] };
+      globalThis.__MoonBit__ = { core: { invokeOp: async (name, source) => {
+        if (name !== 'app:workbench_native') throw new Error('Unexpected native command');
+        const frame = JSON.parse(source);
+        if (frame.profile !== descriptor.profile || frame.contractVersion !== descriptor.contractVersion)
+          throw new Error('Unexpected native contract');
+        if (frame.operation === 'session.open' || frame.operation === 'session.check')
+          return JSON.stringify({ ok: true, operation: frame.operation, value: descriptor });
+        if (frame.operation === 'session.close') return JSON.stringify({ ok: true, operation: frame.operation, value: null });
+        throw new Error('The empty fixture offers no native effects');
+      } } };
+    });
+    const nativePage = await nativeFallback.newPage();
+    nativePage.on('pageerror', error => errors.push(error.message));
+    await nativePage.goto('https://proton.localhost/');
+    try { await nativePage.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor(); }
+    catch (error) { throw new Error(`Empty native fixture did not initialize: ${JSON.stringify({ errors, body: (await nativePage.locator('body').innerText()).slice(0, 4096) })}`, { cause: error }); }
+    assert.equal(await nativePage.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Desktop local');
+    assert.equal(await fallbackWorkerWorkflow(nativePage, 'native-fallback'), 'native-fallback:compile-fields-json-ion-unsupported-boundary');
+  } finally { await nativeFallback.close(); }
+  const fallbackPage = await browser.newPage();
+  try {
+    fallbackPage.on('pageerror', error => errors.push(error.message));
+    await fallbackPage.goto(new URL('?mode=standalone', url).href);
+    await fallbackPage.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+    assert.equal(await fallbackWorkerWorkflow(fallbackPage, 'standalone'), 'standalone:compile-fields-json-ion-unsupported-boundary');
+  } finally { await fallbackPage.close(); }
   assert.deepEqual(errors, []);
   console.log('Browser workflow passed: local compile/run, explorer, back navigation, context retention, typed evaluation, Ion conversion/highlighting/invalid drafts and controls (exact Decimal/Int, Float64 bits, UTF-16, Maybe/Result, constructors, records/lists/tuples), structured/JSON/printed results, stale replies, worksheet, cancellation, import/export, mobile, connection failure and connected-v1 compile/generate fixture.');
 

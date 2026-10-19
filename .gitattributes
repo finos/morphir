@@ -1,3 +1,6 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.mbt text eol=lf
+apps/morphir-workbench/assets/morphir-mark.svg text eol=lf
+apps/morphir-workbench-desktop/assets/morphir-icon.json text eol=lf
+tools/packaged-targets-pin.json text eol=lf

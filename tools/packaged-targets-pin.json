@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "toolchainPin": "tools/moonbit-core-pin.json",
+  "proton": {
+    "version": "0.3.4",
+    "sourceRevision": "795d04b1197ed612de54e0329f12d45b737ba4d1",
+    "cefVersion": "150.0.19+gcf60f42",
+    "chromiumVersion": "150.0.7871.252",
+    "layoutVersion": 1
+  },
+  "targets": [
+    {
+      "target": "linux-x64",
+      "nodePlatform": "linux",
+      "nodeArchitecture": "x64",
+      "runner": "ubuntu-24.04",
+      "cefPlatform": "linux-x64",
+      "cefArchive": "cef_binary_150.0.19+gcf60f42+chromium-150.0.7871.252_linux64_minimal",
+      "cefSha256": "40297c49123deb48c26b254863d284df53800913dab1826950320c05a6e1aaf2"
+    },
+    {
+      "target": "windows-x64",
+      "nodePlatform": "win32",
+      "nodeArchitecture": "x64",
+      "runner": "windows-2022",
+      "cefPlatform": "win32-x64",
+      "cefArchive": "cef_binary_150.0.19+gcf60f42+chromium-150.0.7871.252_windows64_minimal",
+      "cefSha256": "169847f3d000ded924c619e4d2d042ca3c44d2a5a0398dfdf521c70d34739761"
+    }
+  ],
+  "windowsTools": {
+    "msvcDevCmdActionRevision": "0b201ec74fa43914dc39ae48a89fd1d8cb592756",
+    "renderingMode": "swiftshader"
+  },
+  "linuxTools": {
+    "appimagetool": {
+      "url": "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage",
+      "sha256": "95cbe7cce9717fce90c484e34052ee7c7f1d7635b33c12525b4776826a7d29b6",
+      "sourceRevision": "854e19e951900cf141245b384d45735942521abe",
+      "releaseId": 403069009,
+      "assetId": 610035789
+    },
+    "runtime": {
+      "url": "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64",
+      "sha256": "156f4bdbde9c52d01814600013e0a273f0118dc2de98975f3c8c63427ec79074",
+      "sourceRevision": "8f39b89e2ac31e1640b3d3f7e9a5108e6ce805fa",
+      "releaseId": 398504756,
+      "assetId": 596078161
+    },
+    "note": "Content pins from the 2026-10-18 upstream release metadata. A changed continuous asset must fail checksum validation. Set APPIMAGETOOL_RUNTIME_FILE to the verified runtime so appimagetool never fetches a moving default runtime."
+  }
+}

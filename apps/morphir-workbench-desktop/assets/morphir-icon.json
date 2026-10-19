@@ -1,0 +1,9 @@
+{
+  "source": "apps/morphir-workbench/assets/morphir-mark.svg",
+  "sourceSha256": "3cf2eebb27d263b16f31d31b1c3ec1ff6298dc6c7d1c0cd9ccabfb8a6fe9a73c",
+  "renderer": "@resvg/resvg-js@2.6.2",
+  "width": 512,
+  "height": 512,
+  "systemFonts": false,
+  "pngSha256": "04c3ff85c982e5e38526873e2a37c35ebf8930b2d1bf118797ca44d16632e85a"
+}
