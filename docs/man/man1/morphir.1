@@ -348,6 +348,13 @@ Show one decision record
 \fBmck\fR
 Morphir Compatibility Kit: validate, vendor and run compatibility kits
 .TP
+\fBmck mep\fR
+Execute MEP guests or independently recheck their saved observations
+.TP
+\fBmck mep guest\-run\fR
+.TP
+\fBmck mep report\-check\fR
+.TP
 \fBmck check\fR
 Validate a kit directory without running an adapter
 .TP
@@ -2436,6 +2443,52 @@ Also include the document body
 .TP
 \fB<ID>\fR
 Decision id or slug, e.g. 0004
+.SH "MORPHIR MCK MEP GUEST-RUN"
+\fBUsage:\fR morphir mck mep guest\-run [OPTIONS]
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<KIT>\fR
+Independently authored guest profile and fixed expectations
+.RS
+\fIDefault: \fRspec/mep/mck/guest\-moonbit\-bool.json
+.RE
+.TP
+\fB\-\-expect\-kit\-sha256\fR \fI<EXPECT_KIT_SHA256>\fR
+Refuse to execute unless the kit has this SHA\-256 digest
+.TP
+\fB\-\-host\fR \fI<HOST>\fR
+MEP host executable, launched directly without a shell
+.TP
+\fB\-\-host\-arg\fR \fI<HOST_ARGS>\fR
+Host argument, repeated in order
+.TP
+\fB\-\-identity\-file\fR \fI<IDENTITY_FILES>\fR
+Pin a guest or host artifact by its exact bytes; repeat for each input
+.TP
+\fB\-\-report\fR \fI<REPORT>\fR
+Complete observations and executable/corpus/artifact identities
+.TP
+\fB\-\-timeout\fR \fI<TIMEOUT>\fR
+.RS
+\fIDefault: \fR30000
+.RE
+.SH "MORPHIR MCK MEP REPORT-CHECK"
+\fBUsage:\fR morphir mck mep report\-check [OPTIONS] <REPORT>
+.PP
+\fBOptions:\fR
+.PP
+.TP
+\fB\-\-kit\fR \fI<KIT>\fR
+.RS
+\fIDefault: \fRspec/mep/mck/guest\-moonbit\-bool.json
+.RE
+\fBArguments:\fR
+.PP
+.TP
+\fB<REPORT>\fR
+Saved guest report to independently adjudicate again
 .SH "MORPHIR MCK CHECK"
 Validate a kit directory without running an adapter
 .PP

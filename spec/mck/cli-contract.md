@@ -380,6 +380,42 @@ and any failed case or adapter session. `package mvp-report render REPORT
 inventory or a passing run. The existing IR `report` command and draft.1/draft.2
 package contracts remain separate.
 
+## `mep guest-run` and `mep report-check`
+
+`morphir mck mep guest-run --host EXE --host-arg ARG... --identity-file FILE...
+--report FILE` executes the shared guest profile. `--kit FILE` selects its fixed
+corpus, defaulting to `spec/mep/mck/guest-moonbit-bool.json`.
+`--expect-kit-sha256 HEX` refuses execution unless the exact corpus bytes match.
+At least one identity file is required. Pin the complete runtime host and guest
+artifact closure, including imported host modules. `--timeout MS` sets the
+exchange deadline; other transport bounds reuse MCK defaults.
+
+The process uses MEP Content-Length JSON-RPC framing through the same bounded
+process session as other MCK suites. Requests have sequential numeric IDs per
+session. Notifications have no ID and must be silent; shutdown is a request and
+exit is a notification. Standard output contains only framed JSON-RPC messages.
+Malformed or oversized frames, unsolicited output, timeouts and unclean exits
+are transport failures. Cleanup terminates remaining descendants in the process
+group or job. A domain refusal remains a required
+observation and cannot replace a transport error.
+
+The guest report contract is `0.1.0-draft.1`, distinct from the IR report. It
+contains `suite`, `profile`, `corpusSha256`, `identity`, `records`, `error`, and
+`qualified`. `identity` pins runner build and executable bytes, host executable,
+ordered arguments and all explicit identity files. Every record contains
+`caseId`, reconstructed `request` method/params, and full `observed` JSON-RPC
+response. Notification records observe silence; exit records observe successful
+termination and closed stdout. Failed comparisons retain their observations.
+
+`morphir mck mep report-check --kit FILE REPORT` validates the complete record
+inventory, order, requests, response envelopes, source semantics, model payloads,
+metadata, artifacts and identities again. It requires the same checker binary
+and unchanged identity files. Neither a stored pass flag nor a report whose
+corpus differs establishes qualification. These commands return 0 only for a
+fully passing bounded guest run or recheck, 1 for failure, and 2 for CLI usage
+errors. They do not qualify independent host admission or supersede the reference
+model-transport corpus. See [the guest scope](../mep/mck/README.md).
+
 ## `package run` (PKG-1)
 
 `morphir mck package run` extends the same engine with the existing package

@@ -726,6 +726,11 @@ impl MigrateArgs {
 /// the option structs live in `commands::mck`.
 #[derive(Clone, Subcommand)]
 enum MckAction {
+    /// Execute MEP guests or independently recheck their saved observations
+    Mep {
+        #[command(subcommand)]
+        action: MckMepAction,
+    },
     /// Validate a kit directory without running an adapter
     Check(commands::mck::MckCheckArgs),
     /// Check that every IR vocabulary variant and member has a kit case
@@ -786,6 +791,12 @@ enum MckSchemaAction {
 #[derive(Clone, Subcommand)]
 enum MckNodeAddressAction {
     Run(commands::mck::node_address::RunArgs),
+}
+
+#[derive(Clone, Subcommand)]
+enum MckMepAction {
+    GuestRun(commands::mck::mep::RunArgs),
+    ReportCheck(commands::mck::mep::CheckArgs),
 }
 
 #[derive(Clone, Subcommand)]
@@ -1306,6 +1317,10 @@ impl AppSession for MorphirSession {
                     MckNodeAddressAction::Run(args) => {
                         commands::mck::node_address::run(args.clone())
                     }
+                },
+                MckAction::Mep { action } => match action {
+                    MckMepAction::GuestRun(args) => commands::mck::mep::run(args.clone()),
+                    MckMepAction::ReportCheck(args) => commands::mck::mep::check(args.clone()),
                 },
                 MckAction::Package { action } => match action {
                     MckPackageAction::Inspect(args) => {
