@@ -18,7 +18,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/alias-scalar.txt",
+          "asset": "sources/alias-scalar.mfs",
           "id": "source:alias-scalar",
           "revision": "fixture-1"
         }
@@ -35,7 +35,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/empty-fragment.txt",
+          "asset": "sources/empty-fragment.mfs",
           "id": "source:empty-fragment",
           "revision": "fixture-1"
         }
@@ -52,7 +52,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/alias-to-existing-type.txt",
+          "asset": "sources/alias-to-existing-type.mfs",
           "id": "source:alias-to-existing-type",
           "revision": "fixture-1"
         }
@@ -69,7 +69,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/alias-record.txt",
+          "asset": "sources/alias-record.mfs",
           "id": "source:alias-record",
           "revision": "fixture-1"
         }
@@ -86,7 +86,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/empty-record.txt",
+          "asset": "sources/empty-record.mfs",
           "id": "source:empty-record",
           "revision": "fixture-1"
         }
@@ -103,7 +103,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/opaque-scalar.txt",
+          "asset": "sources/opaque-scalar.mfs",
           "id": "source:opaque-scalar",
           "revision": "fixture-1"
         }
@@ -120,7 +120,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/opaque-record.txt",
+          "asset": "sources/opaque-record.mfs",
           "id": "source:opaque-record",
           "revision": "fixture-1"
         }
@@ -137,7 +137,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/opaque-phantom.txt",
+          "asset": "sources/opaque-phantom.mfs",
           "id": "source:opaque-phantom",
           "revision": "fixture-1"
         }
@@ -154,7 +154,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/nullary-constructor.txt",
+          "asset": "sources/nullary-constructor.mfs",
           "id": "source:nullary-constructor",
           "revision": "fixture-1"
         }
@@ -171,7 +171,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/leading-constructor-pipe.txt",
+          "asset": "sources/leading-constructor-pipe.mfs",
           "id": "source:leading-constructor-pipe",
           "revision": "fixture-1"
         }
@@ -188,7 +188,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/custom-generic.txt",
+          "asset": "sources/custom-generic.mfs",
           "id": "source:custom-generic",
           "revision": "fixture-1"
         }
@@ -205,7 +205,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/opaque-custom.txt",
+          "asset": "sources/opaque-custom.mfs",
           "id": "source:opaque-custom",
           "revision": "fixture-1"
         }
@@ -222,7 +222,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/constructor-two-arguments.txt",
+          "asset": "sources/constructor-two-arguments.mfs",
           "id": "source:constructor-two-arguments",
           "revision": "fixture-1"
         }
@@ -239,7 +239,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/constructor-applied-argument.txt",
+          "asset": "sources/constructor-applied-argument.mfs",
           "id": "source:constructor-applied-argument",
           "revision": "fixture-1"
         }
@@ -256,7 +256,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/generic-pair.txt",
+          "asset": "sources/generic-pair.mfs",
           "id": "source:generic-pair",
           "revision": "fixture-1"
         }
@@ -273,7 +273,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/generic-quad.txt",
+          "asset": "sources/generic-quad.mfs",
           "id": "source:generic-quad",
           "revision": "fixture-1"
         }
@@ -290,7 +290,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/generic-eight.txt",
+          "asset": "sources/generic-eight.mfs",
           "id": "source:generic-eight",
           "revision": "fixture-1"
         }
@@ -307,7 +307,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/flat-quad.txt",
+          "asset": "sources/flat-quad.mfs",
           "id": "source:flat-quad",
           "revision": "fixture-1"
         }
@@ -324,7 +324,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/flat-eight.txt",
+          "asset": "sources/flat-eight.mfs",
           "id": "source:flat-eight",
           "revision": "fixture-1"
         }
@@ -341,7 +341,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/nested-pairs.txt",
+          "asset": "sources/nested-pairs.mfs",
           "id": "source:nested-pairs",
           "revision": "fixture-1"
         }
@@ -358,7 +358,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/unit.txt",
+          "asset": "sources/unit.mfs",
           "id": "source:unit",
           "revision": "fixture-1"
         }
@@ -375,7 +375,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/grouping.txt",
+          "asset": "sources/grouping.mfs",
           "id": "source:grouping",
           "revision": "fixture-1"
         }
@@ -392,7 +392,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/union-members.txt",
+          "asset": "sources/union-members.mfs",
           "id": "source:union-members",
           "revision": "fixture-1"
         }
@@ -409,7 +409,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/union-duplicates.txt",
+          "asset": "sources/union-duplicates.mfs",
           "id": "source:union-duplicates",
           "revision": "fixture-1"
         }
@@ -426,7 +426,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/union-nested.txt",
+          "asset": "sources/union-nested.mfs",
           "id": "source:union-nested",
           "revision": "fixture-1"
         }
@@ -443,7 +443,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/union-reordered.txt",
+          "asset": "sources/union-reordered.mfs",
           "id": "source:union-reordered",
           "revision": "fixture-1"
         }
@@ -460,7 +460,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/application-union-arrow.txt",
+          "asset": "sources/application-union-arrow.mfs",
           "id": "source:application-union-arrow",
           "revision": "fixture-1"
         }
@@ -477,7 +477,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/right-associative-arrow.txt",
+          "asset": "sources/right-associative-arrow.mfs",
           "id": "source:right-associative-arrow",
           "revision": "fixture-1"
         }
@@ -494,7 +494,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/union-application-argument.txt",
+          "asset": "sources/union-application-argument.mfs",
           "id": "source:union-application-argument",
           "revision": "fixture-1"
         }
@@ -511,7 +511,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/bodyless-function.txt",
+          "asset": "sources/bodyless-function.mfs",
           "id": "source:bodyless-function",
           "revision": "fixture-1"
         }
@@ -528,7 +528,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/function-tuple-input.txt",
+          "asset": "sources/function-tuple-input.mfs",
           "id": "source:function-tuple-input",
           "revision": "fixture-1"
         }
@@ -545,7 +545,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/function-two-inputs.txt",
+          "asset": "sources/function-two-inputs.mfs",
           "id": "source:function-two-inputs",
           "revision": "fixture-1"
         }
@@ -562,7 +562,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/implicit-function-binder.txt",
+          "asset": "sources/implicit-function-binder.mfs",
           "id": "source:implicit-function-binder",
           "revision": "fixture-1"
         }
@@ -579,7 +579,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/implicit-binder-order.txt",
+          "asset": "sources/implicit-binder-order.mfs",
           "id": "source:implicit-binder-order",
           "revision": "fixture-1"
         }
@@ -596,7 +596,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/function-output-binder.txt",
+          "asset": "sources/function-output-binder.mfs",
           "id": "source:function-output-binder",
           "revision": "fixture-1"
         }
@@ -613,7 +613,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/function-valued-output.txt",
+          "asset": "sources/function-valued-output.mfs",
           "id": "source:function-valued-output",
           "revision": "fixture-1"
         }
@@ -630,7 +630,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/utf8-crlf.txt",
+          "asset": "sources/utf8-crlf.mfs",
           "id": "source:utf8-crlf",
           "revision": "fixture-1"
         }
@@ -647,7 +647,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/optional-terminator.txt",
+          "asset": "sources/optional-terminator.mfs",
           "id": "source:optional-terminator",
           "revision": "fixture-1"
         }
@@ -664,7 +664,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/multiple-declarations.txt",
+          "asset": "sources/multiple-declarations.mfs",
           "id": "source:multiple-declarations",
           "revision": "fixture-1"
         }
@@ -849,7 +849,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/missing-alias-rhs.txt",
+          "asset": "sources/missing-alias-rhs.mfs",
           "id": "source:missing-alias-rhs",
           "revision": "fixture-1"
         }
@@ -875,7 +875,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/alias-leading-pipe.txt",
+          "asset": "sources/alias-leading-pipe.mfs",
           "id": "source:alias-leading-pipe",
           "revision": "fixture-1"
         }
@@ -901,7 +901,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/singleton-tuple.txt",
+          "asset": "sources/singleton-tuple.mfs",
           "id": "source:singleton-tuple",
           "revision": "fixture-1"
         }
@@ -927,7 +927,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/tuple-trailing-comma.txt",
+          "asset": "sources/tuple-trailing-comma.mfs",
           "id": "source:tuple-trailing-comma",
           "revision": "fixture-1"
         }
@@ -953,7 +953,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/record-trailing-comma.txt",
+          "asset": "sources/record-trailing-comma.mfs",
           "id": "source:record-trailing-comma",
           "revision": "fixture-1"
         }
@@ -979,7 +979,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/trailing-constructor-pipe.txt",
+          "asset": "sources/trailing-constructor-pipe.mfs",
           "id": "source:trailing-constructor-pipe",
           "revision": "fixture-1"
         }
@@ -1005,7 +1005,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/missing-constructor.txt",
+          "asset": "sources/missing-constructor.mfs",
           "id": "source:missing-constructor",
           "revision": "fixture-1"
         }
@@ -1031,7 +1031,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/missing-delimiter.txt",
+          "asset": "sources/missing-delimiter.mfs",
           "id": "source:missing-delimiter",
           "revision": "fixture-1"
         }
@@ -1057,7 +1057,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/function-body.txt",
+          "asset": "sources/function-body.mfs",
           "id": "source:function-body",
           "revision": "fixture-1"
         }
@@ -1083,7 +1083,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/explicit-fn-binders-unselected.txt",
+          "asset": "sources/explicit-fn-binders-unselected.mfs",
           "id": "source:explicit-fn-binders-unselected",
           "revision": "fixture-1"
         }
@@ -1109,7 +1109,7 @@
       "stage": "syntax",
       "input": {
         "source": {
-          "asset": "sources/higher-kinded-application.txt",
+          "asset": "sources/higher-kinded-application.mfs",
           "id": "source:higher-kinded-application",
           "revision": "fixture-1"
         }

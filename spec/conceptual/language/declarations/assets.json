@@ -13,13 +13,13 @@
     },
     {
       "path": "../contract.html",
-      "bytes": 25070,
-      "sha256": "9c424d3bb3e2abe533be8de8814057a1ebfeb6b6f99d5252978e0cd51391445e"
+      "bytes": 25457,
+      "sha256": "6762bb19612c7fc62b8335cb2e4cc52f8d6b643f2eb8d617eb8544f26974c46d"
     },
     {
       "path": "cases.json",
       "bytes": 41005,
-      "sha256": "de617768fe5a8bfdb4616d598b7fda154f7c1455b6a2ac450f6e8d339606edf5"
+      "sha256": "b7fbc009c788b07481b33849ab12f1dfb367e1d81bb040bd0ba0c24646794a52"
     },
     {
       "path": "environment.json",
@@ -349,305 +349,305 @@
     {
       "path": "sources/.gitattributes",
       "bytes": 130,
-      "sha256": "aac868eb818f06d69d0534357900f6bae2c6e77caa6000aeb0a18b5644cc6a4e"
+      "sha256": "dd5ff7dfc99728274dea3d02437f904dc466cc32853d53067d403eaf5c710ca7"
     },
     {
-      "path": "sources/alias-cycle.txt",
+      "path": "sources/alias-cycle.mfs",
       "bytes": 33,
       "sha256": "98268f6e0f841c9fcb7985cd3ad6f8b53e131e01b9607bafbba523fc1e534f0f"
     },
     {
-      "path": "sources/alias-leading-pipe.txt",
+      "path": "sources/alias-leading-pipe.mfs",
       "bytes": 20,
       "sha256": "ed309c6c5280f2e35d8d54a45c8267596efb0bdde3433ac31994f5ba29e3a672"
     },
     {
-      "path": "sources/alias-record.txt",
+      "path": "sources/alias-record.mfs",
       "bytes": 46,
       "sha256": "2eeb9b665fe9238ad8928905bb3e96b9f27955bd0e126169ce0f1578ec5b3379"
     },
     {
-      "path": "sources/alias-scalar.txt",
+      "path": "sources/alias-scalar.mfs",
       "bytes": 26,
       "sha256": "5dc6b44810aaafc7f5fe4bc54599e94378737081cdf44c7619f2a9f8833ee406"
     },
     {
-      "path": "sources/alias-to-existing-type.txt",
+      "path": "sources/alias-to-existing-type.mfs",
       "bytes": 33,
       "sha256": "7cd5f0bc0ccc27f68eed22496688a848c066d6940cdd499e21950420165443c8"
     },
     {
-      "path": "sources/application-union-arrow.txt",
+      "path": "sources/application-union-arrow.mfs",
       "bytes": 42,
       "sha256": "8a87681b8da2ca01b839737d8f2e7bac898c662bc55afad2f724e3ae96c85844"
     },
     {
-      "path": "sources/bodyless-function.txt",
+      "path": "sources/bodyless-function.mfs",
       "bytes": 52,
       "sha256": "60873094af6755b7a3e1a2acb2c6f5a9b713688aa372e5b1252058593468bb61"
     },
     {
-      "path": "sources/constructor-applied-argument.txt",
+      "path": "sources/constructor-applied-argument.mfs",
       "bytes": 25,
       "sha256": "d3be46172e1bc6364016f6146e3ece6eeaee750016448ad41e1af5b323fffdfa"
     },
     {
-      "path": "sources/constructor-two-arguments.txt",
+      "path": "sources/constructor-two-arguments.mfs",
       "bytes": 30,
       "sha256": "95b647d98807958082e0b3fa1b105d704e326d59da84d04a163c442fe29178f3"
     },
     {
-      "path": "sources/custom-generic.txt",
+      "path": "sources/custom-generic.mfs",
       "bytes": 31,
       "sha256": "a6538adae20dd83ea14384d1cbe7fd240fdbaef2a3f860696e80f18de5f16aac"
     },
     {
-      "path": "sources/duplicate-input.txt",
+      "path": "sources/duplicate-input.mfs",
       "bytes": 41,
       "sha256": "21e106f547c101e8b44b881b8f915410cc08425341eca9d92d56ab97ac0a4dba"
     },
     {
-      "path": "sources/duplicate-type-binder.txt",
+      "path": "sources/duplicate-type-binder.mfs",
       "bytes": 28,
       "sha256": "b16879717e904de0368c01a432fcc66a8d712b77e2b14462232d89a7735d0599"
     },
     {
-      "path": "sources/empty-fragment.txt",
+      "path": "sources/empty-fragment.mfs",
       "bytes": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "sources/empty-record.txt",
+      "path": "sources/empty-record.mfs",
       "bytes": 21,
       "sha256": "28173142859c320cfe46b52a6451d29f8791d77c287fa5c21b4ccfde392a8e3c"
     },
     {
-      "path": "sources/explicit-fn-binders-unselected.txt",
+      "path": "sources/explicit-fn-binders-unselected.mfs",
       "bytes": 22,
       "sha256": "9ea0d37237359cdf7e97cc572aa2934c8957a5e0ac6bd99029e6cef6af97d8af"
     },
     {
-      "path": "sources/flat-eight.txt",
+      "path": "sources/flat-eight.mfs",
       "bytes": 59,
       "sha256": "733c492683e7c0be3e79e7abdd5842ac8280e7848859770c375bcc5855eafaed"
     },
     {
-      "path": "sources/flat-quad.txt",
+      "path": "sources/flat-quad.mfs",
       "bytes": 42,
       "sha256": "a6cb22192b920c765084aecd705a5b6d9bdef36e028e5b46f80dc947f2fd0707"
     },
     {
-      "path": "sources/forward-alias.txt",
+      "path": "sources/forward-alias.mfs",
       "bytes": 49,
       "sha256": "f97ade053e8e105e50a166d714f1c101b5fb3c1ca277262812b18eb6d1d9e919"
     },
     {
-      "path": "sources/function-body.txt",
+      "path": "sources/function-body.mfs",
       "bytes": 17,
       "sha256": "d8777642b640172d6fac3447e46ed7707ae7dae6da8e1cc6e6da63ca7295e04d"
     },
     {
-      "path": "sources/function-output-binder.txt",
+      "path": "sources/function-output-binder.mfs",
       "bytes": 17,
       "sha256": "802013f2077b9a9e8e464b5aa67defabebaef59bb2910886317567fe72f3d05d"
     },
     {
-      "path": "sources/function-tuple-input.txt",
+      "path": "sources/function-tuple-input.mfs",
       "bytes": 38,
       "sha256": "1c0592442bdad7924b68d9fcd5aa7aa4491fd65d65af6adb038ae174fc55f7b9"
     },
     {
-      "path": "sources/function-two-inputs.txt",
+      "path": "sources/function-two-inputs.mfs",
       "bytes": 45,
       "sha256": "0f8aab592e2dd6e570da42ccee17ac7e7c55e43fa77b9272d57e74cb55ce2b16"
     },
     {
-      "path": "sources/function-valued-output.txt",
+      "path": "sources/function-valued-output.mfs",
       "bytes": 26,
       "sha256": "6cf6e6e66df3f26d3ea48f5203b631a6fc165afdaf6389ae2c9d25f120656046"
     },
     {
-      "path": "sources/generic-eight.txt",
+      "path": "sources/generic-eight.mfs",
       "bytes": 59,
       "sha256": "61c3d8b4c9095603cc09ecae63e69557e756cdde57b845dee0fccb7af31bc11d"
     },
     {
-      "path": "sources/generic-pair.txt",
+      "path": "sources/generic-pair.mfs",
       "bytes": 28,
       "sha256": "bf320bcfd1e6ced1e98382a1f81b34419daa5a0422fbff4877706d47a34ca453"
     },
     {
-      "path": "sources/generic-quad.txt",
+      "path": "sources/generic-quad.mfs",
       "bytes": 38,
       "sha256": "3d7007001ed362ba1b0453b7c7fd76981fb3e5f7730b87efec53f839b327c808"
     },
     {
-      "path": "sources/grouping.txt",
+      "path": "sources/grouping.mfs",
       "bytes": 26,
       "sha256": "e261e2db3ffcd8d5a513ffdefe9ce285ffcf895abca6cb6ed6b9afd904eb9896"
     },
     {
-      "path": "sources/guarded-recursion.txt",
+      "path": "sources/guarded-recursion.mfs",
       "bytes": 37,
       "sha256": "86de6e0fc72fc9779f672041619e89cce851cdfcb4f1ecd5ce5897bc22007f5f"
     },
     {
-      "path": "sources/higher-kinded-application.txt",
+      "path": "sources/higher-kinded-application.mfs",
       "bytes": 26,
       "sha256": "2d1d953e9f14e411a2c41bac728ed6a30b7b29cfe5870bbde8ecf7233ee0b0c5"
     },
     {
-      "path": "sources/implicit-binder-order.txt",
+      "path": "sources/implicit-binder-order.mfs",
       "bytes": 50,
       "sha256": "f92f2b87239016b294d323ebc55877609260f8d6e26feacef3caac6d026f3a92"
     },
     {
-      "path": "sources/implicit-function-binder.txt",
+      "path": "sources/implicit-function-binder.mfs",
       "bytes": 26,
       "sha256": "8f532115590bd8fe595dfac5b87008fddc930b2991af19a456499b26bc50b41c"
     },
     {
-      "path": "sources/leading-constructor-pipe.txt",
+      "path": "sources/leading-constructor-pipe.mfs",
       "bytes": 12,
       "sha256": "f796e965f5c1995ae99a8c25e023c5a98ca9d3d60ec20881d22a6953dad5ef27"
     },
     {
-      "path": "sources/missing-alias-rhs.txt",
+      "path": "sources/missing-alias-rhs.mfs",
       "bytes": 14,
       "sha256": "4e541fd3ee019a67b5c2f383860ed375f1aa4165eaf23eb6b9ed7e09c7f519f4"
     },
     {
-      "path": "sources/missing-constructor.txt",
+      "path": "sources/missing-constructor.mfs",
       "bytes": 10,
       "sha256": "1feab468279d1b0b7b1c9e4916b49534da2f2306edd760c7b46f97b452df0798"
     },
     {
-      "path": "sources/missing-delimiter.txt",
+      "path": "sources/missing-delimiter.mfs",
       "bytes": 27,
       "sha256": "95a7cda5b04d40e740b0eddcb009e32fb1606940a129b2f1bf3264e6a08a4e7e"
     },
     {
-      "path": "sources/multiple-declarations.txt",
+      "path": "sources/multiple-declarations.mfs",
       "bytes": 48,
       "sha256": "ba76520f5d5e6b6d98e4f2c459e35b3c4a77a482ad67bd86cd3a7922a1fb0a48"
     },
     {
-      "path": "sources/named-arity-extra.txt",
+      "path": "sources/named-arity-extra.mfs",
       "bytes": 30,
       "sha256": "4d8a5b53d069fb10d18c94a038fe0198ae46a3a41c08dcdb80952318d6d69728"
     },
     {
-      "path": "sources/named-arity-missing.txt",
+      "path": "sources/named-arity-missing.mfs",
       "bytes": 24,
       "sha256": "8a029f9125c3edfee3625ab47a3cae884afac8f735def698da627405a402499f"
     },
     {
-      "path": "sources/nested-pairs.txt",
+      "path": "sources/nested-pairs.mfs",
       "bytes": 48,
       "sha256": "dfa05d91a6387527ae7438e66229956ee53426b53c894102dcb99d5597fd1cad"
     },
     {
-      "path": "sources/nullary-constructor.txt",
+      "path": "sources/nullary-constructor.mfs",
       "bytes": 10,
       "sha256": "3db515dda2250a907d96771d50d3437e7071ddf09dd748c085c36c487a5d96fe"
     },
     {
-      "path": "sources/opaque-custom.txt",
+      "path": "sources/opaque-custom.mfs",
       "bytes": 43,
       "sha256": "b340dbf2828de838f38a9f171675fb50b2d872d43678fafdb8f1a8bb44dc8c02"
     },
     {
-      "path": "sources/opaque-phantom.txt",
+      "path": "sources/opaque-phantom.mfs",
       "bytes": 36,
       "sha256": "2a76039312155d41c4de8883318af81f87ffa65127b75a216a5361b824a4012e"
     },
     {
-      "path": "sources/opaque-record.txt",
+      "path": "sources/opaque-record.mfs",
       "bytes": 44,
       "sha256": "888b313ac83ba4efcef5010943de7b7e850de07e7643ae609045dcc7fb72a616"
     },
     {
-      "path": "sources/opaque-scalar.txt",
+      "path": "sources/opaque-scalar.mfs",
       "bytes": 33,
       "sha256": "b0eac570910378a832e35a2eaa67940ebcc4358854e173a8fe193553cb1e6997"
     },
     {
-      "path": "sources/optional-terminator.txt",
+      "path": "sources/optional-terminator.mfs",
       "bytes": 26,
       "sha256": "f5d27fc832e1adf2f02b25d05268660db2bdf4efd3422171d4b1a90ddbaff2c0"
     },
     {
-      "path": "sources/record-trailing-comma.txt",
+      "path": "sources/record-trailing-comma.mfs",
       "bytes": 30,
       "sha256": "46cfe2c3c6870fb94b75e116701cd47681506acc05fba3d4afccf5a3b890f4e5"
     },
     {
-      "path": "sources/reserved-result-input.txt",
+      "path": "sources/reserved-result-input.mfs",
       "bytes": 26,
       "sha256": "9c23cafd72f78d88cb3f0234e06f04fa8bbfe7bc1a8719f31e22baa1ce1ed9e0"
     },
     {
-      "path": "sources/right-associative-arrow.txt",
+      "path": "sources/right-associative-arrow.mfs",
       "bytes": 36,
       "sha256": "e59c58e0417beb8c91cfc7daaaab1a14a9b3a2a9e1e77083505af1d64603e256"
     },
     {
-      "path": "sources/singleton-tuple.txt",
+      "path": "sources/singleton-tuple.mfs",
       "bytes": 21,
       "sha256": "2b146182dfa6b87cae54fb62e01922f5fe69ec6eafb33ffba65640fc59d471d5"
     },
     {
-      "path": "sources/trailing-constructor-pipe.txt",
+      "path": "sources/trailing-constructor-pipe.mfs",
       "bytes": 12,
       "sha256": "480bdbe29a107d9f034dfef7b084633184f290f447635793e64723822a90cde0"
     },
     {
-      "path": "sources/tuple-trailing-comma.txt",
+      "path": "sources/tuple-trailing-comma.mfs",
       "bytes": 29,
       "sha256": "13e04a4bb4c9f14fca9f31e47b8903760db7750f4a829cfca63ea8888e8880a3"
     },
     {
-      "path": "sources/unbound-variable.txt",
+      "path": "sources/unbound-variable.mfs",
       "bytes": 21,
       "sha256": "38077809df498630982eb43b12408735a31e5ea2f737d3b5d3a992e405225059"
     },
     {
-      "path": "sources/union-application-argument.txt",
+      "path": "sources/union-application-argument.mfs",
       "bytes": 40,
       "sha256": "7c0774ce744d4a39bfa19bce7e0620016c559c71cc1d494f3dfdc5cb04f17532"
     },
     {
-      "path": "sources/union-duplicates.txt",
+      "path": "sources/union-duplicates.mfs",
       "bytes": 31,
       "sha256": "b25f23a4f16cac193094828d0da25a885f90fff33d0aae606c92151c39c6e882"
     },
     {
-      "path": "sources/union-members.txt",
+      "path": "sources/union-members.mfs",
       "bytes": 32,
       "sha256": "603dcae21a5cb3cfe9aa56d7834ae66916b4e0261906dc48fb444605e7c76f7c"
     },
     {
-      "path": "sources/union-nested.txt",
+      "path": "sources/union-nested.mfs",
       "bytes": 41,
       "sha256": "a1b4a8e90b8dedfb224f8c227868ca5a7487f1013cc8ab9bad7047b7aa5b2466"
     },
     {
-      "path": "sources/union-reordered.txt",
+      "path": "sources/union-reordered.mfs",
       "bytes": 32,
       "sha256": "4969e1cfb3cab3b4ea6ab6ecc106bb73ffe681ebe5936377bac44650bce86602"
     },
     {
-      "path": "sources/unit.txt",
+      "path": "sources/unit.mfs",
       "bytes": 21,
       "sha256": "2db697b4a18a7b6d255b84558e6de622e60a35a5a2dd314a15e0ef80fdb58bae"
     },
     {
-      "path": "sources/unresolved-type.txt",
+      "path": "sources/unresolved-type.mfs",
       "bytes": 27,
       "sha256": "865fd604a81f61afb5c79c4c2d6f126e0d2df9973575ac10cbe29efb9b555b60"
     },
     {
-      "path": "sources/utf8-crlf.txt",
+      "path": "sources/utf8-crlf.mfs",
       "bytes": 39,
       "sha256": "52186aeb4f57705d3074b7c726de68ccd3381f702912dcfe12dbc0febfe65f5f"
     }

@@ -767,7 +767,7 @@ changelog = true         # Include CHANGELOG
 
 # Files to exclude from package
 [package.exclude]
-patterns = ["*.test.morphir", "internal/*"]
+patterns = ["*.test.mfs", "internal/*"]
 
 [registry]
 # Default backend

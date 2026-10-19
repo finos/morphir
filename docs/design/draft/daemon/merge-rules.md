@@ -240,7 +240,7 @@ Frontend settings merge deeply, with rules evaluated in order:
 language = "elm"
 
 [[frontend.rules]]
-pattern = "**/*.morphir"
+pattern = "**/*.mfs"
 language = "morphir-dsl"
 
 # Project config

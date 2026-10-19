@@ -195,7 +195,7 @@ allow_incomplete = false
 
 # Pattern-based language selection
 [[frontend.rules]]
-pattern = "src/legacy/**/*.morphir"
+pattern = "src/legacy/**/*.mfs"
 language = "morphir-dsl"
 
 [[frontend.rules]]
@@ -214,7 +214,7 @@ language = "ocaml"
 | Language | Extensions | Description |
 |----------|------------|-------------|
 | `elm` | `.elm` | Elm source files |
-| `morphir-dsl` | `.morphir`, `.mdsl` | Morphir DSL |
+| `morphir-dsl` | `.mfs` | Morphir DSL |
 
 ### Language-Specific Options
 

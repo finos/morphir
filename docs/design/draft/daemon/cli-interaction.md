@@ -95,11 +95,11 @@ Ad-hoc compilation requires specifying the input language (frontend) since there
 ```bash
 # Explicit language selection
 morphir compile --lang elm snippet.elm
-morphir compile --lang morphir-dsl snippet.morphir
+morphir compile --lang morphir-dsl snippet.mfs
 
 # Inferred from file extension
 morphir compile snippet.elm      # Infers Elm frontend
-morphir compile snippet.morphir  # Infers Morphir DSL frontend
+morphir compile snippet.mfs      # Infers Morphir DSL frontend
 
 # For stdin, language must be specified
 echo "module Ex exposing (..)" | morphir compile --lang elm -
@@ -110,7 +110,7 @@ echo "module Ex exposing (..)" | morphir compile --lang elm -
 | Language | Flag | File Extensions |
 |----------|------|-----------------|
 | Elm | `--lang elm` | `.elm` |
-| Morphir DSL | `--lang morphir-dsl` | `.morphir`, `.mdsl` |
+| Morphir DSL | `--lang morphir-dsl` | `.mfs` |
 | (Extension) | `--lang <ext-name>` | Per extension |
 
 ### Stdin Input (Piping)

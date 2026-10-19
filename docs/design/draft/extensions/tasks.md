@@ -302,7 +302,7 @@ Use `sources` and `outputs` for incremental execution:
 [tasks.codegen]
 description = "Generate TypeScript (incremental)"
 run = "morphir codegen typescript --output generated/"
-sources = ["src/**/*.morphir", ".morphir/out/compile.dest/**"]
+sources = ["src/**/*.mfs", ".morphir/out/compile.dest/**"]
 outputs = ["generated/**/*.ts"]
 ```
 
