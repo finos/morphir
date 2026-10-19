@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-capabilities.schema.json",
+  "title": "Local model parity capabilities, exact offline draft.29",
+  "description": "Exact offline local model parity operations and JSON framing supported by one explicitly selected producer adapter",
+  "examples": [
+    {
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.29",
+      "binding": "schema-example-only",
+      "language": "example",
+      "operations": [ "inspect-model", "export-model-original" ],
+      "formats": [ "json" ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "binding",
+    "language",
+    "operations",
+    "formats"
+  ],
+  "properties": {
+    "suite": {
+      "const": "workbench"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.29"
+    },
+    "binding": {
+      "type": "string",
+      "maxLength": 256,
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [ "inspect-model", "export-model-original" ]
+      }
+    },
+    "formats": {
+      "const": [ "json" ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,38 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-observation.schema.json",
+  "tests": [
+    {
+      "description": "valid documented shape from the frozen model fixture",
+      "data": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "json",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "example/mep-fixture",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "unknown top-level member refuses",
+      "data": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "json",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "example/mep-fixture",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        },
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

@@ -41,6 +41,13 @@ impl Case {
     }
     pub(super) fn validate_observation(&self, observation: &Observation) -> Result<(), String> {
         observation.validate_for(self.operation())?;
+        if matches!(
+            self.operation(),
+            Operation::InspectModel | Operation::ExportModelOriginal
+        ) && let Observation::Ok { value } = observation
+        {
+            super::local_models::validate_for_input(&self.input, value, self.operation())?;
+        }
         if self.operation() == Operation::ArtifactClient {
             let Observation::Ok { value } = observation else {
                 return Err("client refusals belong in evidence".into());
@@ -199,6 +206,10 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         value = crate::json::strict::parse_exact(text)?;
         super::worksheet::validate_corpus_shape(&value)?;
     }
+    if value["formatVersion"] == super::contract::LOCAL_MODELS_VERSION {
+        value = crate::json::strict::parse_exact(text)?;
+        super::local_models::validate_corpus_shape(&value)?;
+    }
     let mut literal_artifact_expected = None;
     if value["formatVersion"] == super::contract::ARTIFACT_TRANSFER_VERSION {
         value = crate::json::strict::parse_exact(text)?;
@@ -256,7 +267,13 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
         if !ids.insert(&case.id) {
             return Err(format!("duplicate case id {}", case.id));
         }
-        let input_len = if case.operation() == Operation::ArtifactClient {
+        let input_len = if matches!(
+            case.operation(),
+            Operation::InspectModel | Operation::ExportModelOriginal
+        ) {
+            super::local_models::validate_input(&case.input)?;
+            encoded_size(&case.input, super::local_models::MAX_INPUT_BYTES)?
+        } else if case.operation() == Operation::ArtifactClient {
             for (total, work) in client_work
                 .iter_mut()
                 .zip(super::artifact_client::validate_input(&case.input)?.work())
@@ -398,7 +415,9 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
             }
         };
         if input_len
-            > if document.format_version == super::contract::WORKSHEET_VERSION {
+            > if document.format_version == super::contract::LOCAL_MODELS_VERSION {
+                super::local_models::MAX_INPUT_BYTES
+            } else if document.format_version == super::contract::WORKSHEET_VERSION {
                 super::worksheet::MAX_INPUT_BYTES
             } else if document.format_version == super::contract::CODEC_COMPARISON_VERSION {
                 super::codec_comparison::MAX_INPUT_BYTES
@@ -407,6 +426,9 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
             }
         {
             return Err(format!("case {} input exceeds 1 MiB", case.id));
+        }
+        if document.format_version == super::contract::LOCAL_MODELS_VERSION {
+            case.validate_observation(&case.expected)?;
         }
         case.expected
             .validate_expected_for(case.operation())

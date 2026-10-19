@@ -1,0 +1,40 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "valid documented shape from the frozen model fixture",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.29",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "inspect-model",
+          "export-model-original"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "unknown top-level member refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.29",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "inspect-model",
+          "export-model-original"
+        ],
+        "formats": [
+          "json"
+        ],
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

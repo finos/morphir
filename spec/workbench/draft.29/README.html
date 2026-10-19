@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Independent headless model parity</h1>
+<p class="meta">morphir-etg2.23.6 · Exact offline Workbench MCK 0.1.0-draft.29</p>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#scope">Scope</a></li><li><a href="#operations">Operations</a></li><li><a href="#evidence">Evidence and comparison</a></li><li><a href="#bounds">Bounds</a></li><li><a href="#provenance">Fixed expectation provenance</a></li><li><a href="#qualification">Qualification</a></li></ul></nav>
+<section id="scope"><h2>Scope</h2><p>This exact offline kit qualifies local model inspection and original-byte export through an explicit production adapter. The maintained Rust MCK owns corpus admission, comparison and saved-report validation. It never imports an implementation's model codec, migrates IR, runs a model or calculates expected IR from an adapter response.</p><p>JSON, YAML, Ion text and Ion binary are model representations inside a JSON MCK frame. Neither operation offers a connected model service, authenticates a provider, writes an output file or releases a model. Connected model ownership remains with morphir-etg2.22.1. Existing exact drafts through artifact draft.28 remain unchanged.</p></section>
+<section id="operations"><h2>Operations</h2><table><thead><tr><th>Operation</th><th>Captured input</th><th>Successful observation</th></tr></thead><tbody><tr><td><code>inspect-model</code></td><td>Explicit provider ID, model format and original hex bytes</td><td>Provider, input format, semantic IR version, distribution kind, package, ordered module names and normalized JSON IR</td></tr><tr><td><code>export-model-original</code></td><td>The same independently captured source bytes</td><td>Provider, original kind, source format, exact hex bytes, byte length and SHA-256</td></tr></tbody></table><pre><code class="language-json">{ "providerId": "local-model-fixture", "format": "yaml", "source": { "hex": "666f726d617456657273696f6e3a20340a" } }</code></pre><p>Input has exactly those three members; source has exactly hex. This abbreviated source demonstrates the byte envelope only. Complete valid models are in the fixed corpus. Model formats are json, yaml, ion-text and ion-binary. The MCK transport format is always json.</p></section>
+<section id="evidence"><h2>Evidence and comparison</h2><p>Normalized IR is retained as a string so no host JSON decoder can first narrow its numbers. The checker parses it through the existing duplicate-aware exact JSON parser and compares the resulting generic JSON values. Whitespace and member order do not change the comparison. Integer and decimal tokens are preserved. The checker does not interpret Morphir nodes or derive metadata from IR.</p><p>Original export must match the captured source bytes, input format and provider ID. Length and SHA-256 are independently recomputed from bounded decoded hex. A rehashed replacement still refuses because it differs from the captured input. Inspection evidence binds to the captured provider and format, while every semantic field is compared to the fixed independent expectation.</p><p>Refusals are closed invalid observations with an enumerated stable code. Published YAML syntax/profile failures retain duplicate_member, unsupported_yaml_feature, invalid_yaml, invalid_type and invalid_literal. Other listed codes cover JSON/Ion, version and resource refusals. Invalid observations do not claim execution or successful typed model assembly.</p></section>
+<section id="bounds"><h2>Bounds</h2><table><thead><tr><th>Resource</th><th>Limit</th></tr></thead><tbody><tr><td>Corpus / cases</td><td>16 MiB / 1–1024 cases</td></tr><tr><td>Compact model input and successful observation</td><td>3 MiB</td></tr><tr><td>Materialized source input</td><td>1 MiB plus one byte for a negative boundary case</td></tr><tr><td>Original successful export / normalized IR string</td><td>1 MiB each</td></tr><tr><td>Saved report / retained observations</td><td>32 MiB / 16 MiB</td></tr><tr><td>Module inventory</td><td>4096 distinct names</td></tr></tbody></table><p>No generation recipe or unbounded expansion is accepted. Hex pair count is checked before decoding. Complete source growth is bounded by the corpus byte limit. A producer must also use explicit bounded framing and deadlines; the parent runner owns session and process-tree termination.</p></section>
+<section id="provenance"><h2>Fixed expectation provenance</h2><p>The initial model cases were authored from the v4 distribution/literal and YAML contracts, the v1–v3 classic Library layout, and published complete Ion originals before observing any production adapter output. The four exact-scalar additions pin IntegerLiteral 9007199254740993, DecimalLiteral 123.4500 and date-looking StringLiteral text. JSON and YAML originals use the same authored semantic IR. Original YAML preserves BOM, CRLF, comments and quoting; Ion originals retain their published enrichments and provenance.</p><p>Historical parity subsets select published parent-owned cases from drafts.12, .14, .17, .26, .27 and .28, retaining exact draft and operation identities. Source file digests, selected IDs and final subset digests live in the MoonBit fixture bundle's provenance.json. Raw JSON slices preserve opaque tokens such as 1e999. An initial Python copy error produced Infinity and was corrected directly from the published source before actual adapter runs; the expected verdict was never changed.</p><p>Separate physical YAML profile and document-tree fixtures pin requirements before their production readers run. Physical parsing evidence alone does not prove typed model import. The v3.1 tree cases retain exact source-version requirements instead of reclassifying them as v4 source documents.</p></section>
+<section id="qualification"><h2>Qualification</h2><p>Public Rust API tests construct checker-positive controls from frozen expected evidence, then reject forged fields, missing and reordered records, provider/format changes, changed bytes even with a new hash, duplicate keys, near-integral fractional lengths and oversized reports. These controls prove checker behavior only. They are explicitly labelled checker-positive-control-only and never count as actual CLI or Workbench runs.</p><p>Actual adapter qualification is a separate run against the same immutable corpus. Bind each report to an explicit producer, exact operation/profile, input digest, source snapshot and artifact digest. Recheck the saved report with the maintained parent command. Headless file selection, stdin, publication, cancellation and platform acceptance remain Task 7 tests, alongside the historical policy, worksheet, artifact and connected-lifecycle kits.</p><pre><code class="language-bash">cargo test -p morphir-mck --test headless_parity
+cargo test -p morphir-mck --lib workbench::
+morphir --no-banner mck workbench check --kit spec/workbench/mck/draft.29 --report saved-report.json</code></pre></section>
+
+</main>
+</body>
+</html>
