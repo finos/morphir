@@ -254,6 +254,10 @@ fn Infer::value_apply(
   path : String,
 ) -> Ty raise Located {
   let ft = self.value(f, @identities.path_function(path))
+  if self.expand_all(ft) is Fun(parameter, result) {
+    ignore(self.check_value(a, parameter, @identities.path_argument(path)))
+    return result
+  }
   let at = self.value(a, @identities.path_argument(path))
   let result = self.fresh()
   let expected = Fun(at, result)
@@ -270,8 +274,14 @@ fn Infer::value_apply(
 /// Prunes `t` and expands aliases at its head. Cyclic aliases do not expand, so this ends.
 fn Infer::expand_all(self : Infer, t : Ty) -> Ty {
   let mut t = self.solver.prune(t)
-  while t is Con(name, args) && self.env.expand(name, args) is Some(expanded) {
-    t = self.solver.prune(expanded)
+  while true {
+    match t {
+      Attributed(a, inner) if obligations(a) == @ir.TypeAttributes::default() =>
+        t = self.solver.prune(inner)
+      Con(name, args) if self.env.expand(name, args) is Some(expanded) =>
+        t = self.solver.prune(expanded)
+      _ => break
+    }
   }
   t
 }

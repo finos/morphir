@@ -55,6 +55,7 @@ fn elm_argument(t : @ir.Type) -> String {
     Reference(_, name, []) => upper_camel(name.local_name)
     Reference(_, _, _) | Function(_, _, _) => "(" + elm_text(t) + ")"
     Tuple(_, items) => "( " + items.map(elm_text).join(", ") + " )"
+    Union(_, items) => "(" + items.map(elm_text).join(" | ") + ")"
     Unit(_) => "()"
     Record(_, fields) if fields.is_empty() => "{}"
     Record(_, fields) => "{ " + elm_fields(fields) + " }"

@@ -64,6 +64,15 @@ pub fn generate(
   options : Options,
   cancelled~ : () -> Bool = fn() { false },
 ) -> Output raise ElmGenerationError {
+  if ir.required_types().any(@ir.Type::has_union) {
+    raise Failed([
+      {
+        code: "elm.unsupported_type",
+        node_path: unit_id,
+        detail: "Untagged unions are not supported by Elm generation",
+      },
+    ])
+  }
   let (package_name, inputs) : (@ir.Path, Array[ModuleInput]) = match
     ir.distribution {
     Library(name, _, definition) =>

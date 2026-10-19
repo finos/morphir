@@ -12,6 +12,8 @@ pub fn compare_types(@v4.IRFile, @v4.IRFile, Map[@common.Path, @v4.PackageSpecif
 
 pub fn infer(@v4.IRFile, Map[@common.Path, @v4.PackageSpecification], Mode) -> @v4.IRFile raise InferenceFailed
 
+pub fn substitute_type(@v4.Type, Map[String, @v4.Type]) -> @v4.Type raise TypeSubstitutionError
+
 pub fn types_equivalent(@v4.Type, @v4.Type) -> Bool
 
 pub fn unknown_type(@common.Name) -> @v4.Type
@@ -23,6 +25,13 @@ pub(all) suberror InferenceFailed {
 pub fn InferenceFailed::equal(Self, Self) -> Bool
 pub fn InferenceFailed::not_equal(Self, Self) -> Bool
 pub fn InferenceFailed::to_repr(Self) -> @debug.Repr
+
+pub suberror TypeSubstitutionError {
+  AttributeConflict
+} derive(Eq, @debug.Debug)
+pub fn TypeSubstitutionError::equal(Self, Self) -> Bool
+pub fn TypeSubstitutionError::not_equal(Self, Self) -> Bool
+pub fn TypeSubstitutionError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) struct InferenceProblem {
@@ -45,6 +54,34 @@ pub(all) enum Mode {
 pub fn Mode::equal(Self, Self) -> Bool
 pub fn Mode::not_equal(Self, Self) -> Bool
 pub fn Mode::to_repr(Self) -> @debug.Repr
+
+pub(all) enum RelationReason {
+  UnresolvedVariable
+  UnsupportedConstraint
+  UnsupportedExtension
+  CyclicAlias
+  LimitExceeded
+  UnsupportedShape
+} derive(Eq, @debug.Debug)
+pub fn RelationReason::equal(Self, Self) -> Bool
+pub fn RelationReason::not_equal(Self, Self) -> Bool
+pub fn RelationReason::to_repr(Self) -> @debug.Repr
+
+pub struct TypeContext {
+  // private fields
+}
+pub fn TypeContext::assignable(Self, @v4.Type, @v4.Type) -> TypeRelation
+pub fn TypeContext::equivalent(Self, @v4.Type, @v4.Type) -> TypeRelation
+pub fn TypeContext::from(@v4.IRFile, Map[@common.Path, @v4.PackageSpecification]) -> Self
+
+pub(all) enum TypeRelation {
+  Proven
+  Refuted
+  Unknown(RelationReason)
+} derive(Eq, @debug.Debug)
+pub fn TypeRelation::equal(Self, Self) -> Bool
+pub fn TypeRelation::not_equal(Self, Self) -> Bool
+pub fn TypeRelation::to_repr(Self) -> @debug.Repr
 
 pub struct TypeScope {
   // private fields

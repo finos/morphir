@@ -69,6 +69,20 @@ test "tuples, records, extensible records and unit" {
 }
 
 ///|
+test "native union syntax preserves alternatives and rejects insufficient arity" {
+  let t = ty("(union a (union a b))")
+  guard t is Union(_, [Variable(_, _), Union(_, [_, _])]) else {
+    fail("union structure lost")
+  }
+  assert_eq(
+    @spec.print_type(t, package_name=@ir.Path::parse("morphir/SDK")),
+    "(union a (union a b))",
+  )
+  assert_true(error_of("(union)").contains("at least two"))
+  assert_true(error_of("(union a)").contains("at least two"))
+}
+
+///|
 test "bad forms are refused with a position" {
   assert_eq(error_of("(->)"), "1:1 a function type needs at least two types")
   assert_eq(

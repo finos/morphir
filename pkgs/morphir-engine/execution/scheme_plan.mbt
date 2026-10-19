@@ -323,6 +323,7 @@ fn SelectedBoundary::read(
     Variable(a, _)
     | Reference(a, _, _)
     | Tuple(a, _)
+    | Union(a, _)
     | Record(a, _)
     | ExtensibleRecord(a, _, _)
     | Function(a, _, _)
@@ -339,6 +340,7 @@ fn SelectedBoundary::read(
     Function(_, _, _) => raise AdmissionInvalid("execution.boundary_function")
     Variable(_, _) | ExtensibleRecord(_, _, _) =>
       raise AdmissionInvalid("execution.unsupported_type")
+    Union(_, _) => raise AdmissionInvalid("execution.unsupported_type")
     Tuple(_, items) => {
       if items.length() > 1024 {
         raise AdmissionInvalid("execution.type_limit")

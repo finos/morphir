@@ -205,7 +205,7 @@ fn type_references(t : @ir.Type, out : Array[@ir.FQName]) -> Unit {
         type_references(a, out)
       }
     }
-    Tuple(_, items) =>
+    Tuple(_, items) | Union(_, items) =>
       for item in items {
         type_references(item, out)
       }

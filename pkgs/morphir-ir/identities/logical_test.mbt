@@ -83,6 +83,15 @@ test "one logical node for each identity, with unique paths" {
 }
 
 ///|
+test "Union alternatives have distinct authored positional logical paths" {
+  let t : @ir.Type = Union(Default::default(), [int_type(), int_type()])
+  let nodes = @identities.logical_nodes("u", library(false, t))
+  let alternatives = nodes.filter(n => n.path.contains("/alternatives/"))
+  assert_true(alternatives.any(n => n.path.has_suffix("/alternatives/0")))
+  assert_true(alternatives.any(n => n.path.has_suffix("/alternatives/1")))
+}
+
+///|
 test "a node keeps its logical path when its compact form becomes expanded" {
   let compact = @identities.logical_nodes("u", library(false, int_type()))
   let expanded = @identities.logical_nodes("u", library(true, int_type()))

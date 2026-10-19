@@ -230,7 +230,18 @@ fn Driver::fill(self : Driver, d : Decl, infer : Infer) -> @ir.ValueDefinition {
     node: (a, path) => self.fill_node(infer, namer, scope, a, path),
     signature: (def, path) => fill_signature(infer, namer, def, path),
   }
-  walker.definition(d.def, d.root)
+  let result = walker.definition(d.def, d.root)
+  if namer.conflicts.val {
+    self.problems.push(
+      problem(
+        "unsupported",
+        d.root,
+        "Conflicting type attributes cannot be represented on one IR node",
+        None,
+      ),
+    )
+  }
+  result
 }
 
 ///|
@@ -248,7 +259,10 @@ fn Driver::fill_node(
   let inferred = namer.to_ir(infer.solver, t)
   if self.mode is Check &&
     a.inferred_type is Some(old) &&
-    !scope.equivalent(self.env.expand_ir(old), self.env.expand_ir(inferred)) {
+    !scope.equivalent(
+      self.env.expand_shape(old),
+      self.env.expand_shape(inferred),
+    ) {
     let (old_text, inferred_text) = distinct_texts(old, inferred)
     self.problems.push({
       code: "annotation_mismatch",
@@ -259,7 +273,16 @@ fn Driver::fill_node(
       source: a.source,
     })
   }
-  { ..a, inferred_type: Some(inferred), }
+  let retained = match a.inferred_type {
+    Some(old) if !has_marker(old) &&
+      types_equivalent(
+        self.env.expand_shape(old),
+        self.env.expand_shape(inferred),
+      ) => old
+    Some(old) => retain_solved_attributes(old, inferred, namer.conflicts)
+    None => inferred
+  }
+  { ..a, inferred_type: Some(retained), }
 }
 
 ///|
@@ -274,7 +297,11 @@ fn fill_signature(
   guard infer.signatures.get(path) is Some(solved) else { return def }
   let solve = fn(t : @ir.Type, i : Int32) -> @ir.Type {
     if has_marker(t) {
-      namer.to_ir(infer.solver, solved[i])
+      retain_solved_attributes(
+        t,
+        namer.to_ir(infer.solver, solved[i]),
+        namer.conflicts,
+      )
     } else {
       t
     }

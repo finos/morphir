@@ -94,7 +94,8 @@ fn rigid_message(
   expected : @ir.Type,
   found : @ir.Type,
 ) -> String? {
-  let (key, classes, var_ir, other, other_ir) = match (s.prune(e), s.prune(f)) {
+  let (key, classes, var_ir, other, other_ir) = match
+    (diagnostic_head(s, e), diagnostic_head(s, f)) {
     (Rigid(a, _), Rigid(b, classes)) if rigid_owner(a) != owner &&
       rigid_owner(b) == owner => (b, classes, found, e, expected)
     (Rigid(key, classes), _) => (key, classes, expected, f, found)
@@ -106,7 +107,7 @@ fn rigid_message(
     _ => lower_camel(parse_name(rigid_name(key)))
   }
   let declared = class_phrase(classes, "any type")
-  let needs = match s.prune(other) {
+  let needs = match diagnostic_head(s, other) {
     Meta(id) if s.metas[id] is Unbound(classes=[class], ..) => class
     _ => elm_text(other_ir)
   }
@@ -125,7 +126,7 @@ fn class_message(
   found : @ir.Type,
 ) -> String? {
   let classes = fn(t : Ty) -> Array[String]? {
-    match s.prune(t) {
+    match diagnostic_head(s, t) {
       Meta(id) if s.metas[id] is Unbound(classes~, ..) => Some(classes)
       _ => None
     }
@@ -159,7 +160,7 @@ fn class_phrase(classes : Array[String], none : String) -> String {
 ///|
 /// `the record has no field `total``. The closed record of the pair lacks a field of the other record.
 fn field_message(s : Solver, e : Ty, f : Ty) -> String? {
-  let missing = match (s.prune(e), s.prune(f)) {
+  let missing = match (diagnostic_head(s, e), diagnostic_head(s, f)) {
     (Rec(f1, _), Rec(f2, None)) => first_missing(f1, f2)
     (Rec(f1, None), Rec(f2, _)) => first_missing(f2, f1)
     _ => None
@@ -187,5 +188,14 @@ fn arity_message(e : Ty, f : Ty, found : @ir.Type) -> String {
     "the type \{elm_text(found)} is not a function, so it cannot take an argument"
   } else {
     "the constructor takes \{arity_of(e)} arguments, but the pattern has \{arity_of(f)}"
+  }
+}
+
+///|
+/// Attributes do not change which variable or class a diagnostic describes.
+fn diagnostic_head(s : Solver, t : Ty) -> Ty {
+  match s.prune(t) {
+    Attributed(_, inner) => diagnostic_head(s, inner)
+    head => head
   }
 }

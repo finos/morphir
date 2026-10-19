@@ -60,6 +60,52 @@ fn downgrade_diagnostic(text : String, major : UInt32) -> String {
 }
 
 ///|
+test "Union signatures refuse all historical migrations including nested alternatives" {
+  for
+    output in [
+      "{\"Union\":[\"a\",\"a\"]}", "{\"Reference\":[\"morphir/SDK:list#list\",{\"Union\":[\"a\",\"b\"]}]}",
+    ] {
+    let text = file_with_definition(
+      "{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":" +
+      output +
+      ",\"body\":{\"Unit\":{\"attributes\":{\"inferredType\":{\"Unit\":{}}}}}}}",
+    )
+    for major in [1U, 2U, 3U] {
+      assert_eq(downgrade_diagnostic(text, major), "unsupported_v4_downgrade")
+    }
+  }
+}
+
+///|
+test "Union inferred facts refuse every classic target even with a classic signature" {
+  let text = file_with_definition(
+    "{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":{\"Unit\":{}},\"body\":{\"Unit\":{\"attributes\":{\"inferredType\":{\"Union\":[{\"Unit\":{}},{\"Unit\":{}}]}}}}}}",
+  )
+  for major in [1U, 2U, 3U] {
+    assert_eq(downgrade_diagnostic(text, major), "unsupported_v4_downgrade")
+  }
+  assert_eq(
+    @migration.to_current(
+      @migration.migrate(
+        @any_json.read(text),
+        @version.FormatVersion::parse("4.0.0"),
+      ),
+    ),
+    @current_json.read(text),
+  )
+  try
+    @migration.migrate(
+      @any_json.read(text),
+      @version.FormatVersion::parse("3.1.0"),
+    )
+  catch {
+    error => assert_eq(@wire.diagnostic(error), "unsupported_v4_downgrade")
+  } noraise {
+    _ => fail("3.1 erased inferred Union")
+  }
+}
+
+///|
 test "v4-only definition forms refuse every classic target" {
   let examples = [
     "{\"NativeBody\":{\"inputTypes\":{},\"outputType\":{\"Unit\":{}},\"nativeInfo\":{\"hint\":{\"Arithmetic\":{}}}}}",

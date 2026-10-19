@@ -12,6 +12,34 @@ fn parses(source : String) -> Bool {
 }
 
 ///|
+test "Union pattern annotations cannot disappear during Elm generation" {
+  let ir = @fixtures.rentals()
+  guard ir.distribution is Library(_, _, d) else { fail("library") }
+  let m = d.modules.values().next().unwrap().value
+  let scalar : @ir.Type = Unit(Default::default())
+  let union : @ir.Type = Union(Default::default(), [scalar, scalar])
+  let body : @ir.Value = Lambda(
+    Default::default(),
+    WildcardPattern({
+      ..@ir.ValueAttributes::default(),
+      inferred_type: Some(union),
+    }),
+    Unit(Default::default()),
+  )
+  m.values[@ir.Name::parse("union-witness")] = {
+    access: Public,
+    value: { doc: None, value: ExpressionBody([], scalar, body), },
+  }
+  try @elm.generate("union", ir, @elm.Options::default()) catch {
+    Failed(problems) =>
+      assert_eq(problems.map(p => p.code), ["elm.unsupported_type"])
+    _ => fail("wrong error")
+  } noraise {
+    _ => fail("Union annotation emitted")
+  }
+}
+
+///|
 fn string_of(json : Json, key : String) -> String? {
   guard json is Object(obj) else { return None }
   if obj.get(key) is Some(String(s)) {

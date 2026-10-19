@@ -78,6 +78,25 @@ its types. It is stricter than `types_equivalent`:
 
 A comparison that fails does not change the scope. Like `types_equivalent`, it does not expand aliases.
 
+### Native untagged unions
+
+Explicit result and call boundaries accept Union members without conversion. Every source alternative must
+be justified when narrowing. Generic signatures, aliases and contextual if/case/list/tuple/record/lambda checks
+retain the complete type. Equality unification never tries Union arms against live metavariables. Unannotated
+expressions do not synthesize unions. Unresolved disjunctive equations are unsupported; numeric literals need
+concrete type evidence at a Union boundary.
+
+`TypeContext::from(file, deps)` shares inference's visibility and alias environment. `assignable` and `equivalent`
+return `Proven`, `Refuted` or `Unknown(reason)`. Scoped variable names are identities. Source positions and textual
+`example/union:provenance#note` are descriptive; other constraints/extensions remain obligations. Known refined
+sources may widen, but extra destination obligations need evidence. Alias-site and body obligations remain
+separate. Nominal arguments are invariant; function inputs are contravariant. Proofs have 4096 pair and 128 depth
+limits. Shape comparison ignores attributes and keeps consistent candidate bijections across the whole signature
+and later TypeScope calls, with 4096 operation, 128 depth and 256 candidate limits. Exhaustion returns false.
+
+`substitute_type` preserves authored alternatives and attributes, raising `AttributeConflict` when occurrence
+and substituted attributes cannot share a node. Fill preserves valid facts and solved template attributes.
+
 `compare_types(expected, actual, deps, mask_signatures?)` compares every node type and every signature type of
 two files (`compare_files.mbt`). It expands the aliases of `deps`, of the file's own dependencies and of its own
 package. It compares the types of each declaration in that declaration's `TypeScope`, made from `expected`. It

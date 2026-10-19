@@ -109,6 +109,7 @@ fn resolve_definition(
 ///|
 /// Check required bindings before executing any definitions.
 pub fn link_file(runtime : @scheme.Runtime, file : @ir.IRFile) -> Unit raise {
+  require_union_free(file.required_types())
   let definitions = file_definitions(file)
   for name, definition in definitions {
     ignore(resolve_definition(runtime, name, definition))
@@ -184,6 +185,7 @@ pub fn evaluate_in(
   runtime : @scheme.Runtime,
   value : @ir.Value,
 ) -> @scheme.Value raise {
+  require_union_free(value.required_types())
   runtime.with_budget(rt => evaluate_native(rt, value))
 }
 
@@ -195,6 +197,7 @@ pub fn run_file_in(
   entry : @ir.FQName,
   arguments : Array[@scheme.Value],
 ) -> @scheme.Value raise {
+  require_union_free(file.required_types())
   let definitions = file_definitions(file)
   let entry_name = entry.to_canonical()
   let definition = match definitions.get(entry_name) {

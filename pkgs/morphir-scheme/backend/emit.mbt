@@ -433,6 +433,7 @@ fn Emitter::value(
 
 ///|
 pub fn emit_expression(value : @ir.Value) -> String raise {
+  require_union_free(value.required_types())
   Emitter::{ next: 0, globals: Map([]), deferred: false, }.value(
     value,
     Map([]),
@@ -564,6 +565,15 @@ fn emit_distribution(
   hints : Map[String, String],
   deferred~ : Bool = false,
 ) -> Emitted raise {
+  if deferred {
+    match file.distribution {
+      Library(_, _, d) | Application(_, _, d, _) =>
+        require_union_free(d.required_types())
+      _ => require_union_free(file.required_types())
+    }
+  } else {
+    require_union_free(file.required_types())
+  }
   let emitted : Emitted = { forms: [], symbols: [], }
   match file.distribution {
     Library(name, _, definition) =>

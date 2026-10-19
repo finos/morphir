@@ -144,6 +144,12 @@ pub fn path_arg(path : String, i : Int32) -> String {
 }
 
 ///|
+/// An authored alternative, identified by position rather than semantic membership.
+pub fn path_alternative(path : String, i : Int32) -> String {
+  step(path, "alternatives/\{i}")
+}
+
+///|
 pub fn path_head(path : String) -> String {
   step(path, "head")
 }

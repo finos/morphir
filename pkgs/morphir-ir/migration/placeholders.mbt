@@ -25,6 +25,7 @@ fn mark_type(t : @current.Type) -> @current.Type {
     Variable(_, _) | Unit(_) => t
     Reference(a, n, args) => Reference(a, n, args.map(mark_type))
     Tuple(a, items) => Tuple(a, items.map(mark_type))
+    Union(a, items) => Union(a, items.map(mark_type))
     Record(a, fs) => Record(a, fields(fs))
     ExtensibleRecord(a, row, fs) => {
       let a = if is_classic_placeholder(row) { a.with_unknown() } else { a }

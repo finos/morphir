@@ -389,6 +389,7 @@ fn closed_type(t : @ir.Type) -> Bool {
     Variable(_, _) | ExtensibleRecord(_, _, _) => false
     Reference(_, _, args) => args.iter().all(closed_type)
     Tuple(_, items) => items.iter().all(closed_type)
+    Union(_, items) => items.iter().all(closed_type)
     Record(_, fields) => fields.values().all(closed_type)
     Function(_, input, output) => closed_type(input) && closed_type(output)
     Unit(_) => true

@@ -173,7 +173,7 @@ fn has_marked_variable(t : @ir.Type) -> Bool {
   match t {
     Variable(attrs, _) => marked(attrs)
     Unit(_) => false
-    Reference(_, _, items) | Tuple(_, items) =>
+    Reference(_, _, items) | Tuple(_, items) | Union(_, items) =>
       items.iter().any(has_marked_variable)
     Record(_, fields) => fields.values().any(has_marked_variable)
     ExtensibleRecord(attrs, _, fields) =>
@@ -216,7 +216,7 @@ fn has_placeholder(t : @ir.Type) -> Bool {
   match t {
     Variable(_, name) => placeholder(name)
     Unit(_) => false
-    Reference(_, _, items) | Tuple(_, items) =>
+    Reference(_, _, items) | Tuple(_, items) | Union(_, items) =>
       items.iter().any(has_placeholder)
     Record(_, fields) => fields.values().any(has_placeholder)
     ExtensibleRecord(_, row, fields) =>

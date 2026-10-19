@@ -54,6 +54,23 @@ pub fn read_type(json : Json) -> @model.Type raise {
         @wire.array(optional_array(payload, "args")).map(read_type),
       )
     }
+    "Union" => {
+      let payload = match payload {
+        Array(_) => @wire.obj([("alternatives", payload)])
+        _ => payload
+      }
+      payload_fields(payload, ["alternatives"])
+      let alternatives = @wire.array(@wire.field(payload, "alternatives"))
+      if alternatives.length() < 2 {
+        raise @wire.Invalid(
+          "invalid_arity", "Union requires at least two alternatives",
+        )
+      }
+      @model.Type::Union(
+        read_type_attributes(attr_payload(payload)),
+        alternatives.map(read_type),
+      )
+    }
     "Tuple" => {
       let payload = match payload {
         Array(_) => @wire.obj([("elements", payload)])
@@ -139,6 +156,19 @@ pub fn write_type(value : @model.Type) -> Json raise {
       fields.push(("fqname", @wire.write_fqname(p0)))
       fields.push(("args", Json::array(p1.map(write_type))))
       expanded("Reference", attributes, fields)
+    }
+    Union(attributes, alternatives) => {
+      if alternatives.length() < 2 {
+        raise @wire.Invalid(
+          "invalid_arity", "Union requires at least two alternatives",
+        )
+      }
+      let attributes = write_type_attributes(attributes)
+      let children = Json::array(alternatives.map(write_type))
+      if attributes == Json::object(Map([])) {
+        return @wire.tag("Union", children)
+      }
+      expanded("Union", attributes, [("alternatives", children)])
     }
     Tuple(attributes, p0) => {
       let attributes = write_type_attributes(attributes)

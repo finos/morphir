@@ -21,6 +21,13 @@ pub fn generate(
   metadata_capabilities~ : @linked_metadata.Capabilities = @linked_metadata.Capabilities::unavailable(),
   cancelled~ : () -> Bool = fn() { false },
 ) -> Output raise GenerationError {
+  if input.ir.required_types().any(@ir.Type::has_union) {
+    raise Invalid(
+      "moonbit.unsupported_type",
+      input.unit_id,
+      "Untagged unions are not supported by MoonBit generation",
+    )
+  }
   generate_library(
     input,
     limits.unwrap_or(Limits::default()),

@@ -109,6 +109,8 @@ test "rewriting preserves explicit attributes" {
 fn signature_variables(t : @ir.Type, out : Array[(String, Bool)]) -> Unit {
   match t {
     Variable(a, n) => out.push((n.to_canonical(), a.is_unknown()))
+    Union(_, alternatives) =>
+      alternatives.each(t => signature_variables(t, out))
     Function(_, x, y) => {
       signature_variables(x, out)
       signature_variables(y, out)

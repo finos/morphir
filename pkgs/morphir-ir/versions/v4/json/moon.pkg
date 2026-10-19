@@ -1,4 +1,9 @@
 import {
   "finos/morphir-ir/versions/v4" @model,
   "finos/morphir-ir/wire",
+  "moonbitlang/core/debug",
 }
+
+import {
+  "moonbitlang/core/json" @core_json,
+} for "wbtest"

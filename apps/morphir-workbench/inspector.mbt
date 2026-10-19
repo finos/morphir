@@ -49,6 +49,7 @@ pub fn type_label(tpe : @ir.Type) -> String {
       }
     }
     Tuple(_, items) => "( " + items.map(type_label).join(", ") + " )"
+    Union(_, items) => "(" + items.map(type_label).join(" | ") + ")"
     Record(_, fields) => "{ " + field_labels(fields).join(", ") + " }"
     ExtensibleRecord(_, name, fields) =>
       "{ " + display_name(name) + " | " + field_labels(fields).join(", ") + " }"
@@ -85,7 +86,7 @@ fn type_refs(tpe : @ir.Type, refs : Map[String, String]) -> Unit {
         type_refs(arg, refs)
       }
     }
-    Tuple(_, items) =>
+    Tuple(_, items) | Union(_, items) =>
       for item in items {
         type_refs(item, refs)
       }

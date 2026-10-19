@@ -62,6 +62,8 @@ pub(all) enum Type {
   Variable(TypeAttributes, Name)
   Reference(TypeAttributes, FQName, Array[Type])
   Tuple(TypeAttributes, Array[Type])
+  /// Inclusive alternatives, retaining authored order and duplicates. Codecs require at least two entries.
+  Union(TypeAttributes, Array[Type])
   Record(TypeAttributes, Map[Name, Type])
   ExtensibleRecord(TypeAttributes, Name, Map[Name, Type])
   Function(TypeAttributes, Type, Type)

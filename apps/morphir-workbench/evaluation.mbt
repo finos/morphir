@@ -25,6 +25,8 @@ fn input_schema(
     @wire.obj(fields)
   }
   match tpe {
+    Union(_, _) =>
+      raise @scheme.Unsupported("Input editor does not support untagged unions")
     Variable(_, name) =>
       match variables.get(name) {
         Some(schema) => schema

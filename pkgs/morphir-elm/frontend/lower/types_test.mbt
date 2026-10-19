@@ -26,6 +26,7 @@ fn bare(t : @ir.Type) -> @ir.Type {
     Variable(_, n) => Variable(a, n)
     Reference(_, n, args) => Reference(a, n, args.map(bare))
     Tuple(_, items) => Tuple(a, items.map(bare))
+    Union(_, items) => Union(a, items.map(bare))
     Record(_, fields) => Record(a, fields.map((_, v) => bare(v)))
     ExtensibleRecord(_, r, fields) =>
       ExtensibleRecord(a, r, fields.map((_, v) => bare(v)))

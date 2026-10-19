@@ -20,16 +20,23 @@ fn classes_of(name : String, attrs : @ir.TypeAttributes) -> Array[String] {
 /// Converts an IR type. `vars` gives the type of each variable, by canonical name, including the row variable
 /// of an extensible record (with the record's attributes).
 fn to_ty(t : @ir.Type, vars : (String, @ir.TypeAttributes) -> Ty) -> Ty {
-  match t {
+  let body = match t {
     Variable(attrs, name) => vars(name.to_canonical(), attrs)
     Reference(_, name, args) =>
       Con(name.to_canonical(), args.map(a => to_ty(a, vars)))
     Tuple(_, []) | Unit(_) => UnitTy
     Tuple(_, items) => Tup(items.map(a => to_ty(a, vars)))
+    Union(_, items) => Union(items.map(a => to_ty(a, vars)))
     Record(_, fields) => Rec(fields_to_ty(fields, vars), None)
     ExtensibleRecord(attrs, row, fields) =>
       Rec(fields_to_ty(fields, vars), Some(vars(row.to_canonical(), attrs)))
     Function(_, input, output) => Fun(to_ty(input, vars), to_ty(output, vars))
+  }
+  let attrs = retained_attributes(t)
+  if attrs == @ir.TypeAttributes::default() {
+    body
+  } else {
+    Attributed(attrs, body)
   }
 }
 
@@ -88,6 +95,8 @@ fn Solver::rebuild(self : Solver, t : Ty, leaf : (Ty) -> Ty) -> Ty {
     Fun(input, output) =>
       Fun(self.rebuild(input, leaf), self.rebuild(output, leaf))
     Tup(items) => Tup(items.map(a => self.rebuild(a, leaf)))
+    Union(items) => Union(items.map(a => self.rebuild(a, leaf)))
+    Attributed(a, t) => Attributed(a, self.rebuild(t, leaf))
     Rec(fields, tail) => {
       let out : Map[String, Ty] = Map([])
       for name, field in fields {
@@ -226,11 +235,18 @@ priv struct Namer {
   /// The name of each rigid of another declaration, by key.
   foreign : Map[String, String]
   used : Map[String, Bool]
+  conflicts : Ref[Bool]
 }
 
 ///|
 fn Namer::new(owner~ : String = "") -> Namer {
-  { owner, names: Map([]), foreign: Map([]), used: Map([]), }
+  {
+    owner,
+    names: Map([]),
+    foreign: Map([]),
+    used: Map([]),
+    conflicts: { val: false, },
+  }
 }
 
 ///|
@@ -310,6 +326,17 @@ fn Namer::convert(self : Namer, s : Solver, t : Ty) -> @ir.Type {
     Fun(input, output) =>
       Function(attrs, self.convert(s, input), self.convert(s, output))
     Tup(items) => Tuple(attrs, items.map(a => self.convert(s, a)))
+    Union(items) => Union(attrs, items.map(a => self.convert(s, a)))
+    Attributed(a, t) => {
+      let inner = self.convert(s, t)
+      match merge_attributes(a, type_attributes(inner)) {
+        Some(attrs) => with_attributes(inner, attrs)
+        None => {
+          self.conflicts.val = true
+          inner
+        }
+      }
+    }
     UnitTy => Unit(attrs)
     Rec(fields, tail) => {
       // The row is named before the fields, as Elm writes `{ a | total : b }`.

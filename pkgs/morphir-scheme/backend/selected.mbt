@@ -11,6 +11,7 @@ pub fn selected_file(file : @ir.IRFile, entry : @ir.FQName) -> @ir.IRFile raise 
     raise @scheme.Unsupported("Selected Scheme planning requires a library")
   }
   let definitions = file_definitions(file)
+  let required_types = RequiredTypes::of_file(file)
   let needed : Map[String, Bool] = Map([])
   let constructors : Map[String, Bool] = Map([])
   let module_globals : Map[@ir.ModuleName, Map[@ir.Name, String]] = Map([])
@@ -49,6 +50,7 @@ pub fn selected_file(file : @ir.IRFile, entry : @ir.FQName) -> @ir.IRFile raise 
       raise @scheme.Unbound(name)
     }
     needed[name] = true
+    required_types.check(definition.required_types())
     let owner = @ir.FQName::parse(name)
     let globals = module_globals[owner.module_name]
     let references = SelectedReferences::{
@@ -57,6 +59,7 @@ pub fn selected_file(file : @ir.IRFile, entry : @ir.FQName) -> @ir.IRFile raise 
       constructors,
       value_access,
       constructor_access,
+      required_types,
       owner: owner.module_name,
     }
     references.definition(definition, Map([]), 0)
@@ -82,6 +85,7 @@ pub fn selected_file(file : @ir.IRFile, entry : @ir.FQName) -> @ir.IRFile raise 
             local_name: constructor_name,
           }
           if constructors.contains(fq.to_canonical()) {
+            required_types.check(inputs.map(x => x.1))
             selected[constructor_name] = inputs
           }
         }
@@ -112,6 +116,7 @@ pub fn selected_file(file : @ir.IRFile, entry : @ir.FQName) -> @ir.IRFile raise 
 
 ///|
 priv struct SelectedReferences {
+  required_types : RequiredTypes
   globals : Map[@ir.Name, String]
   pending : Array[String]
   constructors : Map[String, Bool]
@@ -126,6 +131,9 @@ fn SelectedReferences::include_constructor(
   name : @ir.FQName,
 ) -> Unit raise {
   let key = name.to_canonical()
+  if self.required_types.constructors.get(key) is Some(types) {
+    self.required_types.check(types)
+  }
   match self.constructor_access.get(key) {
     Some((owner, exposed)) => {
       if owner != self.owner && !exposed {
@@ -217,7 +225,10 @@ fn SelectedReferences::value(
           None => raise @scheme.Unbound(name.to_canonical())
         }
       }
-    Reference(_, name) =>
+    Reference(_, name) => {
+      if self.required_types.values.get(name.to_canonical()) is Some(types) {
+        self.required_types.check(types)
+      }
       if name.package_name.to_canonical() != "morphir/SDK" &&
         source_string_arity(name.to_canonical()) is None {
         if self.value_access.get(name.to_canonical()) is Some((owner, exposed)) &&
@@ -227,6 +238,7 @@ fn SelectedReferences::value(
         }
         self.pending.push(name.to_canonical())
       }
+    }
     Constructor(_, name) => self.include_constructor(name)
     Tuple(_, values) | List(_, values) => values.each(child)
     Record(_, values) => values.values().each(child)

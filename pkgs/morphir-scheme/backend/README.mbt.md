@@ -43,6 +43,14 @@ Its printed result is compared with the `;; =>` line, and the start of its error
 
 ## Two ways to run IR
 
+Native untagged Union execution is unsupported. Whole-file emitters, linking and registered native calls check
+all explicit required types before dispatch. Selected APIs check reachable signatures, facts, nested definitions,
+constructor fields and visible aliases before pruning; unrelated declarations can remain unselected. Direct
+`emit_expression` and `evaluate_in` have no package context: they reject explicit Union types but cannot resolve
+unknown aliases. Use file or selected APIs for alias-aware capability checking. Arbitrary extension and document
+payloads are not interpreted as type syntax. The specification DSL's Union printer retains order and nesting,
+with the existing limitation that type attributes are not represented by that notation.
+
 There are two ways to run an IR value.
 
 | Way | Steps | Runtime |

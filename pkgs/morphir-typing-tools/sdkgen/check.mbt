@@ -14,6 +14,7 @@ fn same_type(
     (Reference(_, fa, xs), Reference(_, fb, ys)) =>
       fa == fb && same_types(xs, ys, ab, ba)
     (Tuple(_, xs), Tuple(_, ys)) => same_types(xs, ys, ab, ba)
+    (Union(_, xs), Union(_, ys)) => same_types(xs, ys, ab, ba)
     (Record(_, fa), Record(_, fb)) => same_fields(fa, fb, ab, ba)
     (ExtensibleRecord(cx, x, fa), ExtensibleRecord(cy, y, fb)) =>
       class_of_variable(x, cx) == class_of_variable(y, cy) &&

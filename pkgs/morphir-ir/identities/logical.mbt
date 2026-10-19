@@ -527,6 +527,7 @@ fn Walk::pattern(
 ///|
 fn type_tag(t : @ir.Type) -> (String, @ir.TypeAttributes) {
   match t {
+    Union(a, _) => ("Union", a)
     Variable(a, _) => ("Variable", a)
     Reference(a, _, _) => ("Reference", a)
     Tuple(a, _) => ("Tuple", a)
@@ -570,6 +571,32 @@ fn Walk::type_(
           index(payload, i + 1),
           id + "/" + tag + "/\{i + 1}",
           path_arg(path, i),
+        )
+      }
+    }
+    Union(_, items) if compact => {
+      self.add(id, path, tag~)
+      let payload = field(json, tag)
+      self.add(id + "/" + tag, path + "!/Union/alternatives")
+      for i, item in items {
+        self.type_(
+          item,
+          index(payload, i),
+          id + "/" + tag + "/\{i}",
+          path_alternative(path, i),
+        )
+      }
+    }
+    Union(_, items) => {
+      self.add(id, path, tag~)
+      let payload = self.payload(json, id, path, tag, ["alternatives"])
+      let list = self.container(payload, id, path, tag, "alternatives")
+      for i, item in items {
+        self.type_(
+          item,
+          index(list, i),
+          at("alternatives") + "/\{i}",
+          path_alternative(path, i),
         )
       }
     }

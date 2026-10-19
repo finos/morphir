@@ -34,7 +34,7 @@ pub fn compare_types(
     let (path, want) = entry
     let same = match (want, found.get(path)) {
       (Some(a), Some(Some(b))) => {
-        let (a, b) = (env.expand_ir(a), env.expand_ir(b))
+        let (a, b) = (env.expand_shape(a), env.expand_shape(b))
         let (a, b) = if masked.contains(path) {
           mask_placeholders(a, b)
         } else {
@@ -137,7 +137,7 @@ fn has_placeholder(t : @ir.Type) -> Bool {
   match t {
     Variable(_, name) => is_placeholder(name)
     Unit(_) => false
-    Reference(_, _, items) | Tuple(_, items) =>
+    Reference(_, _, items) | Tuple(_, items) | Union(_, items) =>
       items.iter().any(has_placeholder)
     Record(_, fields) => fields.values().any(has_placeholder)
     ExtensibleRecord(_, row, fields) =>
@@ -173,6 +173,7 @@ fn mark_type(t : @ir.Type) -> @ir.Type {
     Variable(_, _) | Unit(_) => t
     Reference(a, name, args) => Reference(a, name, args.map(mark_type))
     Tuple(a, items) => Tuple(a, items.map(mark_type))
+    Union(a, items) => Union(a, items.map(mark_type))
     Record(a, fields) => Record(a, map_fields(fields, mark_type))
     ExtensibleRecord(a, row, fields) => {
       let a = if is_placeholder(row) { a.with_unknown() } else { a }
@@ -218,6 +219,10 @@ fn mask_placeholders(want : @ir.Type, have : @ir.Type) -> (@ir.Type, @ir.Type) {
       let pairs = xs.mapi((i, x) => mask_placeholders(x, ys[i]))
       (Tuple(a, pairs.map(p => p.0)), Tuple(b, pairs.map(p => p.1)))
     }
+    (Union(a, xs), Union(b, ys)) if xs.length() == ys.length() => {
+      let pairs = xs.mapi((i, x) => mask_placeholders(x, ys[i]))
+      (Union(a, pairs.map(p => p.0)), Union(b, pairs.map(p => p.1)))
+    }
     (Function(a, i1, o1), Function(b, i2, o2)) => {
       let (wi, hi) = mask_placeholders(i1, i2)
       let (wo, ho) = mask_placeholders(o1, o2)
@@ -258,6 +263,7 @@ fn type_text(t : @ir.Type) -> String {
     Reference(_, name, args) =>
       "(" + [name.to_canonical(), ..args.map(type_text)].join(" ") + ")"
     Tuple(_, items) => "(tuple " + items.map(type_text).join(" ") + ")"
+    Union(_, items) => "(union " + items.map(type_text).join(" ") + ")"
     Record(_, fields) => "{ " + fields_text(fields) + " }"
     ExtensibleRecord(_, row, fields) =>
       "{ " + row.to_canonical() + " | " + fields_text(fields) + " }"

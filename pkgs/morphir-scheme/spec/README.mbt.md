@@ -422,6 +422,7 @@ A duplicate is refused at the second form.
 | `(module#name t…)`, `(pkg:module#name t…)` | A `Reference` with arguments, for example `(list#list a)` |
 | `(-> a b c)` | A curried `Function`, `a -> b -> c`. It needs at least two types. |
 | `(tuple a b …)` | `Tuple`, with at least two types |
+| `(union a b …)` | Native untagged `Union`, with at least two authored alternatives |
 | `(record (field t)…)` | `Record` |
 | `(record r (field t)…)` | `ExtensibleRecord` over the row variable `r` |
 | `()` | `Unit` |

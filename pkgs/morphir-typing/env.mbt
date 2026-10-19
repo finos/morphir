@@ -253,7 +253,7 @@ fn references_of(t : @ir.Type, out : Array[String]) -> Unit {
       out.push(name.to_canonical())
       args.each(a => references_of(a, out))
     }
-    Tuple(_, items) => items.each(a => references_of(a, out))
+    Tuple(_, items) | Union(_, items) => items.each(a => references_of(a, out))
     Record(_, fields) | ExtensibleRecord(_, _, fields) =>
       fields.values().each(a => references_of(a, out))
     Function(_, input, output) => {
@@ -272,7 +272,8 @@ fn counted_references_of(t : @ir.Type, out : Array[(String, Int32)]) -> Unit {
       out.push((name.to_canonical(), args.length()))
       args.each(a => counted_references_of(a, out))
     }
-    Tuple(_, items) => items.each(a => counted_references_of(a, out))
+    Tuple(_, items) | Union(_, items) =>
+      items.each(a => counted_references_of(a, out))
     Record(_, fields) | ExtensibleRecord(_, _, fields) =>
       fields.values().each(a => counted_references_of(a, out))
     Function(_, input, output) => {

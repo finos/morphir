@@ -287,6 +287,7 @@ fn up_package_specification(
 ///|
 fn down_type(value : @current.Type) -> @old.Type[Unit] raise {
   match value {
+    Union(_, _) => raise @wire.Invalid("unsupported_v4_downgrade", "Union")
     Variable(a, p0) => @old.Type::Variable(down_variable_ta(a, p0), p0)
     Reference(a, p0, p1) =>
       @old.Type::Reference(down_ta(a), p0, p1.map(down_type))

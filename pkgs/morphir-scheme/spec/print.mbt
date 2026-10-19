@@ -56,6 +56,8 @@ pub fn print_type(t : @ir.Type, package_name~ : @ir.PackageName) -> String {
       "(" +
       ["tuple", ..items.map(a => print_type(a, package_name~))].join(" ") +
       ")"
+    Union(_, items) =>
+      "(union " + items.map(a => print_type(a, package_name~)).join(" ") + ")"
     Record(_, fields) =>
       "(" + ["record", ..print_fields(fields, package_name)].join(" ") + ")"
     ExtensibleRecord(_, base, fields) =>

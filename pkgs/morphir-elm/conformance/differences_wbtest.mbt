@@ -323,6 +323,10 @@ fn mask_placeholders(want : @ir.Type, have : @ir.Type) -> (@ir.Type, @ir.Type) {
       let (w, h) = all(xs, ys)
       (Tuple(a, w), Tuple(b, h))
     }
+    (Union(a, xs), Union(b, ys)) if xs.length() == ys.length() => {
+      let (w, h) = all(xs, ys)
+      (Union(a, w), Union(b, h))
+    }
     (Function(a, i1, o1), Function(b, i2, o2)) => {
       let (wi, hi) = mask_placeholders(i1, i2)
       let (wo, ho) = mask_placeholders(o1, o2)
@@ -512,6 +516,7 @@ fn strip_type(t : @ir.Type) -> @ir.Type {
     Variable(_, name) => Variable(none, name)
     Reference(_, name, args) => Reference(none, name, args.map(strip_type))
     Tuple(_, items) => Tuple(none, items.map(strip_type))
+    Union(_, items) => Union(none, items.map(strip_type))
     Record(_, fields) => Record(none, strip_fields(fields))
     ExtensibleRecord(_, name, fields) =>
       ExtensibleRecord(none, name, strip_fields(fields))

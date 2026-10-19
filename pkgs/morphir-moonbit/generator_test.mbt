@@ -42,6 +42,26 @@ fn error(input : @generator.Input) -> (String, String) {
 }
 
 ///|
+test "Union pattern annotations cannot disappear during MoonBit generation" {
+  let scalar = @fixtures.scalar("morphir/SDK:basics#int")
+  let union : @ir.Type = Union(Default::default(), [scalar, scalar])
+  let body : @ir.Value = PatternMatch(
+    Default::default(),
+    Literal(Default::default(), IntegerLiteral("1")),
+    [
+      (
+        WildcardPattern({
+          ..@ir.ValueAttributes::default(),
+          inferred_type: Some(union),
+        }),
+        Literal(Default::default(), IntegerLiteral("1")),
+      ),
+    ],
+  )
+  assert_eq(error(single(scalar, body)).0, "moonbit.unsupported_type")
+}
+
+///|
 fn library_source(input : @generator.Input) -> String raise {
   let output = @generator.generate(input)
   guard output.artifacts.search_by(a => a.path == "library.mbt") is Some(i) &&

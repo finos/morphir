@@ -2,6 +2,24 @@
 
 Typed models, JSON readers and writers, and explicit migrations for Morphir IR v1–v4. The module is `finos/morphir-ir` and runs on MoonBit's WASM, WASM-GC, JavaScript and native targets.
 
+## Native unions
+
+V4 `Union(attributes, alternatives)` retains order, duplicates, nesting and attributes. JSON accepts
+`{"Union":[A,B]}` or `{"Union":{"attributes":{...},"alternatives":[A,B]}}`, requiring at least two authored
+alternatives on read and write. Bare arrays remain Tuple; historical migration refuses Union recursively.
+
+The v4 JSON package provides `decode_scalar_json(text, type, profile)` and
+`ScalarDecoder::from(file, profile).decode(text, type)` for native Bool/String/Int/Float decoding. The contextual
+decoder follows visible zero-parameter transparent aliases. Parameterized aliases, opaque/custom/derived types,
+structures and runtime predicates remain unsupported. `strict-json-scalars` retains all typed interpretations;
+`integer-token-as-int` maps every integral JSON number to Int, including `1.0` and `1e0`. Unknown profiles refuse.
+Equal typed interpretations collapse, but Int 1 and Float 1 differ. Unknown arms prevent uniqueness; two proved
+interpretations establish ambiguity. Unknown outer refinements cannot be bypassed through a member.
+
+Limits are 16384 UTF-16 input units, 1024 JSON nodes, 64 levels and 256 type visits. Numeric values have at most
+fifteen significant decimal digits and magnitude 999999999999999. Float uses finite binary64; nonzero underflow
+is refused. This is a scalar codec, with conceptual membership, projection and runtime guards left separate.
+
 ## Imports
 
 All paths below start with `finos/morphir-ir`.

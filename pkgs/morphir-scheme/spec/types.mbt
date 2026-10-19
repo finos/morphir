@@ -42,6 +42,12 @@ fn read_type(ctx : Context, at : @scheme.Located) -> @ir.Type raise SpecError {
       }
       check_head(ctx, at, text)
       match text {
+        "union" => {
+          if rest.length() < 2 {
+            ctx.fail(at, "a union needs at least two types")
+          }
+          Union(type_attrs(), rest.map(t => read_type(ctx, t)))
+        }
         "->" => {
           if rest.length() < 2 {
             ctx.fail(at, "a function type needs at least two types")

@@ -313,8 +313,7 @@ fn Infer::top_level(
     for i, input in inputs {
       self.bind(input.0, ins[i])
     }
-    let bt = self.value(body, @identities.path_body(d.root))
-    self.unify(@identities.path_body(d.root), out, bt)
+    ignore(self.check_value(body, out, @identities.path_body(d.root)))
   })
 }
 

@@ -19,6 +19,10 @@ fn lower_type(
   at : String,
 ) -> @ast.TypeAnnotation raise ElmGenerationError {
   match t {
+    Union(_, _) =>
+      refuse(
+        "unsupported_type", at, "Untagged unions are not supported by Elm generation",
+      )
     Variable(attributes, name) =>
       match ctx.type_variables.get(name.to_canonical()) {
         Some(elm_name) => GenericType(elm_name)
@@ -123,6 +127,10 @@ fn collect_constraints(
   at : String,
 ) -> Unit raise ElmGenerationError {
   match t {
+    Union(_, _) =>
+      refuse(
+        "unsupported_type", at, "Untagged unions are not supported by Elm generation",
+      )
     Variable(attributes, name) => {
       let key = name.to_canonical()
       let constraint = constraint_of(attributes, at)

@@ -4,6 +4,7 @@ fn type_attrs(tpe : @ir.Type) -> @ir.TypeAttributes {
     Variable(a, _)
     | Reference(a, _, _)
     | Tuple(a, _)
+    | Union(a, _)
     | Record(a, _)
     | ExtensibleRecord(a, _, _)
     | Function(a, _, _)
@@ -27,6 +28,10 @@ fn lower_type(
     Variable(_, _) =>
       raise Invalid(
         "moonbit.ambiguous_type", context, "Generic types require specialization before generation",
+      )
+    Union(_, _) =>
+      raise Invalid(
+        "moonbit.unsupported_type", context, "Untagged unions are not supported by MoonBit generation",
       )
     ExtensibleRecord(_, _, _) =>
       raise Invalid(

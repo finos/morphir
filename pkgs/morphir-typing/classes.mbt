@@ -137,6 +137,8 @@ fn Solver::instance(self : Solver, class : String, t : Ty) -> String? {
     return Some(NO_INSTANCE)
   }
   match self.prune(t) {
+    Attributed(a, t) if obligations(a) == @ir.TypeAttributes::default() =>
+      self.instance(class, t)
     Meta(id) => instance_when(self.add_class(id, class))
     Rigid(_, declared) =>
       if join(declared, [class]) == Some(declared) {

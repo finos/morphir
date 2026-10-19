@@ -11,6 +11,8 @@ priv enum Ty {
   Con(String, Array[Ty])
   Fun(Ty, Ty)
   Tup(Array[Ty])
+  Union(Array[Ty])
+  Attributed(@ir.TypeAttributes, Ty)
   /// Fields by canonical name. The tail is a `Meta` or a `Rigid`; `None` is a closed record.
   Rec(Map[String, Ty], Ty?)
   UnitTy

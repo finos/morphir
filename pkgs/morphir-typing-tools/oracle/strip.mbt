@@ -386,7 +386,7 @@ fn variables_of(
   match t {
     Variable(attrs, name) => add(attrs, name)
     Unit(_) => ()
-    Reference(_, _, items) | Tuple(_, items) => items.each(go)
+    Reference(_, _, items) | Tuple(_, items) | Union(_, items) => items.each(go)
     Record(_, fields) => fields.values().each(go)
     ExtensibleRecord(attrs, row, fields) => {
       add(attrs, row)
@@ -419,6 +419,7 @@ fn map_variable(
     Variable(_, _) | Unit(_) => t
     Reference(attrs, n, args) => Reference(attrs, n, args.map(go))
     Tuple(attrs, items) => Tuple(attrs, items.map(go))
+    Union(attrs, items) => Union(attrs, items.map(go))
     Record(attrs, fields) => Record(attrs, go_fields(fields))
     ExtensibleRecord(attrs, row, fields) =>
       ExtensibleRecord(attrs, row, go_fields(fields))
