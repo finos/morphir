@@ -6,7 +6,9 @@ use serde_json::{Number, Value};
 use std::fmt;
 
 mod work;
-pub(crate) use work::{ReadWork, ReadWorkLimits, ReadWorkResource, ReadWorkUsage, StrictReadError};
+#[cfg(test)]
+pub(crate) use work::ReadWorkResource;
+pub(crate) use work::{ReadWork, ReadWorkLimits, ReadWorkUsage, StrictReadError};
 
 trait Work {
     fn decode(&mut self, bytes: usize) -> Result<(), String>;
@@ -110,11 +112,41 @@ fn document<W: Work>(
     parse_number: fn(&str) -> Result<Number, String>,
     work: &mut W,
 ) -> Result<Document, String> {
+    document_with_raw(bytes, parse_number, work).map(|(document, _)| document)
+}
+
+fn document_with_raw<'source, W: Work>(
+    bytes: &'source [u8],
+    parse_number: fn(&str) -> Result<Number, String>,
+    work: &mut W,
+) -> Result<(Document, &'source serde_json::value::RawValue), String> {
     work.value()?;
     work.decode(bytes.len())?;
     let raw =
         serde_json::from_slice::<&serde_json::value::RawValue>(bytes).map_err(|e| e.to_string())?;
-    from_raw_numbers(raw, 0, parse_number, work)
+    let document = from_raw_numbers(raw, 0, parse_number, work)?;
+    Ok((document, raw))
+}
+
+/// Borrow exact child tokens using the same duplicate-aware object seed.
+/// Each additional container decode and child buffering spends the caller's
+/// existing cumulative read work. These views prove no packet provenance.
+pub(crate) fn raw_members_with_work<'source>(
+    raw: &'source serde_json::value::RawValue,
+    work: &mut ReadWork,
+) -> Result<Vec<(String, &'source serde_json::value::RawValue)>, StrictReadError> {
+    work.decode(raw.get().len())
+        .and_then(|()| seeded(raw.get(), MembersSeed(&mut *work)))
+        .map_err(|error| work.error(error))
+}
+
+pub(crate) fn raw_elements_with_work<'source>(
+    raw: &'source serde_json::value::RawValue,
+    work: &mut ReadWork,
+) -> Result<Vec<&'source serde_json::value::RawValue>, StrictReadError> {
+    work.decode(raw.get().len())
+        .and_then(|()| seeded(raw.get(), ElementsSeed(&mut *work)))
+        .map_err(|error| work.error(error))
 }
 
 fn from_raw_numbers<W: Work>(
@@ -226,6 +258,12 @@ impl Document {
         work: &mut ReadWork,
     ) -> Result<Self, StrictReadError> {
         document(bytes, exact_number, work).map_err(|error| work.error(error))
+    }
+    pub(crate) fn parse_exact_with_raw<'source>(
+        bytes: &'source [u8],
+        work: &mut ReadWork,
+    ) -> Result<(Self, &'source serde_json::value::RawValue), StrictReadError> {
+        document_with_raw(bytes, exact_number, work).map_err(|error| work.error(error))
     }
     pub fn value(&self) -> Value {
         serde_json::to_value(self).expect("JSON value")
@@ -439,3 +477,7 @@ mod tests {
         assert!(parse(&format!("{}0{}", "[".repeat(128), "]".repeat(128))).is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "strict_raw_tests.rs"]
+mod raw_window_tests;

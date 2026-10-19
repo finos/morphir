@@ -30,3 +30,8 @@ mod input_corpus_tests;
 
 #[cfg(test)]
 mod paired_corpus_tests;
+
+mod ingress;
+
+mod reviewed_sources;
+mod source_proof;

@@ -1,0 +1,684 @@
+{
+  "kind": "independent-proposed-policy-additions",
+  "original60Sha256": "cedf7ac31f41a13cbbd92e567f924d9c23722cacf9af4e9cca2713b79f3732ae",
+  "supersedesOriginalExpectationBytes": false,
+  "disposition": "Original root was explicitly proposed. These additional cases recommend narrowing default source scope; coordinator must approve before final wire/schema freeze.",
+  "cases": [
+    {
+      "id": "single-file-primary-excludes-undeclared-siblings",
+      "requirement": "inventory-ownership",
+      "input": {
+        "binding": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "projectPath": "packages/orders",
+          "module": "packages/orders"
+        },
+        "descriptor": {
+          "path": "morphir-ir.json",
+          "layout": "single-file",
+          "format": "json",
+          "version": "v4"
+        },
+        "dest": [
+          "morphir-ir.json",
+          "parse/ast.json",
+          "credentials.txt",
+          "old-notes.bin"
+        ],
+        "companions": []
+      },
+      "expected": {
+        "modelOriginalFiles": [
+          "morphir-ir.json"
+        ],
+        "excluded": [
+          "parse/ast.json",
+          "credentials.txt",
+          "old-notes.bin"
+        ],
+        "completeCompilationExportClaimed": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "single-file-explicit-companion-preserves-opaque-bytes",
+      "requirement": "inventory-ownership",
+      "input": {
+        "binding": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "projectPath": "packages/orders",
+          "module": "packages/orders"
+        },
+        "descriptor": {
+          "path": "morphir-ir.json",
+          "layout": "single-file"
+        },
+        "declaredCompanions": [
+          {
+            "path": "notes/opaque.bin",
+            "bytes": [
+              0,
+              1,
+              2,
+              255
+            ]
+          }
+        ],
+        "dest": [
+          "morphir-ir.json",
+          "notes/opaque.bin",
+          "unrelated.log"
+        ]
+      },
+      "expected": {
+        "modelOriginalFiles": [
+          "morphir-ir.json",
+          "notes/opaque.bin"
+        ],
+        "companion": {
+          "path": "notes/opaque.bin",
+          "byteLength": 4,
+          "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+        },
+        "unrelatedIncluded": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "single-file-no-companion-declaration-no-complete-inventory-claim",
+      "requirement": "inventory-ownership",
+      "input": {
+        "existingWriterRecord": {
+          "value": [
+            "morphir-ir.json"
+          ],
+          "ir": {
+            "path": "morphir-ir.json",
+            "layout": "single-file"
+          }
+        },
+        "sibling": "notes.bin"
+      },
+      "expected": {
+        "primaryOriginalFile": "available-after-additive-capture",
+        "companionOwnership": "not-established",
+        "completeOriginalInventory": "not-established",
+        "v1OriginalAvailability": "unavailable"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "tree-retains-all-unknown-nested-sidecars",
+      "requirement": "inventory-ownership",
+      "input": {
+        "binding": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "projectPath": "packages/orders",
+          "module": "packages/orders"
+        },
+        "descriptor": {
+          "path": "morphir-ir",
+          "layout": "document-tree"
+        },
+        "entries": [
+          "morphir-ir/manifest.json",
+          "morphir-ir/modules/main.json",
+          "morphir-ir/vendor/unknown.bin",
+          "parse/ast.json"
+        ]
+      },
+      "expected": {
+        "modelOriginalFiles": [
+          "morphir-ir/manifest.json",
+          "morphir-ir/modules/main.json",
+          "morphir-ir/vendor/unknown.bin"
+        ],
+        "excluded": [
+          "parse/ast.json"
+        ],
+        "unknownBytes": "exact"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "tree-does-not-follow-referenced-outside-file",
+      "requirement": "confinement",
+      "input": {
+        "descriptorRoot": "morphir-ir",
+        "manifestReference": "../secrets.json",
+        "destContains": [
+          "morphir-ir/manifest.json",
+          "secrets.json"
+        ]
+      },
+      "expected": {
+        "transition": "refused",
+        "outsideBytesRead": false,
+        "partialInventoryPublished": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "companion-path-refuses-a6b09678",
+      "requirement": "confinement",
+      "input": {
+        "companion": "../secret"
+      },
+      "expected": {
+        "transition": "refused",
+        "ambientRead": false,
+        "partialInventoryPublished": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "companion-path-refuses-0fefc74f",
+      "requirement": "confinement",
+      "input": {
+        "companion": "/absolute/secret"
+      },
+      "expected": {
+        "transition": "refused",
+        "ambientRead": false,
+        "partialInventoryPublished": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "companion-path-refuses-e37c1f8c",
+      "requirement": "confinement",
+      "input": {
+        "companion": "C:\\host\\secret"
+      },
+      "expected": {
+        "transition": "refused",
+        "ambientRead": false,
+        "partialInventoryPublished": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "companion-path-refuses-98c29294",
+      "requirement": "confinement",
+      "input": {
+        "companion": "morphir-ir/../secret"
+      },
+      "expected": {
+        "transition": "refused",
+        "ambientRead": false,
+        "partialInventoryPublished": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-refuses-symlink-file",
+      "requirement": "confinement",
+      "input": {
+        "selectedRoot": "morphir-ir",
+        "fault": "symlink-file"
+      },
+      "expected": {
+        "transition": "refused",
+        "partialInventoryPublished": false,
+        "followedExternalReference": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-refuses-symlink-directory",
+      "requirement": "confinement",
+      "input": {
+        "selectedRoot": "morphir-ir",
+        "fault": "symlink-directory"
+      },
+      "expected": {
+        "transition": "refused",
+        "partialInventoryPublished": false,
+        "followedExternalReference": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-refuses-fifo",
+      "requirement": "confinement",
+      "input": {
+        "selectedRoot": "morphir-ir",
+        "fault": "fifo"
+      },
+      "expected": {
+        "transition": "refused",
+        "partialInventoryPublished": false,
+        "followedExternalReference": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-refuses-socket",
+      "requirement": "confinement",
+      "input": {
+        "selectedRoot": "morphir-ir",
+        "fault": "socket"
+      },
+      "expected": {
+        "transition": "refused",
+        "partialInventoryPublished": false,
+        "followedExternalReference": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-refuses-non-utf8-name",
+      "requirement": "confinement",
+      "input": {
+        "selectedRoot": "morphir-ir",
+        "fault": "non-utf8-name"
+      },
+      "expected": {
+        "transition": "refused",
+        "partialInventoryPublished": false,
+        "followedExternalReference": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-refuses-path-alias-collision",
+      "requirement": "confinement",
+      "input": {
+        "selectedRoot": "morphir-ir",
+        "fault": "path-alias-collision"
+      },
+      "expected": {
+        "transition": "refused",
+        "partialInventoryPublished": false,
+        "followedExternalReference": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "record-binding-keeps-private-host-bookkeeping-off-wire",
+      "requirement": "confidentiality",
+      "input": {
+        "record": {
+          "schema": 1,
+          "task": "compile",
+          "module": "packages/orders",
+          "ir": {
+            "path": "morphir-ir.json",
+            "layout": "single-file",
+            "format": "json",
+            "version": "v4"
+          },
+          "installed": {
+            "/home/alice/private-install": [
+              "morphir-ir.json"
+            ]
+          },
+          "extra": {
+            "selection": [
+              "/private/source.scala"
+            ],
+            "secret": "private"
+          }
+        },
+        "unknownRecordBytes": "retained-host-internally"
+      },
+      "expected": {
+        "publicBindingFields": [
+          "schema",
+          "task",
+          "module",
+          "ir",
+          "recordByteLength",
+          "recordSha256"
+        ],
+        "rawRecordReturned": false,
+        "installedReturned": false,
+        "unknownRecordExtrasReturned": false,
+        "unknownRecordExtrasDiscardedOnDisk": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "task-value-does-not-automatically-grant-companion-ownership",
+      "requirement": "inventory-ownership",
+      "input": {
+        "record": {
+          "value": [
+            "morphir-ir.json",
+            "parse/ast.json"
+          ]
+        },
+        "declaredModelCompanions": []
+      },
+      "expected": {
+        "modelOriginalFiles": [
+          "morphir-ir.json"
+        ],
+        "parseStageIncluded": false,
+        "reason": "task-product-is-not-model-source-scope"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "task-parent-and-other-module-stay-outside-inventory",
+      "requirement": "confidentiality",
+      "input": {
+        "selectedModule": "packages/orders",
+        "neighbors": [
+          "packages/payments/compile.dest/model.json",
+          "packages/orders/generate/scala.dest/x.scala",
+          "packages/orders/compile.lock",
+          "packages/orders/compile.json"
+        ]
+      },
+      "expected": {
+        "publicRawFilesFromNeighbors": [],
+        "compileLockDownloaded": false,
+        "compileRecord": "internal-binding-only"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "same-lock-covers-record-primary-companions-and-metadata",
+      "requirement": "atomic-capture",
+      "input": {
+        "sequence": [
+          "writer-A-lock-exclusive",
+          "writer-A-clear-and-write",
+          "reader-wants-shared",
+          "writer-A-publish-record",
+          "writer-A-unlock",
+          "reader-capture",
+          "writer-B-wants-exclusive"
+        ]
+      },
+      "expected": {
+        "readerSees": "one-completed-cooperating-run",
+        "readerHoldsLockUntil": "all-selected-bytes-and-descriptor-copied",
+        "writerBStartsBeforeCaptureComplete": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "tombstone-refuses-additive-original-inventory",
+      "requirement": "atomic-capture",
+      "input": {
+        "record": {
+          "tombstone": true
+        },
+        "oldBytesStillVisible": true
+      },
+      "expected": {
+        "adoption": "refused",
+        "fallbackToClaimedOriginal": false,
+        "partialInventoryPublished": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "descriptor-record-location-mismatch-refuses-inventory",
+      "requirement": "atomic-capture",
+      "input": {
+        "request": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "projectPath": "packages/orders",
+          "module": "packages/orders"
+        },
+        "record": {
+          "task": "compile",
+          "module": "packages/payments",
+          "ir": {
+            "path": "morphir-ir.json"
+          }
+        }
+      },
+      "expected": {
+        "adoption": "refused",
+        "otherProjectBytesPublished": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "capture-stays-usable-after-next-cooperating-compile",
+      "requirement": "atomic-capture",
+      "input": {
+        "actions": [
+          "capture-complete-A",
+          "release-shared-lock",
+          "compile-B-clears-dest",
+          "download-retained-A"
+        ]
+      },
+      "expected": {
+        "download": "exact-captured-A",
+        "rereadHostPathOnDownload": false,
+        "sourceAuthorityExpanded": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "uncooperative-filesystem-writer-is-not-lock-qualified",
+      "requirement": "atomic-capture",
+      "input": {
+        "mutation": "external-process-ignores-advisory-lock"
+      },
+      "expected": {
+        "atomicSnapshotGuarantee": false,
+        "detectedMutation": "refuse-before-publication",
+        "claim": "bounded-no-follow-capture; cooperating-Morphir-lock-consistency-only"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-bound-aggregate-bytes",
+      "requirement": "resource-bounds",
+      "input": {
+        "limit": "aggregate-bytes",
+        "oneOver": true
+      },
+      "expected": {
+        "adoption": "refused-before-unbounded-allocation",
+        "partialInventoryPublished": false,
+        "noTruncation": true
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-bound-entries",
+      "requirement": "resource-bounds",
+      "input": {
+        "limit": "entries",
+        "oneOver": true
+      },
+      "expected": {
+        "adoption": "refused-before-unbounded-allocation",
+        "partialInventoryPublished": false,
+        "noTruncation": true
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "inventory-bound-depth",
+      "requirement": "resource-bounds",
+      "input": {
+        "limit": "depth",
+        "oneOver": true
+      },
+      "expected": {
+        "adoption": "refused-before-unbounded-allocation",
+        "partialInventoryPublished": false,
+        "noTruncation": true
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "whole-task-export-is-not-implicit-model-open",
+      "requirement": "confidentiality",
+      "input": {
+        "request": "model-original-inventory",
+        "destContainsUndeclaredOutputs": true
+      },
+      "expected": {
+        "wholeTaskExport": false,
+        "additionalDisclosureScopeNeededForWholeTask": true,
+        "v1MethodBroadened": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "conceptual-graph-identity-is-not-carrier-or-source-location",
+      "requirement": "conceptual-carrier",
+      "input": {
+        "sourceLocation": [
+          "provider-A",
+          "workspace:orders"
+        ],
+        "carrierUnit": "workbench",
+        "graph": {
+          "id": "urn:example:lending",
+          "revision": "model-1"
+        },
+        "carrierSourceVersion": "3.1.7",
+        "graphRecordVersion": "0.1.0-draft.1"
+      },
+      "expected": {
+        "identitySpacesDistinct": true,
+        "semanticCarrierVersion": "4.0.0",
+        "graphRevisionUsedAsModelOpening": false,
+        "sourceAuthority": "unchanged"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "conceptual-empty-carrier-does-not-mean-empty-model",
+      "requirement": "conceptual-carrier",
+      "input": {
+        "carrier": "Specs-with-empty-modules",
+        "graph": {
+          "entities": [
+            "intent",
+            "requirement",
+            "concept"
+          ],
+          "owner": "unit:workbench"
+        }
+      },
+      "expected": {
+        "conceptualGraphRetained": true,
+        "carrierCodeSymbolCountCanBe": 0,
+        "conceptualContentDiscarded": false,
+        "newEvaluatorClaim": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "conceptual-rich-owner-survives-original-download",
+      "requirement": "conceptual-carrier",
+      "input": {
+        "owner": "unit:workbench",
+        "profile": "morphir-conceptual/0.1.0-draft.1",
+        "unknownKinds": [
+          "annotated-struct",
+          "duplicate-unknown-field",
+          "large-int",
+          "decimal",
+          "typed-null",
+          "symbol"
+        ],
+        "actions": [
+          "import-rich-Ion",
+          "inspect-carrier",
+          "download-original"
+        ]
+      },
+      "expected": {
+        "download": "exact-original-bytes",
+        "graph": "preserved-as-rich-metadata",
+        "jsonProjectionUsedAsOriginal": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "conceptual-source-locator-does-not-authorize-fetch",
+      "requirement": "conceptual-carrier",
+      "input": {
+        "graphSource": {
+          "resolution": "unresolved",
+          "locator": "https://example.invalid/policy",
+          "document": {
+            "id": "urn:policy"
+          }
+        }
+      },
+      "expected": {
+        "automaticFetch": false,
+        "sourceBytesClaimedRetained": false,
+        "graphSourceIdentityEqualsProviderLocator": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "conceptual-inspection-is-not-capability-verification",
+      "requirement": "conceptual-carrier",
+      "input": {
+        "graph": "structurally-inspected",
+        "operation": "require_interpretation(Execute)"
+      },
+      "expected": {
+        "executionSupportGranted": false,
+        "storedEvidenceBecomesExecutionEvidence": false,
+        "interpretation": "refused-by-current-package"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "recognized-malformed-conceptual-owner-keeps-existing-error",
+      "requirement": "conceptual-carrier",
+      "input": {
+        "owner": "unit:workbench",
+        "recognizedProfile": true,
+        "malformedGraph": true
+      },
+      "expected": {
+        "silentGraphDropping": false,
+        "graphFreeDowngrade": false,
+        "operation": "existing-bounded-error"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "graph-free-existing-carrier-remains-supported",
+      "requirement": "conceptual-carrier",
+      "input": {
+        "unit": "workbench",
+        "conceptualOwner": null
+      },
+      "expected": {
+        "conceptualGraph": null,
+        "existingIRInspection": "unchanged",
+        "newGraphRequired": false
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    },
+    {
+      "id": "conceptual-specification-projection-is-not-original",
+      "requirement": "conceptual-carrier",
+      "input": {
+        "operation": "conceptual_specification",
+        "input": "rich-Library-with-complete-graph"
+      },
+      "expected": {
+        "projection": "public-Specs",
+        "originalOwner": "unchanged",
+        "graphRetained": true,
+        "metadataOwnerRemoval": "refuse-lossy-conversion",
+        "applicationLinking": "not-implied"
+      },
+      "status": "independently-authored-proposed-policy; no adapter execution"
+    }
+  ]
+}

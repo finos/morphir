@@ -91,13 +91,12 @@ impl Decoder {
     pub(super) fn bytes(&mut self, count: usize) -> Result<(), DecodeError> {
         self.charge(OperandResource::ByteVisits, count)
     }
-    fn slots(&mut self, count: usize) -> Result<(), DecodeError> {
+    pub(super) fn slots(&mut self, count: usize) -> Result<(), DecodeError> {
         self.charge(OperandResource::Slots, count)
     }
-    fn literal(&mut self, raw: &str) -> Result<Document, DecodeError> {
-        self.ready()?;
-        match Document::parse_exact_with_work(raw.as_bytes(), &mut self.literal) {
-            Ok(document) => Ok(document),
+    fn read_result<T>(&mut self, result: Result<T, StrictReadError>) -> Result<T, DecodeError> {
+        match result {
+            Ok(value) => Ok(value),
             Err(error) => {
                 let exhausted = matches!(error, StrictReadError::Work(_));
                 let error = DecodeError::Literal(error);
@@ -107,6 +106,38 @@ impl Decoder {
                 Err(error)
             }
         }
+    }
+    fn literal(&mut self, raw: &str) -> Result<Document, DecodeError> {
+        self.ready()?;
+        let result = Document::parse_exact_with_work(raw.as_bytes(), &mut self.literal);
+        self.read_result(result)
+    }
+    pub(super) fn literal_with_raw<'source>(
+        &mut self,
+        raw: &'source str,
+    ) -> Result<(Document, &'source serde_json::value::RawValue), DecodeError> {
+        self.ready()?;
+        if raw.len() > self.limits.saved.get() {
+            return Err(DecodeError::SavedBytes);
+        }
+        let result = Document::parse_exact_with_raw(raw.as_bytes(), &mut self.literal);
+        self.read_result(result)
+    }
+    pub(super) fn raw_members<'source>(
+        &mut self,
+        raw: &'source serde_json::value::RawValue,
+    ) -> Result<Vec<(String, &'source serde_json::value::RawValue)>, DecodeError> {
+        self.ready()?;
+        let result = crate::json::strict::raw_members_with_work(raw, &mut self.literal);
+        self.read_result(result)
+    }
+    pub(super) fn raw_elements<'source>(
+        &mut self,
+        raw: &'source serde_json::value::RawValue,
+    ) -> Result<Vec<&'source serde_json::value::RawValue>, DecodeError> {
+        self.ready()?;
+        let result = crate::json::strict::raw_elements_with_work(raw, &mut self.literal);
+        self.read_result(result)
     }
     pub(super) fn decode<T: Decode>(&mut self, raw: &str) -> Result<T, DecodeError> {
         self.ready()?;
@@ -243,6 +274,13 @@ impl<'a> Fields<'a> {
         owner: &mut Decoder,
     ) -> Result<T, DecodeError> {
         T::decode(Self::find(self.0, name, owner)?, owner)
+    }
+    pub(super) fn document(
+        &self,
+        name: &str,
+        owner: &mut Decoder,
+    ) -> Result<&'a Document, DecodeError> {
+        Self::find(self.0, name, owner)
     }
     pub(super) fn presence<T: Decode>(
         &self,

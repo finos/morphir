@@ -81,20 +81,44 @@ impl Corpus {
     }
 }
 
-/// Admit a frozen corpus before starting an adapter. All bytes and expected
+/// Immutable UTF-8 corpus bytes acquired through the shared bounded file path.
+/// Borrowed operand views cannot outlive this source. Acquisition alone proves
+/// neither a corpus shape nor membership of an independently pinned packet.
+pub(super) struct CorpusSource {
+    text: String,
+}
+
+impl CorpusSource {
+    pub(super) fn load(root: &Path) -> Result<Self, String> {
+        let path = root.join("cases.json");
+        let metadata = std::fs::symlink_metadata(&path).map_err(|e| e.to_string())?;
+        if !metadata.is_file() || metadata.len() > MAX_CORPUS_BYTES {
+            return Err("cases.json must be a regular file no larger than 16 MiB".into());
+        }
+        let file = std::fs::File::open(&path).map_err(|e| e.to_string())?;
+        if !file.metadata().map_err(|e| e.to_string())?.is_file() {
+            return Err("cases.json must be a regular file".into());
+        }
+        let bytes = read_bounded(file, MAX_CORPUS_BYTES as usize)?;
+        let text = String::from_utf8(bytes).map_err(|error| error.utf8_error().to_string())?;
+        Ok(Self { text })
+    }
+
+    pub(super) fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub(super) fn bytes(&self) -> &[u8] {
+        self.text.as_bytes()
+    }
+}
+
+/// Verify a frozen corpus before starting an adapter. All bytes and expected
 /// projections are parent-owned; inputs are not interpreted by this loader.
 pub fn load(root: &Path) -> Result<Corpus, String> {
-    let path = root.join("cases.json");
-    let metadata = std::fs::symlink_metadata(&path).map_err(|e| e.to_string())?;
-    if !metadata.is_file() || metadata.len() > MAX_CORPUS_BYTES {
-        return Err("cases.json must be a regular file no larger than 16 MiB".into());
-    }
-    let file = std::fs::File::open(&path).map_err(|e| e.to_string())?;
-    if !file.metadata().map_err(|e| e.to_string())?.is_file() {
-        return Err("cases.json must be a regular file".into());
-    }
-    let bytes = read_bounded(file, MAX_CORPUS_BYTES as usize)?;
-    let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
+    let source = CorpusSource::load(root)?;
+    let bytes = source.bytes();
+    let text = source.text();
     // Sniff this exact draft without first narrowing opaque operands to IEEE-754.
     // Every historical draft still takes its unchanged parser below.
     let exact = crate::json::strict::parse_exact(text)?;
@@ -441,6 +465,6 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
     Ok(Corpus {
         version: document.format_version,
         cases: document.cases,
-        hash: sha256_hex(&bytes),
+        hash: sha256_hex(bytes),
     })
 }

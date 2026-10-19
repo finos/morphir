@@ -1,0 +1,89 @@
+{
+  "owner": "morphir-etg2.22.1",
+  "enablingTask": "morphir-etg2.22.1.2",
+  "origin": "Independently authored2026-10-18 review inputs, preserved verbatim from the full canonical HTML design. No implementation outputs chosen as expectations.",
+  "status": "Required compatibility inputs awaiting full executable connected MCK mapping; no adapter qualification",
+  "files": [
+    {
+      "path": "wire49.json",
+      "originalFile": "wire-cases-2026-10-18.json",
+      "cases": 49,
+      "sha256": "e1061ea53ae353e593747e29cc4ca80b24f28d2c048a70ac2ba29f453b0ce3a5",
+      "unchanged": true
+    },
+    {
+      "path": "preceding60.json",
+      "originalFile": "acceptance-scenarios.json",
+      "cases": 60,
+      "sha256": "b968c8f5f2391684d23ba34b5e8122959fe527bf8f802b8197c17739cbe7ea3f",
+      "unchanged": true
+    },
+    {
+      "path": "preceding35.json",
+      "originalFile": "acceptance-additions-2026-10-18.json",
+      "cases": 35,
+      "sha256": "a38de0e8750a3111ea28541d76a4965c0e4402924f93b1504de42bdca60953d0",
+      "unchanged": true
+    },
+    {
+      "path": "discovery7.json",
+      "originalFile": "discovery-seven.json",
+      "cases": 7,
+      "sha256": "570bb9f43c68e8e78aa5d13759c510290a98b502660a9d3c5b86899ff52c682b",
+      "unchanged": true
+    },
+    {
+      "path": "source-files.json",
+      "originalFile": "source-files.json",
+      "sha256": "c30470f31aa17ebc6cd535695b3dc325ada15e9b8f38dbd8a1dea72c63d10780",
+      "unchanged": true,
+      "provenance": "Three JSON fixtures are unchanged from finos/morphir-moonbit pkgs/morphir-ir/conformance/fixtures at commit eb30ebe41feed36659d16649f125ab18bcab2462, Apache-2.0; authored release/BOM/Ion/sidecar variants are identified by the original source manifest"
+    }
+  ],
+  "fixtures": [
+    {
+      "path": "fixtures/v1-rentals.json",
+      "byteLength": 71442,
+      "sha256": "ff6fedd2171c0c9906549cd61e79afba4402d6dc264c14b0b3159385866bbeaf",
+      "literalOriginalBindingsVerified": 2
+    },
+    {
+      "path": "fixtures/v2-rentals.json",
+      "byteLength": 71464,
+      "sha256": "c897d44ce57529900810dc26bab1fc3dc4e32ff3e3ca51e152770744422523fc",
+      "literalOriginalBindingsVerified": 2
+    },
+    {
+      "path": "fixtures/v3-greeting.json",
+      "byteLength": 29091,
+      "sha256": "539664c494509047ff485e37aff86a900978fa717bde8da30c24dc72599a0423",
+      "literalOriginalBindingsVerified": 2
+    },
+    {
+      "path": "fixtures/v3-library-release.json",
+      "byteLength": 29097,
+      "sha256": "1454c880fc0ed4d6f3fe343895b330fc84999edc690e13d363704a2baa99f392",
+      "literalOriginalBindingsVerified": 2
+    },
+    {
+      "path": "fixtures/v4-bom-crlf.json",
+      "byteLength": 119,
+      "sha256": "0346b209b65f0b6ec56a17e5612567159b5ef5e3ddef96d203eb28bf06cb89e0",
+      "literalOriginalBindingsVerified": 2
+    },
+    {
+      "path": "fixtures/v4-rich-source.ion",
+      "byteLength": 454,
+      "sha256": "89f8205f60f046302c2ee18f50313181b4e820c487ba387f945308c53dfc3237",
+      "literalOriginalBindingsVerified": 2
+    },
+    {
+      "path": "fixtures/opaque-sidecar.bin",
+      "logicalInventoryPath": "notes/opaque-sidecar.bin",
+      "byteLength": 256,
+      "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880",
+      "literalOriginalManifestVerified": true
+    }
+  ],
+  "laterDecisions": "Actual emitted-header H07; no source-descriptor inference; shared host resource/worker ownership; latest-main engine/host extraction; fresh connected MCK allocation distinct from published offline draft29"
+}
