@@ -1,0 +1,222 @@
+{
+  "profile": "morphir-untagged-union/0.1.0-draft.1",
+  "notation": "Fixture typeRef keys resolve only in this file; they are not IR wire syntax. Typed value objects are test descriptions, not a new value encoding.",
+  "types": {
+    "string": "morphir/SDK:string#string",
+    "int": "morphir/SDK:basics#int",
+    "bool": "morphir/SDK:basics#bool",
+    "float": "morphir/SDK:basics#float",
+    "label": "example/union:types#label",
+    "user-id": "example/union:types#user-id",
+    "order-id": "example/union:types#order-id",
+    "identifier": {
+      "Union": [
+        "morphir/SDK:string#string",
+        "morphir/SDK:basics#int"
+      ]
+    },
+    "reordered": {
+      "Union": [
+        "morphir/SDK:basics#int",
+        "morphir/SDK:string#string"
+      ]
+    },
+    "duplicate": {
+      "Union": [
+        "morphir/SDK:string#string",
+        "morphir/SDK:string#string"
+      ]
+    },
+    "nested": {
+      "Union": [
+        "morphir/SDK:string#string",
+        {
+          "Union": [
+            "morphir/SDK:basics#int",
+            "morphir/SDK:string#string"
+          ]
+        }
+      ]
+    },
+    "overlap": {
+      "Union": [
+        "morphir/SDK:string#string",
+        "example/union:types#label"
+      ]
+    },
+    "opaque": {
+      "Union": [
+        "example/union:types#user-id",
+        "example/union:types#order-id"
+      ]
+    },
+    "generic": {
+      "Union": [
+        "a",
+        "morphir/SDK:string#string"
+      ]
+    },
+    "positive-int": {
+      "Reference": {
+        "attributes": {
+          "extensions": {
+            "example/union:refinement#positive-int": true
+          }
+        },
+        "fqname": "morphir/SDK:basics#int",
+        "args": []
+      }
+    },
+    "refined": {
+      "Union": [
+        {
+          "Reference": {
+            "attributes": {
+              "extensions": {
+                "example/union:refinement#positive-int": true
+              }
+            },
+            "fqname": "morphir/SDK:basics#int",
+            "args": []
+          }
+        },
+        "morphir/SDK:string#string"
+      ]
+    },
+    "refined-overlap": {
+      "Union": [
+        {
+          "Reference": {
+            "attributes": {
+              "extensions": {
+                "example/union:refinement#positive-int": true
+              }
+            },
+            "fqname": "morphir/SDK:basics#int",
+            "args": []
+          }
+        },
+        "morphir/SDK:basics#int"
+      ]
+    },
+    "annotated": {
+      "Union": {
+        "attributes": {
+          "source": {
+            "startLine": 1,
+            "startColumn": 1,
+            "endLine": 1,
+            "endColumn": 20
+          },
+          "extensions": {
+            "example/union:provenance#note": "preserve union"
+          }
+        },
+        "alternatives": [
+          {
+            "Reference": {
+              "attributes": {
+                "extensions": {
+                  "example/union:provenance#note": "first member"
+                }
+              },
+              "fqname": "morphir/SDK:string#string",
+              "args": []
+            }
+          },
+          "morphir/SDK:basics#int"
+        ]
+      }
+    },
+    "numeric": {
+      "Union": [
+        "morphir/SDK:basics#int",
+        "morphir/SDK:basics#float"
+      ]
+    },
+    "record": {
+      "Record": {
+        "fields": {
+          "identifier": {
+            "Union": [
+              "morphir/SDK:string#string",
+              "morphir/SDK:basics#int"
+            ]
+          }
+        }
+      }
+    },
+    "tuple": {
+      "Tuple": [
+        {
+          "Union": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:basics#int"
+          ]
+        },
+        "morphir/SDK:basics#bool"
+      ]
+    },
+    "list": {
+      "Reference": [
+        "morphir/SDK:list#list",
+        {
+          "Union": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:basics#int"
+          ]
+        }
+      ]
+    },
+    "function": {
+      "Function": {
+        "parameterType": {
+          "Union": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:basics#int"
+          ]
+        },
+        "returnType": "morphir/SDK:basics#bool"
+      }
+    }
+  },
+  "aliases": {
+    "example/union:types#label": {
+      "visibility": "public",
+      "kind": "transparent",
+      "body": "morphir/SDK:string#string"
+    },
+    "example/union:types#user-id": {
+      "visibility": "opaque-outside-owner",
+      "kind": "nominal",
+      "representation": "morphir/SDK:basics#int"
+    },
+    "example/union:types#order-id": {
+      "visibility": "opaque-outside-owner",
+      "kind": "nominal",
+      "representation": "morphir/SDK:basics#int"
+    }
+  },
+  "semanticProfiles": {
+    "example/union:refinement#positive-int": {
+      "version": "0.1.0-draft.1",
+      "meaning": "Requires an Int value greater than zero. This fixture profile is available only when named in input.availableProfiles; absence means unsupported, never false."
+    },
+    "example/union:provenance#note": {
+      "meaning": "Descriptive text only; preserve exactly, no membership effect."
+    }
+  },
+  "codecProfiles": {
+    "strict-json-scalars": {
+      "meaning": "String accepts only a JSON string; Int accepts only a finite integral JSON number; Float accepts a finite JSON number. Bool accepts only a JSON boolean. No coercions. Transparent aliases expand. Opaque representations require an explicit mapping; unavailable members remain unsupported. Cases use only exactly representable small integers."
+    },
+    "integer-token-as-int": {
+      "meaning": "Explicit encoding decision for Int | Float: integral JSON numbers select Int; nonintegral finite JSON numbers select Float. This profile does not change typed membership or authorize numeric coercion."
+    }
+  },
+  "defaultContext": {
+    "visibility": "outside opaque owners",
+    "availableProfiles": [],
+    "limits": "All concrete first-order examples are within the consumer's declared limits unless input says exhausted."
+  }
+}

@@ -1,0 +1,1300 @@
+{
+  "corpusVersion": "0.1.0-draft.1",
+  "profile": "morphir-untagged-union/0.1.0-draft.1",
+  "status": "reference-only",
+  "environment": "environment.json",
+  "coverage": {
+    "wire": [
+      "union-0001",
+      "union-0002",
+      "union-0003",
+      "union-0004",
+      "union-0005",
+      "union-0006",
+      "union-0007",
+      "union-0008",
+      "union-0009",
+      "union-0010"
+    ],
+    "membership-overlap": [
+      "union-0011",
+      "union-0012",
+      "union-0013",
+      "union-0017"
+    ],
+    "reorder-duplicate-nesting": [
+      "union-0014",
+      "union-0015",
+      "union-0016"
+    ],
+    "substitution": [
+      "union-0018",
+      "union-0019"
+    ],
+    "narrowing": [
+      "union-0020",
+      "union-0021",
+      "union-0022",
+      "union-0023",
+      "union-0024",
+      "union-0025"
+    ],
+    "opaque": [
+      "union-0026",
+      "union-0027",
+      "union-0028"
+    ],
+    "annotations-refinements": [
+      "union-0029",
+      "union-0030",
+      "union-0031",
+      "union-0032",
+      "union-0033",
+      "union-0052",
+      "union-0053"
+    ],
+    "unsupported": [
+      "union-0034",
+      "union-0040",
+      "union-0054"
+    ],
+    "decoding": [
+      "union-0035",
+      "union-0036",
+      "union-0037",
+      "union-0038",
+      "union-0039",
+      "union-0041"
+    ],
+    "tagged-distinction": [
+      "union-0042",
+      "union-0043",
+      "union-0044",
+      "union-0045"
+    ],
+    "consumers": [
+      "union-0046",
+      "union-0047",
+      "union-0048",
+      "union-0049",
+      "union-0050",
+      "union-0051"
+    ]
+  },
+  "cases": [
+    {
+      "id": "union-0001",
+      "description": "Compact Union preserves existing member types.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:basics#int"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "canonical": {
+          "Union": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:basics#int"
+          ]
+        },
+        "node": "Union"
+      }
+    },
+    {
+      "id": "union-0002",
+      "description": "Expanded empty attributes canonicalize to compact Union.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": {
+            "attributes": {},
+            "alternatives": [
+              "morphir/SDK:string#string",
+              "morphir/SDK:basics#int"
+            ]
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "canonical": {
+          "Union": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:basics#int"
+          ]
+        }
+      }
+    },
+    {
+      "id": "union-0003",
+      "description": "Union and per-member annotations remain in their own payloads.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": {
+            "attributes": {
+              "source": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 20
+              },
+              "extensions": {
+                "example/union:provenance#note": "preserve union"
+              }
+            },
+            "alternatives": [
+              {
+                "Reference": {
+                  "attributes": {
+                    "extensions": {
+                      "example/union:provenance#note": "first member"
+                    }
+                  },
+                  "fqname": "morphir/SDK:string#string",
+                  "args": []
+                }
+              },
+              "morphir/SDK:basics#int"
+            ]
+          }
+        }
+      },
+      "expected": {
+        "outcome": "accepted",
+        "canonical": {
+          "Union": {
+            "attributes": {
+              "source": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 20
+              },
+              "extensions": {
+                "example/union:provenance#note": "preserve union"
+              }
+            },
+            "alternatives": [
+              {
+                "Reference": {
+                  "attributes": {
+                    "extensions": {
+                      "example/union:provenance#note": "first member"
+                    }
+                  },
+                  "fqname": "morphir/SDK:string#string",
+                  "args": []
+                }
+              },
+              "morphir/SDK:basics#int"
+            ]
+          }
+        },
+        "preserve": [
+          "order",
+          "attributes",
+          "member-attributes"
+        ]
+      }
+    },
+    {
+      "id": "union-0004",
+      "description": "A bare array remains a Tuple.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": [
+          "morphir/SDK:string#string",
+          "morphir/SDK:basics#int"
+        ]
+      },
+      "expected": {
+        "outcome": "accepted",
+        "node": "Tuple",
+        "canonical": [
+          "morphir/SDK:string#string",
+          "morphir/SDK:basics#int"
+        ]
+      }
+    },
+    {
+      "id": "union-0005",
+      "description": "An empty authored union is invalid.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": []
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "union_arity",
+        "path": "/Union"
+      }
+    },
+    {
+      "id": "union-0006",
+      "description": "A singleton authored union is invalid.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": [
+            "morphir/SDK:string#string"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "union_arity",
+        "path": "/Union"
+      }
+    },
+    {
+      "id": "union-0007",
+      "description": "An expanded union requires alternatives.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": {
+            "attributes": {}
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "missing_alternatives",
+        "path": "/Union"
+      }
+    },
+    {
+      "id": "union-0008",
+      "description": "Alternatives must be an array.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": {
+            "alternatives": "morphir/SDK:string#string"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "invalid_alternatives",
+        "path": "/Union/alternatives"
+      }
+    },
+    {
+      "id": "union-0009",
+      "description": "A malformed nested node cannot bypass arity validation.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": [
+            "morphir/SDK:string#string",
+            {
+              "Union": [
+                "morphir/SDK:basics#int"
+              ]
+            }
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "union_arity",
+        "path": "/Union/1/Union"
+      }
+    },
+    {
+      "id": "union-0010",
+      "description": "Union and Tuple keys cannot share one node wrapper.",
+      "input": {
+        "operation": "wireDecode",
+        "wire": {
+          "Union": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:basics#int"
+          ],
+          "Tuple": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:basics#int"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "invalid_node_wrapper",
+        "path": ""
+      }
+    },
+    {
+      "id": "union-0011",
+      "description": "String is a member without adding a constructor.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "identifier"
+        },
+        "value": {
+          "typeRef": "string",
+          "value": "abc"
+        }
+      },
+      "expected": {
+        "outcome": "member",
+        "valueUnchanged": true,
+        "selectedAlternative": null
+      }
+    },
+    {
+      "id": "union-0012",
+      "description": "Int is a member without adding a constructor.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "identifier"
+        },
+        "value": {
+          "typeRef": "int",
+          "value": 42
+        }
+      },
+      "expected": {
+        "outcome": "member",
+        "valueUnchanged": true,
+        "selectedAlternative": null
+      }
+    },
+    {
+      "id": "union-0013",
+      "description": "Bool is not a member when both members can be checked.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "identifier"
+        },
+        "value": {
+          "typeRef": "bool",
+          "value": true
+        }
+      },
+      "expected": {
+        "outcome": "not-member"
+      }
+    },
+    {
+      "id": "union-0014",
+      "description": "Reordering alternatives preserves membership and assignability.",
+      "input": {
+        "operation": "equivalent",
+        "left": {
+          "typeRef": "identifier"
+        },
+        "right": {
+          "typeRef": "reordered"
+        }
+      },
+      "expected": {
+        "outcome": "equivalent",
+        "structurallyEqual": false
+      }
+    },
+    {
+      "id": "union-0015",
+      "description": "Duplicate members remain authored but are semantically idempotent.",
+      "input": {
+        "operation": "equivalent",
+        "left": {
+          "typeRef": "duplicate"
+        },
+        "right": {
+          "typeRef": "string"
+        }
+      },
+      "expected": {
+        "outcome": "equivalent",
+        "structurallyEqual": false
+      }
+    },
+    {
+      "id": "union-0016",
+      "description": "Nested unions are associative without flattening stored syntax.",
+      "input": {
+        "operation": "equivalent",
+        "left": {
+          "typeRef": "nested"
+        },
+        "right": {
+          "typeRef": "identifier"
+        }
+      },
+      "expected": {
+        "outcome": "equivalent",
+        "structurallyEqual": false
+      }
+    },
+    {
+      "id": "union-0017",
+      "description": "Transparent alias overlap has no preferred branch.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "overlap"
+        },
+        "value": {
+          "typeRef": "string",
+          "value": "abc"
+        }
+      },
+      "expected": {
+        "outcome": "member",
+        "selectedAlternative": null
+      }
+    },
+    {
+      "id": "union-0018",
+      "description": "Generic substitution may make alternatives equivalent.",
+      "input": {
+        "operation": "substitute",
+        "type": {
+          "typeRef": "generic"
+        },
+        "substitution": {
+          "a": "morphir/SDK:string#string"
+        }
+      },
+      "expected": {
+        "outcome": "substituted",
+        "type": {
+          "Union": [
+            "morphir/SDK:string#string",
+            "morphir/SDK:string#string"
+          ]
+        },
+        "validAuthoredArity": true
+      }
+    },
+    {
+      "id": "union-0019",
+      "description": "Substitution traverses enclosing types and preserves attributes.",
+      "input": {
+        "operation": "substitute",
+        "type": {
+          "Record": {
+            "fields": {
+              "value": {
+                "Union": {
+                  "attributes": {
+                    "source": {
+                      "startLine": 1,
+                      "startColumn": 1,
+                      "endLine": 1,
+                      "endColumn": 20
+                    },
+                    "extensions": {
+                      "example/union:provenance#note": "preserve union"
+                    }
+                  },
+                  "alternatives": [
+                    "a",
+                    "morphir/SDK:string#string"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "substitution": {
+          "a": "morphir/SDK:basics#int"
+        }
+      },
+      "expected": {
+        "outcome": "substituted",
+        "type": {
+          "Record": {
+            "fields": {
+              "value": {
+                "Union": {
+                  "attributes": {
+                    "source": {
+                      "startLine": 1,
+                      "startColumn": 1,
+                      "endLine": 1,
+                      "endColumn": 20
+                    },
+                    "extensions": {
+                      "example/union:provenance#note": "preserve union"
+                    }
+                  },
+                  "alternatives": [
+                    "morphir/SDK:basics#int",
+                    "morphir/SDK:string#string"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "union-0020",
+      "description": "A member widens without conversion.",
+      "input": {
+        "operation": "assignable",
+        "source": {
+          "typeRef": "string"
+        },
+        "destination": {
+          "typeRef": "identifier"
+        }
+      },
+      "expected": {
+        "outcome": "assignable",
+        "conversion": null
+      }
+    },
+    {
+      "id": "union-0021",
+      "description": "A union cannot narrow to only one of its members without proof.",
+      "input": {
+        "operation": "assignable",
+        "source": {
+          "typeRef": "identifier"
+        },
+        "destination": {
+          "typeRef": "string"
+        }
+      },
+      "expected": {
+        "outcome": "not-assignable",
+        "reason": "int-not-string"
+      }
+    },
+    {
+      "id": "union-0022",
+      "description": "Every source alternative may use a different target member.",
+      "input": {
+        "operation": "assignable",
+        "source": {
+          "typeRef": "identifier"
+        },
+        "destination": {
+          "Union": [
+            "morphir/SDK:basics#bool",
+            "morphir/SDK:basics#int",
+            "morphir/SDK:string#string"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "assignable",
+        "conversion": null
+      }
+    },
+    {
+      "id": "union-0023",
+      "description": "Equivalent members all flow to their common type.",
+      "input": {
+        "operation": "assignable",
+        "source": {
+          "typeRef": "overlap"
+        },
+        "destination": {
+          "typeRef": "string"
+        }
+      },
+      "expected": {
+        "outcome": "assignable",
+        "conversion": null
+      }
+    },
+    {
+      "id": "union-0024",
+      "description": "A successful checked String guard authorizes String operations.",
+      "input": {
+        "operation": "guard",
+        "declaredType": {
+          "typeRef": "identifier"
+        },
+        "value": {
+          "typeRef": "string",
+          "value": "abc"
+        },
+        "guardType": {
+          "typeRef": "string"
+        },
+        "operationInTrueBranch": "string-length"
+      },
+      "expected": {
+        "outcome": "true",
+        "trueBranchType": "morphir/SDK:string#string",
+        "branchOperationAllowed": true
+      }
+    },
+    {
+      "id": "union-0025",
+      "description": "Using a String-only operation on an unnarrowed union is rejected.",
+      "input": {
+        "operation": "use",
+        "type": {
+          "typeRef": "identifier"
+        },
+        "operationOnValue": "string-length"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "narrowing-required"
+      }
+    },
+    {
+      "id": "union-0026",
+      "description": "An opaque member keeps its identity.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "opaque"
+        },
+        "value": {
+          "typeRef": "user-id",
+          "value": 7
+        }
+      },
+      "expected": {
+        "outcome": "member",
+        "valueUnchanged": true
+      }
+    },
+    {
+      "id": "union-0027",
+      "description": "The representation of an opaque member is not that member.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "opaque"
+        },
+        "value": {
+          "typeRef": "int",
+          "value": 7
+        }
+      },
+      "expected": {
+        "outcome": "not-member"
+      }
+    },
+    {
+      "id": "union-0028",
+      "description": "Different opaque identities remain distinct despite equal representations.",
+      "input": {
+        "operation": "assignable",
+        "source": {
+          "typeRef": "user-id"
+        },
+        "destination": {
+          "typeRef": "order-id"
+        }
+      },
+      "expected": {
+        "outcome": "not-assignable",
+        "reason": "nominal-identity"
+      }
+    },
+    {
+      "id": "union-0029",
+      "description": "Known refinement rejects a negative Int when no other alternative accepts.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "refined"
+        },
+        "value": {
+          "typeRef": "int",
+          "value": -1
+        },
+        "availableProfiles": [
+          "example/union:refinement#positive-int"
+        ]
+      },
+      "expected": {
+        "outcome": "not-member"
+      }
+    },
+    {
+      "id": "union-0030",
+      "description": "Known refinement accepts a positive Int.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "refined"
+        },
+        "value": {
+          "typeRef": "int",
+          "value": 1
+        },
+        "availableProfiles": [
+          "example/union:refinement#positive-int"
+        ]
+      },
+      "expected": {
+        "outcome": "member",
+        "selectedAlternative": null
+      }
+    },
+    {
+      "id": "union-0031",
+      "description": "An unrefined accepting alternative can establish membership.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "refined-overlap"
+        },
+        "value": {
+          "typeRef": "int",
+          "value": -1
+        },
+        "availableProfiles": [
+          "example/union:refinement#positive-int"
+        ]
+      },
+      "expected": {
+        "outcome": "member",
+        "selectedAlternative": null,
+        "retainRefinedAlternative": true
+      }
+    },
+    {
+      "id": "union-0032",
+      "description": "A missing refinement interpreter cannot establish nonmembership.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "refined"
+        },
+        "value": {
+          "typeRef": "int",
+          "value": 1
+        },
+        "availableProfiles": []
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "reason": "required-semantic-profile"
+      }
+    },
+    {
+      "id": "union-0033",
+      "description": "A proved member suffices even if another member cannot be checked.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "refined"
+        },
+        "value": {
+          "typeRef": "string",
+          "value": "abc"
+        },
+        "availableProfiles": []
+      },
+      "expected": {
+        "outcome": "member",
+        "selectedAlternative": null
+      }
+    },
+    {
+      "id": "union-0034",
+      "description": "A resource-limited guard authorizes neither execution branch.",
+      "input": {
+        "operation": "guard",
+        "declaredType": {
+          "typeRef": "identifier"
+        },
+        "value": {
+          "typeRef": "string",
+          "value": "abc"
+        },
+        "guardType": {
+          "typeRef": "string"
+        },
+        "limits": "exhausted"
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "reason": "resource-limit",
+        "executeTrueBranch": false,
+        "executeFalseBranch": false
+      }
+    },
+    {
+      "id": "union-0035",
+      "description": "A JSON string has one interpretation in String | Int.",
+      "input": {
+        "operation": "rawDecode",
+        "type": {
+          "typeRef": "identifier"
+        },
+        "codecProfile": "strict-json-scalars",
+        "wire": "42"
+      },
+      "expected": {
+        "outcome": "decoded",
+        "value": {
+          "typeRef": "string",
+          "value": "42"
+        }
+      }
+    },
+    {
+      "id": "union-0036",
+      "description": "A JSON number has distinct Int and Float interpretations.",
+      "input": {
+        "operation": "rawDecode",
+        "type": {
+          "typeRef": "numeric"
+        },
+        "codecProfile": "strict-json-scalars",
+        "wire": 1
+      },
+      "expected": {
+        "outcome": "ambiguous",
+        "candidates": [
+          {
+            "typeRef": "int",
+            "value": 1
+          },
+          {
+            "typeRef": "float",
+            "value": 1
+          }
+        ],
+        "selectedAlternative": null
+      }
+    },
+    {
+      "id": "union-0037",
+      "description": "Reversing numeric members cannot make raw decoding choose one.",
+      "input": {
+        "operation": "rawDecode",
+        "type": {
+          "Union": [
+            "morphir/SDK:basics#float",
+            "morphir/SDK:basics#int"
+          ]
+        },
+        "codecProfile": "strict-json-scalars",
+        "wire": 1
+      },
+      "expected": {
+        "outcome": "ambiguous",
+        "candidates": [
+          {
+            "typeRef": "int",
+            "value": 1
+          },
+          {
+            "typeRef": "float",
+            "value": 1
+          }
+        ],
+        "selectedAlternative": null
+      }
+    },
+    {
+      "id": "union-0038",
+      "description": "Overlapping transparent aliases decode to the same typed value.",
+      "input": {
+        "operation": "rawDecode",
+        "type": {
+          "typeRef": "overlap"
+        },
+        "codecProfile": "strict-json-scalars",
+        "wire": "abc"
+      },
+      "expected": {
+        "outcome": "decoded",
+        "value": {
+          "typeRef": "string",
+          "value": "abc"
+        },
+        "selectedAlternative": null
+      }
+    },
+    {
+      "id": "union-0039",
+      "description": "A declared codec mapping can settle a raw ambiguity.",
+      "input": {
+        "operation": "rawDecode",
+        "type": {
+          "typeRef": "numeric"
+        },
+        "codecProfile": "integer-token-as-int",
+        "wire": 1
+      },
+      "expected": {
+        "outcome": "decoded",
+        "value": {
+          "typeRef": "int",
+          "value": 1
+        },
+        "decision": "integer-token-as-int"
+      }
+    },
+    {
+      "id": "union-0040",
+      "description": "An unsupported opaque decoder prevents a uniqueness claim.",
+      "input": {
+        "operation": "rawDecode",
+        "type": {
+          "Union": [
+            "morphir/SDK:string#string",
+            "example/union:types#user-id"
+          ]
+        },
+        "codecProfile": "strict-json-scalars",
+        "wire": "7"
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "reason": "opaque-codec-unavailable"
+      }
+    },
+    {
+      "id": "union-0041",
+      "description": "Bool has no decoding in String | Int.",
+      "input": {
+        "operation": "rawDecode",
+        "type": {
+          "typeRef": "identifier"
+        },
+        "codecProfile": "strict-json-scalars",
+        "wire": true
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "no-interpretation"
+      }
+    },
+    {
+      "id": "union-0042",
+      "description": "A tagged custom type remains a separate definition kind.",
+      "input": {
+        "operation": "declaration",
+        "source": "type IdentifierValue = Text String | Number Int"
+      },
+      "expected": {
+        "outcome": "tagged",
+        "definition": {
+          "CustomTypeDefinition": {
+            "typeParams": [],
+            "constructors": {
+              "text": [
+                [
+                  "value",
+                  "morphir/SDK:string#string"
+                ]
+              ],
+              "number": [
+                [
+                  "value",
+                  "morphir/SDK:basics#int"
+                ]
+              ]
+            },
+            "access": "Public"
+          }
+        },
+        "newConstructors": [
+          "text",
+          "number"
+        ]
+      }
+    },
+    {
+      "id": "union-0043",
+      "description": "An alias to a union uses the existing alias definition kind.",
+      "input": {
+        "operation": "declaration",
+        "source": "type alias Identifier = String | Int"
+      },
+      "expected": {
+        "outcome": "untagged",
+        "definition": {
+          "TypeAliasDefinition": {
+            "typeParams": [],
+            "typeExp": {
+              "Union": [
+                "morphir/SDK:string#string",
+                "morphir/SDK:basics#int"
+              ]
+            }
+          }
+        },
+        "newConstructors": []
+      }
+    },
+    {
+      "id": "union-0044",
+      "description": "An unresolved alias target is not guessed to be a constructor.",
+      "input": {
+        "operation": "declaration",
+        "source": "type alias A = Missing",
+        "knownTypes": []
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "unresolved-type"
+      }
+    },
+    {
+      "id": "union-0045",
+      "description": "A leading pipe is not a union type-expression prefix.",
+      "input": {
+        "operation": "declaration",
+        "source": "type alias A = | String | Int"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "reason": "leading-pipe-outside-constructor-list"
+      }
+    },
+    {
+      "id": "union-0046",
+      "description": "Supported projection preserves native Union and annotations.",
+      "input": {
+        "operation": "projection",
+        "type": {
+          "typeRef": "annotated"
+        },
+        "consumer": "union-aware-reference-target"
+      },
+      "expected": {
+        "outcome": "projected",
+        "type": {
+          "Union": {
+            "attributes": {
+              "source": {
+                "startLine": 1,
+                "startColumn": 1,
+                "endLine": 1,
+                "endColumn": 20
+              },
+              "extensions": {
+                "example/union:provenance#note": "preserve union"
+              }
+            },
+            "alternatives": [
+              {
+                "Reference": {
+                  "attributes": {
+                    "extensions": {
+                      "example/union:provenance#note": "first member"
+                    }
+                  },
+                  "fqname": "morphir/SDK:string#string",
+                  "args": []
+                }
+              },
+              "morphir/SDK:basics#int"
+            ]
+          }
+        },
+        "inventedConstructors": []
+      }
+    },
+    {
+      "id": "union-0047",
+      "description": "Rich inspection can retain a graph but omit unsupported signatures with gaps.",
+      "input": {
+        "operation": "projection",
+        "type": {
+          "typeRef": "identifier"
+        },
+        "consumer": "no-union-support",
+        "mode": "rich-inspection",
+        "declaration": "Identifier",
+        "dependentSignatures": [
+          "lookup"
+        ]
+      },
+      "expected": {
+        "outcome": "retained-with-gaps",
+        "retainedConceptualPayload": true,
+        "omittedDeclarations": [
+          "Identifier"
+        ],
+        "omittedSignatures": [
+          "lookup"
+        ],
+        "completePublicSpecification": false
+      }
+    },
+    {
+      "id": "union-0048",
+      "description": "Bare export must refuse unsupported projection.",
+      "input": {
+        "operation": "projection",
+        "type": {
+          "typeRef": "identifier"
+        },
+        "consumer": "no-union-support",
+        "mode": "bare-export"
+      },
+      "expected": {
+        "outcome": "refused",
+        "reason": "unsupported-union"
+      }
+    },
+    {
+      "id": "union-0049",
+      "description": "Nested Union cannot be downgraded to historical IR.",
+      "input": {
+        "operation": "downgrade",
+        "type": {
+          "typeRef": "record"
+        },
+        "targetVersions": [
+          1,
+          2,
+          3
+        ]
+      },
+      "expected": {
+        "outcome": "refused",
+        "reason": "lossy-union",
+        "inventedConstructors": []
+      }
+    },
+    {
+      "id": "union-0050",
+      "description": "A safe entry signature cannot hide unsupported reachable internal Union types.",
+      "input": {
+        "operation": "emit",
+        "entryType": {
+          "Function": {
+            "parameterType": "morphir/SDK:string#string",
+            "returnType": "morphir/SDK:string#string"
+          }
+        },
+        "reachableDefinitionTypes": [
+          {
+            "Function": {
+              "parameterType": {
+                "Union": [
+                  "morphir/SDK:string#string",
+                  "morphir/SDK:basics#int"
+                ]
+              },
+              "returnType": "morphir/SDK:string#string"
+            }
+          }
+        ],
+        "consumer": "no-union-support"
+      },
+      "expected": {
+        "outcome": "refused",
+        "reason": "unsupported-reachable-type"
+      }
+    },
+    {
+      "id": "union-0051",
+      "description": "Unions compose with records, tuples, list arguments and functions.",
+      "input": {
+        "operation": "wireRoundTrip",
+        "types": [
+          {
+            "typeRef": "record"
+          },
+          {
+            "typeRef": "tuple"
+          },
+          {
+            "typeRef": "list"
+          },
+          {
+            "typeRef": "function"
+          }
+        ]
+      },
+      "expected": {
+        "outcome": "preserved",
+        "preserve": [
+          "alternative-order",
+          "nesting",
+          "all-type-positions"
+        ]
+      }
+    },
+    {
+      "id": "union-0052",
+      "description": "Repeated annotated alternatives cannot lose their separate provenance.",
+      "input": {
+        "operation": "wireRoundTrip",
+        "type": {
+          "Union": [
+            {
+              "Reference": {
+                "attributes": {
+                  "extensions": {
+                    "example/union:provenance#note": "first member"
+                  }
+                },
+                "fqname": "morphir/SDK:string#string",
+                "args": []
+              }
+            },
+            "morphir/SDK:string#string"
+          ]
+        }
+      },
+      "expected": {
+        "outcome": "preserved",
+        "simplificationAllowed": false
+      }
+    },
+    {
+      "id": "union-0053",
+      "description": "Distinct refinements are not equivalent merely because their base types agree.",
+      "input": {
+        "operation": "equivalent",
+        "left": {
+          "typeRef": "refined"
+        },
+        "right": {
+          "typeRef": "identifier"
+        },
+        "availableProfiles": [
+          "example/union:refinement#positive-int"
+        ]
+      },
+      "expected": {
+        "outcome": "not-equivalent",
+        "counterexample": {
+          "typeRef": "int",
+          "value": -1
+        }
+      }
+    },
+    {
+      "id": "union-0054",
+      "description": "An unbound member variable is not evidence of negative membership.",
+      "input": {
+        "operation": "membership",
+        "type": {
+          "typeRef": "generic"
+        },
+        "value": {
+          "typeRef": "int",
+          "value": 1
+        }
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "reason": "unbound-type-variable"
+      }
+    }
+  ]
+}

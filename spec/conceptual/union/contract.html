@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Untagged unions in Morphir IR v4</h1>
+<p class="meta">morphir-ukvn.7.2 · 18 October 2026 · U1 reference contract · profile morphir-untagged-union/0.1.0-draft.1</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#scope">Scope and decisions</a></li>
+<li><a href="#wire">Wire contract</a></li>
+<li><a href="#semantics">Semantic contract</a></li>
+<li><a href="#decoding">Decoding and unsupported checks</a></li>
+<li><a href="#fixtures">Independent fixtures</a></li>
+<li><a href="#moonbit">MoonBit consumers</a></li>
+<li><a href="#ecosystem">Ecosystem consumers</a></li>
+<li><a href="#delivery">Adoption and verification</a></li>
+</ul></nav>
+
+<section id="scope"><h2>Scope and decisions</h2>
+<p>U1 specifies a first-class untagged Union expression, independent wire and semantic examples, and affected consumers. It does not implement a parser, codec, checker or backend. The binding input is the untagged-union section of ConceptualModel <code>morphir-ukvn.7</code>, stored draft 0.17. The delivery plan <code>morphir-ukvn.7.9</code> still names draft 0.16; the Union semantics are retained in 0.17.</p>
+<p>The public <a href="https://github.com/finos/morphir/blob/main/docs/spec/draft/types.md#union">Type System draft</a> carries the wire and semantic rules. This companion pins fixture interpretation and the inventory used by downstream tasks. Existing v4 rules, including <a href="https://github.com/finos/morphir/blob/149c55c9b52beb19520bf59770f26ef001674dce/kb/bundles/morphir/morphir-ir/decisions/0005-attributes-are-an-optional-first-member-of-every-node-payload.md">decision 0005 on attributes</a>, continue to apply.</p>
+<table><thead><tr><th>Status</th><th>Decision</th></tr></thead><tbody>
+<tr><td>Maintainer direction</td><td>First-class untagged unions alongside tagged custom types; inclusive membership, overlap, opaque identity, conservative narrowing and ambiguity diagnostics.</td></tr>
+<tr><td>U1 draft contract</td><td>PascalCase Union wrapper, compact array, expanded alternatives member, at least two authored entries, preservation of ordered syntax and annotations.</td></tr>
+<tr><td>Still proposed</td><td>Application binds tighter than union, union tighter than arrow. The grammar owner must settle precedence. No fixture depends on that precedence.</td></tr>
+<tr><td>Consumer-owned</td><td>Exact resource budgets, capability advertisement, concrete backend representation mappings, and additional refinement/encoding profiles. These require qualification evidence, not an assumption that the node name grants support.</td></tr>
+</tbody></table>
+<p>A tagged declaration such as <code>type IdentifierValue = Text String | Number Int</code> creates constructors. <code>type alias Identifier = String | Int</code> names existing values and creates none. <code>type A = B</code> declares a nullary constructor B; <code>type alias A = B</code> resolves an existing type B. Only constructor lists accept a leading pipe.</p>
+</section>
+
+<section id="wire"><h2>Wire contract</h2>
+<pre><code class="language-json">{"Union": ["morphir/SDK:string#string", "morphir/SDK:basics#int"]}
+
+{"Union": {
+  "attributes": {"source": {"startLine": 1, "startColumn": 1, "endLine": 1, "endColumn": 20}},
+  "alternatives": ["morphir/SDK:string#string", "morphir/SDK:basics#int"]
+}}</code></pre>
+<p>The abstract node is <code>Union(TypeAttributes, Array[Type])</code>. Every authored Union has at least two listed alternatives; repeated alternatives count as entries. Readers accept compact and expanded forms, including expanded empty attributes. Writers omit empty attributes and use the compact form. Child nodes select their own spelling independently. A bare array is always a Tuple. There is no legacy Union spelling.</p>
+<p>The expanded payload requires an alternatives array. Invalid arity, missing alternatives, non-array alternatives, malformed child types and multiple node-kind wrapper keys are rejected. The ordinary v4 node/attribute grammar applies recursively. Decoders preserve order, duplicates, nesting and all attributes. JSON object member order is not a semantic distinction; array order remains observable as authored provenance.</p>
+<p>Union occupies an existing Type position. An alias definition still uses <code>TypeAliasDefinition</code> and its existing <code>typeExp</code> member; no new distribution, definition or value wrapper is added. This profile specifies JSON Type forms. A future Ion representation must be specified and qualified by its codec owner; generic retention of the conceptual AST is not that representation.</p>
+</section>
+
+<section id="semantics"><h2>Semantic contract</h2>
+<table><thead><tr><th>Rule</th><th>Consequence</th></tr></thead><tbody>
+<tr><td>Inclusive membership</td><td>A value belongs when at least one alternative accepts it. Overlap succeeds without selecting an arm.</td></tr>
+<tr><td>Order, duplicates and nesting</td><td>Membership and assignability ignore reordering, repeated equivalent members and associative nesting. Codecs retain the original tree. Structural equality and byte equality are distinct from semantic equivalence.</td></tr>
+<tr><td>Annotations and refinements</td><td>Preserve union and member annotations separately. A union-level obligation applies to the whole union; a member obligation applies to membership through that member. Another accepting alternative may suffice. No simplification may erase obligations or provenance.</td></tr>
+<tr><td>Substitution</td><td>Visit every alternative recursively and preserve attributes. Substituting String for a in a | String yields two listed String alternatives. It is still valid; do not collapse it to an invalid singleton Union.</td></tr>
+<tr><td>Aliases and opaque types</td><td>Expand transparent aliases when justified. Keep opaque nominal identities and visibility. Equal representations do not authorize conversion between distinct opaque types.</td></tr>
+<tr><td>Assignability</td><td>Each possible source alternative needs a justified destination type. For a union destination, each source alternative needs a justified destination alternative. Failure to prove a more complex inclusion is not permission to guess. No implicit numeric coercion or refinement solver is introduced.</td></tr>
+<tr><td>Narrowing</td><td>A member widens without conversion. A union narrows only when every alternative is assignable, or a checked membership guard proves the narrower type. Member-specific operations require that proof.</td></tr>
+</tbody></table>
+<p>A guard checks actual type, structure and required refinements. It does not inspect a fabricated Union tag. In overlapping unions, rejecting one member does not identify a unique remaining arm. An unknown check authorizes neither execution branch. Higher-order membership, unresolved variables and unavailable semantic profiles are outside the initial concrete first-order checker unless a consumer explicitly qualifies them.</p>
+</section>
+
+<section id="decoding"><h2>Decoding and unsupported checks</h2>
+<p>Typed membership starts with an interpreted value. Raw decoding must determine an interpretation. Several members accepting the same typed value is success; several distinct typed interpretations is ambiguity. Int 1 and Float 1 are distinct typed values, as are different opaque identities with the same representation. Never select the first successful decoder.</p>
+<p>An explicit codec mapping may settle ambiguity, for example an agreed integer-token rule. It must be named, documented and independent of alternative order. Smithy member-tagged unions and JSON Schema alternatives do not automatically supply that mapping.</p>
+<table><thead><tr><th>Operation</th><th>Available evidence</th><th>Result</th></tr></thead><tbody>
+<tr><td>Typed membership</td><td>At least one alternative proves membership</td><td>Member; no selected arm, even if another member is unsupported</td></tr>
+<tr><td>Typed membership</td><td>Every alternative was checked and rejected</td><td>Not a member</td></tr>
+<tr><td>Typed membership</td><td>No acceptance proof and at least one unsupported or exhausted check</td><td>Unsupported/unknown; cannot prove a negative</td></tr>
+<tr><td>Raw decoding</td><td>Exactly one distinct interpretation and all alternatives accounted for</td><td>Decoded value</td></tr>
+<tr><td>Raw decoding</td><td>Two or more distinct interpretations</td><td>Ambiguous; explicit codec decision required</td></tr>
+<tr><td>Raw decoding</td><td>No interpretations and every alternative rejected</td><td>Rejected</td></tr>
+<tr><td>Raw decoding</td><td>An unevaluated alternative could add an interpretation</td><td>Unsupported; cannot claim uniqueness, unless an explicit encoding rule excludes it</td></tr>
+</tbody></table>
+</section>
+
+<section id="fixtures"><h2>Independent fixtures</h2>
+<p><a href="cases.json">cases.json</a> is an independently authored <strong>reference-only</strong> corpus. <a href="environment.json">environment.json</a> fixes primitive names, aliases, opaque identities, refinement meaning and raw JSON profiles. <a href="assets.json">assets.json</a> pins their bytes. Expected outcomes are hand-authored from this contract, not generated by the implementation being tested.</p>
+<p><code>typeRef</code> is a fixture lookup into environment.types, not IR syntax. Other type objects are literal draft v4 Type JSON. A fixture typed value is a typeRef plus an illustrative JSON value, not a new serialization protocol. An opaque typed value describes evidence that the value already has that nominal type; it does not authorize construction from its representation. Consumers translate these descriptions through their existing test adapters.</p>
+<p>Each case names an operation and an expected outcome. <code>wireDecode</code> compares the decoded node and canonical JSON; <code>wireRoundTrip</code> preserves the supplied types and listed properties. <code>equivalent</code> checks meaning separately from structural equality. <code>substitute</code> uses the supplied free-variable map. <code>membership</code>, <code>assignable</code>, <code>guard</code>, <code>use</code> and <code>rawDecode</code> apply the rules above. <code>declaration</code> distinguishes source declaration forms; <code>projection</code>, <code>downgrade</code> and <code>emit</code> describe required capability boundaries. Diagnostic reason strings are corpus categories, not mandated public API codes. A path on a wireDecode failure is a JSON Pointer into input.wire.</p>
+<p>The default context is outside opaque owners, with no optional refinement interpreters available and resource limits not exhausted. Explicit case inputs override that context. The positive-int extension is a fixture-only versioned semantic profile, not a new core attribute: it accepts precisely Int values greater than zero. Provenance notes are descriptive and have no membership effect. Real consumers must not infer a profile's implementation from retaining its bytes.</p>
+<table><thead><tr><th>Cases</th><th>Contract covered</th></tr></thead><tbody>
+<tr><td>0001–0010</td><td>Compact/expanded JSON, annotations, Tuple distinction, invalid arity and malformed nodes</td></tr>
+<tr><td>0011–0019</td><td>Positive/negative membership, order, duplicates, nesting, overlap and substitution</td></tr>
+<tr><td>0020–0028</td><td>Widening, conservative assignability, guarded operations and opaque identity</td></tr>
+<tr><td>0029–0034, 0052–0054</td><td>Refinements, retained provenance, unsupported checks and resource exhaustion</td></tr>
+<tr><td>0035–0041</td><td>Unique/ambiguous/rejected raw decoding, reordering and explicit codec decisions</td></tr>
+<tr><td>0042–0045</td><td>Tagged versus untagged declarations and invalid source forms</td></tr>
+<tr><td>0046–0051</td><td>Projection, dependent-signature gaps, bare export, downgrade, reachable code and enclosing types</td></tr>
+</tbody></table>
+<p>The integrity test checks published assets, digests, fixture references, identities and HTML structure. It deliberately does not implement a second Union checker or treat expected outcomes as observed runtime results. Consumers should reuse MCK or their existing conformance adapter, retaining case IDs and recording implementation revision, profile, limits and actual outcomes. Passing integrity tests alone never grants Union capability.</p>
+</section>
+
+<section id="moonbit"><h2>MoonBit consumer inventory</h2>
+<p>Source audit at <a href="https://github.com/finos/morphir-moonbit/tree/0c4069c5cb263e2d00e0c32d9e7b4b22f046f384">MoonBit 0c4069c5</a>. Paths in this table are relative to that revision. These are source findings, not runtime qualification. None of these consumers is qualified for the new Union profile.</p>
+<table><thead><tr><th>Owner and evidence</th><th>Current behavior</th><th>Adoption work</th></tr></thead><tbody>
+<tr><td><code>pkgs/morphir-ir/versions/v4/types.mbt</code>, Type; <code>json/expressions.mbt</code>, read_type/write_type</td><td>Seven type constructors, no Union; unknown JSON tags reject with unknown_node.</td><td>U2: node and recursive codecs, authored arity, lossless attributes, both spellings and all enclosing Type positions.</td></tr>
+<tr><td><code>pkgs/morphir-ir/identities/logical.mbt</code>, type_tag/Walk::type_; <code>identities/nodes.mbt</code>, collect</td><td>Logical walker is type-specific; node collection walks encoded JSON generically. Array positions are not reorder-stable identities.</td><td>U2: Union child paths and logical identity; metadata ownership tests across both spellings and reordering.</td></tr>
+<tr><td><code>pkgs/morphir-typing/compare.mbt</code>, equivalent/expand_ir/substitute; <code>types.mbt</code>, Ty; <code>solver.mbt</code>; <code>env.mbt</code></td><td>No Union in internal types. Existing comparisons ignore attributes and compare arrays positionally; solver handles unification.</td><td>U2: separate structural equality, semantic equivalence and directional assignability. Preserve obligations and variable-renaming consistency; traverse dependencies and substitutions.</td></tr>
+<tr><td><code>pkgs/morphir-ir/migration/v1</code>, v2, v3; <code>migration/placeholders.mbt</code>; typing compare_files/print; typing-tools oracle/strip and sdkgen/check</td><td>Historical forms lack Union. Recursive helpers and fallback branches assume existing types.</td><td>U2: explicit lossy-downgrade refusal, including nested annotations and inferred types; update diagnostic, placeholder, SDK and variable walkers.</td></tr>
+<tr><td><code>pkgs/morphir-conceptual/model/decode.mbt</code>, Graph::decode; <code>inspection.mbt</code>, require_interpretation</td><td>Retains opaque Ion type/AST payloads. Semantic Check/Execute/ValidateTraits requests are refused; retention is not a checker.</td><td>U3 with the checker stream: concrete first-order membership, opaque/refinement checks, unknown outcomes and bounded guard semantics.</td></tr>
+<tr><td><code>pkgs/morphir-engine/data/conceptual.mbt</code>, conceptual_specification; <code>conceptual_test.mbt</code></td><td>Extracts existing Library signatures to Specs; does not lower conceptual declarations. Rich tests retain an explicit unprojected-Union gap.</td><td>U3: native projection and dependent-signature gaps; bare export refuses loss. Keep incomplete Specs distinct from complete projection.</td></tr>
+<tr><td>Scheme spec read_type/print_type; Elm frontend lower_type/type_references; MoonBit frontend LibraryTypeUse::to_ir</td><td>Existing source subsets have no native untagged-Union support. Elm UnionTypes fixtures describe tagged custom types.</td><td>U2/U3: explicit unsupported forms and recursive references/printers. The conceptual language owner settles syntax and precedence.</td></tr>
+<tr><td><code>pkgs/morphir-elm/backend/lower_types.mbt</code>; <code>pkgs/morphir-moonbit/lowered_types.mbt</code></td><td>Closed lowering over existing type forms.</td><td>U2: explicit refusal initially; any later representation mapping needs consumer-specific qualification.</td></tr>
+<tr><td><code>pkgs/morphir-scheme/backend/emit.mbt</code>, Emitter::definition/emit_file; engine execution scheme_plan SelectedBoundary::read</td><td>The emitter ignores signature types; the execution boundary enumerates existing forms. Merely adding a node does not safely gate emission.</td><td>U2/U3: capability-check all required types and reachable definitions before emission/execution, including direct emitter entry points.</td></tr>
+<tr><td><code>pkgs/morphir-execution/values.mbt</code>, ValueType; <code>rich_values.mbt</code>, validate_as/validate_typed</td><td>No Union type descriptor or membership algorithm.</td><td>U3: qualify bounded typed-value operations and raw codecs separately; no invented runtime arm tag.</td></tr>
+<tr><td>SDK spec and sdkgen/check; <code>pkgs/morphir-ir/conformance/fixtures</code></td><td>No Union corpus. Local MCK imports parent revision 5c5307d8; SDK collection functions named union are unrelated.</td><td>U3: upstream shared MCK and IR/SDK self-spec coverage, then regenerate/repin consumers. Do not claim qualification from a collection operation's name.</td></tr>
+</tbody></table>
+</section>
+
+<section id="ecosystem"><h2>Ecosystem consumer inventory</h2>
+<p>Parent baseline <a href="https://github.com/finos/morphir/tree/149c55c9b52beb19520bf59770f26ef001674dce">149c55c9</a>. Other revisions below are its pinned ecosystem gitlinks. Inspection used committed blobs, including where local submodules had unrelated changes. No runtime support is inferred from generic pass-through paths.</p>
+<table><thead><tr><th>Consumer and pinned source</th><th>Current support and required adoption</th></tr></thead><tbody>
+<tr><td>Parent <code>website/static/schemas/morphir-ir-v4.yaml</code>, Type.oneOf</td><td>Seven forms; Union absent. U3 must add version-appropriate schema and regenerated JSON alongside qualified consumers. U1 does not make existing schema validation accept Union.</td></tr>
+<tr><td>Parent <code>spec/ir/semantics/v3/src/morphir/ir/type_.gleam</code></td><td>Seven-node historical v3 self-model. Establish v4 Union self-spec coverage; do not rewrite history to claim v4 support.</td></tr>
+<tr><td>Parent <code>spec/ir/mck/types.feature</code>, <code>spec/mck/vocabulary.json</code>, MCK coverage/reference/transport protocol</td><td>No Union variant corpus. Coarse Type capability and JSON-key coverage are not semantic qualification. Add vocabulary/cases and profile evidence; existing to_ion reference handles Value only.</td></tr>
+<tr><td>Parent compile validate_v4_compile_result; <code>crates/morphir/src/commands/ir_storage.rs</code></td><td>Typed paths consume Rust IRFile; single-file v4 JSON can pass through untyped. Update Rust pin, typed compile/storage/transports and refusal tests. Raw acceptance is unqualified.</td></tr>
+<tr><td><a href="https://github.com/finos/morphir-rust/tree/ef4810782db135986e74c503a7bc3003834a3dd9">Rust ef481078</a>: core ir/v4/types.rs and serde_tagged.rs; common ir_transport/ion/v4/types.rs; core data_value/declarations.rs</td><td>No Union variant/tag/validation Shape. JSON and Ion reject unknown type forms. Needs model, JSON/YAML/Ion codecs, recursive operations, migration and inclusive value validation, each independently qualified.</td></tr>
+<tr><td><a href="https://github.com/finos/morphir-elm/tree/b065e493d7a4256ed47878b129abf2333e977313">Elm b065e493</a>: src/Morphir/IR/Type.elm and Type/Codec.elm</td><td>Seven Classic forms; unknown type tag rejected. Requires version-appropriate node/codec/traversal/backend adoption or explicit unsupported capability.</td></tr>
+<tr><td><a href="https://github.com/finos/morphir-scala/tree/fb9ca0f4056e817dcf241f7f67ad96716fa8f7e7">Scala fb9ca0f4</a>: codemodel/Type.scala; universe/ir/Type.scala; MorphirJsonDecodingSupport.scala</td><td>Inspected model families and decoder have seven forms. Classic datamodel Enum/Sum names do not establish this Union node. Audit remaining families during adoption.</td></tr>
+<tr><td><a href="https://github.com/finos/morphir-ui/tree/907839e2cbf4027b0227cc7e126123388da10999">UI 907839e2</a>: packages/morphir-ir/src/ast.ts and ast-decode.ts</td><td>Seven known forms plus UnknownNode fallback. Add typed AST, recursive decoder and insight rendering; preserving unknown bytes is not interpreting Union.</td></tr>
+<tr><td><a href="https://github.com/finos/morphir-python/tree/dc0b31756a839bd3dfacb2b19e5d32283779df7c">Python dc0b3175</a>: packages/morphir/src/morphir/ir/type.py</td><td>Python typing.Union enumerates the seven existing node classes; no IR Union class. Add the node and recursive handling. Serialization/execution remain unqualified by this source audit.</td></tr>
+<tr><td>TypeScript 1a7c2d21; Gleam aa2b7e23; sibling Go/JVM/.NET/Bosque repositories</td><td>Not inspected in this audit. Unqualified, not assumed unsupported or supported. Full TypeScript and Gleam pins are in the parent git tree. U3 records owner/revision/profile evidence before advertising support.</td></tr>
+</tbody></table>
+<p>This is a consumer inventory, not an assertion that every backend must execute Union before initial delivery. Unsupported consumers may remain explicit. Schema generators, JSON Schema/OpenAPI/Smithy mappings, visualizers and external evaluators must preserve untagged semantics or refuse affected operations; tagged sum types are not an automatic replacement.</p>
+</section>
+
+<section id="delivery"><h2>Adoption and verification</h2>
+<p>U2 <code>morphir-ukvn.7.9.1</code> consumes this contract for MoonBit native nodes, codecs, traversal, substitution, equivalence/assignability and safe exhaustive consumers. U3 <code>morphir-ukvn.7.9.2</code> joins that implementation to conceptual projection/checking and qualifies ecosystem consumers. Existing task dependencies still apply. Closing U1 does not close either consumer task.</p>
+<p>U3 should record separate evidence for retaining, reading/writing, projecting, checking and executing Union. Report unsupported operations and the exact revision/profile/limits tested. Before full schema retirement, include Union in the IR/SDK self-specification and shared compatibility corpus. Historical versions retain their prior definitions and refuse lossy downgrade.</p>
+<pre><code class="language-bash">mise run conceptual:fixtures-check
+mise run fmt-check
+bun test spec/conceptual/union/fixture-integrity.test.ts</code></pre>
+<p>The first command includes the new corpus alongside existing conceptual model and trait checks. The final command is the focused integrity check, not a runtime conformance suite. Review the semantic outcomes independently and inspect this page at wide and narrow widths, including offline. Execution results, review findings and landing evidence are recorded on <code>morphir-ukvn.7.2</code> and the delivery-plan ledger.</p>
+</section>
+
+</main>
+</body>
+</html>
