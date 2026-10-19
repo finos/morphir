@@ -113,7 +113,7 @@ Begins watching the workspace for file changes.
 
 By default, watches:
 - `*/src/**/*.elm` - Elm source files
-- `*/src/**/*.morphir` - Morphir DSL files
+- `*/src/**/*.mfs` - Morphir DSL files
 - `*/morphir.toml` - Project configuration
 - `morphir.toml` - Workspace configuration
 
@@ -360,7 +360,7 @@ Watch specific patterns:
 [watch]
 patterns = [
   "**/*.elm",
-  "**/*.morphir",
+  "**/*.mfs",
   "!**/*_test.elm"  # Exclude tests
 ]
 ```

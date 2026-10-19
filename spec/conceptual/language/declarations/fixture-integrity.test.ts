@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 // Corpus integrity only. Parser/resolver observations are authored, never computed here.
 const bytes = (path: string) => readFileSync(new URL(path, import.meta.url));
@@ -8,6 +8,27 @@ const json = (path: string): any => JSON.parse(bytes(path).toString("utf8"));
 const digest = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
 
 describe("declaration reference corpus", () => {
+  test("source fixtures and case references use .mfs and match the inventory", () => {
+    const sourcePaths = readdirSync(new URL("sources/", import.meta.url))
+      .filter(name => name !== ".gitattributes")
+      .map(name => `sources/${name}`)
+      .sort();
+    expect(sourcePaths.length).toBeGreaterThan(0);
+    for (const path of sourcePaths) expect(path.endsWith(".mfs"), path).toBe(true);
+    const assets = json("assets.json").assets
+      .map((asset: any) => String(asset.path))
+      .filter((path: string) => path.startsWith("sources/") && path !== "sources/.gitattributes")
+      .sort();
+    const referenced = [...new Set<string>(json("cases.json").cases
+      .map((item: any) => item.input.source?.asset)
+      .filter(Boolean))].sort();
+    expect(assets).toEqual(sourcePaths);
+    for (const path of referenced) {
+      expect(path.endsWith(".mfs"), path).toBe(true);
+      expect(sourcePaths, path).toContain(path);
+    }
+  });
+
   test("structural decoding has positive and negative independent expectations", () => {
     const structure = json("cases.json").cases.filter((item: any) => item.stage === "structure");
     expect(structure.some((item: any) => item.expected.outcome === "accepted")).toBe(true);

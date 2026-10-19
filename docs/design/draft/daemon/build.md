@@ -931,7 +931,7 @@ morphir compile types.elm logic.elm
 | Language | Flag | Extensions | Notes |
 |----------|------|------------|-------|
 | Elm | `--lang elm` | `.elm` | Default frontend |
-| Morphir DSL | `--lang morphir-dsl` | `.morphir`, `.mdsl` | Native DSL |
+| Morphir DSL | `--lang morphir-dsl` | `.mfs` | Native DSL |
 | (Extensions) | `--lang <name>` | Per extension | Via WASM frontends |
 
 **JSON-RPC Method:**

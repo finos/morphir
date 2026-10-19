@@ -97,7 +97,7 @@ When `language` is not specified, Morphir infers it from file extensions:
 | Extension | Language |
 |-----------|----------|
 | `.elm` | Elm |
-| `.morphir`, `.mdsl` | Morphir DSL |
+| `.mfs` | Morphir DSL |
 | (Extension-defined) | Per extension |
 
 **Extension-Provided Frontends:**
@@ -122,7 +122,7 @@ For projects with multiple source languages:
 language = "elm"             # Default
 
 [[frontend.rules]]
-pattern = "src/legacy/**/*.morphir"
+pattern = "src/legacy/**/*.mfs"
 language = "morphir-dsl"
 
 [[frontend.rules]]

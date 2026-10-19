@@ -157,6 +157,10 @@ specifications. Source grammar choices belong to this bounded fragment profile; 
 exports and later declaration families have separate owners. Reference outcomes and integrity tests do not
 establish parser, resolver or execution support.
 
+Morphir source files use `.mfs`, including source focused on contracts or specifications. The extension
+does not distinguish those files from other Morphir source. `.morphir` is reserved for a future Morphir
+model package; its container encoding remains undecided.
+
 ## JSON Serialization Summary
 
 IR v4 supports two serialization modes:
