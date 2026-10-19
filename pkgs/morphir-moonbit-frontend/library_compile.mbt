@@ -26,6 +26,7 @@ fn library_compile_scoped(
   scope : @observe.Scope,
   mode~ : LibraryMode = BooleanOnly,
   string_limit~ : Int32 = 1048576,
+  bindings~ : PinnedSourceBindings = PinnedSourceBindings::empty(),
 ) -> LibraryOutput raise {
   limits.validate()
   if string_limit < 0 || string_limit > 1048576 {
@@ -51,14 +52,14 @@ fn library_compile_scoped(
   }
   let package_name = logical_path(input.package_name)
   let module_name = logical_path(input.module_name)
-  if mode.supports_strings() &&
+  if (mode.supports_strings() || mode == PinnedSdk) &&
     (
       package_name.to_canonical() == "morphir/SDK" ||
       package_name.to_canonical() == "morphir/moonbit-source"
     ) {
     library_error(
       "invalid_identity",
-      "Source String libraries cannot own reserved SDK or source-runtime packages",
+      "Source libraries cannot own reserved SDK or source-runtime packages",
       None,
     )
   }
@@ -74,12 +75,12 @@ fn library_compile_scoped(
   )
   let resolved = scope.observe(
     @observe.Resolve,
-    fn(_) raise { library_resolve(declarations, cancelled) },
+    fn(_) raise { library_resolve(declarations, cancelled, bindings) },
     is_cancelled=frontend_cancelled,
   )
   let checked = scope.observe(
     @observe.ProfileCheck,
-    fn(_) raise { library_check(resolved, limits, cancelled, mode) },
+    fn(_) raise { library_check(resolved, limits, cancelled, mode, bindings) },
     is_cancelled=frontend_cancelled,
   )
   scope.observe(
@@ -87,7 +88,37 @@ fn library_compile_scoped(
     fn(_) raise {
       library_lower(
         input, package_name, module_name, checked, cancelled, mode, string_limit,
+        bindings,
       )
+    },
+    is_cancelled=frontend_cancelled,
+  )
+}
+
+///|
+/// The adapter supplies a resolved, pinned SDK binding environment. Existing
+/// source profiles do not opt into qualified calls.
+pub fn compile_pinned_sdk_library(
+  input : Input,
+  bindings : PinnedSourceBindings,
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
+) -> LibraryOutput raise {
+  scope.observe(
+    @observe.Frontend,
+    fn(scope) raise {
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        mode=PinnedSdk,
+        bindings~,
+      )
+      check_naming_warnings(output.warnings, strict_naming)
+      output
     },
     is_cancelled=frontend_cancelled,
   )

@@ -40,6 +40,7 @@ fn library_arrow(
 ///|
 priv struct LibraryLowerer {
   functions : Array[ResolvedFunction]
+  bindings : PinnedSourceBindings
   entries : Array[@ir.FQName]
   boolean : @ir.Type
   types : Map[@ir.Name, LibraryTypeUse]
@@ -417,6 +418,7 @@ fn LibraryLowerer::expression(
       }
       value
     }
+    SdkCall(index, arguments, source) => self.sdk_call(index, arguments, source)
     Binary(op, lhs, rhs, source) => {
       let attrs = library_attributes(source, self.boolean)
       let left = self.expression(lhs)
@@ -571,6 +573,7 @@ fn library_lower(
   cancelled : () -> Bool,
   mode : LibraryMode,
   string_limit : Int32,
+  bindings : PinnedSourceBindings,
 ) -> LibraryOutput raise {
   let boolean = boolean_type()
   let allocated = allocate_source_names(
@@ -592,6 +595,7 @@ fn library_lower(
   })
   let lowerer = LibraryLowerer::{
     functions: checked.functions,
+    bindings,
     entries,
     boolean,
     types: Map([]),
@@ -886,6 +890,15 @@ fn LibraryLowerer::expr_type(
     Binding(_, _, _, _, body, _) => self.expr_type(body)
     Call(index, _, _) =>
       self.functions[index].declaration.output_type.to_ir(self.metadata)
+    SdkCall(index, _, source) => {
+      let scalar = self.bindings.entries[index].output
+      LibraryTypeUse::{
+        scalar,
+        spelling: scalar.source_name(),
+        source,
+        profile: self.profile,
+      }.to_ir(self.metadata)
+    }
   }
 }
 
@@ -1064,6 +1077,104 @@ fn LibraryLowerer::invoke(
       { ..attrs, inferred_type: Some(signature), },
       value,
       arg.0,
+    )
+  }
+  value
+}
+
+///|
+/// Lower only an adapter-resolved source binding. The call owns its source
+/// binding facts; the canonical SDK declaration remains the executable IR.
+fn LibraryLowerer::sdk_call(
+  self : LibraryLowerer,
+  index : Int32,
+  arguments : Array[ResolvedExpr],
+  source : @ir.SourceLocation,
+) -> @ir.Value raise {
+  let binding = self.bindings.entries[index]
+  let authored = "@" + binding.source_alias + "." + binding.source_name
+  self.origins.push(
+    ion_record([
+      ("sdk_call", library_origin(authored, source)),
+      ("canonical", @ion.IonValue::string(binding.canonical)),
+      ("source_package", @ion.IonValue::string(binding.source_package)),
+      ("source_tree", @ion.IonValue::string(binding.source_tree)),
+      ("source_signature", @ion.IonValue::string(binding.source_signature)),
+    ]),
+  )
+  let facts = @ir.Data::Object(
+    Map::from_array([
+      ("kind", @ir.Data::Text("source-call")),
+      ("source_alias", @ir.Data::Text(binding.source_alias)),
+      ("source_name", @ir.Data::Text(binding.source_name)),
+      ("source_package", @ir.Data::Text(binding.source_package)),
+      ("source_version", @ir.Data::Text(binding.source_version)),
+      ("source_tree", @ir.Data::Text(binding.source_tree)),
+      ("source_signature", @ir.Data::Text(binding.source_signature)),
+      ("canonical", @ir.Data::Text(binding.canonical)),
+      ("conversion_policy", @ir.Data::Text(binding.conversion_policy)),
+    ]),
+  )
+  let output_type = LibraryTypeUse::{
+    scalar: binding.output,
+    spelling: binding.output.source_name(),
+    source,
+    profile: self.profile,
+  }.to_ir(self.metadata)
+  let input_types = binding.inputs.map(scalar => {
+    LibraryTypeUse::{
+      scalar,
+      spelling: scalar.source_name(),
+      source,
+      profile: self.profile,
+    }.to_ir(self.metadata)
+  })
+  let values = arguments.map(argument => self.expression(argument))
+  let temporaries = if self.metadata {
+    values.map(value => self.fresh(value, "sdk-call-argument", source))
+  } else {
+    []
+  }
+  let mut signature = output_type
+  for i = input_types.length() - 1; i >= 0; i = i - 1 {
+    signature = @ir.Type::Function(
+      @ir.TypeAttributes::default(),
+      input_types[i],
+      signature,
+    )
+  }
+  let reference_attrs = library_attributes(source, signature)
+  reference_attrs.extensions["moonbit-source-binding-v1"] = facts
+  let mut value = @ir.Value::Reference(
+    reference_attrs,
+    @ir.FQName::parse(binding.canonical),
+  )
+  for i = 0; i < values.length(); i = i + 1 {
+    guard signature is @ir.Type::Function(_, _, remaining) else {
+      abort("invalid pinned SDK signature")
+    }
+    signature = remaining
+    let apply_attrs = library_attributes(source, signature)
+    apply_attrs.extensions["moonbit-source-binding-v1"] = facts
+    value = @ir.Value::Apply(
+      apply_attrs,
+      value,
+      if self.metadata {
+        @ir.Value::Variable(
+          library_attributes(source, input_types[i]),
+          temporaries[i],
+        )
+      } else {
+        values[i]
+      },
+    )
+  }
+  for i = temporaries.length() - 1; i >= 0; i = i - 1 {
+    value = @ir.Value::LetDefinition(
+      library_attributes(source, output_type),
+      temporaries[i],
+      @ir.ValueDefinition::ExpressionBody([], input_types[i], values[i]),
+      value,
     )
   }
   value

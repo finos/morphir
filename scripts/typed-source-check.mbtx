@@ -80,6 +80,15 @@ async fn main {
   let core_pin = @json.parse(
     @fs.read_file(repository + "/tools/moonbit-core-pin.json").text(),
   )
+  let sdk_tree = command("git", ["rev-parse", "HEAD:pkgs/morphir-sdk"])
+    .trim()
+    .to_owned()
+  assert_eq(sdk_tree, "9c83a100383570236b3d781362524008f76dd56d")
+  assert_true(
+    command("git", ["status", "--porcelain", "--", "pkgs/morphir-sdk"])
+    .trim()
+    .to_owned() == "",
+  )
   assert_true(core_manifest.contains("version = \"0.1.0\""))
   let output = @json.parse(
     command("moon", [
@@ -115,9 +124,21 @@ async fn main {
     @fs.mkdir(generated, allow_exist=true)
     @fs.write_file(
       original + "/moon.mod",
-      "name = \"acceptance/" + id + "\"\nversion = \"0.0.0\"\n",
+      "name = \"acceptance/" + id + "\"\nversion = \"0.0.0\"\n" +
+      (if id == "pinnedsdk" {
+        "import { \"finos/morphir-sdk@0.1.0\" }\n"
+      } else {
+        ""
+      }),
     )
-    @fs.write_file(original + "/moon.pkg", "")
+    @fs.write_file(
+      original + "/moon.pkg",
+      if id == "pinnedsdk" {
+        "import { \"finos/morphir-sdk/basics\" @basics }\n"
+      } else {
+        ""
+      },
+    )
     @fs.write_file(original + "/original.mbt", string(field(model, "source")))
     for artifact in array(field(model, "artifacts")) {
       let path = generated + "/" + string(field(artifact, "path"))
@@ -187,6 +208,13 @@ async fn main {
         "test \"mixed Bool/Int32 original and generated boundaries\" {\n  for flag in [false, true] {\n    let a = @int.to_int32(@integer.from_string(\"-2147483648\").unwrap()).unwrap()\n    let b = @int.to_int32(@integer.from_string(\"2147483647\").unwrap()).unwrap()\n    let original = @ofoundation.choose(flag, -2147483648, 2147483647)\n    assert_eq(original, if flag { -2147483648 } else { 2147483647 })\n    assert_eq(@integer.to_string(@int.from_int32(" +
         g("choose") +
         "(flag)(a)(b))), original.to_string())\n  }\n}\n",
+      )
+    } else if kind == "pinnedsdk" {
+      model_tests.write_string(
+        "test \"pinned SDK source and generated consumers use exact Boolean negation\" {\n  for flag in [false, true] {\n    assert_eq(@opinnedsdk.invert(flag), !flag)\n    assert_eq(CALL_INVERT(flag), !flag)\n  }\n}\n".replace(
+          old="CALL_INVERT",
+          new=g("invert"),
+        ),
       )
     } else if kind == "numeric" {
       model_tests.write_string(
@@ -356,7 +384,7 @@ async fn main {
     }
     let original_alias = if [
         "foundation", "numeric", "integer", "float", "indexed", "strings", "bounded", "ordered",
-        "orderedbounded",
+        "orderedbounded", "pinnedsdk",
       ].contains(kind) {
       kind
     } else {
@@ -400,7 +428,7 @@ async fn main {
     }
     let log = command("moon", args, cwd=workspace)
     @fs.write_file(root + "/" + mode + ".log", log)
-    assert_eq(log.split("Total tests: 37, passed: 37, failed: 0.").count(), 5)
+    assert_eq(log.split("Total tests: 38, passed: 38, failed: 0.").count(), 5)
     let driver_args = [
       "check", "--frozen", "--target", "all",
     ]
@@ -461,6 +489,17 @@ async fn main {
       "sourceIntegerExtension": "morphir-moonbit-source-integer-v1",
       "sourceFloatExtension": "morphir-moonbit-source-float-v1",
       "sourceStringIndexExtension": "morphir-moonbit-source-string-index-v1",
+      "pinnedSourceBinding": {
+        "profile": "moonbit-model-pinned-sdk-library-v1",
+        "sourcePackage": "finos/morphir-sdk/basics",
+        "sourceVersion": "0.1.0",
+        "sourceTree": sdk_tree,
+        "sourceAlias": "basics",
+        "sourceName": "not_",
+        "sourceSignature": "Bool -> Bool",
+        "canonical": "morphir/SDK:basics#not",
+        "conversionPolicy": "exact-bool",
+      },
       "lanes": lanes,
       "sdkFiles": identities,
       "models": output,
@@ -468,8 +507,9 @@ async fn main {
         "moonbit-model-library-v1", "moonbit-model-library-2026-10-17", "moonbit-model-int32-library-v1",
         "moonbit-model-library-2026-10-19", "moonbit-model-integer-library-v1",
         "moonbit-model-float-library-v1",
+        "moonbit-model-pinned-sdk-library-v1",
       ],
-      "scope": "Local original source, Scheme, generated direct consumers and private access. Installed qualification remains a separate task.",
+      "scope": "Local original source, Scheme, generated direct consumers, one pinned SDK source call and private access. Installed qualification remains a separate task.",
     } : Json)
   let ion = @ion_json.to_ion(receipt)
   let bytes = @binary.write_binary_value(ion)

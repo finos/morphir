@@ -21,6 +21,7 @@ import {
   "finos/morphir-scheme" @scheme,
   "finos/morphir-scheme/backend",
   "moonrockz/ion/binary" @ion_binary,
+  "moonrockz/ion/text" @ion_text,
   "finos/morphir-moonbit/mep",
   "finos/morphir-ir/wire",
   "moonrockz/ion/json" @ion_json,

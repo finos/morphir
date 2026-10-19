@@ -24,7 +24,7 @@ export function testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llv
   assert.equal(inventory.frontends[0]!.provider,'finos/morphir-moonbit-frontend');
   assert.equal(inventory.frontends[0]!.defaultProfile,true);
   assert.equal(inventory.frontends[0]!.evidence,'local-acceptance');
-  assert.deepEqual(new Set(inventory.frontends[0]!.availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-integer-library-v1','moonbit-model-float-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19']));
+  assert.deepEqual(new Set(inventory.frontends[0]!.availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-integer-library-v1','moonbit-model-float-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19','moonbit-model-pinned-sdk-library-v1']));
   assert.equal(inventory.frontends[0]!.capabilities.maxDocuments,1);
   assert.equal(inventory.frontends[0]!.capabilities.incremental,false);
   assert.equal(inventory.frontends[0]!.capabilities.limits.functions,1);

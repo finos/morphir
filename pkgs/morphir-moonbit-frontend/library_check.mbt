@@ -26,10 +26,11 @@ fn library_check_body(
   edges : Map[Int32, Bool],
   cancelled : () -> Bool,
   mode : LibraryMode,
+  bindings : PinnedSourceBindings,
 ) -> LibraryTypeUse raise {
   library_poll(cancelled)
   fn check(e) raise {
-    library_check_body(e, functions, types, edges, cancelled, mode)
+    library_check_body(e, functions, types, edges, cancelled, mode, bindings)
   }
   match expr {
     Boolean(_, source) => library_boolean(source)
@@ -181,6 +182,36 @@ fn library_check_body(
       }
       signature.output_type
     }
+    SdkCall(index, arguments, source) => {
+      let binding = bindings.entries[index]
+      if arguments.length() != binding.inputs.length() {
+        library_error(
+          "binding_arity",
+          "Pinned source binding requires " +
+          binding.inputs.length().to_string() +
+          " positional argument(s): @" +
+          binding.source_alias +
+          "." +
+          binding.source_name,
+          Some(source),
+        )
+      }
+      for i = 0; i < arguments.length(); i = i + 1 {
+        let expected : LibraryTypeUse = {
+          scalar: binding.inputs[i],
+          spelling: binding.inputs[i].source_name(),
+          source,
+          profile: mode.profile(),
+        }
+        library_expect(check(arguments[i]), expected, source)
+      }
+      {
+        scalar: binding.output,
+        spelling: binding.output.source_name(),
+        source,
+        profile: mode.profile(),
+      }
+    }
   }
 }
 
@@ -192,6 +223,7 @@ fn library_check(
   limits : LibraryLimits,
   cancelled : () -> Bool,
   mode : LibraryMode,
+  bindings : PinnedSourceBindings,
 ) -> CheckedLibrary raise {
   let edges = functions.map(_ => Map([]))
   for i = 0; i < functions.length(); i = i + 1 {
@@ -206,6 +238,7 @@ fn library_check(
       edges[i],
       cancelled,
       mode,
+      bindings,
     )
     library_expect(
       result,

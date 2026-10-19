@@ -62,6 +62,7 @@ priv enum LibraryExpr {
     @ir.SourceLocation
   )
   Call(String, Array[LibraryExpr], @ir.SourceLocation)
+  QualifiedCall(String, String, Array[LibraryExpr], @ir.SourceLocation)
 }
 
 ///|
@@ -101,6 +102,7 @@ priv enum ResolvedExpr {
     @ir.SourceLocation
   )
   Call(Int32, Array[ResolvedExpr], @ir.SourceLocation)
+  SdkCall(Int32, Array[ResolvedExpr], @ir.SourceLocation)
 }
 
 ///|
@@ -177,7 +179,87 @@ priv enum LibraryMode {
   SupportedLibraryV2
   SupportedLibrary20261017
   SupportedLibrary20261019
+  PinnedSdk
 } derive(Eq)
+
+///|
+/// A resolved source binding is selected by the host adapter. Its fields are
+/// private so source text cannot register another native or SDK operation.
+priv struct ResolvedSourceBinding {
+  source_alias : String
+  source_name : String
+  source_package : String
+  source_version : String
+  source_tree : String
+  source_signature : String
+  canonical : String
+  inputs : Array[LibraryScalar]
+  output : LibraryScalar
+  conversion_policy : String
+}
+
+///|
+/// The pure frontend receives this frozen mapping from its adapter.
+pub struct PinnedSourceBindings {
+  priv entries : Array[ResolvedSourceBinding]
+}
+
+///|
+pub fn PinnedSourceBindings::empty() -> PinnedSourceBindings {
+  { entries: [], }
+}
+
+///|
+/// The adapter supplies a resolved identity. This finite constructor refuses
+/// any package, alias or tree that is not the audited SDK call.
+pub fn PinnedSourceBindings::sdk_basics_not(
+  source_package : String,
+  source_version : String,
+  source_tree : String,
+  source_alias : String,
+) -> PinnedSourceBindings raise FrontendError {
+  if source_package != "finos/morphir-sdk/basics" ||
+    source_version != "0.1.0" ||
+    source_tree != "9c83a100383570236b3d781362524008f76dd56d" ||
+    source_alias != "basics" {
+    library_error(
+      "binding_identity",
+      "Resolved source binding does not match the audited SDK package, tree and alias",
+      None,
+    )
+  }
+  {
+    entries: [
+      {
+        source_alias,
+        source_name: "not_",
+        source_package,
+        source_version,
+        source_tree,
+        source_signature: "Bool -> Bool",
+        canonical: "morphir/SDK:basics#not",
+        inputs: [Boolean],
+        output: Boolean,
+        conversion_policy: "exact-bool",
+      },
+    ],
+  }
+}
+
+///|
+fn PinnedSourceBindings::find(
+  self : PinnedSourceBindings,
+  package_alias : String,
+  source_name : String,
+) -> Int32? {
+  for i = 0; i < self.entries.length(); i = i + 1 {
+    if self.entries[i].source_alias == package_alias &&
+      self.entries[i].source_name == source_name {
+      return Some(i)
+    }
+  }
+  None
+}
 
 ///|
 priv enum LibraryScalar {
@@ -449,6 +531,9 @@ pub const LIBRARY_PROFILE_2026_10_17 : String = "moonbit-model-library-2026-10-1
 pub const LIBRARY_PROFILE_2026_10_19 : String = "moonbit-model-library-2026-10-19"
 
 ///|
+pub const PINNED_SDK_LIBRARY_PROFILE : String = "moonbit-model-pinned-sdk-library-v1"
+
+///|
 fn LibraryMode::supports_strings(self : LibraryMode) -> Bool {
   self == StringBasics ||
   self == SupportedLibrary ||
@@ -465,7 +550,8 @@ fn LibraryMode::supports_int32(self : LibraryMode) -> Bool {
   self == SupportedLibrary ||
   self == SupportedLibraryV2 ||
   self == SupportedLibrary20261017 ||
-  self == SupportedLibrary20261019
+  self == SupportedLibrary20261019 ||
+  self == PinnedSdk
 }
 
 ///|
@@ -511,5 +597,6 @@ fn LibraryMode::profile(self : LibraryMode) -> String {
     SupportedLibraryV2 => SUPPORTED_LIBRARY_PROFILE_V2
     SupportedLibrary20261017 => LIBRARY_PROFILE_2026_10_17
     SupportedLibrary20261019 => LIBRARY_PROFILE_2026_10_19
+    PinnedSdk => PINNED_SDK_LIBRARY_PROFILE
   }
 }

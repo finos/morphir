@@ -1,6 +1,7 @@
 ///|
 priv struct LibraryResolver {
   functions : Map[String, Int32]
+  bindings : PinnedSourceBindings
   cancelled : () -> Bool
   names : BinderNames
 }
@@ -96,6 +97,24 @@ fn LibraryResolver::expression(
       }
       Call(index, arguments.map(arg => self.expression(arg, scope)), source)
     }
+    QualifiedCall(package_alias, source_name, arguments, source) => {
+      if scope.contains(package_alias) {
+        library_error(
+          "shadowed_binding",
+          "A local value shadows the source package alias: " + package_alias,
+          Some(source),
+        )
+      }
+      guard self.bindings.find(package_alias, source_name) is Some(index) else {
+        library_error(
+          "unknown_binding",
+          "Unknown pinned source binding: @" + package_alias + "." + source_name,
+          Some(source),
+        )
+        abort("unreachable")
+      }
+      SdkCall(index, arguments.map(arg => self.expression(arg, scope)), source)
+    }
   }
 }
 
@@ -103,6 +122,7 @@ fn LibraryResolver::expression(
 fn library_resolve(
   functions : Array[LibraryFunction],
   cancelled : () -> Bool,
+  bindings : PinnedSourceBindings,
 ) -> Array[ResolvedFunction] raise {
   let indices : Map[String, Int32] = Map([])
   for i = 0; i < functions.length(); i = i + 1 {
@@ -112,10 +132,15 @@ fn library_resolve(
   for declaration in functions {
     library_poll(cancelled)
     let scope : Map[String, @ir.Name] = Map([])
-    let bindings = declaration.parameters.copy()
-    collect_bindings(declaration.body, bindings)
-    let names = BinderNames::new(bindings, "binding:" + declaration.name)
-    let resolver = LibraryResolver::{ functions: indices, cancelled, names, }
+    let bound_names = declaration.parameters.copy()
+    collect_bindings(declaration.body, bound_names)
+    let names = BinderNames::new(bound_names, "binding:" + declaration.name)
+    let resolver = LibraryResolver::{
+      functions: indices,
+      bindings,
+      cancelled,
+      names,
+    }
     let parameters = declaration.parameters.map(p => names.bind(p.0))
     for i = 0; i < parameters.length(); i = i + 1 {
       scope[declaration.parameters[i].0] = parameters[i]

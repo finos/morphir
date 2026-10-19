@@ -18,6 +18,105 @@ fn files(
 }
 
 ///|
+test "pinned Basics not source call reaches the engine evaluator" {
+  let snapshot = files()
+  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+    old="language='moonbit'",
+    new="language='moonbit'\nprofile='moonbit-model-pinned-sdk-library-v1'",
+  )
+  snapshot["src/Main.mbt"] = "pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"
+  let engine = @engine.Engine::new()
+  @adapter.register(engine)
+  let descriptor = plan(engine, snapshot).source_frontends()[0]
+  assert_eq(
+    descriptor.dependencies["finos/morphir-sdk/basics"],
+    "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d",
+  )
+  let report = execute(engine, snapshot)
+  assert_true(report.successful())
+  let unit = @data.Registry::new().decode("ion-binary", {
+    unit_id: "Main",
+    content: report.artifacts[0].content,
+  })
+  let suite = @protocol.Suite::from_json({
+    "profile": "morphir-invocations-v1",
+    "calls": [
+      {
+        "id": "true",
+        "entry": "pricing:app/main#invert",
+        "arguments": [{ "type": "bool", "value": true }],
+      },
+      {
+        "id": "false",
+        "entry": "pricing:app/main#invert",
+        "arguments": [{ "type": "bool", "value": false }],
+      },
+    ],
+  })
+  let plan = @execution.plan_scheme(unit, suite)
+  assert_eq(plan.evaluate().map(@protocol.Value::to_json), [
+    { "type": "bool", "value": false },
+    { "type": "bool", "value": true },
+  ])
+}
+
+///|
+test "pinned binding rejects unknown, mismatched and shadowed source calls through engine" {
+  let snapshot = files()
+  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+    old="language='moonbit'",
+    new="language='moonbit'\nprofile='moonbit-model-pinned-sdk-library-v1'",
+  )
+  let engine = @engine.Engine::new()
+  @adapter.register(engine)
+  for
+    (source, code) in [
+      (
+        "pub fn invert(flag : Bool) -> Bool { @other.not_(flag) }", "unknown_binding",
+      ),
+      (
+        "pub fn invert(flag : Bool) -> Bool { @basics.and_(flag, flag) }", "unknown_binding",
+      ),
+      (
+        "pub fn invert(value : Int32) -> Bool { @basics.not_(value) }", "type_mismatch",
+      ),
+      ("pub fn invert() -> Bool { @basics.not_() }", "binding_arity"),
+      (
+        "pub fn invert(basics : Bool) -> Bool { @basics.not_(basics) }", "shadowed_binding",
+      ),
+    ] {
+    snapshot["src/Main.mbt"] = source
+    let report = execute(engine, snapshot)
+    assert_false(report.successful())
+    assert_true(report.artifacts.is_empty())
+    assert_true(
+      report.diagnostics[0].message.has_prefix("moonbit_frontend." + code + ":"),
+    )
+    assert_true(report.diagnostics[0].message.contains(" at 1:"))
+  }
+  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+    old="profile='moonbit-model-pinned-sdk-library-v1'",
+    new="profile='moonbit-model-bool-library-v1'",
+  )
+  snapshot["src/Main.mbt"] = "pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"
+  let legacy = execute(engine, snapshot)
+  assert_true(
+    legacy.diagnostics[0].message.has_prefix(
+      "moonbit_frontend.qualified_reference:",
+    ),
+  )
+  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+      old="profile='moonbit-model-bool-library-v1'",
+      new="profile='moonbit-model-pinned-sdk-library-v1'",
+    ) +
+    "\ncheckpoint_format='morphir-json'"
+  let lossy = execute(engine, snapshot)
+  assert_false(lossy.successful())
+  assert_true(lossy.artifacts.is_empty())
+  assert_true(lossy.diagnostics[0].message.contains("data.lossy_conversion"))
+}
+
+///|
 fn plan(
   engine : @engine.Engine,
   snapshot : Map[String, String],

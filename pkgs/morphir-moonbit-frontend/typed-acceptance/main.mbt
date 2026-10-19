@@ -135,6 +135,7 @@ fn main raise {
       (
         "indexed", "pub fn count(s : String) -> Int32 { s.length() }\npub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }",
       ),
+      ("pinnedsdk", "pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"),
       (
         "currentordered", "pub fn lt(a : String, b : String) -> Bool { identity(a) < identity(b) }\npub fn le(a : String, b : String) -> Bool { a <= b }\npub fn gt(a : String, b : String) -> Bool { a > b }\npub fn ge(a : String, b : String) -> Bool { a >= b }\npub fn choose(a : String, b : String, yes : Int32, no : Int) -> Int32 { let before : Bool = lt(a, b); if before { yes } else { no } }\nfn identity(s : String) -> String { s }",
       ),
@@ -182,6 +183,14 @@ fn main raise {
       @frontend.compile_float_library(input)
     } else if id == "indexed" {
       @frontend.compile_supported_library_2026_10_19(input)
+    } else if id == "pinnedsdk" {
+      @frontend.compile_pinned_sdk_library(
+        input,
+        @frontend.PinnedSourceBindings::sdk_basics_not(
+          "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+          "basics",
+        ),
+      )
     } else if id == "foundation" {
       @frontend.compile_typed_library(input)
     } else {
@@ -329,6 +338,16 @@ fn main raise {
         ]).as_text(),
         "😀",
       )
+    } else if kind == "pinnedsdk" {
+      for flag in [false, true] {
+        guard @backend.call_entry(runtime, entry("invert"), [
+            @scheme.Boolean(flag),
+          ])
+          is Boolean(actual) else {
+          fail("Expected pinned SDK Bool")
+        }
+        assert_eq(actual, !flag)
+      }
     } else if kind == "strings" {
       assert_eq(
         @backend.call_entry(runtime, entry("greet"), [@scheme.Text("😀")]).as_text(),
@@ -535,6 +554,8 @@ fn main raise {
             @frontend.LIBRARY_PROFILE_2026_10_17
           } else if id == "indexed" {
             @frontend.LIBRARY_PROFILE_2026_10_19
+          } else if id == "pinnedsdk" {
+            @frontend.PINNED_SDK_LIBRARY_PROFILE
           } else if id == "numeric" {
             @frontend.INT32_LIBRARY_PROFILE
           } else if id == "integer" {

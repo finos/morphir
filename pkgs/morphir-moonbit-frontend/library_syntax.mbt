@@ -326,7 +326,19 @@ fn LibraryAdapter::expression(
       if self.calls > self.limits.max_calls {
         reject("call_limit", "Unit call-site budget exceeded", loc)
       }
-      let name = identifier(id)
+      let (name, qualified) = match id.name {
+        @ast.Ident(name~) => (name, None)
+        @ast.Dot(pkg~, id~) if self.mode == PinnedSdk =>
+          ("@" + pkg + "." + id, Some((pkg, id)))
+        _ => {
+          reject(
+            "qualified_reference",
+            "Qualified calls require the pinned SDK source profile",
+            func.loc(),
+          )
+          abort("unreachable")
+        }
+      }
       let arguments = []
       let mut i = 0
       for arg in args {
@@ -345,7 +357,11 @@ fn LibraryAdapter::expression(
         )
         i += 1
       }
-      Call(name, arguments, source)
+      match qualified {
+        Some((package_alias, source_name)) =>
+          QualifiedCall(package_alias, source_name, arguments, source)
+        None => Call(name, arguments, source)
+      }
     }
     _ => {
       reject(

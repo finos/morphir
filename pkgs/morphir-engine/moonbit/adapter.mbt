@@ -515,6 +515,58 @@ pub fn provider(
       }
     }),
   }
+  let pinned_dependencies = dependencies.copy()
+  pinned_dependencies["finos/morphir-sdk/basics"] = "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d"
+  let pinned_bindings = @frontend.PinnedSourceBindings::sdk_basics_not(
+    "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+    "basics",
+  ) catch {
+    @frontend.Invalid(diagnostic) =>
+      raise @engine.Rejected(
+        diagnostic.code,
+        diagnostic.detail,
+        diagnostic.source,
+      )
+  }
+  let pinned_sdk : @engine.SourceProfile = {
+    ..foundation,
+    id: @ids.ProfileId::parse(@frontend.PINNED_SDK_LIBRARY_PROFILE),
+    dependencies: pinned_dependencies,
+    capabilities: {
+      ..foundation.capabilities,
+      summary: "Typed Bool/Int32 library with one pinned SDK source call",
+      supported: foundation.capabilities.supported +
+      ["@basics.not_(Bool) -> Bool from pinned finos/morphir-sdk/basics 0.1.0"],
+      excluded: [
+        "Numeric literals and arithmetic", "String values", "Recursion", "Cross-file imports",
+        "Indirect calls and other qualified SDK calls", "Numeric math and String SDK calls",
+      ],
+    },
+    compile: @engine.PerFile(fn(source, unit_id, cancelled) raise {
+      let output = @frontend.compile_pinned_sdk_library(
+        input(source, unit_id),
+        pinned_bindings,
+        limits=library_limits,
+        cancelled~,
+        scope=observer.scope(),
+      ) catch {
+        @frontend.Invalid(diagnostic) =>
+          raise @engine.Rejected(
+            diagnostic.code,
+            diagnostic.detail,
+            diagnostic.source,
+          )
+        error => raise error
+      }
+      @data.IRUnit::{
+        id: output.unit_id,
+        distribution: output.ir,
+        metadata: output.metadata.map(m => { node_id: m.node_id, data: m.data, }),
+        annotations: output.annotations.copy(),
+        provenance: output.provenance.copy(),
+      }
+    }),
+  }
   {
     id: @ids.ProviderId::parse(PROVIDER),
     languages: [
@@ -524,7 +576,7 @@ pub fn provider(
         default_profile: @ids.ProfileId::parse(@frontend.PROFILE),
         profiles: [
           seed, library, foundation, numeric, integers, floats, strings, supported,
-          supported_v2, current, indexed,
+          supported_v2, current, indexed, pinned_sdk,
         ],
       },
     ],
