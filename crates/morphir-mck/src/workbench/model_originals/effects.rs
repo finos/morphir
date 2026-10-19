@@ -75,6 +75,7 @@ pub enum CancellationCause {
 pub enum PickerSignal {
     FileSelection,
     CancelEvent,
+    EmptySelection,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkOwner<'a> {
@@ -104,7 +105,15 @@ pub enum LateDisposition {
 pub enum LateSignalSource<'a> {
     FileReadCompletion(&'a EffectRef),
     HeldCoreResult,
-    InputEvent,
+    CancelEvent,
+    EmptySelectionEvent,
+    SelectionValidation(SelectionRefusal),
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SelectionRefusal {
+    InvalidName,
+    UnsupportedCodec,
+    Oversized,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PublicationDisposition {
@@ -361,7 +370,12 @@ impl<'a> EffectLedger<'a> {
         match event {
             EffectEvent::Pending(_) => unreachable!(),
             EffectEvent::PickerInput(_) => {
-                if !matches!(record.state, PortState::CallbackPending) {
+                if !matches!(
+                    record.state,
+                    PortState::CallbackPending
+                        | PortState::CallbackConsumed
+                        | PortState::CallbackRetired
+                ) {
                     return Err(EffectLedgerError::Settlement);
                 }
             }
@@ -398,7 +412,11 @@ impl<'a> EffectLedger<'a> {
                         };
                     }
                     ResultState::Retired => return Err(EffectLedgerError::HeldResults),
-                    ResultState::NotProduced => {}
+                    ResultState::NotProduced => {
+                        if !matches!(record.work, WorkState::NotStarted) {
+                            return Err(EffectLedgerError::Work);
+                        }
+                    }
                 }
                 record.state = PortState::PromiseResolved;
             }
@@ -431,6 +449,7 @@ impl<'a> EffectLedger<'a> {
             EffectEvent::ResultPrepared { work, raw_reply } => {
                 if !matches!(record.work, WorkState::Running { work: current, .. } if current == work)
                     || !matches!(record.result, ResultState::NotProduced)
+                    || matches!(record.state, PortState::PromiseResolved)
                 {
                     return Err(EffectLedgerError::Work);
                 }
@@ -459,12 +478,16 @@ impl<'a> EffectLedger<'a> {
                 (
                     PortState::CallbackRetired,
                     LateDisposition::RetiredCallback,
-                    LateSignalSource::InputEvent,
+                    LateSignalSource::CancelEvent
+                    | LateSignalSource::EmptySelectionEvent
+                    | LateSignalSource::SelectionValidation(_),
                 )
                 | (
                     PortState::CallbackConsumed,
                     LateDisposition::ConsumedCallback,
-                    LateSignalSource::InputEvent,
+                    LateSignalSource::CancelEvent
+                    | LateSignalSource::EmptySelectionEvent
+                    | LateSignalSource::SelectionValidation(_),
                 ) => {}
                 (
                     PortState::CallbackRetired,
@@ -481,7 +504,7 @@ impl<'a> EffectLedger<'a> {
                         || !self
                             .ports
                             .get(read)
-                            .is_some_and(|p| matches!(p.state, PortState::PromiseResolved))
+                            .is_some_and(|p| p.state.promise_terminal())
                     {
                         return Err(EffectLedgerError::LateSignal);
                     }

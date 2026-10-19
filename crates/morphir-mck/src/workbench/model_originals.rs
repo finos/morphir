@@ -20,8 +20,8 @@ mod evidence;
 pub use effects::{
     CancellationCause, EffectEvent, EffectKind, EffectLedger, EffectLedgerError,
     EffectLedgerLimits, EffectLedgerResource, EffectPort, EffectRef, LateDisposition,
-    LateSignalSource, PickerSignal, PublicationDisposition, ResultRetirement, WorkBinding,
-    WorkOwner,
+    LateSignalSource, PickerSignal, PublicationDisposition, ResultRetirement, SelectionRefusal,
+    WorkBinding, WorkOwner,
 };
 mod fixture_alias;
 mod fixture_bytes;

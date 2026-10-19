@@ -1,9 +1,9 @@
-//! Independent lifecycle-v2 contract eada8d9f, before ledger implementation.
+//! Independent lifecycle contracts and additive source-backed regressions.
 //! These checks validate evidence consistency, not actual production execution.
 use morphir_mck::workbench::model_originals::{
     CancellationCause, EffectEvent as Event, EffectKind as Kind, EffectLedger, EffectLedgerError,
     EffectLedgerLimits, EffectPort, EffectRef, FixtureAlias, LateDisposition, LateSignalSource,
-    PickerSignal, PublicationDisposition, ResultRetirement, WorkOwner,
+    PickerSignal, PublicationDisposition, ResultRetirement, SelectionRefusal, WorkOwner,
 };
 
 fn reference(attempt: &str, kind: Kind, ordinal: usize) -> EffectRef {
@@ -152,7 +152,7 @@ fn consumed_and_retired_callbacks_have_distinct_late_guards() {
             Event::LateSignal {
                 actual_signal: "later input",
                 disposition: LateDisposition::RetiredCallback,
-                source: LateSignalSource::InputEvent
+                source: LateSignalSource::CancelEvent
             }
         ),
         Err(EffectLedgerError::LateSignal)
@@ -162,7 +162,7 @@ fn consumed_and_retired_callbacks_have_distinct_late_guards() {
         Event::LateSignal {
             actual_signal: "later input",
             disposition: LateDisposition::ConsumedCallback,
-            source: LateSignalSource::InputEvent,
+            source: LateSignalSource::CancelEvent,
         },
     )
     .unwrap();
@@ -658,4 +658,198 @@ fn no_byte_credit_is_an_explicit_refusal_without_record_or_capacity_changes() {
     assert!(EffectLedgerLimits::new(0, 8, 0, 0, 0).is_err());
     assert!(EffectLedgerLimits::new(1, usize::MAX, 0, 0, 0).is_err());
     assert!(EffectLedgerLimits::new(1, 8, usize::MAX, 0, 0).is_err());
+}
+
+#[test]
+fn terminal_picker_input_can_start_a_new_read_without_reopening_receive() {
+    for consumed in [false, true] {
+        let mut l = ledger();
+        let picker = reference("A", Kind::Picker, 0);
+        let read = reference("A", Kind::FileRead, 0);
+        l.record(&picker, Event::Pending(EffectPort::PickerReceiveCallback))
+            .unwrap();
+        if consumed {
+            l.record(&picker, Event::CallbackDelivered).unwrap();
+        } else {
+            l.record(
+                &picker,
+                Event::CallbackRetired {
+                    action_index: 0,
+                    cause: CancellationCause::CloseCurrentModel,
+                },
+            )
+            .unwrap();
+        }
+        l.record(&picker, Event::PickerInput(PickerSignal::FileSelection))
+            .unwrap();
+        promise(&mut l, &read);
+        l.record(
+            &read,
+            Event::PromiseResolved {
+                actual_reply: "actual read",
+            },
+        )
+        .unwrap();
+        l.record(
+            &picker,
+            Event::LateSignal {
+                actual_signal: "actual selected result",
+                disposition: if consumed {
+                    LateDisposition::ConsumedCallback
+                } else {
+                    LateDisposition::RetiredCallback
+                },
+                source: LateSignalSource::FileReadCompletion(&read),
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            l.record(&picker, Event::CallbackDelivered),
+            Err(EffectLedgerError::Settlement)
+        );
+        l.finish().unwrap();
+    }
+}
+
+#[test]
+fn an_actual_rejected_read_can_finish_as_an_ignored_unreadable_result() {
+    let mut l = ledger();
+    let picker = reference("A", Kind::Picker, 0);
+    let read = reference("A", Kind::FileRead, 0);
+    l.record(&picker, Event::Pending(EffectPort::PickerReceiveCallback))
+        .unwrap();
+    l.record(&picker, Event::PickerInput(PickerSignal::FileSelection))
+        .unwrap();
+    promise(&mut l, &read);
+    l.record(
+        &picker,
+        Event::CallbackRetired {
+            action_index: 0,
+            cause: CancellationCause::CloseCurrentModel,
+        },
+    )
+    .unwrap();
+    l.record(&read, Event::PromiseRejected).unwrap();
+    l.record(
+        &picker,
+        Event::LateSignal {
+            actual_signal: "{\"kind\":\"refused\",\"reason\":\"unreadable\"}",
+            disposition: LateDisposition::RetiredCallback,
+            source: LateSignalSource::FileReadCompletion(&read),
+        },
+    )
+    .unwrap();
+    l.finish().unwrap();
+}
+
+#[test]
+fn started_work_cannot_resolve_before_its_actual_result_exists() {
+    let work = FixtureAlias::new("actual-core").unwrap();
+    let effect = reference("A", Kind::Inspection, 0);
+    let mut l = EffectLedger::new(EffectLedgerLimits::new(4, 32, 16, 16, 32).unwrap());
+    promise(&mut l, &effect);
+    l.record(
+        &effect,
+        Event::WorkStarted {
+            work: &work,
+            owner: WorkOwner::Inline,
+        },
+    )
+    .unwrap();
+    assert!(
+        l.record(
+            &effect,
+            Event::PromiseResolved {
+                actual_reply: "forged success"
+            }
+        )
+        .is_err()
+    );
+    assert_eq!(l.observer_bytes(), 0);
+    l.record(
+        &effect,
+        Event::ResultPrepared {
+            work: &work,
+            raw_reply: "genuine result",
+        },
+    )
+    .unwrap();
+    l.record(
+        &effect,
+        Event::PromiseResolved {
+            actual_reply: "genuine result",
+        },
+    )
+    .unwrap();
+    l.record(
+        &effect,
+        Event::ResultRetired(ResultRetirement::DeliveredToPort),
+    )
+    .unwrap();
+    assert_eq!(l.finish(), Err(EffectLedgerError::RunningWork));
+    l.record(&effect, Event::WorkExited { work: &work })
+        .unwrap();
+    l.finish().unwrap();
+}
+
+#[test]
+fn direct_late_picker_causes_do_not_require_a_fabricated_file_read() {
+    for consumed in [false, true] {
+        for (signal, source) in [
+            (PickerSignal::CancelEvent, LateSignalSource::CancelEvent),
+            (
+                PickerSignal::EmptySelection,
+                LateSignalSource::EmptySelectionEvent,
+            ),
+            (
+                PickerSignal::FileSelection,
+                LateSignalSource::SelectionValidation(SelectionRefusal::InvalidName),
+            ),
+            (
+                PickerSignal::FileSelection,
+                LateSignalSource::SelectionValidation(SelectionRefusal::UnsupportedCodec),
+            ),
+            (
+                PickerSignal::FileSelection,
+                LateSignalSource::SelectionValidation(SelectionRefusal::Oversized),
+            ),
+        ] {
+            let mut l = ledger();
+            let picker = reference("A", Kind::Picker, 0);
+            l.record(&picker, Event::Pending(EffectPort::PickerReceiveCallback))
+                .unwrap();
+            if consumed {
+                l.record(&picker, Event::CallbackDelivered).unwrap();
+            } else {
+                l.record(
+                    &picker,
+                    Event::CallbackRetired {
+                        action_index: 0,
+                        cause: CancellationCause::Replacement,
+                    },
+                )
+                .unwrap();
+            }
+            l.record(&picker, Event::PickerInput(signal)).unwrap();
+            l.record(
+                &picker,
+                Event::LateSignal {
+                    actual_signal: "actual ignored callback argument",
+                    disposition: if consumed {
+                        LateDisposition::ConsumedCallback
+                    } else {
+                        LateDisposition::RetiredCallback
+                    },
+                    source,
+                },
+            )
+            .unwrap();
+            assert_eq!(l.port_count(), 1);
+            assert_eq!(
+                l.record(&picker, Event::CallbackDelivered),
+                Err(EffectLedgerError::Settlement)
+            );
+            l.finish().unwrap();
+        }
+    }
 }
