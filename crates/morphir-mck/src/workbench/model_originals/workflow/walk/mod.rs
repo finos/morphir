@@ -2,25 +2,30 @@
 //! The static sites are issued only by the frozen descriptor macros below.
 use super::{FixtureAlias, Items, Natural, Nullable, Presence, Text, UniqueItems, domain, input};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Operand {
-    Input,
-    Expected,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct Site {
-    pub(super) operand: Operand,
-    pub(super) declaration: &'static str,
-    pub(super) variant: Option<&'static str>,
-    pub(super) field: &'static str,
-}
+#[path = "site.rs"]
+mod site;
+pub(super) use site::{Operand, Site};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Segment {
     Root,
     Field(Site),
     Item(usize),
+    Effect(SubjectKind),
+    NativeBoundary(NativePending),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum SubjectKind {
+    Maintained(crate::workbench::model_originals::EffectKind),
+    ManifestFetch,
+    WorkspaceOpen,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum NativePending {
+    Initialize,
+    Choose,
+    Open,
 }
 
 /// Borrowed stack links preserve nested local scopes without heap allocation.
@@ -170,12 +175,12 @@ macro_rules! field {
         $value.walk(
             &Trail {
                 parent: Some($trail),
-                segment: Segment::Field(Site {
-                    operand: OPERAND,
-                    declaration: stringify!($name),
-                    variant: $variant,
-                    field: $wire,
-                }),
+                segment: Segment::Field(Site::descriptor(
+                    OPERAND,
+                    stringify!($name),
+                    $variant,
+                    $wire,
+                )),
             },
             $sink,
         )?;
@@ -186,6 +191,12 @@ macro_rules! record {
         impl WalkAliases for $name {
             fn walk<'source, S: AliasSink<'source>>(&'source self, trail: &Trail<'_>, sink: &mut S) -> Result<(), S::Error> {
                 sink.enter(trail)?;
+                let context = context!(self, $name);
+                let linked;
+                let trail = if let Some(segment) = context {
+                    linked = Trail { parent: Some(trail), segment };
+                    &linked
+                } else { trail };
                 $(field!(&self.$field, trail, sink, $name, None, $wire);)*
                 $($(field!(&self.$optional, trail, sink, $name, None, $optional_wire);)*)?
                 Ok(())
@@ -198,6 +209,12 @@ macro_rules! tagged {
         impl WalkAliases for $name {
             fn walk<'source, S: AliasSink<'source>>(&'source self, trail: &Trail<'_>, sink: &mut S) -> Result<(), S::Error> {
                 sink.enter(trail)?;
+                let context = context!(self, $name);
+                let linked;
+                let trail = if let Some(segment) = context {
+                    linked = Trail { parent: Some(trail), segment };
+                    &linked
+                } else { trail };
                 match self {
                     $(Self::$variant { $($field),* } => { $(field!($field, trail, sink, $name, Some($wire), $key);)* },)*
                     $($(Self::$delegate(value) => field!(value, trail, sink, $name, Some($delegate_wire), "@delegate"),)*)?
@@ -224,8 +241,59 @@ macro_rules! kind {
     };
 }
 macro_rules! words {
+    (EffectKind { $($variant:ident => $wire:literal),* $(,)? }) => {
+        plain!(EffectKind);
+        impl From<&EffectKind> for super::SubjectKind {
+            fn from(value: &EffectKind) -> Self { match value { $(EffectKind::$variant => planned_kind!($variant),)* } }
+        }
+    };
     ($name:ident { $($variant:ident => $wire:literal),* $(,)? }) => {
         plain!($name);
+    };
+}
+macro_rules! planned_kind {
+    (ManifestFetch) => {
+        super::SubjectKind::ManifestFetch
+    };
+    (WorkspaceOpen) => {
+        super::SubjectKind::WorkspaceOpen
+    };
+    ($variant:ident) => {
+        super::SubjectKind::Maintained(crate::workbench::model_originals::EffectKind::$variant)
+    };
+}
+macro_rules! context {
+    ($value:expr, EffectRef) => {
+        Some(Segment::Effect((&$value.kind).into()))
+    };
+    ($value:expr, ExpectedClientCheck) => {
+        match $value {
+            Self::PortCounts { effect_kind, .. } => Some(Segment::Effect(effect_kind.into())),
+            _ => None,
+        }
+    };
+    ($value:expr, ClientAction) => {
+        match $value {
+            Self::AwaitNativeBoundary { boundary, .. } => {
+                Some(Segment::NativeBoundary(match boundary {
+                    ClientActionAwaitNativeBoundaryBoundary::CatalogPending
+                    | ClientActionAwaitNativeBoundaryBoundary::Initialized => {
+                        NativePending::Initialize
+                    }
+                    ClientActionAwaitNativeBoundaryBoundary::WorkspaceSelected => {
+                        NativePending::Choose
+                    }
+                    ClientActionAwaitNativeBoundaryBoundary::InspectionPending
+                    | ClientActionAwaitNativeBoundaryBoundary::ModelOpenSettled => {
+                        NativePending::Open
+                    }
+                }))
+            }
+            _ => None,
+        }
+    };
+    ($value:expr, $name:ident) => {
+        None::<Segment>
     };
 }
 macro_rules! text {

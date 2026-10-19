@@ -3,11 +3,15 @@ mod decode;
 use decode::*;
 #[macro_use]
 mod macros;
+mod compile;
 mod domain;
 mod expansion;
 mod input;
+mod meaning;
 mod pairing;
+mod scope;
 mod walk;
+mod work;
 
 #[cfg(test)]
 mod tests;

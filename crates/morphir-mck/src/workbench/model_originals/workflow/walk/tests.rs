@@ -71,7 +71,10 @@ fn actual_domain_walk_borrows_aliases_with_exact_static_sites_and_ignores_payloa
     let actual: Vec<_> = sink
         .aliases
         .iter()
-        .map(|(a, s)| (a.as_str(), s.declaration, s.variant, s.field))
+        .map(|(a, s)| {
+            let (_, declaration, variant, field) = s.parts();
+            (a.as_str(), declaration, variant, field)
+        })
         .collect();
     assert_eq!(
         actual,
@@ -123,7 +126,7 @@ fn actual_domain_walk_borrows_aliases_with_exact_static_sites_and_ignores_payloa
     assert!(
         sink.aliases
             .iter()
-            .all(|(_, site)| site.operand == Operand::Input)
+            .all(|(_, site)| site.parts().0 == Operand::Input)
     );
 }
 #[test]

@@ -86,6 +86,12 @@ impl<'a> PairedWorkflow<'a> {
     pub(super) fn run_index(&self) -> usize {
         self.run_index
     }
+    pub(super) fn scenario(&self) -> &'a input::Scenario {
+        self.scenario
+    }
+    pub(super) fn expected(&self) -> &'a domain::ExpectedWorkflow {
+        self.expected
+    }
     pub(super) fn run(&self) -> PairedRun<'a> {
         self.run
     }
