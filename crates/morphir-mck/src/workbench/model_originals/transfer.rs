@@ -221,6 +221,23 @@ impl CaptureExpectation {
         request: &Request,
         session: &SessionId,
     ) -> Result<Self, TransferError> {
+        let ready = parse(ready, MAX_REPLY_BYTES)?;
+        Self::for_request_value(&ready, request, session)
+    }
+    /// Verify the literal enclosing reply as well as its ready result. The
+    /// independent current session is supplied by the caller, never the reply.
+    pub fn from_exchange(
+        exchange: &Exchange<'_>,
+        session: &SessionId,
+    ) -> Result<Self, TransferError> {
+        let ready = reply(exchange)?;
+        Self::for_request_value(&ready, exchange.request, session)
+    }
+    fn for_request_value(
+        ready: &Value,
+        request: &Request,
+        session: &SessionId,
+    ) -> Result<Self, TransferError> {
         let Parameters::Capture {
             source,
             project,
@@ -230,8 +247,7 @@ impl CaptureExpectation {
         else {
             return Err(TransferError::Method);
         };
-        let ready = parse(ready, MAX_REPLY_BYTES)?;
-        let expected = Self::from_value(&ready)?;
+        let expected = Self::from_value(ready)?;
         if &expected.binding.session != session
             || &expected.binding.source != source
             || &expected.binding.project != project

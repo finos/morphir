@@ -15,6 +15,11 @@ pub use transfer::{
     CaptureExpectation, CaptureInventory, CheckedStream, Exchange, FailureCode, RemoteFailure,
     RpcFailureKind, TransferError,
 };
+mod evidence;
+pub use evidence::{
+    CaptureEvidence, CheckedOriginalsEvidence, EvidenceError, ExpectedBytes, ExpectedOriginalEntry,
+    ExpectedOriginals, OriginalTransfer,
+};
 
 /// Inclusive bound on the complete JSON-RPC request, before parsing.
 pub const MAX_REQUEST_BYTES: usize = 16 * 1024;

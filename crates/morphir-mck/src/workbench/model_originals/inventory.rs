@@ -84,9 +84,12 @@ pub(super) fn count(value: &Value, maximum: usize) -> Result<usize, InvalidFrame
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct EntryPath(String);
+pub(super) struct EntryPath(String);
 impl EntryPath {
-    fn parse(value: &Value) -> Result<Self, InvalidFrame> {
+    pub(super) fn as_str(&self) -> &str {
+        &self.0
+    }
+    pub(super) fn parse(value: &Value) -> Result<Self, InvalidFrame> {
         let path = portable_path(value)?;
         // A 128-component root plus 128 descendant levels, checked separately
         // against the actual selected root in check_coverage.
