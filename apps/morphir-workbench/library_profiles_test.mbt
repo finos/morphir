@@ -50,6 +50,8 @@ test "local catalog exposes one MoonBit language and the registered profile desc
     @moonbit_frontend.LIBRARY_PROFILE,
     @moonbit_frontend.TYPED_FOUNDATION_PROFILE,
     @moonbit_frontend.INT32_LIBRARY_PROFILE,
+    @moonbit_frontend.INTEGER_LIBRARY_PROFILE,
+    @moonbit_frontend.FLOAT_LIBRARY_PROFILE,
     @moonbit_frontend.STRING_LIBRARY_PROFILE,
     @moonbit_frontend.SUPPORTED_LIBRARY_PROFILE,
     @moonbit_frontend.SUPPORTED_LIBRARY_PROFILE_V2,

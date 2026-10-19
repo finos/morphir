@@ -85,7 +85,42 @@ fn sdk_reference(
     | ("decimal", "negate" | "abs" | "truncate" | "round" | "from-int")
     | ("list", "sum" | "product" | "length" | "reverse")
     | ("char", "to-upper")
-    | ("int", "to-int32" | "from-int32" | "to-int-32" | "from-int-32") => 1
+    | (
+      "int",
+      "to-int32"
+      | "from-int32"
+      | "to-int-32"
+      | "from-int-32"
+      | "to-int-16"
+      | "from-int-16"
+      | "to-int-64"
+      | "from-int-64"
+      | "to-byte"
+      | "from-byte"
+      | "to-uint-16"
+      | "from-uint-16"
+      | "to-uint-32"
+      | "from-uint-32"
+      | "to-uint-64"
+      | "from-uint-64"
+      | "from-float64-exact"
+      | "from-float64-truncated"
+      | "from-float64-floor"
+      | "from-float64-ceiling"
+      | "from-float64-rounded",
+    ) => 1
+    (
+      "int",
+      "from-float32-exact"
+      | "from-float32-truncated"
+      | "from-float32-floor"
+      | "from-float32-ceiling"
+      | "from-float32-rounded"
+      | "to-float64-exact"
+      | "to-float64-rounded"
+      | "to-float32-exact"
+      | "to-float32-rounded",
+    ) => 1
     _ => raise Invalid("moonbit.unsupported_sdk", context, name.to_canonical())
   }
   let inputs = []
@@ -102,10 +137,16 @@ fn sdk_reference(
   let int = Atom(Scalar::Integer)
   let dec = Atom(Scalar::Decimal)
   let float = Atom(Scalar::Float)
+  let float32 = Atom(Scalar::Float32)
   let bool = Atom(Scalar::Boolean)
   let mut call = ""
   let module_name = name.module_name.to_canonical()
   let binding = name.local_name.to_canonical()
+  let native_binding = binding
+    .split("-")
+    .map(StringView::to_owned)
+    .collect()
+    .join("_")
   fn require(signature : Array[Lowered], output : Lowered) -> Unit raise {
     if inputs != signature || result != output {
       raise Invalid("moonbit.sdk_signature", context, canonical)
@@ -131,6 +172,72 @@ fn sdk_reference(
     ("int", "from-int32" | "from-int-32") => {
       require([Atom(Scalar::SignedInt32)], int)
       call = native("int", "from_int32")
+    }
+    (
+      "int",
+      "from-float64-exact"
+      | "from-float64-truncated"
+      | "from-float64-floor"
+      | "from-float64-ceiling"
+      | "from-float64-rounded",
+    ) => {
+      require([float], Optional(int))
+      call = native("int", native_binding)
+    }
+    (
+      "int",
+      "from-float32-exact"
+      | "from-float32-truncated"
+      | "from-float32-floor"
+      | "from-float32-ceiling"
+      | "from-float32-rounded",
+    ) => {
+      require([float32], Optional(int))
+      call = native("int", native_binding)
+    }
+    ("int", "to-float64-exact") => {
+      require([int], Optional(float))
+      call = native("int", native_binding)
+    }
+    ("int", "to-float32-exact") => {
+      require([int], Optional(float32))
+      call = native("int", native_binding)
+    }
+    ("int", "to-float64-rounded") => {
+      require([int], float)
+      call = native("int", native_binding)
+    }
+    ("int", "to-float32-rounded") => {
+      require([int], float32)
+      call = native("int", native_binding)
+    }
+    (
+      "int",
+      "to-int-16"
+      | "from-int-16"
+      | "to-int-64"
+      | "from-int-64"
+      | "to-byte"
+      | "from-byte"
+      | "to-uint-16"
+      | "from-uint-16"
+      | "to-uint-32"
+      | "from-uint-32"
+      | "to-uint-64"
+      | "from-uint-64",
+    ) => {
+      let to = binding.has_prefix("to-")
+      let width = binding[if to { 3 } else { 5 }:].to_owned()
+      let bounded = Atom(Scalar::BoundedInteger(width))
+      if to {
+        require([int], Optional(bounded))
+      } else {
+        require([bounded], int)
+      }
+      call = native(
+        "int",
+        (if to { "to_" } else { "from_" }) + width.replace(old="-", new=""),
+      )
     }
     ("basics", "add" | "subtract" | "multiply") => {
       let t = if inputs == [int, int] { int } else { float }

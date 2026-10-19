@@ -176,6 +176,58 @@ pub fn compile_int32_library(
 }
 
 ///|
+/// Exact integral source forms with Bool and the previously qualified Int32 subset.
+pub fn compile_integer_library(
+  input : Input,
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
+) -> LibraryOutput raise {
+  scope.observe(
+    @observe.Frontend,
+    fn(scope) raise {
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        mode=NumericInteger,
+      )
+      check_naming_warnings(output.warnings, strict_naming)
+      output
+    },
+    is_cancelled=frontend_cancelled,
+  )
+}
+
+///|
+/// IEEE binary32 and binary64 source expressions, with operation-local Float rounding.
+pub fn compile_float_library(
+  input : Input,
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
+) -> LibraryOutput raise {
+  scope.observe(
+    @observe.Frontend,
+    fn(scope) raise {
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        mode=NumericFloat,
+      )
+      check_naming_warnings(output.warnings, strict_naming)
+      output
+    },
+    is_cancelled=frontend_cancelled,
+  )
+}
+
+///|
 /// Compile String/Bool basics with executable source String boundary guards.
 pub fn compile_string_library(
   input : Input,

@@ -20,6 +20,7 @@ fn library_parse(input : Input, cancelled : () -> Bool) -> ParsedLibrary raise {
 priv struct LibraryAdapter {
   source_chars : Array[Char]
   mode : LibraryMode
+  signatures : Map[String, Array[LibraryTypeUse]]
   limits : LibraryLimits
   cancelled : () -> Bool
   mut expressions : Int32
@@ -42,6 +43,123 @@ fn LibraryAdapter::visit(
 }
 
 ///|
+fn LibraryAdapter::number(
+  self : LibraryAdapter,
+  raw : String,
+  scalar : LibraryScalar,
+  loc : @location.Location,
+) -> LibraryExpr raise {
+  let start = loc.start.cnum
+  let end = loc.end.cnum
+  if start < 0 || end < start || end > self.source_chars.length() {
+    reject("source_coordinate", "Invalid numeric literal coordinate", loc)
+  }
+  let authored = String::from_array(self.source_chars[start:end].to_owned())
+  Number(library_integer_literal(raw, scalar, loc), authored, scalar, span(loc))
+}
+
+///|
+fn LibraryAdapter::floating(
+  self : LibraryAdapter,
+  raw : String,
+  scalar : LibraryScalar,
+  loc : @location.Location,
+) -> LibraryExpr raise {
+  let start = loc.start.cnum
+  let end = loc.end.cnum
+  if start < 0 || end < start || end > self.source_chars.length() {
+    reject("source_coordinate", "Invalid floating literal coordinate", loc)
+  }
+  let authored = String::from_array(self.source_chars[start:end].to_owned())
+  let spelling = if raw.has_suffix("F") || raw.has_suffix("f") {
+    raw[:raw.length() - 1].to_owned()
+  } else {
+    raw
+  }
+  let parsed = @parse.parse_double(spelling.view()) catch {
+    _ => {
+      reject("invalid_literal", "Invalid floating literal", loc)
+      0.0
+    }
+  }
+  if parsed.is_nan() || parsed.is_inf() {
+    reject(
+      "invalid_literal", "Nonfinite floating literals are unsupported", loc,
+    )
+  }
+  let value = if scalar == Floating32 {
+    Float::from_double(parsed).to_double()
+  } else {
+    parsed
+  }
+  if value.is_inf() {
+    reject("invalid_literal", "Floating literal exceeds source range", loc)
+  }
+  Floating(value, authored, scalar, span(loc))
+}
+
+///|
+/// Unsuffixed integer literals follow the expected source width in the small
+/// expression forms whose type is fixed by their surrounding annotation.
+fn LibraryAdapter::expression_as(
+  self : LibraryAdapter,
+  expr : @ast.Expr,
+  depth : Int32,
+  scalar : LibraryScalar,
+) -> LibraryExpr raise {
+  if !self.mode.supports_integer() ||
+    !scalar.is_integer() ||
+    scalar == SignedInt32 {
+    return self.expression(expr, depth)
+  }
+  let loc = expr.loc()
+  match expr {
+    @ast.Constant(c=@ast.Int(raw), ..) => {
+      self.visit(loc, depth)
+      self.number(raw, scalar, loc)
+    }
+    @ast.Group(expr=inner, ..) => {
+      self.visit(loc, depth)
+      self.expression_as(inner, depth + 1, scalar)
+    }
+    @ast.Unary(op~, expr=inner, ..) if identifier(op) == "-" &&
+      scalar.is_signed() => {
+      self.visit(loc, depth)
+      match inner {
+        @ast.Constant(c=@ast.Int(raw), ..) => {
+          self.visit(inner.loc(), depth + 1)
+          self.number("-" + raw, scalar, loc)
+        }
+        _ =>
+          NumericNegation(
+            self.expression_as(inner, depth + 1, scalar),
+            span(loc),
+          )
+      }
+    }
+    @ast.Infix(op~, lhs~, rhs~, ..) if ["+", "-", "*"].contains(identifier(op)) => {
+      self.visit(loc, depth)
+      Binary(
+        identifier(op),
+        self.expression_as(lhs, depth + 1, scalar),
+        self.expression_as(rhs, depth + 1, scalar),
+        span(loc),
+      )
+    }
+    @ast.If(cond~, ifso~, ifnot=Some(other), ..) => {
+      self.visit(loc, depth)
+      Conditional(
+        self.expression(cond, depth + 1),
+        self.expression_as(ifso, depth + 1, scalar),
+        self.expression_as(other, depth + 1, scalar),
+        span(loc),
+      )
+    }
+    _ => self.expression(expr, depth)
+  }
+}
+
+///|
 fn LibraryAdapter::expression(
   self : LibraryAdapter,
   expr : @ast.Expr,
@@ -52,15 +170,20 @@ fn LibraryAdapter::expression(
   self.visit(loc, depth)
   match expr {
     @ast.Constant(c=@ast.Bool(value), ..) => Boolean(value, source)
-    @ast.Constant(c=@ast.Int(raw), ..) if self.mode.supports_numeric() => {
-      let start = loc.start.cnum
-      let end = loc.end.cnum
-      if start < 0 || end < start || end > self.source_chars.length() {
-        reject("source_coordinate", "Invalid numeric literal coordinate", loc)
-      }
-      let authored = String::from_array(self.source_chars[start:end].to_owned())
-      Number(library_int32_literal(raw, loc), authored, source)
-    }
+    @ast.Constant(c=@ast.Int(raw), ..) if self.mode.supports_numeric() =>
+      self.number(raw, SignedInt32, loc)
+    @ast.Constant(c=@ast.Int64(raw), ..) if self.mode.supports_integer() =>
+      self.number(raw, SignedInt64, loc)
+    @ast.Constant(c=@ast.UInt(raw), ..) if self.mode.supports_integer() =>
+      self.number(raw, UnsignedInt32, loc)
+    @ast.Constant(c=@ast.UInt64(raw), ..) if self.mode.supports_integer() =>
+      self.number(raw, UnsignedInt64, loc)
+    @ast.Constant(c=@ast.BigInt(raw), ..) if self.mode.supports_integer() =>
+      self.number(raw, UnboundedInteger, loc)
+    @ast.Constant(c=@ast.Float(raw), ..) if self.mode.supports_float() =>
+      self.floating(raw, Floating32, loc)
+    @ast.Constant(c=@ast.Double(raw), ..) if self.mode.supports_float() =>
+      self.floating(raw, Floating64, loc)
     @ast.Constant(c=@ast.String(repr), ..) if self.mode.supports_strings() => {
       // The pinned lexer counts Unicode scalar positions, not UTF-8 bytes or UTF-16 units.
       let start = loc.start.cnum
@@ -79,12 +202,14 @@ fn LibraryAdapter::expression(
     }
     @ast.Ident(id~, ..) => Identifier(identifier(id), source)
     @ast.Group(expr~, ..) => self.expression(expr, depth + 1)
-    @ast.Constraint(expr~, ty~, ..) =>
+    @ast.Constraint(expr~, ty~, ..) => {
+      let target = library_type(Some(ty), ty.loc(), self.mode)
       Constraint(
-        self.expression(expr, depth + 1),
-        library_type(Some(ty), ty.loc(), self.mode),
+        self.expression_as(expr, depth + 1, target.scalar),
+        target,
         source,
       )
+    }
     @ast.Unary(op~, expr~, ..) => {
       let operator = identifier(op)
       if operator == "-" && self.mode.supports_numeric() {
@@ -103,6 +228,7 @@ fn LibraryAdapter::expression(
         !(self.mode.supports_strings() && op == "+") &&
         !(self.mode.supports_numeric() &&
         ["+", "-", "*", "<", "<=", ">", ">="].contains(op)) &&
+        !(self.mode.supports_float() && op == "/") &&
         !(self.mode.supports_string_order() &&
         ["<", "<=", ">", ">="].contains(op)) {
         reject(
@@ -147,7 +273,12 @@ fn LibraryAdapter::expression(
         binder.name,
         span(binder.loc),
         match annotation {
-          Some(ty) => Constraint(self.expression(expr, depth + 1), ty, source)
+          Some(ty) =>
+            Constraint(
+              self.expression_as(expr, depth + 1, ty.scalar),
+              ty,
+              source,
+            )
           None => self.expression(expr, depth + 1)
         },
         self.expression(body, depth + 1),
@@ -197,6 +328,7 @@ fn LibraryAdapter::expression(
       }
       let name = identifier(id)
       let arguments = []
+      let mut i = 0
       for arg in args {
         if !(arg.kind is @ast.Positional) {
           reject(
@@ -204,7 +336,14 @@ fn LibraryAdapter::expression(
             loc,
           )
         }
-        arguments.push(self.expression(arg.value, depth + 1))
+        arguments.push(
+          match self.signatures.get(name) {
+            Some(inputs) if i < inputs.length() =>
+              self.expression_as(arg.value, depth + 1, inputs[i].scalar)
+            _ => self.expression(arg.value, depth + 1)
+          },
+        )
+        i += 1
       }
       Call(name, arguments, source)
     }
@@ -340,9 +479,14 @@ fn library_adapt(
       ),
     )
   }
+  let signature_types : Map[String, Array[LibraryTypeUse]] = Map([])
+  for (name, _, _, input_types, _, _, _, _) in signatures {
+    signature_types[name] = input_types
+  }
   let adapter = LibraryAdapter::{
     source_chars: parsed.source_chars,
     mode,
+    signatures: signature_types,
     limits,
     cancelled,
     expressions: 0,
@@ -360,7 +504,7 @@ fn library_adapt(
       parameters,
       input_types,
       output_type,
-      body: adapter.expression(body, 0),
+      body: adapter.expression_as(body, 0, output_type.scalar),
       body_source: span(body.loc()),
       source,
     })

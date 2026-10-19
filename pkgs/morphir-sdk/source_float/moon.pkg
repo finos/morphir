@@ -1,0 +1,3 @@
+import {
+  "finos/morphir-sdk/integer",
+}

@@ -16,6 +16,8 @@ import {
   "finos/morphir-sdk/set" @sdk_set,
   "finos/morphir-sdk/source_string",
   "finos/morphir-sdk/source_int32",
+  "finos/morphir-sdk/source_integer",
+  "finos/morphir-sdk/source_float",
   "finos/morphir-sdk/string" @sdk_string,
   "finos/morphir-ir/identities",
   "moonrockz/ion/ion",

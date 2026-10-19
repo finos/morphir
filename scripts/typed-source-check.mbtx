@@ -87,7 +87,11 @@ async fn main {
     ]),
   )
   @fs.write_file(root + "/models.json", output.stringify())
-  let members = [repository + "/pkgs/morphir-sdk", "./consumer"]
+  let members = [
+    repository + "/pkgs/morphir-sdk",
+    repository + "/pkgs/morphir-execution",
+    "./consumer",
+  ]
   let imports = ["\"finos/morphir-sdk@0.1.0\""]
   let aliases = [
     "\"finos/morphir-sdk\" @sdk", "\"finos/morphir-sdk/int\" @int", "\"finos/morphir-sdk/integer\" @integer",
@@ -131,6 +135,18 @@ async fn main {
           )
         _ => fail("Expected artifact content")
       }
+    }
+    let driver_artifacts = array(field(model, "driverArtifacts"))
+    if !driver_artifacts.is_empty() {
+      let driver = workspace + "/driver-" + id
+      @fs.mkdir(driver)
+      for artifact in driver_artifacts {
+        @fs.write_file(
+          driver + "/" + string(field(artifact, "path")),
+          string(field(artifact, "content")),
+        )
+      }
+      members.push("./driver-" + id)
     }
     members.append(["./original-" + id, "./generated-" + id])
     let module_name = string(field(model, "module"))
@@ -183,6 +199,56 @@ async fn main {
         .replace(old="CALL_AFTER", new=g("after"))
         .replace(old="CALL_SAME", new=g("same"))
         .replace(old="CALL_DIFFERENT", new=g("same")),
+      )
+    } else if kind == "integer" {
+      model_tests.write_string(
+        "test \"integer source and generated consumers preserve each width\" {\n  assert_eq(@integer.to_string(@int.from_int16(CALL_I16)), \"-32768\")\n  assert_eq(@integer.to_string(@int.from_int64(CALL_I64)), \"-9223372036854775808\")\n  assert_eq(@integer.to_string(@int.from_byte(CALL_BYTE)), \"0\")\n  assert_eq(@integer.to_string(@int.from_uint16(CALL_U16)), \"0\")\n  assert_eq(@integer.to_string(@int.from_uint32(CALL_U32)), \"0\")\n  assert_eq(@integer.to_string(@int.from_uint64(CALL_U64)), \"0\")\n  assert_eq(@integer.to_string(CALL_GROW), \"18446744073709551617\")\n  assert_eq(@ointeger.wrap_i16(), -32768)\n  assert_eq(@ointeger.wrap_i64(), -9223372036854775808L)\n  assert_eq(@ointeger.wrap_byte(), 0)\n  assert_eq(@ointeger.wrap_u16(), 0)\n  assert_eq(@ointeger.wrap_u32(), 0U)\n  assert_eq(@ointeger.wrap_u64(), 0UL)\n  assert_eq(@ointeger.grow().to_string(), \"18446744073709551617\")\n}\n"
+        .replace(old="CALL_I16", new=g("wrap-i16"))
+        .replace(old="CALL_I64", new=g("wrap-i64"))
+        .replace(old="CALL_BYTE", new=g("wrap-byte"))
+        .replace(old="CALL_U16", new=g("wrap-u16"))
+        .replace(old="CALL_U32", new=g("wrap-u32"))
+        .replace(old="CALL_U64", new=g("wrap-u64"))
+        .replace(old="CALL_GROW", new=g("grow")),
+      )
+    } else if kind == "float" {
+      model_tests.write_string(
+        "test \"Float32 and Float64 source and generated observations\" {\n  assert_eq(@ofloat.rounded().to_double(), 16777216.0)\n  assert_eq(CALL_ROUNDED, 16777216.0)\n  assert_eq(@ofloat.chained().to_double(), 16777216.0)\n  assert_eq(CALL_CHAINED, 16777216.0)\n  assert_eq(@ofloat.scaled().to_double(), 1.0)\n  assert_eq(CALL_SCALED, 1.0)\n  assert_eq(@ofloat.wider(), 9007199254740994.0)\n  assert_eq(CALL_WIDER, 9007199254740994.0)\n  assert_eq(@ofloat.negative_zero().to_double().reinterpret_as_uint64(), 9223372036854775808UL)\n  assert_eq(CALL_NEGZERO.reinterpret_as_uint64(), 9223372036854775808UL)\n  assert_true(@ofloat.tiny().to_double() > 0.0)\n  assert_true(CALL_TINY > 0.0 && CALL_TINY < 1.0e-44)\n  assert_true(@ofloat.infinity().is_inf())\n  assert_true(CALL_INFINITY.is_inf())\n  assert_true(@ofloat.invalid().is_nan())\n  assert_true(CALL_INVALID.is_nan())\n}\n"
+        .replace(old="CALL_ROUNDED", new=g("rounded"))
+        .replace(old="CALL_CHAINED", new=g("chained"))
+        .replace(old="CALL_SCALED", new=g("scaled"))
+        .replace(old="CALL_WIDER", new=g("wider"))
+        .replace(old="CALL_NEGZERO", new=g("negative-zero"))
+        .replace(old="CALL_TINY", new=g("tiny"))
+        .replace(old="CALL_TINY", new=g("tiny"))
+        .replace(old="CALL_INFINITY", new=g("infinity"))
+        .replace(old="CALL_INVALID", new=g("invalid")),
+      )
+      model_tests.write_string(
+        "test \"Float32 public arguments round at their declared boundary\" {\n  assert_eq(@ofloat.identity(Float::from_double(16777217.0)).to_double(), 16777216.0)\n  assert_eq(CALL_IDENTITY(16777217.0), 16777216.0)\n}\n"
+        .replace(old="CALL_IDENTITY", new=g("identity")),
+      )
+      model_tests.write_string(
+        "test \"Float64 signed zero subnormal and nonfinite outcomes\" {\n  assert_eq(@ofloat.double_zero().reinterpret_as_uint64(), 9223372036854775808UL)\n  assert_eq(CALL_DOUBLE_ZERO.reinterpret_as_uint64(), 9223372036854775808UL)\n  assert_eq(@ofloat.double_tiny().reinterpret_as_uint64(), 1UL)\n  assert_eq(CALL_DOUBLE_TINY.reinterpret_as_uint64(), 1UL)\n  assert_true(@ofloat.double_infinity().is_inf())\n  assert_true(CALL_DOUBLE_INFINITY.is_inf())\n  assert_true(@ofloat.double_invalid().is_nan())\n  assert_true(CALL_DOUBLE_INVALID.is_nan())\n}\n"
+        .replace(old="CALL_DOUBLE_ZERO", new=g("double-zero"))
+        .replace(old="CALL_DOUBLE_TINY", new=g("double-tiny"))
+        .replace(old="CALL_DOUBLE_INFINITY", new=g("double-infinity"))
+        .replace(old="CALL_DOUBLE_INVALID", new=g("double-invalid")),
+      )
+      model_tests.write_string(
+        "test \"generated Float32 and Float64 conversions keep exact and rounding policies\" {\n  let f32_edge = @integer.parse(\"16777217\")\n  assert_eq(CALL_TO_F32_ROUNDED(f32_edge), 16777216.0)\n  assert_true(CALL_TO_F32_EXACT(f32_edge) is None)\n  let f64_edge = @integer.parse(\"9007199254740993\")\n  assert_eq(CALL_TO_F64_ROUNDED(f64_edge), 9007199254740992.0)\n  assert_true(CALL_TO_F64_EXACT(f64_edge) is None)\n  let tie = @integer.parse(\"18014399583223809\")\n  assert_eq(CALL_TO_F32_ROUNDED(tie), 18014400656965632.0)\n  assert_eq(@integer.to_string(CALL_FROM_F32_TRUNCATED(1.5).unwrap()), \"1\")\n  assert_true(CALL_FROM_F32_EXACT(1.5) is None)\n  assert_true(CALL_FROM_F64_EXACT(1.5) is None)\n  assert_eq(@integer.to_string(CALL_FROM_F64_ROUNDED(1.5).unwrap()), \"2\")\n  assert_true(CALL_FROM_F64_EXACT(1.0 / 0.0) is None)\n  assert_eq(CALL_TO_F32_ROUNDED(f32_edge), @int.to_float32_rounded(f32_edge))\n  assert_eq(CALL_TO_F64_ROUNDED(f64_edge), @int.to_float64_rounded(f64_edge))\n}\n"
+        .replace(old="CALL_TO_F32_ROUNDED", new=g("to-f32-rounded"))
+        .replace(old="CALL_TO_F32_ROUNDED", new=g("to-f32-rounded"))
+        .replace(old="CALL_TO_F32_ROUNDED", new=g("to-f32-rounded"))
+        .replace(old="CALL_TO_F32_EXACT", new=g("to-f32-exact"))
+        .replace(old="CALL_TO_F64_ROUNDED", new=g("to-f64-rounded"))
+        .replace(old="CALL_TO_F64_ROUNDED", new=g("to-f64-rounded"))
+        .replace(old="CALL_TO_F64_EXACT", new=g("to-f64-exact"))
+        .replace(old="CALL_FROM_F32_TRUNCATED", new=g("from-f32-truncated"))
+        .replace(old="CALL_FROM_F32_EXACT", new=g("from-f32-exact"))
+        .replace(old="CALL_FROM_F64_EXACT", new=g("from-f64-exact"))
+        .replace(old="CALL_FROM_F64_EXACT", new=g("from-f64-exact"))
+        .replace(old="CALL_FROM_F64_ROUNDED", new=g("from-f64-rounded")),
       )
     } else if kind == "indexed" {
       model_tests.write_string(
@@ -289,7 +355,8 @@ async fn main {
       )
     }
     let original_alias = if [
-        "foundation", "numeric", "indexed", "strings", "bounded", "ordered", "orderedbounded",
+        "foundation", "numeric", "integer", "float", "indexed", "strings", "bounded", "ordered",
+        "orderedbounded",
       ].contains(kind) {
       kind
     } else {
@@ -321,6 +388,8 @@ async fn main {
     "import {" + aliases.join(",\n") + "}\n",
   )
   @fs.write_file(consumer + "/consumer_test.mbt", tests.to_string())
+  // Resolve the driver's additional execution module before frozen lane builds.
+  ignore(command("moon", ["check", "--target", "native"], cwd=workspace))
   let lanes : Array[Json] = []
   for mode in ["debug", "release"] {
     let args = [
@@ -331,7 +400,14 @@ async fn main {
     }
     let log = command("moon", args, cwd=workspace)
     @fs.write_file(root + "/" + mode + ".log", log)
-    assert_eq(log.split("Total tests: 32, passed: 32, failed: 0.").count(), 5)
+    assert_eq(log.split("Total tests: 37, passed: 37, failed: 0.").count(), 5)
+    let driver_args = [
+      "check", "--frozen", "--target", "all",
+    ]
+    if mode == "release" {
+      driver_args.push("--release")
+    }
+    ignore(command("moon", driver_args, cwd=workspace))
     lanes.push(
       ({ "mode": mode, "targets": ["native", "js", "wasm", "wasm-gc"] } : Json),
     )
@@ -382,13 +458,16 @@ async fn main {
       "classicSemanticPin": "bc99af69a8b24d391311fae3822a87eafef3c334",
       "sourceStringExtension": "morphir-moonbit-source-string-v1",
       "sourceInt32Extension": "morphir-moonbit-source-int32-v1",
+      "sourceIntegerExtension": "morphir-moonbit-source-integer-v1",
+      "sourceFloatExtension": "morphir-moonbit-source-float-v1",
       "sourceStringIndexExtension": "morphir-moonbit-source-string-index-v1",
       "lanes": lanes,
       "sdkFiles": identities,
       "models": output,
       "supportedProfiles": [
         "moonbit-model-library-v1", "moonbit-model-library-2026-10-17", "moonbit-model-int32-library-v1",
-        "moonbit-model-library-2026-10-19",
+        "moonbit-model-library-2026-10-19", "moonbit-model-integer-library-v1",
+        "moonbit-model-float-library-v1",
       ],
       "scope": "Local original source, Scheme, generated direct consumers and private access. Installed qualification remains a separate task.",
     } : Json)

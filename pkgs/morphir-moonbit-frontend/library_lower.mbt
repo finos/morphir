@@ -107,34 +107,126 @@ fn LibraryLowerer::expression(
   library_poll(self.cancelled)
   match expr {
     Boolean(value, source) => self.literal(value, source)
-    Number(value, authored, source) => {
-      let exact = library_integer_type()
-      let attrs = library_attributes(source, exact)
+    Floating(value, authored, scalar, source) => {
+      let float64 = @ir.Type::Reference(
+        @ir.TypeAttributes::default(),
+        @ir.FQName::parse("morphir/SDK:basics#float"),
+        [],
+      )
+      let attrs = library_attributes(source, float64)
       attrs.extensions["moonbit-source-number-v1"] = @ir.Data::Object(
         Map::from_array([
           ("kind", @ir.Data::Text("literal")),
           ("authored_token", @ir.Data::Text(authored)),
-          ("canonical_value", @ir.Data::Text(value)),
-          ("resolved_type", @ir.Data::Text("Int32")),
-          ("signedness", @ir.Data::Text("signed")),
-          ("width", @ir.Data::Number("32")),
-          ("compiler", @ir.Data::Text("0.10.15+943464bfa")),
+          ("resolved_type", @ir.Data::Text(scalar.source_name())),
+          (
+            "float64_bits",
+            @ir.Data::Text(value.reinterpret_as_uint64().to_string()),
+          ),
+          (
+            "float32_bits",
+            @ir.Data::Text(
+              if scalar == Floating32 {
+                Float::from_double(value).reinterpret_as_uint().to_string()
+              } else {
+                ""
+              },
+            ),
+          ),
+          (
+            "precision",
+            @ir.Data::Number(if scalar == Floating32 { "24" } else { "53" }),
+          ),
         ]),
       )
+      let literal = @ir.Value::Literal(attrs, @ir.Literal::FloatLiteral(value))
+      if scalar == Floating32 {
+        let float32 = self.expr_type(expr)
+        let converted = self.invoke(
+          "morphir/moonbit-source:float32#from-float64",
+          [(literal, float64)],
+          float32,
+          source,
+          "float32-literal-round",
+          metadata_key="moonbit-source-number-v1",
+          runtime_extension="morphir-moonbit-source-float-v1",
+        )
+        match converted {
+          @ir.Value::Apply(conversion_attrs, _, _) =>
+            conversion_attrs.extensions["moonbit-source-number-v1"] = @ir.Data::Object(
+              Map::from_array([
+                ("kind", @ir.Data::Text("conversion")),
+                ("policy", @ir.Data::Text("rounded-to-binary32")),
+                ("input_representation", @ir.Data::Text("IEEE-binary64")),
+                ("output_representation", @ir.Data::Text("IEEE-binary32")),
+                (
+                  "binding",
+                  @ir.Data::Text("morphir/moonbit-source:float32#from-float64"),
+                ),
+                (
+                  "float32_bits",
+                  @ir.Data::Text(
+                    Float::from_double(value).reinterpret_as_uint().to_string(),
+                  ),
+                ),
+                (
+                  "source_start_line",
+                  @ir.Data::Number(source.start_line.to_string()),
+                ),
+                (
+                  "source_start_column",
+                  @ir.Data::Number(source.start_column.to_string()),
+                ),
+              ]),
+            )
+          _ => abort("floating literal conversion must apply a binding")
+        }
+        converted
+      } else {
+        literal
+      }
+    }
+    Number(value, authored, scalar, source) => {
+      let exact = library_integer_type()
+      let attrs = library_attributes(source, exact)
+      let facts = Map::from_array([
+        ("kind", @ir.Data::Text("literal")),
+        ("authored_token", @ir.Data::Text(authored)),
+        ("canonical_value", @ir.Data::Text(value)),
+        ("resolved_type", @ir.Data::Text(scalar.source_name())),
+        (
+          "signedness",
+          @ir.Data::Text(if scalar.is_signed() { "signed" } else { "unsigned" }),
+        ),
+        ("compiler", @ir.Data::Text("0.10.15+943464bfa")),
+      ])
+      if scalar.bits() == 0 {
+        facts["precision"] = @ir.Data::Text("arbitrary")
+      } else {
+        facts["width"] = @ir.Data::Number(scalar.bits().to_string())
+      }
+      attrs.extensions["moonbit-source-number-v1"] = @ir.Data::Object(facts)
+      if scalar == UnboundedInteger {
+        return @ir.Value::Literal(attrs, @ir.Literal::IntegerLiteral(value))
+      }
       let result = LibraryTypeUse::{
-        scalar: SignedInt32,
-        spelling: "Int32",
+        scalar,
+        spelling: scalar.source_name(),
         source,
         profile: self.profile,
       }.to_ir(self.metadata)
       self.invoke(
-        "morphir/moonbit-source:int32#normalize",
+        "morphir/moonbit-source:" + scalar.source_module() + "#normalize",
         [(@ir.Value::Literal(attrs, @ir.Literal::IntegerLiteral(value)), exact)],
         result,
         source,
         "literal-normalization",
         metadata_key="moonbit-source-number-v1",
-        runtime_extension="morphir-moonbit-source-int32-v1",
+        runtime_extension=if scalar == SignedInt32 {
+          "morphir-moonbit-source-int32-v1"
+        } else {
+          "morphir-moonbit-source-integer-v1"
+        },
       )
     }
     Text(value, authored, source) => {
@@ -179,8 +271,37 @@ fn LibraryLowerer::expression(
         name,
       )
     Negation(value, source) => self.negate(self.expression(value), source)
-    NumericNegation(value, source) =>
-      self.int32_negate(self.expression(value), source)
+    NumericNegation(value, source) => {
+      if self.expr_type(value) is @ir.Type::Reference(_, name, []) &&
+        (
+          name.to_canonical() == "morphir/moonbit-source:float32#float32" ||
+          name.to_canonical() == "morphir/SDK:basics#float"
+        ) {
+        let ty = self.expr_type(value)
+        return self.invoke(
+          if name.to_canonical() == "morphir/SDK:basics#float" {
+            "morphir/SDK:basics#negate"
+          } else {
+            "morphir/moonbit-source:float32#negate"
+          },
+          [(self.expression(value), ty)],
+          ty,
+          source,
+          "float-negate",
+          runtime_extension=if name.to_canonical() == "morphir/SDK:basics#float" {
+            ""
+          } else {
+            "morphir-moonbit-source-float-v1"
+          },
+        )
+      }
+      let scalar = self.integer_scalar(value).unwrap()
+      if scalar == SignedInt32 {
+        self.int32_negate(self.expression(value), source)
+      } else {
+        self.integer_negate(self.expression(value), scalar, source)
+      }
+    }
     StringLength(value, source) =>
       self.string_length(self.expression(value), source)
     StringSlice(value, start, end, source) =>
@@ -331,9 +452,82 @@ fn LibraryLowerer::expression(
           )
         }
       }
-      if self.expr_type(lhs) is @ir.Type::Reference(_, name, _) &&
-        name.to_canonical() == "morphir/SDK:int#int-32" {
-        return self.int32_binary(op, left, right, source)
+      if self.integer_scalar(lhs) is Some(scalar) {
+        return if scalar == SignedInt32 {
+          self.int32_binary(op, left, right, source)
+        } else {
+          self.integer_binary(op, left, right, scalar, source)
+        }
+      }
+      if self.expr_type(lhs) is @ir.Type::Reference(_, float_name, []) &&
+        (
+          float_name.to_canonical() == "morphir/moonbit-source:float32#float32" ||
+          float_name.to_canonical() == "morphir/SDK:basics#float"
+        ) {
+        let ty = self.expr_type(lhs)
+        let operation = match op {
+          "+" => "add"
+          "-" => "subtract"
+          "*" => "multiply"
+          "/" => "divide"
+          "==" => "equal"
+          "!=" => "not-equal"
+          "<" => "less-than"
+          "<=" => "less-than-or-equal"
+          ">" => "greater-than"
+          _ => "greater-than-or-equal"
+        }
+        let float32 = float_name.to_canonical() ==
+          "morphir/moonbit-source:float32#float32"
+        let result = self.invoke(
+          (if float32 {
+            "morphir/moonbit-source:float32#"
+          } else {
+            "morphir/SDK:basics#"
+          }) +
+          operation,
+          [(left, ty), (right, ty)],
+          if ["+", "-", "*", "/"].contains(op) {
+            ty
+          } else {
+            self.boolean
+          },
+          source,
+          "float-" + operation,
+          metadata_key="moonbit-source-number-v1",
+          runtime_extension=if float32 {
+            "morphir-moonbit-source-float-v1"
+          } else {
+            ""
+          },
+        )
+        if float32 && ["+", "-", "*", "/"].contains(op) {
+          match result {
+            @ir.Value::Apply(operation_attrs, _, _) =>
+              operation_attrs.extensions["moonbit-source-number-v1"] = @ir.Data::Object(
+                Map::from_array([
+                  ("kind", @ir.Data::Text("operation")),
+                  ("policy", @ir.Data::Text("binary32-operation-rounding")),
+                  (
+                    "binding",
+                    @ir.Data::Text(
+                      "morphir/moonbit-source:float32#" + operation,
+                    ),
+                  ),
+                  (
+                    "source_start_line",
+                    @ir.Data::Number(source.start_line.to_string()),
+                  ),
+                  (
+                    "source_start_column",
+                    @ir.Data::Number(source.start_column.to_string()),
+                  ),
+                ]),
+              )
+            _ => abort("floating operation must apply a binding")
+          }
+        }
+        return result
       }
       match op {
         "&&" =>
@@ -425,6 +619,66 @@ fn library_lower(
       lowerer.types[name] = ty
     }
     let mut body = lowerer.expression(function.body)
+    if mode.supports_float() && declaration.public {
+      if declaration.output_type.scalar == Floating32 {
+        body = lowerer.round_float32(
+          body,
+          declaration.body_source,
+          "public-result",
+        )
+      }
+      for j = function.parameters.length() - 1; j >= 0; j = j - 1 {
+        if declaration.input_types[j].scalar == Floating32 {
+          let ty = declaration.input_types[j].to_ir(true)
+          let name = function.parameters[j]
+          let source = declaration.parameters[j].1
+          let rounded = lowerer.round_float32(
+            @ir.Value::Variable(library_attributes(source, ty), name),
+            source,
+            "public-argument",
+          )
+          body = @ir.Value::LetDefinition(
+            library_attributes(
+              declaration.body_source,
+              declaration.output_type.to_ir(true),
+            ),
+            name,
+            @ir.ValueDefinition::ExpressionBody([], ty, rounded),
+            body,
+          )
+        }
+      }
+    }
+    if mode.supports_integer() && declaration.public {
+      if declaration.output_type.scalar == UnboundedInteger {
+        body = lowerer.require_integer_budget(
+          body,
+          declaration.body_source,
+          "public-result",
+        )
+      }
+      for j = function.parameters.length() - 1; j >= 0; j = j - 1 {
+        if declaration.input_types[j].scalar == UnboundedInteger {
+          let ty = declaration.input_types[j].to_ir(true)
+          let name = function.parameters[j]
+          let source = declaration.parameters[j].1
+          let value = lowerer.require_integer_budget(
+            @ir.Value::Variable(library_attributes(source, ty), name),
+            source,
+            "public-argument",
+          )
+          body = @ir.Value::LetDefinition(
+            library_attributes(
+              declaration.body_source,
+              declaration.output_type.to_ir(true),
+            ),
+            name,
+            @ir.ValueDefinition::ExpressionBody([], ty, value),
+            body,
+          )
+        }
+      }
+    }
     if mode.supports_strings() && declaration.public {
       if declaration.output_type.scalar == Text {
         body = lowerer.require_string(
@@ -530,6 +784,16 @@ fn library_lower(
   if mode.supports_numeric() {
     source_modules[@ir.Path::parse("int32")] = @sdk_spec.source_int32_module_specification()
   }
+  if mode.supports_integer() {
+    for (name, module_spec) in @sdk_spec.source_integer_specification().modules {
+      source_modules[name] = module_spec
+    }
+  }
+  if mode.supports_float() {
+    for (name, module_spec) in @sdk_spec.source_float_specification().modules {
+      source_modules[name] = module_spec
+    }
+  }
   let ir = @ir.IRFile::new(
     @ir.Distribution::Library(
       package_name,
@@ -577,13 +841,7 @@ fn LibraryLowerer::expr_type(
 ) -> @ir.Type raise {
   match expr {
     Boolean(_, _) | Negation(_, _) => self.boolean
-    NumericNegation(_, source) =>
-      LibraryTypeUse::{
-        scalar: SignedInt32,
-        spelling: "Int32",
-        source,
-        profile: self.profile,
-      }.to_ir(self.metadata)
+    NumericNegation(value, _) => self.expr_type(value)
     StringLength(_, source) =>
       LibraryTypeUse::{
         scalar: SignedInt32,
@@ -598,10 +856,17 @@ fn LibraryLowerer::expr_type(
         source,
         profile: self.profile,
       }.to_ir(self.metadata)
-    Number(_, _, source) =>
+    Number(_, _, scalar, source) =>
       LibraryTypeUse::{
-        scalar: SignedInt32,
-        spelling: "Int32",
+        scalar,
+        spelling: scalar.source_name(),
+        source,
+        profile: self.profile,
+      }.to_ir(self.metadata)
+    Floating(_, _, scalar, source) =>
+      LibraryTypeUse::{
+        scalar,
+        spelling: scalar.source_name(),
         source,
         profile: self.profile,
       }.to_ir(self.metadata)
@@ -610,7 +875,7 @@ fn LibraryLowerer::expr_type(
         self.metadata,
       )
     Binary(op, lhs, _, _) =>
-      if ["+", "-", "*"].contains(op) {
+      if ["+", "-", "*", "/"].contains(op) {
         self.expr_type(lhs)
       } else {
         self.boolean
@@ -630,6 +895,30 @@ fn library_integer_type() -> @ir.Type raise {
     @ir.TypeAttributes::default(),
     @ir.FQName::parse("morphir/SDK:basics#int"),
     [],
+  )
+}
+
+///|
+fn LibraryLowerer::round_float32(
+  self : LibraryLowerer,
+  value : @ir.Value,
+  source : @ir.SourceLocation,
+  role : String,
+) -> @ir.Value raise {
+  let float32 = LibraryTypeUse::{
+    scalar: Floating32,
+    spelling: "Float",
+    source,
+    profile: self.profile,
+  }.to_ir(self.metadata)
+  self.invoke(
+    "morphir/moonbit-source:float32#round-boundary",
+    [(value, float32)],
+    float32,
+    source,
+    role,
+    metadata_key="moonbit-source-number-v1",
+    runtime_extension="morphir-moonbit-source-float-v1",
   )
 }
 

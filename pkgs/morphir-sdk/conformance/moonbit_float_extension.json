@@ -1,0 +1,36 @@
+{
+  "profile": "morphir-moonbit-source-float-v1",
+  "classification": "Additive MoonBit Float32 source operations and explicit Int conversion policies; excluded from the classic morphir-elm oracle inventory",
+  "classicSemanticPin": "bc99af69a8b24d391311fae3822a87eafef3c334",
+  "specificationApis": [
+    "finos/morphir-sdk-spec.numeric_sdk_specification",
+    "finos/morphir-sdk-spec.source_float_specification"
+  ],
+  "sourceType": "morphir/moonbit-source:float32#float32",
+  "representation": "IEEE binary32, transported as the exact promoted Float64 value; each source operation rounds in native Float arithmetic",
+  "literalPolicy": "Finite source literals only; authored spelling and rounded IEEE bits are retained in source metadata",
+  "outcomeObservation": "Execution Float64 bit pattern, preserving signed zero and representing infinity and NaN outcomes without nonfinite IR literals",
+  "bindings": [
+    { "fqName": "morphir/moonbit-source:float32#from-float64", "runtime": "finos/morphir-sdk/source_float:round32", "policy": "rounded-to-binary32" },
+    { "fqName": "morphir/moonbit-source:float32#round-boundary", "runtime": "finos/morphir-sdk/source_float:round32", "policy": "rounded-to-binary32" },
+    { "fqName": "morphir/moonbit-source:float32#add", "runtime": "finos/morphir-sdk/source_float:add32", "policy": "binary32-operation-rounding" },
+    { "fqName": "morphir/moonbit-source:float32#subtract", "runtime": "finos/morphir-sdk/source_float:subtract32", "policy": "binary32-operation-rounding" },
+    { "fqName": "morphir/moonbit-source:float32#multiply", "runtime": "finos/morphir-sdk/source_float:multiply32", "policy": "binary32-operation-rounding" },
+    { "fqName": "morphir/moonbit-source:float32#divide", "runtime": "finos/morphir-sdk/source_float:divide32", "policy": "binary32-operation-rounding" },
+    { "fqName": "morphir/SDK:int#from-float64-exact", "runtime": "finos/morphir-sdk/int:from_float64_exact", "policy": "checked-exact" },
+    { "fqName": "morphir/SDK:int#from-float64-truncated", "runtime": "finos/morphir-sdk/int:from_float64_truncated", "policy": "truncated" },
+    { "fqName": "morphir/SDK:int#from-float64-floor", "runtime": "finos/morphir-sdk/int:from_float64_floor", "policy": "floor" },
+    { "fqName": "morphir/SDK:int#from-float64-ceiling", "runtime": "finos/morphir-sdk/int:from_float64_ceiling", "policy": "ceiling" },
+    { "fqName": "morphir/SDK:int#from-float64-rounded", "runtime": "finos/morphir-sdk/int:from_float64_rounded", "policy": "rounded" },
+    { "fqName": "morphir/SDK:int#from-float32-exact", "runtime": "finos/morphir-sdk/int:from_float32_exact", "policy": "checked-exact" },
+    { "fqName": "morphir/SDK:int#from-float32-truncated", "runtime": "finos/morphir-sdk/int:from_float32_truncated", "policy": "truncated" },
+    { "fqName": "morphir/SDK:int#from-float32-floor", "runtime": "finos/morphir-sdk/int:from_float32_floor", "policy": "floor" },
+    { "fqName": "morphir/SDK:int#from-float32-ceiling", "runtime": "finos/morphir-sdk/int:from_float32_ceiling", "policy": "ceiling" },
+    { "fqName": "morphir/SDK:int#from-float32-rounded", "runtime": "finos/morphir-sdk/int:from_float32_rounded", "policy": "rounded" },
+    { "fqName": "morphir/SDK:int#to-float64-exact", "runtime": "finos/morphir-sdk/int:to_float64_exact", "policy": "checked-exact" },
+    { "fqName": "morphir/SDK:int#to-float64-rounded", "runtime": "finos/morphir-sdk/int:to_float64_rounded", "policy": "rounded" },
+    { "fqName": "morphir/SDK:int#to-float32-exact", "runtime": "finos/morphir-sdk/int:to_float32_exact", "policy": "checked-exact" },
+    { "fqName": "morphir/SDK:int#to-float32-rounded", "runtime": "finos/morphir-sdk/int:to_float32_rounded", "policy": "rounded" }
+  ],
+  "sourceCallableConversion": false
+}

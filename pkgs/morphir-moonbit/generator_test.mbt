@@ -72,6 +72,35 @@ fn library_source(input : @generator.Input) -> String raise {
 }
 
 ///|
+fn with_float_extension(input : @generator.Input) -> @generator.Input raise {
+  guard input.ir.distribution
+    is Library(package_name, dependencies, package_def) else {
+    fail("Expected library")
+  }
+  let registered = dependencies.copy()
+  registered[@ir.Path::parse("morphir/moonbit-source")] = {
+    modules: Map::from_array([
+      (
+        @ir.Path::parse("float32"),
+        @ir.ModuleSpecification::{
+          annotations: [],
+          types: Map([]),
+          values: Map([]),
+          doc: None,
+        },
+      ),
+    ]),
+  }
+  {
+    ..input,
+    ir: @ir.IRFile::new(
+      @ir.Distribution::Library(package_name, registered, package_def),
+      format_version=input.ir.format_version,
+    ),
+  }
+}
+
+///|
 test "a private nominal type that a public signature or public payload names is emitted abstract" {
   let nominal = @fixtures.scalar("sample:main#hidden")
   let hidden_case = @ir.Value::Constructor(
@@ -729,6 +758,74 @@ test "power dispatch accepts integer and float signatures and rejects mixed inpu
       ),
     ).0,
     "moonbit.sdk_signature",
+  )
+}
+
+///|
+test "numeric float extension generation keeps checked and rounded signatures distinct" {
+  let attrs = @ir.TypeAttributes::default()
+  let integer = @fixtures.scalar("morphir/SDK:basics#int")
+  let float64 = @fixtures.scalar("morphir/SDK:basics#float")
+  let float32 = @fixtures.scalar("morphir/moonbit-source:float32#float32")
+  let maybe_int = @ir.Type::Reference(
+    attrs,
+    @ir.FQName::parse("morphir/SDK:maybe#maybe"),
+    [integer],
+  )
+  for
+    (name, input, output) in [
+      ("from-float64-exact", float64, maybe_int),
+      ("to-float32-rounded", integer, float32),
+    ] {
+    let signature = @ir.Type::Function(attrs, input, output)
+    let reference = @ir.Value::Reference(
+      { ..@fixtures.attrs(), inferred_type: Some(signature), },
+      @ir.FQName::parse("morphir/SDK:int#" + name),
+    )
+    let source = library_source(
+      with_float_extension(single(signature, reference)),
+    )
+    assert_true(
+      source.contains(
+        "@int." + name.split("-").map(StringView::to_owned).collect().join("_"),
+      ),
+    )
+  }
+  for
+    (name, input, output) in [
+      ("from-float32-exact", float64, maybe_int),
+      ("from-float64-exact", float32, maybe_int),
+      ("to-float32-rounded", integer, float64),
+      ("to-float64-rounded", integer, float32),
+    ] {
+    let signature = @ir.Type::Function(attrs, input, output)
+    let reference = @ir.Value::Reference(
+      { ..@fixtures.attrs(), inferred_type: Some(signature), },
+      @ir.FQName::parse("morphir/SDK:int#" + name),
+    )
+    assert_eq(
+      error(with_float_extension(single(signature, reference))).0,
+      "moonbit.sdk_signature",
+    )
+  }
+  let absent = @ir.Value::Literal(
+    @ir.ValueAttributes::default(),
+    @ir.Literal::FloatLiteral(1.0),
+  )
+  assert_eq(
+    error(single(float32, absent)).0,
+    "moonbit.missing_source_extension",
+  )
+  let output = @generator.generate(
+    with_float_extension(single(float32, absent)),
+  )
+  let driver = @generator.invocation_driver(output, ["sample:main#value"])
+  guard driver.search_by(a => a.path == "moon.pkg") is Some(i) &&
+    driver[i].content is Text(manifest) else {
+    fail("Float32 invocation driver manifest")
+  }
+  assert_true(
+    manifest.contains("\"finos/morphir-sdk/source_float\" @source_float"),
   )
 }
 

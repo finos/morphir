@@ -67,8 +67,8 @@ fn generate_library(
       "Nonempty unit identity and positive limits are required",
     )
   }
-  let (package_name, package_def) = match input.ir.distribution {
-    Library(name, _, definition) => (name, definition)
+  let (package_name, dependencies, package_def) = match input.ir.distribution {
+    Library(name, dependencies, definition) => (name, dependencies, definition)
     _ =>
       raise Invalid(
         "moonbit.unsupported_distribution",
@@ -89,6 +89,14 @@ fn generate_library(
     @identities.nodes(input.unit_id, input.ir).map(id => (id, true)),
   )
   let index : Map[@ir.FQName, Declaration] = Map([])
+  let source_extensions = Map([])
+  for dependency_name, specification in dependencies {
+    if dependency_name.to_canonical() == "morphir/moonbit-source" {
+      for module_name, _ in specification.modules {
+        source_extensions[module_name.to_canonical()] = true
+      }
+    }
+  }
   let lowering : Lowering = {
     names: TargetNames::new(input, naming, metadata_capabilities),
     locals: None,
@@ -99,6 +107,7 @@ fn generate_library(
     exported_shapes: Map([]),
     abstract_types: Map([]),
     imports: Map::from_array([("sdk", true)]),
+    source_extensions,
   }
   for module_name, access in package_def.modules {
     for name, entry in access.value.types {
@@ -468,6 +477,16 @@ fn generate_library(
           }) +
           (if lowering.imports.contains("source_int32") {
             "+moonbit-source-int32-v1"
+          } else {
+            ""
+          }) +
+          (if lowering.imports.contains("source_integer") {
+            "+moonbit-source-integer-v1"
+          } else {
+            ""
+          }) +
+          (if lowering.imports.contains("source_float") {
+            "+moonbit-source-float-v1"
           } else {
             ""
           }) +

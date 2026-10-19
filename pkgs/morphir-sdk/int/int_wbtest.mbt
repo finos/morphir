@@ -19,3 +19,20 @@ test "fixed width bounds are checked" {
     Some(@integer.parse("9223372036854775807")),
   )
 }
+
+///|
+test "unsigned width conversions check the whole range without signed narrowing" {
+  for
+    (limit, to_value) in [
+      ("255", fn(n) { to_byte(n).map(from_byte) }),
+      ("65535", fn(n) { to_uint16(n).map(from_uint16) }),
+      ("4294967295", fn(n) { to_uint32(n).map(from_uint32) }),
+      ("18446744073709551615", fn(n) { to_uint64(n).map(from_uint64) }),
+    ] {
+    let maximum = @integer.parse(limit)
+    assert_eq(to_value(@integer.from_int(-1)), None)
+    assert_eq(to_value(@integer.from_int(0)), Some(@integer.from_int(0)))
+    assert_eq(to_value(maximum), Some(maximum))
+    assert_eq(to_value(@integer.add(maximum, @integer.from_int(1))), None)
+  }
+}

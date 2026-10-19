@@ -9,11 +9,12 @@ fn boundary_type(t : Lowered) -> @execution.ValueType? {
   Some(
     match t {
       Atom(SignedInt32) => @execution.Custom("morphir/SDK:int#int-32")
+      Atom(BoundedInteger(name)) => @execution.Custom("morphir/SDK:int#" + name)
       Atom(Integer) => @execution.Int
       Atom(Boolean) => @execution.Bool
       Atom(Unit) => @execution.Unit
       Atom(Decimal) => @execution.Decimal
-      Atom(Float) => @execution.Float64
+      Atom(Float) | Atom(Float32) => @execution.Float64
       Atom(Text) => @execution.Text
       Atom(Character) => @execution.Character
       Product(items) => @execution.Product(items.map(required))
@@ -89,6 +90,37 @@ fn invocation_codecs(
           "@execution.Constructor(\"morphir/SDK:int#int-32\", \"morphir/SDK:int#int32\", [@execution.Integer(@integer.to_bigint(@int.from_int32(v)))])",
         )
       }
+      Atom(BoundedInteger(name)) => {
+        let compact = name.replace(old="-", new="")
+        let tag = "morphir/SDK:int#" +
+          (if name.has_prefix("int-") { compact } else { name })
+        let owner = "morphir/SDK:int#" + name
+        let function = if name == "byte" { "byte" } else { compact }
+        definitions.push(@execution.CustomType::{
+          name: owner,
+          constructors: [{ name: tag, inputs: [@execution.Int], }],
+        })
+        (
+          "match v { Constructor(" +
+          quote(owner) +
+          ", " +
+          quote(tag) +
+          ", [Integer(n)]) => { guard @int.to_" +
+          function +
+          "(@integer.from_bigint(n)) is Some(value) else { raise @execution.Invalid(\"execution." +
+          compact +
+          "_range\") }; value }; _ => " +
+          invalid +
+          " }",
+          "@execution.Constructor(" +
+          quote(owner) +
+          ", " +
+          quote(tag) +
+          ", [@execution.Integer(@integer.to_bigint(@int.from_" +
+          function +
+          "(v)))])",
+        )
+      }
       Atom(Integer) =>
         (
           "match v { Integer(n) => @integer.from_bigint(n); _ => " +
@@ -110,6 +142,15 @@ fn invocation_codecs(
           " }",
           "@execution.Float64(v.reinterpret_as_uint64())",
         )
+      Atom(Float32) => {
+        ctx.imports["source_float"] = true
+        (
+          "match v { Float64(bits) => @source_float.round32(bits.reinterpret_as_double()); _ => " +
+          invalid +
+          " }",
+          "@execution.Float64(@source_float.round32(v).reinterpret_as_uint64())",
+        )
+      }
       Atom(Decimal) =>
         (
           "match v { Decimal(n, e) => { let (n, e) = @execution.normalize_decimal(n,e); guard @decimal.from_string(@execution.decimal_source(n,e)) is Some(d) else { " +

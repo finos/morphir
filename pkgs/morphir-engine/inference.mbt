@@ -1,9 +1,37 @@
 ///|
 /// The dependency specifications for inference: the SDK, then the distribution's own dependencies, which
 /// `@typing.infer` adds itself.
-fn inference_deps() -> Map[@ir.PackageName, @ir.PackageSpecification] {
+fn inference_deps(
+  file : @ir.IRFile,
+) -> Map[@ir.PackageName, @ir.PackageSpecification] {
+  let numeric_source = match file.distribution {
+    Library(_, dependencies, _) => {
+      let source_package = @ir.Path::parse("morphir/moonbit-source") catch {
+        _ => panic()
+      }
+      match dependencies.get(source_package) {
+        Some(spec) =>
+          spec.modules.contains(
+            @ir.Path::parse("numeric") catch {
+              _ => panic()
+            },
+          )
+        None => false
+      }
+    }
+    _ => false
+  }
   Map::from_array([
-    (@sdk_spec.sdk_package_name(), @sdk_spec.sdk_specification()),
+    (
+      @sdk_spec.sdk_package_name(),
+      if numeric_source {
+        @sdk_spec.numeric_sdk_specification() catch {
+          _ => panic()
+        }
+      } else {
+        @sdk_spec.sdk_specification()
+      },
+    ),
   ])
 }
 
@@ -16,7 +44,11 @@ pub fn infer_unit(
   mode : @typing.Mode,
   checkpoint : Bool,
 ) -> @data.IRUnit raise {
-  let filled = @typing.infer(unit.distribution, inference_deps(), mode)
+  let filled = @typing.infer(
+    unit.distribution,
+    inference_deps(unit.distribution),
+    mode,
+  )
   guard mode is Fill else { return unit }
   if !checkpoint {
     return { ..unit, distribution: filled, }

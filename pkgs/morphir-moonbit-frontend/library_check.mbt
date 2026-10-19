@@ -33,12 +33,19 @@ fn library_check_body(
   }
   match expr {
     Boolean(_, source) => library_boolean(source)
-    Number(_, _, source) =>
+    Number(_, _, scalar, source) =>
       {
-        scalar: SignedInt32,
-        spelling: "Int32",
+        scalar,
+        spelling: scalar.source_name(),
         source,
-        profile: INT32_LIBRARY_PROFILE,
+        profile: mode.profile(),
+      }
+    Floating(_, _, scalar, source) =>
+      {
+        scalar,
+        spelling: scalar.source_name(),
+        source,
+        profile: mode.profile(),
       }
     Text(_, _, source) =>
       { scalar: Text, spelling: "String", source, profile: "", }
@@ -53,13 +60,15 @@ fn library_check_body(
       ty
     }
     NumericNegation(value, source) => {
-      let ty = LibraryTypeUse::{
-        scalar: SignedInt32,
-        spelling: "Int32",
-        source,
-        profile: INT32_LIBRARY_PROFILE,
+      let ty = check(value)
+      if !(ty.scalar.is_signed() || ty.scalar.is_floating()) ||
+        !mode.supports_numeric() {
+        library_error(
+          "unsupported_operator",
+          "Unary minus requires a signed integer",
+          Some(source),
+        )
       }
-      library_expect(check(value), ty, source)
       ty
     }
     StringLength(value, source) => {
@@ -95,7 +104,7 @@ fn library_check_body(
       let left = check(lhs)
       let right = check(rhs)
       library_expect(right, left, source)
-      if left.scalar == SignedInt32 && mode.supports_numeric() {
+      if left.scalar.is_integer() && mode.supports_numeric() {
         if ["+", "-", "*"].contains(op) {
           left
         } else if ["==", "!=", "<", "<=", ">", ">="].contains(op) {
@@ -103,7 +112,20 @@ fn library_check_body(
         } else {
           library_error(
             "unsupported_operator",
-            "Operator is not defined for Int32",
+            "Operator is not defined for " + left.scalar.source_name(),
+            Some(source),
+          )
+          abort("unreachable")
+        }
+      } else if left.scalar.is_floating() && mode.supports_float() {
+        if ["+", "-", "*", "/"].contains(op) {
+          left
+        } else if ["==", "!=", "<", "<=", ">", ">="].contains(op) {
+          library_boolean(source)
+        } else {
+          library_error(
+            "unsupported_operator",
+            "Unsupported floating operator",
             Some(source),
           )
           abort("unreachable")

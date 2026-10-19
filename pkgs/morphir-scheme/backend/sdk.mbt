@@ -69,6 +69,10 @@ fn sdk_dispatch_inner(
   if name.has_prefix("morphir/moonbit-source:") {
     return if name.has_prefix("morphir/moonbit-source:int32#") {
       source_int32_dispatch(name, args)
+    } else if source_integer_arity(name) is Some(_) {
+      source_integer_dispatch(name, args)
+    } else if source_float_arity(name) is Some(_) {
+      source_float_dispatch(name, args)
     } else {
       source_string_dispatch(name, args)
     }
@@ -123,7 +127,19 @@ fn install_sdk(
         None =>
           match source_int32_arity(name) {
             Some(n) => Some(n)
-            None => sdk_expected_arity(name)
+            None =>
+              match source_integer_arity(name) {
+                Some(n) => Some(n)
+                None =>
+                  match source_float_arity(name) {
+                    Some(n) => Some(n)
+                    None =>
+                      match numeric_int_arity(name) {
+                        Some(n) => Some(n)
+                        None => sdk_expected_arity(name)
+                      }
+                  }
+              }
           }
       }) {
       Some(expected) => @scheme.arity(args[1:].to_owned(), expected, name)
@@ -146,6 +162,9 @@ fn install_sdk(
     (name, arity) in sdk_registry() +
     source_string_registry() +
     source_int32_registry() +
+    source_integer_registry() +
+    source_float_registry() +
+    numeric_int_registry() +
     sdk_int_canonical_aliases() {
     runtime.register_native_binding("accelerator:" + name, arity, fn(
       rt,

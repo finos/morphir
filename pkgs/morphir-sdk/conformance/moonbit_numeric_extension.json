@@ -1,0 +1,26 @@
+{
+  "profile": "morphir-sdk-moonbit-numeric-v1",
+  "classification": "Additive MoonBit numeric SDK declarations; excluded from the classic morphir-elm oracle inventory",
+  "classicSemanticPin": "bc99af69a8b24d391311fae3822a87eafef3c334",
+  "specificationApi": "finos/morphir-sdk-spec.numeric_sdk_specification",
+  "provenanceAnnotation": "morphir/moonbit-source:numeric#sdk-extension",
+  "types": [
+    { "fqName": "morphir/SDK:int#byte", "sourceType": "Byte", "bits": 8, "signed": false },
+    { "fqName": "morphir/SDK:int#uint-16", "sourceType": "UInt16", "bits": 16, "signed": false },
+    { "fqName": "morphir/SDK:int#uint-32", "sourceType": "UInt32", "bits": 32, "signed": false },
+    { "fqName": "morphir/SDK:int#uint-64", "sourceType": "UInt64", "bits": 64, "signed": false }
+  ],
+  "bindings": [
+    { "fqName": "morphir/SDK:int#from-byte", "runtime": "finos/morphir-sdk/int:from_byte", "policy": "exact widening" },
+    { "fqName": "morphir/SDK:int#to-byte", "runtime": "finos/morphir-sdk/int:to_byte", "policy": "checked narrowing" },
+    { "fqName": "morphir/SDK:int#from-uint-16", "runtime": "finos/morphir-sdk/int:from_uint16", "policy": "exact widening" },
+    { "fqName": "morphir/SDK:int#to-uint-16", "runtime": "finos/morphir-sdk/int:to_uint16", "policy": "checked narrowing" },
+    { "fqName": "morphir/SDK:int#from-uint-32", "runtime": "finos/morphir-sdk/int:from_uint32", "policy": "exact widening" },
+    { "fqName": "morphir/SDK:int#to-uint-32", "runtime": "finos/morphir-sdk/int:to_uint32", "policy": "checked narrowing" },
+    { "fqName": "morphir/SDK:int#from-uint-64", "runtime": "finos/morphir-sdk/int:from_uint64", "policy": "exact widening" },
+    { "fqName": "morphir/SDK:int#to-uint-64", "runtime": "finos/morphir-sdk/int:to_uint64", "policy": "checked narrowing" }
+  ],
+  "sourceRuntimeProfile": "morphir-moonbit-source-integer-v1",
+  "sourceNormalization": "Modulo 2^width; signed widths interpret the upper half as negative. This differs from checked SDK narrowing.",
+  "sourceCallable": false
+}

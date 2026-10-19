@@ -1,4 +1,103 @@
 ///|
+/// Add explicit SDK conversion calls to the floating model for generated
+/// consumer qualification. The original source fixture covers arithmetic;
+/// these IR entries exercise the versioned SDK extension directly.
+fn add_float_conversion_cases(
+  output : @frontend.LibraryOutput,
+) -> @frontend.LibraryOutput raise {
+  guard output.ir.distribution
+    is Library(package_name, dependencies, package_def) else {
+    fail("Expected floating library")
+  }
+  let module_path = @ir.Path::parse("main")
+  let module_entry = package_def.modules[module_path]
+  let values = module_entry.value.values.copy()
+  let entries = output.entries.copy()
+  let int = @ir.Type::Reference(
+    @ir.TypeAttributes::default(),
+    @ir.FQName::parse("morphir/SDK:basics#int"),
+    [],
+  )
+  let float64 = @ir.Type::Reference(
+    @ir.TypeAttributes::default(),
+    @ir.FQName::parse("morphir/SDK:basics#float"),
+    [],
+  )
+  let float32 = @ir.Type::Reference(
+    @ir.TypeAttributes::default(),
+    @ir.FQName::parse("morphir/moonbit-source:float32#float32"),
+    [],
+  )
+  fn maybe(t : @ir.Type) -> @ir.Type raise {
+    @ir.Type::Reference(
+      @ir.TypeAttributes::default(),
+      @ir.FQName::parse("morphir/SDK:maybe#maybe"),
+      [t],
+    )
+  }
+  for
+    (name, input, result) in [
+      ("to-f32-rounded", int, float32),
+      ("to-f32-exact", int, maybe(float32)),
+      ("to-f64-rounded", int, float64),
+      ("to-f64-exact", int, maybe(float64)),
+      ("from-f32-exact", float32, maybe(int)),
+      ("from-f32-truncated", float32, maybe(int)),
+      ("from-f64-exact", float64, maybe(int)),
+      ("from-f64-rounded", float64, maybe(int)),
+    ] {
+    let sdk_name = if name.has_prefix("to-") {
+      "to-float" + name[4:].to_owned()
+    } else {
+      "from-float" + name[6:].to_owned()
+    }
+    let signature = @ir.Type::Function(
+      @ir.TypeAttributes::default(),
+      input,
+      result,
+    )
+    let reference = @ir.Value::Reference(
+      { ..@ir.ValueAttributes::default(), inferred_type: Some(signature), },
+      @ir.FQName::parse("morphir/SDK:int#" + sdk_name),
+    )
+    let argument = @ir.Value::Variable(
+      { ..@ir.ValueAttributes::default(), inferred_type: Some(input), },
+      @ir.Name::parse("value"),
+    )
+    let body = @ir.Value::Apply(
+      { ..@ir.ValueAttributes::default(), inferred_type: Some(result), },
+      reference,
+      argument,
+    )
+    values[@ir.Name::parse(name)] = {
+      access: @ir.Access::Public,
+      value: {
+        doc: Some("Explicit SDK numeric conversion qualification"),
+        value: @ir.ValueDefinition::ExpressionBody(
+          [(@ir.Name::parse("value"), input)],
+          result,
+          body,
+        ),
+      },
+    }
+    entries.push(@ir.FQName::parse("typed/acceptance/float:main#" + name))
+  }
+  let modules = package_def.modules.copy()
+  modules[module_path] = {
+    ..module_entry,
+    value: { ..module_entry.value, values, },
+  }
+  {
+    ..output,
+    ir: @ir.IRFile::new(
+      @ir.Distribution::Library(package_name, dependencies, { modules, }),
+      format_version=output.ir.format_version,
+    ),
+    entries,
+  }
+}
+
+///|
 fn main raise {
   let sources = [
     (
@@ -26,6 +125,12 @@ fn main raise {
     [
       (
         "numeric", "pub fn overflow() -> Int32 { 2147483647 + 1 }\npub fn multiply_wrap() -> Int32 { 65536 * 65536 }\npub fn underflow() -> Int32 { -2147483648 - 1 }\npub fn total(a : Int32, b : Int32) -> Int32 { let subtotal = a * b; if subtotal > 1000 { subtotal - 100 } else { subtotal } }\npub fn before(a : Int32, b : Int32) -> Bool { a < b }\npub fn after(a : Int32, b : Int32) -> Bool { a > b }\npub fn same(a : Int32, b : Int32) -> Bool { a <= b && a >= b && a == b && !(a != b) }",
+      ),
+      (
+        "integer", "pub fn wrap_i16() -> Int16 { 32767 + 1 }\npub fn wrap_i64() -> Int64 { 9223372036854775807L + 1L }\npub fn wrap_byte() -> Byte { 255 + 1 }\npub fn wrap_u16() -> UInt16 { 65535 + 1 }\npub fn wrap_u32() -> UInt32 { 4294967295U + 1U }\npub fn wrap_u64() -> UInt64 { 18446744073709551615UL + 1UL }\npub fn grow() -> BigInt { 18446744073709551616N + 1N }",
+      ),
+      (
+        "float", "pub fn rounded() -> Float { 16777216.0F + 1.0F }\npub fn chained() -> Float { let a : Float = 16777216.0F + 1.0F; a + 1.0F }\npub fn scaled() -> Float { 1.5F * 2.0F / 3.0F }\npub fn wider() -> Double { 9007199254740992.0 + 2.0 }\npub fn identity(value : Float) -> Float { value }\npub fn negative_zero() -> Float { -0.0F }\npub fn tiny() -> Float { 1.401298464324817e-45F }\npub fn infinity() -> Float { 1.0F / 0.0F }\npub fn invalid() -> Float { 0.0F / 0.0F }\npub fn double_zero() -> Double { -0.0 }\npub fn double_tiny() -> Double { 5.0e-324 }\npub fn double_infinity() -> Double { 1.0 / 0.0 }\npub fn double_invalid() -> Double { 0.0 / 0.0 }",
       ),
       (
         "indexed", "pub fn count(s : String) -> Int32 { s.length() }\npub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }",
@@ -71,6 +176,10 @@ fn main raise {
       )
     } else if id == "numeric" {
       @frontend.compile_int32_library(input)
+    } else if id == "integer" {
+      @frontend.compile_integer_library(input)
+    } else if id == "float" {
+      @frontend.compile_float_library(input)
     } else if id == "indexed" {
       @frontend.compile_supported_library_2026_10_19(input)
     } else if id == "foundation" {
@@ -80,6 +189,11 @@ fn main raise {
         input,
         max_string_code_units=if id == "bounded" { 5 } else { 1048576 },
       )
+    }
+    let output = if id == "float" {
+      add_float_conversion_cases(output)
+    } else {
+      output
     }
     let generated = @generator.generate({
       unit_id: output.unit_id,
@@ -166,6 +280,39 @@ fn main raise {
         fail("Expected Int32 equality")
       }
       assert_true(same)
+    } else if kind == "float" {
+      fn observed(name : String) -> Double raise {
+        guard @backend.call_entry(runtime, entry(name), [])
+          is Number(Real(value)) else {
+          fail("Expected floating observation")
+        }
+        value
+      }
+      assert_eq(observed("rounded"), 16777216.0)
+      assert_eq(observed("chained"), 16777216.0)
+      assert_eq(observed("scaled"), 1.0)
+      assert_eq(observed("wider"), 9007199254740994.0)
+      guard @backend.call_entry(runtime, entry("identity"), [
+          @scheme.Value::Number(@scheme.Number::Real(16777217.0)),
+        ])
+        is Number(Real(boundary)) else {
+        fail("Expected Float public boundary")
+      }
+      assert_eq(boundary, 16777216.0)
+      assert_eq(
+        observed("negative-zero").reinterpret_as_uint64(),
+        9223372036854775808UL,
+      )
+      assert_true(observed("tiny") > 0.0 && observed("tiny") < 1.0e-44)
+      assert_true(observed("infinity").is_inf())
+      assert_true(observed("invalid").is_nan())
+      assert_eq(
+        observed("double-zero").reinterpret_as_uint64(),
+        9223372036854775808UL,
+      )
+      assert_eq(observed("double-tiny").reinterpret_as_uint64(), 1UL)
+      assert_true(observed("double-infinity").is_inf())
+      assert_true(observed("double-invalid").is_nan())
     } else if kind == "indexed" {
       guard @backend.call_entry(runtime, entry("count"), [
           @scheme.Text("A😀é"),
@@ -390,6 +537,10 @@ fn main raise {
             @frontend.LIBRARY_PROFILE_2026_10_19
           } else if id == "numeric" {
             @frontend.INT32_LIBRARY_PROFILE
+          } else if id == "integer" {
+            @frontend.INTEGER_LIBRARY_PROFILE
+          } else if id == "float" {
+            @frontend.FLOAT_LIBRARY_PROFILE
           } else if id.has_prefix("supported") {
             @frontend.SUPPORTED_LIBRARY_PROFILE
           } else if id == "foundation" {
@@ -422,6 +573,18 @@ fn main raise {
                 },
               } : Json)
           }),
+          "driverArtifacts": if id == "float" {
+            @generator.invocation_driver(generated, [
+              entry("identity").to_canonical(),
+            ]).map(a => {
+              guard a.content is Text(text) else {
+                fail("Expected text invocation driver artifact")
+              }
+              ({ "path": a.path, "content": text } : Json)
+            })
+          } else {
+            []
+          },
           "sdkProfile": generated.project.dependencies[0].api_profile,
         } : Json),
     )

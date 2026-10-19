@@ -104,6 +104,11 @@ pub fn invocation_driver(
     #|  }
     #|}
     #|
+  let float_import = if output.invocation_codecs.contains("@source_float.") {
+    "\"finos/morphir-sdk/source_float\" @source_float,\n"
+  } else {
+    ""
+  }
   [
     {
       path: "moon.mod",
@@ -120,7 +125,9 @@ pub fn invocation_driver(
       content: Text(
         "import {\n" +
         quote(output.project.module_name) +
-        " @model,\n\"finos/morphir-sdk\" @sdk,\n\"finos/morphir-sdk/int\",\n\"finos/morphir-sdk/integer\",\n\"finos/morphir-sdk/decimal\",\n\"finos/morphir-sdk/list\",\n\"finos/morphir-execution\" @execution,\n\"moonbitlang/core/bigint\",\n}\nwarnings = \"-16-29\"\n",
+        " @model,\n\"finos/morphir-sdk\" @sdk,\n\"finos/morphir-sdk/int\",\n\"finos/morphir-sdk/integer\",\n\"finos/morphir-sdk/decimal\",\n\"finos/morphir-sdk/list\",\n" +
+        float_import +
+        "\"finos/morphir-execution\" @execution,\n\"moonbitlang/core/bigint\",\n}\nwarnings = \"-16-29\"\n",
       ),
     },
     {

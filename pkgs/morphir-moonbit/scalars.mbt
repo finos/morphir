@@ -19,7 +19,14 @@ fn scalar_type(tpe : @ir.Type, context : String) -> Scalar raise {
       match name.to_canonical() {
         "morphir/SDK:basics#int" => Integer
         "morphir/SDK:int#int-32" => SignedInt32
+        "morphir/SDK:int#int-16" => BoundedInteger("int-16")
+        "morphir/SDK:int#int-64" => BoundedInteger("int-64")
+        "morphir/SDK:int#byte" => BoundedInteger("byte")
+        "morphir/SDK:int#uint-16" => BoundedInteger("uint-16")
+        "morphir/SDK:int#uint-32" => BoundedInteger("uint-32")
+        "morphir/SDK:int#uint-64" => BoundedInteger("uint-64")
         "morphir/SDK:basics#float" => Float
+        "morphir/moonbit-source:float32#float32" => Float32
         "morphir/SDK:basics#bool" => Boolean
         "morphir/SDK:string#string" => Text
         "morphir/SDK:char#char" => Character
@@ -50,6 +57,18 @@ fn moon_type(scalar : Scalar, imports : Map[String, Bool]) -> String {
       imports["int"] = true
       "@int.Int32Value"
     }
+    BoundedInteger(name) => {
+      imports["int"] = true
+      match name {
+        "int-16" => "@int.Int16Value"
+        "int-64" => "@int.Int64Value"
+        "byte" => "@int.ByteValue"
+        "uint-16" => "@int.UInt16Value"
+        "uint-32" => "@int.UInt32Value"
+        "uint-64" => "@int.UInt64Value"
+        _ => abort("admitted integer boundary")
+      }
+    }
     Integer => {
       imports["integer"] = true
       "@integer.Integer"
@@ -60,7 +79,7 @@ fn moon_type(scalar : Scalar, imports : Map[String, Bool]) -> String {
     }
     Text => "@sdk.Text"
     Character => "@sdk.Character"
-    Float => "Double"
+    Float | Float32 => "Double"
     Boolean => "Bool"
     Unit => "Unit"
   }
@@ -197,12 +216,15 @@ fn scalar_literal(
           if value.is_nan() || value.is_inf() {
             raise Invalid("moonbit.invalid_literal", context, "Nonfinite Float")
           }
-          (
-            Scalar::Float,
-            "(" +
+          let literal = "(" +
             value.reinterpret_as_uint64().to_string() +
-            "UL).reinterpret_as_double()",
-          )
+            "UL).reinterpret_as_double()"
+          if expected == Scalar::Float32 {
+            imports["source_float"] = true
+            (Scalar::Float32, "@source_float.round32(" + literal + ")")
+          } else {
+            (Scalar::Float, literal)
+          }
         }
         DocumentLiteral(_) =>
           raise Invalid(

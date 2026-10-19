@@ -1,4 +1,6 @@
 import {
   "finos/morphir-sdk/integer",
+  "finos/morphir-sdk/source_float",
+  "moonbitlang/core/bigint",
   "moonbitlang/core/debug",
 }

@@ -391,8 +391,30 @@ fn SelectedBoundary::read(
           }
           @protocol.Custom(key)
         }
+        "morphir/SDK:int#int-16"
+        | "morphir/SDK:int#int-64"
+        | "morphir/SDK:int#byte"
+        | "morphir/SDK:int#uint-16"
+        | "morphir/SDK:int#uint-32"
+        | "morphir/SDK:int#uint-64" => {
+          let suffix = key
+            .clamped_view(start="morphir/SDK:int#".length())
+            .to_owned()
+          let tag = "morphir/SDK:int#" +
+            (if suffix.has_prefix("int-") {
+              suffix.replace(old="-", new="")
+            } else {
+              suffix
+            })
+          self.definitions[key] = {
+            name: key,
+            constructors: [{ name: tag, inputs: [@protocol.Int], }],
+          }
+          @protocol.Custom(key)
+        }
         "morphir/SDK:basics#int" => @protocol.Int
         "morphir/SDK:basics#float" => @protocol.Float64
+        "morphir/moonbit-source:float32#float32" => @protocol.Float64
         "morphir/SDK:basics#bool" => @protocol.Bool
         "morphir/SDK:string#string" => @protocol.Text
         "morphir/SDK:char#char" => @protocol.Character

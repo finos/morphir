@@ -231,7 +231,10 @@ fn SelectedReferences::value(
       }
       if name.package_name.to_canonical() != "morphir/SDK" &&
         source_string_arity(name.to_canonical()) is None &&
-        source_int32_arity(name.to_canonical()) is None {
+        source_int32_arity(name.to_canonical()) is None &&
+        source_integer_arity(name.to_canonical()) is None &&
+        source_float_arity(name.to_canonical()) is None &&
+        numeric_int_arity(name.to_canonical()) is None {
         if self.value_access.get(name.to_canonical()) is Some((owner, exposed)) &&
           owner != self.owner &&
           !exposed {
