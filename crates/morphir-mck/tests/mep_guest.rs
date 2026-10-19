@@ -25,3 +25,24 @@ fn guest_profile_requires_exact_draft_contract_and_fixed_expected_ir() {
     .unwrap();
     assert!(load_kit(&path).is_err());
 }
+
+#[test]
+fn both_artifact_expectation_maps_require_the_complete_inventory() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("kit.json");
+    let original: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/mep/mck/guest-moonbit-bool.json"
+    ))
+    .unwrap();
+    for field in ["expectedArtifacts", "expectedJsonArtifacts"] {
+        for missing in ["library.mbt", "moon.mod", "moon.pkg"] {
+            let mut value = original.clone();
+            value[field].as_object_mut().unwrap().remove(missing);
+            std::fs::write(&path, value.to_string()).unwrap();
+            assert!(
+                load_kit(&path).is_err(),
+                "accepted {field} without {missing}"
+            );
+        }
+    }
+}

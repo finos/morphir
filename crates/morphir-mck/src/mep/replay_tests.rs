@@ -257,3 +257,75 @@ fn source_refusals_require_structured_error_diagnostics() {
         assert!(compare(&kit, &record, &[]).is_err());
     }
 }
+
+#[test]
+fn successful_compilation_validates_critical_and_evidence_members() {
+    let kit = kit();
+    let original = model(&kit);
+    for (key, value) in [
+        ("critical", json!(["payload.future"])),
+        ("critical", json!(null)),
+        ("evidence", json!([null])),
+        ("evidence", json!({})),
+    ] {
+        let mut invalid = original.clone();
+        invalid[key] = value;
+        assert!(
+            validate_compiled(&kit, &invalid).is_err(),
+            "accepted malformed {key}"
+        );
+    }
+    let evidence = |bytes: &[u8]| json!({"guarantee":"urn:morphir:mck:optional","modelId":original["modelId"],"modelRevision":original["revision"],"contextDigest":"c".repeat(64),"scope":"urn:morphir:mck:package","producer":"urn:morphir:mck:fixture","evidence":payload(bytes,"morphir-json")});
+    let mut valid = original.clone();
+    valid["critical"] = json!(["payload.codec", "evidence"]);
+    valid["evidence"] = json!([evidence(br#"{"checked":true}"#)]);
+    validate_compiled(&kit, &valid).unwrap();
+    let ion_evidence = ion_rs::Element::read_one("opaque::{value:123.4500}")
+        .unwrap()
+        .encode_as(ion_rs::v1_0::Binary)
+        .unwrap();
+    valid["evidence"][0]["evidence"] = payload(&ion_evidence, "ion-binary");
+    validate_compiled(&kit, &valid).unwrap();
+    for key in [
+        "modelId",
+        "modelRevision",
+        "contextDigest",
+        "scope",
+        "producer",
+    ] {
+        let mut invalid = valid.clone();
+        invalid["evidence"][0][key] = json!("");
+        assert!(
+            validate_compiled(&kit, &invalid).is_err(),
+            "accepted empty evidence {key}"
+        );
+    }
+    for key in ["modelId", "modelRevision", "contextDigest"] {
+        let mut invalid = valid.clone();
+        invalid["evidence"][0][key] = json!("other");
+        assert!(
+            validate_compiled(&kit, &invalid).is_err(),
+            "accepted mismatched evidence {key}"
+        );
+    }
+    let mut invalid = original.clone();
+    let mut damaged = evidence(br#"{"checked":true}"#);
+    damaged["evidence"]["sha256"] = json!("0".repeat(64));
+    invalid["evidence"] = json!([damaged]);
+    assert!(
+        validate_compiled(&kit, &invalid).is_err(),
+        "accepted evidence with a false digest"
+    );
+    let large = serde_json::to_vec(&"x".repeat(400000)).unwrap();
+    invalid["evidence"] = json!([evidence(&large), evidence(&large)]);
+    assert!(
+        validate_compiled(&kit, &invalid).is_err(),
+        "accepted aggregate evidence payload beyond negotiated bounds"
+    );
+    let wide = serde_json::to_vec(&vec![true; 60000]).unwrap();
+    invalid["evidence"] = json!([evidence(&wide), evidence(&wide)]);
+    assert!(
+        validate_compiled(&kit, &invalid).is_err(),
+        "accepted aggregate evidence nodes beyond negotiated bounds"
+    );
+}

@@ -3,6 +3,7 @@
 //! implementation or IR codec participates in adjudication.
 
 mod binary;
+mod envelope;
 mod metadata;
 #[cfg(test)]
 mod replay_tests;
@@ -135,6 +136,12 @@ pub fn load_kit(path: &Path) -> Result<Kit, String> {
         || document.consumer.expected_stdout.is_empty()
         || document
             .expected_artifacts
+            .keys()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            != ["library.mbt", "moon.mod", "moon.pkg"]
+        || document
+            .expected_json_artifacts
             .keys()
             .map(String::as_str)
             .collect::<Vec<_>>()
@@ -884,12 +891,12 @@ fn validate_compiled(kit: &Kit, model: &Value) -> Result<(), String> {
             && model["revision"].as_str().is_some_and(|s| !s.is_empty()),
         "missing logical model identity",
     )?;
-    let bytes = decode_payload(&model["payload"])?;
-    require(
-        bytes.starts_with(&[0xe0, 1, 0, 0xea]),
-        "missing Ion 1.0 marker",
+    let element = envelope::validate(
+        model,
+        kit.document.source["contextDigest"]
+            .as_str()
+            .ok_or("kit context missing")?,
     )?;
-    let element = binary::read(&bytes)?;
     metadata::validate_model(&kit.document.source, &element)?;
     require(
         element
