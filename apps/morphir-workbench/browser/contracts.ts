@@ -8,6 +8,9 @@ export interface WorkRequest {
   source?: string;
   sourceBase64?: string;
   sourceCodec?: string;
+  /** Private page/worker fields; never emitted as Morphir RPC parameters. */
+  sourceFilename?: string;
+  modelOpenAttempt?: string;
   /** Exact worksheet profile request captured before dispatch. */
   worksheetRequest?: string;
   arguments?: Json;
@@ -59,6 +62,9 @@ export interface WorkResult {
   cancelled?: boolean;
   ir?: Json;
   irSource?: string;
+  /** Format of the inspected input before private migration, independent of source provenance. */
+  sourceFormatVersion?: string;
+  modelSource?: ModelSource;
   generated?: string;
   diagnostics?: Diagnostic[];
   artifacts?: Artifact[];
@@ -67,6 +73,10 @@ export interface WorkResult {
   generationMessage?: string;
   execution?: Execution | null;
 }
+export type ModelCodec = 'morphir-json' | 'ion-text' | 'ion-binary';
+export type ModelSource =
+  | { readonly kind: 'original-file'; readonly filename: string; readonly codec: ModelCodec; readonly formatVersion: string; readonly contentBase64: string }
+  | { readonly kind: 'semantic-projection'; readonly reason: 'originals-not-provided' | 'generated-model' };
 export interface Execution {
   state: 'submitted' | 'running' | 'terminal';
   identity: { hostId: string; sessionId: string; providerId: string; executionId: string; snapshotId: string };
@@ -80,6 +90,9 @@ export interface Adapter {
   initialize(): Promise<WorkResult>;
   execute(request: WorkRequest, progress?: Progress): Promise<WorkResult>;
   cancel(): void | Promise<void>;
+  /** Only model-opening work; never sends execution cancellation or revokes grants. */
+  cancelModelOpen?(): void | Promise<void>;
+  invalidateArtifacts?(): void;
   dispose(): void;
   runtimeLabel?: string;
   executions?: { active: boolean; execution: Execution | null } | null;

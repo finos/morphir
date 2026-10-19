@@ -5,13 +5,15 @@ import { LocalAdapter, connect } from './transport.ts';
 import { selectLocalAdapter } from './native-session.ts';
 import { downloadArtifacts } from './artifact-download.ts';
 import { fetchText, pickFolder, storage, watchDrop } from './project-io.ts';
+import { ModelImporter, captureOriginalRequest } from './model-import.ts';
 
 const local = new LocalAdapter();
 const requestedMode = new URLSearchParams(location.search).get('mode');
 const connected = requestedMode === 'connected' || (!requestedMode && document.querySelector<HTMLMetaElement>('meta[name="morphir-host-mode"]')?.content === 'connected');
 let adapter: Adapter = local;
 let generation = 0;
-let activeRequest: { operation: string } | null = null;
+let activeRequest: { operation: string; modelOpenAttempt?: string } | null = null;
+const importer = new ModelImporter();
 
 globalThis.morphirWorkbench = {
   connected,
@@ -19,8 +21,9 @@ globalThis.morphirWorkbench = {
   get runtimeLabel() { return adapter.runtimeLabel || 'Browser local'; },
   async request(request, receive) {
     const current = ++generation;
-    activeRequest = { operation: request.operation };
+    activeRequest = { operation: request.operation, modelOpenAttempt: request.modelOpenAttempt };
     try {
+      const original = captureOriginalRequest(request);
       let result;
       if (request.operation === 'initialize') {
         if (connected) {
@@ -35,7 +38,7 @@ globalThis.morphirWorkbench = {
       } else result = await adapter.execute(request, execution => {
         if (current === generation) receive(JSON.stringify({ success: true, operation: 'execution-progress', execution }));
       });
-      if (current === generation) receive(JSON.stringify(result));
+      if (current === generation) receive(JSON.stringify(original ? original(result) : result));
     } catch (cause) {
       const error = workbenchError(cause);
       if (request.operation === 'initialize') adapter.dispose?.();
@@ -51,17 +54,18 @@ globalThis.morphirWorkbench = {
     if (!hostExecution && activeRequest?.operation !== 'worksheet') ++generation;
     Promise.resolve(adapter.cancel()).catch(() => { /* The active observer reports retained disconnection evidence. */ });
   },
-  importModel(receive) {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.json,application/json';
-    input.addEventListener('change', async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      // The worker also enforces its input bound, so this guard is only an early hint.
-      if (file.size > 16 * 1024 * 1024) { receive('{"oversizedImport":true}'); return; }
-      try { receive(await file.text()); } catch { receive('{"unreadableImport":true}'); }
-    });
-    input.click();
+  importModel(attempt, receive) { importer.start(attempt, receive); },
+  releaseModel() { adapter.invalidateArtifacts?.(); },
+  async cancelModelOpen(attempt) {
+    importer.cancel(attempt);
+    if (activeRequest?.modelOpenAttempt !== attempt || !['inspect', 'project'].includes(activeRequest.operation)) return;
+    ++generation; activeRequest = null;
+    try { await adapter.cancelModelOpen?.(); }
+    catch (cause) {
+      // The native capture owner keeps pending release and refuses another open
+      // until that same cleanup is confirmed. Closing the view grants no bypass.
+      console.warn('Model-opening cleanup is pending.', workbenchError(cause).message);
+    }
   },
   download(text) {
     const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
@@ -71,5 +75,5 @@ globalThis.morphirWorkbench = {
   },
   downloadArtifacts,
 };
-window.addEventListener('pagehide', () => { ++generation; adapter.dispose?.(); local.cancel(); });
+window.addEventListener('pagehide', () => { ++generation; importer.dispose(); adapter.dispose?.(); local.cancel(); });
 await import(new URL('./browser.js', import.meta.url).href);

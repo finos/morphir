@@ -4,6 +4,7 @@ import {
   "finos/morphir-ir" @ir,
   "finos/morphir-ir/json" @ir_json,
   "finos/morphir-ir/versioned/json" @versioned_json,
+  "finos/morphir-ir/version",
   "finos/morphir-ir/migration",
   "finos/morphir-ir/wire",
   "moonrockz/ion/ion",

@@ -29,6 +29,14 @@ identity and receives the local default `workbench`. This logical identity grant
 no filesystem or provider authority. Use `decode` when the caller already knows
 and needs to enforce the expected unit ID.
 
+`Registry::inspect_checkpoint(codec, content)` also returns the input checkpoint's
+`original_format_version` as a validated `FormatVersion`, alongside the migrated
+`unit`. Both opening methods use the same profile, metadata and resource checks.
+For Ion, the source format is read from the embedded IR before migration. It is
+independent of the Ion encoding, envelope profile and current semantic version.
+The caller must retain original bytes separately. This result does not identify
+a provider response as an original file or grant a retained-model handle.
+
 The module depends on the exact registry release `moonrockz/ion@0.5.0`, using its
 synchronous annotated value, text and binary packages. Async streaming is not
 part of this portable callback contract.

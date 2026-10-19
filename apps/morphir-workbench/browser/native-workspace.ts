@@ -1,4 +1,4 @@
-import type { Adapter, NativeOperations, Project } from './contracts.ts';
+import type { Adapter, NativeOperations, Project, WorkResult } from './contracts.ts';
 import type { NativeSession } from './native-session.ts';
 // Page-bound native workspace transport. Business model bytes stay opaque until
 // the compiled codec inspects them; JavaScript never parses their JSON numbers.
@@ -87,7 +87,7 @@ export class NativeWorkspaceClient {
     this.opening = true;
     try { return await this.openModel(id); } finally { this.opening = false; }
   }
-  async openModel(id: string) {
+  async openModel(id: string): Promise<WorkResult> {
     const epoch = ++this.epoch;
     const project = this.projects.find(p => p.id === id);
     if (!this.grant || !project) throw rejected('workbench.workspace_project', 'Unknown workspace project. Reopen the workspace.');
@@ -122,8 +122,9 @@ export class NativeWorkspaceClient {
     const result = await this.local.execute({ operation: 'inspect', source: '', sourceCodec: opened.format, sourceBase64: content });
     this.current(epoch); await this.session.check(); this.current(epoch);
     if (!result.success) return result;
-    return { ...result, operation: 'project',
-      originalArtifact: { path: opened.filename, content, binary: true, encoding: 'base64' } };
+    if (typeof result.sourceFormatVersion !== 'string') throw rejected('workbench.workspace_reply', 'The model inspector did not report its input format version.');
+    return { ...result, operation: 'project', modelSource: { kind: 'original-file', filename: opened.filename,
+      codec: opened.format as 'morphir-json' | 'ion-text' | 'ion-binary', formatVersion: result.sourceFormatVersion, contentBase64: content } };
   }
   async cancel() {
     ++this.epoch;

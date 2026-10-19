@@ -1,4 +1,4 @@
-import type { WorkRequest, Json } from './contracts.ts';
+import type { WorkRequest, WorkResult, Json, ModelCodec } from './contracts.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NativeWorkspaceClient } from './native-workspace.ts';
@@ -6,7 +6,7 @@ import { NativeSession } from './native-session.ts';
 import { core, descriptor, bridge, failure, version } from './native-test-fixture.ts';
 
 import { deferred, malformed } from '../../../tests/helpers.ts';
-function fixture(bytes = Buffer.from(' {"formatVersion":1,"exact":9007199254740993} ')) {
+function fixture(bytes = Buffer.from(' {"formatVersion":1,"exact":9007199254740993} '), format: ModelCodec = 'ion-binary') {
   const calls: [string,string][] = []; const localCalls: WorkRequest[] = [];
   interface Body { action: string; sequence: number; offset: number; }
   const host: { retired: number; active: number | null; offset: number; releaseFailures: number; valid: boolean; choose?: () => unknown | Promise<unknown>; intercept?: (body: Body, handle: (body: Body) => unknown) => unknown | Promise<unknown> } = { retired: 0, active: null, offset: 0, releaseFailures: 0, valid: true };
@@ -20,7 +20,7 @@ function fixture(bytes = Buffer.from(' {"formatVersion":1,"exact":90071992547409
     if (body.action === 'open') {
       if (body.sequence <= host.retired) return failure('conflict', 'none');
       host.active = body.sequence; host.offset = 0;
-      return { sequence: body.sequence, size: bytes.length, filename: 'morphir-ir.ionb', format: 'ion-binary' };
+      return { sequence: body.sequence, size: bytes.length, filename: 'morphir-ir.' + (format === 'morphir-json' ? 'json' : format === 'ion-text' ? 'ion' : 'ionb'), format };
     }
     if (body.action === 'read') {
       assert.equal(body.sequence, host.active); assert.equal(body.offset, host.offset);
@@ -42,8 +42,8 @@ function fixture(bytes = Buffer.from(' {"formatVersion":1,"exact":90071992547409
   const ready = session.open();
   const check = session.check.bind(session);
   session.check = async () => { await ready; return check(); };
-  const local = { cancel() {}, async execute(request: WorkRequest) { localCalls.push(request); return { success: true, irSource: '{"formatVersion":4}' }; } };
-  return { client: new NativeWorkspaceClient(session, local), host, session, calls, localCalls, offer, handle };
+  const local = { cancel() {}, async execute(request: WorkRequest): Promise<WorkResult> { localCalls.push(request); return { success: true, irSource: '{"formatVersion":4}', sourceFormatVersion: '1.0.0' }; } };
+  return { client: new NativeWorkspaceClient(session, local), host, session, calls, localCalls, local, offer, handle };
 }
 
 test('only exact canonical native capabilities with directly nested executions offers are admitted', async () => {
@@ -62,10 +62,40 @@ test('native project transfer preserves every byte across chunks and releases be
   const f = fixture(bytes); await f.client.choose();
   const result = await f.client.openProject('project-0');
   assert.equal(f.host.active, null); assert.equal(f.host.retired, 1);
-  assert.deepEqual(Buffer.from(result.originalArtifact!.content, 'base64'), bytes);
+  assert.equal(result.modelSource?.kind, 'original-file');
+  if (result.modelSource?.kind !== 'original-file') throw new Error('missing original');
+  assert.deepEqual(Buffer.from(result.modelSource.contentBase64, 'base64'), bytes);
+  assert.equal(result.modelSource.formatVersion, '1.0.0');
   assert.equal(f.localCalls[0]!.source, ''); assert.equal(f.localCalls[0]!.sourceCodec, 'ion-binary');
   assert.equal(f.localCalls[0]!.sourceBase64, bytes.toString('base64'));
   assert.equal(result.operation, 'project');
+});
+
+test('native original offers retain each captured codec and filename after release', async () => {
+  const raw = Buffer.from([0xef, 0xbb, 0xbf, 0x0d, 0x0a, 0x00, 0xff]);
+  for (const codec of ['morphir-json', 'ion-text', 'ion-binary'] as const) {
+    const f = fixture(raw, codec); await f.client.choose();
+    const inspect = f.local.execute;
+    f.local.execute = request => { assert.equal(f.host.active, null); return inspect(request); };
+    const result = await f.client.openProject('project-0');
+    assert.equal(result.modelSource?.kind, 'original-file');
+    if (result.modelSource?.kind !== 'original-file') throw new Error('missing original');
+    assert.equal(result.modelSource.codec, codec);
+    assert.deepEqual(Buffer.from(result.modelSource.contentBase64, 'base64'), raw);
+    assert.equal(f.localCalls[0]!.sourceCodec, codec);
+    assert.equal(f.client.grant, 'workspace-1');
+  }
+});
+
+test('failed or unversioned native inspection never offers an original and retains the grant', async () => {
+  const f = fixture(); await f.client.choose();
+  f.local.execute = async () => ({ success: false, message: 'invalid model' });
+  assert.equal((await f.client.openProject('project-0')).modelSource, undefined);
+  assert.equal(f.host.active, null);
+  f.local.execute = async () => ({ success: true });
+  await assert.rejects(f.client.openProject('project-0'), /input format version/);
+  assert.equal(f.host.active, null);
+  assert.equal(f.client.grant, 'workspace-1');
 });
 
 test('picker cancellation retains the old project offer; no renderer path reaches the picker', async () => {
@@ -101,7 +131,7 @@ test('unconfirmed release prevents another open until the same transfer is relea
   await f.client.openProject('project-0'); assert.equal(f.client.pendingRelease, null); assert.equal(f.host.retired, 2);
 });
 
-test('concurrent opens are refused and cancellation waits for active admission cleanup', async () => {
+test('concurrent opens are refused and cancellation waits for active capture cleanup', async () => {
   const f = fixture(); await f.client.choose(); const wait = deferred();
   f.host.intercept = async (body, handle) => { const result = handle(body); if (body.action === 'open') await wait.promise; return result; };
   const opening = f.client.openProject('project-0'); await new Promise(setImmediate);

@@ -176,6 +176,8 @@ pre { margin:0; padding:20px; font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,C
 .artifact-icon-button[aria-expanded="false"] .icon-files { transform:scaleX(-1); }
 .icon-document { --icon:url("./icon-document.svg"); }
 .icon-download { --icon:url("./icon-download.svg"); }
+.icon-close { --icon:url("./icon-close.svg"); }
+.close-model-button { border-radius:50%; }
 .icon-expand { --icon:url("./icon-expand.svg"); }
 .icon-restore { --icon:url("./icon-restore.svg"); }
 .artifact-workspace { display:grid; grid-template-columns:fit-content(min(200px,24%)) minmax(0,1fr); flex:1 1 0; min-width:0; min-height:200px; }

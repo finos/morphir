@@ -101,6 +101,7 @@ export class LocalAdapter {
     });
   }
   cancel() { this.active?.cancel(); }
+  cancelModelOpen() { this.active?.cancel(); }
   dispose() { this.cancel(); }
 }
 
@@ -316,6 +317,7 @@ export class ConnectedAdapter {
     }
     return result;
   }
+  cancelModelOpen() { ++this.epoch; this.local.cancel(); /* Frozen v1 has no server cancellation. */ }
   cancel() {
     if (this.executions?.active || (this.executions?.execution && this.executions.execution.state !== 'terminal')) return this.executions.cancel();
     ++this.epoch; this.local.cancel(); /* v1 has no server cancellation method */ }

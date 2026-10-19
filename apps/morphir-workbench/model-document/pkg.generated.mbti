@@ -1,0 +1,138 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-workbench/model-document"
+
+import {
+  "finos/morphir-ir/version",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror DocumentError {
+  InvalidFilename
+  InvalidCodec
+  InvalidVersion
+  InvalidBytes
+  TooLarge
+  InvalidReply
+  RevisionLimit
+} derive(Eq, @debug.Debug)
+pub fn DocumentError::equal(Self, Self) -> Bool
+pub fn DocumentError::not_equal(Self, Self) -> Bool
+pub fn DocumentError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) enum BeginDecision {
+  Started(State, OpenAttempt)
+  Refused(HostRetention)
+  Exhausted
+}
+
+pub(all) enum CloseDecision {
+  Closed(State, OpenAttempt?)
+  Retained(HostRetention)
+}
+
+pub struct Document {
+  inspection : Json
+  source : Source
+} derive(Eq, @debug.Debug)
+pub fn Document::equal(Self, Self) -> Bool
+pub fn Document::from_reply(Json) -> Self raise DocumentError
+pub fn Document::not_equal(Self, Self) -> Bool
+pub fn Document::to_repr(Self) -> @debug.Repr
+
+pub struct DocumentRevision(Int) derive(Eq, @debug.Debug)
+pub fn DocumentRevision::equal(Self, Self) -> Bool
+pub fn DocumentRevision::not_equal(Self, Self) -> Bool
+pub fn DocumentRevision::to_repr(Self) -> @debug.Repr
+
+pub(all) enum HostRetention {
+  Idle
+  Submitting
+  Running
+  Disconnected
+  UnknownSubmission
+} derive(Eq, @debug.Debug)
+pub fn HostRetention::equal(Self, Self) -> Bool
+pub fn HostRetention::not_equal(Self, Self) -> Bool
+pub fn HostRetention::to_repr(Self) -> @debug.Repr
+
+pub struct OpenAttempt(Int) derive(Eq, @debug.Debug)
+pub fn OpenAttempt::equal(Self, Self) -> Bool
+pub fn OpenAttempt::not_equal(Self, Self) -> Bool
+pub fn OpenAttempt::to_repr(Self) -> @debug.Repr
+pub fn OpenAttempt::to_string(Self) -> String
+
+pub struct OriginalFile {
+  filename : OriginalFilename
+  codec : SourceCodec
+  format_version : @version.FormatVersion
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn OriginalFile::byte_length(Self) -> Int
+pub fn OriginalFile::copy_bytes(Self) -> Bytes
+pub fn OriginalFile::download(Self) -> Json
+pub fn OriginalFile::equal(Self, Self) -> Bool
+pub fn OriginalFile::new(OriginalFilename, SourceCodec, @version.FormatVersion, Bytes) -> Self raise DocumentError
+pub fn OriginalFile::not_equal(Self, Self) -> Bool
+pub fn OriginalFile::to_repr(Self) -> @debug.Repr
+
+pub struct OriginalFilename(String) derive(Eq, @debug.Debug)
+pub fn OriginalFilename::equal(Self, Self) -> Bool
+pub fn OriginalFilename::not_equal(Self, Self) -> Bool
+pub fn OriginalFilename::parse(String) -> Self raise DocumentError
+pub fn OriginalFilename::to_repr(Self) -> @debug.Repr
+pub fn OriginalFilename::to_string(Self) -> String
+
+pub(all) enum ProjectionReason {
+  OriginalsNotProvided
+  GeneratedModel
+} derive(Eq, @debug.Debug)
+pub fn ProjectionReason::equal(Self, Self) -> Bool
+pub fn ProjectionReason::not_equal(Self, Self) -> Bool
+pub fn ProjectionReason::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Source {
+  Original(OriginalFile)
+  Projection(ProjectionReason)
+} derive(Eq, @debug.Debug)
+pub fn Source::equal(Self, Self) -> Bool
+pub fn Source::not_equal(Self, Self) -> Bool
+pub fn Source::to_repr(Self) -> @debug.Repr
+
+pub(all) enum SourceCodec {
+  MorphirJson
+  IonText
+  IonBinary
+} derive(Eq, @debug.Debug)
+pub fn SourceCodec::equal(Self, Self) -> Bool
+pub fn SourceCodec::not_equal(Self, Self) -> Bool
+pub fn SourceCodec::parse(String) -> Self raise DocumentError
+pub fn SourceCodec::to_repr(Self) -> @debug.Repr
+pub fn SourceCodec::to_string(Self) -> String
+
+pub struct State {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn State::begin(Self, HostRetention) -> BeginDecision
+pub fn State::close(Self, HostRetention) -> CloseDecision
+pub fn State::current_revision(Self) -> DocumentRevision?
+pub fn State::document(Self) -> Document?
+pub fn State::equal(Self, Self) -> Bool
+pub fn State::finish(Self, OpenAttempt, Json) -> Self raise DocumentError
+pub fn State::inspection(Self) -> Json
+pub fn State::is_current(Self, OpenAttempt) -> Bool
+pub fn State::new() -> Self
+pub fn State::not_equal(Self, Self) -> Bool
+pub fn State::opening(Self) -> OpenAttempt?
+pub fn State::original(Self) -> OriginalFile?
+pub fn State::original_for(Self, DocumentRevision) -> OriginalFile?
+pub fn State::reject(Self, OpenAttempt) -> Self
+pub fn State::replace(Self, Json) -> Self raise DocumentError
+pub fn State::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

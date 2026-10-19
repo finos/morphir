@@ -7,8 +7,7 @@ pub fn Registry::new(limits~ : Limits = Limits::default()) -> Registry raise {
   registry.register("morphir-json", {
     decode: fn(source, _) raise {
       let text = require_text(source.content)
-      let file = @migration.to_current(@versioned_json.read(text))
-      IRUnit::new(source.unit_id, file)
+      inspect_json_checkpoint(text, source.unit_id).unit
     },
     encode: fn(unit, _) raise {
       if !unit.metadata.is_empty() ||
@@ -100,10 +99,33 @@ pub fn Registry::open_checkpoint(
   codec : String,
   content : Content,
 ) -> IRUnit raise BoundaryError {
+  self.inspect_checkpoint(codec, content).unit
+}
+
+///|
+fn inspect_json_checkpoint(
+  text : String,
+  unit_id : String,
+) -> CheckpointInspection raise {
+  let versioned = @versioned_json.read(text)
+  {
+    original_format_version: versioned.format_version(),
+    unit: IRUnit::new(unit_id, @migration.to_current(versioned)),
+  }
+}
+
+///|
+/// Inspect the source format before migration using the same checkpoint rules.
+/// Original bytes must be retained separately by the caller.
+pub fn Registry::inspect_checkpoint(
+  self : Registry,
+  codec : String,
+  content : Content,
+) -> CheckpointInspection raise BoundaryError {
   check_content(content, self.limits)
   try {
-    let unit_id = if codec == "morphir-json" {
-      "workbench"
+    let inspection = if codec == "morphir-json" {
+      inspect_json_checkpoint(require_text(content), "workbench")
     } else {
       let value = match (codec, content) {
         ("ion-text", Text(text)) => @ion_text.read_ion(text[:])
@@ -113,16 +135,23 @@ pub fn Registry::open_checkpoint(
             "data.encoding_mismatch", "Expected a supported checkpoint codec and matching content",
           )
       }
-      string_field(schema_fields(value), "unit_id")
+      let unit_id = string_field(schema_fields(value), "unit_id")
+      inspect_envelope(value, unit_id, self.limits)
     }
-    self.decode(codec, { unit_id, content, })
+    ignore(write_envelope(inspection.unit, self.limits))
+    inspection
   } catch {
     Invalid(_, _) as error => raise error
+    @wire.Invalid(code, detail) => raise Invalid(code, detail)
     @ion.LimitExceeded(message) => raise Invalid("data.tree_limit", message)
     @ion.Syntax(message)
     | @ion.DataModel(message)
     | @ion.Unsupported(message) => raise Invalid("data.decode_failed", message)
-    error => raise Invalid("data.decode_failed", error.to_string())
+    error =>
+      raise Invalid(
+        boundary_code(error, "data.decode_failed"),
+        error.to_string(),
+      )
   }
 }
 

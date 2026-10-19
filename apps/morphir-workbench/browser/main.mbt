@@ -31,8 +31,16 @@ extern "js" fn cancel_host() =
   #| () => globalThis.morphirWorkbench.cancel()
 
 ///|
-extern "js" fn import_model(receive : (String) -> Unit) =
-  #| (receive) => globalThis.morphirWorkbench.importModel(receive)
+extern "js" fn import_model(attempt : String, receive : (String) -> Unit) =
+  #| (attempt, receive) => globalThis.morphirWorkbench.importModel(attempt, receive)
+
+///|
+extern "js" fn cancel_model_open(attempt : String) =
+  #| (attempt) => globalThis.morphirWorkbench.cancelModelOpen(attempt)
+
+///|
+extern "js" fn release_model() =
+  #| () => globalThis.morphirWorkbench.releaseModel()
 
 ///|
 extern "js" fn download_ir(text : String) =
@@ -284,7 +292,7 @@ struct Model {
   worksheet_capture : @worksheet.WorksheetRequest?
   worksheet_report : @worksheet.WorksheetReport?
   worksheet_reveal : String
-  model : Json
+  document : @document.State
   generated : Bool
   generated_state : @generated.State
   status : String
@@ -355,14 +363,16 @@ enum Msg {
   MoonBitLibraryExample
   MoonBitSupportedExample
   MoonBitStringExample
-  DownloadSourceUnit
-  DownloadOriginal
+  DownloadSourceUnit(@document.DocumentRevision)
+  DownloadOriginal(@document.DocumentRevision)
+  CloseModel
   Request(String)
   Receive(Int32, Int32, String, String)
   Cancel
   ResumeExecution
   Import
-  Imported(String)
+  Imported(@document.OpenAttempt, String)
+  ReceiveModel(@document.OpenAttempt, Int32, Int32, String, String)
   Export
   Project(String)
   Panel(@bottom_panel.Action)
@@ -502,7 +512,7 @@ fn initial() -> Model {
     worksheet_capture: None,
     worksheet_report: None,
     worksheet_reveal: "",
-    model: Json::null(),
+    document: @document.State::new(),
     generated: false,
     generated_state: @generated.State::new(),
     status: "Initializing…",
@@ -655,7 +665,7 @@ fn entry_name(selected : String) -> String {
 /// The declaration's source spelling when the loaded model has it.
 fn entry_label(model : Model, key : String) -> String {
   match
-    items(field(model.model, "nodes"))
+    items(field(model.document.inspection(), "nodes"))
     .iter()
     .find_first(node => text(node, "key") == key) {
     Some(node) if text(node, "label") != "" => text(node, "label")
@@ -1362,11 +1372,33 @@ fn request_cmd(
   request_id : Int32,
   revision : Int32,
   request : Json,
+  opening~ : @document.OpenAttempt? = None,
 ) -> @cmd.Cmd {
+  let request = match (opening, request) {
+    (Some(attempt), Object(fields)) => {
+      let fields = fields.copy()
+      fields["modelOpenAttempt"] = Json::string(attempt.to_string())
+      Json::object(fields)
+    }
+    _ => request
+  }
   @cmd.custom_cmd(scheduler => {
     host_request(request.stringify(), reply => {
       scheduler.add(
-        emit(Receive(request_id, revision, text(request, "operation"), reply)),
+        emit(
+          match opening {
+            Some(attempt) =>
+              ReceiveModel(
+                attempt,
+                request_id,
+                revision,
+                text(request, "operation"),
+                reply,
+              )
+            None =>
+              Receive(request_id, revision, text(request, "operation"), reply)
+          },
+        ),
       )
     })
   })
@@ -1420,7 +1452,7 @@ fn select(model : Model, selected : String) -> Model {
     None
   }
   let profile = evaluation_profile(
-    model.model,
+    model.document.inspection(),
     selected,
     model.evaluation_runtime.is_typed(),
     capabilities=capability_descriptions(model),
@@ -1689,7 +1721,7 @@ fn update_core(
         return (model, @cmd.none)
       }
       let profile = evaluation_profile(
-        model.model,
+        model.document.inspection(),
         model.selected,
         evaluation_runtime.is_typed(),
         capabilities=capability_descriptions(model),
@@ -1757,7 +1789,7 @@ fn update_core(
     }
     EvaluationMode(evaluation_mode) => {
       let profile = evaluation_profile(
-        model.model,
+        model.document.inspection(),
         model.selected,
         model.evaluation_runtime.is_typed(),
         capabilities=capability_descriptions(model),
@@ -1807,7 +1839,7 @@ fn update_core(
       )
     Evaluate => {
       let profile = evaluation_profile(
-        model.model,
+        model.document.inspection(),
         model.selected,
         model.evaluation_runtime.is_typed(),
         capabilities=capability_descriptions(model),
@@ -1916,7 +1948,7 @@ fn update_core(
           model.evaluation_revision,
           object([
             ("operation", Json::string("evaluate")),
-            ("source", Json::string(model_source(model.model))),
+            ("source", Json::string(model_source(model.document.inspection()))),
             (
               "entry",
               Json::string(
@@ -2341,11 +2373,11 @@ fn update_core(
         },
         @cmd.none,
       )
-    DownloadOriginal => {
-      let artifact = field(model.model, "originalArtifact")
-      if artifact == Json::null() {
+    DownloadOriginal(revision) => {
+      guard model.document.original_for(revision) is Some(original) else {
         return (model, @cmd.none)
       }
+      let artifact = original.download()
       let error = download_generated(Json::array([artifact]).stringify(), false)
       let message = if error == "" {
         "Original file download started"
@@ -2369,8 +2401,74 @@ fn update_core(
         @cmd.none,
       )
     }
-    DownloadSourceUnit => {
-      let source = text(model.output, "sourceUnitIon")
+    CloseModel => {
+      if model.busy &&
+        model.document.opening() == None &&
+        !host_execution_blocks_replacement(model) {
+        return ({ ..model, status: busy_reason, }, @cmd.none)
+      }
+      let (document, pending) = match
+        model.document.close(host_retention(model)) {
+        Retained(_) =>
+          return (
+            {
+              ..model,
+              status: "Resume or finish the retained host execution before closing the model",
+            },
+            @cmd.none,
+          )
+        Closed(document, pending) => (document, pending)
+      }
+      if model.document.document() == None && pending == None {
+        return (model, @cmd.none)
+      }
+      let output = if [
+          "ir", "irSource", "sourceUnitIon", "originalArtifact", "modelSource",
+        ].any(key => field(model.output, key) != Json::null()) {
+        Json::null()
+      } else {
+        model.output
+      }
+      (
+        {
+          ..model,
+          document,
+          output,
+          history: replacement_history(model),
+          model_revision: model.model_revision + 1,
+          request_id: model.request_id + 1,
+          busy: false,
+          selected: "",
+          query: "",
+          collapsed_modules: [],
+          generated_state: model.generated_state.reset(),
+          evaluation_result: if model.evaluation_host_execution {
+            model.evaluation_result
+          } else {
+            Json::null()
+          },
+          evaluation_terminal: if model.evaluation_host_execution {
+            model.evaluation_terminal
+          } else {
+            @outcomes.Absent
+          },
+          evaluation_revision: model.evaluation_revision + 1,
+          evaluation_entry: "",
+          status: "Model closed",
+        },
+        @cmd.custom_cmd(_ => {
+          release_model()
+          if pending is Some(attempt) {
+            cancel_model_open(attempt.to_string())
+          }
+        }),
+      )
+    }
+    DownloadSourceUnit(revision) => {
+      if model.document.current_revision() != Some(revision) {
+        return (model, @cmd.none)
+      }
+      let source = text(model.document.inspection(), "sourceUnitIon")
       if source == "" {
         return (model, @cmd.none)
       }
@@ -2393,7 +2491,7 @@ fn update_core(
           @bottom_panel.Error
         },
         if message == "" {
-          "Downloaded the rich Ion source unit as main.ion"
+          "Rich Ion source unit download started as main.ion"
         } else {
           message
         },
@@ -2402,7 +2500,7 @@ fn update_core(
         {
           ..model,
           status: if message == "" {
-            "Source unit downloaded"
+            "Source unit download started"
           } else {
             message
           },
@@ -2411,6 +2509,11 @@ fn update_core(
       )
     }
     Request(operation) => {
+      if model.busy &&
+        operation != "initialize" &&
+        !host_execution_blocks_replacement(model) {
+        return ({ ..model, status: busy_reason, }, @cmd.none)
+      }
       if host_execution_blocks_replacement(model) {
         return (
           {
@@ -2487,6 +2590,17 @@ fn update_core(
           request,
         ),
       )
+    }
+    ReceiveModel(attempt, request_id, revision, operation, reply) => {
+      if !model.document.is_current(attempt) {
+        return (model, @cmd.none)
+      }
+      let (next, command) = update_core(
+        model,
+        Receive(request_id, revision, operation, reply),
+        emit,
+      )
+      ({ ..next, document: next.document.reject(attempt), }, command)
     }
     Receive(request_id, revision, operation, reply) => {
       if request_id != model.request_id {
@@ -2967,6 +3081,21 @@ fn update_core(
         return (restore_all(initialized), @cmd.none)
       }
       let compiled = field(result, "ir") != Json::null()
+      let document = if compiled {
+        model.document.replace(result) catch {
+          _ =>
+            return (
+              {
+                ..model,
+                busy: false,
+                status: "The model source offer is invalid; the previous model was retained",
+              },
+              @cmd.none,
+            )
+        }
+      } else {
+        model.document
+      }
       let artifacts = items(field(result, "artifacts"))
       let summary : Array[String] = [model_summary(result)]
       if text(result, "value") != "" {
@@ -3091,11 +3220,7 @@ fn update_core(
           } else {
             model.evaluation_runtime
           },
-          model: if compiled {
-            result
-          } else {
-            model.model
-          },
+          document,
           query: if compiled {
             ""
           } else {
@@ -3156,6 +3281,18 @@ fn update_core(
       )
     }
     Cancel => {
+      if model.document.opening() is Some(attempt) {
+        return (
+          {
+            ..model,
+            document: model.document.reject(attempt),
+            busy: false,
+            request_id: model.request_id + 1,
+            status: "Model opening cancelled",
+          },
+          @cmd.custom_cmd(_ => cancel_model_open(attempt.to_string())),
+        )
+      }
       if model.worksheet_capture is Some(_) && model.busy {
         return (
           { ..model, status: "Stopping worksheet…", },
@@ -3195,55 +3332,94 @@ fn update_core(
         @cmd.custom_cmd(_ => cancel_host()),
       )
     }
-    Import =>
+    Import => {
+      if model.busy && !host_execution_blocks_replacement(model) {
+        return ({ ..model, status: busy_reason, }, @cmd.none)
+      }
+      let (document, attempt) = match
+        model.document.begin(host_retention(model)) {
+        Started(document, attempt) => (document, attempt)
+        Refused(_) =>
+          return (
+            {
+              ..model,
+              status: "Resume or finish the retained host execution before replacing the model",
+            },
+            @cmd.none,
+          )
+        Exhausted =>
+          return (
+            {
+              ..model,
+              status: "Reopen the page before importing another model",
+            },
+            @cmd.none,
+          )
+      }
       (
-        model,
+        {
+          ..model,
+          document,
+          busy: true,
+          request_id: model.request_id + 1,
+          status: "Choose a model file…",
+        },
         @cmd.custom_cmd(scheduler => {
-          import_model(reply => scheduler.add(emit(Imported(reply))))
+          import_model(attempt.to_string(), reply => {
+            scheduler.add(emit(Imported(attempt, reply)))
+          })
         }),
       )
-    Imported(source) => {
+    }
+    Imported(attempt, source) => {
+      if !model.document.is_current(attempt) {
+        return (model, @cmd.none)
+      }
       if host_execution_blocks_replacement(model) {
         return (
           {
             ..model,
+            document: model.document.reject(attempt),
+            busy: false,
             status: "Resume or finish the retained host execution before replacing the model",
           },
           @cmd.none,
         )
       }
 
-      for
-        refusal in [
-          (
-            "{\"oversizedImport\":true}", "Model import exceeds the 16-MiB limit",
-          ),
-          (
-            "{\"unreadableImport\":true}", "Could not read the selected model file",
-          ),
-        ] {
-        if source == refusal.0 {
-          let model = reported(model, "Import", "model", model.model_revision, [
-            {
-              severity: @bottom_panel.Error,
-              code: "",
-              message: refusal.1,
-              location: "",
-              coordinates: "",
-              related: [],
-              fix: "",
-              stage: "",
-              place: None,
-            },
-          ])
+      let selection = @json.parse(source) catch { _ => Json::null() }
+      if text(selection, "kind") != "selected" {
+        let message = if text(selection, "kind") == "cancelled" {
+          "Model import cancelled"
+        } else if text(selection, "reason") == "oversized" {
+          "Model import exceeds the 16-MiB limit"
+        } else {
+          "Could not read the selected model file"
+        }
+        return (
+          {
+            ..model,
+            document: model.document.reject(attempt),
+            busy: false,
+            status: message,
+          },
+          @cmd.none,
+        )
+      }
+      let (filename, codec) = (
+        @document.OriginalFilename::parse(text(selection, "filename")),
+        @document.SourceCodec::parse(text(selection, "codec")),
+      ) catch {
+        _ =>
           return (
             {
-              ..note(model, "Import", @bottom_panel.Error, refusal.1),
-              status: refusal.1,
+              ..model,
+              document: model.document.reject(attempt),
+              busy: false,
+              status: "The selected model file name or format is invalid",
             },
             @cmd.none,
           )
-        }
       }
       let request_id = model.request_id + 1
       let model = note(
@@ -3252,9 +3428,8 @@ fn update_core(
         @bottom_panel.Info,
         "Started request " +
         request_id.to_string() +
-        " · reading " +
-        source.length().to_string() +
-        " characters of model JSON",
+        " · inspecting " +
+        filename.to_string(),
       )
       (
         remember(model, {
@@ -3271,8 +3446,12 @@ fn update_core(
           model.revision,
           object([
             ("operation", Json::string("inspect")),
-            ("source", Json::string(source)),
+            ("source", Json::string("")),
+            ("sourceCodec", Json::string(codec.to_string())),
+            ("sourceBase64", field(selection, "contentBase64")),
+            ("sourceFilename", Json::string(filename.to_string())),
           ]),
+          opening=Some(attempt),
         ),
       )
     }
@@ -3284,7 +3463,9 @@ fn update_core(
           @bottom_panel.Info,
           "Exported normalized IR as morphir-ir.json",
         ),
-        @cmd.custom_cmd(_ => download_ir(model_source(model.model))),
+        @cmd.custom_cmd(_ => {
+          download_ir(model_source(model.document.inspection()))
+        }),
       )
     Worksheet(Reveal(source, range)) => {
       if !worksheet_matches(model, source) || !model.worksheet {
@@ -3370,6 +3551,9 @@ fn update_core(
       )
     }
     Project(project) => {
+      if model.busy && !host_execution_blocks_replacement(model) {
+        return ({ ..model, status: busy_reason, }, @cmd.none)
+      }
       if host_execution_blocks_replacement(model) {
         return (
           {
@@ -3380,6 +3564,16 @@ fn update_core(
         )
       }
 
+      let (document, attempt) = match
+        model.document.begin(host_retention(model)) {
+        Started(document, attempt) => (document, attempt)
+        Refused(_) => return (model, @cmd.none)
+        Exhausted =>
+          return (
+            { ..model, status: "Reopen the page before opening another model", },
+            @cmd.none,
+          )
+      }
       let request_id = model.request_id + 1
       let model = note(
         model,
@@ -3393,6 +3587,7 @@ fn update_core(
       (
         {
           ..model,
+          document,
           request_id,
           busy: true,
           started: now_ms(),
@@ -3406,6 +3601,7 @@ fn update_core(
             ("operation", Json::string("project")),
             ("project", Json::string(project)),
           ]),
+          opening=Some(attempt),
         ),
       )
     }
@@ -3649,14 +3845,19 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
             ""
           },
         ),
-        @html.button(
-          class="ghost",
-          hidden=model.worksheet || text(output, "sourceUnitIon") == "",
-          title="Download the rich Ion source unit, including metadata and provenance",
-          attrs=@html.Attrs::build().aria_label("Download source unit"),
-          on_click=emit(DownloadSourceUnit),
-          [action_icon("download"), @html.span("Source unit")],
-        ),
+        match model.document.current_revision() {
+          Some(revision) =>
+            @html.button(
+              class="ghost",
+              hidden=model.worksheet ||
+                text(model.document.inspection(), "sourceUnitIon") == "",
+              title="Download the rich Ion source unit, including metadata and provenance",
+              attrs=@html.Attrs::build().aria_label("Download source unit"),
+              on_click=emit(DownloadSourceUnit(revision)),
+              [action_icon("download"), @html.span("Source unit")],
+            )
+          None => @html.span("")
+        },
       ]),
     ]),
     @html.div(class="output-body", body),
@@ -3933,16 +4134,34 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         ),
         @html.button(
           class="ghost",
-          disabled=field(model.model, "ir") == Json::null(),
+          disabled=field(model.document.inspection(), "ir") == Json::null(),
           on_click=emit(Export),
           [action_icon("download"), @html.span("Export IR")],
         ),
+        match (model.document.current_revision(), model.document.original()) {
+          (Some(revision), Some(file)) =>
+            @html.button(
+              class="ghost",
+              attrs=@html.Attrs::build().aria_label("Download original file"),
+              title="Download " +
+                file.filename.to_string() +
+                " · original IR " +
+                file.format_version.to_release_string(),
+              on_click=emit(DownloadOriginal(revision)),
+              [action_icon("download"), @html.span("Original file")],
+            )
+          _ => @html.span(hidden=true, "")
+        },
         @html.button(
-          class="ghost",
-          hidden=field(model.model, "originalArtifact") == Json::null(),
-          title="Download the original file, retaining its format version and metadata",
-          on_click=emit(DownloadOriginal),
-          [action_icon("download"), @html.span("Original file")],
+          class="ghost artifact-icon-button close-model-button",
+          hidden=model.document.document() == None &&
+            model.document.opening() == None,
+          disabled=host_execution_blocks_replacement(model) ||
+            (model.busy && model.document.opening() == None),
+          title="Close model",
+          attrs=@html.Attrs::build().aria_label("Close model"),
+          on_click=emit(CloseModel),
+          [action_icon("close")],
         ),
       ]),
     ]),
@@ -3973,7 +4192,7 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           input_mode: model.evaluation_mode,
           result_mode: model.result_mode,
           profile: evaluation_profile(
-            model.model,
+            model.document.inspection(),
             model.selected,
             model.evaluation_runtime.is_typed(),
             capabilities=capability_descriptions(model),
@@ -4297,7 +4516,7 @@ fn project_storage(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 ///|
 fn explorer_props(model : Model) -> @explorer.Props {
   {
-    data: model.model,
+    data: model.document.inspection(),
     selected: model.selected,
     query: model.query,
     collapsed_modules: model.collapsed_modules,
@@ -4370,7 +4589,7 @@ fn checking_available(model : Model) -> Bool {
     return false
   }
   @capabilities.supports_checks(
-    field(model.model, "capabilityEvaluations"),
+    field(model.document.inspection(), "capabilityEvaluations"),
     evaluator,
     model.selected
     .strip_prefix("value|")
@@ -4504,7 +4723,22 @@ fn host_execution_disconnected(model : Model) -> Bool {
 
 ///|
 fn host_execution_blocks_replacement(model : Model) -> Bool {
-  host_execution_pending(model) || host_execution_disconnected(model)
+  host_retention(model) != @document.Idle
+}
+
+///|
+fn host_retention(model : Model) -> @document.HostRetention {
+  if model.submission_unknown {
+    @document.UnknownSubmission
+  } else if model.host_submitting {
+    @document.Submitting
+  } else if host_execution_disconnected(model) {
+    @document.Disconnected
+  } else if host_execution_pending(model) {
+    @document.Running
+  } else {
+    @document.Idle
+  }
 }
 
 // Project explorer, shortcuts and the command palette. The explorer and the palette are pure state machines; these

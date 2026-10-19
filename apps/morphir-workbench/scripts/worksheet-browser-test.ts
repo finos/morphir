@@ -27,10 +27,21 @@ export async function worksheetWorkflow(page: Page) {
       receive(raw);
     });
   });
-  const source = page.getByRole('textbox', { name: 'Source editor' });
+  const source = page.locator('#source');
+  const setSource = async (text: string) => {
+    // Playwright fill selects the DOM before inserting text. CodeMirror can
+    // restore its own selection between those steps and append the fixture.
+    // A transaction replaces the document and emits the real editor input event.
+    await source.evaluate((node, text) => {
+      const view = (node as CodeEditor).view;
+      if (!view) throw new Error('The source editor must be mounted.');
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+    }, text);
+    assert.equal(await source.evaluate(node => (node as CodeEditor).value), text.replace(/\r\n?/g, '\n'));
+  };
   const run = page.getByRole('button', { name: 'Run worksheet', exact: true });
   const report = () => page.evaluate(() => (globalThis as unknown as { worksheetTestReceipts: WorksheetReport[] }).worksheetTestReceipts.at(-1)!);
-  await source.fill('; capture 😀\r\n"😀"\r\n(+ 40 2)\r\n-0.0');
+  await setSource('; capture 😀\r\n"😀"\r\n(+ 40 2)\r\n-0.0');
   const captured = await page.locator('#source').evaluate(node => (node as CodeEditor).value);
   await run.click();
   await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
@@ -52,12 +63,12 @@ export async function worksheetWorkflow(page: Page) {
   }), '(+ 40 2)');
   await page.locator('.worksheet-typed summary').nth(1).click();
   assert.match(await page.locator('.worksheet-typed[open]').innerText(), /"value": "42"/);
-  await source.fill('; new revision\n' + captured);
+  await setSource('; new revision\n' + captured);
   await page.locator('.worksheet-stale').waitFor();
   assert.equal(await page.getByRole('button', { name: 'Show expression in source', exact: true }).nth(1).isDisabled(), true);
   assert.equal(await page.locator('#source').evaluate(node => (node as CodeEditor).dataset.marks), '');
 
-  await source.fill('1\nmissing\n2');
+  await setSource('1\nmissing\n2');
   await run.click();
   await page.getByRole('status').filter({ hasText: 'Worksheet stopped' }).waitFor();
   const failed = await report();
@@ -66,7 +77,7 @@ export async function worksheetWorkflow(page: Page) {
   assert.deepEqual(failed.diagnostic, { stage: 'evaluate', range: { start: 2, end: 9 } });
   assert.notEqual(await page.locator('#source').evaluate(node => (node as CodeEditor).dataset.marks), '');
 
-  await source.fill('(let loop () (loop))');
+  await setSource('(let loop () (loop))');
   await run.click();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Worksheet cancelled' }).waitFor();
@@ -75,11 +86,11 @@ export async function worksheetWorkflow(page: Page) {
   assert.deepEqual(cancelled.observations, []);
   assert.deepEqual(cancelled.diagnostic, { stage: 'transport', range: null });
 
-  await source.fill('(let loop ((n 30) (x 1)) (if (= n 0) x (loop (- n 1) (vector x x))))');
+  await setSource('(let loop ((n 30) (x 1)) (if (= n 0) x (loop (- n 1) (vector x x))))');
   await run.click();
   await page.getByRole('status').filter({ hasText: 'Worksheet stopped' }).waitFor();
   assert.equal((await report()).completion.failure?.code, 'worksheet.output_limit');
-  await source.fill('(+ 2 2)');
+  await setSource('(+ 2 2)');
   await run.click();
   await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
   assert.deepEqual(await page.locator('.worksheet-result .value').allTextContents(), ['4']);

@@ -25,6 +25,13 @@ fn scope_model() -> Model {
 }
 
 ///|
+fn test_document(view : Json) -> @document.State {
+  @document.State::new().replace(view) catch {
+    _ => abort("invalid test inspection")
+  }
+}
+
+///|
 test "local results clear on navigation even when native executions are available" {
   let other = select(scope_model(), "value|other")
   assert_eq(other.evaluation_result, Json::null())
@@ -99,7 +106,7 @@ fn policy_scope_model() -> Model {
     evaluation_runtime: @evaluation.TypedInvocation,
     evaluation_policy: @capabilities.CapabilityPolicy::Strict,
     capability_runtime: Standalone(@capabilities.SchemePortable),
-    model: {
+    document: test_document({
       "capabilityEvaluations": {
         "evaluator": "scheme-portable-v1/shared-sdk/bounded",
         "admission": {
@@ -121,7 +128,7 @@ fn policy_scope_model() -> Model {
           },
         },
       },
-    },
+    }),
   }
 }
 
@@ -232,7 +239,9 @@ test "editing policy during execution never rewrites the completed run selection
 ///|
 test "bounded local descriptions preserve existing strict entries without granting a policy offer" {
   let base = policy_scope_model()
-  guard base.model is Object(data) else { abort("model object") }
+  guard base.document.inspection() is Object(data) else {
+    abort("model object")
+  }
   data["typedEvaluations"] = {
     "entries": {
       "outside": {
@@ -246,7 +255,12 @@ test "bounded local descriptions preserve existing strict entries without granti
   let model = { ..base, selected: "value|outside", }
   assert_true(
     field(
-      evaluation_profile(model.model, model.selected, true, capabilities=true),
+      evaluation_profile(
+        model.document.inspection(),
+        model.selected,
+        true,
+        capabilities=true,
+      ),
       "supported",
     ) ==
     Json::boolean(true),

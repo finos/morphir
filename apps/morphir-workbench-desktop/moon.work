@@ -5,6 +5,7 @@ members = [
   "../morphir-workbench",
   "../morphir-site",
   "../../pkgs/morphir-core",
+  "../../pkgs/morphir-conceptual",
   "../../pkgs/morphir-ir",
   "../../pkgs/morphir-scheme",
   "../../pkgs/morphir-engine",

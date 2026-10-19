@@ -80,11 +80,23 @@ test "workspace JSON import accepts original historical versions without JS pars
       msg=reply.stringify(),
     )
     assert_eq(@wire.field(reply, "formatVersion"), Json::string("4.0.0"))
+    assert_eq(
+      @wire.field(reply, "sourceFormatVersion"),
+      Json::string(file.format_version().to_release_string()),
+    )
+    let text_reply = @pipeline.execute({
+      "operation": "inspect",
+      "source": source,
+    })
+    assert_eq(
+      @wire.field(text_reply, "sourceFormatVersion"),
+      Json::string(file.format_version().to_release_string()),
+    )
   }
 }
 
 ///|
-test "workspace codec admission rejects invalid bytes and unknown formats" {
+test "workspace codec validation rejects invalid bytes and unknown formats" {
   for
     (codec, bytes) in [
       ("morphir-json", b"\xff"),
@@ -99,4 +111,23 @@ test "workspace codec admission rejects invalid bytes and unknown formats" {
     })
     assert_eq(@wire.field(reply, "success"), Json::boolean(false))
   }
+}
+
+///|
+test "captured model refusal retains user-facing model stage and codec detail" {
+  let reply = @pipeline.execute({
+    "operation": "inspect",
+    "source": "",
+    "sourceCodec": "morphir-json",
+    "sourceBase64": "e30=",
+  })
+  assert_eq(@wire.field(reply, "success"), Json::boolean(false))
+  assert_eq(@wire.field(reply, "code"), Json::string("workbench.invalid_model"))
+  assert_eq(@wire.field(reply, "stage"), Json::string("model"))
+  assert_true(
+    @wire.string(@wire.field(reply, "message")).contains(
+      "The model is not valid",
+    ),
+  )
+  assert_true(@wire.field(reply, "cause") != Json::null())
 }

@@ -189,6 +189,9 @@ export class NativeAdapter {
     this.current(epoch);
     return result;
   }
+  cancelModelOpen() {
+    ++this.epoch; this.local.cancel(); return this.workspace?.cancel();
+  }
   cancel() {
     if (this.executions?.active || (this.executions?.execution && this.executions.execution.state !== 'terminal')) return this.executions.cancel();
     ++this.epoch; this.local.cancel(); return this.workspace?.cancel();

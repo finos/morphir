@@ -13,6 +13,15 @@ The latest IR model supported by this implementation. Its meaning advances when 
 **Versioned IR**:
 An IR document whose format version remains explicit, including historical representations.
 
+**Original model source**:
+The exact source document or inventory accepted for a model, retaining its bytes, storage format and original IR format version.
+
+**Semantic projection**:
+A representation reconstructed or migrated for inspecting a model. It does not establish preservation of the original model source.
+
+**Model document**:
+The displayed semantic inspection together with its original model source, or an explicit reason originals are unavailable. Its local revision identifies download controls. Replacing or closing it invalidates those controls and pending opening attempts. Closing a model preserves editor and worksheet inputs and does not cancel or release a host execution. A pending, retained, disconnected or uncertain host execution prevents closing or replacing its model.
+
 **Specification**:
 The public types and value signatures of a module or package.
 

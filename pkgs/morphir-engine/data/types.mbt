@@ -61,6 +61,17 @@ pub(all) struct IRUnit {
 pub extend IRUnit with @debug.Debug::{to_repr}
 
 ///|
+/// The decoded checkpoint's format is independent of its migrated semantic IR.
+/// This result carries no file bytes, retained model handle or host authority.
+pub struct CheckpointInspection {
+  unit : IRUnit
+  original_format_version : @version.FormatVersion
+} derive(Debug)
+
+///|
+pub extend CheckpointInspection with @debug.Debug::{to_repr}
+
+///|
 pub fn IRUnit::new(
   id : String,
   distribution : @ir.IRFile,

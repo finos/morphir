@@ -50,6 +50,15 @@ fn read_envelope(
   unit_id : String,
   limits : Limits,
 ) -> IRUnit raise {
+  inspect_envelope(value, unit_id, limits).unit
+}
+
+///|
+fn inspect_envelope(
+  value : @ion.IonValue,
+  unit_id : String,
+  limits : Limits,
+) -> CheckpointInspection raise {
   check_tree(value, limits)
   let annotations = value.annotations()
   if !annotations.any(token => token.text() == Some("morphir_pipeline")) {
@@ -98,9 +107,11 @@ fn read_envelope(
   if field(fields, "metadata").has_annotations() {
     raise Invalid("data.profile_value_unsupported", "metadata list")
   }
-  let distribution = @migration.to_current(
-    @versioned_json.from_json(read_semantic_ir(field(fields, "ir"))),
+  let versioned = @versioned_json.from_json(
+    read_semantic_ir(field(fields, "ir")),
   )
+  let original_format_version = versioned.format_version()
+  let distribution = @migration.to_current(versioned)
   let provenance = match fields.get("provenance") {
     None => []
     Some(value) if !value.has_annotations() =>
@@ -110,7 +121,10 @@ fn read_envelope(
       }
     _ => raise Invalid("data.profile_value_unsupported", "provenance list")
   }
-  { id, distribution, metadata, annotations, provenance, }
+  {
+    unit: { id, distribution, metadata, annotations, provenance, },
+    original_format_version,
+  }
 }
 
 ///|

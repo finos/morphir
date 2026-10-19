@@ -25,6 +25,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { openSample } from './workbench-steps.ts';
 import { capabilityWorkflow } from './capability-workflow.ts';
 import { connectedCapabilityWorkflow } from './connected-capability-workflow.ts';
+import { modelDocumentWorkflow } from './model-document-workflow.ts';
 
 // Opt-in acceptance uses a real Rust binary and an isolated provider/workspace.
 // Keep the ordinary fixture workflow independent of Rust tooling.
@@ -198,6 +199,7 @@ try {
   const [output] = await once(server.stdout, 'data');
   const url = String(output).match(/http:\/\/127\.0\.0\.1:\d+/)![0];
   browser = await chromium.launch({ headless: true });
+  await modelDocumentWorkflow(browser, url);
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

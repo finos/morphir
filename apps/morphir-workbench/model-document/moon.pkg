@@ -1,0 +1,10 @@
+import {
+  "finos/morphir-ir/version",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/debug",
+}
+
+import {
+  "finos/morphir-workbench/model-document" @document,
+} for "test"

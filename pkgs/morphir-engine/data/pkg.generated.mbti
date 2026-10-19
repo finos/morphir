@@ -3,6 +3,7 @@ package "finos/morphir-engine/data"
 
 import {
   "finos/morphir-conceptual/model",
+  "finos/morphir-ir/version",
   "finos/morphir-ir/versions/v4",
   "moonbitlang/core/debug",
   "moonrockz/ion/ion",
@@ -26,6 +27,12 @@ pub fn BoundaryError::not_equal(Self, Self) -> Bool
 pub fn BoundaryError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub struct CheckpointInspection {
+  unit : IRUnit
+  original_format_version : @version.FormatVersion
+} derive(@debug.Debug)
+pub fn CheckpointInspection::to_repr(Self) -> @debug.Repr
+
 pub(all) struct Codec {
   decode : (SourceSnapshot, Limits) -> IRUnit raise
   encode : (IRUnit, Limits) -> Content raise
@@ -90,6 +97,7 @@ pub fn Registry::checkpoint(Self, IRUnit, codec? : String) -> Content raise Boun
 pub fn Registry::decode(Self, String, SourceSnapshot) -> IRUnit raise BoundaryError
 pub fn Registry::encode(Self, String, IRUnit) -> Content raise BoundaryError
 pub fn Registry::has_codec(Self, String) -> Bool
+pub fn Registry::inspect_checkpoint(Self, String, Content) -> CheckpointInspection raise BoundaryError
 pub fn Registry::new(limits? : Limits) -> Self raise
 pub fn Registry::open_checkpoint(Self, String, Content) -> IRUnit raise BoundaryError
 pub fn Registry::register(Self, String, Codec) -> Unit raise BoundaryError
