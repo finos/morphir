@@ -45,6 +45,54 @@ pub(super) struct WorkflowRecordComparison<'source, 'record, 'raw> {
     checked_predicates: usize,
 }
 
+/// One explicitly issued record-check attempt. Its context stays borrowed
+/// from the genuine compiler result, and its first error moves into stable
+/// state. It neither clones nor replaces the caller's cumulative owners.
+///
+/// This post-receive component does not itself govern request serialization,
+/// exchanges or report inventory. The selected runner must retain an attempt
+/// across those effects and check failure before starting subsequent work.
+pub(super) struct WorkflowRecordCheckAttempt<'context, 'compiled, 'case, 'sources, 'raw, 'supplied>
+{
+    context: &'context WorkflowReportContext<'compiled, 'case, 'sources, 'raw, 'supplied>,
+    fault: Option<WorkflowRecordError>,
+}
+
+impl<'compiled, 'case, 'sources, 'raw, 'supplied>
+    WorkflowReportContext<'compiled, 'case, 'sources, 'raw, 'supplied>
+{
+    pub(super) fn record_attempt(
+        &self,
+    ) -> WorkflowRecordCheckAttempt<'_, 'compiled, 'case, 'sources, 'raw, 'supplied> {
+        WorkflowRecordCheckAttempt {
+            context: self,
+            fault: None,
+        }
+    }
+}
+
+impl<'case, 'raw> WorkflowRecordCheckAttempt<'_, '_, 'case, '_, 'raw, '_> {
+    pub(super) fn check_record<'attempt, 'record>(
+        &'attempt mut self,
+        record: &'record WorkflowExchangeRecord,
+        decoder: &mut Decoder,
+        comparison: &mut CompareOwner,
+    ) -> Result<WorkflowRecordComparison<'case, 'record, 'raw>, &'attempt WorkflowRecordError> {
+        if self.fault.is_none() {
+            match self.context.check_record(record, decoder, comparison) {
+                Ok(compared) => return Ok(compared),
+                Err(error) => self.fault = Some(error),
+            }
+        }
+        // Already-failed attempts return the same borrowed value without
+        // consulting a Decoder, comparison owner, source or record payload.
+        Err(self
+            .fault
+            .as_ref()
+            .expect("failed record attempt retains its first error"))
+    }
+}
+
 fn envelope<T>(fault: WorkflowEnvelopeFault) -> Result<T, WorkflowRecordError> {
     Err(WorkflowRecordError::Envelope(fault))
 }

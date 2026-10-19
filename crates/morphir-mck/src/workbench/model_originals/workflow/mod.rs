@@ -60,3 +60,9 @@ mod context_checker_tests;
 
 #[cfg(test)]
 mod report_record_tests;
+
+#[cfg(test)]
+mod record_boundary_tests;
+
+#[cfg(test)]
+mod record_attempt_tests;
