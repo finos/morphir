@@ -243,10 +243,20 @@ pub struct CaptureExpectation {
     binding: Binding,
     capture: CaptureId,
     roots: Vec<Root>,
+    source_format: super::SourceFormatVersion,
     summary: Summary,
     projection: ProjectionDescriptor,
 }
 impl CaptureExpectation {
+    pub fn primary(&self) -> &Root {
+        &self.roots[0]
+    }
+    pub fn companions(&self) -> &[Root] {
+        &self.roots[1..]
+    }
+    pub fn source_format_version(&self) -> &super::SourceFormatVersion {
+        &self.source_format
+    }
     /// Validate an actual release acknowledgement for this exact capture. Two
     /// calls can establish the protocol's immediate idempotent release; this
     /// proves neither memory reclamation nor another connection's authority.
@@ -353,6 +363,7 @@ impl CaptureExpectation {
             binding,
             capture,
             roots,
+            source_format: super::SourceFormatVersion::parse(&ready["sourceFormatVersion"])?,
             summary,
             projection,
         })

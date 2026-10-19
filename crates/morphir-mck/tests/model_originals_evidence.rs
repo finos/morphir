@@ -2,8 +2,9 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use morphir_mck::workbench::model_originals::{
     CaptureEvidence, EvidenceError, Exchange, ExpectedBytes, ExpectedOriginalEntry,
-    ExpectedOriginals, ExpectedProjection, FixtureByteLimits, FixtureBytes, OriginalTransfer,
-    Parameters, ProjectionWorkLimits, Request, SessionId,
+    ExpectedOriginals, ExpectedProjection, ExpectedSource, FixtureByteLimits, FixtureBytes,
+    ModelRelease, OriginalTransfer, Parameters, ProjectionWorkLimits, Request, Root, SessionId,
+    SourceFormatVersion,
 };
 use serde_json::{Value, json};
 
@@ -19,15 +20,29 @@ fn request(method: &str, params: Value) -> Request {
 fn reply(result: &Value) -> String {
     json!({"jsonrpc":"2.0","id":1,"result":result}).to_string()
 }
+fn model_source(companions: Vec<Root>) -> ExpectedSource {
+    ExpectedSource::new(
+        Root::file("morphir-ir.json").unwrap(),
+        companions,
+        SourceFormatVersion::Reported(ModelRelease::parse("4.0.0").unwrap()),
+    )
+    .unwrap()
+}
 fn expected<'a>(model: &'a [u8], opaque: &'a [u8]) -> ExpectedOriginals<'a> {
-    ExpectedOriginals::new(vec![
-        ExpectedOriginalEntry::file("notes/opaque.bin", ExpectedBytes::literal(opaque).unwrap())
+    ExpectedOriginals::new(
+        vec![
+            ExpectedOriginalEntry::file(
+                "notes/opaque.bin",
+                ExpectedBytes::literal(opaque).unwrap(),
+            )
             .unwrap(),
-        ExpectedOriginalEntry::directory("notes/empty").unwrap(),
-        ExpectedOriginalEntry::directory("notes").unwrap(),
-        ExpectedOriginalEntry::file("morphir-ir.json", ExpectedBytes::literal(model).unwrap())
-            .unwrap(),
-    ])
+            ExpectedOriginalEntry::directory("notes/empty").unwrap(),
+            ExpectedOriginalEntry::directory("notes").unwrap(),
+            ExpectedOriginalEntry::file("morphir-ir.json", ExpectedBytes::literal(model).unwrap())
+                .unwrap(),
+        ],
+        model_source(vec![Root::directory("notes").unwrap()]),
+    )
     .unwrap()
 }
 fn run(
@@ -129,6 +144,76 @@ fn complete_capture_matches_independently_authored_files_and_empty_directories()
 }
 
 #[test]
+fn primary_and_companion_roles_are_independent_source_facts() {
+    let packet = packet();
+    let model = model_bytes(&packet);
+    let expected = expected(&model, &[0, 1, 2, 255]);
+    let mut summary = packet["cases"][0]["expected"]["summary"].clone();
+    let primary = summary["primary"].clone();
+    summary["primary"] = summary["companions"][0].clone();
+    summary["companions"][0] = primary;
+    assert!(matches!(
+        run(&expected, &reply(&summary), true, false),
+        Err(EvidenceError::SourceRoles)
+    ));
+}
+
+#[test]
+fn source_release_is_checked_against_independent_primary_evidence() {
+    let packet = packet();
+    let model = model_bytes(&packet);
+    let expected = expected(&model, &[0, 1, 2, 255]);
+    let mut summary = packet["cases"][0]["expected"]["summary"].clone();
+    summary["sourceFormatVersion"]["release"] = json!("5.0.0");
+    assert!(matches!(
+        run(&expected, &reply(&summary), true, false),
+        Err(EvidenceError::SourceFormat)
+    ));
+    summary["sourceFormatVersion"] = json!({"status":"not-reported"});
+    assert!(matches!(
+        run(&expected, &reply(&summary), true, false),
+        Err(EvidenceError::SourceFormat)
+    ));
+}
+
+#[test]
+fn independent_source_roles_validate_overlap_aliases_and_the_root_count() {
+    for companion in [
+        Root::file("model").unwrap(),
+        Root::directory("MODEL").unwrap(),
+        Root::file("model/child").unwrap(),
+    ] {
+        assert!(
+            ExpectedSource::new(
+                Root::directory("model").unwrap(),
+                vec![companion],
+                SourceFormatVersion::NotReported
+            )
+            .is_err()
+        );
+    }
+    let roots = (0..64)
+        .map(|i| Root::file(&format!("source{i}")).unwrap())
+        .collect::<Vec<_>>();
+    assert!(
+        ExpectedSource::new(
+            Root::directory("model").unwrap(),
+            roots[..63].to_vec(),
+            SourceFormatVersion::NotReported
+        )
+        .is_ok()
+    );
+    assert!(
+        ExpectedSource::new(
+            Root::directory("model").unwrap(),
+            roots,
+            SourceFormatVersion::NotReported
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn flat_fixture_bytes_feed_the_actual_source_correspondence_check() {
     let packet = packet();
     let model = model_bytes(&packet);
@@ -136,13 +221,16 @@ fn flat_fixture_bytes_feed_the_actual_source_correspondence_check() {
         r#"{"kind":"concat","parts":[{"kind":"cycle-u8","seed":0,"length":3},{"kind":"hex","hex":"ff"}]}"#,
         FixtureByteLimits::new(1024, 4, 2).unwrap(),
     ).unwrap();
-    let originals = ExpectedOriginals::new(vec![
-        ExpectedOriginalEntry::file("morphir-ir.json", ExpectedBytes::literal(&model).unwrap())
-            .unwrap(),
-        ExpectedOriginalEntry::directory("notes").unwrap(),
-        ExpectedOriginalEntry::directory("notes/empty").unwrap(),
-        ExpectedOriginalEntry::file("notes/opaque.bin", opaque.expected().unwrap()).unwrap(),
-    ])
+    let originals = ExpectedOriginals::new(
+        vec![
+            ExpectedOriginalEntry::file("morphir-ir.json", ExpectedBytes::literal(&model).unwrap())
+                .unwrap(),
+            ExpectedOriginalEntry::directory("notes").unwrap(),
+            ExpectedOriginalEntry::directory("notes/empty").unwrap(),
+            ExpectedOriginalEntry::file("notes/opaque.bin", opaque.expected().unwrap()).unwrap(),
+        ],
+        model_source(vec![Root::directory("notes").unwrap()]),
+    )
     .unwrap();
     run(
         &originals,
@@ -204,7 +292,11 @@ fn directories_and_original_projection_roles_cannot_be_omitted_or_confused() {
             .unwrap(),
         ],
     ] {
-        let expected = ExpectedOriginals::new(entries).unwrap();
+        let expected = ExpectedOriginals::new(
+            entries,
+            model_source(vec![Root::directory("notes").unwrap()]),
+        )
+        .unwrap();
         assert!(matches!(
             run(
                 &expected,
@@ -267,22 +359,37 @@ fn compact_byte_recipes_keep_the_source_boundary_without_expansion() {
         ExpectedBytes::cycle(7, maximum).unwrap(),
         ExpectedBytes::chunk_indexed(11, maximum).unwrap(),
     ] {
-        ExpectedOriginals::new(vec![ExpectedOriginalEntry::file("source", bytes).unwrap()])
-            .unwrap();
+        ExpectedOriginals::new(
+            vec![ExpectedOriginalEntry::file("source", bytes).unwrap()],
+            ExpectedSource::new(
+                Root::file("source").unwrap(),
+                vec![],
+                SourceFormatVersion::NotReported,
+            )
+            .unwrap(),
+        )
+        .unwrap();
     }
     assert!(ExpectedBytes::repeat(0, maximum + 1).is_err());
     assert!(
-        ExpectedOriginals::new(vec![
-            ExpectedOriginalEntry::file("a", ExpectedBytes::repeat(0, maximum).unwrap()).unwrap(),
-            ExpectedOriginalEntry::file("b", ExpectedBytes::repeat(0, 1).unwrap()).unwrap()
-        ])
+        ExpectedOriginals::new(
+            vec![
+                ExpectedOriginalEntry::file("a", ExpectedBytes::repeat(0, maximum).unwrap())
+                    .unwrap(),
+                ExpectedOriginalEntry::file("b", ExpectedBytes::repeat(0, 1).unwrap()).unwrap()
+            ],
+            model_source(vec![])
+        )
         .is_err()
     );
     assert!(
-        ExpectedOriginals::new(vec![
-            ExpectedOriginalEntry::directory("a").unwrap(),
-            ExpectedOriginalEntry::directory("a").unwrap()
-        ])
+        ExpectedOriginals::new(
+            vec![
+                ExpectedOriginalEntry::directory("a").unwrap(),
+                ExpectedOriginalEntry::directory("a").unwrap()
+            ],
+            model_source(vec![])
+        )
         .is_err()
     );
     for path in ["../escape", "/absolute", "a//b", "a/CON"] {
@@ -316,13 +423,19 @@ fn compact_recipes_compare_actual_bytes_and_refuse_changes() {
     .into_iter()
     .enumerate()
     {
-        let expected = ExpectedOriginals::new(vec![
-            ExpectedOriginalEntry::file("morphir-ir.json", ExpectedBytes::literal(&model).unwrap())
+        let expected = ExpectedOriginals::new(
+            vec![
+                ExpectedOriginalEntry::file(
+                    "morphir-ir.json",
+                    ExpectedBytes::literal(&model).unwrap(),
+                )
                 .unwrap(),
-            ExpectedOriginalEntry::directory("notes").unwrap(),
-            ExpectedOriginalEntry::directory("notes/empty").unwrap(),
-            ExpectedOriginalEntry::file("notes/opaque.bin", bytes).unwrap(),
-        ])
+                ExpectedOriginalEntry::directory("notes").unwrap(),
+                ExpectedOriginalEntry::directory("notes/empty").unwrap(),
+                ExpectedOriginalEntry::file("notes/opaque.bin", bytes).unwrap(),
+            ],
+            model_source(vec![Root::directory("notes").unwrap()]),
+        )
         .unwrap();
         let result = run(
             &expected,
@@ -407,13 +520,16 @@ fn actual_64_mib_original_verifies_against_the_frozen_compact_recipe() {
     else {
         panic!()
     };
-    let expected = ExpectedOriginals::new(vec![
-        ExpectedOriginalEntry::file(
-            "morphir-ir.json",
-            ExpectedBytes::prefix_tail(b' ', length, tail).unwrap(),
-        )
-        .unwrap(),
-    ])
+    let expected = ExpectedOriginals::new(
+        vec![
+            ExpectedOriginalEntry::file(
+                "morphir-ir.json",
+                ExpectedBytes::prefix_tail(b' ', length, tail).unwrap(),
+            )
+            .unwrap(),
+        ],
+        model_source(vec![]),
+    )
     .unwrap();
     let checked = expected
         .verify(

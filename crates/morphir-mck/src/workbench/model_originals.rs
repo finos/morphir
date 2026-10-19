@@ -19,7 +19,7 @@ mod evidence;
 mod fixture_bytes;
 pub use evidence::{
     CaptureEvidence, CheckedOriginalsEvidence, EvidenceError, ExpectedBytes, ExpectedOriginalEntry,
-    ExpectedOriginals, OriginalTransfer,
+    ExpectedOriginals, ExpectedSource, OriginalTransfer,
 };
 pub use fixture_bytes::{FixtureByteError, FixtureByteLimits, FixtureBytes};
 mod projection;
@@ -307,6 +307,38 @@ pub struct Root {
     pub kind: RootKind,
     pub path: RootPath,
 }
+impl Root {
+    pub fn file(path: &str) -> Result<Self, InvalidFrame> {
+        Ok(Self {
+            kind: RootKind::File,
+            path: RootPath::parse(&path.into())?,
+        })
+    }
+    pub fn directory(path: &str) -> Result<Self, InvalidFrame> {
+        Ok(Self {
+            kind: RootKind::Directory,
+            path: RootPath::parse(&path.into())?,
+        })
+    }
+}
+/// An actual source-header claim, independent of projection availability and
+/// consumer support. Expected values must come from independent source facts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SourceFormatVersion {
+    NotReported,
+    Reported(ModelRelease),
+}
+impl SourceFormatVersion {
+    fn parse(value: &Value) -> Result<Self, InvalidFrame> {
+        match value["status"].as_str() {
+            Some("not-reported") => Ok(Self::NotReported),
+            Some("reported") => Ok(Self::Reported(ModelRelease::parse(
+                value["release"].as_str().ok_or(InvalidFrame::Shape)?,
+            )?)),
+            _ => Err(InvalidFrame::Shape),
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     companions: Vec<Root>,
@@ -336,38 +368,42 @@ impl Declaration {
                 })
             })
             .collect::<Result<Vec<_>, InvalidFrame>>()?;
-        let mut prefixes = BTreeMap::new();
-        let mut complete = Vec::new();
-        for root in &companions {
-            let path = root.path.as_str();
-            let key = folded(path);
-            if complete.iter().any(|previous: &String| {
-                key == *previous
-                    || key
-                        .strip_prefix(previous)
-                        .is_some_and(|s| s.starts_with('/'))
-                    || previous
-                        .strip_prefix(&key)
-                        .is_some_and(|s| s.starts_with('/'))
-            }) {
-                return Err(InvalidFrame::PathSet);
-            }
-            for end in path
-                .match_indices('/')
-                .map(|(i, _)| i)
-                .chain(std::iter::once(path.len()))
-            {
-                let prefix = &path[..end];
-                if let Some(previous) = prefixes.insert(folded(prefix), prefix)
-                    && previous != prefix
-                {
-                    return Err(InvalidFrame::PathSet);
-                }
-            }
-            complete.push(key);
-        }
+        validate_root_set(&companions)?;
         Ok(Self { companions })
     }
+}
+fn validate_root_set(roots: &[Root]) -> Result<(), InvalidFrame> {
+    let mut prefixes = BTreeMap::new();
+    let mut complete = Vec::new();
+    for root in roots {
+        let path = root.path.as_str();
+        let key = folded(path);
+        if complete.iter().any(|previous: &String| {
+            key == *previous
+                || key
+                    .strip_prefix(previous)
+                    .is_some_and(|s| s.starts_with('/'))
+                || previous
+                    .strip_prefix(&key)
+                    .is_some_and(|s| s.starts_with('/'))
+        }) {
+            return Err(InvalidFrame::PathSet);
+        }
+        for end in path
+            .match_indices('/')
+            .map(|(i, _)| i)
+            .chain(std::iter::once(path.len()))
+        {
+            let prefix = &path[..end];
+            if let Some(previous) = prefixes.insert(folded(prefix), prefix)
+                && previous != prefix
+            {
+                return Err(InvalidFrame::PathSet);
+            }
+        }
+        complete.push(key);
+    }
+    Ok(())
 }
 fn folded(path: &str) -> String {
     path.nfkc().case_fold().nfc().collect()

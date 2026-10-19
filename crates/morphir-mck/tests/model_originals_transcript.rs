@@ -1,8 +1,9 @@
 //! Saved transcript controls use independent peers; no runtime is qualified.
 use morphir_mck::workbench::model_originals::{
     CaptureCompletion, ConnectedCaptureExpectation, ExpectedBytes, ExpectedOriginalEntry,
-    ExpectedOriginals, ExpectedProjection, ExpectedProjectionState, ProjectionRefusal,
-    ProjectionWorkLimits, Request, SessionId, Transcript, TranscriptLimits,
+    ExpectedOriginals, ExpectedProjection, ExpectedProjectionState, ExpectedSource, ModelRelease,
+    ProjectionRefusal, ProjectionWorkLimits, Request, Root, SessionId, SourceFormatVersion,
+    Transcript, TranscriptLimits,
 };
 use serde_json::{Value, json};
 
@@ -56,25 +57,36 @@ fn fixture() -> Value {
 fn limits() -> TranscriptLimits {
     TranscriptLimits::new(16 * 1024 * 1024, 256 * 1024 * 1024, 4096).unwrap()
 }
+fn model_source(companions: Vec<Root>) -> ExpectedSource {
+    ExpectedSource::new(
+        Root::file("morphir-ir.json").unwrap(),
+        companions,
+        SourceFormatVersion::Reported(ModelRelease::parse("4.0.0").unwrap()),
+    )
+    .unwrap()
+}
 fn check(value: &Value, session: &str, completion: CaptureCompletion) -> Result<(), String> {
     let packet = packet();
     let model = packet["cases"][0]["input"]["sourceFiles"][0]["content"]
         .as_str()
         .unwrap();
-    let originals = ExpectedOriginals::new(vec![
-        ExpectedOriginalEntry::file(
-            "morphir-ir.json",
-            ExpectedBytes::literal(model.as_bytes()).unwrap(),
-        )
-        .unwrap(),
-        ExpectedOriginalEntry::directory("notes").unwrap(),
-        ExpectedOriginalEntry::directory("notes/empty").unwrap(),
-        ExpectedOriginalEntry::file(
-            "notes/opaque.bin",
-            ExpectedBytes::literal(&[0, 1, 2, 255]).unwrap(),
-        )
-        .unwrap(),
-    ])
+    let originals = ExpectedOriginals::new(
+        vec![
+            ExpectedOriginalEntry::file(
+                "morphir-ir.json",
+                ExpectedBytes::literal(model.as_bytes()).unwrap(),
+            )
+            .unwrap(),
+            ExpectedOriginalEntry::directory("notes").unwrap(),
+            ExpectedOriginalEntry::directory("notes/empty").unwrap(),
+            ExpectedOriginalEntry::file(
+                "notes/opaque.bin",
+                ExpectedBytes::literal(&[0, 1, 2, 255]).unwrap(),
+            )
+            .unwrap(),
+        ],
+        model_source(vec![Root::directory("notes").unwrap()]),
+    )
     .unwrap();
     let projection = ExpectedProjection::json(r#"{"formatVersion":4,"distribution":{"Library":{"packageName":"pricing","dependencies":{},"def":{"modules":{}}}}}"#, ProjectionWorkLimits::new(1024*1024,1000).unwrap()).unwrap();
     let request = Request::parse(&packet["cases"][0]["input"]["request"].to_string()).unwrap();
@@ -259,8 +271,16 @@ fn malformed_recipe_counts_shapes_and_expansion_overflow_cannot_be_laundered() {
 #[test]
 fn projection_expectation_and_capture_semantic_mode_form_a_closed_choice() {
     let request = Request::parse(&packet()["cases"][0]["input"]["request"].to_string()).unwrap();
-    let source =
-        ExpectedOriginals::new(vec![ExpectedOriginalEntry::directory("a").unwrap()]).unwrap();
+    let source = ExpectedOriginals::new(
+        vec![ExpectedOriginalEntry::directory("a").unwrap()],
+        ExpectedSource::new(
+            Root::directory("a").unwrap(),
+            vec![],
+            SourceFormatVersion::NotReported,
+        )
+        .unwrap(),
+    )
+    .unwrap();
     let session = SessionId::new("session-A").unwrap();
     assert!(
         ConnectedCaptureExpectation::new(
@@ -292,20 +312,23 @@ fn unavailable_projection_preserves_verified_originals_and_exact_refusal() {
     let model = packet["cases"][0]["input"]["sourceFiles"][0]["content"]
         .as_str()
         .unwrap();
-    let source = ExpectedOriginals::new(vec![
-        ExpectedOriginalEntry::file(
-            "morphir-ir.json",
-            ExpectedBytes::literal(model.as_bytes()).unwrap(),
-        )
-        .unwrap(),
-        ExpectedOriginalEntry::directory("notes").unwrap(),
-        ExpectedOriginalEntry::directory("notes/empty").unwrap(),
-        ExpectedOriginalEntry::file(
-            "notes/opaque.bin",
-            ExpectedBytes::literal(&[0, 1, 2, 255]).unwrap(),
-        )
-        .unwrap(),
-    ])
+    let source = ExpectedOriginals::new(
+        vec![
+            ExpectedOriginalEntry::file(
+                "morphir-ir.json",
+                ExpectedBytes::literal(model.as_bytes()).unwrap(),
+            )
+            .unwrap(),
+            ExpectedOriginalEntry::directory("notes").unwrap(),
+            ExpectedOriginalEntry::directory("notes/empty").unwrap(),
+            ExpectedOriginalEntry::file(
+                "notes/opaque.bin",
+                ExpectedBytes::literal(&[0, 1, 2, 255]).unwrap(),
+            )
+            .unwrap(),
+        ],
+        model_source(vec![Root::directory("notes").unwrap()]),
+    )
     .unwrap();
     let session = SessionId::new("session-A").unwrap();
     for (semantic, status, expected_state) in [
@@ -359,6 +382,31 @@ fn unavailable_projection_preserves_verified_originals_and_exact_refusal() {
             .unwrap();
             assert!(transcript.verify(&wrong).is_err());
         }
+    }
+}
+
+#[test]
+fn saved_transcript_cannot_launder_source_roles_or_primary_release() {
+    for change in ["roots", "release", "status"] {
+        let mut saved = fixture();
+        let mut first: Value =
+            serde_json::from_str(saved["exchanges"][0]["reply"]["text"].as_str().unwrap()).unwrap();
+        let ready = &mut first["result"];
+        match change {
+            "roots" => {
+                let primary = ready["primary"].clone();
+                ready["primary"] = ready["companions"][0].clone();
+                ready["companions"][0] = primary;
+            }
+            "release" => ready["sourceFormatVersion"]["release"] = json!("5.0.0"),
+            "status" => ready["sourceFormatVersion"] = json!({"status":"not-reported"}),
+            _ => unreachable!(),
+        }
+        saved["exchanges"][0]["reply"]["text"] = json!(first.to_string());
+        assert!(
+            check(&saved, "session-A", CaptureCompletion::ReleasedTwice).is_err(),
+            "{change}"
+        );
     }
 }
 
@@ -519,13 +567,16 @@ fn actual_64_mib_original_and_projection_have_lossless_saved_transcripts() {
     assert!(saved.len() < 16 * 1024 * 1024);
     assert!(expanded > 128 * 1024 * 1024);
     let transcript = Transcript::parse(&saved, limits()).unwrap();
-    let source = ExpectedOriginals::new(vec![
-        ExpectedOriginalEntry::file(
-            "morphir-ir.json",
-            ExpectedBytes::prefix_tail(b' ', length, tail.as_bytes()).unwrap(),
-        )
-        .unwrap(),
-    ])
+    let source = ExpectedOriginals::new(
+        vec![
+            ExpectedOriginalEntry::file(
+                "morphir-ir.json",
+                ExpectedBytes::prefix_tail(b' ', length, tail.as_bytes()).unwrap(),
+            )
+            .unwrap(),
+        ],
+        model_source(vec![]),
+    )
     .unwrap();
     let projection = ExpectedProjection::json(
         tail,

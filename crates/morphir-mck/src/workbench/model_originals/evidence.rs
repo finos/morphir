@@ -20,6 +20,8 @@ pub enum EvidenceError {
     Bytes,
     SourceBudget,
     MetadataBudget,
+    SourceRoles,
+    SourceFormat,
 }
 impl From<InvalidFrame> for EvidenceError {
     fn from(error: InvalidFrame) -> Self {
@@ -41,6 +43,12 @@ impl fmt::Display for EvidenceError {
             Self::Bytes => "original bytes differ from the independently authored source",
             Self::SourceBudget => "expected originals exceed their aggregate source budget",
             Self::MetadataBudget => "expected source paths exceed their metadata budget",
+            Self::SourceRoles => {
+                "capture primary or companion roots differ from independent source roles"
+            }
+            Self::SourceFormat => {
+                "capture source header claim differs from independent primary evidence"
+            }
         })
     }
 }
@@ -163,15 +171,61 @@ impl<'a> ExpectedOriginalEntry<'a> {
     }
 }
 
+/// Independent primary/companion designations and source-header evidence.
+/// These facts come from the authored source fixture, never the ready reply or
+/// its projection descriptor. Companion array order does not change their roles.
+#[derive(Debug, Clone)]
+pub struct ExpectedSource {
+    primary: super::Root,
+    companions: Vec<super::Root>,
+    format: super::SourceFormatVersion,
+}
+impl ExpectedSource {
+    pub fn new(
+        primary: super::Root,
+        mut companions: Vec<super::Root>,
+        format: super::SourceFormatVersion,
+    ) -> Result<Self, EvidenceError> {
+        if companions.len() > 63 {
+            return Err(EvidenceError::SourceRoles);
+        }
+        let roots = std::iter::once(primary.clone())
+            .chain(companions.iter().cloned())
+            .collect::<Vec<_>>();
+        super::validate_root_set(&roots)?;
+        companions.sort_by(|a, b| a.path.as_str().as_bytes().cmp(b.path.as_str().as_bytes()));
+        Ok(Self {
+            primary,
+            companions,
+            format,
+        })
+    }
+    fn verify(&self, capture: &CaptureExpectation) -> Result<(), EvidenceError> {
+        let mut companions = capture.companions().iter().collect::<Vec<_>>();
+        companions.sort_by(|a, b| a.path.as_str().as_bytes().cmp(b.path.as_str().as_bytes()));
+        if capture.primary() != &self.primary || !companions.into_iter().eq(self.companions.iter())
+        {
+            return Err(EvidenceError::SourceRoles);
+        }
+        if capture.source_format_version() != &self.format {
+            return Err(EvidenceError::SourceFormat);
+        }
+        Ok(())
+    }
+}
 /// Exactly the independently selected file/directory snapshot, including empty
-/// directories and selected roots. The fixture adapter supplies this snapshot;
-/// the checker never infers it from the observed manifest or reads live paths.
+/// directories and selected roots. The fixture supplies this snapshot and its
+/// source roles; the checker never infers either from the observed manifest.
 #[derive(Debug, Clone)]
 pub struct ExpectedOriginals<'a> {
     entries: Vec<ExpectedOriginalEntry<'a>>,
+    source: ExpectedSource,
 }
 impl<'a> ExpectedOriginals<'a> {
-    pub fn new(mut entries: Vec<ExpectedOriginalEntry<'a>>) -> Result<Self, EvidenceError> {
+    pub fn new(
+        mut entries: Vec<ExpectedOriginalEntry<'a>>,
+        source: ExpectedSource,
+    ) -> Result<Self, EvidenceError> {
         if entries.is_empty() || entries.len() > MAX_ENTRIES {
             return Err(EvidenceError::EntrySet);
         }
@@ -193,7 +247,7 @@ impl<'a> ExpectedOriginals<'a> {
         if entries.windows(2).any(|pair| pair[0].path == pair[1].path) {
             return Err(EvidenceError::EntrySet);
         }
-        Ok(Self { entries })
+        Ok(Self { entries, source })
     }
     pub fn verify(
         &self,
@@ -201,6 +255,7 @@ impl<'a> ExpectedOriginals<'a> {
         evidence: CaptureEvidence<'_>,
     ) -> Result<CheckedOriginalsEvidence, EvidenceError> {
         let expected = CaptureExpectation::from_exchange(&evidence.capture, session)?;
+        self.source.verify(&expected)?;
         let capture = expected.verify_inventory(evidence.pages)?;
         let inventory = capture.inventory();
         if inventory.entries().len() != self.entries.len() {
