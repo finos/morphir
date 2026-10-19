@@ -1327,7 +1327,44 @@ cmd kb display_order=24 subcommand_required=#true arg_required_else_help=#true a
     }
 }
 cmd mck display_order=25 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Morphir Compatibility Kit: validate, vendor and run compatibility kits" unknown_flags=error {
-    cmd check display_order=0 args_override_self=#false help="Validate a kit directory without running an adapter" unknown_flags=error {
+    cmd mep display_order=0 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Execute MEP guests or independently recheck their saved observations" unknown_flags=error {
+        cmd guest-run display_order=0 args_override_self=#false unknown_flags=value {
+            flag --kit help="Independently authored guest profile and fixed expectations" default="spec/mep/mck/guest-moonbit-bool.json" {
+                arg <KIT>
+            }
+            flag --expect-kit-sha256 help="Refuse to execute unless the kit has this SHA-256 digest" {
+                arg <EXPECT_KIT_SHA256>
+            }
+            flag --host help="MEP host executable, launched directly without a shell" required=#true {
+                arg <HOST>
+            }
+            flag --host-arg help="Host argument, repeated in order" var=#true allow_hyphen_values=#true {
+                arg <HOST_ARGS>… var=#true
+            }
+            flag --identity-file help="Pin a guest or host artifact by its exact bytes; repeat for each input" required=#true var=#true {
+                arg <IDENTITY_FILES>… var=#true
+            }
+            flag --report help="Complete observations and executable/corpus/artifact identities" required=#true {
+                arg <REPORT>
+            }
+            flag --timeout default="30000" {
+                arg <TIMEOUT>
+            }
+            complete kit type=path
+            complete host type=path
+            complete identity_files type=path
+            complete report type=path
+        }
+        cmd report-check display_order=1 args_override_self=#false unknown_flags=error {
+            flag --kit default="spec/mep/mck/guest-moonbit-bool.json" {
+                arg <KIT>
+            }
+            arg <REPORT> help="Saved guest report to independently adjudicate again"
+            complete kit type=path
+            complete report type=path
+        }
+    }
+    cmd check display_order=1 args_override_self=#false help="Validate a kit directory without running an adapter" unknown_flags=error {
         flag --repo-root help="Repository root that `text` fences resolve against (inferred when the kit path ends in spec/ir/mck)" {
             arg <DIR>
         }
@@ -1335,7 +1372,7 @@ cmd mck display_order=25 subcommand_required=#true arg_required_else_help=#true 
         arg <DIR> help="The kit directory to validate, for example spec/ir/mck, or a vendored snapshot\'s root"
         complete dir type=path
     }
-    cmd coverage display_order=1 args_override_self=#false help="Check that every IR vocabulary variant and member has a kit case" unknown_flags=error {
+    cmd coverage display_order=2 args_override_self=#false help="Check that every IR vocabulary variant and member has a kit case" unknown_flags=error {
         long_help #"""
 Check that every IR vocabulary variant and member has a kit case
 
@@ -1349,7 +1386,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
         }
         complete dir type=path
     }
-    cmd schema display_order=2 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Validate kit schemas, examples and IR fences offline" unknown_flags=error {
+    cmd schema display_order=3 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Validate kit schemas, examples and IR fences offline" unknown_flags=error {
         cmd check display_order=0 args_override_self=#false help="Check schemas, examples, protocol pairing and accepted JSON fences" unknown_flags=error {
             flag --kit help="The kit directory or verified snapshot root; the embedded kit when omitted" {
                 arg <DIR>
@@ -1360,7 +1397,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete dir type=path
         }
     }
-    cmd run display_order=3 args_override_self=#false help="Run the kit against an implementation\'s adapter and report the results" unknown_flags=value {
+    cmd run display_order=4 args_override_self=#false help="Run the kit against an implementation\'s adapter and report the results" unknown_flags=value {
         flag --suite help="Compatibility suite to execute" default=ir {
             arg <SUITE> {
                 choices ir metadata
@@ -1398,7 +1435,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
         complete dir type=path
         complete file type=path
     }
-    cmd package display_order=4 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect package definitions or run versioned compatibility suites" unknown_flags=error {
+    cmd package display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect package definitions or run versioned compatibility suites" unknown_flags=error {
         cmd inspect display_order=0 args_override_self=#false help="Inspect draft.3 candidate definitions and pending assets without running restore" unknown_flags=error {
             flag --source help="Repository root containing spec/package and its referenced schemas and assets" required=#true {
                 arg <DIR>
@@ -1476,7 +1513,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             }
         }
     }
-    cmd workbench display_order=5 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run Workbench value codecs or check their independently recomputed evidence" unknown_flags=error {
+    cmd workbench display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run Workbench value codecs or check their independently recomputed evidence" unknown_flags=error {
         cmd run display_order=0 args_override_self=#false help="Run the explicit Workbench codec corpus against an explicit adapter" unknown_flags=value {
             flag --kit help="Workbench corpus directory containing cases.json; no embedded IR kit is used" required=#true {
                 arg <DIR>
@@ -1510,7 +1547,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete file type=path
         }
     }
-    cmd node-address display_order=6 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run the draft V3/V4 semantic node-address corpus" unknown_flags=error {
+    cmd node-address display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Run the draft V3/V4 semantic node-address corpus" unknown_flags=error {
         cmd run display_order=0 args_override_self=#false unknown_flags=value {
             flag --kit help="Fixed V3/V4 node-address case file" default="spec/ir/mck/node-address-draft.json" {
                 arg <KIT>
@@ -1531,7 +1568,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete report type=path
         }
     }
-    cmd report display_order=7 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
+    cmd report display_order=8 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Check compatibility evidence or render a saved report as offline HTML" unknown_flags=error {
         cmd check display_order=0 args_override_self=#false help="Verify report inventory and the binding\'s allowed-failing baseline" unknown_flags=error {
             flag --kit help="Independent kit, defaulting to the embedded kit" {
                 arg <KIT>
@@ -1569,7 +1606,7 @@ Pending cases count through title and prose mentions. This JSON-key heuristic in
             complete b type=path
         }
     }
-    cmd kit display_order=8 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
+    cmd kit display_order=9 subcommand_required=#true arg_required_else_help=#true args_override_self=#false help="Inspect, vendor and update kit data" unknown_flags=error {
         cmd status display_order=0 args_override_self=#false help="Identify a kit: source, revision, corpus hash and whether it is modified" unknown_flags=error {
             flag --kit help="A kit directory or a vendored snapshot\'s root; the kit embedded in this CLI when omitted" {
                 arg <DIR>

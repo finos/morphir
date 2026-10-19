@@ -5,7 +5,9 @@ This draft specifies the additive `morphir.frontend.compileModel` and
 [`contract/src/mep.gleam`](contract/src/mep.gleam). This is a protocol contract,
 not a claim that the current SDK, host, or an extension implements these methods.
 The [reference corpus](mck/README.md) checks examples and literal assets;
-executable host/guest qualification remains [#965](https://github.com/finos/morphir/issues/965).
+bounded executable guest qualification is available through
+[`morphir mck mep`](mck/README.md). Broader independent host qualification remains
+[#965](https://github.com/finos/morphir/issues/965).
 
 ## Versions and compatibility
 

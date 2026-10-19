@@ -1,5 +1,5 @@
 //! One adapter process speaking newline-delimited JSON (`spec/mck/cli-contract.md`,
-//! "Adapter transport").
+//! "Adapter transport") or Content-Length framed MEP JSON-RPC.
 //!
 //! Requests go one at a time with ids from 1. The adapter's stdout is read on
 //! its own thread, a frame at a time, each bounded in size and required to be
@@ -13,11 +13,11 @@
 //! failure. Closing sends the `exit` request, waits a grace period, and then
 //! terminates the adapter's whole process tree.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Child, Command, Stdio};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -34,7 +34,7 @@ pub struct Limits {
     pub request_timeout: Duration,
     /// How long the whole session may last.
     pub session_timeout: Duration,
-    /// The longest response frame, in bytes, without its newline.
+    /// The longest response body, in bytes, excluding newline or MEP headers.
     pub max_frame: usize,
     /// How much of the adapter's stderr is kept for messages.
     pub stderr_capture: usize,
@@ -139,6 +139,12 @@ enum EnvelopePolicy {
     PreserveExactLiteralMembers,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Framing {
+    Newline,
+    ContentLength,
+}
+
 /// One absolute deadline covers writing a request and reading its response.
 struct Deadline {
     at: Instant,
@@ -212,10 +218,10 @@ impl InputWriter {
 
 /// Reads newline-terminated frames, each at most `max` bytes. A final chunk
 /// with no newline is a frame too. Stops at the first frame it cannot pass on.
-fn read_frames(stdout: impl Read, frames: Sender<Frame>, max: usize) {
+fn read_frames(stdout: impl Read, frames: SyncSender<Frame>, max: usize) {
     let mut reader = BufReader::with_capacity(64 * 1024, stdout);
     let mut line: Vec<u8> = Vec::new();
-    let finish = |line: Vec<u8>, frames: &Sender<Frame>| -> bool {
+    let finish = |line: Vec<u8>, frames: &SyncSender<Frame>| -> bool {
         let mut line = line;
         if line.last() == Some(&b'\r') {
             line.pop();
@@ -256,6 +262,97 @@ fn read_frames(stdout: impl Read, frames: Sender<Frame>, max: usize) {
     }
 }
 
+/// Bounds headers separately from bodies, including unknown headers. One
+/// queued frame applies pipe backpressure even if the guest floods stdout.
+const MAX_MEP_HEADER: usize = 8192;
+
+fn read_mep_frame(reader: &mut impl BufRead, max: usize) -> Result<Option<String>, Frame> {
+    let mut header = Vec::new();
+    loop {
+        let mut byte = [0];
+        match reader.read_exact(&mut byte) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::UnexpectedEof => {
+                return if header.is_empty() {
+                    Ok(None)
+                } else {
+                    Err(Frame::Failed("truncated MEP header".into()))
+                };
+            }
+            Err(error) => return Err(Frame::Failed(error.to_string())),
+        }
+        header.push(byte[0]);
+        if header.len() > MAX_MEP_HEADER {
+            return Err(Frame::Failed("MEP header exceeds 8192 bytes".into()));
+        }
+        if header.ends_with(b"\r\n\r\n") {
+            break;
+        }
+        if byte[0] == b'\n' && !header.ends_with(b"\r\n") {
+            return Err(Frame::Failed("MEP headers require CRLF".into()));
+        }
+    }
+    let header = std::str::from_utf8(&header)
+        .map_err(|_| Frame::Failed("MEP header is not ASCII".into()))?;
+    let mut length = None;
+    for line in header[..header.len() - 4].split("\r\n") {
+        let (name, value) = line
+            .split_once(':')
+            .ok_or_else(|| Frame::Failed("malformed MEP header".into()))?;
+        if name.is_empty()
+            || !name
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&byte))
+            || !value
+                .bytes()
+                .all(|byte| byte == b'\t' || (32..=126).contains(&byte))
+        {
+            return Err(Frame::Failed("malformed MEP header".into()));
+        }
+        if name.eq_ignore_ascii_case("Content-Length") {
+            if length.is_some() {
+                return Err(Frame::Failed("duplicate Content-Length header".into()));
+            }
+            let value = value.trim_matches([' ', '\t']);
+            if value.is_empty() || !value.bytes().all(|byte| byte.is_ascii_digit()) {
+                return Err(Frame::Failed("invalid Content-Length".into()));
+            }
+            let count = value.parse::<usize>().map_err(|_| Frame::TooLong)?;
+            if count > max {
+                return Err(Frame::TooLong);
+            }
+            length = Some(count);
+        }
+    }
+    let length = length.ok_or_else(|| Frame::Failed("missing Content-Length header".into()))?;
+    let mut body = vec![0; length];
+    reader.read_exact(&mut body).map_err(|error| {
+        Frame::Failed(if error.kind() == std::io::ErrorKind::UnexpectedEof {
+            "truncated MEP body".into()
+        } else {
+            error.to_string()
+        })
+    })?;
+    String::from_utf8(body)
+        .map(Some)
+        .map_err(|_| Frame::NotUtf8)
+}
+
+fn read_mep_frames(stdout: impl Read, frames: SyncSender<Frame>, max: usize) {
+    let mut reader = BufReader::with_capacity(64 * 1024, stdout);
+    loop {
+        let frame = match read_mep_frame(&mut reader, max) {
+            Ok(Some(body)) => Frame::Line(body),
+            Ok(None) => Frame::Eof,
+            Err(frame) => frame,
+        };
+        let finished = !matches!(frame, Frame::Line(_));
+        if frames.send(frame).is_err() || finished {
+            return;
+        }
+    }
+}
+
 /// Drains stderr to its end, keeping the first `capture` bytes.
 fn drain_stderr(mut stderr: impl Read, kept: Arc<Mutex<Vec<u8>>>, capture: usize) {
     let mut chunk = [0u8; 8192];
@@ -278,7 +375,7 @@ fn drain_stderr(mut stderr: impl Read, kept: Arc<Mutex<Vec<u8>>>, capture: usize
 /// A running adapter.
 pub struct Session {
     child: Child,
-    tree: ProcessTree,
+    tree: Option<ProcessTree>,
     stdin: Option<InputWriter>,
     frames: Receiver<Frame>,
     stderr: Arc<Mutex<Vec<u8>>>,
@@ -286,6 +383,7 @@ pub struct Session {
     broken: Option<TransportError>,
     started: Instant,
     limits: Limits,
+    framing: Framing,
 }
 
 fn status_text(status: std::process::ExitStatus) -> String {
@@ -295,12 +393,70 @@ fn status_text(status: std::process::ExitStatus) -> String {
     }
 }
 
+/// Reapply the live boundary's envelope rules to stored MEP evidence.
+pub(crate) fn validate_mep_response(response: &Value, id: u64) -> Result<(), TransportError> {
+    let malformed = |message: &str| TransportError::Malformed(message.to_owned());
+    let object = response
+        .as_object()
+        .ok_or_else(|| malformed("MEP response must be an object"))?;
+    if object.get("jsonrpc").and_then(Value::as_str) != Some("2.0") {
+        return Err(malformed("MEP response jsonrpc must be 2.0"));
+    }
+    let got = object
+        .get("id")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| malformed("MEP response id must be an unsigned integer"))?;
+    if got != id {
+        return Err(TransportError::WrongId { expected: id, got });
+    }
+    if object.contains_key("method") || object.contains_key("params") {
+        return Err(malformed("MEP response contains request members"));
+    }
+    if object.contains_key("result") == object.contains_key("error") {
+        return Err(malformed(
+            "MEP response requires exactly one of result and error",
+        ));
+    }
+    if let Some(error) = object.get("error") {
+        let error = error
+            .as_object()
+            .ok_or_else(|| malformed("MEP error must be an object"))?;
+        if error.get("code").and_then(Value::as_i64).is_none()
+            || error.get("message").and_then(Value::as_str).is_none()
+        {
+            return Err(malformed(
+                "MEP error requires an integer code and string message",
+            ));
+        }
+    }
+    Ok(())
+}
+
 impl Session {
     /// Starts `program` with `args`, its stdin, stdout and stderr piped.
     pub fn spawn(
         program: &OsString,
         args: &[OsString],
         limits: Limits,
+    ) -> Result<Self, TransportError> {
+        Self::spawn_framed(program, args, limits, Framing::Newline)
+    }
+
+    /// Starts a MEP JSON-RPC process with Content-Length framing and the same
+    /// process-tree, memory and deadline bounds as other adapter suites.
+    pub fn spawn_mep(
+        program: &OsStr,
+        args: &[OsString],
+        limits: Limits,
+    ) -> Result<Self, TransportError> {
+        Self::spawn_framed(program, args, limits, Framing::ContentLength)
+    }
+
+    fn spawn_framed(
+        program: &OsStr,
+        args: &[OsString],
+        limits: Limits,
+        framing: Framing,
     ) -> Result<Self, TransportError> {
         let mut command = Command::new(program);
         command
@@ -321,9 +477,12 @@ impl Session {
             }
         };
 
-        let (sender, frames) = mpsc::channel();
+        let (sender, frames) = mpsc::sync_channel(1);
         let stdout = child.stdout.take().expect("stdout is piped");
-        thread::spawn(move || read_frames(stdout, sender, limits.max_frame));
+        thread::spawn(move || match framing {
+            Framing::Newline => read_frames(stdout, sender, limits.max_frame),
+            Framing::ContentLength => read_mep_frames(stdout, sender, limits.max_frame),
+        });
         let stderr = Arc::new(Mutex::new(Vec::new()));
         let kept = Arc::clone(&stderr);
         let pipe = child.stderr.take().expect("stderr is piped");
@@ -334,13 +493,14 @@ impl Session {
                 child.stdin.take().expect("stdin is piped"),
             )),
             child,
-            tree,
+            tree: Some(tree),
             frames,
             stderr,
             next_id: 1,
             broken: None,
             started: Instant::now(),
             limits,
+            framing,
         })
     }
 
@@ -355,7 +515,10 @@ impl Session {
 
     /// A handle that kills this adapter's process tree from another thread.
     pub fn terminator(&self) -> Terminator {
-        self.tree.terminator()
+        self.tree
+            .as_ref()
+            .expect("session has not been closed")
+            .terminator()
     }
 
     /// The first failure, once the session is broken.
@@ -366,6 +529,81 @@ impl Session {
     /// Sends `request` and returns the body of its answer, without the id.
     pub fn exchange(&mut self, request: &Request) -> Result<Map<String, Value>, TransportError> {
         self.exchange_line(|id| Ok(request.line(id)), EnvelopePolicy::LegacyIr)
+    }
+
+    /// Sends a MEP request and returns its entire validated JSON-RPC response.
+    /// Both success and protocol error envelopes remain observable to suites.
+    pub fn exchange_mep(&mut self, method: &str, params: &Value) -> Result<Value, TransportError> {
+        if let Some(broken) = &self.broken {
+            return Err(broken.clone());
+        }
+        let id = self.next_id;
+        self.next_id += 1;
+        let deadline = self.request_deadline(id);
+        let request =
+            serde_json::json!({"jsonrpc":"2.0", "id":id, "method":method, "params":params});
+        let result = self
+            .send_line(&request.to_string(), &deadline)
+            .and_then(|()| {
+                let body = self.receive_frame(&deadline)?;
+                let response =
+                    crate::json::strict::parse_exact(&body).map_err(TransportError::Malformed)?;
+                validate_mep_response(&response, id)?;
+                Ok(response)
+            });
+        if let Err(error) = &result {
+            self.broken = Some(error.clone());
+        }
+        result
+    }
+
+    /// Sends a notification. The next ordered exchange, silence assertion or
+    /// shutdown rejects any response the guest wrongly sends for it.
+    pub fn notify_mep(&mut self, method: &str, params: &Value) -> Result<(), TransportError> {
+        if let Some(broken) = &self.broken {
+            return Err(broken.clone());
+        }
+        let deadline = self.request_deadline(self.next_id);
+        let notification = serde_json::json!({"jsonrpc":"2.0", "method":method, "params":params});
+        let result = self.send_line(&notification.to_string(), &deadline);
+        if let Err(error) = &result {
+            self.broken = Some(error.clone());
+        }
+        result
+    }
+
+    /// A quiet protocol interval must contain no response, request or
+    /// notification. Session timeout still bounds the requested interval.
+    pub fn assert_silence(&mut self, duration: Duration) -> Result<(), TransportError> {
+        if let Some(broken) = &self.broken {
+            return Err(broken.clone());
+        }
+        let session_end = self.started + self.limits.session_timeout;
+        let until = Instant::now() + duration;
+        let result = if session_end <= Instant::now() {
+            Err(TransportError::SessionTimeout {
+                millis: self.limits.session_timeout.as_millis(),
+            })
+        } else {
+            match self.frames.recv_timeout(
+                until
+                    .min(session_end)
+                    .saturating_duration_since(Instant::now()),
+            ) {
+                Err(RecvTimeoutError::Timeout) if until <= session_end => Ok(()),
+                Err(RecvTimeoutError::Timeout) => Err(TransportError::SessionTimeout {
+                    millis: self.limits.session_timeout.as_millis(),
+                }),
+                Ok(Frame::Eof) | Err(RecvTimeoutError::Disconnected) => Err(self.closed()),
+                Ok(_) => Err(TransportError::Malformed(
+                    "unsolicited MEP output during quiet interval".into(),
+                )),
+            }
+        };
+        if let Err(error) = &result {
+            self.broken = Some(error.clone());
+        }
+        result
     }
 
     /// Carries another typed suite's requests over the same bounded session.
@@ -460,7 +698,10 @@ impl Session {
         let Some(stdin) = self.stdin.as_ref() else {
             return Err(TransportError::StdinClosed("already closed".to_owned()));
         };
-        let line = format!("{line}\n");
+        let line = match self.framing {
+            Framing::Newline => format!("{line}\n"),
+            Framing::ContentLength => format!("Content-Length: {}\r\n\r\n{line}", line.len()),
+        };
         stdin.write(line, deadline)
     }
 
@@ -489,32 +730,34 @@ impl Session {
         policy: EnvelopePolicy,
         deadline: &Deadline,
     ) -> Result<Map<String, Value>, TransportError> {
-        match deadline.receive(&self.frames)? {
-            Some(Frame::Line(line)) => {
-                let (got, body) = match policy {
-                    EnvelopePolicy::PreserveExactLiteralMembers => {
-                        let value = crate::json::strict::parse_exact(&line)
-                            .map_err(TransportError::Malformed)?;
-                        split_envelope(value)
-                    }
-                    EnvelopePolicy::PreserveLiteralMembers => {
-                        let value =
-                            crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;
-                        split_envelope(value)
-                    }
-                    EnvelopePolicy::RejectDuplicateMembers => {
-                        crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;
-                        parse_envelope(&line)
-                    }
-                    EnvelopePolicy::LegacyIr => parse_envelope(&line),
-                }
-                .map_err(|error| TransportError::Malformed(error.0))?;
-                if got == id {
-                    Ok(body)
-                } else {
-                    Err(TransportError::WrongId { expected: id, got })
-                }
+        let line = self.receive_frame(deadline)?;
+        let (got, body) = match policy {
+            EnvelopePolicy::PreserveExactLiteralMembers => {
+                let value =
+                    crate::json::strict::parse_exact(&line).map_err(TransportError::Malformed)?;
+                split_envelope(value)
             }
+            EnvelopePolicy::PreserveLiteralMembers => {
+                let value = crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;
+                split_envelope(value)
+            }
+            EnvelopePolicy::RejectDuplicateMembers => {
+                crate::json::strict::parse(&line).map_err(TransportError::Malformed)?;
+                parse_envelope(&line)
+            }
+            EnvelopePolicy::LegacyIr => parse_envelope(&line),
+        }
+        .map_err(|error| TransportError::Malformed(error.0))?;
+        if got == id {
+            Ok(body)
+        } else {
+            Err(TransportError::WrongId { expected: id, got })
+        }
+    }
+
+    fn receive_frame(&mut self, deadline: &Deadline) -> Result<String, TransportError> {
+        match deadline.receive(&self.frames)? {
+            Some(Frame::Line(line)) => Ok(line),
             Some(Frame::NotUtf8) => Err(TransportError::Malformed(
                 "adapter sent a frame that is not UTF-8".to_owned(),
             )),
@@ -547,14 +790,32 @@ impl Session {
                 self.limits.shutdown_grace.as_millis()
             )),
         };
-        let mut write_failure = None;
-        if healthy && matches!(self.child.try_wait(), Ok(None)) {
+        let running = matches!(self.child.try_wait(), Ok(None));
+        let mut write_failure = if healthy && self.framing == Framing::ContentLength && !running {
+            Some(TransportError::Shutdown(
+                "MEP guest exited before the morphir.exit notification".into(),
+            ))
+        } else {
+            None
+        };
+        if healthy && running {
             let id = self.next_id;
             self.next_id += 1;
-            if let Err(error @ TransportError::Shutdown(_)) =
-                self.send_line(&Request::Exit.line(id), &deadline)
-            {
-                write_failure = Some(error);
+            let exit = match self.framing {
+                Framing::Newline => Request::Exit.line(id),
+                Framing::ContentLength => {
+                    serde_json::json!({"jsonrpc":"2.0", "method":"morphir.exit", "params":{}})
+                        .to_string()
+                }
+            };
+            if let Err(error) = self.send_line(&exit, &deadline) {
+                if matches!(error, TransportError::Shutdown(_)) {
+                    write_failure = Some(error);
+                } else if self.framing == Framing::ContentLength {
+                    write_failure = Some(TransportError::Shutdown(format!(
+                        "cannot send morphir.exit notification: {error}"
+                    )));
+                }
             }
         }
         self.stdin = None;
@@ -569,8 +830,7 @@ impl Session {
             }
         };
         // Whatever the adapter left running goes too, even after a clean exit.
-        self.tree.kill(&mut self.child);
-        let _ = self.child.wait();
+        self.terminate_process_tree();
         if !healthy {
             return Ok(());
         }
@@ -615,14 +875,20 @@ impl Session {
             }
         }
     }
+
+    fn terminate_process_tree(&mut self) {
+        if let Some(tree) = self.tree.take() {
+            tree.kill(&mut self.child);
+            let _ = self.child.wait();
+        }
+    }
 }
 
 impl Drop for Session {
     fn drop(&mut self) {
-        if matches!(self.child.try_wait(), Ok(None)) {
-            self.tree.kill(&mut self.child);
-            let _ = self.child.wait();
-        }
+        // The root may have exited while its children still own resources.
+        // Tree cleanup is required even after try_wait has reaped the root.
+        self.terminate_process_tree();
     }
 }
 
@@ -677,7 +943,7 @@ mod tests {
     }
 
     fn frames_of(bytes: &[u8], max: usize) -> Vec<String> {
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = mpsc::sync_channel(16);
         read_frames(bytes, sender, max);
         receiver
             .into_iter()
