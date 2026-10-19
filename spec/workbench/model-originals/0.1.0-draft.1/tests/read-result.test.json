@@ -1,0 +1,101 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/read-result.schema.json",
+  "tests": [
+    {
+      "description": "Independent literal shape from the approved49-case proposal",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.1",
+        "binding": {
+          "sessionId": "session-A",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+        },
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "nextOffset": 116,
+        "content": "IA0KeyJmb3JtYXRWZXJzaW9uIjo0LCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6InByaWNpbmciLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19DQo="
+      },
+      "valid": true
+    },
+    {
+      "description": "An unlisted member cannot add authority",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.1",
+        "binding": {
+          "sessionId": "session-A",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+        },
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "nextOffset": 116,
+        "content": "IA0KeyJmb3JtYXRWZXJzaW9uIjo0LCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6InByaWNpbmciLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19DQo=",
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact wire contract does not accept another draft",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.2",
+        "binding": {
+          "sessionId": "session-A",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+        },
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "nextOffset": 116,
+        "content": "IA0KeyJmb3JtYXRWZXJzaW9uIjo0LCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6InByaWNpbmciLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19DQo="
+      },
+      "valid": false
+    },
+    {
+      "description": "Contract version is required",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "binding": {
+          "sessionId": "session-A",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+        },
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "nextOffset": 116,
+        "content": "IA0KeyJmb3JtYXRWZXJzaW9uIjo0LCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6InByaWNpbmciLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19DQo="
+      },
+      "valid": false
+    }
+  ]
+}

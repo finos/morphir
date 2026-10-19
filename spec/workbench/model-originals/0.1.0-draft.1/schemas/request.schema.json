@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/request.schema.json",
+  "title": "Complete model originals JSON-RPC request",
+  "description": "Closed exact model-originals wire profile. README.html defines required semantic, raw-frame, byte, path, authority, inventory and lifecycle validation in addition to this structural schema",
+  "examples": [
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "morphir.model-originals.capture",
+      "params": {
+        "contractVersion": "0.1.0-draft.1",
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders"
+        },
+        "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]",
+        "scope": "complete",
+        "semantic": "projection"
+      }
+    }
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [ "jsonrpc", "id", "method", "params" ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/requestId"
+        },
+        "method": {
+          "const": "morphir.model-originals.capture"
+        },
+        "params": {
+          "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/captureParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "jsonrpc", "id", "method", "params" ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/requestId"
+        },
+        "method": {
+          "const": "morphir.model-originals.inventory"
+        },
+        "params": {
+          "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/inventoryParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "jsonrpc", "id", "method", "params" ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/requestId"
+        },
+        "method": {
+          "const": "morphir.model-originals.read"
+        },
+        "params": {
+          "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/readParams"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [ "jsonrpc", "id", "method", "params" ],
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/requestId"
+        },
+        "method": {
+          "const": "morphir.model-originals.release"
+        },
+        "params": {
+          "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/releaseParams"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

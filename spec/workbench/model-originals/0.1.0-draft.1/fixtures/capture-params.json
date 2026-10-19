@@ -1,0 +1,10 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "source": {
+    "providerId": "provider-A",
+    "locator": "workspace:orders"
+  },
+  "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]",
+  "scope": "complete",
+  "semantic": "projection"
+}

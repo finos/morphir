@@ -1,0 +1,45 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/release-result.schema.json",
+  "tests": [
+    {
+      "description": "Independent literal shape from the approved49-case proposal",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "status": "released"
+      },
+      "valid": true
+    },
+    {
+      "description": "An unlisted member cannot add authority",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "status": "released",
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact wire contract does not accept another draft",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.2",
+        "captureId": "capture-A",
+        "status": "released"
+      },
+      "valid": false
+    },
+    {
+      "description": "Contract version is required",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "captureId": "capture-A",
+        "status": "released"
+      },
+      "valid": false
+    }
+  ]
+}

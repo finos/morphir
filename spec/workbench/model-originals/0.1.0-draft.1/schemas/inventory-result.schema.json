@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/inventory-result.schema.json",
+  "title": "Model originals inventory-result",
+  "description": "Closed exact model-originals wire profile. README.html defines required semantic, raw-frame, byte, path, authority, inventory and lifecycle validation in addition to this structural schema",
+  "examples": [
+    {
+      "profile": "morphir/workbench/model-originals",
+      "contractVersion": "0.1.0-draft.1",
+      "binding": {
+        "sessionId": "session-A",
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders"
+        },
+        "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+      },
+      "captureId": "capture-A",
+      "inventorySha256": "8ae541eb3e9c3da4ee65f45ec6d5a39d5431c1e0032d0756030dc7a8fa8466b2",
+      "startIndex": 4,
+      "entries": [],
+      "next": {
+        "kind": "complete"
+      }
+    }
+  ],
+  "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/inventoryResult"
+}

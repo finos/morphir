@@ -1,0 +1,81 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/request.schema.json",
+  "tests": [
+    {
+      "description": "Exact JSON-RPC capture request",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.model-originals.capture",
+        "params": {
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]",
+          "scope": "complete",
+          "semantic": "projection"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "Method determines parameter role",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.model-originals.read",
+        "params": {
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]",
+          "scope": "complete",
+          "semantic": "projection"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "No JSON-RPC notification for owned capture",
+      "data": {
+        "jsonrpc": "2.0",
+        "method": "morphir.model-originals.capture",
+        "params": {
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]",
+          "scope": "complete",
+          "semantic": "projection"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Unknown envelope field",
+      "data": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "morphir.model-originals.capture",
+        "params": {
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]",
+          "scope": "complete",
+          "semantic": "projection"
+        },
+        "path": "/private"
+      },
+      "valid": false
+    }
+  ]
+}

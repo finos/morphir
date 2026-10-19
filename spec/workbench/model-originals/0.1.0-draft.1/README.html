@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connected model originals, wire profile 0.1.0-draft.1</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main style="overflow-wrap:anywhere">
+<h1>Connected model originals</h1>
+<p class="meta">Wire profile 0.1.0-draft.1 · Morphir Workbench · Draft contract</p>
+<p>This profile transfers an immutable model source inventory and, when requested, a separately identified semantic projection. A consumer can preserve and download exact JSON, YAML, Ion, tree files and empty directories even when it cannot inspect the model. Original bytes, semantic inspection and execution capabilities have separate meanings.</p>
+<p>The profile name is <code>morphir/workbench/model-originals</code>. Its version is independent of the shared compatibility kit's version. Published MCK draft 29 covers offline local model inspection and export. It does not qualify this connected profile. The new connected MCK allocation, adapter observations and producer qualification remain required.</p>
+<nav class="toc" aria-label="Contents"><ul><li><a href="#workflow">Workflow and authority</a></li><li><a href="#protocol">Methods and shapes</a></li><li><a href="#ownership">Declared originals</a></li><li><a href="#projection">Semantic projection</a></li><li><a href="#inventory">Inventory and integrity</a></li><li><a href="#bounds">Bounds and cleanup</a></li><li><a href="#validation">Validation and qualification</a></li></ul></nav>
+<section id="workflow"><h2>Workflow and authority</h2>
+<p>An authenticated connection captures a currently offered source and a project belonging to that source. The host resolves the existing source and project identities using its real provider and output grants. The caller supplies no filesystem path, companion list, revision or capture ID. A declaration or capability description cannot grant filesystem or execution authority.</p>
+<div tabindex="0" role="region" aria-label="Capture and verification sequence, horizontally scrollable" style="overflow-x:auto;max-width:100%;border:1px solid var(--line);padding:12px;border-radius:6px"><svg xmlns="http://www.w3.org/2000/svg" width="820" height="270" viewBox="0 0 820 270" role="img" aria-labelledby="capture-title capture-desc" style="display:block;color:var(--fg)"><title id="capture-title">Capture, verify originals, then inspect separately</title><desc id="capture-desc">The client captures through an authenticated host. The host takes an immutable snapshot. The client verifies inventory and original bytes and separately validates the semantic projection before current-model adoption.</desc><g fill="none" stroke="currentColor"><rect x="10" y="15" width="230" height="70" rx="8"/><rect x="292" y="15" width="230" height="70" rx="8"/><rect x="574" y="15" width="230" height="70" rx="8"/><path d="M240 50H292M522 50H574M689 85V125H407V160M407 125H125V160"/><rect x="10" y="160" width="230" height="85" rx="8"/><rect x="292" y="160" width="230" height="85" rx="8"/></g><g fill="currentColor" font-family="system-ui,sans-serif" font-size="15"><text x="24" y="42">Authenticated connection</text><text x="24" y="65">Current source + project</text><text x="306" y="42">Host authority and snapshot</text><text x="306" y="65">Real lock and bounded owner</text><text x="588" y="42">Ready capture</text><text x="588" y="65">Inventory + two byte roles</text><text x="24" y="188">Verify exact originals</text><text x="24" y="212">Files, directories and digests</text><text x="24" y="235">Preserve for download</text><text x="306" y="188">Verify semantic projection</text><text x="306" y="212">Digest, actual header, decode</text><text x="306" y="235">Adopt only if still current</text><text x="574" y="196">Release or close owner</text><text x="574" y="222">on abandonment/uncertainty</text></g></svg></div>
+<details><summary>Mermaid source</summary><pre><code>flowchart LR
+  C[Authenticated connection / current source and project] --> H[Real host authority / immutable snapshot]
+  H --> R[Ready capture / inventory and separate byte roles]
+  R --> O[Verify exact originals / preserve download]
+  R --> P[Verify projection / current-model guard]
+  R --> X[Release or close on abandonment]
+</code></pre></details>
+<p>The host captures the compile record, primary and declared companions under the same shared compile lock. A cooperating compile cannot change the owned snapshot. Projection uses those same frozen bytes after capture; reopening live files or making an unrelated v1 open call cannot supply its evidence.</p></section>
+<section id="protocol"><h2>Methods and shapes</h2>
+<p>Every object and union variant is closed in this exact draft. All displayed fields are required. <a href="schemas/request.schema.json">Request</a> and <a href="schemas/reply.schema.json">reply</a> schemas include the complete JSON-RPC envelope. IDs use unsigned-u64 numeric token syntax, including <code>18446744073709551615</code>; decimals, exponent spellings and negative zero are invalid IDs. Counts are exact mathematical integers evaluated before floating-point conversion. Duplicate members and ill-formed Unicode are refused.</p>
+<div role="region" tabindex="0" aria-label="Reference table, scroll horizontally on narrow screens" style="max-width:100%;overflow-x:auto"><table style="display:table;min-width:48rem"><thead><tr><th style="min-width:12rem">Method</th><th style="min-width:12rem">Parameters after contractVersion</th><th style="min-width:12rem">Result</th></tr></thead><tbody><tr><td>morphir.model-originals.capture</td><td>source:{providerId,locator}, projectId, scope:primary|complete, semantic:none|projection</td><td>Ready summary or explicit unavailable outcome</td></tr><tr><td>morphir.model-originals.inventory</td><td>captureId,startIndex,maxEntries</td><td>Binding, capture, digest, contiguous entries and next variant</td></tr><tr><td>morphir.model-originals.read</td><td>captureId,target,offset,maxBytes</td><td>Binding, capture, target, offset, nextOffset and canonical padded base64</td></tr><tr><td>morphir.model-originals.release</td><td>captureId</td><td>Released capture acknowledgement</td></tr></tbody></table></div>
+<p>Read targets are <code>{kind:"original",entryId}</code> and <code>{kind:"semantic-projection"}</code>. A directory has no byte-read target. A projection never becomes an original inventory entry. Responses contain exactly one of result or error. Errors use the closed <code>model_originals.*</code> code vocabulary; bounded UI prose is separate from classification.</p></section>
+<section id="ownership"><h2>Declared originals</h2>
+<p>The compile record's optional reserved <code>morphirModelOriginals</code> value has <a href="schemas/declaration.schema.json">contractVersion and companions</a>. Each companion is a relative file or directory root beneath the selected compile destination. The primary comes from the actual record descriptor. The writer publishes its positive companion policy atomically with the record. An explicit empty array declares no additional companions; directory scanning and the historical TaskResult.value do not create that declaration.</p>
+<p>Absence, a valid declaration and an invalid declaration remain distinct. Primary-only capture does not claim completeness and ignores the out-of-scope companion declaration. Complete capture with no declaration returns unavailable/companions_undeclared without a handle; malformed declarations refuse before companion reads. Historical unknown record extras and old TaskResult decoding stay opaque and unchanged.</p>
+<p>Ready origin is compiled with only record byte length, digest, schema, task, selected module and IR descriptor, or legacy-json with the exact project filename <code>morphir-ir.json</code>. Raw record data, install paths and unknown bookkeeping never enter the public summary. Legacy complete capture requires a declaration-capable writer.</p></section>
+<section id="projection"><h2>Semantic projection</h2>
+<p>Projection is not-requested, unavailable with a closed reason, or available with codec morphir-json, byteLength, sha256 and actual formatVersion. Availability requires bounded serialization plus a valid header from the actual emitted projection. Missing or invalid emitted headers produce unavailable/invalid_model while originals stay ready. A descriptor's v3/v4 selector supplies neither source-header evidence nor emitted version evidence.</p>
+<p>Source format evidence comes from the immutable primary snapshot, including semantic:none. Report an actual validated release or not-reported. A recognized unsupported release remains evidence. A semantic consumer separately verifies whether it can decode that release; protocol availability is not a claim of consumer support. The client verifies projection bytes and its current-opening guard before adopting a usable model. It keeps the last usable model owner separate from newly retained originals.</p>
+<p>JSON, YAML, Ion and single-file/tree interpretation use the existing host codec paths. Server compatibility compares decoded semantic content and verifies the producer's actual byte digest. Independent client fixtures use their own literal projection bytes. Transport compatibility does not require identical serializer ordering. BOM, CRLF, opaque sidecars, graph identity and rich conceptual metadata remain in originals.</p></section>
+<section id="inventory"><h2>Inventory and integrity</h2>
+<p>Include selected roots and every descendant, empty directories, empty files and unknown sidecars. Do not follow outside references, symlinks or special files. Intermediate ancestors outside a selected root are implicit containers; their other children are outside that capture. Refuse an invalid or over-budget capture as a whole.</p>
+<p>Entries sort by unsigned lexicographic UTF-8 path bytes. File entries contain kind, entryId, path, byteLength and sha256; directories contain only kind, entryId and path. IDs are immutable and unique within their capture. Every page repeats the exact binding, capture and inventory digest. Counts satisfy entryCount=fileCount+directoryCount and file lengths sum to sourceByteLength. Clients verify all contiguous entries and all file digests before publishing a verified original owner.</p>
+<p>Digest preimage is ASCII <code>morphir/workbench/model-originals/0.1.0-draft.1</code>, a zero byte, unsigned big-endian u32 entryCount, then each sorted entry. Each entry contributes kind byte 0 for directory or 1 for file, big-endian u32 UTF-8 path length, exact UTF-8 path, and, for files, big-endian u64 byte length and the 32 raw digest bytes. IDs and page boundaries do not affect the digest.</p>
+<p>A page is the largest nonempty prefix fitting maxEntries and a complete compact UTF-8 reply measured with maximum-u64 ID. Include binding, IDs, digest and the actual next variant. No optional non-ASCII escaping or insignificant whitespace is emitted. More requires nonempty progress with the exact next index; complete is valid only at entryCount. Terminal index returns an empty complete page. An entry that cannot fit alone refuses rather than truncates.</p>
+<p>Root paths permit at most 4,000 Unicode scalars, 16,000 UTF-8 bytes, 8,000 UTF-16 units and 128 components, with 128 descendant levels below a root. Components retain portable filename restrictions, including C0/DEL/C1, reserved devices, aliases and prefix conflicts. Root sets cannot overlap. The artifact profile's smaller 1,024-unit path limit is not reused.</p></section>
+<section id="bounds"><h2>Bounds and cleanup</h2>
+<div role="region" tabindex="0" aria-label="Reference table, scroll horizontally on narrow screens" style="max-width:100%;overflow-x:auto"><table style="display:table;min-width:48rem"><thead><tr><th style="min-width:12rem">Boundary</th><th style="min-width:12rem">Inclusive limit</th></tr></thead><tbody><tr><td>Complete request / complete reply</td><td>16 KiB / 128 KiB</td></tr><tr><td>Each original / aggregate originals</td><td>64 MiB / 64 MiB</td></tr><tr><td>Projection / combined retained streams</td><td>64 MiB / 128 MiB</td></tr><tr><td>Temporary compile record</td><td>64 MiB, separate from source and projection</td></tr><tr><td>Selected roots / descendants / total entries</td><td>64 / 100,000 / 100,064, including directories</td></tr><tr><td>Page / read chunk</td><td>1..256 entries / 1..65,536 decoded bytes</td></tr><tr><td>Inventory metadata per capture / host wide</td><td>64 MiB / 64 MiB, including root metadata</td></tr><tr><td>Host capture slots / active capture workers</td><td>64 slots including empty captures / one actual worker</td></tr><tr><td>Captures per owning connection</td><td>One, including capturing state</td></tr><tr><td>IDs / locator / project identity</td><td>1..128 / 1..4,096 / 1..12,288 UTF-8 bytes, no Cc controls</td></tr><tr><td>Capture and exchange wait</td><td>30 seconds, no automatic retry</td></tr></tbody></table></div>
+<p>Source and projection reservations share a host-wide 128 MiB pool; metadata, descriptors, record input, decode structure and output work have independent bounds. Reserve before effects. Projection capacity refusal can leave originals ready. A blocked worker retains its actual credits until it ends, even after client timeout or cancellation. These logical/requested bounds do not claim exact process RSS.</p>
+<p>Connection ownership is Empty → Capturing → Ready → Released; Closed can retain only worker-owned pending cleanup. A second capture does not replace a capturing or ready owner. Repeated reads do not reread or recompile. Only the last released capture has same-connection idempotent release. Current-source revocation/replacement invalidates publication. Lost capture replies, uncertain exchanges and stale adoption close the owning connection or confirm release, without automatic capture retry or v1 reopen.</p></section>
+<section id="validation"><h2>Validation and qualification</h2>
+<p>JSON Schema proves structural restrictions. Exact raw-number syntax, UTF-8 and UTF-16 bounds, path normalization, ordered complete inventory, measured reply size, digests, current authority, effect ordering and cleanup require semantic checks in the existing shared MCK. Schema examples or checker controls cannot establish production adapter compatibility.</p>
+<p>The independent <a href="acceptance/provenance.json">source packet</a> preserves 49 wire scenarios, 60 preceding model scenarios, 35 inventory/conceptual additions and seven discovery mappings. They are unchanged review inputs, not a new executable compatibility runner or claimed producer results. Later reviewed header and resource decisions remain required. The connected server/client operations need a fresh exact MCK allocation; draft 29 is not extended.</p>
+<ul><li><label><input type="checkbox" checked disabled> Closed profile schemas, independent shape examples and malformed-shape fixtures.</label></li><li><label><input type="checkbox" checked disabled> Maintained Rust checker request/declaration boundary with exact IDs, ranges, identities and root sets.</label></li><li><label><input type="checkbox" disabled> Full independent connected server/client corpus, observation/report validation and forged-report controls.</label></li><li><label><input type="checkbox" disabled> Real native/server/browser/Proton producers, connected consumers and final platform lifecycle qualification.</label></li></ul>
+<p>The unchecked items are required before declaring this connected profile qualified. No runtime capability advertisement, SDK dependency selection or production authority is introduced by this document.</p></section>
+</main>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/read-result.schema.json",
+  "title": "Model originals read-result",
+  "description": "Closed exact model-originals wire profile. README.html defines required semantic, raw-frame, byte, path, authority, inventory and lifecycle validation in addition to this structural schema",
+  "examples": [
+    {
+      "profile": "morphir/workbench/model-originals",
+      "contractVersion": "0.1.0-draft.1",
+      "binding": {
+        "sessionId": "session-A",
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders"
+        },
+        "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+      },
+      "captureId": "capture-A",
+      "target": {
+        "kind": "original",
+        "entryId": "entry-model"
+      },
+      "offset": 0,
+      "nextOffset": 116,
+      "content": "IA0KeyJmb3JtYXRWZXJzaW9uIjo0LCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6InByaWNpbmciLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19DQo="
+    }
+  ],
+  "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/readResult"
+}

@@ -1,0 +1,10 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "captureId": "capture-A",
+  "target": {
+    "kind": "original",
+    "entryId": "entry-model"
+  },
+  "offset": 0,
+  "maxBytes": 65536
+}
