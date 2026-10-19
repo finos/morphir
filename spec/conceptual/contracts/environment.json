@@ -1,0 +1,725 @@
+{
+  "profile": "morphir-contracts/0.1.0-draft.1",
+  "recordVersion": "0.1.0-draft.1",
+  "notation": "Fixture type, contract and clause keys resolve only in this file. They are not IR wire syntax, a DSL grammar or a checker API. Typed values in cases are test descriptions under the exact-value profile below, not a new value encoding.",
+  "valueProfile": {
+    "id": "morphir-contracts/exact-values/0.1.0-draft.1",
+    "int": "A JSON string that matches -?(0|[1-9][0-9]*). Arbitrary precision is retained. A JSON number, a plus sign, leading zeros, a decimal point and an exponent are invalid Int values in this profile, not coercions.",
+    "float": "A JSON string that carries the authored decimal lexeme, as a test description only. No float value is evaluated in this draft; a float clause is unsupported before any float comparison.",
+    "bool": "A JSON boolean.",
+    "string": "A JSON string, retained exactly.",
+    "record": "A JSON object with exactly the declared fields. Field order is not semantic. A missing field, an extra field and a field of the wrong type are invalid typed values.",
+    "custom": "A JSON object with exactly one member. The member name is the constructor and its value is the payload, or null for a constructor without a payload: {\"Ok\": ...} or {\"OverReturn\": null}. Extra members and an unknown constructor name are invalid typed values. An unknown constructor is not a violated rejection clause.",
+    "refined": "The base encoding, checked by the named refinement clause after the base type check. A failed refinement or record invariant on a supplied input or candidate is an invalid typed value, not a violated postcondition."
+  },
+  "expressionProfile": {
+    "id": "morphir-contracts/expressions/0.1.0-draft.1",
+    "supportedTypes": [
+      "Int",
+      "Bool",
+      "String",
+      "records of supported types",
+      "tuples of supported types",
+      "untagged unions of supported member types",
+      "algebraic data types with finitely many named constructors over supported types"
+    ],
+    "operators": [
+      "int",
+      "string",
+      "bool",
+      "binder",
+      "field",
+      "add",
+      "subtract",
+      "equal",
+      "notEqual",
+      "lt",
+      "lte",
+      "gt",
+      "gte",
+      "and",
+      "or",
+      "not",
+      "if",
+      "match",
+      "stringNotEmpty"
+    ],
+    "rules": [
+      "Bindings and operand types resolve before execution.",
+      "Calls to arbitrary user functions, recursion, host effects, clock access and random draws are outside this profile and are unsupported, never satisfied.",
+      "There is no general quantifier or temporal-logic solver in this profile.",
+      "Parameterized declarations are instantiated at concrete argument types for checking examples. A generic report names the tested substitution and does not imply universal proof.",
+      "Quantity refinements constrain values without implicit subtype coercions or solver-based assignability.",
+      "A floating-point or decimal declaration can be represented while its predicate operations remain unsupported. Declaration expressiveness and executable capability are separate inventories."
+    ]
+  },
+  "defaultBudget": {
+    "maxSteps": 1000,
+    "maxDepth": 64,
+    "maxValueNodes": 10000,
+    "maxIntDigits": 256
+  },
+  "budgetRules": [
+    "A budget is an explicit record of maxSteps, maxDepth, maxValueNodes and maxIntDigits. Each evaluated expression node is one step. Depth is expression and value nesting depth. IntDigits is the count of decimal digits in an exact Int lexeme, excluding an optional minus sign.",
+    "A check that reaches any limit stops and reports execution-error with detail kind exhaustion and the exhausted limit named. An exhausted check cannot establish satisfied, violated or not_applicable.",
+    "Budgets are supplied per check. No budget is inferred from a type, a contract or a previous check.",
+    "Budget limits bound the whole check, including value admission: maxIntDigits is checked when an Int lexeme is admitted, and maxDepth and maxValueNodes are checked when supplied values are admitted. The effective budget is the case budget when supplied, otherwise the environment defaultBudget. No budget is inferred from a type, a contract or a previous check."
+  ],
+  "types": {
+    "int": {
+      "kind": "scalar",
+      "wire": "morphir/SDK:basics#int"
+    },
+    "bool": {
+      "kind": "scalar",
+      "wire": "morphir/SDK:basics#bool"
+    },
+    "string": {
+      "kind": "scalar",
+      "wire": "morphir/SDK:string#string"
+    },
+    "float": {
+      "kind": "scalar",
+      "wire": "morphir/SDK:basics#float",
+      "execution": "unsupported in morphir-contracts/expressions/0.1.0-draft.1"
+    },
+    "quantity": {
+      "kind": "refined",
+      "base": "int",
+      "refinementClause": "quantity-nonnegative",
+      "wire": "example/contracts:types#quantity"
+    },
+    "loan": {
+      "kind": "record",
+      "fields": {
+        "id": "string",
+        "asset": "string",
+        "outstanding": "quantity"
+      },
+      "wire": "example/contracts:types#loan"
+    },
+    "interval": {
+      "kind": "record",
+      "fields": {
+        "lower": "int",
+        "upper": "int"
+      },
+      "invariantClause": "interval-ordered",
+      "wire": "example/contracts:types#interval"
+    },
+    "returnResult": {
+      "kind": "custom",
+      "constructors": {
+        "Ok": "loan",
+        "OverReturn": null
+      },
+      "wire": "example/contracts:types#return-result"
+    }
+  },
+  "contracts": {
+    "acceptReturn": {
+      "id": "urn:example:contract:accept-return",
+      "revision": "c1",
+      "operation": {
+        "name": "acceptReturn",
+        "inputs": [
+          {
+            "name": "loan",
+            "type": "loan"
+          },
+          {
+            "name": "returned",
+            "type": "quantity"
+          }
+        ],
+        "result": "returnResult"
+      },
+      "requirementRefs": [
+        "LENDING-RETURN-001"
+      ],
+      "clauses": [
+        "return-balance",
+        "return-rejection",
+        "return-frame"
+      ]
+    },
+    "remaining": {
+      "id": "urn:example:contract:remaining",
+      "revision": "c1",
+      "operation": {
+        "name": "remaining",
+        "inputs": [
+          {
+            "name": "outstanding",
+            "type": "int"
+          },
+          {
+            "name": "returned",
+            "type": "int"
+          }
+        ],
+        "result": "int"
+      },
+      "requirementRefs": [],
+      "clauses": [
+        "remaining-pre",
+        "remaining-post"
+      ]
+    },
+    "requireLabel": {
+      "id": "urn:example:contract:require-label",
+      "revision": "c1",
+      "operation": {
+        "name": "requireLabel",
+        "inputs": [
+          {
+            "name": "name",
+            "type": "string"
+          }
+        ],
+        "result": "string"
+      },
+      "requirementRefs": [],
+      "clauses": [
+        "label-pre",
+        "label-post"
+      ]
+    },
+    "floatRemaining": {
+      "id": "urn:example:contract:float-remaining",
+      "revision": "c1",
+      "operation": {
+        "name": "floatRemaining",
+        "inputs": [
+          {
+            "name": "outstanding",
+            "type": "float"
+          },
+          {
+            "name": "returned",
+            "type": "float"
+          }
+        ],
+        "result": "float"
+      },
+      "requirementRefs": [],
+      "clauses": [
+        "float-post"
+      ]
+    },
+    "shout": {
+      "id": "urn:example:contract:shout",
+      "revision": "c1",
+      "operation": {
+        "name": "shout",
+        "inputs": [
+          {
+            "name": "name",
+            "type": "string"
+          }
+        ],
+        "result": "string"
+      },
+      "requirementRefs": [],
+      "clauses": [
+        "shout-post"
+      ]
+    }
+  },
+  "clauses": {
+    "quantity-nonnegative": {
+      "id": "urn:example:contracts:clause:quantity-nonnegative",
+      "kind": "refinement",
+      "subjectType": "quantity",
+      "binders": [
+        {
+          "name": "self",
+          "role": "self",
+          "type": "int"
+        }
+      ],
+      "text": "self >= 0",
+      "expression": {
+        "gte": [
+          {
+            "binder": "self"
+          },
+          {
+            "int": "0"
+          }
+        ]
+      },
+      "modelClauseRef": "urn:example:clause:quantity"
+    },
+    "interval-ordered": {
+      "id": "urn:example:contracts:clause:interval-ordered",
+      "kind": "invariant",
+      "subjectType": "interval",
+      "binders": [
+        {
+          "name": "self",
+          "role": "self",
+          "type": "interval"
+        }
+      ],
+      "text": "self.lower <= self.upper",
+      "expression": {
+        "lte": [
+          {
+            "field": [
+              {
+                "binder": "self"
+              },
+              "lower"
+            ]
+          },
+          {
+            "field": [
+              {
+                "binder": "self"
+              },
+              "upper"
+            ]
+          }
+        ]
+      },
+      "modelClauseRef": "urn:example:clause:interval"
+    },
+    "return-balance": {
+      "id": "urn:example:contracts:clause:return-balance",
+      "kind": "postcondition",
+      "contract": "acceptReturn",
+      "binders": [
+        {
+          "name": "loan",
+          "role": "argument",
+          "position": 0,
+          "type": "loan"
+        },
+        {
+          "name": "returned",
+          "role": "argument",
+          "position": 1,
+          "type": "quantity"
+        },
+        {
+          "name": "result",
+          "role": "result",
+          "type": "returnResult"
+        }
+      ],
+      "text": "an Ok result reduces the outstanding quantity by the returned quantity; the balance clause makes no claim about an OverReturn result",
+      "expression": {
+        "match": [
+          {
+            "binder": "result"
+          },
+          {
+            "Ok": {
+              "equal": [
+                {
+                  "field": [
+                    {
+                      "binder": "resultValue"
+                    },
+                    "outstanding"
+                  ]
+                },
+                {
+                  "subtract": [
+                    {
+                      "field": [
+                        {
+                          "binder": "loan"
+                        },
+                        "outstanding"
+                      ]
+                    },
+                    {
+                      "binder": "returned"
+                    }
+                  ]
+                }
+              ]
+            },
+            "OverReturn": {
+              "bool": true
+            }
+          }
+        ]
+      },
+      "matchBinder": {
+        "name": "resultValue",
+        "role": "constructor-payload",
+        "type": "loan"
+      }
+    },
+    "return-rejection": {
+      "id": "urn:example:contracts:clause:return-rejection",
+      "kind": "postcondition",
+      "contract": "acceptReturn",
+      "binders": [
+        {
+          "name": "loan",
+          "role": "argument",
+          "position": 0,
+          "type": "loan"
+        },
+        {
+          "name": "returned",
+          "role": "argument",
+          "position": 1,
+          "type": "quantity"
+        },
+        {
+          "name": "result",
+          "role": "result",
+          "type": "returnResult"
+        }
+      ],
+      "text": "a return larger than the outstanding quantity is rejected as OverReturn, and only then",
+      "expression": {
+        "match": [
+          {
+            "binder": "result"
+          },
+          {
+            "Ok": {
+              "lte": [
+                {
+                  "binder": "returned"
+                },
+                {
+                  "field": [
+                    {
+                      "binder": "loan"
+                    },
+                    "outstanding"
+                  ]
+                }
+              ]
+            },
+            "OverReturn": {
+              "gt": [
+                {
+                  "binder": "returned"
+                },
+                {
+                  "field": [
+                    {
+                      "binder": "loan"
+                    },
+                    "outstanding"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "matchBinder": {
+        "name": "resultValue",
+        "role": "constructor-payload",
+        "type": "loan"
+      }
+    },
+    "return-frame": {
+      "id": "urn:example:contracts:clause:return-frame",
+      "kind": "frame",
+      "contract": "acceptReturn",
+      "binders": [
+        {
+          "name": "loan",
+          "role": "argument",
+          "position": 0,
+          "type": "loan"
+        },
+        {
+          "name": "returned",
+          "role": "argument",
+          "position": 1,
+          "type": "quantity"
+        },
+        {
+          "name": "result",
+          "role": "result",
+          "type": "returnResult"
+        }
+      ],
+      "text": "an Ok result preserves the loan id and asset; no other field is implicitly preserved",
+      "expression": {
+        "match": [
+          {
+            "binder": "result"
+          },
+          {
+            "Ok": {
+              "and": [
+                {
+                  "equal": [
+                    {
+                      "field": [
+                        {
+                          "binder": "resultValue"
+                        },
+                        "id"
+                      ]
+                    },
+                    {
+                      "field": [
+                        {
+                          "binder": "loan"
+                        },
+                        "id"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "equal": [
+                    {
+                      "field": [
+                        {
+                          "binder": "resultValue"
+                        },
+                        "asset"
+                      ]
+                    },
+                    {
+                      "field": [
+                        {
+                          "binder": "loan"
+                        },
+                        "asset"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "OverReturn": {
+              "bool": true
+            }
+          }
+        ]
+      },
+      "matchBinder": {
+        "name": "resultValue",
+        "role": "constructor-payload",
+        "type": "loan"
+      }
+    },
+    "remaining-pre": {
+      "id": "urn:example:contracts:clause:remaining-pre",
+      "kind": "precondition",
+      "contract": "remaining",
+      "binders": [
+        {
+          "name": "outstanding",
+          "role": "argument",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "name": "returned",
+          "role": "argument",
+          "position": 1,
+          "type": "int"
+        }
+      ],
+      "text": "returned <= outstanding",
+      "expression": {
+        "lte": [
+          {
+            "binder": "returned"
+          },
+          {
+            "binder": "outstanding"
+          }
+        ]
+      },
+      "modelClauseRef": "urn:example:clause:remaining-pre"
+    },
+    "remaining-post": {
+      "id": "urn:example:contracts:clause:remaining-post",
+      "kind": "postcondition",
+      "contract": "remaining",
+      "binders": [
+        {
+          "name": "outstanding",
+          "role": "argument",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "name": "returned",
+          "role": "argument",
+          "position": 1,
+          "type": "int"
+        },
+        {
+          "name": "result",
+          "role": "result",
+          "type": "int"
+        }
+      ],
+      "text": "result == outstanding - returned",
+      "expression": {
+        "equal": [
+          {
+            "binder": "result"
+          },
+          {
+            "subtract": [
+              {
+                "binder": "outstanding"
+              },
+              {
+                "binder": "returned"
+              }
+            ]
+          }
+        ]
+      },
+      "modelClauseRef": "urn:example:clause:remaining-post"
+    },
+    "label-pre": {
+      "id": "urn:example:contracts:clause:label-pre",
+      "kind": "precondition",
+      "contract": "requireLabel",
+      "binders": [
+        {
+          "name": "name",
+          "role": "argument",
+          "position": 0,
+          "type": "string"
+        }
+      ],
+      "text": "the name is not empty",
+      "expression": {
+        "stringNotEmpty": [
+          {
+            "binder": "name"
+          }
+        ]
+      }
+    },
+    "label-post": {
+      "id": "urn:example:contracts:clause:label-post",
+      "kind": "postcondition",
+      "contract": "requireLabel",
+      "binders": [
+        {
+          "name": "name",
+          "role": "argument",
+          "position": 0,
+          "type": "string"
+        },
+        {
+          "name": "result",
+          "role": "result",
+          "type": "string"
+        }
+      ],
+      "text": "result == name",
+      "expression": {
+        "equal": [
+          {
+            "binder": "result"
+          },
+          {
+            "binder": "name"
+          }
+        ]
+      }
+    },
+    "float-post": {
+      "id": "urn:example:contracts:clause:float-post",
+      "kind": "postcondition",
+      "contract": "floatRemaining",
+      "expressionProfile": "morphir-contracts/expressions/float/0.1.0-draft.1",
+      "binders": [
+        {
+          "name": "outstanding",
+          "role": "argument",
+          "position": 0,
+          "type": "float"
+        },
+        {
+          "name": "returned",
+          "role": "argument",
+          "position": 1,
+          "type": "float"
+        },
+        {
+          "name": "result",
+          "role": "result",
+          "type": "float"
+        }
+      ],
+      "text": "result == outstanding - returned, under a floating-point profile this draft does not support",
+      "expression": {
+        "equal": [
+          {
+            "binder": "result"
+          },
+          {
+            "subtract": [
+              {
+                "binder": "outstanding"
+              },
+              {
+                "binder": "returned"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "shout-post": {
+      "id": "urn:example:contracts:clause:shout-post",
+      "kind": "postcondition",
+      "contract": "shout",
+      "binders": [
+        {
+          "name": "name",
+          "role": "argument",
+          "position": 0,
+          "type": "string"
+        },
+        {
+          "name": "result",
+          "role": "result",
+          "type": "string"
+        }
+      ],
+      "text": "result is the upper-case form of name, under a foreign call this profile does not evaluate",
+      "expression": {
+        "call": [
+          "urn:example:foreign#upper",
+          {
+            "binder": "name"
+          }
+        ]
+      }
+    }
+  },
+  "supportedProfiles": [
+    "morphir-contracts/0.1.0-draft.1",
+    "morphir-contracts/exact-values/0.1.0-draft.1",
+    "morphir-contracts/expressions/0.1.0-draft.1"
+  ],
+  "diagnostics": {
+    "contracts.invalid_input": "A supplied value fails its declared type, refinement or record invariant before an applicable operation check, or a candidate fails its result type. Path names the supplied value.",
+    "contracts.missing_input": "A named input binder has no supplied value. The information is absent; it was not supplied and rejected.",
+    "contracts.missing_result": "A supplied-result case supplies no candidate and no implementation binding is invoked. Postconditions are not evaluated.",
+    "contracts.unsupported_semantics": "A clause needs an expression profile or predicate that the selected capability does not support.",
+    "contracts.unsupported_type": "A case names a type outside the selected type inventory.",
+    "contracts.execution_exhausted": "Evaluation reached a declared budget limit. Always an execution-error detail, never a passing observation.",
+    "contracts.revision_unavailable": "The case names a model or contract revision that the supplied context does not provide exactly. A different revision is not evaluated silently."
+  },
+  "model": {
+    "id": "urn:example:model:rentals",
+    "revision": "m1"
+  }
+}

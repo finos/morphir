@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Typed contracts, cases and observations</h1>
+<p class="meta">morphir-ukvn.7.10.1 · C1 · 19 October 2026 · Proposed exact draft 0.1.0-draft.1</p>
+<p class="note">This is the shared reference contract for <code>morphir-contracts/0.1.0-draft.1</code>. It defines records, outcomes and authored examples. It does not deliver a checker, evaluator, admission routine, encoding validator, implementation binding or compatibility runner. Record spellings below are local draft proposals, not a claim of maintainer approval of a DSL grammar or checker API.</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#scope">Scope and versions</a></li>
+<li><a href="#records">Contract and clause records</a></li>
+<li><a href="#values">Typed values and exact encoding</a></li>
+<li><a href="#expressions">Bounded expression profile</a></li>
+<li><a href="#budgets">Capability budgets</a></li>
+<li><a href="#cases">Cases and supplied-result mode</a></li>
+<li><a href="#observations">Observations and outcomes</a></li>
+<li><a href="#diagnostics">Diagnostics and revision scope</a></li>
+<li><a href="#fixtures">Reference corpus</a></li>
+<li><a href="#consumers">Consumers and handoff</a></li>
+<li><a href="#open">Open decisions</a></li>
+<li><a href="#references">Pinned design and existing contracts</a></li>
+</ul></nav>
+
+<section id="scope"><h2>Scope and versions</h2>
+<p>C1 fixes the interface that later tasks consume: typed clauses, typed cases, exact values, capability budgets, diagnostics and observations. A supplied candidate result can be checked before an operation implementation exists. Computing a result from a relational specification is a separate capability and is not promised here.</p>
+<p>Terminology follows <code>CONTEXT.md</code>: the modeled result and its retained carrier are a <strong>Morphir model</strong>. C1 records carry a model identity and revision, and no other carrier term is used for that result in this contract.</p>
+<p>The exact profile is <code>morphir-contracts/0.1.0-draft.1</code>. Records use <code>recordVersion: "0.1.0-draft.1"</code>. The exact-value profile is <code>morphir-contracts/exact-values/0.1.0-draft.1</code> and the bounded expression profile is <code>morphir-contracts/expressions/0.1.0-draft.1</code>. These versions are independent of the M1 conceptual profile <code>morphir-conceptual/0.1.0-draft.1</code>, model revisions, contract revisions, IR format versions and provider releases. A prerelease matches only exactly, under the repository SemVer policy. C1 implements no version negotiation.</p>
+<p>The pinned design is beads <code>morphir-ukvn.7</code>, sections <code>contracts</code>, <code>evidence</code>, <code>rentals</code> and acceptance items 16 and 17. The parent plan names draft 0.16; the stored design has since advanced. C1 pins the named sections and their semantics, not a draft number. Maintainer decisions on 19 October 2026 fix the flat layout <code>spec/conceptual/contracts/</code>, the design outcome set with exhaustion as an execution-error detail, and the canonical partial-return corpus with exact Int values as string lexemes.</p>
+</section>
+
+<section id="records"><h2>Contract and clause records</h2>
+<p>A contract record names one operation, its ordered typed inputs, its result type, its revision and its clauses. Clause records are separate, identified records so a report can name the exact clause that was satisfied or violated.</p>
+<pre><code>contract {
+  id: Id, revision: Revision, operation: { name, inputs: [{ name, type }], result: type },
+  requirementRefs: [Id], clauses: [clauseKey]
+}
+clause {
+  id: Id, kind: refinement | invariant | precondition | postcondition | frame,
+  subjectType?: typeKey, contract?: contractKey,
+  binders: [{ name, role: self | argument | result, position?, type }],
+  text: String, expressionProfile?: ProfileId, expression: Ast
+}</code></pre>
+<table><thead><tr><th>Clause kind</th><th>Bindings and interpretation</th></tr></thead><tbody>
+<tr><td>Type refinement</td><td><code>self</code> is a value of the underlying type. The predicate determines admissible values. A failed refinement on a supplied value is <code>invalid</code>.</td></tr>
+<tr><td>Record invariant</td><td><code>self</code> is the complete record. It can relate multiple fields. A failed invariant on a supplied value is <code>invalid</code>.</td></tr>
+<tr><td>Operation precondition</td><td>Named input arguments only. False means the contract does not promise a result for that call. It produces <code>not_applicable</code>. It is not a guard, exception or modeled rejection.</td></tr>
+<tr><td>Operation postcondition</td><td>Named inputs and <code>result</code>. All applicable postconditions must hold. False produces <code>violated</code> with the clause identity.</td></tr>
+<tr><td>Frame condition</td><td>An explicit postcondition that states which identities or fields remain unchanged. It uses postcondition bindings and the <code>violated</code> outcome. No implicit preservation of unspecified fields is assumed.</td></tr>
+</tbody></table>
+<p>Ordinary business rejection belongs in a result alternative and its postconditions. In the corpus, <code>OverReturn</code> is a modeled rejection. An over-return checked against an <code>Ok</code> candidate violates the rejection clause. The same over-return checked against an unknown constructor is an invalid candidate, not a violation.</p>
+<p>Binder names come from the operation signature. A checker does not keep a separate argument-name list, and it does not infer a package from a dotted source name. Duplicate or reserved binders are invalid contract records in a checker; this corpus contains none. Two inputs remain distinct from one tuple input, and a function-valued result is not flattened into inputs.</p>
+</section>
+
+<section id="values"><h2>Typed values and exact encoding</h2>
+<p>Cases carry typed values as test descriptions under the exact-value profile. This profile is not a new wire encoding and does not replace an IR value encoding.</p>
+<table><thead><tr><th>Type</th><th>Case spelling</th></tr></thead><tbody>
+<tr><td>Int</td><td>A JSON string that matches <code>-?(0|[1-9][0-9]*)</code>. Precision is arbitrary. A JSON number, plus sign, leading zero, decimal point or exponent is invalid, not a coercion.</td></tr>
+<tr><td>Bool</td><td>A JSON boolean.</td></tr>
+<tr><td>String</td><td>A JSON string, retained exactly. An empty string is a valid String.</td></tr>
+<tr><td>Float</td><td>A JSON string that carries the authored decimal lexeme, as a test description only. No float predicate is evaluated in this draft.</td></tr>
+<tr><td>Record</td><td>A JSON object with exactly the declared fields. Field order is not semantic. A missing field, extra field or wrong field type is invalid.</td></tr>
+<tr><td>Custom type</td><td>A JSON object with exactly one member. The member name is the constructor and its value is the payload: <code>{"Ok": ...}</code>. A constructor without a payload uses <code>null</code>: <code>{"OverReturn": null}</code>. Extra members and an unknown constructor name are invalid.</td></tr>
+<tr><td>Refined type</td><td>The base spelling, then the named refinement clause. Refinement failure is invalid, before any postcondition.</td></tr>
+</tbody></table>
+<p>Exact integers above the JS safe range and above the machine-integer range appear in the corpus as string lexemes. A checker that routes them through a machine integer or a JS number has a defect. Case <code>contracts-0016</code> exists so that rounding hides a real violation if precision is lost.</p>
+</section>
+
+<section id="expressions"><h2>Bounded expression profile</h2>
+<p>The first predicate profile supports Bool, arbitrary-precision Int, String, transparent and opaque aliases with refinements, immutable records, tuples, untagged unions of supported member types and algebraic data types with finitely many named constructors, including Result. Parameterized declarations are instantiated at concrete argument types for checking examples. Named types resolve within functional modules and explicit imports.</p>
+<p>Supported expressions are literals, parameter and field references, arithmetic addition and subtraction, comparisons, Boolean connectives, conditionals, exhaustive matching and a small versioned set of pure predicates such as string non-emptiness. In a match on a custom result, the selected constructor payload is bound as <code>resultValue</code> inside that arm. Its type is the payload type of the selected constructor, and the clause record declares it as a <code>matchBinder</code> with that type. Every other binder in an expression is declared in the clause record. Bindings and operand types resolve before execution, and an undeclared binder is an invalid clause record.</p>
+<p>Calls to arbitrary user functions, recursion, host effects, clock access and random draws are outside this profile. Such a clause is <code>unsupported</code>. There is no general quantifier or temporal-logic solver in this delivery. A future profile can add exact decimals, units of measure, dates, collection quantification or proof backends. Each such profile states its semantics and capability claims under its own version.</p>
+<p>Declaration expressiveness, structural validation and executable predicate operations have separate capability inventories. A floating-point signature can be represented while its predicate operations remain unsupported, as case <code>contracts-0017</code> shows.</p>
+</section>
+
+<section id="budgets"><h2>Capability budgets</h2>
+<p>Execution is bounded by an explicit budget record. No budget is inferred from a type, a contract or a previous check.</p>
+<pre><code>budget { maxSteps, maxDepth, maxValueNodes, maxIntDigits }</code></pre>
+<p>Each evaluated expression node is one step. Depth is expression and value nesting depth. <code>maxIntDigits</code> counts decimal digits in an exact Int lexeme, without the optional minus sign. The limits bound the whole check, including value admission: digit, depth and value-node limits are checked when supplied values are admitted. The corpus default is <code>{ maxSteps: 1000, maxDepth: 64, maxValueNodes: 10000, maxIntDigits: 256 }</code>. A case can supply a smaller budget; a case that omits <code>budget</code> uses that environment default, and an observation records the effective budget. The default is a profile rule, not an inference from a type, a contract or a previous check. A check that reaches any limit stops. It reports <code>execution-error</code> with detail <code>{ kind: "exhaustion", limit: "maxSteps" }</code> (or the limit that was reached). An exhausted check cannot establish <code>satisfied</code>, <code>violated</code> or <code>not_applicable</code>. A budget never turns an exhausted check into a pass. Each of the four limits has an exhaustion case in the corpus.</p>
+</section>
+
+<section id="cases"><h2>Cases and supplied-result mode</h2>
+<p>A case is an authored, identified record with an expected observation. The expected observation is established independently of any checker. A checker produces an observation; a runner compares it with the expected observation. These two results stay separate.</p>
+<pre><code>case {
+  id, description,
+  input: {
+    mode: supplied-result | typed-value,
+    contract?: contractKey, type?: typeKey,
+    context: { model: { id, revision }, contractRevision },
+    inputs?: { binderName: TypedValue }, candidate?: TypedValue, value?: TypedValue,
+    availableProfiles?: [ProfileId], budget?: budget
+  },
+  expected: {
+    outcome, detail?: { kind: exhaustion, limit },
+    clauses: [{ clause: clauseKey, observation }], postconditionsEvaluated?: Bool,
+    diagnostics: [{ code, path }]
+  }
+}</code></pre>
+<table><thead><tr><th>Mode</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>supplied-result</code></td><td>The case supplies named inputs and, for postcondition checks, a candidate result. No implementation is required or invoked. If the candidate is absent and the contract applies, postconditions are not evaluated and the outcome is <code>inconclusive</code> with <code>contracts.missing_result</code>. Absence is never <code>satisfied</code>.</td></tr>
+<tr><td><code>typed-value</code></td><td>The case supplies one typed value. Refinement and record-invariant clauses for that type are the whole check. No operation, candidate or implementation is involved.</td></tr>
+</tbody></table>
+<p>A negative case passes as a case when its observed outcome equals its expected outcome. The contract observation itself stays <code>violated</code>, <code>invalid</code> or whichever outcome was observed. Generating a case is not passing it, and a case record is not execution evidence.</p>
+<p>Checks in supplied-result mode use this order, and an earlier outcome stops later phases:</p>
+<ol>
+<li>Resolve the named model and contract revisions against the supplied context. An exact revision that is not provided is <code>inconclusive</code> (<code>contracts.revision_unavailable</code>). Then resolve the selected profile and type inventory: a clause whose expression profile or operator is not supported is <code>unsupported</code>, and a case that names a type outside the inventory is <code>unsupported</code> (<code>contracts.unsupported_type</code>). Capability is decided before any value is admitted or evaluated.</li>
+<li>Check that each named input is present. An absent input is <code>inconclusive</code> (<code>contracts.missing_input</code>).</li>
+<li>Admit each input under its type, refinement and invariants, under the effective budget. A failure is <code>invalid</code>; a reached limit is <code>execution-error</code>. Budget limits are checked in the phase that consumes them: digit, depth and value-node limits in this admission phase, and step limits during precondition and postcondition evaluation. An exhaustion in an earlier phase stops later phases, so admission exhaustion precedes candidate admission (case <code>contracts-0042</code>).</li>
+<li>Evaluate preconditions. A false precondition is <code>not_applicable</code>. This precedes candidate presence and candidate admission, so a false precondition with an absent or invalid candidate is still <code>not_applicable</code> (cases <code>contracts-0029</code> and <code>contracts-0030</code>).</li>
+<li>Check candidate presence. An absent candidate in an applicable case is <code>inconclusive</code> (<code>contracts.missing_result</code>).</li>
+<li>Admit the candidate under the result type. A failure is <code>invalid</code>.</li>
+<li>Evaluate each postcondition and frame clause. Any false clause makes the outcome <code>violated</code>; otherwise it is <code>satisfied</code>.</li>
+</ol>
+<p>The case states <code>postconditionsEvaluated: false</code> where an earlier phase stopped the check. In typed-value mode only steps 1 and 3 apply, against the named type: an unknown type is <code>unsupported</code>, an admitted value that meets its refinement or invariant is <code>satisfied</code>, and a failed one is <code>invalid</code>.</p>
+</section>
+
+<section id="observations"><h2>Observations and outcomes</h2>
+<p>An observation record names the case, the context, the mode, the overall outcome, one observation per evaluated clause, any diagnostics, and the budget that bounded the check. It retains the model, contract and source revisions from the case context. A changed revision makes a prior observation historical for a new context. It does not delete or rewrite that observation.</p>
+<table><thead><tr><th>Outcome</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>satisfied</code></td><td>An applicable, supported contract was evaluated and every evaluated clause held.</td></tr>
+<tr><td><code>violated</code></td><td>An applicable, supported contract was evaluated and at least one postcondition or frame clause did not hold. The clause identities are named.</td></tr>
+<tr><td><code>not_applicable</code></td><td>The operation precondition is false. Postconditions are not evaluated.</td></tr>
+<tr><td><code>invalid</code></td><td>A supplied input or candidate fails its type, refinement or record invariant. This is a diagnostic outcome, not a violated postcondition.</td></tr>
+<tr><td><code>inconclusive</code></td><td>Required information is missing: a named input, a candidate result in supplied-result mode, or the exact named revision. Missing information is unknown, not false and not satisfied.</td></tr>
+<tr><td><code>unsupported</code></td><td>The case needs a type, expression profile or predicate capability that the selected profile does not support. Unsupported is never satisfied.</td></tr>
+<tr><td><code>execution-error</code></td><td>Evaluation failed or reached its limits. Exhaustion is the detail kind for a reached budget limit. An execution error cannot establish a guarantee.</td></tr>
+</tbody></table>
+<p>No outcome except <code>satisfied</code> is a passing contract observation. A runner can still report a case as passed when the observed outcome matches an expected non-satisfied outcome. The observation and the case result are different facts.</p>
+</section>
+
+<section id="diagnostics"><h2>Diagnostics and revision scope</h2>
+<p>A diagnostic has a <code>code</code> and a <code>path</code>. The path is an RFC 6901 pointer into the case input. The empty string selects the root. Messages can explain a problem, but messages are not fixed oracle strings. Diagnostic order is not semantic. Compare code, path and stated detail as a set.</p>
+<table><thead><tr><th>Code</th><th>Boundary</th></tr></thead><tbody>
+<tr><td><code>contracts.invalid_input</code></td><td>A supplied value fails its declared type, refinement or record invariant, or a candidate fails its result type.</td></tr>
+<tr><td><code>contracts.missing_input</code></td><td>A named input binder has no supplied value. The value is absent, not rejected.</td></tr>
+<tr><td><code>contracts.missing_result</code></td><td>A supplied-result case supplies no candidate. Postconditions are not evaluated.</td></tr>
+<tr><td><code>contracts.unsupported_semantics</code></td><td>A clause needs an unsupported expression profile or predicate.</td></tr>
+<tr><td><code>contracts.unsupported_type</code></td><td>A case names a type outside the selected inventory.</td></tr>
+<tr><td><code>contracts.execution_exhausted</code></td><td>Evaluation reached a declared limit. Always an execution-error detail.</td></tr>
+<tr><td><code>contracts.revision_unavailable</code></td><td>The case names a model or contract revision that the context does not provide exactly. A different revision is not evaluated silently.</td></tr>
+</tbody></table>
+<p>Path rules are part of each code. <code>contracts.invalid_input</code> names the supplied value that failed. <code>contracts.missing_input</code> names the absent input slot. <code>contracts.missing_result</code> names <code>/candidate</code>. <code>contracts.unsupported_semantics</code> and <code>contracts.unsupported_type</code> name the case slot that selects the unsupported capability (<code>/contract</code> or <code>/type</code>). <code>contracts.execution_exhausted</code> names the reached limit under <code>/budget</code>. <code>contracts.revision_unavailable</code> names the revision slot that did not resolve.</p>
+<p>These codes belong to the contracts profile. They parallel the M1 graph codes without replacing them: a graph inspection still reports <code>conceptual.invalid_input</code> and its other codes for graph records. A contracts checker reports the codes above for case checks. Every observation retains the source and revision scope of its case: model id and revision, contract revision, and, when an implementation is bound by a later task, that implementation identity and revision. Runtime outcomes from a bound implementation remain distinct from contract observations.</p>
+</section>
+
+<section id="fixtures"><h2>Reference corpus</h2>
+<p>The environment also records the one model identity and revision that case contexts resolve against. A case that names another model revision is case <code>contracts-0037</code>.</p>
+<p><code>cases.json</code> holds 42 independently hand-authored cases. Its <code>corpusVersion</code> is exact <code>0.1.0-draft.1</code> and its status is <code>reference-only</code>. <code>environment.json</code> holds the type, contract and clause records that case keys resolve against. The literal lengths and SHA-256 digests in <code>assets.json</code> detect accidental changes. They do not compute expected outcomes. No expected outcome in this corpus was produced by a checker.</p>
+<p>The canonical operation is the proposed partial-return extension from the pinned design. It is separate from the canonical rental request fixture, whose historical behavior stays unchanged. <code>acceptReturn(loan, returned)</code> returns an <code>Ok</code> loan with the balance reduced and the id and asset preserved, or the modeled rejection <code>OverReturn</code> for a larger return. Zero is accepted. Negative quantities are invalid refined inputs. The separate <code>remaining</code> operation carries the precondition example, and <code>requireLabel</code> shows that an empty string is a valid String whose precondition is false.</p>
+<p>Coverage groups in the corpus name satisfied, violated, not_applicable, invalid, inconclusive, unsupported and execution-error cases, plus frame, supplied-result and exact-int groups. The operation names and case keys are fixture instructions. They are not a new CLI, RPC protocol or MCK operation registration.</p>
+</section>
+
+<section id="consumers"><h2>Consumers and handoff</h2>
+<table><thead><tr><th>Consumer</th><th>Consumes from C1</th></tr></thead><tbody>
+<tr><td>C2 typed-value admission (<code>morphir-ukvn.7.10.2</code>)</td><td>Typed-value mode, the exact-value profile, refinement and invariant outcomes, budget records.</td></tr>
+<tr><td>C6 raw encoding validation (<code>morphir-ukvn.7.10.3</code>)</td><td>Typed values and outcome records, without a source-parsing dependency.</td></tr>
+<tr><td>C3 predicates and sequencing (<code>morphir-ukvn.7.10.4</code>)</td><td>Clause kinds, bindings, the bounded expression profile, precondition and frame sequencing, supplied-result mode.</td></tr>
+<tr><td>C4 bindings and evidence (<code>morphir-ukvn.7.10.5</code>)</td><td>Observation records with model, contract and implementation revision scope. The same cases check supplied results and bound implementations.</td></tr>
+<tr><td>S3 SDK integer contracts (<code>morphir-ukvn.7.11.3</code>), G1 generation (<code>morphir-ukvn.7.14.1</code>)</td><td>Case records with independently established expected observations.</td></tr>
+<tr><td>H2 Smithy traits (<code>morphir-ukvn.7.13.2</code>), L9 DSL authoring (<code>morphir-ukvn.7.8.7</code>)</td><td>Clause records and the rule that a retained foreign expression is unsupported for evaluation, never satisfied.</td></tr>
+</tbody></table>
+<p>Each consumer implements its own runtime semantics in its own repository and package. C1 does not close any consumer. A consumer closes on its own implementation and qualification evidence.</p>
+</section>
+
+<section id="open"><h2>Open decisions</h2>
+<p>This draft fixes the record structure, outcome set, value profile, expression profile boundary, budget fields and case modes that consumers need. It does not settle these items, and it does not invent approval for them:</p>
+<ul>
+<li>Textual DSL grammar for contracts, delimiters, file extensions and source spelling of clauses.</li>
+<li>Exact step, depth and digit counting in a real evaluator, beyond the counting rules stated here. C3 owns that calibration.</li>
+<li>Float, decimal, units-of-measure, date and collection-quantification profiles. Each needs its own versioned semantics.</li>
+<li>Bound-implementation invocation, implementation identity issuance and evidence storage. C4 owns these.</li>
+<li>Whether the contracts profile joins the M1 conceptual graph as contract entities with this exact record spelling, or maps to it through an adapter. Until that is settled, each C1 clause that restates an M1 graph clause carries a <code>modelClauseRef</code> to that M1 entity. The M1 entity stays the graph authority and the C1 record stays the contracts-profile authority. Neither record silently replaces the other.</li>
+<li>General proof, solver-based input synthesis and computing a result from a relational specification.</li>
+</ul>
+</section>
+
+<section id="references"><h2>Pinned design and existing contracts</h2>
+<p>Design source: beads <code>morphir-ukvn.7</code> (ConceptualModel), sections <code>contracts</code>, <code>evidence</code>, <code>rentals</code> and <code>acceptance</code>. Delivery plan: beads <code>morphir-ukvn.7.10</code>, task 1. Existing contracts reused: the M1 conceptual model contract in <code>spec/conceptual/model/</code> (record versions, resolved references, RFC 6901 diagnostic paths, contract clause entities and scenario records) and the M2 trait contract in <code>spec/conceptual/traits/</code> (exact draft profiles). The v4 IR value and type shapes in the existing IR specification remain the authority for IR projection. This contract adds no IR node and changes no Distribution compatibility rule.</p>
+</section>
+</main>
+</body>
+</html>
+

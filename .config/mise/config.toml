@@ -592,6 +592,8 @@ run = [
     "jsonschema validate website/static/schemas/morphir-ir-v4.json spec/conceptual/traits/fixtures/payload-types.ir.json",
     "bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/union/tsconfig.json",
     "bun test spec/conceptual/union/fixture-integrity.test.ts",
+    "bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/contracts/tsconfig.json",
+    "bun test spec/conceptual/contracts/fixture-integrity.test.ts",
 ]
 
 [tasks."vendor:morphir-web"]
