@@ -553,7 +553,8 @@ pub(super) fn classify(site: Site) -> Meaning {
             Operand::Expected,
             "ExpectedClientCheck",
             Some(
-                "owner-absent"
+                "identity-controller"
+                | "owner-absent"
                 | "verified-owner"
                 | "current-opening"
                 | "current-model"

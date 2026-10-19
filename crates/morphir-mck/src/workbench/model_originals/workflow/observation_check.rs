@@ -653,7 +653,8 @@ fn predicate(
                 && number(destinations, actual.destination_count.0, owner)?;
             (same, PredicateFault::Navigation)
         }
-        ExpectedClientCheck::PortTrace { .. }
+        ExpectedClientCheck::IdentityController { .. }
+        | ExpectedClientCheck::PortTrace { .. }
         | ExpectedClientCheck::PortCounts { .. }
         | ExpectedClientCheck::VerifiedOwner { .. }
         | ExpectedClientCheck::CoreResult { .. }
@@ -745,7 +746,7 @@ fn check_core<'source, 'actual>(
         || !outbound.0.is_empty()
         || !fixture.files.0.is_empty()
         || !fixture.literal_peers.0.is_empty()
-        || !matches!(fixture.runtime, Presence::Absent)
+        || !matches!(fixture.mode, input::ClientFixtureMode::Basic)
     {
         return owner.refuse(ObservationError::UnqualifiedEvidence);
     }

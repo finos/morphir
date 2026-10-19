@@ -4,7 +4,7 @@
 //! producer authority, filesystem grants, readiness or any runtime observation.
 use super::ingress::{BoundCase, CorpusCaseId, IngressError};
 use super::pairing::{PairError, PairedRun, PairedWorkflow};
-use super::reviewed_sources::{FileView, ReviewedSources};
+use super::reviewed_sources::{FileView, ReviewedSources, SourceSet};
 use super::{
     ContentSha256, Decode, DecodeError, DecodeUsage, Decoder, Natural, Text, UniqueKey, input,
     string,
@@ -378,6 +378,15 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
         owner: &'owner mut Decoder,
     ) -> Result<Self, SourceError> {
         owner.ready()?;
+        // The closed parent-issued view selects only fixed reviewed anchors.
+        // Caller/replacement bytes never supply an expected digest.
+        let (paired_sha, manifest_sha) = match sources.source_set() {
+            SourceSet::Legacy => (PAIRED_SHA, MANIFEST_SHA),
+            SourceSet::IdentityController => (
+                "ff6a905d4c25c590190353d119fd34ca774e2b7cbb258448df902f6f1bb3815c",
+                "79056ac33aac8aec8191790250e7d60bc9934bff97ed09b11e06ce7b2368c602",
+            ),
+        };
         anchor(
             sources.acceptance_receipt(),
             ACCEPTANCE_SHA,
@@ -386,13 +395,13 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
         )?;
         anchor(
             sources.paired_receipt(),
-            PAIRED_SHA,
+            paired_sha,
             ReviewedAnchor::PairedReceipt,
             owner,
         )?;
         anchor(
             sources.manifest(),
-            MANIFEST_SHA,
+            manifest_sha,
             ReviewedAnchor::Manifest,
             owner,
         )?;
@@ -400,7 +409,7 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
         let paired = source_document(sources.paired_receipt(), owner)?;
         if !same(
             text(member(&paired, "sourceManifestSHA256", owner)?, owner)?,
-            MANIFEST_SHA,
+            manifest_sha,
             owner,
         )? {
             return Err(SourceError::Anchor(ReviewedAnchor::Manifest));

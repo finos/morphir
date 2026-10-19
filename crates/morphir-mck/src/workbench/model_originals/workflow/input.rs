@@ -335,12 +335,91 @@ record! { ClientFixtureLiteralPeersItem {
         requests: Items<Frame, 0, 4096> => "requests",
 } }
 
-record! { ClientFixture {
-        files: Items<ClientFixtureFilesItem, 0, 256> => "files",
-        literal_peers: Items<ClientFixtureLiteralPeersItem, 0, 64> => "literalPeers",
-} optional {
-        runtime: ClientRuntime => "runtime",
+// Third closed fixture branch from the independently reviewed source proposal.
+// These full UI strings are fixture input, not provider/host authority.
+literal! { IdentityControllerFixtureKind => "morphir-ui-workbench-controller" }
+literal! { IdentityControllerWatchKind => "empty" }
+record! { IdentityControllerWatch { kind: IdentityControllerWatchKind => "kind" } }
+record! { IdentityControllerReply {
+    source_snapshot: IdentitySourceSnapshot => "sourceSnapshot",
+    reply: RawJson => "reply",
 } }
+record! { IdentityControllerPeer {
+    provider_id: Text<0, {usize::MAX}> => "providerId",
+    display_name: Text<0, {usize::MAX}> => "displayName",
+    inspections: Items<IdentityControllerReply, 1, {usize::MAX}> => "inspections",
+    workspaces: Items<IdentityControllerReply, 1, {usize::MAX}> => "workspaces",
+    watch: IdentityControllerWatch => "watch",
+} }
+record! { IdentityControllerFixture {
+    kind: IdentityControllerFixtureKind => "kind",
+    initial_sources: Items<IdentitySourceSnapshot, 1, {usize::MAX}> => "initialSources",
+    providers: Items<IdentityControllerPeer, 1, {usize::MAX}> => "providers",
+} }
+
+/// Three exact closed source-schema alternatives: basic, runtime, or controlled
+/// identity workspace. The source alternatives decode into one closed mode.
+#[derive(Debug)]
+pub(super) struct ClientFixture {
+    pub(super) files: Items<ClientFixtureFilesItem, 0, 256>,
+    pub(super) literal_peers: Items<ClientFixtureLiteralPeersItem, 0, 64>,
+    pub(super) mode: ClientFixtureMode,
+}
+/// One actual fixture branch. A runtime and a controller cannot coexist.
+/// This is a Rust representation choice; it adds no wire discriminator.
+#[derive(Debug)]
+pub(super) enum ClientFixtureMode {
+    Basic,
+    Runtime {
+        runtime: ClientRuntime,
+    },
+    IdentityController {
+        controller: IdentityControllerFixture,
+    },
+}
+
+impl Decode for ClientFixture {
+    fn decode(
+        value: &crate::json::strict::Document,
+        owner: &mut Decoder,
+    ) -> Result<Self, DecodeError> {
+        let fields = Fields::with_optional(
+            value,
+            &["files", "literalPeers"],
+            &["runtime", "identityController"],
+            owner,
+        )?;
+        let runtime = fields.has("runtime", owner)?;
+        let identity_controller = fields.has("identityController", owner)?;
+        if runtime && identity_controller {
+            return Err(DecodeError::Shape("disjoint client fixture alternatives"));
+        }
+        let files = fields.field("files", owner)?;
+        let literal_peers = fields.field("literalPeers", owner)?;
+        // Decode the same two source slots in the same order under the same owner.
+        // Only the closed mode escapes the boundary.
+        let mode = match (
+            fields.presence("runtime", owner)?,
+            fields.presence("identityController", owner)?,
+        ) {
+            (Presence::Absent, Presence::Absent) => ClientFixtureMode::Basic,
+            (Presence::Present(runtime), Presence::Absent) => {
+                ClientFixtureMode::Runtime { runtime }
+            }
+            (Presence::Absent, Presence::Present(controller)) => {
+                ClientFixtureMode::IdentityController { controller }
+            }
+            (Presence::Present(_), Presence::Present(_)) => {
+                return Err(DecodeError::Shape("disjoint client fixture alternatives"));
+            }
+        };
+        Ok(Self {
+            files,
+            literal_peers,
+            mode,
+        })
+    }
+}
 
 literal! { ClientRuntimeControlledModelOriginalsHttpV1ManifestPath => "/api/session" }
 

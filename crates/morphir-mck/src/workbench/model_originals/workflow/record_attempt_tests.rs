@@ -2,11 +2,10 @@
 //! declared sticky Decoder/CompareOwner errors. A real attempt owns the fault.
 use super::DecodeError;
 use super::observation_check::{CompareLimits, CompareOwner};
+use super::record_boundary_support as support;
 use super::record_check::{WorkflowEnvelopeFault, WorkflowRecordError};
 use crate::json::strict::{ReadWork, ReadWorkLimits, StrictReadError};
 use crate::workbench::report::WorkflowExchangeRecord;
-#[path = "record_boundary_support.rs"]
-mod support;
 
 #[test]
 fn genuine_record_check_attempt_retains_exact_first_functional_error_before_retry_work() {

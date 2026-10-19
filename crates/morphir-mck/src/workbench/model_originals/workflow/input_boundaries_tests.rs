@@ -71,7 +71,7 @@ fn complete_fixture_domain_keeps_optional_presence_without_inventing_defaults() 
             r#"{"files":[],"literalPeers":[{"alias":"A","frames":[]}]}"#,
         )
         .unwrap();
-    assert!(matches!(absent.runtime, Presence::Absent));
+    assert!(matches!(absent.mode, input::ClientFixtureMode::Basic));
     assert!(matches!(
         absent.literal_peers.0[0].requests,
         Presence::Absent
@@ -85,5 +85,8 @@ fn complete_fixture_domain_keeps_optional_presence_without_inventing_defaults() 
         matches!(&empty.literal_peers.0[0].requests, Presence::Present(Items(values)) if values.is_empty())
     );
     let with_runtime = d.decode::<input::ClientFixture>(r#"{"files":[],"literalPeers":[],"runtime":{"kind":"controlled-http-executions","peer":"A","sessionId":"S"}}"#).unwrap();
-    assert!(matches!(with_runtime.runtime, Presence::Present(_)));
+    assert!(matches!(
+        with_runtime.mode,
+        input::ClientFixtureMode::Runtime { .. }
+    ));
 }

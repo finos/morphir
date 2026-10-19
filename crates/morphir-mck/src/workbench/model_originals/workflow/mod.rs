@@ -62,7 +62,19 @@ mod context_checker_tests;
 mod report_record_tests;
 
 #[cfg(test)]
+mod identity_source_baseline_tests;
+
+#[cfg(test)]
 mod record_boundary_tests;
 
 #[cfg(test)]
+mod record_boundary_support;
+
+#[cfg(test)]
+mod identity_additive_source_tests;
+
+#[cfg(test)]
 mod record_attempt_tests;
+
+#[cfg(test)]
+mod fixture_tests;

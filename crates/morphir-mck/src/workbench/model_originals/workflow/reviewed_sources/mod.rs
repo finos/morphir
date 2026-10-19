@@ -2,6 +2,22 @@
 //! These views issue no digest, membership, lineage or runtime proof. The
 //! verifier must check the fixed anchors and actual bytes using its own owner.
 mod data;
+mod identity_data;
+
+#[derive(Clone, Copy)]
+pub(super) enum SourceSet {
+    Legacy,
+    IdentityController,
+}
+
+const IDENTITY_PAIRED: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/identity-controller-source-pairs-v3/reviewed-addition-receipt.json"
+));
+const IDENTITY_MANIFEST: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/identity-controller-source-pairs-v3/source-manifest.json"
+));
 
 const ACCEPTANCE: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -42,6 +58,7 @@ struct Replacement<'source> {
 }
 
 pub(super) struct ReviewedSources<'source> {
+    set: SourceSet,
     replacements: Vec<Replacement<'source>>,
 }
 
@@ -64,8 +81,21 @@ impl<'source> ReviewedSources<'source> {
     /// expected digest or arbitrary source-file table enters through this API.
     pub(super) fn selected() -> Self {
         Self {
+            set: SourceSet::Legacy,
             replacements: Vec::new(),
         }
+    }
+
+    /// A second fixed parent-selected bundle; it cannot accept hashes, paths
+    /// or caller bytes. Historical selected() remains the unchanged old23 set.
+    pub(super) fn identity_selected() -> Self {
+        Self {
+            set: SourceSet::IdentityController,
+            replacements: Vec::new(),
+        }
+    }
+    pub(super) fn source_set(&self) -> SourceSet {
+        self.set
     }
 
     fn supplied<'view>(&'view self, path: &str, compiled: &'static [u8]) -> &'view [u8] {
@@ -83,15 +113,33 @@ impl<'source> ReviewedSources<'source> {
         self.supplied("acceptance/provenance.json", ACCEPTANCE)
     }
     pub(super) fn paired_receipt(&self) -> &[u8] {
-        self.supplied("paired-source-corpus-v1/receipt.json", PAIRED)
+        match self.set {
+            SourceSet::Legacy => self.supplied("paired-source-corpus-v1/receipt.json", PAIRED),
+            SourceSet::IdentityController => self.supplied(
+                "identity-controller-source-pairs-v3/reviewed-addition-receipt.json",
+                IDENTITY_PAIRED,
+            ),
+        }
     }
     pub(super) fn manifest(&self) -> &[u8] {
-        self.supplied("paired-source-corpus-v1/source-manifest.json", MANIFEST)
+        match self.set {
+            SourceSet::Legacy => {
+                self.supplied("paired-source-corpus-v1/source-manifest.json", MANIFEST)
+            }
+            SourceSet::IdentityController => self.supplied(
+                "identity-controller-source-pairs-v3/source-manifest.json",
+                IDENTITY_MANIFEST,
+            ),
+        }
     }
     pub(super) fn files(&self) -> impl Iterator<Item = FileView<'_>> {
         ORIGINAL_FILES
             .iter()
             .chain(data::AUTHORED_FILES)
+            .chain(match self.set {
+                SourceSet::Legacy => &[][..],
+                SourceSet::IdentityController => identity_data::IDENTITY_FILES,
+            })
             .map(|(path, bytes)| FileView {
                 path,
                 bytes: self.supplied(path, bytes),

@@ -1,11 +1,10 @@
 //! Untrusted saved-data controls, not fabricated completed transport receipts.
 use super::observation_check::{CompareLimits, CompareOwner};
+use super::record_boundary_support as support;
 use super::record_check::{WorkflowEnvelopeFault, WorkflowRecordError};
 use super::{DecodeError, OperandResource};
 use crate::json::strict::{ReadWork, ReadWorkLimits, StrictReadError};
 use crate::workbench::report::WorkflowExchangeRecord;
-#[path = "record_boundary_support.rs"]
-mod support;
 
 enum ExpectedFailure {
     Envelope(WorkflowEnvelopeFault),

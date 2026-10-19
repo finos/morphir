@@ -422,7 +422,31 @@ literal! { ExpectedClientCheckConnectedOriginalsRetainedSourceProvenance => "com
 
 words! { IdentityRelation { Same => "same", Different => "different" } }
 
+// Only static expected-domain support. Observed workspace predicates remain
+// unsupported until their separately frozen actual RED and implementation.
+literal! { IdentityControllerEntryKind => "development" }
+literal! { IdentityControllerEntryStatus => "ready" }
+record! { IdentityControllerProject {
+    key: Text<0, {usize::MAX}> => "key",
+    name: Text<0, {usize::MAX}> => "name",
+    relative_path: Text<0, {usize::MAX}> => "relativePath",
+} }
+record! { IdentityControllerEntry {
+    key: Text<0, {usize::MAX}> => "key",
+    source_snapshot: super::input::IdentitySourceSnapshot => "sourceSnapshot",
+    kind: IdentityControllerEntryKind => "kind",
+    status: IdentityControllerEntryStatus => "status",
+    projects: Items<IdentityControllerProject, 0, {usize::MAX}> => "projects",
+} }
+
 tagged! { ExpectedClientCheck("kind") {
+    IdentityController => "identity-controller" {
+        id: FixtureAlias => "id",
+        checkpoint: FixtureAlias => "checkpoint",
+        active_key: Nullable<Text<0, {usize::MAX}>> => "activeKey",
+        entries: Items<IdentityControllerEntry, 0, {usize::MAX}> => "entries",
+        recent_keys: Items<Text<0, {usize::MAX}>, 0, {usize::MAX}> => "recentKeys",
+    },
     IdentityKey => "identity-key" { id: FixtureAlias => "id", sample: FixtureAlias => "sample", expected_key: Text<0, {usize::MAX}> => "expectedKey" },
     IdentityLocationRelation => "identity-location-relation" { id: FixtureAlias => "id", left: FixtureAlias => "left", right: FixtureAlias => "right", relation: IdentityRelation => "relation" },
     PortTrace => "port-trace" {

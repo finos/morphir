@@ -333,12 +333,71 @@ record! { ClientFixtureLiteralPeersItem {
         requests: Items<Frame, 0, 4096> => "requests",
 } }
 
-record! { ClientFixture {
-        files: Items<ClientFixtureFilesItem, 0, 256> => "files",
-        literal_peers: Items<ClientFixtureLiteralPeersItem, 0, 64> => "literalPeers",
-} optional {
-        runtime: ClientRuntime => "runtime",
+// Third closed fixture branch from the independently reviewed source proposal.
+// These full UI strings are fixture input, not provider/host authority.
+literal! { IdentityControllerFixtureKind => "morphir-ui-workbench-controller" }
+literal! { IdentityControllerWatchKind => "empty" }
+record! { IdentityControllerWatch { kind: IdentityControllerWatchKind => "kind" } }
+record! { IdentityControllerReply {
+    source_snapshot: IdentitySourceSnapshot => "sourceSnapshot",
+    reply: RawJson => "reply",
 } }
+record! { IdentityControllerPeer {
+    provider_id: Text<0, {usize::MAX}> => "providerId",
+    display_name: Text<0, {usize::MAX}> => "displayName",
+    inspections: Items<IdentityControllerReply, 1, {usize::MAX}> => "inspections",
+    workspaces: Items<IdentityControllerReply, 1, {usize::MAX}> => "workspaces",
+    watch: IdentityControllerWatch => "watch",
+} }
+record! { IdentityControllerFixture {
+    kind: IdentityControllerFixtureKind => "kind",
+    initial_sources: Items<IdentitySourceSnapshot, 1, {usize::MAX}> => "initialSources",
+    providers: Items<IdentityControllerPeer, 1, {usize::MAX}> => "providers",
+} }
+
+// This impl traverses the actual closed fixture, preserving the schema's two
+// optional field sites and their existing structural visits. There is no wire
+// mode field, synthetic discriminator or producer-issued site.
+impl WalkAliases for ClientFixture {
+    fn walk<'source, S: AliasSink<'source>>(
+        &'source self,
+        trail: &Trail<'_>,
+        sink: &mut S,
+    ) -> Result<(), S::Error> {
+        sink.enter(trail)?;
+        field!(&self.files, trail, sink, ClientFixture, None, "files");
+        field!(
+            &self.literal_peers,
+            trail,
+            sink,
+            ClientFixture,
+            None,
+            "literalPeers"
+        );
+        let runtime = Trail {
+            parent: Some(trail),
+            segment: Segment::Field(Site::descriptor(OPERAND, "ClientFixture", None, "runtime")),
+        };
+        sink.enter(&runtime)?;
+        if let ClientFixtureMode::Runtime { runtime: value } = &self.mode {
+            value.walk(&runtime, sink)?;
+        }
+        let controller = Trail {
+            parent: Some(trail),
+            segment: Segment::Field(Site::descriptor(
+                OPERAND,
+                "ClientFixture",
+                None,
+                "identityController",
+            )),
+        };
+        sink.enter(&controller)?;
+        if let ClientFixtureMode::IdentityController { controller: value } = &self.mode {
+            value.walk(&controller, sink)?;
+        }
+        Ok(())
+    }
+}
 
 literal! { ClientRuntimeControlledModelOriginalsHttpV1ManifestPath => "/api/session" }
 

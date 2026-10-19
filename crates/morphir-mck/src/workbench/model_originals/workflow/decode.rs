@@ -292,6 +292,11 @@ impl<'a> Fields<'a> {
             None => Ok(Presence::Absent),
         }
     }
+    /// Same-reader, same-owner presence query for disjoint record branches.
+    /// This does not decode the field or materialize another Document.
+    pub(super) fn has(&self, name: &str, owner: &mut Decoder) -> Result<bool, DecodeError> {
+        Self::lookup(self.0, name, owner).map(|value| value.is_some())
+    }
     fn find(
         fields: &'a [(String, Document)],
         name: &str,

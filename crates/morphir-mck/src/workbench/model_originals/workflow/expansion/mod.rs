@@ -385,7 +385,7 @@ impl ExpansionOwner {
                 }
             }
         }
-        if let Presence::Present(runtime) = &fixture.runtime {
+        if let input::ClientFixtureMode::Runtime { runtime } = &fixture.mode {
             self.visit()?;
             match runtime {
                 input::ClientRuntime::ControlledModelOriginalsHttpV1 { manifest, .. } => {
@@ -393,6 +393,23 @@ impl ExpansionOwner {
                 }
                 input::ClientRuntime::ControlledHttpExecutions { .. }
                 | input::ClientRuntime::ControlledNativeWorkspaceV1 { .. } => {}
+            }
+        }
+        if let input::ClientFixtureMode::IdentityController { controller } = &fixture.mode {
+            self.visit()?;
+            for _source in &controller.initial_sources.0 {
+                self.visit()?;
+            }
+            for peer in &controller.providers.0 {
+                self.visit()?;
+                for replies in [&peer.inspections.0, &peer.workspaces.0] {
+                    for reply in replies {
+                        self.visit()?;
+                        // Same static literal destination role as existing raw replies.
+                        // This does not claim actual UI parse/copy/watch work coverage.
+                        self.payload(reply.reply.0.len() as u64, 1, Storage::LiteralDestination)?;
+                    }
+                }
             }
         }
         for action in actions {
