@@ -444,7 +444,10 @@ impl ExpansionOwner {
                         expected: expected_request,
                     },
                 )?,
-                input::ClientAction::InitializeExecutionRuntime { .. }
+                // No byte/frame recipe here. Actual UI snapshot/key/result work
+                // remains a separate producer/observer precharge obligation.
+                input::ClientAction::ObserveIdentity { .. }
+                | input::ClientAction::InitializeExecutionRuntime { .. }
                 | input::ClientAction::StartImport { .. }
                 | input::ClientAction::StartConnected { .. }
                 | input::ClientAction::BindModelOwner { .. }

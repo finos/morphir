@@ -6,6 +6,7 @@ mod macros;
 mod compile;
 mod domain;
 mod expansion;
+mod identity_input;
 mod input;
 mod meaning;
 mod pairing;
@@ -46,3 +47,12 @@ mod observed_tests;
 
 mod observation_check;
 mod observed;
+
+#[cfg(test)]
+mod identity_tests;
+
+#[cfg(test)]
+mod report_context_tests;
+
+#[cfg(test)]
+mod context_checker_tests;

@@ -95,17 +95,17 @@ macro_rules! literal {
     };
 }
 macro_rules! tagged {
-    ($name:ident ($tag:literal) { $($variant:ident => $wire:literal { $($field:ident : $ty:ty => $key:literal),* $(,)? }),* $(,)? } $(delegates { $($delegate:ident => $delegate_wire:literal : $delegate_ty:ty),* $(,)? })?) => {
+    ($name:ident ($tag:literal) { $($variant:ident => $wire:literal { $($field:ident : $ty:ty => $key:literal),* $(,)? } $(optional { $($optional:ident : $optional_ty:ty => $optional_key:literal),* $(,)? })?),* $(,)? } $(delegates { $($delegate:ident => $delegate_wire:literal : $delegate_ty:ty),* $(,)? })?) => {
         #[derive(Debug)]
-        pub(super) enum $name { $($variant { $($field: $ty),* },)* $($($delegate($delegate_ty),)*)? }
+        pub(super) enum $name { $($variant { $($field: $ty,)* $($( $optional: Presence<$optional_ty>, )*)? },)* $($($delegate($delegate_ty),)*)? }
         impl Decode for $name {
             fn decode(value: &crate::json::strict::Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
                 match discriminator(value, $tag, owner)? {
                     $($wire => {
-                        let fields = Fields::new(value, &[$tag, $($key),*], owner)?;
+                        let fields = Fields::with_optional(value, &[$tag, $($key),*], &[$($($optional_key),*)?], owner)?;
                         // Empty alternatives still perform the closed-object check.
                         let _ = &fields;
-                        Ok(Self::$variant { $($field: fields.field::<$ty>($key, owner)?),* })
+                        Ok(Self::$variant { $($field: fields.field::<$ty>($key, owner)?,)* $($($optional: fields.presence::<$optional_ty>($optional_key, owner)?,)*)? })
                     },)*
                     $($($delegate_wire => <$delegate_ty>::decode(value, owner).map(Self::$delegate),)*)?
                     _ => Err(DecodeError::Shape("closed tagged alternatives")),

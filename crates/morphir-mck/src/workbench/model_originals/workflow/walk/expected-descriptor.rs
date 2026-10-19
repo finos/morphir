@@ -420,7 +420,11 @@ record! { ExpectedClientCheckConnectedOriginalsRetainedProjection {
 
 literal! { ExpectedClientCheckConnectedOriginalsRetainedSourceProvenance => "compiled-inventory" }
 
+words! { IdentityRelation { Same => "same", Different => "different" } }
+
 tagged! { ExpectedClientCheck("kind") {
+    IdentityKey => "identity-key" { id: FixtureAlias => "id", sample: FixtureAlias => "sample", expected_key: Text<0, {usize::MAX}> => "expectedKey" },
+    IdentityLocationRelation => "identity-location-relation" { id: FixtureAlias => "id", left: FixtureAlias => "left", right: FixtureAlias => "right", relation: IdentityRelation => "relation" },
     PortTrace => "port-trace" {
         expected_trace: FixtureAlias => "expectedTrace",
         id: FixtureAlias => "id",

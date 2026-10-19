@@ -23,6 +23,7 @@ crates/morphir-mck/src/workbench/model_originals/workflow/source_proof/controls/
 crates/morphir-mck/src/workbench/model_originals/workflow/source_compile/controls/** -text
 crates/morphir-mck/src/workbench/model_originals/workflow/raw_boundary_controls/** -text
 crates/morphir-mck/src/workbench/model_originals/workflow/observed_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/identity_controls/** -text
 spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/** -text
 crates/morphir-mck/src/workbench/model_originals/workflow/ingress/controls/corpus.json whitespace=cr-at-eol
 

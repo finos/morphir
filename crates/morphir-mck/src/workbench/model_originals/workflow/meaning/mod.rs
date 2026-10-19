@@ -17,6 +17,7 @@ pub(super) enum Role {
     PendingCapture,
     Writer,
     Checkpoint,
+    IdentitySample,
     MessageProbe,
     OpeningAttempt,
     Model,
@@ -88,6 +89,16 @@ pub(super) fn classify(site: Site) -> Meaning {
     };
     use Role::*;
     match site.parts() {
+        (Operand::Input, "ClientAction", Some("observe-identity"), "sample") => {
+            Define(IdentitySample)
+        }
+        (Operand::Expected, "ExpectedClientCheck", Some("identity-key"), "sample")
+        | (
+            Operand::Expected,
+            "ExpectedClientCheck",
+            Some("identity-location-relation"),
+            "left" | "right",
+        ) => Reference(IdentitySample),
         (Operand::Input, "HostFixtureGrantsItem", None, "alias") => Define(Grant),
         (Operand::Input, "Guest", None, "alias") => Define(Guest),
         (Operand::Input, "Provider", Some("native" | "installed"), "alias") => Define(Provider),

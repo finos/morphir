@@ -4,15 +4,21 @@
 use super::DecodeUsage;
 use super::compile::{self, CompileError, CompiledAliases};
 use super::expansion::{ExpansionError, ExpansionOwner, ExpansionUsage, ScenarioExpansion};
+use super::identity_input::{IdentityInputError, IdentityInputPlan};
 use super::ingress::BoundCase;
-use super::source_proof::{MatchedSourceCase, SourceError, SourceVerifier};
+use super::observation_check::{self, CompareOwner, ComparedPredicates, ObservationError};
+use super::observed;
+use super::pairing::PairedWorkflow;
+use super::source_proof::{LineageStatus, MatchedSourceCase, SourceError, SourceVerifier};
 use super::work::{ClosureOwner, ClosureUsage};
+use serde_json::value::RawValue;
 
 #[derive(Debug)]
 pub(super) enum CompilationError {
     Source(SourceError),
     Closure(CompileError),
     Expansion(ExpansionError),
+    IdentityInput(IdentityInputError),
 }
 
 /// Observations of distinct existing ledgers, never a combined runtime quota.
@@ -29,6 +35,7 @@ pub(super) struct CompiledSourceCase<'case, 'sources, 'raw, 'supplied> {
     source: MatchedSourceCase<'case, 'sources, 'raw, 'supplied>,
     aliases: CompiledAliases<'case>,
     expansion: ScenarioExpansion<'case>,
+    identity_input: IdentityInputPlan<'case>,
 }
 impl<'case, 'sources, 'raw, 'supplied> CompiledSourceCase<'case, 'sources, 'raw, 'supplied> {
     pub(super) fn source(&self) -> &MatchedSourceCase<'case, 'sources, 'raw, 'supplied> {
@@ -37,8 +44,49 @@ impl<'case, 'sources, 'raw, 'supplied> CompiledSourceCase<'case, 'sources, 'raw,
     pub(super) fn aliases(&self) -> &CompiledAliases<'case> {
         &self.aliases
     }
+    pub(super) fn identity_input(&self) -> &IdentityInputPlan<'case> {
+        &self.identity_input
+    }
     pub(super) fn expansion(&self) -> &ScenarioExpansion<'case> {
         &self.expansion
+    }
+    pub(super) fn report_context(
+        &self,
+    ) -> WorkflowReportContext<'_, 'case, 'sources, 'raw, 'supplied> {
+        WorkflowReportContext { compiled: self }
+    }
+}
+
+/// A report borrows the genuine compiler result, including its already-paid
+/// identity plan. Saved metadata cannot construct or replace this context.
+/// Source correspondence alone leaves semantic lineage unproven.
+pub(super) struct WorkflowReportContext<'compiled, 'case, 'sources, 'raw, 'supplied> {
+    compiled: &'compiled CompiledSourceCase<'case, 'sources, 'raw, 'supplied>,
+}
+impl<'case, 'raw> WorkflowReportContext<'_, 'case, '_, 'raw, '_> {
+    pub(super) fn case(&self) -> &'case BoundCase<'raw> {
+        self.compiled.source.case()
+    }
+    pub(super) fn paired(&self) -> &PairedWorkflow<'case> {
+        self.compiled.source.paired()
+    }
+    pub(super) fn input_raw(&self) -> &'raw RawValue {
+        self.case().input_raw()
+    }
+    pub(super) fn lineage(&self) -> LineageStatus {
+        self.compiled.source.lineage()
+    }
+    pub(super) fn check_observation<'actual>(
+        &self,
+        actual: &'actual observed::Observation,
+        owner: &mut CompareOwner,
+    ) -> Result<ComparedPredicates<'case, 'actual>, ObservationError> {
+        observation_check::check_planned(
+            self.paired(),
+            &self.compiled.identity_input,
+            actual,
+            owner,
+        )
     }
 }
 
@@ -92,12 +140,15 @@ impl<'owner, 'policies, 'sources, 'supplied> CaseCompiler<'owner, 'policies, 'so
         // that same value instead of revalidating metadata without a debit.
         let aliases =
             compile::compile(source.paired(), self.closure).map_err(CompilationError::Closure)?;
+        let identity_input = IdentityInputPlan::from_paired(source.paired(), self.closure)
+            .map_err(CompilationError::IdentityInput)?;
         let expansion = ScenarioExpansion::measure(source.paired().scenario(), self.expansion)
             .map_err(CompilationError::Expansion)?;
         Ok(CompiledSourceCase {
             source,
             aliases,
             expansion,
+            identity_input,
         })
     }
 

@@ -137,7 +137,25 @@ words! { ClientActionAwaitConnectedBoundaryBoundary {
     OpeningSettled => "opening-settled",
 } }
 
+// Private additive identity input; exact UI strings, no normalization.
+literal! { IdentityPersistence => "session" }
+record! { IdentitySourceSnapshot {
+    provider_id: Text<0, {usize::MAX}> => "providerId",
+    locator: Text<0, {usize::MAX}> => "locator",
+    display_name: Text<0, {usize::MAX}> => "displayName",
+} optional { persistence: IdentityPersistence => "persistence" } }
+tagged! { IdentitySubject("kind") {
+    SourceKey => "source-key" {
+        source_snapshot: IdentitySourceSnapshot => "sourceSnapshot",
+    },
+    ProjectKey => "project-key" {
+        source_snapshot: IdentitySourceSnapshot => "sourceSnapshot",
+        relative_path: Text<0, {usize::MAX}> => "relativePath",
+    },
+} }
+
 tagged! { ClientAction("kind") {
+    ObserveIdentity => "observe-identity" { sample: FixtureAlias => "sample", subject: IdentitySubject => "subject" },
     InitializeExecutionRuntime => "initialize-execution-runtime" {
         attempt: FixtureAlias => "attempt",
     },

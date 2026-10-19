@@ -357,6 +357,25 @@ record! { MeasuredTranscript {
         exchanges: Items<MeasuredTranscriptExchangesItem, 0, 8192> => "exchanges",
 } }
 
+// Snapshot is the identical genuine input type, not a second source domain.
+tagged! { IdentityResult("kind") {
+    SourceKey => "source-key" {
+        sample: FixtureAlias => "sample",
+        action_index: super::input::Count => "actionIndex",
+        checkpoint: FixtureAlias => "checkpoint",
+        source_snapshot: super::input::IdentitySourceSnapshot => "sourceSnapshot",
+        actual_key: Text<0, {usize::MAX}> => "actualKey",
+    },
+    ProjectKey => "project-key" {
+        sample: FixtureAlias => "sample",
+        action_index: super::input::Count => "actionIndex",
+        checkpoint: FixtureAlias => "checkpoint",
+        source_snapshot: super::input::IdentitySourceSnapshot => "sourceSnapshot",
+        relative_path: Text<0, {usize::MAX}> => "relativePath",
+        actual_key: Text<0, {usize::MAX}> => "actualKey",
+    },
+} }
+
 tagged! { Observation("role") {
     ModelOriginalsServer => "model-originals-server" {
         captures: Items<CapturedEvidence, 0, 8192> => "captures",
@@ -374,7 +393,7 @@ tagged! { Observation("role") {
         outcome: ScenarioOutcome => "outcome",
         rich_owners: Items<RichOwnerEvidence, 0, 256> => "richOwners",
         teardown: HarnessTeardown => "teardown",
-    },
+    } optional { identity_results: Items<IdentityResult, 0, {usize::MAX}> => "identityResults" },
 } }
 
 tagged! { OfferEvidence("kind") {

@@ -25,6 +25,21 @@ pub(super) enum PredicateFault {
     CurrentOpening,
     CurrentModel,
     Navigation,
+    IdentityKey,
+    IdentityRelation,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum IdentityFault {
+    Plan,
+    Snapshot,
+    Path,
+    Sample,
+    ActionIndex,
+    Checkpoint,
+    Kind,
+    Missing,
+    Duplicate,
+    Unexpected,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ObservationError {
@@ -40,6 +55,10 @@ pub(super) enum ObservationError {
     UnsupportedOutcome,
     UnqualifiedEvidence,
     IdentityInputActionMissing,
+    Identity {
+        result: usize,
+        kind: IdentityFault,
+    },
     Outcome,
     Teardown,
     Correlation {
@@ -132,6 +151,14 @@ impl CompareOwner {
     ) -> Result<bool, ObservationError> {
         self.ready()?;
         let Some(upper) = left.as_str().len().checked_add(right.as_str().len()) else {
+            return self.refuse(ObservationError::SizeOverflow);
+        };
+        self.charge(CompareResource::ComparisonBytes, upper)?;
+        Ok(left == right)
+    }
+    fn same_text(&mut self, left: &str, right: &str) -> Result<bool, ObservationError> {
+        self.ready()?;
+        let Some(upper) = left.len().checked_add(right.len()) else {
             return self.refuse(ObservationError::SizeOverflow);
         };
         self.charge(CompareResource::ComparisonBytes, upper)?;
@@ -349,15 +376,225 @@ fn number(
     })
 }
 
+fn identity_parts(
+    result: &observed::IdentityResult,
+) -> (
+    &FixtureAlias,
+    u64,
+    &FixtureAlias,
+    &input::IdentitySourceSnapshot,
+    Option<&str>,
+    &str,
+) {
+    match result {
+        observed::IdentityResult::SourceKey {
+            sample,
+            action_index,
+            checkpoint,
+            source_snapshot,
+            actual_key,
+        } => (
+            sample,
+            action_index.0,
+            checkpoint,
+            source_snapshot,
+            None,
+            &actual_key.0,
+        ),
+        observed::IdentityResult::ProjectKey {
+            sample,
+            action_index,
+            checkpoint,
+            source_snapshot,
+            relative_path,
+            actual_key,
+        } => (
+            sample,
+            action_index.0,
+            checkpoint,
+            source_snapshot,
+            Some(&relative_path.0),
+            &actual_key.0,
+        ),
+    }
+}
+fn identity_fault<T>(
+    owner: &mut CompareOwner,
+    result: usize,
+    kind: IdentityFault,
+) -> Result<T, ObservationError> {
+    owner.refuse(ObservationError::Identity { result, kind })
+}
+fn same_snapshot(
+    left: &input::IdentitySourceSnapshot,
+    right: &input::IdentitySourceSnapshot,
+    owner: &mut CompareOwner,
+) -> Result<bool, ObservationError> {
+    owner.visit()?;
+    Ok(owner.same_text(&left.provider_id.0, &right.provider_id.0)?
+        && owner.same_text(&left.locator.0, &right.locator.0)?
+        && owner.same_text(&left.display_name.0, &right.display_name.0)?
+        && matches!(
+            (&left.persistence, &right.persistence),
+            (Presence::Absent, Presence::Absent) | (Presence::Present(_), Presence::Present(_))
+        ))
+}
+fn correlate_identity(
+    paired: &PairedWorkflow<'_>,
+    plan: Option<&super::identity_input::IdentityInputPlan<'_>>,
+    results: &Presence<super::Items<observed::IdentityResult, 0, { usize::MAX }>>,
+    actions: &[ClientAction],
+    owner: &mut CompareOwner,
+) -> Result<(), ObservationError> {
+    owner.ready()?;
+    let Some(plan) = plan else {
+        for action in actions {
+            owner.visit()?;
+            if matches!(action, ClientAction::ObserveIdentity { .. }) {
+                return owner.refuse(ObservationError::IdentityInputActionMissing);
+            }
+        }
+        match results {
+            Presence::Absent => return Ok(()),
+            Presence::Present(items) if items.0.is_empty() => return Ok(()),
+            _ => return identity_fault(owner, 0, IdentityFault::Unexpected),
+        }
+    };
+    if !std::ptr::eq(plan.scenario(), paired.scenario()) {
+        return identity_fault(owner, 0, IdentityFault::Plan);
+    }
+    let mut count = 0usize;
+    for binding in plan.bindings() {
+        owner.visit()?;
+        if binding.run_index() == paired.run_index() {
+            count = count
+                .checked_add(1)
+                .ok_or_else(|| *owner.fault.get_or_insert(ObservationError::SizeOverflow))?;
+        }
+    }
+    let items = match results {
+        Presence::Absent => &[][..],
+        Presence::Present(items) => &items.0,
+    };
+    // Exact action/sample duplicates precede cardinality. A collision on only
+    // one coordinate must reach input binding, so a forged sample is reported
+    // at the offending row rather than as a duplicate of a later valid row.
+    for (index, result) in items.iter().enumerate() {
+        owner.visit()?;
+        let (sample, action, ..) = identity_parts(result);
+        for previous in &items[..index] {
+            owner.visit()?;
+            let (earlier, earlier_action, ..) = identity_parts(previous);
+            if action == earlier_action && owner.same(sample, earlier)? {
+                return identity_fault(owner, index, IdentityFault::Duplicate);
+            }
+        }
+    }
+    if items.len() < count {
+        return identity_fault(owner, items.len(), IdentityFault::Missing);
+    }
+    if items.len() > count {
+        return identity_fault(owner, count, IdentityFault::Unexpected);
+    }
+    for (index, result) in items.iter().enumerate() {
+        owner.visit()?;
+        let (sample, action, checkpoint, snapshot, path, _) = identity_parts(result);
+        let mut found = None;
+        for binding in plan.bindings() {
+            owner.visit()?;
+            if binding.run_index() == paired.run_index()
+                && u64::try_from(binding.action_index()).ok() == Some(action)
+            {
+                found = Some(binding);
+                break;
+            }
+        }
+        let Some(binding) = found else {
+            return identity_fault(owner, index, IdentityFault::ActionIndex);
+        };
+        if !owner.same(sample, binding.sample())? {
+            return identity_fault(owner, index, IdentityFault::Sample);
+        }
+        if !owner.same(checkpoint, binding.checkpoint())? {
+            return identity_fault(owner, index, IdentityFault::Checkpoint);
+        }
+        let (source, source_path) = match binding.subject() {
+            input::IdentitySubject::SourceKey { source_snapshot } => (source_snapshot, None),
+            input::IdentitySubject::ProjectKey {
+                source_snapshot,
+                relative_path,
+            } => (source_snapshot, Some(relative_path.0.as_str())),
+        };
+        if source_path.is_some() != path.is_some() {
+            return identity_fault(owner, index, IdentityFault::Kind);
+        }
+        if !same_snapshot(source, snapshot, owner)? {
+            return identity_fault(owner, index, IdentityFault::Snapshot);
+        }
+        if let (Some(a), Some(b)) = (source_path, path)
+            && !owner.same_text(a, b)?
+        {
+            return identity_fault(owner, index, IdentityFault::Path);
+        }
+    }
+    Ok(())
+}
+fn identity_result<'actual>(
+    sample: &FixtureAlias,
+    results: &'actual [observed::IdentityResult],
+    owner: &mut CompareOwner,
+) -> Result<&'actual observed::IdentityResult, ObservationError> {
+    for result in results {
+        owner.visit()?;
+        if owner.same(sample, identity_parts(result).0)? {
+            return Ok(result);
+        }
+    }
+    identity_fault(owner, results.len(), IdentityFault::Missing)
+}
+
 fn predicate(
     index: usize,
     check: &ExpectedClientCheck,
+    identity_results: &[observed::IdentityResult],
     checkpoints: &[ClientCheckpoint],
     owner: &mut CompareOwner,
 ) -> Result<(), ObservationError> {
     owner.charge(CompareResource::Checks, 1)?;
     owner.visit()?;
     let (matches, kind) = match check {
+        ExpectedClientCheck::IdentityKey {
+            sample,
+            expected_key,
+            ..
+        } => {
+            let result = identity_result(sample, identity_results, owner)?;
+            (
+                owner.same_text(&expected_key.0, identity_parts(result).5)?,
+                PredicateFault::IdentityKey,
+            )
+        }
+        ExpectedClientCheck::IdentityLocationRelation {
+            left,
+            right,
+            relation,
+            ..
+        } => {
+            let a = identity_result(left, identity_results, owner)?;
+            let b = identity_result(right, identity_results, owner)?;
+            let (_, _, _, _, path_a, key_a) = identity_parts(a);
+            let (_, _, _, _, path_b, key_b) = identity_parts(b);
+            let same_kind = path_a.is_some() == path_b.is_some();
+            let equal = owner.same_text(key_a, key_b)?;
+            (
+                same_kind
+                    && match relation {
+                        domain::IdentityRelation::Same => equal,
+                        domain::IdentityRelation::Different => !equal,
+                    },
+                PredicateFault::IdentityRelation,
+            )
+        }
         ExpectedClientCheck::OwnerAbsent {
             checkpoint: name, ..
         } => {
@@ -449,13 +686,19 @@ fn predicate(
 /// This cannot ignore extra evidence or use matching peer labels as actual
 /// production bindings. The initial successful subset is deliberately only
 /// the empty-input port case with actual input Checkpoint actions.
-pub(super) fn check_paired<'source, 'actual>(
+fn check_core<'source, 'actual>(
     paired: &PairedWorkflow<'source>,
+    identity_plan: Option<&super::identity_input::IdentityInputPlan<'source>>,
     actual: &'actual observed::Observation,
     owner: &mut CompareOwner,
 ) -> Result<ComparedPredicates<'source, 'actual>, ObservationError> {
     owner.ready()?;
     owner.visit()?;
+    if let Some(plan) = identity_plan
+        && !std::ptr::eq(plan.scenario(), paired.scenario())
+    {
+        return identity_fault(owner, 0, IdentityFault::Plan);
+    }
     let (
         PairedRun::Client { actions, fixture },
         domain::ExpectedWorkflow::ModelOriginalsClient {
@@ -473,6 +716,7 @@ pub(super) fn check_paired<'source, 'actual>(
             outbound,
             outcome,
             teardown,
+            identity_results,
         },
     ) = (paired.run(), paired.expected(), actual)
     else {
@@ -490,6 +734,7 @@ pub(super) fn check_paired<'source, 'actual>(
         return owner.refuse(ObservationError::ExpectedBlocked);
     }
     correlate_checkpoints(actions, &checkpoints.0, owner)?;
+    correlate_identity(paired, identity_plan, identity_results, actions, owner)?;
 
     // Actual effect/core/download/transcript/owner proof paths are not yet
     // connected. Explicitly block them rather than accepting matching claims.
@@ -506,7 +751,10 @@ pub(super) fn check_paired<'source, 'actual>(
     }
     for action in actions {
         owner.visit()?;
-        if !matches!(action, ClientAction::Checkpoint { .. }) {
+        if !matches!(
+            action,
+            ClientAction::Checkpoint { .. } | ClientAction::ObserveIdentity { .. }
+        ) {
             return owner.refuse(ObservationError::UnqualifiedEvidence);
         }
     }
@@ -532,7 +780,11 @@ pub(super) fn check_paired<'source, 'actual>(
 
     let mut checked = 0usize;
     for (index, check) in checks.0.iter().enumerate() {
-        predicate(index, check, &checkpoints.0, owner)?;
+        let results = match identity_results {
+            Presence::Absent => &[][..],
+            Presence::Present(items) => &items.0,
+        };
+        predicate(index, check, results, &checkpoints.0, owner)?;
         let Some(next) = checked.checked_add(1) else {
             return owner.refuse(ObservationError::SizeOverflow);
         };
@@ -573,4 +825,20 @@ pub(super) fn check_paired<'source, 'actual>(
         actual,
         checked,
     })
+}
+
+pub(super) fn check_paired<'source, 'actual>(
+    paired: &PairedWorkflow<'source>,
+    actual: &'actual observed::Observation,
+    owner: &mut CompareOwner,
+) -> Result<ComparedPredicates<'source, 'actual>, ObservationError> {
+    check_core(paired, None, actual, owner)
+}
+pub(super) fn check_planned<'source, 'actual>(
+    paired: &PairedWorkflow<'source>,
+    plan: &super::identity_input::IdentityInputPlan<'source>,
+    actual: &'actual observed::Observation,
+    owner: &mut CompareOwner,
+) -> Result<ComparedPredicates<'source, 'actual>, ObservationError> {
+    check_core(paired, Some(plan), actual, owner)
 }
