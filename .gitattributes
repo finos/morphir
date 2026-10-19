@@ -20,6 +20,7 @@ spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/v4-bom-crlf.jso
 # Workflow source proofs compare complete files and original JSON token bytes.
 crates/morphir-mck/src/workbench/model_originals/workflow/ingress/controls/** -text
 crates/morphir-mck/src/workbench/model_originals/workflow/source_proof/controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/source_compile/controls/** -text
 spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/** -text
 crates/morphir-mck/src/workbench/model_originals/workflow/ingress/controls/corpus.json whitespace=cr-at-eol
 

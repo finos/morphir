@@ -35,3 +35,5 @@ mod ingress;
 
 mod reviewed_sources;
 mod source_proof;
+
+mod source_compile;

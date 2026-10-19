@@ -3,9 +3,12 @@
 //! This does not verify semantic expectation leaves, complete 175-role coverage,
 //! producer authority, filesystem grants, readiness or any runtime observation.
 use super::ingress::{BoundCase, CorpusCaseId, IngressError};
-use super::pairing::{PairError, PairedRun};
+use super::pairing::{PairError, PairedRun, PairedWorkflow};
 use super::reviewed_sources::{FileView, ReviewedSources};
-use super::{ContentSha256, Decode, DecodeError, Decoder, Natural, Text, UniqueKey, input, string};
+use super::{
+    ContentSha256, Decode, DecodeError, DecodeUsage, Decoder, Natural, Text, UniqueKey, input,
+    string,
+};
 use crate::json::strict::Document;
 use sha2::{Digest, Sha256};
 
@@ -127,6 +130,7 @@ pub(super) struct SourceVerifier<'owner, 'sources, 'supplied> {
 pub(super) struct MatchedSourceCase<'case, 'sources, 'raw, 'supplied> {
     case: &'case BoundCase<'raw>,
     _sources: &'sources ReviewedSources<'supplied>,
+    paired: PairedWorkflow<'case>,
 }
 impl<'case, 'raw> MatchedSourceCase<'case, '_, 'raw, '_> {
     pub(super) fn case(&self) -> &'case BoundCase<'raw> {
@@ -134,6 +138,9 @@ impl<'case, 'raw> MatchedSourceCase<'case, '_, 'raw, '_> {
     }
     pub(super) fn lineage(&self) -> LineageStatus {
         LineageStatus::Unproven
+    }
+    pub(super) fn paired(&self) -> &PairedWorkflow<'case> {
+        &self.paired
     }
 }
 
@@ -448,6 +455,12 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
     pub(super) fn original_case_count(&self) -> usize {
         self.original_cases
     }
+    pub(super) fn ready(&self) -> Result<(), DecodeError> {
+        self.owner.ready()
+    }
+    pub(super) fn usage(&self) -> DecodeUsage {
+        self.owner.usage()
+    }
     pub(super) fn bind<'case, 'raw>(
         &mut self,
         case: &'case BoundCase<'raw>,
@@ -493,6 +506,7 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
         Ok(MatchedSourceCase {
             case,
             _sources: self.sources,
+            paired,
         })
     }
 }

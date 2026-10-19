@@ -150,7 +150,7 @@ impl ExpansionOwner {
     pub(super) fn usage(&self) -> ExpansionUsage {
         self.used
     }
-    fn ready(&self) -> Result<(), ExpansionError> {
+    pub(super) fn ready(&self) -> Result<(), ExpansionError> {
         self.fault.map_or(Ok(()), Err)
     }
     fn refuse<T>(&mut self, fault: ExpansionError) -> Result<T, ExpansionError> {
