@@ -12,7 +12,7 @@
     "custom": "A JSON object with exactly one member. The member name is the constructor and its value is the payload, or null for a constructor without a payload: {\"Ok\": ...} or {\"OverReturn\": null}. Extra members and an unknown constructor name are invalid typed values. An unknown constructor is not a violated rejection clause.",
     "refined": "The base encoding, checked by the named refinement clause after the base type check. A failed refinement or record invariant on a supplied input or candidate is an invalid typed value, not a violated postcondition.",
     "tuple": "A JSON array with exactly the declared arity and order. Each element uses its element type spelling. A flat tuple and nested tuples remain distinct.",
-    "union": "The spelling of exactly one member type. Membership is resolved against the declared members; a value admitted by more than one member is ambiguous and is reported as unsupported (contracts.unsupported_semantics), never resolved by member order."
+    "union": "The spelling of exactly one member type. Membership is resolved against the declared members during admission. A value admitted by more than one member is ambiguous: it is an invalid typed value (contracts.ambiguous_value), never resolved by member order."
   },
   "expressionProfile": {
     "id": "morphir-contracts/expressions/0.1.0-draft.1",
@@ -719,7 +719,8 @@
     "contracts.unsupported_semantics": "A clause needs an expression profile or predicate that the selected capability does not support.",
     "contracts.unsupported_type": "A case names a type outside the selected type inventory.",
     "contracts.execution_exhausted": "Evaluation reached a declared budget limit. Always an execution-error detail, never a passing observation.",
-    "contracts.revision_unavailable": "The case names a model or contract revision that the supplied context does not provide exactly. A different revision is not evaluated silently."
+    "contracts.revision_unavailable": "The case names a model or contract revision that the supplied context does not provide exactly. A different revision is not evaluated silently.",
+    "contracts.ambiguous_value": "A supplied value is admitted by more than one member of an untagged union, so no single member semantics applies. This is found during admission, unlike a capability gap decided before admission."
   },
   "model": {
     "id": "urn:example:model:rentals",

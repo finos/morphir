@@ -8,13 +8,13 @@
     },
     {
       "path": "environment.json",
-      "bytes": 21110,
-      "sha256": "37d3902345f9b798571fb2cd194b33ecaedbc91cbfae9610bd545373446f1ea5"
+      "bytes": 21352,
+      "sha256": "497429179d453b5b83bb3bc71577fa76d23dc2b2c1a8c564140ed284c8b67ef2"
     },
     {
       "path": "contract.html",
-      "bytes": 30917,
-      "sha256": "633d7144b14e7670b87e97d81ff7ae31fb4ec23aed35d3b912d988868acd3727"
+      "bytes": 31179,
+      "sha256": "312f630a9a7aabb9c48743c9007f012b861a367fd603123ed0d4e55e367f2fdc"
     }
   ]
 }

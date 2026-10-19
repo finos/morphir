@@ -135,7 +135,7 @@ clause {
 <tr><td>Record</td><td>A JSON object with exactly the declared fields. Field order is not semantic. A missing field, extra field or wrong field type is invalid.</td></tr>
 <tr><td>Custom type</td><td>A JSON object with exactly one member. The member name is the constructor and its value is the payload: <code>{"Ok": ...}</code>. A constructor without a payload uses <code>null</code>: <code>{"OverReturn": null}</code>. Extra members and an unknown constructor name are invalid.</td></tr>
 <tr><td>Tuple</td><td>A JSON array with exactly the declared arity and order. Each element uses its element type spelling. A flat tuple and nested tuples remain distinct.</td></tr>
-<tr><td>Untagged union</td><td>The spelling of exactly one member type. Membership is resolved against the declared members. A value admitted by more than one member is ambiguous and is reported as <code>unsupported</code>, never resolved by member order.</td></tr>
+<tr><td>Untagged union</td><td>The spelling of exactly one member type. Membership is resolved against the declared members during admission. A value admitted by more than one member is ambiguous: it is <code>invalid</code>, never resolved by member order.</td></tr>
 <tr><td>Refined type</td><td>The base spelling, then the named refinement clause. Refinement failure is invalid, before any postcondition.</td></tr>
 </tbody></table>
 <p>Exact integers above the JS safe range and above the machine-integer range appear in the corpus as string lexemes. A checker that routes them through a machine integer or a JS number has a defect. Case <code>contracts-0016</code> exists so that rounding hides a real violation if precision is lost.</p>
@@ -208,6 +208,7 @@ clause {
 <p>A diagnostic has a <code>code</code> and a <code>path</code>. The path is an RFC 6901 pointer into the case input. The empty string selects the root. Messages can explain a problem, but messages are not fixed oracle strings. Diagnostic order is not semantic. Compare code, path and stated detail as a set.</p>
 <table><thead><tr><th>Code</th><th>Boundary</th></tr></thead><tbody>
 <tr><td><code>contracts.invalid_input</code></td><td>A supplied value fails its declared type, refinement or record invariant, or a candidate fails its result type.</td></tr>
+<tr><td><code>contracts.ambiguous_value</code></td><td>A supplied value is admitted by more than one member of an untagged union, so no single member semantics applies. This is found during admission, unlike a capability gap decided before admission.</td></tr>
 <tr><td><code>contracts.missing_input</code></td><td>A named input binder has no supplied value. The value is absent, not rejected.</td></tr>
 <tr><td><code>contracts.missing_result</code></td><td>A supplied-result case supplies no candidate. Postconditions are not evaluated.</td></tr>
 <tr><td><code>contracts.unsupported_semantics</code></td><td>A clause needs an unsupported expression profile or predicate.</td></tr>
