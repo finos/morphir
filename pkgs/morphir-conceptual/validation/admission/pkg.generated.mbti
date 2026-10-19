@@ -1,0 +1,97 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-conceptual/validation/admission"
+
+import {
+  "moonbitlang/core/bigint",
+}
+
+// Values
+pub fn admit(TypeEnvironment, TypeExpr, Value, limits? : Limits) -> Outcome
+
+pub fn int_value(String) -> Value
+
+pub let supported_profile : String
+
+// Errors
+
+// Types and methods
+pub(all) struct Diagnostic {
+  code : String
+  path : String
+  message : String
+}
+
+pub(all) enum Exhaustion {
+  DepthLimit
+  NodeLimit
+  IntDigitLimit
+}
+
+pub(all) struct Limits {
+  max_depth : Int
+  max_value_nodes : Int
+  max_int_digits : Int
+}
+pub fn Limits::default() -> Self
+
+pub(all) enum Outcome {
+  Valid
+  Invalid(Array[Diagnostic])
+  Unsupported(Diagnostic)
+  Exhausted(Exhaustion)
+}
+
+pub(all) enum Refinement {
+  NonEmptyString
+  PositiveInt
+  NonNegativeInt
+  MaxLength(Int)
+  NamedRefinement(String)
+}
+
+pub(all) enum TypeDecl {
+  Transparent(Array[String], TypeExpr, Refinement?)
+  Opaque(Array[String], TypeExpr, Refinement?)
+  Custom(Array[String], Array[(String, Array[TypeExpr])])
+}
+
+pub struct TypeEnvironment {
+  profile : String
+  declarations : Map[String, TypeDecl]
+  declaration_error : Diagnostic?
+}
+pub fn TypeEnvironment::new(profile~ : String, declarations~ : Array[(String, TypeDecl)]) -> Self
+pub fn TypeEnvironment::profile(Self) -> String
+
+pub(all) enum TypeExpr {
+  TBool
+  TInt
+  TString
+  TVariable(String)
+  TReference(String, Array[TypeExpr])
+  TTuple(Array[TypeExpr])
+  TRecord(Array[(String, TypeExpr)])
+  TUnion(Array[TypeExpr])
+  TList(TypeExpr)
+  TSet(TypeExpr)
+  TDict(TypeExpr, TypeExpr)
+  TFunction(Array[TypeExpr], TypeExpr)
+  TUnsupported(String)
+}
+
+pub(all) enum Value {
+  VBool(Bool)
+  VInt(@bigint.BigInt)
+  VString(String)
+  VTuple(Array[Value])
+  VRecord(Array[(String, Value)])
+  VList(Array[Value])
+  VSet(Array[Value])
+  VDict(Array[(Value, Value)])
+  VConstructed(String, Array[Value])
+  VOpaque(String, Value)
+}
+
+// Type aliases
+
+// Traits

@@ -85,6 +85,15 @@ The [shared examples](https://github.com/finos/morphir/tree/main/spec/conceptual
 contain independently authored inputs and literal expected observations. Their
 guide maps each case to public-API tests here. They add no compatibility runner.
 
+## Bounded typed-value admission
+
+[`finos/morphir-conceptual/validation/admission`](validation/admission/README.md)
+checks candidate typed values against declared records, custom types,
+generics, arbitrary tuples, collections and untagged unions under the
+`morphir-contracts/0.1.0-draft.1` fixture profile. Refinements and opacity
+are respected, budgets never pass an exhausted check, and unsupported types
+or ambiguous union membership are reported instead of guessed.
+
 Run the focused suite from the repository root:
 
 ```bash
