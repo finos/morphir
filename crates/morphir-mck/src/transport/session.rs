@@ -141,6 +141,24 @@ impl LiteralFrame {
     }
 }
 
+/// Actual payloads from a successful send and correlated literal reply.
+/// The request is moved from the send boundary, never serialized again.
+/// This proves transport receipt, not producer or workflow authority.
+#[derive(Debug)]
+pub struct LiteralExchange {
+    sent_payload: String,
+    received: LiteralFrame,
+}
+impl LiteralExchange {
+    /// Exact serialized request payload, excluding framing bytes.
+    pub fn sent_payload(&self) -> &str {
+        &self.sent_payload
+    }
+    pub fn received(&self) -> &LiteralFrame {
+        &self.received
+    }
+}
+
 /// What the stdout thread reports.
 enum Frame {
     Line(String),
@@ -667,17 +685,28 @@ impl Session {
     ) -> Result<LiteralFrame, TransportError> {
         let framing = self.framing;
         self.exchange_line(
-            |id| {
-                let line = Self::serializable_request_line(request, id)?;
-                if framing == Framing::Newline && line.as_bytes().contains(&b'\n') {
-                    return Err(TransportError::Malformed(
-                        "literal request contains LF; multiline input requires Content-Length framing"
-                            .into(),
-                    ));
-                }
-                Ok(line)
-            },
+            |id| Self::serializable_literal_request_line(request, id, framing),
             Self::receive_literal_frame,
+        )
+    }
+
+    /// Retain both actual payloads for selected live/replay infrastructure.
+    /// Uses the same serializer, framing, deadline and failure latch as other
+    /// exchanges. No complete receipt is issued after a send or reply failure.
+    pub fn exchange_recorded_literal<T: serde::Serialize>(
+        &mut self,
+        request: &T,
+    ) -> Result<LiteralExchange, TransportError> {
+        let framing = self.framing;
+        self.exchange_line_with_sent(
+            |id| Self::serializable_literal_request_line(request, id, framing),
+            |session, id, deadline, sent_payload| {
+                let received = session.receive_literal_frame(id, deadline)?;
+                Ok(LiteralExchange {
+                    sent_payload,
+                    received,
+                })
+            },
         )
     }
 
@@ -713,10 +742,37 @@ impl Session {
         Ok(format!("{{\"id\":{id},{}", &body[1..]))
     }
 
+    fn serializable_literal_request_line<T: serde::Serialize>(
+        request: &T,
+        id: u64,
+        framing: Framing,
+    ) -> Result<String, TransportError> {
+        let line = Self::serializable_request_line(request, id)?;
+        if framing == Framing::Newline && line.as_bytes().contains(&b'\n') {
+            return Err(TransportError::Malformed(
+                "literal request contains LF; multiline input requires Content-Length framing"
+                    .into(),
+            ));
+        }
+        Ok(line)
+    }
+
     fn exchange_line<R>(
         &mut self,
         line: impl FnOnce(u64) -> Result<String, TransportError>,
         receive: impl FnOnce(&mut Self, u64, &Deadline) -> Result<R, TransportError>,
+    ) -> Result<R, TransportError> {
+        self.exchange_line_with_sent(line, |session, id, deadline, sent_payload| {
+            // Historical paths release the request before receiving its reply.
+            drop(sent_payload);
+            receive(session, id, deadline)
+        })
+    }
+
+    fn exchange_line_with_sent<R>(
+        &mut self,
+        line: impl FnOnce(u64) -> Result<String, TransportError>,
+        receive: impl FnOnce(&mut Self, u64, &Deadline, String) -> Result<R, TransportError>,
     ) -> Result<R, TransportError> {
         if let Some(broken) = &self.broken {
             return Err(broken.clone());
@@ -724,9 +780,10 @@ impl Session {
         let id = self.next_id;
         self.next_id += 1;
         let deadline = self.request_deadline(id);
-        let result = line(id)
-            .and_then(|line| self.send_line(&line, &deadline))
-            .and_then(|()| receive(self, id, &deadline));
+        let result = line(id).and_then(|sent_payload| {
+            self.send_line(&sent_payload, &deadline)?;
+            receive(self, id, &deadline, sent_payload)
+        });
         if let Err(error) = &result {
             self.broken = Some(error.clone());
         }

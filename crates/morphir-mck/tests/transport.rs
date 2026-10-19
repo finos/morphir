@@ -22,6 +22,9 @@ use morphir_mck::transport::protocol::{
 use morphir_mck::transport::{Limits, Session, TransportError};
 use serde_json::Value;
 
+#[path = "support/recorded_literal_tests.rs"]
+mod recorded_literal_tests;
+
 #[path = "support/raw_workflow_tests.rs"]
 mod raw_workflow_tests;
 
@@ -66,6 +69,9 @@ mod adapter {
     }
 
     pub fn run(mode: &str, arg: Option<&str>) {
+        if super::recorded_literal_tests::adapter(mode) {
+            return;
+        }
         if super::raw_multiline_tests::adapter(mode) {
             return;
         }
@@ -1217,6 +1223,10 @@ fn main() {
     }
 
     let tests: &[(&str, fn())] = &[
+("recorded_literal_retains_the_actual_sent_request_without_second_serialize",recorded_literal_tests::recorded_literal_retains_the_actual_sent_request_without_second_serialize),
+("recorded_literal_lf_refusal_cannot_return_a_completed_exchange_receipt",recorded_literal_tests::recorded_literal_lf_refusal_cannot_return_a_completed_exchange_receipt),
+("recorded_literal_first_fault_precedes_next_serialization_or_receipt",recorded_literal_tests::recorded_literal_first_fault_precedes_next_serialization_or_receipt),
+
 ("literal_newline_request_refuses_actual_lf_without_normalizing_source", raw_multiline_tests::literal_newline_request_refuses_actual_lf_without_normalizing_source),
 ("raw_workflow_transport_preserves_whole_request_and_response_tokens", raw_workflow_tests::raw_workflow_transport_preserves_whole_request_and_response_tokens),
 ("raw_workflow_selected_outer_ids_are_canonical_positive_u64", raw_workflow_tests::raw_workflow_selected_outer_ids_are_canonical_positive_u64),
