@@ -11,6 +11,72 @@ use super::corpus::{Corpus, load};
 pub const MAX_REPORT_BYTES: usize = 32 * 1024 * 1024;
 pub const MAX_OBSERVATION_BYTES: usize = 16 * 1024 * 1024;
 
+/// Private staged record body, separate from every historical report shape.
+/// Capture proves transport completion only. Loading issues untrusted literal
+/// data; only a genuine workflow source context can check its correspondence.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(in crate::workbench) struct WorkflowExchangeRecord {
+    sent_payload: String,
+    received_payload: String,
+}
+
+impl WorkflowExchangeRecord {
+    pub(in crate::workbench) fn capture(exchange: crate::transport::LiteralExchange) -> Self {
+        let (sent_payload, received_payload) = exchange.into_parts();
+        Self {
+            sent_payload,
+            received_payload,
+        }
+    }
+    pub(in crate::workbench) fn sent_payload(&self) -> &str {
+        &self.sent_payload
+    }
+    pub(in crate::workbench) fn received_payload(&self) -> &str {
+        &self.received_payload
+    }
+    pub(in crate::workbench) fn to_json(&self) -> Result<String, String> {
+        encoded_size(self, MAX_REPORT_BYTES)?;
+        serde_json::to_string(self).map_err(|error| error.to_string())
+    }
+    pub(in crate::workbench) fn from_json(
+        text: &str,
+        work: &mut crate::json::strict::ReadWork,
+    ) -> Result<Self, String> {
+        if text.len() > MAX_REPORT_BYTES {
+            return Err("Workbench record exceeds 32 MiB".into());
+        }
+        let document = crate::json::strict::Document::parse_exact_with_work(text.as_bytes(), work)
+            .map_err(|error| error.to_string())?;
+        let crate::json::strict::Document::Object(fields) = document else {
+            return Err("workflow record must be a closed object".into());
+        };
+        if fields.len() != 2 {
+            return Err("workflow record requires exactly two literal payloads".into());
+        }
+        let mut sent_payload = None;
+        let mut received_payload = None;
+        for (key, value) in fields {
+            let crate::json::strict::Document::String(payload) = value else {
+                return Err("workflow record payload must be a string".into());
+            };
+            match key.as_str() {
+                "sentPayload" => sent_payload = Some(payload),
+                "receivedPayload" => received_payload = Some(payload),
+                _ => return Err("workflow record has an unknown field".into()),
+            }
+        }
+        // Duplicate keys were rejected by the same strict reader before any
+        // field extraction; the two decoded strings are moved, never Value-
+        // normalized or deserialized through a second scalar visitor.
+        Ok(Self {
+            sent_payload: sent_payload.ok_or("workflow record is missing sentPayload")?,
+            received_payload: received_payload
+                .ok_or("workflow record is missing receivedPayload")?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ResultKind {

@@ -15,7 +15,13 @@ mod recorded_mep_tests;
 #[path = "support/raw_mep_tests.rs"]
 mod raw_mep_tests;
 
+#[path = "support/workflow_report_peer.rs"]
+mod workflow_report_peer;
+
 fn adapter(mode: &str) {
+    if workflow_report_peer::adapter(mode) {
+        return;
+    }
     if raw_multiline_mep_tests::adapter(mode) {
         return;
     }

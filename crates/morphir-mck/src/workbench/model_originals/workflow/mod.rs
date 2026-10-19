@@ -47,6 +47,7 @@ mod observed_tests;
 
 mod observation_check;
 mod observed;
+mod record_check;
 
 #[cfg(test)]
 mod identity_tests;
@@ -56,3 +57,6 @@ mod report_context_tests;
 
 #[cfg(test)]
 mod context_checker_tests;
+
+#[cfg(test)]
+mod report_record_tests;

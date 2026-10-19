@@ -157,6 +157,11 @@ impl LiteralExchange {
     pub fn received(&self) -> &LiteralFrame {
         &self.received
     }
+    /// Move the actual payloads into retained evidence without copying or
+    /// serializing them again. The strings alone grant no source authority.
+    pub fn into_parts(self) -> (String, String) {
+        (self.sent_payload, self.received.raw)
+    }
 }
 
 /// What the stdout thread reports.

@@ -116,7 +116,7 @@ impl CompareOwner {
     pub(super) fn usage(&self) -> CompareUsage {
         self.usage
     }
-    fn ready(&self) -> Result<(), ObservationError> {
+    pub(super) fn ready(&self) -> Result<(), ObservationError> {
         self.fault.map_or(Ok(()), Err)
     }
     fn refuse<T>(&mut self, error: ObservationError) -> Result<T, ObservationError> {

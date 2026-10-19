@@ -24,6 +24,11 @@ crates/morphir-mck/src/workbench/model_originals/workflow/source_compile/control
 crates/morphir-mck/src/workbench/model_originals/workflow/raw_boundary_controls/** -text
 crates/morphir-mck/src/workbench/model_originals/workflow/observed_controls/** -text
 crates/morphir-mck/src/workbench/model_originals/workflow/identity_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/report_controls/** -text
+crates/morphir-mck/tests/support/workflow_report_controls/** -text
+# These literal reply bodies intentionally include CRLF and outer whitespace.
+crates/morphir-mck/src/workbench/model_originals/workflow/report_controls/received-reply.payload.json whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+crates/morphir-mck/tests/support/workflow_report_controls/received-reply.payload.json whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/** -text
 crates/morphir-mck/src/workbench/model_originals/workflow/ingress/controls/corpus.json whitespace=cr-at-eol
 

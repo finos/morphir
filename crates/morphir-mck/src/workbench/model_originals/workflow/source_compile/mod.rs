@@ -9,6 +9,7 @@ use super::ingress::BoundCase;
 use super::observation_check::{self, CompareOwner, ComparedPredicates, ObservationError};
 use super::observed;
 use super::pairing::PairedWorkflow;
+pub(super) use super::record_check::WorkflowRecordError;
 use super::source_proof::{LineageStatus, MatchedSourceCase, SourceError, SourceVerifier};
 use super::work::{ClosureOwner, ClosureUsage};
 use serde_json::value::RawValue;
