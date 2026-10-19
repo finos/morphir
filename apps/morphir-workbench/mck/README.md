@@ -303,6 +303,42 @@ and 1-MiB compact input budget. Their separate `json-frame` codec uses the share
 duplicate-aware wire parser. Actual HTTP requests, replies and argument-source
 validation continue through the production 1-MiB boundary.
 
+## Artifact client traces
+
+`browser/artifact-client-trace.ts` drives the actual `ArtifactTransferAttempt`,
+`VerifiedArtifactSet`, `ArtifactDownloadRegistry`, file-byte and ZIP APIs through
+held effect ports. It accepts the independently reviewed draft28 scenario
+vocabulary in `artifact-client-trace-contract.ts`. The shared runner must first
+validate that closed input and its expansion/work budgets. Initial current
+context is empty. Actions explicitly select context, settle or reject effects,
+cancel, publish or clear output, mutate returned copies and request downloads.
+Every attempt and held effect must finish before final evidence is returned.
+
+Evidence retains actual outbound frames losslessly and measures digest input,
+original owner bytes, previews, download bytes and decompressed ZIP entries.
+Opaque local view tokens are aliased only after checking actual bindings.
+The driver receives no expected projection or case identity. Context changes
+affect currentness; registry invalidation is a separate explicit action.
+Constructor input failures carry actual typed reasons; display text remains
+separate. Optional bounded local-value recipes let compact cases reach the
+real complete generation-request boundary. Expansion is checked before string
+allocation and precedes local faults and construction.
+
+The CLI adapter reuses the compiled duplicate-aware MCK framing codec. Bun builds
+checked Node and browser bundles; `test:workbench-artifact-client-mck` runs Bun,
+Node and Chromium bindings through one explicit parent runner and independently
+checks every saved report. Set `MORPHIR_MCK_BIN` and `MORPHIR_WORKBENCH_KIT` to the
+parent executable and its draft28 client kit. `MORPHIR_WORKBENCH_EVIDENCE` selects
+the ignored report directory. This opt-in command refuses a mixed/server kit.
+Before invoking the parent runner, it tests the actual CLI's complete frame
+boundary, duplicate and unexpected members, unsafe IDs, malformed Unicode and
+UTF-8, batched correlation, incomplete EOF and process exit.
+
+The shared client contract remains a review candidate. Full independent corpus
+and saved-report qualification, hostile and lifecycle coverage, and final
+published contract/source pins remain pending. A focused controlled workflow
+or a successful typecheck does not establish shared MCK compatibility.
+
 ## Invocation transcoding and comparison
 
 Exact offline draft.26 exercises the shipped invocation codecs and value

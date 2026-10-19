@@ -128,6 +128,14 @@ run = "moonx scripts/validate-packages.mbtx"
 description = "Opt-in browser acceptance against an existing Rust Morphir UI binary"
 run = "moonx scripts/workbench-live-host.mbtx"
 
+[tasks."test:workbench-artifacts"]
+description = "Opt-in connected artifact downloads against an installed-process host fixture"
+run = "moonx scripts/typescript-tooling.mbtx test-workbench-artifacts"
+
+[tasks."test:workbench-artifact-client-mck"]
+description = "Qualify artifact client lifecycle traces through the shared Rust MCK"
+run = "moonx scripts/workbench-artifact-client-mck.mbtx"
+
 [tasks."test:workbench-native-session"]
 description = "Test native desktop session authority without CEF"
 run = "moonx scripts/workbench-native-session.mbtx"
@@ -315,6 +323,10 @@ run = "moonx scripts/typescript-tooling.mbtx setup-workbench"
 [tasks."build:workbench"]
 description = "Build the shared browser Workbench"
 run = "moonx scripts/typescript-tooling.mbtx build-workbench"
+
+[tasks."workbench:artifact-source-check"]
+description = "Verify the pinned upstream artifact client source and licenses"
+run = "moonx scripts/artifact-client-source.mbtx check"
 
 [tasks."test:workbench"]
 description = "Test Workbench runtime and browser workflows"

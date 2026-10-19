@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/finos/morphir-ui",
+  "revision": "907839e2cbf4027b0227cc7e126123388da10999",
+  "review": "https://github.com/finos/morphir-ui/pull/47",
+  "status": "landed",
+  "note": "Pinned to upstream PR #47 after verified squash merge. Every vendored file matches this immutable revision; the upstream profile schemas pin parent PR #1069 at f29685e93732349e0a2826f039ecde06175efd8f.",
+  "dependency": { "name": "@std/semver", "version": "npm:@jsr/std__semver@1.0.8" },
+  "files": [
+    { "source": "LICENSE", "file": "LICENSE", "sha256": "f48e7a94203e6bd201db737d37cef079b5d37227bb655ec24c10a8986816d62c" },
+    { "source": "packages/morphir-workspace/UNICODE-LICENSE.txt", "file": "UNICODE-LICENSE.txt", "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96" },
+    { "source": "packages/morphir-workspace/src/artifact-path.ts", "file": "artifact-path.ts", "sha256": "2e0f49759fbf950a9a6832205cda8ee3ca4264946f288d0cbd93a2ecfb505f7a" },
+    { "source": "packages/morphir-workspace/src/artifact-transfer.ts", "file": "artifact-transfer.ts", "sha256": "f236986ebdea2ad49ccd4ae6cffd6f0a2a2853fa54a25ea4cc5849ecdb3ecb17" },
+    { "source": "packages/morphir-workspace/src/artifact-unicode-data.ts", "file": "artifact-unicode-data.ts", "sha256": "767f168bd30dd6128381d62389c1d30ecf556e1b696fd79d609f5a804cbc7d81" },
+    { "source": "packages/morphir-workspace/src/artifact-unicode.ts", "file": "artifact-unicode.ts", "sha256": "9ed51b43a6f8582c3a1963e8252e84503a330e2d98a5d1d2a3fe17301fb4f960" },
+    { "source": "packages/morphir-workspace/src/artifact-wire.ts", "file": "artifact-wire.ts", "sha256": "f0ded9a787c72ff3f32a7a5c2c46917841f547540f26250ab627ca6a39a6e4a7" },
+    { "source": "tools/unicode/manifest.json", "file": "unicode-sources.json", "sha256": "5e70e3831c16d9886b7b26f401530d4c39cf4a8b42d17c6ea291b134d9ae49d6" }
+  ]
+}

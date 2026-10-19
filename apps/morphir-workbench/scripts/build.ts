@@ -1,10 +1,12 @@
 import { checkedBuild } from '../../../tools/build.ts';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, cpSync, mkdirSync, readdirSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const app = fileURLToPath(new URL('../', import.meta.url));
 const build = fileURLToPath(new URL('../_build/', import.meta.url));
+// Retired bundles and failed earlier builds must not survive into packaged assets.
+rmSync(new URL('../dist/', import.meta.url), { recursive: true, force: true });
 execFileSync('moon', ['build', '--target', 'js', '--release', '--target-dir', build,
   `${app}browser`, `${app}worker`, `${app}execution-host`, `${app}execution-core`], { cwd: app, stdio: 'inherit' });
 mkdirSync(new URL('../dist/', import.meta.url), { recursive: true });

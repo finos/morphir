@@ -14,6 +14,7 @@
         "@codemirror/state": "6.7.6",
         "@codemirror/view": "6.43.14",
         "@lezer/highlight": "1.2.5",
+        "@std/semver": "npm:@jsr/std__semver@1.0.8",
         "codemirror": "6.0.2",
         "fflate": "0.8.3",
       },
@@ -64,6 +65,8 @@
     "@lezer/python": ["@lezer/python@1.1.19", "", { "dependencies": { "@lezer/common": "^1.2.0", "@lezer/highlight": "^1.0.0", "@lezer/lr": "^1.0.0" } }, "sha512-MhQIURHRytsNzP/YXnqpYKW6la6voAH3kyplTOOiCdjyFY6cWWGFVmYVdHIPrElqSDf4iCDktQCockB9FxuhzQ=="],
 
     "@marijn/find-cluster-break": ["@marijn/find-cluster-break@1.0.4", "", {}, "sha512-Wy0V7+SGUjnF9/TkiM1hKVDPj7jKXduPNboMVtHTA8dySMURWqfg/JZ9E2Sq8JgSJmkl7k7Qe9FLeMSrSraWmQ=="],
+
+    "@std/semver": ["@jsr/std__semver@1.0.8", "https://npm.jsr.io/~/11/@jsr/std__semver/1.0.8.tgz", {}, "sha512-YhkykPU2Majz66e+rQbP0okYc7kKv+U32aguLPCXZZAL+vEVmBA+khHjPHhLBpWR073gzU3WHqGRgB7a/aXCjg=="],
 
     "codemirror": ["codemirror@6.0.2", "", { "dependencies": { "@codemirror/autocomplete": "^6.0.0", "@codemirror/commands": "^6.0.0", "@codemirror/language": "^6.0.0", "@codemirror/lint": "^6.0.0", "@codemirror/search": "^6.0.0", "@codemirror/state": "^6.0.0", "@codemirror/view": "^6.0.0" } }, "sha512-VhydHotNW5w1UGK0Qj96BwSk/Zqbp9WbnyK2W/eVMv4QyF41INRGpjUhFJY7/uDNuudSc33a/PKr4iDqRduvHw=="],
 

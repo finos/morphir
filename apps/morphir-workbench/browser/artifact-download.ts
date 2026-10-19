@@ -1,9 +1,14 @@
 import { isRecord, workbenchError } from '../../../types/data.ts';
 import { strToU8, zipSync } from 'fflate';
+import { verifiedArtifactDownloads, type ArtifactDownloadRegistry } from './artifact-registry.ts';
 
 // Keep original relative project paths; reject ambiguous or escaping paths.
-export function artifactBytes(artifacts: unknown) {
+export function artifactBytes(artifacts: unknown, registry: ArtifactDownloadRegistry = verifiedArtifactDownloads, complete = false) {
   if (!Array.isArray(artifacts) || !artifacts.length) throw new Error('There are no generated files to download.');
+  if (artifacts.some(artifact => isRecord(artifact) && ('verifiedArtifact' in artifact || artifact.encoding === 'verified-bytes'))) {
+    // A mixed/forged/stale set fails here; it never falls back to preview strings.
+    return registry.bytes(artifacts, complete);
+  }
   const files = Object.create(null) as Record<string, Uint8Array<ArrayBuffer>>;
   const names = new Set<string>();
   for (const artifact of artifacts) {
@@ -32,15 +37,15 @@ export function artifactBytes(artifacts: unknown) {
   return files;
 }
 
-export function projectArchive(artifacts: unknown) {
-  return zipSync(artifactBytes(artifacts), { level: 0, mtime: new Date(1980, 0, 1) });
+export function projectArchive(artifacts: unknown, registry: ArtifactDownloadRegistry = verifiedArtifactDownloads) {
+  return zipSync(artifactBytes(artifacts, registry, true), { level: 0, mtime: new Date(1980, 0, 1) });
 }
 
 export function downloadArtifacts(artifacts: unknown, project: boolean) {
   try {
-    const files = artifactBytes(artifacts);
+    const files = artifactBytes(artifacts, verifiedArtifactDownloads, project);
     const name = project ? 'morphir-project.zip' : Object.keys(files)[0]!.split('/').at(-1)!;
-    const bytes = project ? projectArchive(artifacts) : Object.values(files)[0]!;
+    const bytes = project ? zipSync(files, { level: 0, mtime: new Date(1980, 0, 1) }) : Object.values(files)[0]!;
     const url = URL.createObjectURL(new Blob([bytes], { type: project ? 'application/zip' : 'application/octet-stream' }));
     const link = document.createElement('a');
     link.href = url; link.download = name;

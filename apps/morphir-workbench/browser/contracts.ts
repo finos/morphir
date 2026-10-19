@@ -2,7 +2,14 @@ import type { Json } from '../../../types/data.ts';
 export type { Json } from '../../../types/data.ts';
 
 export interface Diagnostic { message: string; code?: string; severity?: string; }
-export interface Artifact { path: string; content: string; binary: boolean; encoding?: string; }
+export interface Artifact {
+  path: string; content: string; binary: boolean; encoding?: string;
+  /** Browser-local reference to privately owned verified bytes; never accepted from legacy RPC. */
+  verifiedArtifact?: { setId: string; artifactId: string };
+  previewState?: 'text' | 'text-prefix' | 'binary' | 'invalid-utf8';
+  previewBase64?: string;
+  byteLength?: number;
+}
 export interface WorkRequest {
   operation: string;
   source?: string;
@@ -92,8 +99,9 @@ export interface Adapter {
   cancel(): void | Promise<void>;
   /** Only model-opening work; never sends execution cancellation or revokes grants. */
   cancelModelOpen?(): void | Promise<void>;
-  invalidateArtifacts?(): void;
   dispose(): void;
+  /** Source/target changes invalidate artifact ownership without cancelling retained evaluations. */
+  invalidateArtifacts?(): void;
   runtimeLabel?: string;
   executions?: { active: boolean; execution: Execution | null } | null;
 }

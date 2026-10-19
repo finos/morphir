@@ -3,6 +3,11 @@ import { isRecord, workbenchError } from '../../../types/data.ts';
 import { ExecutionClient } from './execution-session.ts';
 import { captureLocalEvaluation, matchesCapabilityPolicy } from './capabilities.ts';
 import { WorksheetCapture } from './worksheet.ts';
+import { ArtifactTransferAttempt, type ArtifactTransferEffects } from './artifact-transfer.ts';
+import { ARTIFACT_PROFILE, ARTIFACT_CONTRACT_VERSION, selectArtifactTransferProfile,
+  type ArtifactProfileSelection } from './artifact-client/artifact-transfer.ts';
+import { ArtifactDownloadRegistry, verifiedArtifactDownloads } from './artifact-registry.ts';
+import { openArtifactChannel } from './artifact-rpc.ts';
 // Browser host boundary. Private operation envelopes never go onto Morphir RPC.
 export class LocalAdapter {
   workerFactory: () => WorkerPort;
@@ -180,7 +185,7 @@ export function chooseVersion(frontend: Language, target?: Pick<Target, 'irVersi
   return offered.find(version => major(version) === '4') ?? offered[0];
 }
 
-function diagnosticMessage(result: { diagnostics?: Diagnostic[] }, fallback: string) {
+function diagnosticMessage(result: { diagnostics?: readonly { message: string }[] }, fallback: string) {
   return result.diagnostics?.map(diagnostic => diagnostic.message).filter(Boolean).join('\n') || fallback;
 }
 
@@ -189,6 +194,32 @@ type ConnectedExecutions = Pick<ExecutionClient, 'initialize' | 'execute' | 'res
   readonly capabilityEvaluator?: string;
 };
 const schemeCapabilityEvaluator = 'scheme-portable-v1/shared-sdk/bounded';
+
+type ArtifactGenerationSelection =
+  | { kind: 'legacy' }
+  | { kind: 'selected'; selection: ArtifactProfileSelection }
+  | { kind: 'refused'; message: string };
+function artifactGenerationSelection(manifest: Manifest): ArtifactGenerationSelection {
+  const providers = manifest.providers.filter(provider => provider.status === 'available' &&
+    provider.capabilities.some(offer => offer.name === ARTIFACT_PROFILE && offer.version === ARTIFACT_CONTRACT_VERSION));
+  if (!providers.length) return { kind: 'legacy' };
+  // v1's global catalog carries no provider identity. Do not guess across multiple owners.
+  if (providers.length !== 1) return { kind: 'refused', message: 'The connected catalog has multiple artifact providers and cannot select an owner.' };
+  const provider = providers[0]!;
+  const owns = (name: string) => provider.capabilities.some(offer => offer.name === name && offer.version === '1');
+  const catalogOwners = manifest.providers.filter(candidate => candidate.status === 'available' &&
+    candidate.capabilities.some(offer => offer.name === 'morphir/playground/catalog' && offer.version === '1'));
+  if (catalogOwners.length !== 1 || catalogOwners[0]!.id !== provider.id || !owns('morphir/playground/generate')) {
+    return { kind: 'refused', message: 'The artifact provider does not uniquely own this connected generation catalog.' };
+  }
+  const selected = selectArtifactTransferProfile({ ...provider, status: 'available' });
+  return selected.ok ? { kind: 'selected', selection: selected.value } :
+    { kind: 'refused', message: `The artifact profile selection failed: ${selected.error.code}` };
+}
+export interface ConnectedArtifactOptions {
+  connect: ArtifactTransferEffects['connect'];
+  downloads?: ArtifactDownloadRegistry;
+}
 
 export class ConnectedAdapter {
   rpc: Rpc;
@@ -201,7 +232,11 @@ export class ConnectedAdapter {
   epoch: number;
   workspaceMessage?: string;
   executionsAvailable = false;
-  constructor(rpc: Rpc, manifest: Manifest, local: Pick<Adapter, 'execute' | 'cancel'>, executions: ConnectedExecutions | null = null) {
+  readonly artifactDownloads: ArtifactDownloadRegistry;
+  private readonly artifactConnect: ArtifactTransferEffects['connect'] | null;
+  private activeArtifacts: ArtifactTransferAttempt | null = null;
+  constructor(rpc: Rpc, manifest: Manifest, local: Pick<Adapter, 'execute' | 'cancel'>, executions: ConnectedExecutions | null = null,
+    artifacts?: ConnectedArtifactOptions) {
     this.rpc = rpc;
     this.executions = executions;
     this.manifest = validateManifest(manifest);
@@ -210,6 +245,8 @@ export class ConnectedAdapter {
     this.projects = [];
     this.documentVersion = 0;
     this.epoch = 0;
+    this.artifactDownloads = artifacts?.downloads ?? new ArtifactDownloadRegistry();
+    this.artifactConnect = artifacts ? artifacts.connect.bind(artifacts) : null;
   }
   private call<T = unknown>(method: string, params: Record<string, unknown>): Promise<T> {
     return this.rpc.call(method, params).then(value => value as T);
@@ -252,6 +289,12 @@ export class ConnectedAdapter {
     // Capture the entire caller-owned selection before any asynchronous host or
     // pending-release work. Later edits belong to the next explicit evaluation.
     request = structuredClone(request);
+    const epoch = ++this.epoch;
+    const current = () => epoch === this.epoch;
+    const stillCurrent = () => { if (!current()) throw new Error('Discarded. The host may still be working.'); };
+    const older = this.activeArtifacts;
+    this.activeArtifacts = null;
+    if (older) void older.cancel();
     if (request.executionMode === 'capability' || request.admission != null) {
       if (!this.executionsAvailable || this.executions?.capabilityEvaluator !== schemeCapabilityEvaluator) {
         throw new Error('This connected session does not offer checking-policy selection.');
@@ -262,8 +305,7 @@ export class ConnectedAdapter {
     // Worksheets remain local even when compilation uses a connected host.
     if (request.operation === 'worksheet') return this.local.execute(request);
     if (request.operation === 'evaluate' && this.executionsAvailable) return this.executions!.execute(request, progress);
-    const epoch = this.epoch;
-    const stillCurrent = () => { if (epoch !== this.epoch) throw new Error("Discarded. The host may still be working."); };
+    this.artifactDownloads.clear();
     if (request.operation === 'inspect') return this.local.execute(request);
     if (request.operation === 'project') {
       const project = this.projects.find(project => project.id === request.project);
@@ -277,7 +319,11 @@ export class ConnectedAdapter {
     if (!frontend) throw new Error('This language is unavailable on the connected host.');
     const target = request.target ? this.catalog.targets.find(target => target.target === request.target) : null;
     if (request.target && !target) throw new Error('This generation target is unavailable.');
+    const targetName = target?.target;
     const irVersion = chooseVersion(frontend, target);
+    // Bind the exact profile/provider/session before the first compile await.
+    const artifacts = artifactGenerationSelection(this.manifest);
+    const artifactSession = this.manifest.sessionId;
     const extension = frontend.fileExtensions?.[0] || '.txt';
     const compiled = await this.call<WorkResult & { irVersion: string }>('morphir.playground.compile', {
       languageId: frontend.languageId,
@@ -290,6 +336,8 @@ export class ConnectedAdapter {
       throw Object.assign(new Error(diagnosticMessage(compiled, 'Compilation failed.')),
         { diagnostics: Array.isArray(compiled.diagnostics) ? compiled.diagnostics : [] });
     }
+    const artifactIR = artifacts.kind === 'selected' ? structuredClone(compiled.ir) : null;
+    const compiledVersion = compiled.irVersion;
     let inspected: WorkResult;
     try {
       inspected = await this.local.execute({ operation: 'inspect', source: JSON.stringify(compiled.ir) });
@@ -299,11 +347,37 @@ export class ConnectedAdapter {
     // Discard takes precedence over an inspection fallback and prevents generation.
     stillCurrent();
     // Preserve host compilation when client inspection cannot decode or execute.
-    const result: WorkResult = { ...inspected, success: true, ir: compiled.ir, irSource: JSON.stringify(compiled.ir), generated: '', diagnostics: compiled.diagnostics,
+    const adoptedIR = artifactIR ?? compiled.ir;
+    const result: WorkResult = { ...inspected, success: true, ir: adoptedIR, irSource: JSON.stringify(adoptedIR), generated: '', diagnostics: compiled.diagnostics,
       inspectionMessage: inspected.success ? '' : inspected.message };
-    if (target) {
+    if (targetName) {
       try {
-        const generated = await this.call<WorkResult & { artifacts: import('./contracts.ts').Artifact[] }>('morphir.playground.generate', { ir: compiled.ir, irVersion: compiled.irVersion, target: target.target, options: {} });
+        if (artifacts.kind !== 'legacy') {
+          if (artifacts.kind === 'refused') throw new Error(artifacts.message);
+          if (!this.artifactConnect) throw new Error('The selected artifact profile has no owning connection transport.');
+          const attempt = new ArtifactTransferAttempt(artifacts.selection, {
+            sessionId: artifactSession, ir: artifactIR!, irVersion: compiledVersion, target: targetName, options: {},
+          }, { connect: this.artifactConnect, isCurrent: current });
+          this.activeArtifacts = attempt;
+          const transferred = await attempt.run();
+          if (this.activeArtifacts === attempt) this.activeArtifacts = null;
+          stillCurrent();
+          if (transferred.kind === 'discarded') throw new Error('The artifact transfer was discarded.');
+          if (transferred.kind === 'failed') {
+            const cleanup = transferred.cleanup.kind === 'connection-closed'
+              ? ' The owning connection was closed; host cleanup may still be completing.' : '';
+            throw new Error(transferred.error.message + cleanup);
+          }
+          if (transferred.kind === 'generation-failed') {
+            result.generationMessage = diagnosticMessage({ diagnostics: [...transferred.diagnostics] }, 'Generation failed.');
+          } else {
+            result.artifacts = this.artifactDownloads.publish(transferred.files);
+            result.generated = result.artifacts.map(artifact => `; ${artifact.path}\n${artifact.binary ? '[Binary artifact: text preview unavailable]' : artifact.content}`).join('\n\n');
+          }
+          return result;
+        }
+        const generated = await this.call<WorkResult & { artifacts: import('./contracts.ts').Artifact[] }>('morphir.playground.generate', { ir: compiled.ir, irVersion: compiledVersion, target: targetName, options: {} });
+        stillCurrent();
         if (!Array.isArray(generated.artifacts) || generated.artifacts.some(artifact =>
           !artifact || typeof artifact.path !== 'string' || typeof artifact.content !== 'string' || typeof artifact.binary !== 'boolean')) {
           throw new Error('The host returned an invalid generated file envelope.');
@@ -313,15 +387,29 @@ export class ConnectedAdapter {
         result.artifacts = generated.artifacts.map(({path, content, binary}) => ({path, content, binary}));
         result.generated = (generated.artifacts ?? []).map(artifact => `; ${artifact.path}\n${artifact.binary ? '[Binary artifact: text preview unavailable]' : artifact.content}`).join('\n\n');
         if (!generated.success) result.generationMessage = diagnosticMessage(generated, 'Generation failed.');
-      } catch (cause) { const error = workbenchError(cause); result.generationMessage = error.message; }
+      } catch (cause) { stillCurrent(); const error = workbenchError(cause); result.generationMessage = error.message; }
     }
     return result;
   }
   cancelModelOpen() { ++this.epoch; this.local.cancel(); /* Frozen v1 has no server cancellation. */ }
   cancel() {
-    if (this.executions?.active || (this.executions?.execution && this.executions.execution.state !== 'terminal')) return this.executions.cancel();
-    ++this.epoch; this.local.cancel(); /* v1 has no server cancellation method */ }
-  dispose() { ++this.epoch; this.local.cancel(); this.rpc.dispose?.(); }
+    const active = this.activeArtifacts; this.activeArtifacts = null;
+    const executionPending = this.executions?.active || (this.executions?.execution && this.executions.execution.state !== 'terminal');
+    if (executionPending && !active) return this.executions!.cancel();
+    ++this.epoch;
+    if (!executionPending || active) this.local.cancel();
+    const artifacts = active?.cancel();
+    const execution = executionPending ? this.executions!.cancel() : undefined;
+    if (artifacts || execution) return Promise.all([artifacts, execution]).then(() => {});
+    /* v1 has no server cancellation method */ }
+  invalidateArtifacts() {
+    ++this.epoch;
+    const active = this.activeArtifacts; this.activeArtifacts = null;
+    if (active) void active.cancel();
+    this.artifactDownloads.clear();
+  }
+  dispose() { ++this.epoch; this.local.cancel(); void this.activeArtifacts?.cancel(); this.activeArtifacts = null;
+    this.artifactDownloads.clear(); this.rpc.dispose?.(); }
 }
 
 export async function connect(location: Pick<Location, 'href' | 'protocol'>, local: Adapter, fetchFn: Fetch = fetch, Socket: typeof WebSocket = WebSocket) {
@@ -344,6 +432,8 @@ export async function connect(location: Pick<Location, 'href' | 'protocol'>, loc
       if (!response.ok) throw new Error('Authenticate with the same host session to resume this execution.');
       return validateManifest(await response.json()).sessionId;
     } });
-    return new ConnectedAdapter(rpc, manifest, local, executions);
+    return new ConnectedAdapter(rpc, manifest, local, executions, {
+      connect: signal => openArtifactChannel(() => new Socket(url.href), signal), downloads: verifiedArtifactDownloads,
+    });
   } catch (cause) { const error = workbenchError(cause); rpc.dispose(); throw error; }
 }

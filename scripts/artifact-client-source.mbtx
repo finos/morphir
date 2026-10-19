@@ -1,0 +1,127 @@
+///|
+/// Check or reproduce the exact audited upstream artifact client source.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+let destination = "apps/morphir-workbench/browser/artifact-client"
+
+///|
+fn string(value : Json, key : String) -> String {
+  guard value is Object(fields) && fields.get(key) is Some(String(text)) else {
+    abort("Missing artifact source field: " + key)
+  }
+  text
+}
+
+///|
+fn hexadecimal(text : String, length : Int32) -> Bool {
+  text.length() == length &&
+  text.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+}
+
+///|
+async fn git(checkout : String, args : Array[String]) -> Bytes {
+  let (code, output, error) = @process.collect_output(
+    "git",
+    ["-C", checkout] + args,
+  )
+  guard code == 0 else { abort("Upstream source read failed: " + error.text()) }
+  output.binary()
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:]
+  guard (args.length() == 1 && args[0] == "check") ||
+    (args.length() == 2 && (args[0] == "sync" || args[0] == "verify-upstream")) else {
+    abort(
+      "Usage: artifact-client-source.mbtx check | sync <upstream-checkout> | verify-upstream <upstream-checkout>",
+    )
+  }
+  let pin = @json.parse(@fs.read_file(destination + "/SOURCE.json").text())
+  guard string(pin, "repository") == "https://github.com/finos/morphir-ui" else {
+    abort("Unexpected artifact client source repository")
+  }
+  let revision = string(pin, "revision")
+  guard hexadecimal(revision, 40) else {
+    abort("Expected exact upstream source revision")
+  }
+  let expected = [
+    ("LICENSE", "LICENSE"),
+    ("packages/morphir-workspace/UNICODE-LICENSE.txt", "UNICODE-LICENSE.txt"),
+    ("packages/morphir-workspace/src/artifact-path.ts", "artifact-path.ts"),
+    (
+      "packages/morphir-workspace/src/artifact-transfer.ts", "artifact-transfer.ts",
+    ),
+    (
+      "packages/morphir-workspace/src/artifact-unicode-data.ts", "artifact-unicode-data.ts",
+    ),
+    (
+      "packages/morphir-workspace/src/artifact-unicode.ts", "artifact-unicode.ts",
+    ),
+    ("packages/morphir-workspace/src/artifact-wire.ts", "artifact-wire.ts"),
+    ("tools/unicode/manifest.json", "unicode-sources.json"),
+  ]
+  guard pin is Object(fields) &&
+    fields.get("files") is Some(Array(files)) &&
+    files.length() == expected.length() else {
+    abort("Unexpected artifact source inventory")
+  }
+  if args[0] != "check" {
+    let origin = git(args[1], ["remote", "get-url", "origin"])
+    let origin = @utf8.decode(origin).trim()
+    guard origin == "https://github.com/finos/morphir-ui.git" ||
+      origin == "git@github.com:finos/morphir-ui.git" else {
+      abort("Expected the official upstream checkout")
+    }
+    guard @utf8.decode(git(args[1], ["cat-file", "-t", revision])).trim() ==
+      "commit" else {
+      abort("Pinned artifact revision is not a commit")
+    }
+  }
+  // Validate the whole inventory and all upstream bytes before writing a file.
+  let sources : Array[Bytes] = []
+  for index, (source, file) in expected {
+    let record = files[index]
+    let sha = string(record, "sha256")
+    guard string(record, "source") == source &&
+      string(record, "file") == file &&
+      hexadecimal(sha, 64) else {
+      abort("Invalid artifact source inventory entry")
+    }
+    let bytes = if args[0] == "check" {
+      @fs.read_file(destination + "/" + file).binary()
+    } else {
+      git(args[1], ["show", revision + ":" + source])
+    }
+    guard digest(bytes) == sha else {
+      @stdio.stderr.write("Artifact source hash differs: " + file + "\n")
+      @sys.exit(1)
+    }
+    sources.push(bytes)
+  }
+  for index, (_, file) in expected {
+    if args[0] == "sync" {
+      @fs.write_file(destination + "/" + file, sources[index])
+    }
+    guard @fs.read_file(destination + "/" + file).binary() == sources[index] else {
+      abort("Tracked artifact source differs: " + file)
+    }
+  }
+  println("Artifact client source verified: " + revision)
+}

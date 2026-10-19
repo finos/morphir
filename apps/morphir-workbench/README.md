@@ -533,10 +533,32 @@ targets come from the host catalog. Compile requests omit `exposedModules`,
 which means expose all, and never name a provider directly.
 
 The wire shapes follow [finos/morphir protocol.rs](https://github.com/finos/morphir/blob/5c5307d89f34d876e8f1ebf561ec55efbadf9fa0/crates/morphir/src/commands/ui/protocol.rs).
-No new wire method or protocol version is introduced by this slice. v1 does not
+The original connected v1 mapping keeps these methods and shapes. v1 does not
 offer evaluation or server cancellation. Without the separate execution offer, evaluation controls are unavailable when
 connected; Discard ignores a compile reply while the host may keep running.
 Workspace watching and native daemon IPC are not implemented yet.
+
+Generated files can additionally select the exact
+`morphir/workbench/artifacts` profile `0.1.0-draft.1` from the authenticated
+playground provider. This additive draft uses `morphir.artifacts.generate`,
+`.read` and `.release` on a dedicated initialized connection. Each attempt
+captures its provider, session, target, compiled IR and source revision. Raw
+replies pass through the shared literal-preserving decoder before adoption.
+All file lengths and SHA-256 digests must verify, and the exact generation must
+be released, before a download reference reaches the UI. Source/target edits
+invalidate old attempts and references. An uncertain exchange closes only its
+own connection. A failed selected profile never retries generation through v1.
+
+Previews are separate from original download bytes and are bounded per file and
+across the inventory. Binary hex previews carry at most 64 KiB. Text previews
+validate the whole file and identify a truncated display. Invalid UTF-8 text gets an explanatory preview while its verified
+original bytes remain downloadable. File and ZIP downloads resolve private
+verified references; preview strings never reconstruct those downloads. Hosts
+without this exact profile keep the existing v1 text behavior and undeclared
+binary-download refusal. The shared profile and host contribution is tracked in
+[finos/morphir PR #1069](https://github.com/finos/morphir/pull/1069); upstream
+TypeScript boundaries are tracked in
+[finos/morphir-ui PR #47](https://github.com/finos/morphir-ui/pull/47).
 
 The separate live execution profile is contributed to
 [finos/morphir](https://github.com/finos/morphir/tree/7492f2b85e1dc0f86a004575032179011dc93018/spec/workbench/host/0.2.0-draft.1).
@@ -631,6 +653,38 @@ Rust 1.98.1 and Chromium. The v1 `morphir.workspace.open` result wraps the works
 in `snapshot`; malformed envelopes now report a diagnostic while keeping compiler
 capabilities available. Other installed providers, workspace watching and durable daemon recovery need
 their own acceptance. The opt-in execution acceptance below exercises connected evaluation.
+
+### Artifact download verification
+
+The optional artifact workflow drives the actual connected UI through a real
+installed SDK process fixture from the parent repository. Build its
+`ui_artifact_process` test executable, then run:
+
+```sh
+MORPHIR_WORKBENCH_ARTIFACT_FIXTURE_BIN=/absolute/path/to/ui_artifact_process mise run test:workbench-artifacts
+```
+
+The fixture is a deterministic byte producer, separate from a language backend.
+The workflow compiles real Gleam, downloads indexed binary, BOM/CRLF text and
+empty files, saves a ZIP and compares every byte with independent recipes.
+It also probes the real built-in Gleam backend through the selected profile.
+Set `MORPHIR_WORKBENCH_ARTIFACT_FIXTURE_MODE=binary` or `nul-text` for the full
+64 MiB aggregate boundary. `MORPHIR_WORKBENCH_ARTIFACT_REPORT` selects the
+ignored JSON evidence path; saved files and screenshots live beside it.
+
+For a visible packaged Proton run, also set
+`MORPHIR_WORKBENCH_DESKTOP_BIN` to the absolute packaged executable and
+`MORPHIR_WORKBENCH_ARTIFACT_ASSET_ROOT` to that package's `frontend/dist`
+directory. The local proxy serves those exact packaged assets. The workflow
+starts a separate owned app process, opens each native Save dialog, and writes
+`pending-native-save.json` beside the report with the app PID and a fresh
+destination path. Save to that path within 10 minutes. The test advances only
+after the file on disk matches the independent expected bytes. It checks ZIP
+entries the same way and stops its owned processes on completion or failure.
+The CDP connection preserves Proton's native defaults instead of installing
+Playwright's download override. It does not intercept Blob downloads or replace the native dialog with browser
+download automation. A passing Chromium run does not qualify native saves;
+shared MCK client qualification is also a separate gate.
 
 ## Projects
 

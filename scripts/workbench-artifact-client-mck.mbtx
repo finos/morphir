@@ -1,0 +1,127 @@
+///|
+/// Qualify production artifact owners against an explicit independent parent kit.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn checked(
+  program : String,
+  args : Array[String],
+  environment~ : Map[String, String] = {},
+) -> Unit {
+  let status = @process.run(
+    program,
+    args,
+    extra_env=environment,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if status != 0 {
+    @sys.exit(1)
+  }
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+async fn main {
+  guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
+    @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
+    @stdio.stderr.write(
+      "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and draft28 client kit.\n",
+    )
+    @sys.exit(1)
+  }
+  let runner = @fs.realpath(runner)
+  let kit = @fs.realpath(kit)
+  let corpus = @fs.read_file(kit + "/cases.json").json()
+  guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.28") &&
+    field(corpus, "cases") is Array(cases) &&
+    !cases.is_empty() else {
+    @sys.exit(1)
+  }
+  for case in cases {
+    guard field(case, "operation") == Json::string("artifact-client") &&
+      field(case, "format") == Json::string("json") else {
+      @sys.exit(1)
+    }
+  }
+  let evidence = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
+    ".dev/artifact-client-mck/reports",
+  )
+  if !@fs.exists(evidence) {
+    @fs.mkdir(evidence, recursive=true)
+  }
+  let evidence = @fs.realpath(evidence)
+  checked("moonx", ["scripts/artifact-client-source.mbtx", "check"])
+  checked("bun", [
+    "--check", "apps/morphir-workbench/scripts/build-artifact-client-mck.ts",
+  ])
+  let app = @fs.realpath("apps/morphir-workbench")
+  let built = app + "/_build/artifact-client-mck/"
+  let framing = app +
+    "/_build/js/release/build/finos/morphir-workbench/mck/json-frame/json-frame.js"
+  checked("node", ["--test", app + "/scripts/artifact-client-mck.test.ts"], environment={
+    "MORPHIR_WORKBENCH_MCK_JSON": framing,
+    "MORPHIR_WORKBENCH_ARTIFACT_CLIENT_ADAPTER": built +
+    "artifact-client-mck.mjs",
+  })
+  for runtime in ["bun", "node", "chromium"] {
+    let report = evidence + "/" + runtime + ".json"
+    checked(
+      runner,
+      [
+        "--no-banner",
+        "mck",
+        "workbench",
+        "run",
+        "--kit",
+        kit,
+        "--adapter",
+        if runtime == "bun" {
+          "bun"
+        } else {
+          "node"
+        },
+        "--adapter-arg",
+        built + "artifact-client-mck.mjs",
+        "--report",
+        report,
+      ],
+      environment={
+        "MORPHIR_WORKBENCH_MCK_JSON": framing,
+        "MORPHIR_WORKBENCH_ARTIFACT_CLIENT_DRIVER": built +
+        "artifact-client-trace.js",
+        "MORPHIR_WORKBENCH_ARTIFACT_CLIENT_BROWSER": if runtime == "chromium" {
+          "1"
+        } else {
+          "0"
+        },
+      },
+    )
+    checked(runner, [
+      "--no-banner", "mck", "workbench", "check", "--kit", kit, "--report", report,
+    ])
+    let result = @fs.read_file(report).json()
+    guard field(result, "qualified") == Json::boolean(true) &&
+      field(result, "records") is Array(records) &&
+      records.length() == cases.length() else {
+      @sys.exit(1)
+    }
+  }
+  @stdio.stdout.write(
+    "Artifact client scenarios pass Bun, Node and Chromium; every saved report independently checked.\n",
+  )
+}

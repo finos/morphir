@@ -227,8 +227,11 @@ test "Download from a file's menu leaves the selection and the preview" {
     .to_equal(IonText("a.10n", "null", 1))
     s.expect(after.generated_state.menu, label="menu closed").to_be_none()
     s
-    .expect(after.panel.logs.last().map(log => log.message), label="downloaded")
-    .to_equal(Some("Downloaded b.10n"))
+    .expect(
+      after.panel.logs.last().map(log => log.message),
+      label="download started",
+    )
+    .to_equal(Some("Download started: b.10n"))
   })
 }
 

@@ -16,6 +16,7 @@ declare global {
       storage: { load(key: string): string | null; save(key: string, text: string): boolean; remove(key: string): boolean };
     };
     readonly runtimeLabel: string;
+    invalidateArtifacts(): void;
     request(request: WorkRequest, receive: (source: string) => void): void | Promise<void>;
     cancel(): void;
     importModel(attempt: string, receive: (source: string) => void): void;

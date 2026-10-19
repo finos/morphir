@@ -1,0 +1,34 @@
+{
+  "profile": "morphir/workbench/artifact-unicode-data",
+  "contractVersion": "0.1.0-draft.1",
+  "normalizationVersion": "17.0.0",
+  "fullDefaultCaseFoldVersion": "9.0.0",
+  "normalizationAlgorithm": "https://www.unicode.org/reports/tr15/tr15-57.html",
+  "sources": [
+    {
+      "file": "UnicodeData-17.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/UnicodeData.txt",
+      "sha256": "2e1efc1dcb59c575eedf5ccae60f95229f706ee6d031835247d843c11d96470c"
+    },
+    {
+      "file": "DerivedNormalizationProps-17.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/DerivedNormalizationProps.txt",
+      "sha256": "71fd6a206a2c0cdd41feb6b7f656aa31091db45e9cedc926985d718397f9e488"
+    },
+    {
+      "file": "NormalizationTest-17.txt",
+      "url": "https://www.unicode.org/Public/17.0.0/ucd/NormalizationTest.txt",
+      "sha256": "5019ffd530751a741900c849c0e010332f142a3612234639bd200b82138a87db"
+    },
+    {
+      "file": "CaseFolding-9.txt",
+      "url": "https://www.unicode.org/Public/9.0.0/ucd/CaseFolding.txt",
+      "sha256": "37d40cf8c2c35637f4a04e746814e1fc4eb764c272bed9238a87ee96a4866857"
+    }
+  ],
+  "license": {
+    "file": "LICENSE.txt",
+    "url": "https://www.unicode.org/license.txt",
+    "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96"
+  }
+}
