@@ -1,0 +1,35 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:empty-record",
+      "revision": "fixture-1",
+      "text": "type alias Empty = {}"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "empty-record:n2",
+      "span": {
+        "sourceId": "source:empty-record",
+        "start": 0,
+        "end": 21,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Empty",
+      "typeParameters": [],
+      "value": {
+        "id": "empty-record:n1",
+        "span": {
+          "sourceId": "source:empty-record",
+          "start": 19,
+          "end": 21,
+          "unit": "utf8-byte"
+        },
+        "kind": "record",
+        "fields": []
+      }
+    }
+  ]
+}

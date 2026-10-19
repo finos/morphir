@@ -1,0 +1,88 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:bodyless-function",
+      "revision": "fixture-1",
+      "text": "fn remaining(outstanding: Int, returned: Int) -> Int"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "bodyless-function:n6",
+      "span": {
+        "sourceId": "source:bodyless-function",
+        "start": 0,
+        "end": 52,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "remaining",
+      "typeParameters": [],
+      "inputs": [
+        {
+          "id": "bodyless-function:n2",
+          "span": {
+            "sourceId": "source:bodyless-function",
+            "start": 13,
+            "end": 29,
+            "unit": "utf8-byte"
+          },
+          "name": "outstanding",
+          "type": {
+            "id": "bodyless-function:n1",
+            "span": {
+              "sourceId": "source:bodyless-function",
+              "start": 26,
+              "end": 29,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          }
+        },
+        {
+          "id": "bodyless-function:n4",
+          "span": {
+            "sourceId": "source:bodyless-function",
+            "start": 31,
+            "end": 44,
+            "unit": "utf8-byte"
+          },
+          "name": "returned",
+          "type": {
+            "id": "bodyless-function:n3",
+            "span": {
+              "sourceId": "source:bodyless-function",
+              "start": 41,
+              "end": 44,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          }
+        }
+      ],
+      "output": {
+        "id": "bodyless-function:n5",
+        "span": {
+          "sourceId": "source:bodyless-function",
+          "start": 49,
+          "end": 52,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Int"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

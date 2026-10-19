@@ -1,0 +1,148 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:flat-eight",
+      "revision": "fixture-1",
+      "text": "type alias Eight = (Int, Int, Int, Int, Int, Int, Int, Int)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "flat-eight:n10",
+      "span": {
+        "sourceId": "source:flat-eight",
+        "start": 0,
+        "end": 59,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Eight",
+      "typeParameters": [],
+      "value": {
+        "id": "flat-eight:n9",
+        "span": {
+          "sourceId": "source:flat-eight",
+          "start": 19,
+          "end": 59,
+          "unit": "utf8-byte"
+        },
+        "kind": "tuple",
+        "elements": [
+          {
+            "id": "flat-eight:n1",
+            "span": {
+              "sourceId": "source:flat-eight",
+              "start": 20,
+              "end": 23,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-eight:n2",
+            "span": {
+              "sourceId": "source:flat-eight",
+              "start": 25,
+              "end": 28,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-eight:n3",
+            "span": {
+              "sourceId": "source:flat-eight",
+              "start": 30,
+              "end": 33,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-eight:n4",
+            "span": {
+              "sourceId": "source:flat-eight",
+              "start": 35,
+              "end": 38,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-eight:n5",
+            "span": {
+              "sourceId": "source:flat-eight",
+              "start": 40,
+              "end": 43,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-eight:n6",
+            "span": {
+              "sourceId": "source:flat-eight",
+              "start": 45,
+              "end": 48,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-eight:n7",
+            "span": {
+              "sourceId": "source:flat-eight",
+              "start": 50,
+              "end": 53,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-eight:n8",
+            "span": {
+              "sourceId": "source:flat-eight",
+              "start": 55,
+              "end": 58,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          }
+        ]
+      }
+    }
+  ]
+}

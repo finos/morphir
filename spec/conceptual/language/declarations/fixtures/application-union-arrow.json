@@ -1,0 +1,112 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:application-union-arrow",
+      "revision": "fixture-1",
+      "text": "type alias Choice a = List a | Int -> Bool"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "application-union-arrow:n8",
+      "span": {
+        "sourceId": "source:application-union-arrow",
+        "start": 0,
+        "end": 42,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Choice",
+      "typeParameters": [
+        {
+          "id": "application-union-arrow:n7",
+          "span": {
+            "sourceId": "source:application-union-arrow",
+            "start": 18,
+            "end": 19,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "declared"
+        }
+      ],
+      "value": {
+        "id": "application-union-arrow:n6",
+        "span": {
+          "sourceId": "source:application-union-arrow",
+          "start": 22,
+          "end": 42,
+          "unit": "utf8-byte"
+        },
+        "kind": "function",
+        "input": {
+          "id": "application-union-arrow:n4",
+          "span": {
+            "sourceId": "source:application-union-arrow",
+            "start": 22,
+            "end": 34,
+            "unit": "utf8-byte"
+          },
+          "kind": "union",
+          "members": [
+            {
+              "id": "application-union-arrow:n2",
+              "span": {
+                "sourceId": "source:application-union-arrow",
+                "start": 22,
+                "end": 28,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "List"
+              ],
+              "arguments": [
+                {
+                  "id": "application-union-arrow:n1",
+                  "span": {
+                    "sourceId": "source:application-union-arrow",
+                    "start": 27,
+                    "end": 28,
+                    "unit": "utf8-byte"
+                  },
+                  "kind": "variable",
+                  "name": "a"
+                }
+              ]
+            },
+            {
+              "id": "application-union-arrow:n3",
+              "span": {
+                "sourceId": "source:application-union-arrow",
+                "start": 31,
+                "end": 34,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          ]
+        },
+        "output": {
+          "id": "application-union-arrow:n5",
+          "span": {
+            "sourceId": "source:application-union-arrow",
+            "start": 38,
+            "end": 42,
+            "unit": "utf8-byte"
+          },
+          "kind": "named",
+          "path": [
+            "Bool"
+          ],
+          "arguments": []
+        }
+      }
+    }
+  ]
+}

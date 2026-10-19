@@ -1,0 +1,1 @@
+fn choose() -> Int -> Bool

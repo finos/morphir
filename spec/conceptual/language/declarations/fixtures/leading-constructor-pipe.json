@@ -1,0 +1,38 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:leading-constructor-pipe",
+      "revision": "fixture-1",
+      "text": "type A = | B"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "leading-constructor-pipe:n2",
+      "span": {
+        "sourceId": "source:leading-constructor-pipe",
+        "start": 0,
+        "end": 12,
+        "unit": "utf8-byte"
+      },
+      "kind": "custom",
+      "name": "A",
+      "typeParameters": [],
+      "constructorAccess": "module-policy",
+      "constructors": [
+        {
+          "id": "leading-constructor-pipe:n1",
+          "span": {
+            "sourceId": "source:leading-constructor-pipe",
+            "start": 11,
+            "end": 12,
+            "unit": "utf8-byte"
+          },
+          "name": "B",
+          "arguments": []
+        }
+      ]
+    }
+  ]
+}

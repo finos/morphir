@@ -1,0 +1,53 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:named-arity-extra",
+      "revision": "fixture-1",
+      "text": "type alias Broken = Int String"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "named-arity-extra:n3",
+      "span": {
+        "sourceId": "source:named-arity-extra",
+        "start": 0,
+        "end": 30,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Broken",
+      "typeParameters": [],
+      "value": {
+        "id": "named-arity-extra:n2",
+        "span": {
+          "sourceId": "source:named-arity-extra",
+          "start": 20,
+          "end": 30,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Int"
+        ],
+        "arguments": [
+          {
+            "id": "named-arity-extra:n1",
+            "span": {
+              "sourceId": "source:named-arity-extra",
+              "start": 24,
+              "end": 30,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "String"
+            ],
+            "arguments": []
+          }
+        ]
+      }
+    }
+  ]
+}

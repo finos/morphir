@@ -1,0 +1,64 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:union-duplicates",
+      "revision": "fixture-1",
+      "text": "type alias Repeated = Int | Int"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "union-duplicates:n4",
+      "span": {
+        "sourceId": "source:union-duplicates",
+        "start": 0,
+        "end": 31,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Repeated",
+      "typeParameters": [],
+      "value": {
+        "id": "union-duplicates:n3",
+        "span": {
+          "sourceId": "source:union-duplicates",
+          "start": 22,
+          "end": 31,
+          "unit": "utf8-byte"
+        },
+        "kind": "union",
+        "members": [
+          {
+            "id": "union-duplicates:n1",
+            "span": {
+              "sourceId": "source:union-duplicates",
+              "start": 22,
+              "end": 25,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "union-duplicates:n2",
+            "span": {
+              "sourceId": "source:union-duplicates",
+              "start": 28,
+              "end": 31,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          }
+        ]
+      }
+    }
+  ]
+}

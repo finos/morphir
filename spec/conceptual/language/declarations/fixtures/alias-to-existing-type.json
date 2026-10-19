@@ -1,0 +1,39 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:alias-to-existing-type",
+      "revision": "fixture-1",
+      "text": "type alias Copy = Domain.Quantity"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "alias-to-existing-type:n2",
+      "span": {
+        "sourceId": "source:alias-to-existing-type",
+        "start": 0,
+        "end": 33,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Copy",
+      "typeParameters": [],
+      "value": {
+        "id": "alias-to-existing-type:n1",
+        "span": {
+          "sourceId": "source:alias-to-existing-type",
+          "start": 18,
+          "end": 33,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Domain",
+          "Quantity"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

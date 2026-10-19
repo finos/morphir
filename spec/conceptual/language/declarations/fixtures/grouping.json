@@ -1,0 +1,38 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:grouping",
+      "revision": "fixture-1",
+      "text": "type alias Grouped = (Int)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "grouping:n2",
+      "span": {
+        "sourceId": "source:grouping",
+        "start": 0,
+        "end": 26,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Grouped",
+      "typeParameters": [],
+      "value": {
+        "id": "grouping:n1",
+        "span": {
+          "sourceId": "source:grouping",
+          "start": 21,
+          "end": 26,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Int"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

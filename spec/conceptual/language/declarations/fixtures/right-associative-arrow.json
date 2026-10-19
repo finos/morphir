@@ -1,0 +1,111 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:right-associative-arrow",
+      "revision": "fixture-1",
+      "text": "type alias Arrow a b c = a -> b -> c"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "right-associative-arrow:n9",
+      "span": {
+        "sourceId": "source:right-associative-arrow",
+        "start": 0,
+        "end": 36,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Arrow",
+      "typeParameters": [
+        {
+          "id": "right-associative-arrow:n6",
+          "span": {
+            "sourceId": "source:right-associative-arrow",
+            "start": 17,
+            "end": 18,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "declared"
+        },
+        {
+          "id": "right-associative-arrow:n7",
+          "span": {
+            "sourceId": "source:right-associative-arrow",
+            "start": 19,
+            "end": 20,
+            "unit": "utf8-byte"
+          },
+          "name": "b",
+          "origin": "declared"
+        },
+        {
+          "id": "right-associative-arrow:n8",
+          "span": {
+            "sourceId": "source:right-associative-arrow",
+            "start": 21,
+            "end": 22,
+            "unit": "utf8-byte"
+          },
+          "name": "c",
+          "origin": "declared"
+        }
+      ],
+      "value": {
+        "id": "right-associative-arrow:n5",
+        "span": {
+          "sourceId": "source:right-associative-arrow",
+          "start": 25,
+          "end": 36,
+          "unit": "utf8-byte"
+        },
+        "kind": "function",
+        "input": {
+          "id": "right-associative-arrow:n1",
+          "span": {
+            "sourceId": "source:right-associative-arrow",
+            "start": 25,
+            "end": 26,
+            "unit": "utf8-byte"
+          },
+          "kind": "variable",
+          "name": "a"
+        },
+        "output": {
+          "id": "right-associative-arrow:n4",
+          "span": {
+            "sourceId": "source:right-associative-arrow",
+            "start": 30,
+            "end": 36,
+            "unit": "utf8-byte"
+          },
+          "kind": "function",
+          "input": {
+            "id": "right-associative-arrow:n2",
+            "span": {
+              "sourceId": "source:right-associative-arrow",
+              "start": 30,
+              "end": 31,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "b"
+          },
+          "output": {
+            "id": "right-associative-arrow:n3",
+            "span": {
+              "sourceId": "source:right-associative-arrow",
+              "start": 35,
+              "end": 36,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "c"
+          }
+        }
+      }
+    }
+  ]
+}

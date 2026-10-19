@@ -1,0 +1,1 @@
+type alias Pair a b = (a, b)

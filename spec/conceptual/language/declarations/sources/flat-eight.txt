@@ -1,0 +1,1 @@
+type alias Eight = (Int, Int, Int, Int, Int, Int, Int, Int)

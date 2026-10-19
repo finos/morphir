@@ -1,0 +1,50 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:opaque-phantom",
+      "revision": "fixture-1",
+      "text": "opaque type alias Id entity = String"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "opaque-phantom:n3",
+      "span": {
+        "sourceId": "source:opaque-phantom",
+        "start": 0,
+        "end": 36,
+        "unit": "utf8-byte"
+      },
+      "kind": "opaque-alias",
+      "name": "Id",
+      "typeParameters": [
+        {
+          "id": "opaque-phantom:n2",
+          "span": {
+            "sourceId": "source:opaque-phantom",
+            "start": 21,
+            "end": 27,
+            "unit": "utf8-byte"
+          },
+          "name": "entity",
+          "origin": "declared"
+        }
+      ],
+      "representation": {
+        "id": "opaque-phantom:n1",
+        "span": {
+          "sourceId": "source:opaque-phantom",
+          "start": 30,
+          "end": 36,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "String"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:union-application-argument",
+      "revision": "fixture-1",
+      "text": "type alias Choices = List (Int | String)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "union-application-argument:n5",
+      "span": {
+        "sourceId": "source:union-application-argument",
+        "start": 0,
+        "end": 40,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Choices",
+      "typeParameters": [],
+      "value": {
+        "id": "union-application-argument:n4",
+        "span": {
+          "sourceId": "source:union-application-argument",
+          "start": 21,
+          "end": 40,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "List"
+        ],
+        "arguments": [
+          {
+            "id": "union-application-argument:n3",
+            "span": {
+              "sourceId": "source:union-application-argument",
+              "start": 26,
+              "end": 40,
+              "unit": "utf8-byte"
+            },
+            "kind": "union",
+            "members": [
+              {
+                "id": "union-application-argument:n1",
+                "span": {
+                  "sourceId": "source:union-application-argument",
+                  "start": 27,
+                  "end": 30,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "Int"
+                ],
+                "arguments": []
+              },
+              {
+                "id": "union-application-argument:n2",
+                "span": {
+                  "sourceId": "source:union-application-argument",
+                  "start": 33,
+                  "end": 39,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "String"
+                ],
+                "arguments": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

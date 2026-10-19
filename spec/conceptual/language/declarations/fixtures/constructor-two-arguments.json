@@ -1,0 +1,67 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:constructor-two-arguments",
+      "revision": "fixture-1",
+      "text": "type Pairing = Pair Int String"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "constructor-two-arguments:n4",
+      "span": {
+        "sourceId": "source:constructor-two-arguments",
+        "start": 0,
+        "end": 30,
+        "unit": "utf8-byte"
+      },
+      "kind": "custom",
+      "name": "Pairing",
+      "typeParameters": [],
+      "constructorAccess": "module-policy",
+      "constructors": [
+        {
+          "id": "constructor-two-arguments:n3",
+          "span": {
+            "sourceId": "source:constructor-two-arguments",
+            "start": 15,
+            "end": 30,
+            "unit": "utf8-byte"
+          },
+          "name": "Pair",
+          "arguments": [
+            {
+              "id": "constructor-two-arguments:n1",
+              "span": {
+                "sourceId": "source:constructor-two-arguments",
+                "start": 20,
+                "end": 23,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            },
+            {
+              "id": "constructor-two-arguments:n2",
+              "span": {
+                "sourceId": "source:constructor-two-arguments",
+                "start": 24,
+                "end": 30,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "String"
+              ],
+              "arguments": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

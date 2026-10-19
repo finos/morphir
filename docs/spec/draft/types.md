@@ -149,6 +149,14 @@ Union appears inside existing `TypeAliasSpecification`/`TypeAliasDefinition`, re
 
 The [Union contract, reference fixtures and consumer inventory](https://github.com/finos/morphir/tree/main/spec/conceptual/union) define profile `morphir-untagged-union/0.1.0-draft.1`. U1 (`morphir-ukvn.7.2`) publishes that design. U2 (`morphir-ukvn.7.9.1`) owns native nodes, codecs, traversal, substitution and typing. U3 (`morphir-ukvn.7.9.2`) owns projection and consumer qualification, including schemas and IR/SDK self-specification coverage. The reference corpus does not establish current runtime or schema support.
 
+The [declaration AST, grammar and source-span contract](https://github.com/finos/morphir/tree/main/spec/conceptual/language)
+defines the exact draft profile `morphir-declarations/0.1.0-draft.1` for L1 (`morphir-ukvn.7.8.1`).
+It supplies parser-independent declaration fixtures, explicit generic binders and UTF-8 byte spans for L3/L4,
+including alias/custom-type distinctions, opaque declarations, flat tuples, unions and bodyless function
+specifications. Source grammar choices belong to this bounded fragment profile; enclosing scopes, imports,
+exports and later declaration families have separate owners. Reference outcomes and integrity tests do not
+establish parser, resolver or execution support.
+
 ## JSON Serialization Summary
 
 IR v4 supports two serialization modes:

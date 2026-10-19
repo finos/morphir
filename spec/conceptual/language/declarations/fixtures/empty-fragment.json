@@ -1,0 +1,11 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:empty-fragment",
+      "revision": "fixture-1",
+      "text": ""
+    }
+  ],
+  "declarations": []
+}

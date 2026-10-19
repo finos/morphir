@@ -1,0 +1,1 @@
+type alias Apply a b = a b

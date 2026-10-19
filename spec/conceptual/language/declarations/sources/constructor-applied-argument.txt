@@ -1,0 +1,1 @@
+type Bag a = Bag (List a)

@@ -1,0 +1,125 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:generic-quad",
+      "revision": "fixture-1",
+      "text": "type alias Quad a b c d = (a, b, c, d)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "generic-quad:n10",
+      "span": {
+        "sourceId": "source:generic-quad",
+        "start": 0,
+        "end": 38,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Quad",
+      "typeParameters": [
+        {
+          "id": "generic-quad:n6",
+          "span": {
+            "sourceId": "source:generic-quad",
+            "start": 16,
+            "end": 17,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "declared"
+        },
+        {
+          "id": "generic-quad:n7",
+          "span": {
+            "sourceId": "source:generic-quad",
+            "start": 18,
+            "end": 19,
+            "unit": "utf8-byte"
+          },
+          "name": "b",
+          "origin": "declared"
+        },
+        {
+          "id": "generic-quad:n8",
+          "span": {
+            "sourceId": "source:generic-quad",
+            "start": 20,
+            "end": 21,
+            "unit": "utf8-byte"
+          },
+          "name": "c",
+          "origin": "declared"
+        },
+        {
+          "id": "generic-quad:n9",
+          "span": {
+            "sourceId": "source:generic-quad",
+            "start": 22,
+            "end": 23,
+            "unit": "utf8-byte"
+          },
+          "name": "d",
+          "origin": "declared"
+        }
+      ],
+      "value": {
+        "id": "generic-quad:n5",
+        "span": {
+          "sourceId": "source:generic-quad",
+          "start": 26,
+          "end": 38,
+          "unit": "utf8-byte"
+        },
+        "kind": "tuple",
+        "elements": [
+          {
+            "id": "generic-quad:n1",
+            "span": {
+              "sourceId": "source:generic-quad",
+              "start": 27,
+              "end": 28,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "a"
+          },
+          {
+            "id": "generic-quad:n2",
+            "span": {
+              "sourceId": "source:generic-quad",
+              "start": 30,
+              "end": 31,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "b"
+          },
+          {
+            "id": "generic-quad:n3",
+            "span": {
+              "sourceId": "source:generic-quad",
+              "start": 33,
+              "end": 34,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "c"
+          },
+          {
+            "id": "generic-quad:n4",
+            "span": {
+              "sourceId": "source:generic-quad",
+              "start": 36,
+              "end": 37,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "d"
+          }
+        ]
+      }
+    }
+  ]
+}

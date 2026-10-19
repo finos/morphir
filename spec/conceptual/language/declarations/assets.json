@@ -1,0 +1,655 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "assets": [
+    {
+      "path": "../ast/fixture-builders.ts",
+      "bytes": 616,
+      "sha256": "456f1c8c17a8a8e4a835ba546f2fb6ae01314479cf097e4214a79f5d13c08889"
+    },
+    {
+      "path": "../ast/types.ts",
+      "bytes": 1571,
+      "sha256": "4ca81688f54f737491945db85f1c009300c6a891894a113d5cea7f334be97122"
+    },
+    {
+      "path": "../contract.html",
+      "bytes": 25070,
+      "sha256": "9c424d3bb3e2abe533be8de8814057a1ebfeb6b6f99d5252978e0cd51391445e"
+    },
+    {
+      "path": "cases.json",
+      "bytes": 41005,
+      "sha256": "de617768fe5a8bfdb4616d598b7fda154f7c1455b6a2ac450f6e8d339606edf5"
+    },
+    {
+      "path": "environment.json",
+      "bytes": 774,
+      "sha256": "7d6f4eb21d3142e0c429dd2d77842a6404543e53815acd3771d89c89b696884c"
+    },
+    {
+      "path": "fixtures/alias-cycle.json",
+      "bytes": 1313,
+      "sha256": "519356f28b1353e28ff7bb3724086087a59960b4611f230b77fd1d12f86b3849"
+    },
+    {
+      "path": "fixtures/alias-record.json",
+      "bytes": 2046,
+      "sha256": "2cb4afea690afe865d183c10d1343cc978c7529e503f14aa0e78fdf975bd9657"
+    },
+    {
+      "path": "fixtures/alias-scalar.json",
+      "bytes": 776,
+      "sha256": "da72fe912a654f6ae67f38d6d7d4c4208c7a183bbd934a23ec8604d74252103f"
+    },
+    {
+      "path": "fixtures/alias-to-existing-type.json",
+      "bytes": 853,
+      "sha256": "3e312607f364c4a81b0bbfa968208731b8b451c00428814bf26d714a0d14414b"
+    },
+    {
+      "path": "fixtures/application-union-arrow.json",
+      "bytes": 2925,
+      "sha256": "5f9d1a39e31631d68262f52d4f2a674c7ae3c52182f1f064da9f62b3ec183ebe"
+    },
+    {
+      "path": "fixtures/bodyless-function.json",
+      "bytes": 2107,
+      "sha256": "633c11a48bd2de243596ebd4657f1d65a11871ac9437898769c41165be1b21d8"
+    },
+    {
+      "path": "fixtures/constructor-applied-argument.json",
+      "bytes": 2020,
+      "sha256": "1b5d7ab9d6039154f831c4df5346f019aa700ec4e76b7ae17bd2bdbc1d198a34"
+    },
+    {
+      "path": "fixtures/constructor-two-arguments.json",
+      "bytes": 1704,
+      "sha256": "5d90bd4190f0be88dcd63f601c31e38a223cd5e6fca764dc2fe9d5a673088faa"
+    },
+    {
+      "path": "fixtures/custom-generic.json",
+      "bytes": 1712,
+      "sha256": "808c50c83423ed8cbb75d42c362ef87ec9622f772f4e21be5702770228957d66"
+    },
+    {
+      "path": "fixtures/duplicate-input.json",
+      "bytes": 2058,
+      "sha256": "2c06b3504b8dfad20de70b7c13efaf5f73c80c176e19a61084a4d4c46c66cad7"
+    },
+    {
+      "path": "fixtures/duplicate-node-id.json",
+      "bytes": 776,
+      "sha256": "5eeab74bad5fdff8fc47ceab704719d3df5bb5a80f8a18dca83187d65e4de7b1"
+    },
+    {
+      "path": "fixtures/duplicate-source-id.json",
+      "bytes": 899,
+      "sha256": "9ec52c903819765fde38e03b9627ac9b7f30541f5e70dcb2e2bc50d2d2d4bf27"
+    },
+    {
+      "path": "fixtures/duplicate-type-binder.json",
+      "bytes": 1978,
+      "sha256": "096cba3ece8fa171921036c243a0b42c95a7a6c7f67e19af65a60fe717513243"
+    },
+    {
+      "path": "fixtures/empty-fragment.json",
+      "bytes": 193,
+      "sha256": "b58793fd931975c1fdb67a6a1c3e4245d561ab7473669b789780d7beb8d91397"
+    },
+    {
+      "path": "fixtures/empty-named-path.json",
+      "bytes": 751,
+      "sha256": "682de153ff4a676c09419f2a4040cc9cc90d873e0e2ac02d622c04f0c49350d3"
+    },
+    {
+      "path": "fixtures/empty-record.json",
+      "bytes": 720,
+      "sha256": "bf9a64a79b831e49c493a271af2020eaa79a6b4e30d28307dd7369e113324243"
+    },
+    {
+      "path": "fixtures/flat-eight.json",
+      "bytes": 3510,
+      "sha256": "bd64c1c9298649fb492fa331dab102ff67d1159a198dc1f9d8da915c5e2b2296"
+    },
+    {
+      "path": "fixtures/flat-quad.json",
+      "bytes": 2106,
+      "sha256": "d8f866eeaa2e2e29c6ecdaed299304a8fce9b05531e172e454c08d8988b19c1a"
+    },
+    {
+      "path": "fixtures/forward-alias.json",
+      "bytes": 1363,
+      "sha256": "a337ca6717efe512b9f8331affd47a3bdaa381652fb0e24ae606594c58502b5f"
+    },
+    {
+      "path": "fixtures/function-output-binder.json",
+      "bytes": 1094,
+      "sha256": "7368b090d2af7595d81f08b6afc1843e2edf35abe8671b9824ad6b4a676a3dd7"
+    },
+    {
+      "path": "fixtures/function-tuple-input.json",
+      "bytes": 2287,
+      "sha256": "5e19a9d5f8b20f6b3a10532fc93b5bcb740d9689b30e37770f2789eb33ec2f12"
+    },
+    {
+      "path": "fixtures/function-two-inputs.json",
+      "bytes": 2119,
+      "sha256": "2116d753c9257d25e32fe437cf652e67d13485cb5eebeefd9fa0d81b8b3466b4"
+    },
+    {
+      "path": "fixtures/function-valued-output.json",
+      "bytes": 1485,
+      "sha256": "f5a023d8a5bce3020cef0ae95a70251ce11239c32bf5457c38b984eead9a50f7"
+    },
+    {
+      "path": "fixtures/generic-eight.json",
+      "bytes": 5299,
+      "sha256": "779fe3987cea87dff69ac7a28f6def6dca6915ae2dc45e5fd6823c9d2d9fa0e7"
+    },
+    {
+      "path": "fixtures/generic-pair.json",
+      "bytes": 1861,
+      "sha256": "5aa1d3980c0960e288e1770d6f2b9afb090ace899f5650e45c3f53675f209807"
+    },
+    {
+      "path": "fixtures/generic-quad.json",
+      "bytes": 2992,
+      "sha256": "f4f46b274e88a42d862710a8fb87e45c5d07c9ccc3e8beeb60a359b2132980c2"
+    },
+    {
+      "path": "fixtures/grouping.json",
+      "bytes": 754,
+      "sha256": "663cfa9916d67e4423f4d51e92ff2c52b01efb9862366a81830e374450f86715"
+    },
+    {
+      "path": "fixtures/guarded-recursion.json",
+      "bytes": 2527,
+      "sha256": "4354b4c3a13d009487ae4a26c0855361f21f809bec3df583e32c46560e3ee3ff"
+    },
+    {
+      "path": "fixtures/implicit-binder-order.json",
+      "bytes": 4008,
+      "sha256": "a5bfef81147d5e3856ccf26acf8ac293343e40698f38c45acf6f353eb12e0369"
+    },
+    {
+      "path": "fixtures/implicit-function-binder.json",
+      "bytes": 1712,
+      "sha256": "d666520489dc8ef5952352e85925f9e54f1c7040b08e865fe451c36e471402f4"
+    },
+    {
+      "path": "fixtures/leading-constructor-pipe.json",
+      "bytes": 855,
+      "sha256": "c5ab47c191848fbf17cb44bc91b8198a668c85928e8f2dd23f6cfebb6e6ab079"
+    },
+    {
+      "path": "fixtures/missing-implicit-binder.json",
+      "bytes": 1412,
+      "sha256": "8f9f68e0d8842d472a05fbad08b632b84a3f5e298a63ec5bddb6df294a62ca82"
+    },
+    {
+      "path": "fixtures/missing-span.json",
+      "bytes": 641,
+      "sha256": "74a8ca07f8d02c1b77650e748f5d64646f9234b8ae01fff200a11754e88c40c4"
+    },
+    {
+      "path": "fixtures/multiple-declarations.json",
+      "bytes": 1433,
+      "sha256": "6ff8c1aa6c9433db73add4703ab15ed0c526ecd266b4f11b83f043cd4a3460b5"
+    },
+    {
+      "path": "fixtures/named-arity-extra.json",
+      "bytes": 1171,
+      "sha256": "1f4c01e0a438286e203d5d82cbc8c9a07ab5bc270f6988a9445f9ee2afcb33dd"
+    },
+    {
+      "path": "fixtures/named-arity-missing.json",
+      "bytes": 807,
+      "sha256": "b3549b32c30cb094bc0311873e556a6ca13e1c2b69e286a059c885da55c36da6"
+    },
+    {
+      "path": "fixtures/nested-pairs.json",
+      "bytes": 2981,
+      "sha256": "3bb0e974fe1f78333bdc541bf2bff2f0e26c243aa5b28c6d31ed6f7c64c36aa4"
+    },
+    {
+      "path": "fixtures/nullary-constructor.json",
+      "bytes": 827,
+      "sha256": "26b93980782a537ef6c2596865122425253662fc0cd6f95a09779a530c0a0e91"
+    },
+    {
+      "path": "fixtures/opaque-custom.json",
+      "bytes": 1506,
+      "sha256": "601f6472930f0de74cc82c0b709a2dfb87a36ff9f0fdaf4d6d0de8d747ea9b4f"
+    },
+    {
+      "path": "fixtures/opaque-phantom.json",
+      "bytes": 1093,
+      "sha256": "9577411acb47e8fd32894f5adc427d6eb58ff4ad9890ff821909063b4506f353"
+    },
+    {
+      "path": "fixtures/opaque-record.json",
+      "bytes": 1426,
+      "sha256": "5eb468b773294378f9f9cd9a193534a462bfd07be771e1d8a96b5858fd4b2a9a"
+    },
+    {
+      "path": "fixtures/opaque-scalar.json",
+      "bytes": 804,
+      "sha256": "ac537feb04758639cfab3ef96b7ec9834b6bd47f3fedd3876f57f09948e551fc"
+    },
+    {
+      "path": "fixtures/optional-terminator.json",
+      "bytes": 810,
+      "sha256": "b92ff8394dc76d5707e088f034770c63f7d82b3df94c87b5414f8d8a9ee83c30"
+    },
+    {
+      "path": "fixtures/reserved-result-input.json",
+      "bytes": 1484,
+      "sha256": "a5094bc4199f31019d39a5c936ee101e94fa7f580805762836224005e51a05cb"
+    },
+    {
+      "path": "fixtures/right-associative-arrow.json",
+      "bytes": 2871,
+      "sha256": "ec7974d2cde54fa1a667c1b49c0adafd5b3d53463a21eef6e391d8f79930d373"
+    },
+    {
+      "path": "fixtures/span-inside-utf8-codepoint.json",
+      "bytes": 777,
+      "sha256": "0efac224f434ba504814919cd4875cc02d2f3c405763798467b903967d92c32c"
+    },
+    {
+      "path": "fixtures/span-negative.json",
+      "bytes": 777,
+      "sha256": "89e33e1d9cc28ce522102cca24f5ff2539b96fd36f2c180f9070c42079324663"
+    },
+    {
+      "path": "fixtures/span-outside-source.json",
+      "bytes": 777,
+      "sha256": "2c7c9600c0fd7c7d513b68b4dfd270e440a744d8419a5819f8ed9e6c4cc0df26"
+    },
+    {
+      "path": "fixtures/tuple-ast-arity.json",
+      "bytes": 1076,
+      "sha256": "0f34d2e9d18b3e9edbc4760ca240c2c4a8569273e398c4ad43d94f49f6e563d1"
+    },
+    {
+      "path": "fixtures/unbound-variable.json",
+      "bytes": 742,
+      "sha256": "d107597c47420a5c88e1ffd87f11ca6cc30ddc60d97e477bc413def1c43efa5d"
+    },
+    {
+      "path": "fixtures/union-application-argument.json",
+      "bytes": 2063,
+      "sha256": "29ca442f1cd020773307070b9f99ac7cb79f0e5d40330f71139c58d9ab474726"
+    },
+    {
+      "path": "fixtures/union-ast-arity.json",
+      "bytes": 1095,
+      "sha256": "146c3072fa3c5371e407d709405906c504b4ab7adbea34336e422ce54adc8ed2"
+    },
+    {
+      "path": "fixtures/union-duplicates.json",
+      "bytes": 1473,
+      "sha256": "c74b15c7c115439cbdb93bf73d89a10b8e65f95648d6f3ea0f05e2e0e3a806e7"
+    },
+    {
+      "path": "fixtures/union-members.json",
+      "bytes": 1448,
+      "sha256": "fd91805bd962bce3273d09c143fa9da2603b0029f56a62c83af6ae817e1fd285"
+    },
+    {
+      "path": "fixtures/union-nested.json",
+      "bytes": 2210,
+      "sha256": "ba22e1893701a10cac6ab330bd526860fdbe5fe8ee582bdc4b297dc4ed9d1ecc"
+    },
+    {
+      "path": "fixtures/union-reordered.json",
+      "bytes": 1466,
+      "sha256": "0d52f57a3c82c2b3d7e13ad47d511567553b0821bcf05528001af14dbb000498"
+    },
+    {
+      "path": "fixtures/unit.json",
+      "bytes": 656,
+      "sha256": "1e14b4a7856504f6884439dfaae02e0ba9c2fcd5bab56cf0fee1fe291f97c8b0"
+    },
+    {
+      "path": "fixtures/unknown-critical-member.json",
+      "bytes": 879,
+      "sha256": "cad3c34b632e232df118c6df9c6ee9631a033f7e052d16c9eb24def9e26e5088"
+    },
+    {
+      "path": "fixtures/unknown-declaration-family.json",
+      "bytes": 784,
+      "sha256": "075639d3968ed9e5af998d05f206e358fcf8ecf7292ca6dc51a9a8570bf87b91"
+    },
+    {
+      "path": "fixtures/unknown-profile.json",
+      "bytes": 776,
+      "sha256": "b4fb5f048c38d421352f6832393641f9aa9cdfb3e9638a7c0210ad9e19058a88"
+    },
+    {
+      "path": "fixtures/unknown-source-id.json",
+      "bytes": 764,
+      "sha256": "8327ee618fe6578db669f72cfe1cf6002fbbe214eeebf1537fb0fd5dd24e488e"
+    },
+    {
+      "path": "fixtures/unresolved-type.json",
+      "bytes": 793,
+      "sha256": "682d4ba68d7c1668661e4ae89c6c7d17aa3b8319984d3069cfd74c10fbf3b971"
+    },
+    {
+      "path": "fixtures/utf8-crlf.json",
+      "bytes": 778,
+      "sha256": "6d856f88e6b9caa1a31d7e21c6be48b750b1102f109dc6054db2d24bd6c906cb"
+    },
+    {
+      "path": "grammar.ebnf",
+      "bytes": 2360,
+      "sha256": "b11628694d5470cf27ad08c6deb89b1ef6bb131c1010f4e5078c7310bd8af0ce"
+    },
+    {
+      "path": "sources/.gitattributes",
+      "bytes": 130,
+      "sha256": "aac868eb818f06d69d0534357900f6bae2c6e77caa6000aeb0a18b5644cc6a4e"
+    },
+    {
+      "path": "sources/alias-cycle.txt",
+      "bytes": 33,
+      "sha256": "98268f6e0f841c9fcb7985cd3ad6f8b53e131e01b9607bafbba523fc1e534f0f"
+    },
+    {
+      "path": "sources/alias-leading-pipe.txt",
+      "bytes": 20,
+      "sha256": "ed309c6c5280f2e35d8d54a45c8267596efb0bdde3433ac31994f5ba29e3a672"
+    },
+    {
+      "path": "sources/alias-record.txt",
+      "bytes": 46,
+      "sha256": "2eeb9b665fe9238ad8928905bb3e96b9f27955bd0e126169ce0f1578ec5b3379"
+    },
+    {
+      "path": "sources/alias-scalar.txt",
+      "bytes": 26,
+      "sha256": "5dc6b44810aaafc7f5fe4bc54599e94378737081cdf44c7619f2a9f8833ee406"
+    },
+    {
+      "path": "sources/alias-to-existing-type.txt",
+      "bytes": 33,
+      "sha256": "7cd5f0bc0ccc27f68eed22496688a848c066d6940cdd499e21950420165443c8"
+    },
+    {
+      "path": "sources/application-union-arrow.txt",
+      "bytes": 42,
+      "sha256": "8a87681b8da2ca01b839737d8f2e7bac898c662bc55afad2f724e3ae96c85844"
+    },
+    {
+      "path": "sources/bodyless-function.txt",
+      "bytes": 52,
+      "sha256": "60873094af6755b7a3e1a2acb2c6f5a9b713688aa372e5b1252058593468bb61"
+    },
+    {
+      "path": "sources/constructor-applied-argument.txt",
+      "bytes": 25,
+      "sha256": "d3be46172e1bc6364016f6146e3ece6eeaee750016448ad41e1af5b323fffdfa"
+    },
+    {
+      "path": "sources/constructor-two-arguments.txt",
+      "bytes": 30,
+      "sha256": "95b647d98807958082e0b3fa1b105d704e326d59da84d04a163c442fe29178f3"
+    },
+    {
+      "path": "sources/custom-generic.txt",
+      "bytes": 31,
+      "sha256": "a6538adae20dd83ea14384d1cbe7fd240fdbaef2a3f860696e80f18de5f16aac"
+    },
+    {
+      "path": "sources/duplicate-input.txt",
+      "bytes": 41,
+      "sha256": "21e106f547c101e8b44b881b8f915410cc08425341eca9d92d56ab97ac0a4dba"
+    },
+    {
+      "path": "sources/duplicate-type-binder.txt",
+      "bytes": 28,
+      "sha256": "b16879717e904de0368c01a432fcc66a8d712b77e2b14462232d89a7735d0599"
+    },
+    {
+      "path": "sources/empty-fragment.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "sources/empty-record.txt",
+      "bytes": 21,
+      "sha256": "28173142859c320cfe46b52a6451d29f8791d77c287fa5c21b4ccfde392a8e3c"
+    },
+    {
+      "path": "sources/explicit-fn-binders-unselected.txt",
+      "bytes": 22,
+      "sha256": "9ea0d37237359cdf7e97cc572aa2934c8957a5e0ac6bd99029e6cef6af97d8af"
+    },
+    {
+      "path": "sources/flat-eight.txt",
+      "bytes": 59,
+      "sha256": "733c492683e7c0be3e79e7abdd5842ac8280e7848859770c375bcc5855eafaed"
+    },
+    {
+      "path": "sources/flat-quad.txt",
+      "bytes": 42,
+      "sha256": "a6cb22192b920c765084aecd705a5b6d9bdef36e028e5b46f80dc947f2fd0707"
+    },
+    {
+      "path": "sources/forward-alias.txt",
+      "bytes": 49,
+      "sha256": "f97ade053e8e105e50a166d714f1c101b5fb3c1ca277262812b18eb6d1d9e919"
+    },
+    {
+      "path": "sources/function-body.txt",
+      "bytes": 17,
+      "sha256": "d8777642b640172d6fac3447e46ed7707ae7dae6da8e1cc6e6da63ca7295e04d"
+    },
+    {
+      "path": "sources/function-output-binder.txt",
+      "bytes": 17,
+      "sha256": "802013f2077b9a9e8e464b5aa67defabebaef59bb2910886317567fe72f3d05d"
+    },
+    {
+      "path": "sources/function-tuple-input.txt",
+      "bytes": 38,
+      "sha256": "1c0592442bdad7924b68d9fcd5aa7aa4491fd65d65af6adb038ae174fc55f7b9"
+    },
+    {
+      "path": "sources/function-two-inputs.txt",
+      "bytes": 45,
+      "sha256": "0f8aab592e2dd6e570da42ccee17ac7e7c55e43fa77b9272d57e74cb55ce2b16"
+    },
+    {
+      "path": "sources/function-valued-output.txt",
+      "bytes": 26,
+      "sha256": "6cf6e6e66df3f26d3ea48f5203b631a6fc165afdaf6389ae2c9d25f120656046"
+    },
+    {
+      "path": "sources/generic-eight.txt",
+      "bytes": 59,
+      "sha256": "61c3d8b4c9095603cc09ecae63e69557e756cdde57b845dee0fccb7af31bc11d"
+    },
+    {
+      "path": "sources/generic-pair.txt",
+      "bytes": 28,
+      "sha256": "bf320bcfd1e6ced1e98382a1f81b34419daa5a0422fbff4877706d47a34ca453"
+    },
+    {
+      "path": "sources/generic-quad.txt",
+      "bytes": 38,
+      "sha256": "3d7007001ed362ba1b0453b7c7fd76981fb3e5f7730b87efec53f839b327c808"
+    },
+    {
+      "path": "sources/grouping.txt",
+      "bytes": 26,
+      "sha256": "e261e2db3ffcd8d5a513ffdefe9ce285ffcf895abca6cb6ed6b9afd904eb9896"
+    },
+    {
+      "path": "sources/guarded-recursion.txt",
+      "bytes": 37,
+      "sha256": "86de6e0fc72fc9779f672041619e89cce851cdfcb4f1ecd5ce5897bc22007f5f"
+    },
+    {
+      "path": "sources/higher-kinded-application.txt",
+      "bytes": 26,
+      "sha256": "2d1d953e9f14e411a2c41bac728ed6a30b7b29cfe5870bbde8ecf7233ee0b0c5"
+    },
+    {
+      "path": "sources/implicit-binder-order.txt",
+      "bytes": 50,
+      "sha256": "f92f2b87239016b294d323ebc55877609260f8d6e26feacef3caac6d026f3a92"
+    },
+    {
+      "path": "sources/implicit-function-binder.txt",
+      "bytes": 26,
+      "sha256": "8f532115590bd8fe595dfac5b87008fddc930b2991af19a456499b26bc50b41c"
+    },
+    {
+      "path": "sources/leading-constructor-pipe.txt",
+      "bytes": 12,
+      "sha256": "f796e965f5c1995ae99a8c25e023c5a98ca9d3d60ec20881d22a6953dad5ef27"
+    },
+    {
+      "path": "sources/missing-alias-rhs.txt",
+      "bytes": 14,
+      "sha256": "4e541fd3ee019a67b5c2f383860ed375f1aa4165eaf23eb6b9ed7e09c7f519f4"
+    },
+    {
+      "path": "sources/missing-constructor.txt",
+      "bytes": 10,
+      "sha256": "1feab468279d1b0b7b1c9e4916b49534da2f2306edd760c7b46f97b452df0798"
+    },
+    {
+      "path": "sources/missing-delimiter.txt",
+      "bytes": 27,
+      "sha256": "95a7cda5b04d40e740b0eddcb009e32fb1606940a129b2f1bf3264e6a08a4e7e"
+    },
+    {
+      "path": "sources/multiple-declarations.txt",
+      "bytes": 48,
+      "sha256": "ba76520f5d5e6b6d98e4f2c459e35b3c4a77a482ad67bd86cd3a7922a1fb0a48"
+    },
+    {
+      "path": "sources/named-arity-extra.txt",
+      "bytes": 30,
+      "sha256": "4d8a5b53d069fb10d18c94a038fe0198ae46a3a41c08dcdb80952318d6d69728"
+    },
+    {
+      "path": "sources/named-arity-missing.txt",
+      "bytes": 24,
+      "sha256": "8a029f9125c3edfee3625ab47a3cae884afac8f735def698da627405a402499f"
+    },
+    {
+      "path": "sources/nested-pairs.txt",
+      "bytes": 48,
+      "sha256": "dfa05d91a6387527ae7438e66229956ee53426b53c894102dcb99d5597fd1cad"
+    },
+    {
+      "path": "sources/nullary-constructor.txt",
+      "bytes": 10,
+      "sha256": "3db515dda2250a907d96771d50d3437e7071ddf09dd748c085c36c487a5d96fe"
+    },
+    {
+      "path": "sources/opaque-custom.txt",
+      "bytes": 43,
+      "sha256": "b340dbf2828de838f38a9f171675fb50b2d872d43678fafdb8f1a8bb44dc8c02"
+    },
+    {
+      "path": "sources/opaque-phantom.txt",
+      "bytes": 36,
+      "sha256": "2a76039312155d41c4de8883318af81f87ffa65127b75a216a5361b824a4012e"
+    },
+    {
+      "path": "sources/opaque-record.txt",
+      "bytes": 44,
+      "sha256": "888b313ac83ba4efcef5010943de7b7e850de07e7643ae609045dcc7fb72a616"
+    },
+    {
+      "path": "sources/opaque-scalar.txt",
+      "bytes": 33,
+      "sha256": "b0eac570910378a832e35a2eaa67940ebcc4358854e173a8fe193553cb1e6997"
+    },
+    {
+      "path": "sources/optional-terminator.txt",
+      "bytes": 26,
+      "sha256": "f5d27fc832e1adf2f02b25d05268660db2bdf4efd3422171d4b1a90ddbaff2c0"
+    },
+    {
+      "path": "sources/record-trailing-comma.txt",
+      "bytes": 30,
+      "sha256": "46cfe2c3c6870fb94b75e116701cd47681506acc05fba3d4afccf5a3b890f4e5"
+    },
+    {
+      "path": "sources/reserved-result-input.txt",
+      "bytes": 26,
+      "sha256": "9c23cafd72f78d88cb3f0234e06f04fa8bbfe7bc1a8719f31e22baa1ce1ed9e0"
+    },
+    {
+      "path": "sources/right-associative-arrow.txt",
+      "bytes": 36,
+      "sha256": "e59c58e0417beb8c91cfc7daaaab1a14a9b3a2a9e1e77083505af1d64603e256"
+    },
+    {
+      "path": "sources/singleton-tuple.txt",
+      "bytes": 21,
+      "sha256": "2b146182dfa6b87cae54fb62e01922f5fe69ec6eafb33ffba65640fc59d471d5"
+    },
+    {
+      "path": "sources/trailing-constructor-pipe.txt",
+      "bytes": 12,
+      "sha256": "480bdbe29a107d9f034dfef7b084633184f290f447635793e64723822a90cde0"
+    },
+    {
+      "path": "sources/tuple-trailing-comma.txt",
+      "bytes": 29,
+      "sha256": "13e04a4bb4c9f14fca9f31e47b8903760db7750f4a829cfca63ea8888e8880a3"
+    },
+    {
+      "path": "sources/unbound-variable.txt",
+      "bytes": 21,
+      "sha256": "38077809df498630982eb43b12408735a31e5ea2f737d3b5d3a992e405225059"
+    },
+    {
+      "path": "sources/union-application-argument.txt",
+      "bytes": 40,
+      "sha256": "7c0774ce744d4a39bfa19bce7e0620016c559c71cc1d494f3dfdc5cb04f17532"
+    },
+    {
+      "path": "sources/union-duplicates.txt",
+      "bytes": 31,
+      "sha256": "b25f23a4f16cac193094828d0da25a885f90fff33d0aae606c92151c39c6e882"
+    },
+    {
+      "path": "sources/union-members.txt",
+      "bytes": 32,
+      "sha256": "603dcae21a5cb3cfe9aa56d7834ae66916b4e0261906dc48fb444605e7c76f7c"
+    },
+    {
+      "path": "sources/union-nested.txt",
+      "bytes": 41,
+      "sha256": "a1b4a8e90b8dedfb224f8c227868ca5a7487f1013cc8ab9bad7047b7aa5b2466"
+    },
+    {
+      "path": "sources/union-reordered.txt",
+      "bytes": 32,
+      "sha256": "4969e1cfb3cab3b4ea6ab6ecc106bb73ffe681ebe5936377bac44650bce86602"
+    },
+    {
+      "path": "sources/unit.txt",
+      "bytes": 21,
+      "sha256": "2db697b4a18a7b6d255b84558e6de622e60a35a5a2dd314a15e0ef80fdb58bae"
+    },
+    {
+      "path": "sources/unresolved-type.txt",
+      "bytes": 27,
+      "sha256": "865fd604a81f61afb5c79c4c2d6f126e0d2df9973575ac10cbe29efb9b555b60"
+    },
+    {
+      "path": "sources/utf8-crlf.txt",
+      "bytes": 39,
+      "sha256": "52186aeb4f57705d3074b7c726de68ccd3381f702912dcfe12dbc0febfe65f5f"
+    }
+  ]
+}
