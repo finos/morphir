@@ -1,0 +1,1738 @@
+{
+  "corpusVersion": "0.1.0-draft.1",
+  "profile": "morphir-contracts/0.1.0-draft.1",
+  "status": "reference-only",
+  "environment": "environment.json",
+  "coverage": {
+    "satisfied": [
+      "contracts-0001",
+      "contracts-0004",
+      "contracts-0005",
+      "contracts-0006",
+      "contracts-0011",
+      "contracts-0014",
+      "contracts-0015",
+      "contracts-0024",
+      "contracts-0028"
+    ],
+    "violated": [
+      "contracts-0002",
+      "contracts-0003",
+      "contracts-0007",
+      "contracts-0013",
+      "contracts-0016",
+      "contracts-0021"
+    ],
+    "not_applicable": [
+      "contracts-0012",
+      "contracts-0025",
+      "contracts-0029",
+      "contracts-0030"
+    ],
+    "invalid": [
+      "contracts-0008",
+      "contracts-0019",
+      "contracts-0020",
+      "contracts-0022",
+      "contracts-0027",
+      "contracts-0031",
+      "contracts-0032",
+      "contracts-0033",
+      "contracts-0039",
+      "contracts-0040",
+      "contracts-0041"
+    ],
+    "inconclusive": [
+      "contracts-0009",
+      "contracts-0010",
+      "contracts-0026",
+      "contracts-0037"
+    ],
+    "unsupported": [
+      "contracts-0017",
+      "contracts-0018",
+      "contracts-0038"
+    ],
+    "execution-error": [
+      "contracts-0023",
+      "contracts-0034",
+      "contracts-0035",
+      "contracts-0036",
+      "contracts-0042"
+    ],
+    "frame": [
+      "contracts-0001",
+      "contracts-0002",
+      "contracts-0003",
+      "contracts-0004",
+      "contracts-0005",
+      "contracts-0006",
+      "contracts-0007",
+      "contracts-0014",
+      "contracts-0021"
+    ],
+    "supplied-result": [
+      "contracts-0001",
+      "contracts-0002",
+      "contracts-0003",
+      "contracts-0004",
+      "contracts-0005",
+      "contracts-0006",
+      "contracts-0007",
+      "contracts-0008",
+      "contracts-0009",
+      "contracts-0010",
+      "contracts-0011",
+      "contracts-0012",
+      "contracts-0013",
+      "contracts-0014",
+      "contracts-0015",
+      "contracts-0016",
+      "contracts-0017",
+      "contracts-0019",
+      "contracts-0020",
+      "contracts-0021",
+      "contracts-0022",
+      "contracts-0023",
+      "contracts-0025",
+      "contracts-0026",
+      "contracts-0029",
+      "contracts-0030",
+      "contracts-0031",
+      "contracts-0032",
+      "contracts-0033",
+      "contracts-0034",
+      "contracts-0035",
+      "contracts-0036",
+      "contracts-0037",
+      "contracts-0038",
+      "contracts-0039",
+      "contracts-0040",
+      "contracts-0041",
+      "contracts-0042"
+    ],
+    "exact-int": [
+      "contracts-0014",
+      "contracts-0015",
+      "contracts-0016"
+    ]
+  },
+  "cases": [
+    {
+      "id": "contracts-0001",
+      "description": "An accepted partial return reduces the balance and preserves the loan identity and asset.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0002",
+      "description": "A wrong balance is a violated postcondition. The case passes only because it expects that violation; the contract observation stays violated.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "70"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "violated",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "violated"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0003",
+      "description": "A correct balance with a different asset violates only the frame clause. No unspecified field is implicitly preserved.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-2",
+            "outstanding": "60"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "violated",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "violated"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0004",
+      "description": "A full return reaches a zero balance.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "100"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "0"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0005",
+      "description": "A zero return leaves the loan unchanged.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "0"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0006",
+      "description": "An over-return supplied as the modeled OverReturn rejection satisfies the rejection clause. A business rejection is a result, not a precondition failure.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "101"
+        },
+        "candidate": {
+          "OverReturn": null
+        }
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0007",
+      "description": "An Ok candidate for an over-return violates the rejection clause. It also violates the balance clause, whose Ok arm requires the accepted-return balance.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "101"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "0"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "violated",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "violated"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "violated"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0008",
+      "description": "A negative returned quantity is an invalid refined input for any candidate. It is not not_applicable and not a violated postcondition.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "-1"
+        },
+        "candidate": {
+          "OverReturn": null
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [
+          {
+            "clause": "quantity-nonnegative",
+            "observation": "invalid"
+          }
+        ],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/inputs/returned"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0009",
+      "description": "A supplied-result case with no candidate and no invoked implementation is inconclusive. No implementation is required to check a candidate, and absence is not satisfaction.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        }
+      },
+      "expected": {
+        "outcome": "inconclusive",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.missing_result",
+            "path": "/candidate"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0010",
+      "description": "A missing named input is missing information. It is distinct from a present value that fails a refinement.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          }
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "inconclusive",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.missing_input",
+            "path": "/inputs/returned"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0011",
+      "description": "The separate precondition operation is satisfied when its precondition holds and its postcondition holds.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "100",
+          "returned": "40"
+        },
+        "candidate": "60"
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "remaining-post",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0012",
+      "description": "A false precondition is not_applicable. The postcondition is not evaluated, a candidate is not turned into a modeled rejection, and no guard or exception is implied.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "1",
+          "returned": "2"
+        },
+        "candidate": "-1"
+      },
+      "expected": {
+        "outcome": "not_applicable",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "not_applicable"
+          }
+        ],
+        "postconditionsEvaluated": false,
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0013",
+      "description": "When the precondition holds, a wrong remaining amount violates the postcondition.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "100",
+          "returned": "40"
+        },
+        "candidate": "70"
+      },
+      "expected": {
+        "outcome": "violated",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "remaining-post",
+            "observation": "violated"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0014",
+      "description": "Exact integers above the JS safe range remain exact in a satisfied partial return.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "123456789012345678901234567890"
+          },
+          "returned": "1"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "123456789012345678901234567889"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0015",
+      "description": "A value just above 2^53 is not rounded to its neighbour in a satisfied remaining check.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "9007199254740993",
+          "returned": "1"
+        },
+        "candidate": "9007199254740992"
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "remaining-post",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0016",
+      "description": "An off-by-one candidate above 2^53 violates the postcondition. Machine or JS-number rounding would hide this violation.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "9007199254740994",
+          "returned": "1"
+        },
+        "candidate": "9007199254740992"
+      },
+      "expected": {
+        "outcome": "violated",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "remaining-post",
+            "observation": "violated"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0017",
+      "description": "A floating-point contract can be declared, but its predicate profile is unsupported in this draft. Unsupported is not satisfied.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "floatRemaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "100.0",
+          "returned": "40.0"
+        },
+        "candidate": "60.0",
+        "availableProfiles": [
+          "morphir-contracts/expressions/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "clauses": [
+          {
+            "clause": "float-post",
+            "observation": "unsupported"
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "contracts.unsupported_semantics",
+            "path": "/contract"
+          }
+        ],
+        "postconditionsEvaluated": false
+      }
+    },
+    {
+      "id": "contracts-0018",
+      "description": "A case that names a type outside the selected inventory is unsupported. It is not reinterpreted as another type.",
+      "input": {
+        "mode": "typed-value",
+        "type": "decimal",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "value": "60.0"
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "clauses": [],
+        "diagnostics": [
+          {
+            "code": "contracts.unsupported_type",
+            "path": "/type"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0019",
+      "description": "A candidate of the wrong result type is an invalid typed value, not a violated postcondition.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "100",
+          "returned": "40"
+        },
+        "candidate": "sixty"
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "satisfied"
+          }
+        ],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/candidate"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0020",
+      "description": "A loan record that lacks a declared field is an invalid typed value. The missing field is inside a supplied record, unlike a missing named input.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/inputs/loan"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0021",
+      "description": "A changed loan id in an otherwise correct Ok candidate violates only the frame clause.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-2",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "violated",
+        "clauses": [
+          {
+            "clause": "return-balance",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-rejection",
+            "observation": "satisfied"
+          },
+          {
+            "clause": "return-frame",
+            "observation": "violated"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0022",
+      "description": "An unknown result constructor is an invalid typed value. It is not a violated rejection clause, which needs a known constructor.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "101"
+        },
+        "candidate": {
+          "Refunded": null
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/candidate"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0023",
+      "description": "A budget of one step is exhausted while the first clause is evaluated. The result is an execution error whose detail is exhaustion, never a pass.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "100",
+          "returned": "40"
+        },
+        "candidate": "60",
+        "budget": {
+          "maxSteps": 1,
+          "maxDepth": 64,
+          "maxValueNodes": 10000,
+          "maxIntDigits": 256
+        }
+      },
+      "expected": {
+        "outcome": "execution-error",
+        "detail": {
+          "kind": "exhaustion",
+          "limit": "maxSteps"
+        },
+        "clauses": [],
+        "diagnostics": [
+          {
+            "code": "contracts.execution_exhausted",
+            "path": "/budget/maxSteps"
+          }
+        ],
+        "postconditionsEvaluated": false
+      }
+    },
+    {
+      "id": "contracts-0024",
+      "description": "A typed-value case checks one interval against its record invariant and accepts an ordered interval.",
+      "input": {
+        "mode": "typed-value",
+        "type": "interval",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "value": {
+          "lower": "3",
+          "upper": "5"
+        }
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "interval-ordered",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0025",
+      "description": "An empty label is a valid String, so the label contract is not applicable. Empty is not an invalid String.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "requireLabel",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "name": ""
+        },
+        "candidate": ""
+      },
+      "expected": {
+        "outcome": "not_applicable",
+        "clauses": [
+          {
+            "clause": "label-pre",
+            "observation": "not_applicable"
+          }
+        ],
+        "postconditionsEvaluated": false,
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0026",
+      "description": "A case that names a contract revision the context does not provide is inconclusive. The checker does not evaluate a different revision silently.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c2"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "inconclusive",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.revision_unavailable",
+            "path": "/context/contractRevision"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0027",
+      "description": "A typed-value case rejects an unordered interval as an invalid typed value under its record invariant.",
+      "input": {
+        "mode": "typed-value",
+        "type": "interval",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "value": {
+          "lower": "5",
+          "upper": "3"
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [
+          {
+            "clause": "interval-ordered",
+            "observation": "invalid"
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/value"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0028",
+      "description": "A typed-value case for a refined quantity with a valid nonnegative value is satisfied in typed-value mode, without any operation or candidate result.",
+      "input": {
+        "mode": "typed-value",
+        "type": "quantity",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "value": "42"
+      },
+      "expected": {
+        "outcome": "satisfied",
+        "clauses": [
+          {
+            "clause": "quantity-nonnegative",
+            "observation": "satisfied"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0029",
+      "description": "A false precondition with no candidate is not_applicable. Precondition evaluation precedes candidate presence, so missing_result does not mask it.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "1",
+          "returned": "2"
+        }
+      },
+      "expected": {
+        "outcome": "not_applicable",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "not_applicable"
+          }
+        ],
+        "postconditionsEvaluated": false,
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0030",
+      "description": "A false precondition with an invalid candidate is not_applicable. The candidate is not admitted when the contract does not apply.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "1",
+          "returned": "2"
+        },
+        "candidate": "sixty"
+      },
+      "expected": {
+        "outcome": "not_applicable",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "not_applicable"
+          }
+        ],
+        "postconditionsEvaluated": false,
+        "diagnostics": []
+      }
+    },
+    {
+      "id": "contracts-0031",
+      "description": "A leading-zero Int lexeme is an invalid typed value, not a number to normalize.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "01",
+          "returned": "0"
+        },
+        "candidate": "0"
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/inputs/outstanding"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0032",
+      "description": "A JSON number is not an exact Int candidate in this profile. It is invalid, not coerced to a string lexeme.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "100",
+          "returned": "40"
+        },
+        "candidate": 60
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "satisfied"
+          }
+        ],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/candidate"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0033",
+      "description": "A loan record with an undeclared extra field is an invalid typed value.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100",
+            "branch": "north"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/inputs/loan"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0034",
+      "description": "An Int lexeme longer than the declared digit limit exhausts the budget during admission.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "12345678901234567890",
+          "returned": "1"
+        },
+        "candidate": "12345678901234567889",
+        "budget": {
+          "maxSteps": 1000,
+          "maxDepth": 64,
+          "maxValueNodes": 10000,
+          "maxIntDigits": 10
+        }
+      },
+      "expected": {
+        "outcome": "execution-error",
+        "detail": {
+          "kind": "exhaustion",
+          "limit": "maxIntDigits"
+        },
+        "clauses": [],
+        "diagnostics": [
+          {
+            "code": "contracts.execution_exhausted",
+            "path": "/budget/maxIntDigits"
+          }
+        ],
+        "postconditionsEvaluated": false
+      }
+    },
+    {
+      "id": "contracts-0035",
+      "description": "A record value deeper than the declared depth limit exhausts the budget during admission.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        },
+        "budget": {
+          "maxSteps": 1000,
+          "maxDepth": 1,
+          "maxValueNodes": 10000,
+          "maxIntDigits": 256
+        }
+      },
+      "expected": {
+        "outcome": "execution-error",
+        "detail": {
+          "kind": "exhaustion",
+          "limit": "maxDepth"
+        },
+        "clauses": [],
+        "diagnostics": [
+          {
+            "code": "contracts.execution_exhausted",
+            "path": "/budget/maxDepth"
+          }
+        ],
+        "postconditionsEvaluated": false
+      }
+    },
+    {
+      "id": "contracts-0036",
+      "description": "A case whose supplied values exceed the declared value-node limit exhausts the budget during admission.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        },
+        "budget": {
+          "maxSteps": 1000,
+          "maxDepth": 64,
+          "maxValueNodes": 2,
+          "maxIntDigits": 256
+        }
+      },
+      "expected": {
+        "outcome": "execution-error",
+        "detail": {
+          "kind": "exhaustion",
+          "limit": "maxValueNodes"
+        },
+        "clauses": [],
+        "diagnostics": [
+          {
+            "code": "contracts.execution_exhausted",
+            "path": "/budget/maxValueNodes"
+          }
+        ],
+        "postconditionsEvaluated": false
+      }
+    },
+    {
+      "id": "contracts-0037",
+      "description": "A case that names a model revision the context does not provide is inconclusive. A different model revision is not evaluated silently.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "acceptReturn",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m2"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "loan": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "100"
+          },
+          "returned": "40"
+        },
+        "candidate": {
+          "Ok": {
+            "id": "loan-1",
+            "asset": "asset-1",
+            "outstanding": "60"
+          }
+        }
+      },
+      "expected": {
+        "outcome": "inconclusive",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.revision_unavailable",
+            "path": "/context/model/revision"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0038",
+      "description": "A clause that calls a foreign function is unsupported in this profile. The retained expression is not evaluated and never yields satisfied.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "shout",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "name": "rentals"
+        },
+        "candidate": "RENTALS",
+        "availableProfiles": [
+          "morphir-contracts/expressions/0.1.0-draft.1"
+        ]
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "clauses": [
+          {
+            "clause": "shout-post",
+            "observation": "unsupported"
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "contracts.unsupported_semantics",
+            "path": "/contract"
+          }
+        ],
+        "postconditionsEvaluated": false
+      }
+    },
+    {
+      "id": "contracts-0039",
+      "description": "An Int lexeme written as +1 is an invalid typed value, not a number to normalize.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "+1",
+          "returned": "0"
+        },
+        "candidate": "0"
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/inputs/outstanding"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0040",
+      "description": "An Int lexeme written as 1.0 is an invalid typed value, not a number to normalize.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "1.0",
+          "returned": "0"
+        },
+        "candidate": "0"
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/inputs/outstanding"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0041",
+      "description": "An Int lexeme written as 1e3 is an invalid typed value, not a number to normalize.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "1e3",
+          "returned": "0"
+        },
+        "candidate": "0"
+      },
+      "expected": {
+        "outcome": "invalid",
+        "clauses": [],
+        "postconditionsEvaluated": false,
+        "diagnostics": [
+          {
+            "code": "contracts.invalid_input",
+            "path": "/inputs/outstanding"
+          }
+        ]
+      }
+    },
+    {
+      "id": "contracts-0042",
+      "description": "Admission exhaustion precedes candidate admission. A digit-limit exhaustion in the inputs stops the check before an invalid candidate is considered.",
+      "input": {
+        "mode": "supplied-result",
+        "contract": "remaining",
+        "context": {
+          "model": {
+            "id": "urn:example:model:rentals",
+            "revision": "m1"
+          },
+          "contractRevision": "c1"
+        },
+        "inputs": {
+          "outstanding": "12345678901234567890",
+          "returned": "1"
+        },
+        "candidate": "sixty",
+        "budget": {
+          "maxSteps": 1000,
+          "maxDepth": 64,
+          "maxValueNodes": 10000,
+          "maxIntDigits": 10
+        }
+      },
+      "expected": {
+        "outcome": "execution-error",
+        "detail": {
+          "kind": "exhaustion",
+          "limit": "maxIntDigits"
+        },
+        "clauses": [],
+        "diagnostics": [
+          {
+            "code": "contracts.execution_exhausted",
+            "path": "/budget/maxIntDigits"
+          }
+        ],
+        "postconditionsEvaluated": false
+      }
+    }
+  ]
+}
