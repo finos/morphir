@@ -4,6 +4,7 @@
 use super::domain::*;
 use morphir_devkit::IrDescriptor;
 use morphir_distribution::Sha256Digest;
+use semver::{Version, VersionReq};
 use serde::{
     Deserialize, Deserializer,
     de::{MapAccess, Visitor},
@@ -107,11 +108,14 @@ fn declaration(raw: &str) -> Result<Declaration, CaptureError> {
     let value = morphir_mck::json::parse_exact_document(raw)
         .map_err(|_| CaptureError::InvalidDeclaration)?;
     let fields = value.as_object().ok_or(CaptureError::InvalidDeclaration)?;
-    if fields.len() != 2
-        || fields.get("contractVersion").and_then(Value::as_str) != Some(CONTRACT_VERSION)
-    {
+    if fields.len() != 2 {
         return Err(CaptureError::InvalidDeclaration);
     }
+    let version = fields
+        .get("contractVersion")
+        .and_then(Value::as_str)
+        .ok_or(CaptureError::InvalidDeclaration)?;
+    check_declaration_version(version)?;
     let roots = fields
         .get("companions")
         .and_then(Value::as_array)
@@ -142,4 +146,23 @@ fn declaration(raw: &str) -> Result<Declaration, CaptureError> {
         })
         .collect::<Result<_, _>>()?;
     Ok(Declaration::Declared(roots))
+}
+
+// Listed exact drafts only. No released or future draft support is inferred.
+const DECLARATION_VERSION_REQUIREMENTS: &[&str] = &["=0.1.0-draft.1"];
+fn check_declaration_version(text: &str) -> Result<(), CaptureError> {
+    let version = Version::parse(text).map_err(|_| CaptureError::InvalidDeclaration)?;
+    // SemVer requirements ignore build metadata; this exact published draft
+    // has none. Keep the existing closed declaration language unchanged.
+    if version.to_string() != text
+        || !version.build.is_empty()
+        || !DECLARATION_VERSION_REQUIREMENTS.iter().any(|requirement| {
+            VersionReq::parse(requirement)
+                .expect("listed declaration requirement is valid")
+                .matches(&version)
+        })
+    {
+        return Err(CaptureError::InvalidDeclaration);
+    }
+    Ok(())
 }

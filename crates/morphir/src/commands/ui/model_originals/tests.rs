@@ -439,7 +439,22 @@ fn waits_for_writer_and_captures_its_record_and_bytes_together() {
     let (tmp, dir) = fixture(None);
     let lock = std::fs::File::create(tmp.path().join("compile.lock")).unwrap();
     fs2::FileExt::lock_exclusive(&lock).unwrap();
-    let worker = std::thread::spawn(move || capture(&dir, CaptureScope::Primary));
+    let (started, entered) = std::sync::mpsc::channel();
+    let (finished, received) = std::sync::mpsc::channel();
+    let worker = std::thread::spawn(move || {
+        started.send(()).unwrap();
+        finished.send(capture(&dir, CaptureScope::Primary)).unwrap();
+    });
+    entered
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .unwrap();
+    assert!(
+        matches!(
+            received.recv_timeout(std::time::Duration::from_millis(100)),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+        ),
+        "a held writer must keep capture waiting on this platform"
+    );
     // While the exclusive writer lock is held, publish a different descriptor
     // and bytes, then release. The reader cannot pair old bytes/new descriptor.
     std::fs::write(tmp.path().join("compile.dest/new.json"), b"new\r\n").unwrap();
@@ -448,7 +463,13 @@ fn waits_for_writer_and_captures_its_record_and_bytes_together() {
         .replace("model.json", "new.json");
     std::fs::write(tmp.path().join("compile.json"), &record).unwrap();
     fs2::FileExt::unlock(&lock).unwrap();
-    let sources = worker.join().unwrap().unwrap().ready().unwrap();
+    let sources = received
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .unwrap()
+        .unwrap()
+        .ready()
+        .unwrap();
+    worker.join().unwrap();
     assert_eq!(sources.record.descriptor.path().as_str(), "new.json");
     assert_eq!(
         sources.record.sha256(),
@@ -628,4 +649,62 @@ fn cancellation_while_waiting_for_compile_writer_is_bounded_and_cleans_up() {
     drop(lock);
     let dir = Dir::open_ambient_dir(tmp.path(), cap_std::ambient_authority()).unwrap();
     assert!(capture(&dir, CaptureScope::Primary).is_ok());
+}
+
+#[test]
+fn actual_platform_lock_contention_uses_fs2_error_identity() {
+    let (temp, _dir) = fixture(None);
+    let path = temp.path().join("compile.lock");
+    let writer = std::fs::File::create(&path).unwrap();
+    fs2::FileExt::lock_exclusive(&writer).unwrap();
+    let reader = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .unwrap();
+    let error = fs2::FileExt::try_lock_shared(&reader).unwrap_err();
+    assert!(crate::commands::out_context::is_contended(&error));
+    assert!(!crate::commands::out_context::is_contended(
+        &std::io::Error::other("not an OS lock error")
+    ));
+    fs2::FileExt::unlock(&writer).unwrap();
+}
+
+#[test]
+fn declaration_support_is_only_the_exact_canonical_draft() {
+    for version in [
+        "0.1.0-draft.1",
+        "0.1.0-draft.2",
+        "0.1.0-draft.0",
+        "0.1.0",
+        "0.1.1",
+        "0.2.0",
+        "1.0.0",
+        "v0.1.0-draft.1",
+        "0.01.0-draft.1",
+        "0.1.0-draft.01",
+        " 0.1.0-draft.1",
+        "0.1.0-draft.1 ",
+        "=0.1.0-draft.1",
+        "0.1.0-DRAFT.1",
+        "0.1.0-draft.1+build",
+        "malformed",
+        "",
+    ] {
+        let declaration =
+            serde_json::json!({"contractVersion":version,"companions":[]}).to_string();
+        let (_temp, dir) = fixture(Some(&declaration));
+        let result = capture(&dir, CaptureScope::Complete);
+        if version == CONTRACT_VERSION {
+            assert!(
+                matches!(result, Ok(CaptureResult::Ready(_))),
+                "{version:?}: {result:?}"
+            );
+        } else {
+            assert!(
+                matches!(result, Err(CaptureError::InvalidDeclaration)),
+                "{version:?}: {result:?}"
+            );
+        }
+    }
 }

@@ -152,7 +152,7 @@ pub(super) fn capture_accounted(
         control.check()?;
         match fs2::FileExt::try_lock_shared(&lock) {
             Ok(()) => break,
-            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+            Err(error) if crate::commands::out_context::is_contended(&error) => {
                 std::thread::sleep(Duration::from_millis(10))
             }
             Err(_) => return Err(CaptureError::CaptureFailed),
