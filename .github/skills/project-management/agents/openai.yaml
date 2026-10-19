@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project management"
+  short_description: "Track initiatives across beads and GitHub Issues"
+  default_prompt: "Use $project-management to report initiative progress, priorities, blockers, and ready work."

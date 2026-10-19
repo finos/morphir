@@ -10,6 +10,9 @@ This repository includes AI agent skills to enhance development workflows. The s
 - **Cursor**
 - **Windsurf**
 - **Google Antigravity**
+- **Grok**
+- **Muse Code**
+- **Devin**
 
 ## Available Skills
 
@@ -29,6 +32,19 @@ Both skills have discovery links under `.github/skills` and `.claude/skills`, wi
 Preserve rich HTML designs, capture reusable discoveries and handoff notes, and sync the shared tracker.
 Its portable helpers run through `moonx scripts/beads-companion.mbtx` or `mise run beads:companion -- ...`.
 The same skill is exposed through `.agents/skills`, `.github/skills` and `.claude/skills`.
+
+### Project management
+
+**Location**: `.github/skills/project-management/`
+
+Report initiative and open-work progress across beads and GitHub Issues with bars, ratios, percentages,
+priorities, IDs, and summaries. Organize tasks, verify dependencies, and recommend ready work without
+double-counting mirrors or treating withdrawn work as delivered.
+
+Read its `SKILL.md` for reporting or work-management requests. The skill uses the host agent's available
+tools and the repository's tracker rules. It does not require a personal skill installation.
+The [skill catalog](skills/README.md) lists discovery paths for Codex, Claude, Grok, Muse, Cursor, Copilot,
+and Devin, plus a direct-file invocation for other agents.
 
 ### Code Reviewer
 
@@ -69,18 +85,14 @@ Each skill includes:
 
 Different AI agents may load skills differently. Check your agent's documentation for specific instructions on loading skills from this repository.
 
-### Agent Instruction Files
+### Agent instruction files and discovery
 
-For agents that support configuration files in specific locations, symbolic links are provided:
+The root `AGENTS.md` routes project-management requests to the canonical skill. Directory links under
+`.agents/skills/`, `.claude/skills/`, and `.grok/skills/` expose the complete skill, including its reference
+files. Copilot can discover it directly under `.github/skills/`. Edit the canonical directory only.
 
-- `.github/copilot/` - GitHub Copilot
-- `.cursorrules` - Cursor
-- `.windsurfrules` - Windsurf  
-- `.claude/` - Claude
-- `.codex/` - OpenAI Codex
-- `.antigravity/` - Google Antigravity
-
-These files are symbolic links pointing to the shared skill definitions to avoid duplication.
+Existing agents and skills may use older instruction links; consult the [skill catalog](skills/README.md)
+for the project-management paths rather than assuming every agent uses the same directory.
 
 ## Adding New Skills
 

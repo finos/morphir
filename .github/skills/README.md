@@ -1,8 +1,14 @@
-# Agent Skills
+# Agent skills
 
-This directory contains AI agent skills following the [Agent Skills specification](https://agentskills.io/specification).
+Shared skills follow the [Agent Skills specification](https://agentskills.io/specification).
+Their instructions use ordinary file access, terminal commands, and available tracker connectors.
 
-## Available Skills
+## Available skills
+
+| Skill | Purpose |
+|---|---|
+| [project-management](project-management/SKILL.md) | Initiative and open-work reports; priorities, dependencies, and task management across beads and GitHub Issues |
+| [code-reviewer](code-reviewer/SKILL.md) | Review MoonBit changes, package structure, tests, builds, and project standards |
 
 ### rich-designs and frontend-design
 
@@ -20,127 +26,78 @@ Run its helpers with `moonx scripts/beads-companion.mbtx` or `mise run beads:com
 
 **Location**: [beads-companion/SKILL.md](beads-companion/SKILL.md)
 
-### code-reviewer
 
-Comprehensive code review capabilities for the Morphir Moonbit monorepo.
+## Project management across agents
 
-**Location**: `code-reviewer/SKILL.md`
+The canonical directory is `.github/skills/project-management/`. It contains:
 
-**Purpose**: Reviews code changes for quality, security, and adherence to project standards.
-
-**Key Capabilities**:
-- Moonbit code quality checks
-- Package structure validation
-- Test coverage verification
-- Build configuration review
-- Documentation updates check
-- Security issue identification
-- Mise task and CI workflow validation
-
-## Skill Format
-
-Each skill follows the Agent Skills specification:
-
-```
-skill-name/
-└── SKILL.md          # Required: metadata (YAML) + instructions (Markdown)
+```text
+project-management/
+├── SKILL.md
+├── agents/openai.yaml
+└── references/
+    ├── reporting.md
+    ├── trackers.md
+    └── work-management.md
 ```
 
-### SKILL.md Structure
+The three discovery links below point to the whole canonical directory, so supporting references stay available.
+The paths are relative to the repository root. Edit the canonical files rather than maintaining agent-specific copies.
 
-```yaml
----
-name: skill-name
-description: Brief description of what the skill does
-license: Apache-2.0
-compatibility:
-  - claude
-  - copilot
-  - codex
-  - cursor
-  - windsurf
-  - google-antigravity
----
+| Agent | Discovery path in this repository | Provider documentation |
+|---|---|---|
+| Codex | `.agents/skills/project-management/` | [Skills](https://learn.chatgpt.com/docs/build-skills) |
+| Claude Code | `.claude/skills/project-management/` | [Skills](https://code.claude.com/docs/en/skills) |
+| Grok | `.grok/skills/project-management/` | [Skills](https://docs.x.ai/build/features/skills-plugins-marketplaces) |
+| Muse Code | `.agents/skills/project-management/` | [Skills](https://meta-models.github.io/muse-code-sdk/next/guides/extend/skills/) |
+| Cursor | `.agents/skills/project-management/` | [Skills](https://cursor.com/docs/skills) |
+| GitHub Copilot | `.github/skills/project-management/` | [Skills](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills) |
+| Devin CLI and Desktop | `.agents/skills/project-management/` | [CLI skills](https://docs.devin.ai/cli/extensibility/skills/overview), [Desktop skills](https://docs.devin.ai/desktop/cascade/skills) |
 
-# Skill documentation in Markdown
+These paths follow the linked provider documentation. Availability still depends on the client's version,
+workspace trust, and enabled skill support. The optional `agents/openai.yaml` supplies Codex UI metadata;
+other agents can use the Markdown instructions without it. The skill does not pre-approve tools or require
+a particular model, plugin, or personal installation.
+
+For any coding agent with repository access, including clients without skill discovery, use:
+
+```text
+Read .github/skills/project-management/SKILL.md and follow its relevant references.
+Report progress for campaign:conceptual-model with workstream completion, priorities,
+blockers, and ready work. Use the repository's shared beads tracker instructions.
 ```
 
-## Using Skills with AI Agents
+Native invocation can use `$project-management` in Codex, `/project-management` in clients with slash-command
+skills, or the client's skill picker. The direct-file form above is the portable fallback, including for
+hosted agents where local skill discovery is unavailable. Give the agent access to this checkout and the
+intended trackers, or supply an export; the skill reports missing access and partial data explicitly.
 
-Different AI agents may access skills through different mechanisms:
+## Reuse in another project
 
-### Symbolic Links
+Copy the complete `.github/skills/project-management/` directory into a skill directory supported by the
+target agent. Keep `references/` with `SKILL.md`. The workflow reads the target repository's tracker, scope,
+authorization, and document conventions rather than assuming Morphir's configuration.
 
-To avoid duplicating skill definitions, symbolic links are created for agent-specific locations:
+If that project serves multiple agents, keep one canonical directory and create relative directory links
+in their discovery roots. In this repository, each link target is `../../.github/skills/project-management`:
 
-- `.github/copilot/` → GitHub Copilot
-- `.cursorrules-*` → Cursor (root level)
-- `.windsurfrules-*` → Windsurf (root level)
-- `.claude/` → Claude
-- `.codex/` → OpenAI Codex
-- `.antigravity/` → Google Antigravity
-
-All these link back to the canonical definitions in `.github/skills/`.
-
-### Direct Reference
-
-Agents can also reference skills directly:
-
-```
-Please use the code-reviewer skill from .github/skills/code-reviewer/
+```text
+.agents/skills/project-management -> ../../.github/skills/project-management
+.claude/skills/project-management -> ../../.github/skills/project-management
+.grok/skills/project-management   -> ../../.github/skills/project-management
 ```
 
-## Adding New Skills
+Checkouts must preserve Git symlinks for discovery through these aliases. On systems that materialize links
+as text files, read the canonical path directly or copy the full skill directory into the client's supported
+location. The canonical copy remains usable without symlink support.
 
-To add a new skill:
+## Adding and checking skills
 
-1. Create a new directory: `.github/skills/<skill-name>/`
-2. Add `SKILL.md` with proper YAML frontmatter and instructions
-3. Keep the skill focused on a single capability
-4. Test with multiple AI agents
-5. Update `.github/AGENTS.md` to document the new skill
-6. Create symbolic links for agent-specific locations:
+Create `.github/skills/<name>/SKILL.md` with YAML `name` and `description`, followed by Markdown instructions.
+Keep vendor-specific metadata optional and read supporting references only when needed. Document the skill
+in this catalog and [agent instructions](../AGENTS.md), then add discovery links appropriate to its users.
 
-```bash
-# From repository root
-cd .github/copilot && ln -sf ../skills/<skill-name> <skill-name>
-cd ../../.claude && ln -sf ../skills/<skill-name> <skill-name>
-cd ../.codex && ln -sf ../skills/<skill-name> <skill-name>
-cd ../.antigravity && ln -sf ../skills/<skill-name> <skill-name>
-cd .. && ln -sf .github/skills/<skill-name> .cursorrules-<skill-name>
-cd .. && ln -sf .github/skills/<skill-name> .windsurfrules-<skill-name>
-```
-
-## Best Practices
-
-### Skill Design
-
-- **Focused**: Each skill should have a clear, single purpose
-- **Portable**: Follow the Agent Skills spec for maximum compatibility
-- **Documented**: Include clear instructions and examples
-- **Testable**: Provide ways to verify the skill works correctly
-
-### Skill Size
-
-- Keep SKILL.md under 5,000 tokens for efficiency
-- Break large capabilities into multiple focused skills
-- Use references for detailed documentation
-
-### Compatibility
-
-- List compatible agents in the YAML frontmatter
-- Test with multiple agents when possible
-- Document agent-specific quirks if needed
-
-## References
-
-- [Agent Skills Specification](https://agentskills.io/specification)
-- [Project Agents Documentation](../.github/AGENTS.md)
-- [Contributing Guide](../../CONTRIBUTING_DEV.md)
-
-## Support
-
-For questions or issues with skills:
-- Open an issue on GitHub
-- Reference the specific skill in your issue
-- Include which AI agent you're using
+Validate frontmatter, relative resource links, and discovery from a fresh checkout. Where installed, use
+the client's read-only discovery tools, such as `muse skills list --source project --trust-workspace` or
+`grok inspect`. A valid document or resolved link does not by itself prove every client loads the skill.
+Behavioral checks should use fixture data before changing live trackers.

@@ -3,6 +3,18 @@
 General agent configuration, skills and the pre-push checks for this repository are in
 [.github/AGENTS.md](.github/AGENTS.md). This file adds how work is tracked.
 
+## Project-management skill
+
+For initiative reports, progress, priorities, ready work, blockers, or organizing tracked work, read
+[project-management](.github/skills/project-management/SKILL.md) and the references relevant to the request.
+It covers beads, GitHub Issues, and mixed trackers, with progress bars, ratios, percentages, issue IDs, and
+short summaries. Follow this repository's shared-tracker and document rules below.
+
+The canonical skill ships in `.github/skills/project-management/`. Repository-local discovery links in
+`.agents/skills/`, `.claude/skills/`, and `.grok/skills/` point to that same directory. Agents without native
+skill discovery can read its `SKILL.md` directly. See the [skill catalog](.github/skills/README.md) for agent
+paths, invocation, and reuse in other projects.
+
 ## Issue tracking with beads
 
 Work is tracked with [beads](https://github.com/steveyegge/beads) (`bd`) in the **shared Morphir tracker**, not
