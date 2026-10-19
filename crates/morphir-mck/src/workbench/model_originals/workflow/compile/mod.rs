@@ -378,3 +378,6 @@ pub(super) fn compile<'source>(
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod pairs_tests;

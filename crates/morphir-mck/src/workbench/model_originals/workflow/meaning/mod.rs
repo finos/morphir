@@ -48,6 +48,8 @@ pub(super) enum SemanticBlocker {
     /// V27 does not yet specify which incoming owner this alias denotes.
     ReplaceIncoming,
     ConceptualOriginalOwner,
+    /// No actual server EffectRef issuer has yet been bound at this source site.
+    UnboundServerEffectIssuer(Site),
     /// A complete static site has been visited but has no approved meaning yet.
     UnclassifiedSite(Site),
 }

@@ -483,6 +483,15 @@ impl<'source> Sources<'source> {
             }
             Meaning::CountSubject => ResolvedMeaning::SubjectReference(SubjectRoles::CountQuery),
             Meaning::EffectSubject => {
+                work.visit().map_err(ScopeError::Work)?;
+                if matches!(
+                    &self.input.runs.0[run.index()],
+                    input::Run::ModelOriginalsServer { .. }
+                ) {
+                    return Err(ScopeError::Semantic(
+                        SemanticBlocker::UnboundServerEffectIssuer(site),
+                    ));
+                }
                 let roles = match subject(trail, work)? {
                     SubjectKind::Maintained(kind) => {
                         use crate::workbench::model_originals::EffectKind;
