@@ -22,6 +22,11 @@ pub use evidence::{
     ExpectedOriginals, ExpectedSource, OriginalTransfer,
 };
 pub use fixture_bytes::{FixtureByteError, FixtureByteLimits, FixtureBytes};
+mod peer_read;
+pub use peer_read::{
+    InputByteFixture, ObservedRead, PeerReadBounds, PeerReadError, PeerReadResource, PeerReadRun,
+    PeerReadWork, ReadEffectKind,
+};
 mod projection;
 pub use projection::{
     CheckedProjectionEvidence, ComparisonResource, ExpectedProjection, ModelRelease,

@@ -15,6 +15,7 @@ pub enum FixtureByteError {
     Hex,
     Parts,
     ExpandedBytes,
+    Window,
 }
 impl fmt::Display for FixtureByteError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -27,6 +28,7 @@ impl fmt::Display for FixtureByteError {
             Self::Hex => "fixture hex must have even length and lowercase hexadecimal digits",
             Self::Parts => "fixture concatenation is empty, nested or exceeds its part bound",
             Self::ExpandedBytes => "complete fixture exceeds its expanded byte bound",
+            Self::Window => "fixture window exceeds the complete source bounds",
         })
     }
 }
@@ -58,6 +60,30 @@ enum Atom {
     ChunkIndexed { seed: u8, length: usize },
 }
 impl Atom {
+    fn length(&self) -> usize {
+        match self {
+            Self::Literal(bytes) => bytes.len(),
+            Self::Repeat { length, .. }
+            | Self::Cycle { length, .. }
+            | Self::ChunkIndexed { length, .. } => *length,
+        }
+    }
+    fn fill(&self, offset: usize, target: &mut [u8]) {
+        match self {
+            Self::Literal(bytes) => target.copy_from_slice(&bytes[offset..offset + target.len()]),
+            Self::Repeat { byte, .. } => target.fill(*byte),
+            Self::Cycle { seed, .. } => {
+                for (index, byte) in target.iter_mut().enumerate() {
+                    *byte = seed.wrapping_add((offset + index) as u8);
+                }
+            }
+            Self::ChunkIndexed { seed, .. } => {
+                for (index, byte) in target.iter_mut().enumerate() {
+                    *byte = seed.wrapping_add(((offset + index) / 65536) as u8);
+                }
+            }
+        }
+    }
     fn expected(&self) -> Result<ExpectedBytes<'_>, EvidenceError> {
         match self {
             Self::Literal(bytes) => ExpectedBytes::literal(bytes),
@@ -105,6 +131,27 @@ impl FixtureBytes {
     }
     pub fn byte_length(&self) -> usize {
         self.length
+    }
+    /// Copy only a requested window of independent input bytes. Preflight the
+    /// entire range before modifying the destination, including on overflow.
+    pub fn fill_window(&self, offset: usize, target: &mut [u8]) -> Result<(), FixtureByteError> {
+        offset
+            .checked_add(target.len())
+            .filter(|end| *end <= self.length)
+            .ok_or(FixtureByteError::Window)?;
+        let mut start = 0;
+        let mut written = 0;
+        for atom in &self.atoms {
+            let end = start + atom.length();
+            let position = offset + written;
+            if written < target.len() && position < end {
+                let count = (end - position).min(target.len() - written);
+                atom.fill(position - start, &mut target[written..written + count]);
+                written += count;
+            }
+            start = end;
+        }
+        Ok(())
     }
     /// Reuse the source-correspondence checker, including its original-source
     /// bound. Oversized refusal inputs can parse but cannot become expectations
