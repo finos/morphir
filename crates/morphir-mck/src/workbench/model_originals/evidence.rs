@@ -53,6 +53,7 @@ enum ByteRecipe<'a> {
     Cycle(u8),
     ChunkIndexed(u8),
     PrefixTail { prefix: u8, tail: &'a [u8] },
+    Segments(Vec<ExpectedBytes<'a>>),
 }
 /// Finite byte expectations keep large fixtures compact. Construction validates
 /// the original-source limit before recipe expansion; comparison allocates no
@@ -88,13 +89,31 @@ impl<'a> ExpectedBytes<'a> {
         }
         Self::new(ByteRecipe::PrefixTail { prefix, tail }, length)
     }
-    fn matches(&self, bytes: &[u8]) -> bool {
+    /// Flat concatenation of independently specified byte patterns. A pattern
+    /// starts at offset zero in each part; nested concatenations are refused.
+    pub fn segments(parts: Vec<Self>) -> Result<Self, EvidenceError> {
+        if parts.is_empty()
+            || parts
+                .iter()
+                .any(|part| matches!(part.recipe, ByteRecipe::Segments(_)))
+        {
+            return Err(EvidenceError::Bytes);
+        }
+        let length = parts.iter().try_fold(0usize, |total, part| {
+            total
+                .checked_add(part.length)
+                .ok_or(EvidenceError::SourceBudget)
+        })?;
+        Self::new(ByteRecipe::Segments(parts), length)
+    }
+    /// Compare actual bytes without expanding the independent recipe.
+    pub fn matches(&self, bytes: &[u8]) -> bool {
         if bytes.len() != self.length {
             return false;
         }
-        match self.recipe {
-            ByteRecipe::Literal(expected) => bytes == expected,
-            ByteRecipe::Repeat(byte) => bytes.iter().all(|actual| *actual == byte),
+        match &self.recipe {
+            ByteRecipe::Literal(expected) => bytes == *expected,
+            ByteRecipe::Repeat(byte) => bytes.iter().all(|actual| actual == byte),
             ByteRecipe::Cycle(seed) => bytes
                 .iter()
                 .enumerate()
@@ -105,7 +124,16 @@ impl<'a> ExpectedBytes<'a> {
                 .all(|(i, b)| *b == seed.wrapping_add((i / 65536) as u8)),
             ByteRecipe::PrefixTail { prefix, tail } => {
                 let split = self.length - tail.len();
-                bytes[..split].iter().all(|b| *b == prefix) && &bytes[split..] == tail
+                bytes[..split].iter().all(|b| b == prefix) && &bytes[split..] == *tail
+            }
+            ByteRecipe::Segments(parts) => {
+                let mut offset = 0;
+                parts.iter().all(|part| {
+                    let end = offset + part.length;
+                    let matched = part.matches(&bytes[offset..end]);
+                    offset = end;
+                    matched
+                })
             }
         }
     }

@@ -2,8 +2,8 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use morphir_mck::workbench::model_originals::{
     CaptureEvidence, EvidenceError, Exchange, ExpectedBytes, ExpectedOriginalEntry,
-    ExpectedOriginals, ExpectedProjection, OriginalTransfer, Parameters, ProjectionWorkLimits,
-    Request, SessionId,
+    ExpectedOriginals, ExpectedProjection, FixtureByteLimits, FixtureBytes, OriginalTransfer,
+    Parameters, ProjectionWorkLimits, Request, SessionId,
 };
 use serde_json::{Value, json};
 
@@ -121,6 +121,31 @@ fn complete_capture_matches_independently_authored_files_and_empty_directories()
     let expected = expected(&model, &[0, 1, 2, 255]);
     run(
         &expected,
+        &reply(&packet["cases"][0]["expected"]["summary"]),
+        true,
+        false,
+    )
+    .unwrap();
+}
+
+#[test]
+fn flat_fixture_bytes_feed_the_actual_source_correspondence_check() {
+    let packet = packet();
+    let model = model_bytes(&packet);
+    let opaque = FixtureBytes::parse(
+        r#"{"kind":"concat","parts":[{"kind":"cycle-u8","seed":0,"length":3},{"kind":"hex","hex":"ff"}]}"#,
+        FixtureByteLimits::new(1024, 4, 2).unwrap(),
+    ).unwrap();
+    let originals = ExpectedOriginals::new(vec![
+        ExpectedOriginalEntry::file("morphir-ir.json", ExpectedBytes::literal(&model).unwrap())
+            .unwrap(),
+        ExpectedOriginalEntry::directory("notes").unwrap(),
+        ExpectedOriginalEntry::directory("notes/empty").unwrap(),
+        ExpectedOriginalEntry::file("notes/opaque.bin", opaque.expected().unwrap()).unwrap(),
+    ])
+    .unwrap();
+    run(
+        &originals,
         &reply(&packet["cases"][0]["expected"]["summary"]),
         true,
         false,

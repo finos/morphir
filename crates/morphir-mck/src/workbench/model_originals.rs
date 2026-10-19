@@ -16,10 +16,12 @@ pub use transfer::{
     ProjectionStatus, RemoteFailure, RpcFailureKind, TransferError,
 };
 mod evidence;
+mod fixture_bytes;
 pub use evidence::{
     CaptureEvidence, CheckedOriginalsEvidence, EvidenceError, ExpectedBytes, ExpectedOriginalEntry,
     ExpectedOriginals, OriginalTransfer,
 };
+pub use fixture_bytes::{FixtureByteError, FixtureByteLimits, FixtureBytes};
 mod projection;
 pub use projection::{
     CheckedProjectionEvidence, ComparisonResource, ExpectedProjection, ModelRelease,
