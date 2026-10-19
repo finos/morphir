@@ -816,7 +816,8 @@
             "code": "contracts.unsupported_semantics",
             "path": "/contract"
           }
-        ]
+        ],
+        "postconditionsEvaluated": false
       }
     },
     {
@@ -1043,7 +1044,8 @@
             "code": "contracts.execution_exhausted",
             "path": "/budget/maxSteps"
           }
-        ]
+        ],
+        "postconditionsEvaluated": false
       }
     },
     {
@@ -1413,7 +1415,8 @@
             "code": "contracts.execution_exhausted",
             "path": "/budget/maxIntDigits"
           }
-        ]
+        ],
+        "postconditionsEvaluated": false
       }
     },
     {
@@ -1463,7 +1466,8 @@
             "code": "contracts.execution_exhausted",
             "path": "/budget/maxDepth"
           }
-        ]
+        ],
+        "postconditionsEvaluated": false
       }
     },
     {
@@ -1513,7 +1517,8 @@
             "code": "contracts.execution_exhausted",
             "path": "/budget/maxValueNodes"
           }
-        ]
+        ],
+        "postconditionsEvaluated": false
       }
     },
     {
@@ -1591,7 +1596,8 @@
             "code": "contracts.unsupported_semantics",
             "path": "/contract"
           }
-        ]
+        ],
+        "postconditionsEvaluated": false
       }
     },
     {
@@ -1724,7 +1730,8 @@
             "code": "contracts.execution_exhausted",
             "path": "/budget/maxIntDigits"
           }
-        ]
+        ],
+        "postconditionsEvaluated": false
       }
     }
   ]

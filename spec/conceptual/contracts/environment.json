@@ -4,13 +4,15 @@
   "notation": "Fixture type, contract and clause keys resolve only in this file. They are not IR wire syntax, a DSL grammar or a checker API. Typed values in cases are test descriptions under the exact-value profile below, not a new value encoding.",
   "valueProfile": {
     "id": "morphir-contracts/exact-values/0.1.0-draft.1",
-    "int": "A JSON string that matches -?(0|[1-9][0-9]*). Arbitrary precision is retained. A JSON number, a plus sign, leading zeros, a decimal point and an exponent are invalid Int values in this profile, not coercions.",
+    "int": "A JSON string that matches (0|-?[1-9][0-9]*). Arbitrary precision is retained, comparison is by integer value, and zero has the one lexeme 0. A JSON number, a plus sign, a signed or padded zero, a leading zero, a decimal point and an exponent are invalid Int values in this profile, not coercions.",
     "float": "A JSON string that carries the authored decimal lexeme, as a test description only. No float value is evaluated in this draft; a float clause is unsupported before any float comparison.",
     "bool": "A JSON boolean.",
     "string": "A JSON string, retained exactly.",
     "record": "A JSON object with exactly the declared fields. Field order is not semantic. A missing field, an extra field and a field of the wrong type are invalid typed values.",
     "custom": "A JSON object with exactly one member. The member name is the constructor and its value is the payload, or null for a constructor without a payload: {\"Ok\": ...} or {\"OverReturn\": null}. Extra members and an unknown constructor name are invalid typed values. An unknown constructor is not a violated rejection clause.",
-    "refined": "The base encoding, checked by the named refinement clause after the base type check. A failed refinement or record invariant on a supplied input or candidate is an invalid typed value, not a violated postcondition."
+    "refined": "The base encoding, checked by the named refinement clause after the base type check. A failed refinement or record invariant on a supplied input or candidate is an invalid typed value, not a violated postcondition.",
+    "tuple": "A JSON array with exactly the declared arity and order. Each element uses its element type spelling. A flat tuple and nested tuples remain distinct.",
+    "union": "The spelling of exactly one member type. Membership is resolved against the declared members; a value admitted by more than one member is ambiguous and is reported as unsupported (contracts.unsupported_semantics), never resolved by member order."
   },
   "expressionProfile": {
     "id": "morphir-contracts/expressions/0.1.0-draft.1",
@@ -50,7 +52,8 @@
       "There is no general quantifier or temporal-logic solver in this profile.",
       "Parameterized declarations are instantiated at concrete argument types for checking examples. A generic report names the tested substitution and does not imply universal proof.",
       "Quantity refinements constrain values without implicit subtype coercions or solver-based assignability.",
-      "A floating-point or decimal declaration can be represented while its predicate operations remain unsupported. Declaration expressiveness and executable capability are separate inventories."
+      "A floating-point or decimal declaration can be represented while its predicate operations remain unsupported. Declaration expressiveness and executable capability are separate inventories.",
+      "Inside an expression, a binder of a refined type has its base type. The refinement is an admission obligation on supplied values, not an implicit subtype or coercion in the expression."
     ]
   },
   "defaultBudget": {
@@ -61,9 +64,9 @@
   },
   "budgetRules": [
     "A budget is an explicit record of maxSteps, maxDepth, maxValueNodes and maxIntDigits. Each evaluated expression node is one step. Depth is expression and value nesting depth. IntDigits is the count of decimal digits in an exact Int lexeme, excluding an optional minus sign.",
-    "A check that reaches any limit stops and reports execution-error with detail kind exhaustion and the exhausted limit named. An exhausted check cannot establish satisfied, violated or not_applicable.",
+    "A check that would exceed any limit stops and reports execution-error with detail kind exhaustion and the exhausted limit named. Using exactly a limit is allowed. An exhausted check cannot establish satisfied, violated or not_applicable.",
     "Budgets are supplied per check. No budget is inferred from a type, a contract or a previous check.",
-    "Budget limits bound the whole check, including value admission: maxIntDigits is checked when an Int lexeme is admitted, and maxDepth and maxValueNodes are checked when supplied values are admitted. The effective budget is the case budget when supplied, otherwise the environment defaultBudget. No budget is inferred from a type, a contract or a previous check."
+    "Budget limits bound the whole check, including value admission: maxIntDigits is checked when an Int lexeme is admitted, and maxDepth and maxValueNodes are checked when supplied values are admitted. The effective budget is the case budget when supplied, otherwise the environment defaultBudget."
   ],
   "types": {
     "int": {

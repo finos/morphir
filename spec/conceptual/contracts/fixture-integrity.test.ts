@@ -11,7 +11,7 @@ const sha256 = (data: string | Uint8Array) => createHash("sha256").update(data).
 
 const OUTCOMES = ["satisfied", "violated", "not_applicable", "invalid", "inconclusive", "unsupported", "execution-error"];
 const CLAUSE_KINDS = ["refinement", "invariant", "precondition", "postcondition", "frame"];
-const INT_LEXEME = /^-?(0|[1-9][0-9]*)$/;
+const INT_LEXEME = /^(0|-?[1-9][0-9]*)$/;
 
 describe("typed contracts reference corpus integrity", () => {
   test("the contract, corpus, environment and byte inventory are published together", () => {
@@ -63,6 +63,9 @@ describe("typed contracts reference corpus integrity", () => {
       if (clause.kind === "refinement") expect(Object.hasOwn(environment.types, clause.subjectType), key).toBe(true);
       if (clause.kind === "invariant") expect(Object.hasOwn(environment.types, clause.subjectType), key).toBe(true);
     }
+    for (const [key, clause] of Object.entries<any>(environment.clauses)) {
+      if (clause.contract) expect(environment.contracts[clause.contract].clauses, key).toContain(key);
+    }
     for (const [key, type] of Object.entries<any>(environment.types)) {
       if (type.kind === "refined") expect(environment.clauses[type.refinementClause].kind, key).toBe("refinement");
       if (type.invariantClause) expect(environment.clauses[type.invariantClause].kind, key).toBe("invariant");
@@ -95,6 +98,37 @@ describe("typed contracts reference corpus integrity", () => {
       for (const clause of item.expected.clauses) {
         expect(Object.hasOwn(environment.clauses, clause.clause), `${item.id}: ${clause.clause}`).toBe(true);
         expect(OUTCOMES, `${item.id}: ${clause.clause}`).toContain(clause.observation);
+      }
+      // Context must resolve exactly, unless the case expects a revision failure.
+      const codesPre = (item.expected.diagnostics ?? []).map((d: any) => d.code);
+      if (!codesPre.includes("contracts.revision_unavailable")) {
+        expect(item.input.context.model).toEqual(environment.model);
+        if (item.input.contract) expect(item.input.context.contractRevision).toBe(environment.contracts[item.input.contract].revision);
+      }
+      // A supplied-result case stopped before postconditions says so.
+      if (item.input.mode === "supplied-result" && !["satisfied", "violated"].includes(item.expected.outcome))
+        expect(item.expected.postconditionsEvaluated).toBe(false);
+      if (item.input.mode === "typed-value" && environment.types[item.input.type]) {
+        const type = environment.types[item.input.type];
+        const clauseKey = type.refinementClause ?? type.invariantClause;
+        if (clauseKey) expect(item.expected.clauses.map((c: any) => c.clause)).toEqual([clauseKey]);
+      }
+      // Diagnostic paths resolve as RFC 6901 pointers into the case input:
+      // present for a rejected value, absent for a missing one.
+      const resolvePointer = (pointer: string): boolean => {
+        if (pointer === "") return true;
+        let value: unknown = item.input;
+        for (const raw of pointer.slice(1).split("/")) {
+          const key = raw.replaceAll("~1", "/").replaceAll("~0", "~");
+          if (value === null || typeof value !== "object" || !Object.hasOwn(value, key)) return false;
+          value = (value as Record<string, unknown>)[key];
+        }
+        return true;
+      };
+      for (const diagnostic of item.expected.diagnostics ?? []) {
+        if (diagnostic.code === "contracts.invalid_input") expect(resolvePointer(diagnostic.path)).toBe(true);
+        if (diagnostic.code === "contracts.missing_input" || diagnostic.code === "contracts.missing_result")
+          expect(resolvePointer(diagnostic.path)).toBe(false);
       }
       const codes = (item.expected.diagnostics ?? []).map((d: any) => d.code);
       for (const diagnostic of item.expected.diagnostics ?? []) {
@@ -155,6 +189,17 @@ describe("typed contracts reference corpus integrity", () => {
     expect(corpus.coverage["supplied-result"]).toEqual(corpus.cases.filter((c: any) => c.input.mode === "supplied-result").map((c: any) => c.id));
     expect(corpus.coverage.frame).toEqual(
       corpus.cases.filter((c: any) => c.expected.clauses.some((cl: any) => cl.clause === "return-frame")).map((c: any) => c.id),
+    );
+    expect(Object.keys(corpus.coverage).sort()).toEqual([...OUTCOMES, "exact-int", "frame", "supplied-result"].sort());
+    for (const outcome of OUTCOMES) expect(byOutcome.get(outcome)?.length ?? 0, outcome).toBeGreaterThan(0);
+    // exact-int: precision-sensitive cases (satisfied or violated) that use a 16+ digit lexeme.
+    const hasLargeLexeme = (value: unknown): boolean =>
+      (typeof value === "string" && /^-?[0-9]{16,}$/.test(value)) ||
+      (value !== null && typeof value === "object" && Object.values(value).some(hasLargeLexeme));
+    expect(corpus.coverage["exact-int"]).toEqual(
+      corpus.cases
+        .filter((c: any) => ["satisfied", "violated"].includes(c.expected.outcome) && hasLargeLexeme(c.input))
+        .map((c: any) => c.id),
     );
   });
 
