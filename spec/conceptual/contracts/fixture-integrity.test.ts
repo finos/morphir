@@ -122,7 +122,13 @@ describe("typed contracts reference corpus integrity", () => {
           break;
         case "invalid":
           expect(codes).toContain("contracts.invalid_input");
-          expect(observations.every((o: string) => o === "invalid")).toBe(true);
+          // A clause evaluated before the failed admission can be retained: a satisfied
+          // precondition, or the refinement/invariant that rejected the value.
+          for (const clause of item.expected.clauses) {
+            const kind = environment.clauses[clause.clause].kind;
+            if (kind === "precondition") expect(clause.observation).toBe("satisfied");
+            else expect(clause.observation).toBe("invalid");
+          }
           if ("postconditionsEvaluated" in item.expected) expect(item.expected.postconditionsEvaluated).toBe(false);
           break;
         case "inconclusive":

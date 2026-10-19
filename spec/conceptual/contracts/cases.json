@@ -761,10 +761,10 @@
           "contractRevision": "c1"
         },
         "inputs": {
-          "outstanding": "9007199254740993",
+          "outstanding": "9007199254740994",
           "returned": "1"
         },
-        "candidate": "9007199254740993"
+        "candidate": "9007199254740992"
       },
       "expected": {
         "outcome": "violated",
@@ -866,7 +866,12 @@
       },
       "expected": {
         "outcome": "invalid",
-        "clauses": [],
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "satisfied"
+          }
+        ],
         "postconditionsEvaluated": false,
         "diagnostics": [
           {
@@ -1314,7 +1319,12 @@
       },
       "expected": {
         "outcome": "invalid",
-        "clauses": [],
+        "clauses": [
+          {
+            "clause": "remaining-pre",
+            "observation": "satisfied"
+          }
+        ],
         "postconditionsEvaluated": false,
         "diagnostics": [
           {
