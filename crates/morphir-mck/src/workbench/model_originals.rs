@@ -15,7 +15,14 @@ pub use transfer::{
     CaptureExpectation, CaptureInventory, CheckedStream, Exchange, FailureCode, ProjectionRefusal,
     ProjectionStatus, RemoteFailure, RpcFailureKind, TransferError,
 };
+mod effects;
 mod evidence;
+pub use effects::{
+    CancellationCause, EffectEvent, EffectKind, EffectLedger, EffectLedgerError,
+    EffectLedgerLimits, EffectLedgerResource, EffectPort, EffectRef, LateDisposition,
+    LateSignalSource, PickerSignal, PublicationDisposition, ResultRetirement, WorkBinding,
+    WorkOwner,
+};
 mod fixture_alias;
 mod fixture_bytes;
 pub use evidence::{
