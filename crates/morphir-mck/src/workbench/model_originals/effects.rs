@@ -22,8 +22,11 @@ pub enum EffectKind {
     ReadOriginal,
     ReadProjection,
     Release,
+    Catalog,
+    NativeInvoke,
     Digest,
     Inspection,
+    LocalEvaluation,
     ExecutionSubmit,
     ExecutionObserve,
     ExecutionRelease,
@@ -421,8 +424,10 @@ impl<'a> EffectLedger<'a> {
                 record.state = PortState::PromiseResolved;
             }
             EffectEvent::WorkStarted { work, owner } => {
-                if effect.kind != EffectKind::Inspection
-                    || !matches!(record.state, PortState::PromisePending)
+                if !matches!(
+                    effect.kind,
+                    EffectKind::Inspection | EffectKind::LocalEvaluation
+                ) || !matches!(record.state, PortState::PromisePending)
                     || !matches!(record.work, WorkState::NotStarted)
                     || self.work_names.contains(work)
                 {
