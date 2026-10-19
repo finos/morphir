@@ -1,0 +1,76 @@
+{
+  "files": [
+    {
+      "id": "v1-rentals.json",
+      "path": "fixtures/v1-rentals.json",
+      "codec": "morphir-json",
+      "layout": "single-file",
+      "sourceVersion": "1.0.0",
+      "semanticVersion": "4.0.0",
+      "byteLength": 71442,
+      "sha256": "ff6fedd2171c0c9906549cd61e79afba4402d6dc264c14b0b3159385866bbeaf",
+      "provenance": "pkgs/morphir-ir/conformance/fixtures/v1-rentals.json"
+    },
+    {
+      "id": "v2-rentals.json",
+      "path": "fixtures/v2-rentals.json",
+      "codec": "morphir-json",
+      "layout": "single-file",
+      "sourceVersion": "2.0.0",
+      "semanticVersion": "4.0.0",
+      "byteLength": 71464,
+      "sha256": "c897d44ce57529900810dc26bab1fc3dc4e32ff3e3ca51e152770744422523fc",
+      "provenance": "pkgs/morphir-ir/conformance/fixtures/v2-rentals.json"
+    },
+    {
+      "id": "v3-greeting.json",
+      "path": "fixtures/v3-greeting.json",
+      "codec": "morphir-json",
+      "layout": "single-file",
+      "sourceVersion": "3.0.0",
+      "semanticVersion": "4.0.0",
+      "byteLength": 29091,
+      "sha256": "539664c494509047ff485e37aff86a900978fa717bde8da30c24dc72599a0423",
+      "provenance": "pkgs/morphir-ir/conformance/fixtures/v3-greeting.json"
+    },
+    {
+      "id": "v3-library-release.json",
+      "path": "fixtures/v3-library-release.json",
+      "codec": "morphir-json",
+      "layout": "single-file",
+      "sourceVersion": "3.1.7",
+      "semanticVersion": "4.0.0",
+      "byteLength": 29097,
+      "sha256": "1454c880fc0ed4d6f3fe343895b330fc84999edc690e13d363704a2baa99f392",
+      "provenance": "Independently authored release spelling on fixed classic Library fixture; no claim of Specs feature coverage."
+    },
+    {
+      "id": "v4-bom-crlf.json",
+      "path": "fixtures/v4-bom-crlf.json",
+      "codec": "morphir-json",
+      "layout": "single-file",
+      "sourceVersion": "4.0.0",
+      "semanticVersion": "4.0.0",
+      "byteLength": 119,
+      "sha256": "0346b209b65f0b6ec56a17e5612567159b5ef5e3ddef96d203eb28bf06cb89e0",
+      "provenance": "Independent bytes based on documented empty Library shape; BOM/CRLF and whitespace are intentional."
+    },
+    {
+      "id": "v4-rich-source.ion",
+      "path": "fixtures/v4-rich-source.ion",
+      "codec": "ion-text",
+      "layout": "single-file",
+      "sourceVersion": "4.0.0",
+      "semanticVersion": "4.0.0",
+      "byteLength": 454,
+      "sha256": "89f8205f60f046302c2ee18f50313181b4e820c487ba387f945308c53dfc3237",
+      "provenance": "Independent literal based on data/envelope.mbt profile and data_test.mbt rich-kind requirements; not a production encoder output."
+    }
+  ],
+  "opaqueSidecar": {
+    "path": "notes/opaque-sidecar.bin",
+    "byteLength": 256,
+    "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+  },
+  "notQualified": true
+}

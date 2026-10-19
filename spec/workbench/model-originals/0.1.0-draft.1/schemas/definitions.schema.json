@@ -1,0 +1,808 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json",
+  "title": "Model originals shared closed shapes",
+  "description": "Closed exact model-originals wire profile. README.html defines required semantic, raw-frame, byte, path, authority, inventory and lifecycle validation in addition to this structural schema",
+  "examples": [
+    {
+      "contractVersion": "0.1.0-draft.1",
+      "source": {
+        "providerId": "provider-A",
+        "locator": "workspace:orders"
+      },
+      "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]",
+      "scope": "complete",
+      "semantic": "projection"
+    }
+  ],
+  "anyOf": [
+    {
+      "$ref": "#/$defs/captureParams"
+    },
+    {
+      "$ref": "#/$defs/captureResult"
+    },
+    {
+      "$ref": "#/$defs/inventoryParams"
+    },
+    {
+      "$ref": "#/$defs/inventoryResult"
+    },
+    {
+      "$ref": "#/$defs/readParams"
+    },
+    {
+      "$ref": "#/$defs/readResult"
+    },
+    {
+      "$ref": "#/$defs/releaseParams"
+    },
+    {
+      "$ref": "#/$defs/releaseResult"
+    },
+    {
+      "$ref": "#/$defs/declaration"
+    },
+    {
+      "$ref": "#/$defs/failure"
+    },
+    {
+      "$ref": "#/$defs/requestId"
+    }
+  ],
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "path": {
+      "description": "Semantic validation additionally enforces portable components, UTF8<=16000, UTF16<=8000, root/descendant depth and normalization aliases. This is not the artifact1024-unit path profile",
+      "type": "string",
+      "maxLength": 4000,
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "required": [ "providerId", "locator" ],
+      "properties": {
+        "providerId": {
+          "$ref": "#/$defs/identity"
+        },
+        "locator": {
+          "type": "string",
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$",
+          "maxLength": 4096,
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "binding": {
+      "type": "object",
+      "required": [ "sessionId", "source", "projectId" ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/identity"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$",
+          "maxLength": 12288,
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "root": {
+      "type": "object",
+      "required": [ "kind", "path" ],
+      "properties": {
+        "kind": {
+          "enum": [ "file", "directory" ]
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        }
+      },
+      "additionalProperties": false
+    },
+    "release": {
+      "description": "Canonical release SemVer checked with a SemVer library, including component bounds. Actual emitted/captured evidence, never a descriptor selector",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "record": {
+      "type": "object",
+      "required": [ "byteLength", "sha256", "schema", "task", "module", "ir" ],
+      "properties": {
+        "byteLength": {
+          "type": "integer",
+          "maximum": 67108864,
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "schema": {
+          "const": 1
+        },
+        "task": {
+          "const": "compile"
+        },
+        "module": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "ir": {
+          "type": "object",
+          "required": [ "path", "layout", "format", "version" ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/path"
+            },
+            "layout": {
+              "enum": [ "single-file", "document-tree" ]
+            },
+            "format": {
+              "enum": [ "json", "yaml", "ion" ]
+            },
+            "version": {
+              "enum": [ "v3", "v4" ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "origin": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "record" ],
+          "properties": {
+            "kind": {
+              "const": "compiled"
+            },
+            "record": {
+              "$ref": "#/$defs/record"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "path" ],
+          "properties": {
+            "kind": {
+              "const": "legacy-json"
+            },
+            "path": {
+              "const": "morphir-ir.json"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "coverage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "primary"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "declaration" ],
+          "properties": {
+            "kind": {
+              "const": "complete"
+            },
+            "declaration": {
+              "const": "0.1.0-draft.1"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "sourceVersion": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "status", "release" ],
+          "properties": {
+            "status": {
+              "const": "reported"
+            },
+            "release": {
+              "$ref": "#/$defs/release"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "status" ],
+          "properties": {
+            "status": {
+              "const": "not-reported"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "projection": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "status" ],
+          "properties": {
+            "status": {
+              "const": "not-requested"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "status", "reason" ],
+          "properties": {
+            "status": {
+              "const": "unavailable"
+            },
+            "reason": {
+              "enum": [
+                "unsupported_representation",
+                "invalid_model",
+                "decode_limit",
+                "projection_limit",
+                "capacity",
+                "timeout"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "status",
+            "codec",
+            "byteLength",
+            "sha256",
+            "formatVersion"
+          ],
+          "properties": {
+            "status": {
+              "const": "available"
+            },
+            "codec": {
+              "const": "morphir-json"
+            },
+            "byteLength": {
+              "type": "integer",
+              "maximum": 67108864,
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "formatVersion": {
+              "$ref": "#/$defs/release"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "entry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "entryId", "path", "byteLength", "sha256" ],
+          "properties": {
+            "kind": {
+              "const": "file"
+            },
+            "entryId": {
+              "$ref": "#/$defs/identity"
+            },
+            "path": {
+              "$ref": "#/$defs/path"
+            },
+            "byteLength": {
+              "type": "integer",
+              "maximum": 67108864,
+              "minimum": 0
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "entryId", "path" ],
+          "properties": {
+            "kind": {
+              "const": "directory"
+            },
+            "entryId": {
+              "$ref": "#/$defs/identity"
+            },
+            "path": {
+              "$ref": "#/$defs/path"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind", "entryId" ],
+          "properties": {
+            "kind": {
+              "const": "original"
+            },
+            "entryId": {
+              "$ref": "#/$defs/identity"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "semantic-projection"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "required": [
+        "entryCount",
+        "fileCount",
+        "directoryCount",
+        "sourceByteLength",
+        "sha256"
+      ],
+      "properties": {
+        "entryCount": {
+          "type": "integer",
+          "maximum": 100064,
+          "minimum": 0
+        },
+        "fileCount": {
+          "type": "integer",
+          "maximum": 100064,
+          "minimum": 0
+        },
+        "directoryCount": {
+          "type": "integer",
+          "maximum": 100064,
+          "minimum": 0
+        },
+        "sourceByteLength": {
+          "type": "integer",
+          "maximum": 67108864,
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ready": {
+      "type": "object",
+      "required": [
+        "profile",
+        "contractVersion",
+        "status",
+        "binding",
+        "captureId",
+        "coverage",
+        "origin",
+        "primary",
+        "companions",
+        "sourceFormatVersion",
+        "projection",
+        "inventory"
+      ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/model-originals"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "status": {
+          "const": "ready"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "captureId": {
+          "$ref": "#/$defs/identity"
+        },
+        "coverage": {
+          "$ref": "#/$defs/coverage"
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        },
+        "primary": {
+          "$ref": "#/$defs/root"
+        },
+        "companions": {
+          "type": "array",
+          "maxItems": 63,
+          "items": {
+            "$ref": "#/$defs/root"
+          }
+        },
+        "sourceFormatVersion": {
+          "$ref": "#/$defs/sourceVersion"
+        },
+        "projection": {
+          "$ref": "#/$defs/projection"
+        },
+        "inventory": {
+          "$ref": "#/$defs/inventory"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unavailable": {
+      "type": "object",
+      "required": [ "profile", "contractVersion", "status", "reason" ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/model-originals"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "status": {
+          "const": "unavailable"
+        },
+        "reason": {
+          "enum": [
+            "not_compiled",
+            "companions_undeclared",
+            "unsupported_representation"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "captureParams": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "source",
+        "projectId",
+        "scope",
+        "semantic"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "projectId": {
+          "type": "string",
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$",
+          "maxLength": 12288,
+          "minLength": 1
+        },
+        "scope": {
+          "enum": [ "primary", "complete" ]
+        },
+        "semantic": {
+          "enum": [ "none", "projection" ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "captureResult": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ready"
+        },
+        {
+          "$ref": "#/$defs/unavailable"
+        }
+      ]
+    },
+    "inventoryParams": {
+      "type": "object",
+      "required": [ "contractVersion", "captureId", "startIndex", "maxEntries" ],
+      "properties": {
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "captureId": {
+          "$ref": "#/$defs/identity"
+        },
+        "startIndex": {
+          "type": "integer",
+          "maximum": 100064,
+          "minimum": 0
+        },
+        "maxEntries": {
+          "type": "integer",
+          "maximum": 256,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "inventoryResult": {
+      "type": "object",
+      "required": [
+        "profile",
+        "contractVersion",
+        "binding",
+        "captureId",
+        "inventorySha256",
+        "startIndex",
+        "entries",
+        "next"
+      ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/model-originals"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "captureId": {
+          "$ref": "#/$defs/identity"
+        },
+        "inventorySha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "startIndex": {
+          "type": "integer",
+          "maximum": 100064,
+          "minimum": 0
+        },
+        "entries": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/entry"
+          }
+        },
+        "next": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [ "kind", "startIndex" ],
+              "properties": {
+                "kind": {
+                  "const": "more"
+                },
+                "startIndex": {
+                  "type": "integer",
+                  "maximum": 100064,
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "kind" ],
+              "properties": {
+                "kind": {
+                  "const": "complete"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "readParams": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "captureId",
+        "target",
+        "offset",
+        "maxBytes"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "captureId": {
+          "$ref": "#/$defs/identity"
+        },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "offset": {
+          "type": "integer",
+          "maximum": 67108864,
+          "minimum": 0
+        },
+        "maxBytes": {
+          "type": "integer",
+          "maximum": 65536,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "readResult": {
+      "type": "object",
+      "required": [
+        "profile",
+        "contractVersion",
+        "binding",
+        "captureId",
+        "target",
+        "offset",
+        "nextOffset",
+        "content"
+      ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/model-originals"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "captureId": {
+          "$ref": "#/$defs/identity"
+        },
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "offset": {
+          "type": "integer",
+          "maximum": 67108864,
+          "minimum": 0
+        },
+        "nextOffset": {
+          "type": "integer",
+          "maximum": 67108864,
+          "minimum": 0
+        },
+        "content": {
+          "description": "Padded standard base64. Semantic validation also requires zero unused pad bits and decoded bytes<=65536",
+          "type": "string",
+          "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+          "maxLength": 87384
+        }
+      },
+      "additionalProperties": false
+    },
+    "releaseParams": {
+      "type": "object",
+      "required": [ "contractVersion", "captureId" ],
+      "properties": {
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "captureId": {
+          "$ref": "#/$defs/identity"
+        }
+      },
+      "additionalProperties": false
+    },
+    "releaseResult": {
+      "type": "object",
+      "required": [ "profile", "contractVersion", "captureId", "status" ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/model-originals"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "captureId": {
+          "$ref": "#/$defs/identity"
+        },
+        "status": {
+          "const": "released"
+        }
+      },
+      "additionalProperties": false
+    },
+    "declaration": {
+      "type": "object",
+      "required": [ "contractVersion", "companions" ],
+      "properties": {
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "companions": {
+          "type": "array",
+          "maxItems": 63,
+          "items": {
+            "$ref": "#/$defs/root"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "failure": {
+      "type": "object",
+      "required": [ "profile", "contractVersion", "code" ],
+      "properties": {
+        "profile": {
+          "const": "morphir/workbench/model-originals"
+        },
+        "contractVersion": {
+          "const": "0.1.0-draft.1"
+        },
+        "code": {
+          "enum": [
+            "model_originals.invalid_request",
+            "model_originals.invalid_identity",
+            "model_originals.invalid_path",
+            "model_originals.invalid_path_set",
+            "model_originals.invalid_range",
+            "model_originals.invalid_declaration",
+            "model_originals.unavailable",
+            "model_originals.unknown_handle",
+            "model_originals.active_capture",
+            "model_originals.capacity",
+            "model_originals.source_limit",
+            "model_originals.inventory_limit",
+            "model_originals.reply_limit",
+            "model_originals.capture_failed",
+            "model_originals.timeout"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "requestId": {
+      "description": "The raw numeric token must be canonical unsigned-u64 syntax, including exact18446744073709551615. JSON Schema is supplemented by duplicate-aware exact raw-token validation, never IEEE754 narrowing",
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

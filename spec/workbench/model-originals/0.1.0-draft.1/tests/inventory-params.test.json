@@ -1,0 +1,65 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/inventory-params.schema.json",
+  "tests": [
+    {
+      "description": "Independent literal shape from the approved49-case proposal",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "startIndex": 0,
+        "maxEntries": 256
+      },
+      "valid": true
+    },
+    {
+      "description": "An unlisted member cannot add authority",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "startIndex": 0,
+        "maxEntries": 256,
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact wire contract does not accept another draft",
+      "data": {
+        "contractVersion": "0.1.0-draft.2",
+        "captureId": "capture-A",
+        "startIndex": 0,
+        "maxEntries": 256
+      },
+      "valid": false
+    },
+    {
+      "description": "Contract version is required",
+      "data": {
+        "captureId": "capture-A",
+        "startIndex": 0,
+        "maxEntries": 256
+      },
+      "valid": false
+    },
+    {
+      "description": "Page count outside1..256",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "startIndex": 0,
+        "maxEntries": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "Page count outside1..256",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "startIndex": 0,
+        "maxEntries": 257
+      },
+      "valid": false
+    }
+  ]
+}

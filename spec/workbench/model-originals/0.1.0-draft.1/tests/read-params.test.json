@@ -1,0 +1,130 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/read-params.schema.json",
+  "tests": [
+    {
+      "description": "Independent literal shape from the approved49-case proposal",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "maxBytes": 65536
+      },
+      "valid": true
+    },
+    {
+      "description": "An unlisted member cannot add authority",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "maxBytes": 65536,
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact wire contract does not accept another draft",
+      "data": {
+        "contractVersion": "0.1.0-draft.2",
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "maxBytes": 65536
+      },
+      "valid": false
+    },
+    {
+      "description": "Contract version is required",
+      "data": {
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "maxBytes": 65536
+      },
+      "valid": false
+    },
+    {
+      "description": "Projection target is independently tagged",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "target": {
+          "kind": "semantic-projection"
+        },
+        "offset": 0,
+        "maxBytes": 65536
+      },
+      "valid": true
+    },
+    {
+      "description": "Projection target cannot carry an original entry",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "target": {
+          "kind": "semantic-projection",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "maxBytes": 65536
+      },
+      "valid": false
+    },
+    {
+      "description": "Read size outside inclusive1..65536",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "maxBytes": 0
+      },
+      "valid": false
+    },
+    {
+      "description": "Read size outside inclusive1..65536",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": 0,
+        "maxBytes": 65537
+      },
+      "valid": false
+    },
+    {
+      "description": "Negative byte offset",
+      "data": {
+        "contractVersion": "0.1.0-draft.1",
+        "captureId": "capture-A",
+        "target": {
+          "kind": "original",
+          "entryId": "entry-model"
+        },
+        "offset": -1,
+        "maxBytes": 65536
+      },
+      "valid": false
+    }
+  ]
+}

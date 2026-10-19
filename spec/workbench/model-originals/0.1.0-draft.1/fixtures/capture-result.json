@@ -1,0 +1,62 @@
+{
+  "profile": "morphir/workbench/model-originals",
+  "contractVersion": "0.1.0-draft.1",
+  "status": "ready",
+  "binding": {
+    "sessionId": "session-A",
+    "source": {
+      "providerId": "provider-A",
+      "locator": "workspace:orders"
+    },
+    "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+  },
+  "captureId": "capture-A",
+  "coverage": {
+    "kind": "complete",
+    "declaration": "0.1.0-draft.1"
+  },
+  "origin": {
+    "kind": "compiled",
+    "record": {
+      "byteLength": 370,
+      "sha256": "69dc158d4f2d9f5f60b3f89e4a725303080366a6daf607072d73fb33bddc9b08",
+      "schema": 1,
+      "task": "compile",
+      "module": "packages/orders",
+      "ir": {
+        "path": "morphir-ir.json",
+        "layout": "single-file",
+        "format": "json",
+        "version": "v4"
+      }
+    }
+  },
+  "primary": {
+    "kind": "file",
+    "path": "morphir-ir.json"
+  },
+  "companions": [
+    {
+      "kind": "directory",
+      "path": "notes"
+    }
+  ],
+  "sourceFormatVersion": {
+    "status": "reported",
+    "release": "4.0.0"
+  },
+  "projection": {
+    "status": "available",
+    "codec": "morphir-json",
+    "byteLength": 111,
+    "sha256": "0cfa7c0335577f650276cca8f9b6543d8142734cc023bc04ee2ae1cbbd67acd1",
+    "formatVersion": "4.0.0"
+  },
+  "inventory": {
+    "entryCount": 4,
+    "fileCount": 2,
+    "directoryCount": 2,
+    "sourceByteLength": 120,
+    "sha256": "8ae541eb3e9c3da4ee65f45ec6d5a39d5431c1e0032d0756030dc7a8fa8466b2"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "profile": "morphir/workbench/model-originals",
+  "contractVersion": "0.1.0-draft.1",
+  "binding": {
+    "sessionId": "session-A",
+    "source": {
+      "providerId": "provider-A",
+      "locator": "workspace:orders"
+    },
+    "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+  },
+  "captureId": "capture-A",
+  "target": {
+    "kind": "original",
+    "entryId": "entry-model"
+  },
+  "offset": 0,
+  "nextOffset": 116,
+  "content": "IA0KeyJmb3JtYXRWZXJzaW9uIjo0LCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6InByaWNpbmciLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19DQo="
+}

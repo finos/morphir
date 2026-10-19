@@ -10,6 +10,7 @@ mod corpus;
 mod executions;
 mod http_policy;
 mod local_models;
+pub mod model_originals;
 mod native_client;
 mod native_frames;
 mod native_owner;

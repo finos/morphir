@@ -1,0 +1,97 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/inventory-result.schema.json",
+  "tests": [
+    {
+      "description": "Independent literal shape from the approved49-case proposal",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.1",
+        "binding": {
+          "sessionId": "session-A",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+        },
+        "captureId": "capture-A",
+        "inventorySha256": "8ae541eb3e9c3da4ee65f45ec6d5a39d5431c1e0032d0756030dc7a8fa8466b2",
+        "startIndex": 4,
+        "entries": [],
+        "next": {
+          "kind": "complete"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "An unlisted member cannot add authority",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.1",
+        "binding": {
+          "sessionId": "session-A",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+        },
+        "captureId": "capture-A",
+        "inventorySha256": "8ae541eb3e9c3da4ee65f45ec6d5a39d5431c1e0032d0756030dc7a8fa8466b2",
+        "startIndex": 4,
+        "entries": [],
+        "next": {
+          "kind": "complete"
+        },
+        "unexpected": true
+      },
+      "valid": false
+    },
+    {
+      "description": "Exact wire contract does not accept another draft",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "contractVersion": "0.1.0-draft.2",
+        "binding": {
+          "sessionId": "session-A",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+        },
+        "captureId": "capture-A",
+        "inventorySha256": "8ae541eb3e9c3da4ee65f45ec6d5a39d5431c1e0032d0756030dc7a8fa8466b2",
+        "startIndex": 4,
+        "entries": [],
+        "next": {
+          "kind": "complete"
+        }
+      },
+      "valid": false
+    },
+    {
+      "description": "Contract version is required",
+      "data": {
+        "profile": "morphir/workbench/model-originals",
+        "binding": {
+          "sessionId": "session-A",
+          "source": {
+            "providerId": "provider-A",
+            "locator": "workspace:orders"
+          },
+          "projectId": "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]"
+        },
+        "captureId": "capture-A",
+        "inventorySha256": "8ae541eb3e9c3da4ee65f45ec6d5a39d5431c1e0032d0756030dc7a8fa8466b2",
+        "startIndex": 4,
+        "entries": [],
+        "next": {
+          "kind": "complete"
+        }
+      },
+      "valid": false
+    }
+  ]
+}

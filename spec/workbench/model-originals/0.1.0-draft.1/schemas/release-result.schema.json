@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/release-result.schema.json",
+  "title": "Model originals release-result",
+  "description": "Closed exact model-originals wire profile. README.html defines required semantic, raw-frame, byte, path, authority, inventory and lifecycle validation in addition to this structural schema",
+  "examples": [
+    {
+      "profile": "morphir/workbench/model-originals",
+      "contractVersion": "0.1.0-draft.1",
+      "captureId": "capture-A",
+      "status": "released"
+    }
+  ],
+  "$ref": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/definitions.schema.json#/$defs/releaseResult"
+}

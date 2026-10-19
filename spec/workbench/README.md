@@ -72,6 +72,20 @@ by the current runner. Drafts.1 through .5, .11 and .12 remain supported.
 Actual isolated-worker evidence is required separately before claiming worker
 propagation. UI and native/HTTP capability-policy offers remain subsequent work.
 
+## Connected model originals
+
+The [model-originals wire profile](model-originals/0.1.0-draft.1/README.html)
+defines a separate exact `0.1.0-draft.1` contract for immutable source capture,
+inventory, byte transfer and release. Original files and directories remain
+distinct from the optional semantic projection. Its schemas and Rust MCK
+request/declaration boundary do not advertise a host capability or qualify a
+connected producer. The profile preserves the independent scenario packets;
+full connected server/client corpus and report checking remain required.
+
+Published [MCK draft 29](draft.29/README.html) covers offline local model
+inspection/export. Connected-original verification requires its own fresh MCK
+allocation; it does not broaden draft 29 or any earlier kit.
+
 ## JSON values
 
 `schemas/value.schema.json` describes model values validated as typed arguments.
