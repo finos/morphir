@@ -1,0 +1,6 @@
+module Types {
+type alias Usd = Int
+type alias USD = Int
+type alias HTTP2Parser = Int
+type alias A = Int
+}

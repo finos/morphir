@@ -1,0 +1,26 @@
+{
+  "outcome": "resolved",
+  "modules": [
+    {
+      "moduleName": "other/organization/types",
+      "symbolIds": [
+        "urn:scopes:symbol:quantity"
+      ],
+      "exports": []
+    }
+  ],
+  "references": [],
+  "model": {
+    "id": "urn:scopes:model:lending",
+    "revision": "model-1",
+    "metadata": {
+      "intent": "Keep reviewed context",
+      "requirements": [
+        "urn:requirement:remaining"
+      ],
+      "custom": {
+        "owner": "domain-review"
+      }
+    }
+  }
+}

@@ -1,0 +1,322 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:initialisms-stay-distinct:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:initialisms-stay-distinct:main",
+      "revision": "fixture-1",
+      "text": "module Types {\ntype alias Usd = Int\ntype alias USD = Int\ntype alias HTTP2Parser = Int\ntype alias A = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "initialisms-stay-distinct:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:initialisms-stay-distinct:main",
+            "revision": "fixture-1",
+            "text": "module Types {\ntype alias Usd = Int\ntype alias USD = Int\ntype alias HTTP2Parser = Int\ntype alias A = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "initialisms-stay-distinct:word:declaration",
+            "span": {
+              "sourceId": "source:initialisms-stay-distinct:main",
+              "start": 15,
+              "end": 35,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Usd",
+            "typeParameters": [],
+            "value": {
+              "id": "initialisms-stay-distinct:word:type",
+              "span": {
+                "sourceId": "source:initialisms-stay-distinct:main",
+                "start": 32,
+                "end": 35,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "initialisms-stay-distinct:acronym:declaration",
+            "span": {
+              "sourceId": "source:initialisms-stay-distinct:main",
+              "start": 36,
+              "end": 56,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "USD",
+            "typeParameters": [],
+            "value": {
+              "id": "initialisms-stay-distinct:acronym:type",
+              "span": {
+                "sourceId": "source:initialisms-stay-distinct:main",
+                "start": 53,
+                "end": 56,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "initialisms-stay-distinct:digits:declaration",
+            "span": {
+              "sourceId": "source:initialisms-stay-distinct:main",
+              "start": 57,
+              "end": 85,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "HTTP2Parser",
+            "typeParameters": [],
+            "value": {
+              "id": "initialisms-stay-distinct:digits:type",
+              "span": {
+                "sourceId": "source:initialisms-stay-distinct:main",
+                "start": 82,
+                "end": 85,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "initialisms-stay-distinct:single:declaration",
+            "span": {
+              "sourceId": "source:initialisms-stay-distinct:main",
+              "start": 86,
+              "end": 104,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "A",
+            "typeParameters": [],
+            "value": {
+              "id": "initialisms-stay-distinct:single:type",
+              "span": {
+                "sourceId": "source:initialisms-stay-distinct:main",
+                "start": 101,
+                "end": 104,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:initialisms-stay-distinct:main:root",
+      "sourceId": "source:initialisms-stay-distinct:main",
+      "span": {
+        "sourceId": "source:initialisms-stay-distinct:main",
+        "start": 0,
+        "end": 107,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "initialisms-stay-distinct:r1"
+        }
+      ]
+    },
+    {
+      "id": "initialisms-stay-distinct:r1",
+      "sourceId": "source:initialisms-stay-distinct:main",
+      "span": {
+        "sourceId": "source:initialisms-stay-distinct:main",
+        "start": 0,
+        "end": 107,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:initialisms-stay-distinct:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:word"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:acronym"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:digits"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:single"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:word",
+      "moduleRegionId": "initialisms-stay-distinct:r1",
+      "name": "Usd",
+      "canonicalName": "usd",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "initialisms-stay-distinct:fragment",
+        "nodeId": "initialisms-stay-distinct:word:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:acronym",
+      "moduleRegionId": "initialisms-stay-distinct:r1",
+      "name": "USD",
+      "canonicalName": "USD",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "initialisms-stay-distinct:fragment",
+        "nodeId": "initialisms-stay-distinct:acronym:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:digits",
+      "moduleRegionId": "initialisms-stay-distinct:r1",
+      "name": "HTTP2Parser",
+      "canonicalName": "HTTP-2-parser",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "initialisms-stay-distinct:fragment",
+        "nodeId": "initialisms-stay-distinct:digits:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:single",
+      "moduleRegionId": "initialisms-stay-distinct:r1",
+      "name": "A",
+      "canonicalName": "a",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "initialisms-stay-distinct:fragment",
+        "nodeId": "initialisms-stay-distinct:single:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

@@ -1,0 +1,4 @@
+module Types exposing (fn use) {
+type alias Secret = Int
+fn use(value: Secret) -> Int
+}

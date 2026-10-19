@@ -1,0 +1,4 @@
+module Types exposing (type Public) {
+type alias Secret = Int
+type alias Public = Secret
+}

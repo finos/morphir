@@ -1,0 +1,199 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:opaque-constructor-export:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:opaque-constructor-export:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Secret, constructor Secret.MakeSecret) {\nopaque type Secret = MakeSecret\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "opaque-constructor-export:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:opaque-constructor-export:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Secret, constructor Secret.MakeSecret) {\nopaque type Secret = MakeSecret\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "opaque-constructor-export:secret:declaration",
+            "span": {
+              "sourceId": "source:opaque-constructor-export:main",
+              "start": 69,
+              "end": 100,
+              "unit": "utf8-byte"
+            },
+            "kind": "custom",
+            "name": "Secret",
+            "typeParameters": [],
+            "constructorAccess": "defining-module",
+            "constructors": [
+              {
+                "id": "opaque-constructor-export:secret:constructor",
+                "span": {
+                  "sourceId": "source:opaque-constructor-export:main",
+                  "start": 90,
+                  "end": 100,
+                  "unit": "utf8-byte"
+                },
+                "name": "MakeSecret",
+                "arguments": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:opaque-constructor-export:main:root",
+      "sourceId": "source:opaque-constructor-export:main",
+      "span": {
+        "sourceId": "source:opaque-constructor-export:main",
+        "start": 0,
+        "end": 103,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "opaque-constructor-export:r1"
+        }
+      ]
+    },
+    {
+      "id": "opaque-constructor-export:r1",
+      "sourceId": "source:opaque-constructor-export:main",
+      "span": {
+        "sourceId": "source:opaque-constructor-export:main",
+        "start": 0,
+        "end": 103,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:opaque-constructor-export:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:secret"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:secret-ctor"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Secret"
+        },
+        {
+          "kind": "constructor",
+          "name": "MakeSecret",
+          "typeName": "Secret"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:secret",
+      "moduleRegionId": "opaque-constructor-export:r1",
+      "name": "Secret",
+      "canonicalName": "secret",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "opaque-constructor-export:fragment",
+        "nodeId": "opaque-constructor-export:secret:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:secret-ctor",
+      "moduleRegionId": "opaque-constructor-export:r1",
+      "name": "MakeSecret",
+      "canonicalName": "make-secret",
+      "category": "constructor",
+      "declaration": {
+        "fragmentId": "opaque-constructor-export:fragment",
+        "nodeId": "opaque-constructor-export:secret:constructor"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ],
+      "ownerTypeId": "urn:scopes:symbol:secret"
+    }
+  ],
+  "imports": [],
+  "references": []
+}

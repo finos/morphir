@@ -1,0 +1,234 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:import-before-point:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:import-before-point:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Use {\n// lookup early\nimport Types as T;\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "import-before-point:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:import-before-point:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Use {\n// lookup early\nimport Types as T;\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "import-before-point:quantity:declaration",
+            "span": {
+              "sourceId": "source:import-before-point:main",
+              "start": 40,
+              "end": 65,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "import-before-point:quantity:type",
+              "span": {
+                "sourceId": "source:import-before-point:main",
+                "start": 62,
+                "end": 65,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:import-before-point:main:root",
+      "sourceId": "source:import-before-point:main",
+      "span": {
+        "sourceId": "source:import-before-point:main",
+        "start": 0,
+        "end": 118,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "import-before-point:r1"
+        },
+        {
+          "kind": "region",
+          "id": "import-before-point:r2"
+        }
+      ]
+    },
+    {
+      "id": "import-before-point:r1",
+      "sourceId": "source:import-before-point:main",
+      "span": {
+        "sourceId": "source:import-before-point:main",
+        "start": 0,
+        "end": 68,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:import-before-point:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    },
+    {
+      "id": "import-before-point:r2",
+      "sourceId": "source:import-before-point:main",
+      "span": {
+        "sourceId": "source:import-before-point:main",
+        "start": 68,
+        "end": 118,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:import-before-point:main:root",
+      "entries": [
+        {
+          "kind": "reference",
+          "id": "early"
+        },
+        {
+          "kind": "import",
+          "id": "late"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "import-before-point:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "import-before-point:fragment",
+        "nodeId": "import-before-point:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "late",
+      "regionId": "import-before-point:r2",
+      "span": {
+        "sourceId": "source:import-before-point:main",
+        "start": 97,
+        "end": 115,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "T"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "early",
+      "regionId": "import-before-point:r2",
+      "span": {
+        "sourceId": "source:import-before-point:main",
+        "start": 97,
+        "end": 97,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "T",
+        "Quantity"
+      ],
+      "category": "type",
+      "localBinders": []
+    }
+  ]
+}

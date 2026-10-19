@@ -1,0 +1,7 @@
+module Types exposing (type Choice, constructor Choice.Yes) {
+type Choice = Yes
+}
+module Use {
+import Types exposing (type Choice, constructor Choice.Yes);
+// lookup ctor
+}

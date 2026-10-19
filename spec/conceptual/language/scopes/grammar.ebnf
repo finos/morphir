@@ -1,0 +1,31 @@
+(* morphir-scopes/0.1.0-draft.1 composes the L1 declaration grammar.
+   This is a source-item grammar with the header-region rules below, not a parser. *)
+file             = { namespace_item | model | module | import | declaration, [ ";" ] } ;
+namespace_item   = "namespace", path, (";" | "{", file, "}") ;
+model            = "model", upper, "{", { module | import | declaration, [ ";" ] }, "}" ;
+module           = "module", path, [ exports ],
+                   (";" | "{", { declaration, [ ";" ] | import }, "}") ;
+exports          = "exposing", "(", [ selector, { ",", selector } ], ")" ;
+import           = "import", target, ("as", upper | exports), ";" ;
+target           = path | lower, "::", path ;
+selector         = "type", upper | "fn", lower
+                 | "constructor", upper, ".", upper ;
+path             = upper, { ".", upper } ;
+(* upper, lower, tokens and declaration are L1 productions, with L2's
+   additional reserved words namespace/model/module/import/as/exposing/constructor.
+   Semicolon headers select a region for following compatible items. Core
+   declarations after a module header belong to that module until the next
+   sibling module, namespace item, model item, or enclosing brace/file boundary.
+   A sibling module block closes an active module header; its exit does not
+   resume that closed header. Namespace blocks extend the active namespace
+   and restore it on exit; sibling namespace headers replace that header
+   relative to their enclosing brace/file base. See contract.html#regions.
+   Namespace items are forbidden inside explicit model/module braces;
+   model/module nesting beyond the productions above is forbidden.
+   A header's core declarations are recognized by this region rule with
+   core declarations valid only while a module header is active. Imports belong to the
+   selected module/namespace region, or the enclosing structural region.
+   Types/records retain L1 braces; complete L1 declarations terminate before
+   container/import keywords, optional semicolons, or owning region boundaries.
+   No wildcard, trailing selector comma, implicit import alias, as+exposing
+   combination, package keyword, include, or implementation body is selected. *)

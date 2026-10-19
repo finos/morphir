@@ -1,0 +1,156 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:unknown-selected-name:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:unknown-selected-name:main",
+      "revision": "fixture-1",
+      "text": "module Types {\n}\nmodule Use {\nimport Types exposing (type Missing);\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "unknown-selected-name:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:unknown-selected-name:main",
+            "revision": "fixture-1",
+            "text": "module Types {\n}\nmodule Use {\nimport Types exposing (type Missing);\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:unknown-selected-name:main:root",
+      "sourceId": "source:unknown-selected-name:main",
+      "span": {
+        "sourceId": "source:unknown-selected-name:main",
+        "start": 0,
+        "end": 70,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "unknown-selected-name:r1"
+        },
+        {
+          "kind": "region",
+          "id": "unknown-selected-name:r2"
+        }
+      ]
+    },
+    {
+      "id": "unknown-selected-name:r1",
+      "sourceId": "source:unknown-selected-name:main",
+      "span": {
+        "sourceId": "source:unknown-selected-name:main",
+        "start": 0,
+        "end": 17,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:unknown-selected-name:main:root",
+      "entries": [],
+      "exports": []
+    },
+    {
+      "id": "unknown-selected-name:r2",
+      "sourceId": "source:unknown-selected-name:main",
+      "span": {
+        "sourceId": "source:unknown-selected-name:main",
+        "start": 17,
+        "end": 70,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:unknown-selected-name:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "bad"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [
+    {
+      "id": "bad",
+      "regionId": "unknown-selected-name:r2",
+      "span": {
+        "sourceId": "source:unknown-selected-name:main",
+        "start": 30,
+        "end": 67,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "selected",
+        "selectors": [
+          {
+            "kind": "type",
+            "name": "Missing"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}

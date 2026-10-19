@@ -1,0 +1,235 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:unprefixed-import-is-not-relative:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:unprefixed-import-is-not-relative:main",
+      "revision": "fixture-1",
+      "text": "namespace Finos;\nmodule Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Use {\nimport Types as T;\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "unprefixed-import-is-not-relative:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:unprefixed-import-is-not-relative:main",
+            "revision": "fixture-1",
+            "text": "namespace Finos;\nmodule Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Use {\nimport Types as T;\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "unprefixed-import-is-not-relative:quantity:declaration",
+            "span": {
+              "sourceId": "source:unprefixed-import-is-not-relative:main",
+              "start": 57,
+              "end": 82,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "unprefixed-import-is-not-relative:quantity:type",
+              "span": {
+                "sourceId": "source:unprefixed-import-is-not-relative:main",
+                "start": 79,
+                "end": 82,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:unprefixed-import-is-not-relative:main:root",
+      "sourceId": "source:unprefixed-import-is-not-relative:main",
+      "span": {
+        "sourceId": "source:unprefixed-import-is-not-relative:main",
+        "start": 0,
+        "end": 119,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "unprefixed-import-is-not-relative:r1"
+        }
+      ]
+    },
+    {
+      "id": "unprefixed-import-is-not-relative:r1",
+      "sourceId": "source:unprefixed-import-is-not-relative:main",
+      "span": {
+        "sourceId": "source:unprefixed-import-is-not-relative:main",
+        "start": 0,
+        "end": 119,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos"
+      ],
+      "parentId": "source:unprefixed-import-is-not-relative:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "unprefixed-import-is-not-relative:r2"
+        },
+        {
+          "kind": "region",
+          "id": "unprefixed-import-is-not-relative:r3"
+        }
+      ]
+    },
+    {
+      "id": "unprefixed-import-is-not-relative:r2",
+      "sourceId": "source:unprefixed-import-is-not-relative:main",
+      "span": {
+        "sourceId": "source:unprefixed-import-is-not-relative:main",
+        "start": 17,
+        "end": 85,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "unprefixed-import-is-not-relative:r1",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    },
+    {
+      "id": "unprefixed-import-is-not-relative:r3",
+      "sourceId": "source:unprefixed-import-is-not-relative:main",
+      "span": {
+        "sourceId": "source:unprefixed-import-is-not-relative:main",
+        "start": 85,
+        "end": 119,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "unprefixed-import-is-not-relative:r1",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "not-relative"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "unprefixed-import-is-not-relative:r2",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "unprefixed-import-is-not-relative:fragment",
+        "nodeId": "unprefixed-import-is-not-relative:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "not-relative",
+      "regionId": "unprefixed-import-is-not-relative:r3",
+      "span": {
+        "sourceId": "source:unprefixed-import-is-not-relative:main",
+        "start": 98,
+        "end": 116,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "T"
+      }
+    }
+  ],
+  "references": []
+}

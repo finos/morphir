@@ -1,0 +1,165 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:public-opaque-alias:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:public-opaque-alias:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Secret) {\nopaque type alias Secret = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "public-opaque-alias:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:public-opaque-alias:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Secret) {\nopaque type alias Secret = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "public-opaque-alias:secret:declaration",
+            "span": {
+              "sourceId": "source:public-opaque-alias:main",
+              "start": 38,
+              "end": 68,
+              "unit": "utf8-byte"
+            },
+            "kind": "opaque-alias",
+            "name": "Secret",
+            "typeParameters": [],
+            "representation": {
+              "id": "public-opaque-alias:secret:type",
+              "span": {
+                "sourceId": "source:public-opaque-alias:main",
+                "start": 65,
+                "end": 68,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:public-opaque-alias:main:root",
+      "sourceId": "source:public-opaque-alias:main",
+      "span": {
+        "sourceId": "source:public-opaque-alias:main",
+        "start": 0,
+        "end": 71,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "public-opaque-alias:r1"
+        }
+      ]
+    },
+    {
+      "id": "public-opaque-alias:r1",
+      "sourceId": "source:public-opaque-alias:main",
+      "span": {
+        "sourceId": "source:public-opaque-alias:main",
+        "start": 0,
+        "end": 71,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:public-opaque-alias:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:secret"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Secret"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:secret",
+      "moduleRegionId": "public-opaque-alias:r1",
+      "name": "Secret",
+      "canonicalName": "secret",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "public-opaque-alias:fragment",
+        "nodeId": "public-opaque-alias:secret:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

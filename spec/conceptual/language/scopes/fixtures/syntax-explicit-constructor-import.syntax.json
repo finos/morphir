@@ -1,0 +1,185 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:explicit-constructor-import:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Choice, constructor Choice.Yes) {\ntype Choice = Yes\n}\nmodule Use {\nimport Types exposing (type Choice, constructor Choice.Yes);\n// lookup ctor\n}\n"
+    }
+  ],
+  "regions": [
+    {
+      "id": "source:explicit-constructor-import:main:root",
+      "sourceId": "source:explicit-constructor-import:main",
+      "span": {
+        "sourceId": "source:explicit-constructor-import:main",
+        "start": 0,
+        "end": 173,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "explicit-constructor-import:r1"
+        },
+        {
+          "kind": "region",
+          "id": "explicit-constructor-import:r2"
+        }
+      ]
+    },
+    {
+      "id": "explicit-constructor-import:r1",
+      "sourceId": "source:explicit-constructor-import:main",
+      "span": {
+        "sourceId": "source:explicit-constructor-import:main",
+        "start": 0,
+        "end": 82,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:explicit-constructor-import:main:root",
+      "entries": [
+        {
+          "kind": "declaration",
+          "id": "explicit-constructor-import:choice:declaration"
+        },
+        {
+          "kind": "declaration",
+          "id": "explicit-constructor-import:choice:constructor"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Choice"
+        },
+        {
+          "kind": "constructor",
+          "name": "Yes",
+          "typeName": "Choice"
+        }
+      ]
+    },
+    {
+      "id": "explicit-constructor-import:r2",
+      "sourceId": "source:explicit-constructor-import:main",
+      "span": {
+        "sourceId": "source:explicit-constructor-import:main",
+        "start": 82,
+        "end": 173,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:explicit-constructor-import:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "constructors"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "fragments": [
+    {
+      "id": "explicit-constructor-import:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:explicit-constructor-import:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Choice, constructor Choice.Yes) {\ntype Choice = Yes\n}\nmodule Use {\nimport Types exposing (type Choice, constructor Choice.Yes);\n// lookup ctor\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "explicit-constructor-import:choice:declaration",
+            "span": {
+              "sourceId": "source:explicit-constructor-import:main",
+              "start": 62,
+              "end": 79,
+              "unit": "utf8-byte"
+            },
+            "kind": "custom",
+            "name": "Choice",
+            "typeParameters": [],
+            "constructorAccess": "module-policy",
+            "constructors": [
+              {
+                "id": "explicit-constructor-import:choice:constructor",
+                "span": {
+                  "sourceId": "source:explicit-constructor-import:main",
+                  "start": 76,
+                  "end": 79,
+                  "unit": "utf8-byte"
+                },
+                "name": "Yes",
+                "arguments": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "imports": [
+    {
+      "id": "constructors",
+      "regionId": "explicit-constructor-import:r2",
+      "span": {
+        "sourceId": "source:explicit-constructor-import:main",
+        "start": 95,
+        "end": 155,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "selected",
+        "selectors": [
+          {
+            "kind": "type",
+            "name": "Choice"
+          },
+          {
+            "kind": "constructor",
+            "name": "Yes",
+            "typeName": "Choice"
+          }
+        ]
+      }
+    }
+  ],
+  "declarations": [
+    {
+      "category": "type",
+      "moduleRegionId": "explicit-constructor-import:r1",
+      "fragmentId": "explicit-constructor-import:fragment",
+      "nodeId": "explicit-constructor-import:choice:declaration"
+    },
+    {
+      "category": "constructor",
+      "moduleRegionId": "explicit-constructor-import:r1",
+      "fragmentId": "explicit-constructor-import:fragment",
+      "nodeId": "explicit-constructor-import:choice:constructor",
+      "ownerNodeId": "explicit-constructor-import:choice:declaration"
+    }
+  ]
+}

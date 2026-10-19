@@ -1,0 +1,35 @@
+{
+  "outcome": "resolved",
+  "modules": [
+    {
+      "moduleName": "finos/lending/types",
+      "symbolIds": [
+        "urn:scopes:symbol:quantity",
+        "urn:scopes:symbol:other"
+      ],
+      "exports": [
+        "urn:scopes:symbol:quantity",
+        "urn:scopes:symbol:other"
+      ]
+    }
+  ],
+  "references": [],
+  "model": {
+    "id": "urn:scopes:model:lending",
+    "revision": "model-1",
+    "metadata": {
+      "intent": "Keep reviewed context",
+      "requirements": [
+        "urn:requirement:remaining"
+      ],
+      "custom": {
+        "owner": "domain-review"
+      }
+    },
+    "qualifiedName": [
+      "Finos",
+      "Lending",
+      "LendingRules"
+    ]
+  }
+}

@@ -1,0 +1,214 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:normalized-symbol-collision:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:normalized-symbol-collision:main",
+      "revision": "fixture-1",
+      "text": "module Types {\ntype alias LoanId = Int\ntype alias Loan_Id = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "normalized-symbol-collision:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:normalized-symbol-collision:main",
+            "revision": "fixture-1",
+            "text": "module Types {\ntype alias LoanId = Int\ntype alias Loan_Id = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "normalized-symbol-collision:one:declaration",
+            "span": {
+              "sourceId": "source:normalized-symbol-collision:main",
+              "start": 15,
+              "end": 38,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "LoanId",
+            "typeParameters": [],
+            "value": {
+              "id": "normalized-symbol-collision:one:type",
+              "span": {
+                "sourceId": "source:normalized-symbol-collision:main",
+                "start": 35,
+                "end": 38,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "normalized-symbol-collision:two:declaration",
+            "span": {
+              "sourceId": "source:normalized-symbol-collision:main",
+              "start": 39,
+              "end": 63,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Loan_Id",
+            "typeParameters": [],
+            "value": {
+              "id": "normalized-symbol-collision:two:type",
+              "span": {
+                "sourceId": "source:normalized-symbol-collision:main",
+                "start": 60,
+                "end": 63,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:normalized-symbol-collision:main:root",
+      "sourceId": "source:normalized-symbol-collision:main",
+      "span": {
+        "sourceId": "source:normalized-symbol-collision:main",
+        "start": 0,
+        "end": 66,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "normalized-symbol-collision:r1"
+        }
+      ]
+    },
+    {
+      "id": "normalized-symbol-collision:r1",
+      "sourceId": "source:normalized-symbol-collision:main",
+      "span": {
+        "sourceId": "source:normalized-symbol-collision:main",
+        "start": 0,
+        "end": 66,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:normalized-symbol-collision:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:one"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:two"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:one",
+      "moduleRegionId": "normalized-symbol-collision:r1",
+      "name": "LoanId",
+      "canonicalName": "loan-id",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "normalized-symbol-collision:fragment",
+        "nodeId": "normalized-symbol-collision:one:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:two",
+      "moduleRegionId": "normalized-symbol-collision:r1",
+      "name": "Loan_Id",
+      "canonicalName": "loan-id",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "normalized-symbol-collision:fragment",
+        "nodeId": "normalized-symbol-collision:two:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

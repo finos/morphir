@@ -1,0 +1,39 @@
+{
+  "outcome": "resolved",
+  "modules": [
+    {
+      "moduleName": "a",
+      "symbolIds": [
+        "urn:scopes:symbol:a",
+        "urn:scopes:symbol:a-ctor"
+      ],
+      "exports": [
+        "urn:scopes:symbol:a"
+      ]
+    },
+    {
+      "moduleName": "b",
+      "symbolIds": [
+        "urn:scopes:symbol:b",
+        "urn:scopes:symbol:b-ctor"
+      ],
+      "exports": [
+        "urn:scopes:symbol:b"
+      ]
+    }
+  ],
+  "references": [],
+  "model": {
+    "id": "urn:scopes:model:lending",
+    "revision": "model-1",
+    "metadata": {
+      "intent": "Keep reviewed context",
+      "requirements": [
+        "urn:requirement:remaining"
+      ],
+      "custom": {
+        "owner": "domain-review"
+      }
+    }
+  }
+}

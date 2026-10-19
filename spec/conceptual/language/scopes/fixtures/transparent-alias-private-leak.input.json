@@ -1,0 +1,219 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:transparent-alias-private-leak:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:transparent-alias-private-leak:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Public) {\ntype alias Secret = Int\ntype alias Public = Secret\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "transparent-alias-private-leak:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:transparent-alias-private-leak:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Public) {\ntype alias Secret = Int\ntype alias Public = Secret\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "transparent-alias-private-leak:secret:declaration",
+            "span": {
+              "sourceId": "source:transparent-alias-private-leak:main",
+              "start": 38,
+              "end": 61,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Secret",
+            "typeParameters": [],
+            "value": {
+              "id": "transparent-alias-private-leak:secret:type",
+              "span": {
+                "sourceId": "source:transparent-alias-private-leak:main",
+                "start": 58,
+                "end": 61,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "transparent-alias-private-leak:public:declaration",
+            "span": {
+              "sourceId": "source:transparent-alias-private-leak:main",
+              "start": 62,
+              "end": 88,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Public",
+            "typeParameters": [],
+            "value": {
+              "id": "transparent-alias-private-leak:public:type",
+              "span": {
+                "sourceId": "source:transparent-alias-private-leak:main",
+                "start": 82,
+                "end": 88,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Secret"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:transparent-alias-private-leak:main:root",
+      "sourceId": "source:transparent-alias-private-leak:main",
+      "span": {
+        "sourceId": "source:transparent-alias-private-leak:main",
+        "start": 0,
+        "end": 91,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "transparent-alias-private-leak:r1"
+        }
+      ]
+    },
+    {
+      "id": "transparent-alias-private-leak:r1",
+      "sourceId": "source:transparent-alias-private-leak:main",
+      "span": {
+        "sourceId": "source:transparent-alias-private-leak:main",
+        "start": 0,
+        "end": 91,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:transparent-alias-private-leak:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:secret"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:public"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Public"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:secret",
+      "moduleRegionId": "transparent-alias-private-leak:r1",
+      "name": "Secret",
+      "canonicalName": "secret",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "transparent-alias-private-leak:fragment",
+        "nodeId": "transparent-alias-private-leak:secret:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:public",
+      "moduleRegionId": "transparent-alias-private-leak:r1",
+      "name": "Public",
+      "canonicalName": "public",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "transparent-alias-private-leak:fragment",
+        "nodeId": "transparent-alias-private-leak:public:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

@@ -161,6 +161,12 @@ Morphir source files use `.mfs`, including source focused on contracts or specif
 does not distinguish those files from other Morphir source. `.morphir` is reserved for a future Morphir
 model package; its container encoding remains undecided.
 
+The [native scope and import contract](https://github.com/finos/morphir/blob/main/spec/conceptual/language/scopes/contract.html),
+profile `morphir-scopes/0.1.0-draft.1`, adds namespace/module containers, lexical imports and explicit
+declaration exports. Constructed facts retain the build package, model snapshot and dependency-slot
+bindings independently of source spelling and file layout. These reference fixtures do not establish
+parser, resolver or projection support.
+
 ## JSON Serialization Summary
 
 IR v4 supports two serialization modes:

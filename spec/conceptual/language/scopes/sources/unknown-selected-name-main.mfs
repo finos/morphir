@@ -1,0 +1,5 @@
+module Types {
+}
+module Use {
+import Types exposing (type Missing);
+}

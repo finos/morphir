@@ -1,0 +1,62 @@
+{
+  "outcome": "resolved",
+  "modules": [
+    {
+      "moduleName": "types",
+      "symbolIds": [
+        "urn:scopes:symbol:quantity"
+      ],
+      "exports": [
+        "urn:scopes:symbol:quantity"
+      ]
+    },
+    {
+      "moduleName": "finos/use",
+      "symbolIds": [],
+      "exports": []
+    }
+  ],
+  "references": [
+    {
+      "referenceId": "use",
+      "target": {
+        "kind": "symbol",
+        "symbolId": "urn:scopes:symbol:quantity",
+        "binding": {
+          "kind": "unit",
+          "unitId": "unit:lending"
+        },
+        "packageName": "acme/lending",
+        "moduleName": "types",
+        "canonicalName": "quantity",
+        "category": "type",
+        "links": [
+          {
+            "kind": "contract",
+            "id": "urn:contract:quantity",
+            "revision": "contract-1"
+          }
+        ],
+        "provenance": [
+          {
+            "id": "urn:design:lending",
+            "revision": "review-1"
+          }
+        ]
+      }
+    }
+  ],
+  "model": {
+    "id": "urn:scopes:model:lending",
+    "revision": "model-1",
+    "metadata": {
+      "intent": "Keep reviewed context",
+      "requirements": [
+        "urn:requirement:remaining"
+      ],
+      "custom": {
+        "owner": "domain-review"
+      }
+    }
+  }
+}

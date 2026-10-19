@@ -1,0 +1,7 @@
+module A;
+type alias A = Int
+module B {
+type alias B = Int
+}
+module C;
+type alias C = Int

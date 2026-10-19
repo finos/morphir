@@ -1,0 +1,160 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:cyclic-region-parent:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:cyclic-region-parent:main",
+      "revision": "fixture-1",
+      "text": "module Types {\ntype alias Quantity = Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "cyclic-region-parent:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:cyclic-region-parent:main",
+            "revision": "fixture-1",
+            "text": "module Types {\ntype alias Quantity = Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "cyclic-region-parent:quantity:declaration",
+            "span": {
+              "sourceId": "source:cyclic-region-parent:main",
+              "start": 15,
+              "end": 40,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "cyclic-region-parent:quantity:type",
+              "span": {
+                "sourceId": "source:cyclic-region-parent:main",
+                "start": 37,
+                "end": 40,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:cyclic-region-parent:main:root",
+      "sourceId": "source:cyclic-region-parent:main",
+      "span": {
+        "sourceId": "source:cyclic-region-parent:main",
+        "start": 0,
+        "end": 43,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "cyclic-region-parent:r1"
+        }
+      ]
+    },
+    {
+      "id": "cyclic-region-parent:r1",
+      "sourceId": "source:cyclic-region-parent:main",
+      "span": {
+        "sourceId": "source:cyclic-region-parent:main",
+        "start": 0,
+        "end": 43,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "cyclic-region-parent:r1",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "cyclic-region-parent:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "cyclic-region-parent:fragment",
+        "nodeId": "cyclic-region-parent:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

@@ -1,0 +1,314 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:module-block-closes-header:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:module-block-closes-header:main",
+      "revision": "fixture-1",
+      "text": "module A;\ntype alias A = Int\nmodule B {\ntype alias B = Int\n}\nmodule C;\ntype alias C = Int\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "module-block-closes-header:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:module-block-closes-header:main",
+            "revision": "fixture-1",
+            "text": "module A;\ntype alias A = Int\nmodule B {\ntype alias B = Int\n}\nmodule C;\ntype alias C = Int\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "module-block-closes-header:a:declaration",
+            "span": {
+              "sourceId": "source:module-block-closes-header:main",
+              "start": 10,
+              "end": 28,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "A",
+            "typeParameters": [],
+            "value": {
+              "id": "module-block-closes-header:a:type",
+              "span": {
+                "sourceId": "source:module-block-closes-header:main",
+                "start": 25,
+                "end": 28,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "module-block-closes-header:b:declaration",
+            "span": {
+              "sourceId": "source:module-block-closes-header:main",
+              "start": 40,
+              "end": 58,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "B",
+            "typeParameters": [],
+            "value": {
+              "id": "module-block-closes-header:b:type",
+              "span": {
+                "sourceId": "source:module-block-closes-header:main",
+                "start": 55,
+                "end": 58,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "module-block-closes-header:c:declaration",
+            "span": {
+              "sourceId": "source:module-block-closes-header:main",
+              "start": 71,
+              "end": 89,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "C",
+            "typeParameters": [],
+            "value": {
+              "id": "module-block-closes-header:c:type",
+              "span": {
+                "sourceId": "source:module-block-closes-header:main",
+                "start": 86,
+                "end": 89,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:module-block-closes-header:main:root",
+      "sourceId": "source:module-block-closes-header:main",
+      "span": {
+        "sourceId": "source:module-block-closes-header:main",
+        "start": 0,
+        "end": 90,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "module-block-closes-header:r1"
+        },
+        {
+          "kind": "region",
+          "id": "module-block-closes-header:r2"
+        },
+        {
+          "kind": "region",
+          "id": "module-block-closes-header:r3"
+        }
+      ]
+    },
+    {
+      "id": "module-block-closes-header:r1",
+      "sourceId": "source:module-block-closes-header:main",
+      "span": {
+        "sourceId": "source:module-block-closes-header:main",
+        "start": 0,
+        "end": 29,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "header",
+      "name": [
+        "A"
+      ],
+      "parentId": "source:module-block-closes-header:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:a"
+        }
+      ],
+      "exports": []
+    },
+    {
+      "id": "module-block-closes-header:r2",
+      "sourceId": "source:module-block-closes-header:main",
+      "span": {
+        "sourceId": "source:module-block-closes-header:main",
+        "start": 29,
+        "end": 61,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "B"
+      ],
+      "parentId": "source:module-block-closes-header:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:b"
+        }
+      ],
+      "exports": []
+    },
+    {
+      "id": "module-block-closes-header:r3",
+      "sourceId": "source:module-block-closes-header:main",
+      "span": {
+        "sourceId": "source:module-block-closes-header:main",
+        "start": 61,
+        "end": 90,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "header",
+      "name": [
+        "C"
+      ],
+      "parentId": "source:module-block-closes-header:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:c"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:a",
+      "moduleRegionId": "module-block-closes-header:r1",
+      "name": "A",
+      "canonicalName": "a",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "module-block-closes-header:fragment",
+        "nodeId": "module-block-closes-header:a:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:b",
+      "moduleRegionId": "module-block-closes-header:r2",
+      "name": "B",
+      "canonicalName": "b",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "module-block-closes-header:fragment",
+        "nodeId": "module-block-closes-header:b:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:c",
+      "moduleRegionId": "module-block-closes-header:r3",
+      "name": "C",
+      "canonicalName": "c",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "module-block-closes-header:fragment",
+        "nodeId": "module-block-closes-header:c:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

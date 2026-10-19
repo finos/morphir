@@ -1,0 +1,271 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:same-node-two-slots:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [
+    {
+      "slot": "first",
+      "resolvedNodeId": "release:sdk:1",
+      "packageName": "morphir/SDK",
+      "revision": "1.0.0",
+      "exportTable": [
+        {
+          "path": "collections/list",
+          "moduleName": "data/sequences"
+        }
+      ],
+      "symbols": [
+        {
+          "id": "urn:scopes:symbol:sdk-list",
+          "moduleName": "data/sequences",
+          "name": "List",
+          "canonicalName": "list",
+          "visibility": "public",
+          "category": "type",
+          "links": [
+            {
+              "kind": "contract",
+              "id": "urn:contract:quantity",
+              "revision": "contract-1"
+            }
+          ],
+          "provenance": [
+            {
+              "id": "urn:design:lending",
+              "revision": "review-1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slot": "second",
+      "resolvedNodeId": "release:sdk:1",
+      "packageName": "morphir/SDK",
+      "revision": "1.0.0",
+      "exportTable": [
+        {
+          "path": "collections/list",
+          "moduleName": "data/sequences"
+        }
+      ],
+      "symbols": [
+        {
+          "id": "urn:scopes:symbol:sdk-list",
+          "moduleName": "data/sequences",
+          "name": "List",
+          "canonicalName": "list",
+          "visibility": "public",
+          "category": "type",
+          "links": [
+            {
+              "kind": "contract",
+              "id": "urn:contract:quantity",
+              "revision": "contract-1"
+            }
+          ],
+          "provenance": [
+            {
+              "id": "urn:design:lending",
+              "revision": "review-1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "source:same-node-two-slots:main",
+      "revision": "fixture-1",
+      "text": "module Use {\nimport first::Collections.List as First;\n// lookup first-use\nimport second::Collections.List as Second;\n// lookup second-use\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "same-node-two-slots:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:same-node-two-slots:main",
+            "revision": "fixture-1",
+            "text": "module Use {\nimport first::Collections.List as First;\n// lookup first-use\nimport second::Collections.List as Second;\n// lookup second-use\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:same-node-two-slots:main:root",
+      "sourceId": "source:same-node-two-slots:main",
+      "span": {
+        "sourceId": "source:same-node-two-slots:main",
+        "start": 0,
+        "end": 140,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "same-node-two-slots:r1"
+        }
+      ]
+    },
+    {
+      "id": "same-node-two-slots:r1",
+      "sourceId": "source:same-node-two-slots:main",
+      "span": {
+        "sourceId": "source:same-node-two-slots:main",
+        "start": 0,
+        "end": 140,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:same-node-two-slots:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "first"
+        },
+        {
+          "kind": "reference",
+          "id": "first-use"
+        },
+        {
+          "kind": "import",
+          "id": "second"
+        },
+        {
+          "kind": "reference",
+          "id": "second-use"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [
+    {
+      "id": "first",
+      "regionId": "same-node-two-slots:r1",
+      "span": {
+        "sourceId": "source:same-node-two-slots:main",
+        "start": 13,
+        "end": 53,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "dependency",
+        "slot": "first",
+        "exportPath": "collections/list",
+        "authoredPath": [
+          "Collections",
+          "List"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "First"
+      }
+    },
+    {
+      "id": "second",
+      "regionId": "same-node-two-slots:r1",
+      "span": {
+        "sourceId": "source:same-node-two-slots:main",
+        "start": 74,
+        "end": 116,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "dependency",
+        "slot": "second",
+        "exportPath": "collections/list",
+        "authoredPath": [
+          "Collections",
+          "List"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "Second"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "first-use",
+      "regionId": "same-node-two-slots:r1",
+      "span": {
+        "sourceId": "source:same-node-two-slots:main",
+        "start": 74,
+        "end": 74,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "First",
+        "List"
+      ],
+      "category": "type",
+      "localBinders": []
+    },
+    {
+      "id": "second-use",
+      "regionId": "same-node-two-slots:r1",
+      "span": {
+        "sourceId": "source:same-node-two-slots:main",
+        "start": 138,
+        "end": 138,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "Second",
+        "List"
+      ],
+      "category": "type",
+      "localBinders": []
+    }
+  ]
+}

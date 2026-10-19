@@ -1,0 +1,272 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:constructor-name-collision:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:constructor-name-collision:main",
+      "revision": "fixture-1",
+      "text": "module Types {\ntype A = Same\ntype B = Same\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "constructor-name-collision:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:constructor-name-collision:main",
+            "revision": "fixture-1",
+            "text": "module Types {\ntype A = Same\ntype B = Same\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "constructor-name-collision:a:declaration",
+            "span": {
+              "sourceId": "source:constructor-name-collision:main",
+              "start": 15,
+              "end": 28,
+              "unit": "utf8-byte"
+            },
+            "kind": "custom",
+            "name": "A",
+            "typeParameters": [],
+            "constructorAccess": "module-policy",
+            "constructors": [
+              {
+                "id": "constructor-name-collision:a:constructor",
+                "span": {
+                  "sourceId": "source:constructor-name-collision:main",
+                  "start": 24,
+                  "end": 28,
+                  "unit": "utf8-byte"
+                },
+                "name": "Same",
+                "arguments": []
+              }
+            ]
+          },
+          {
+            "id": "constructor-name-collision:b:declaration",
+            "span": {
+              "sourceId": "source:constructor-name-collision:main",
+              "start": 29,
+              "end": 42,
+              "unit": "utf8-byte"
+            },
+            "kind": "custom",
+            "name": "B",
+            "typeParameters": [],
+            "constructorAccess": "module-policy",
+            "constructors": [
+              {
+                "id": "constructor-name-collision:b:constructor",
+                "span": {
+                  "sourceId": "source:constructor-name-collision:main",
+                  "start": 38,
+                  "end": 42,
+                  "unit": "utf8-byte"
+                },
+                "name": "Same",
+                "arguments": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:constructor-name-collision:main:root",
+      "sourceId": "source:constructor-name-collision:main",
+      "span": {
+        "sourceId": "source:constructor-name-collision:main",
+        "start": 0,
+        "end": 45,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "constructor-name-collision:r1"
+        }
+      ]
+    },
+    {
+      "id": "constructor-name-collision:r1",
+      "sourceId": "source:constructor-name-collision:main",
+      "span": {
+        "sourceId": "source:constructor-name-collision:main",
+        "start": 0,
+        "end": 45,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:constructor-name-collision:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:a"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:a-ctor"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:b"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:b-ctor"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:a",
+      "moduleRegionId": "constructor-name-collision:r1",
+      "name": "A",
+      "canonicalName": "a",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "constructor-name-collision:fragment",
+        "nodeId": "constructor-name-collision:a:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:a-ctor",
+      "moduleRegionId": "constructor-name-collision:r1",
+      "name": "Same",
+      "canonicalName": "same",
+      "category": "constructor",
+      "declaration": {
+        "fragmentId": "constructor-name-collision:fragment",
+        "nodeId": "constructor-name-collision:a:constructor"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ],
+      "ownerTypeId": "urn:scopes:symbol:a"
+    },
+    {
+      "id": "urn:scopes:symbol:b",
+      "moduleRegionId": "constructor-name-collision:r1",
+      "name": "B",
+      "canonicalName": "b",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "constructor-name-collision:fragment",
+        "nodeId": "constructor-name-collision:b:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:b-ctor",
+      "moduleRegionId": "constructor-name-collision:r1",
+      "name": "Same",
+      "canonicalName": "same",
+      "category": "constructor",
+      "declaration": {
+        "fragmentId": "constructor-name-collision:fragment",
+        "nodeId": "constructor-name-collision:b:constructor"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ],
+      "ownerTypeId": "urn:scopes:symbol:b"
+    }
+  ],
+  "imports": [],
+  "references": []
+}

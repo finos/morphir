@@ -1,0 +1,28 @@
+{
+  "outcome": "accepted",
+  "modules": [
+    {
+      "moduleName": "types",
+      "symbolIds": [
+        "urn:scopes:symbol:secret"
+      ],
+      "exports": [
+        "urn:scopes:symbol:secret"
+      ]
+    }
+  ],
+  "references": [],
+  "model": {
+    "id": "urn:scopes:model:lending",
+    "revision": "model-1",
+    "metadata": {
+      "intent": "Keep reviewed context",
+      "requirements": [
+        "urn:requirement:remaining"
+      ],
+      "custom": {
+        "owner": "domain-review"
+      }
+    }
+  }
+}

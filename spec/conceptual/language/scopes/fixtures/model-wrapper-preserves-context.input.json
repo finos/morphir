@@ -1,0 +1,222 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:model-wrapper-preserves-context:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:model-wrapper-preserves-context:main",
+      "revision": "fixture-1",
+      "text": "namespace Finos.Lending;\nmodel LendingRules {\nmodule Returns {\ntype alias Quantity = Int\n}\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "model-wrapper-preserves-context:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:model-wrapper-preserves-context:main",
+            "revision": "fixture-1",
+            "text": "namespace Finos.Lending;\nmodel LendingRules {\nmodule Returns {\ntype alias Quantity = Int\n}\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "model-wrapper-preserves-context:quantity:declaration",
+            "span": {
+              "sourceId": "source:model-wrapper-preserves-context:main",
+              "start": 63,
+              "end": 88,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "model-wrapper-preserves-context:quantity:type",
+              "span": {
+                "sourceId": "source:model-wrapper-preserves-context:main",
+                "start": 85,
+                "end": 88,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [
+    {
+      "regionId": "model-wrapper-preserves-context:r2",
+      "model": {
+        "id": "urn:scopes:model:lending",
+        "revision": "model-1",
+        "metadata": {
+          "intent": "Keep reviewed context",
+          "requirements": [
+            "urn:requirement:remaining"
+          ],
+          "custom": {
+            "owner": "domain-review"
+          }
+        }
+      }
+    }
+  ],
+  "regions": [
+    {
+      "id": "source:model-wrapper-preserves-context:main:root",
+      "sourceId": "source:model-wrapper-preserves-context:main",
+      "span": {
+        "sourceId": "source:model-wrapper-preserves-context:main",
+        "start": 0,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-preserves-context:r1"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-preserves-context:r1",
+      "sourceId": "source:model-wrapper-preserves-context:main",
+      "span": {
+        "sourceId": "source:model-wrapper-preserves-context:main",
+        "start": 0,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos",
+        "Lending"
+      ],
+      "parentId": "source:model-wrapper-preserves-context:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-preserves-context:r2"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-preserves-context:r2",
+      "sourceId": "source:model-wrapper-preserves-context:main",
+      "span": {
+        "sourceId": "source:model-wrapper-preserves-context:main",
+        "start": 25,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "model",
+      "form": "block",
+      "name": [
+        "LendingRules"
+      ],
+      "parentId": "model-wrapper-preserves-context:r1",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-preserves-context:r3"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-preserves-context:r3",
+      "sourceId": "source:model-wrapper-preserves-context:main",
+      "span": {
+        "sourceId": "source:model-wrapper-preserves-context:main",
+        "start": 46,
+        "end": 91,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Returns"
+      ],
+      "parentId": "model-wrapper-preserves-context:r2",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "model-wrapper-preserves-context:r3",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "model-wrapper-preserves-context:fragment",
+        "nodeId": "model-wrapper-preserves-context:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

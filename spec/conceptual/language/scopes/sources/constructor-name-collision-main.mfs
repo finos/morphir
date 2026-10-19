@@ -1,0 +1,4 @@
+module Types {
+type A = Same
+type B = Same
+}

@@ -1,0 +1,3 @@
+module Use {
+import Missing as M;
+}

@@ -1,0 +1,7 @@
+module Functions exposing (fn use) {
+fn use(value: Int) -> Int
+}
+module Consumer {
+import Functions exposing (fn use);
+// lookup local
+}
