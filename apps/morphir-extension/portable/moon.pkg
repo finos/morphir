@@ -1,0 +1,7 @@
+supported_targets = "wasm"
+
+import {
+  "finos/morphir-moonbit/mep",
+  "finos/morphir-extension/frontend",
+  "moonbitlang/core/encoding/utf8",
+}

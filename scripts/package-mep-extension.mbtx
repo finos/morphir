@@ -1,0 +1,55 @@
+///|
+/// Acquire the full graph, then publish a saved extension with the packaged
+/// compiler. Runtime hosts use only the saved artifact and explicit byte ABI.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+}
+
+///|
+async fn output(command : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(command, args)
+  guard code == 0 else { fail("MEP acquisition failed: " + err.text()) }
+  out.text()
+}
+
+///|
+async fn checked(command : String, args : Array[String]) -> Unit {
+  let code = @process.run(
+    command,
+    args,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  guard code == 0 else { fail("MEP packaging failed: " + command) }
+}
+
+///|
+async fn main {
+  let destination = @env.get_env_var("MORPHIR_MEP_ARTIFACTS").unwrap_or(
+    ".dev/portable-mep",
+  )
+  if !@fs.exists(destination) {
+    @fs.mkdir(destination, recursive=true)
+  }
+  let core = output("moon", ["run", "scripts/moonbit-core.mbtx", "check"])
+    .trim()
+    .to_owned()
+  @fs.write_file(
+    destination + "/core-graph.json",
+    output("moon", ["-C", core, "tree", "--package", "--json"]),
+  )
+  @fs.write_file(
+    destination + "/recipe.txt",
+    output("moon", [
+      "build", "--dry-run", "--target", "wasm", "--release", "apps/morphir-extension/portable",
+    ]),
+  )
+  checked("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"])
+  checked("node", [
+    "pkgs/morphir-host/embedding/node-package-mep.mjs", destination, core,
+  ])
+}

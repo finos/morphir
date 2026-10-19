@@ -172,6 +172,18 @@ run = "moon run scripts/typed-source-check.mbtx"
 description = "Qualify MEP stdio; add explicit host/digest/target pins for installed acceptance"
 run = "moon run scripts/moonbit-extension.mbtx test"
 
+[tasks."package:mep-extension"]
+description = "Package the portable MoonBit MEP extension as saved Wasm and Ion"
+run = "moonx scripts/package-mep-extension.mbtx"
+
+[tasks."test:portable-mep"]
+description = "Qualify the fresh saved MEP process and generated source consumer"
+run = "moonx scripts/portable-mep-check.mbtx"
+
+[tasks."test:portable-mep-mck"]
+description = "Run and recheck the independent pinned shared MEP guest suite"
+run = "moonx scripts/portable-mep-mck.mbtx"
+
 [tasks."sdk-spec:generate"]
 description = "Regenerate pkgs/morphir-sdk-spec/sdk_data.mbt from pkgs/morphir-sdk-spec/sdk.scm"
 run = "moon run scripts/sdk-spec-generate.mbtx"

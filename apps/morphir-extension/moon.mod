@@ -10,7 +10,7 @@ readme = "README.md"
 
 preferred_target = "native"
 
-supported_targets = "native"
+supported_targets = "native+wasm"
 
 import {
   "finos/morphir-moonbit@0.1.0",

@@ -4,6 +4,8 @@ import {Worker} from "node:worker_threads";
 import {createRequire} from "node:module";
 import {createEmbeddedToolchain, createWorkerToolchain} from "./index.mjs";
 export {createDirectoryArtifactStore, readDirectoryArtifact} from './node-artifacts.mjs';
+export {loadNodeMepAdapter} from './node-mep-adapter.mjs';
+export {runMepExtension} from './node-mep-stdio.mjs';
 
 const require = createRequire(import.meta.url);
 export function createCompiler(): Compiler {

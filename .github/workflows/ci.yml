@@ -116,6 +116,20 @@ jobs:
           bun run --cwd pkgs/morphir-host/embedding test:browser
       - name: Qualify generated libraries with real SDK and pinned core
         run: moonx scripts/assembly-check.mbtx
+      - name: Package the complete portable MEP extension
+        run: mise run package:mep-extension
+      - name: Qualify fresh saved MEP sessions and generated consumer
+        run: mise run test:portable-mep
+      - name: Retain portable MEP artifacts and operation evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: portable-mep
+          path: |
+            .dev/portable-mep/extension/
+            .dev/portable-mep/build-report.json
+            .dev/portable-mep-acceptance/
+          if-no-files-found: error
 
   typescript:
     name: TypeScript

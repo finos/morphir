@@ -63,7 +63,12 @@ fn baseline_jobs(path : String) -> Array[String] {
   if is_docs_like(path) {
     return if is_site_input(path) { ["typescript"] } else { [] }
   }
-  if path.has_prefix("pkgs/morphir-host/embedding/") {
+  if starts_with_any(path, [
+      "pkgs/morphir-host/embedding/", "apps/morphir-extension/", "pkgs/morphir-moonbit/mep/",
+    ]) ||
+    [
+      "scripts/package-mep-extension.mbtx", "scripts/portable-mep-check.mbtx", "scripts/portable-mep-mck.mbtx",
+    ].contains(path) {
     return ["typescript", "embedding"]
   }
   // Elm/Scheme owns generated sample freshness, even though the samples ship
@@ -92,7 +97,7 @@ fn baseline_jobs(path : String) -> Array[String] {
       "pkgs/morphir-moonbit/", "pkgs/morphir-moonbit-bindings/", "pkgs/morphir-sdk/",
       "pkgs/morphir-moonbit-frontend/",
     ]) {
-    return ["typescript", "elm-scheme"]
+    return ["typescript", "embedding", "elm-scheme"]
   }
   ["supervision", "embedding", "typescript", "elm-scheme"]
 }
@@ -360,13 +365,23 @@ async fn self_test() -> Unit {
       ),
       (["pkgs/morphir-workbench-native/workspace/service.mbt"], ["typescript"]),
       (["pkgs/morphir-host/embedding/index.mts"], ["typescript", "embedding"]),
-      (["pkgs/morphir-moonbit/mep/session.mbt"], ["typescript"]),
-      (["pkgs/morphir-sdk/int/int.mbt"], ["typescript", "elm-scheme"]),
+      (["pkgs/morphir-moonbit/mep/session.mbt"], ["typescript", "embedding"]),
+      (
+        ["apps/morphir-extension/frontend/adapter.mbt"],
+        ["typescript", "embedding"],
+      ),
+      (["scripts/package-mep-extension.mbtx"], ["typescript", "embedding"]),
+      (["scripts/portable-mep-check.mbtx"], ["typescript", "embedding"]),
+      (["scripts/portable-mep-mck.mbtx"], ["typescript", "embedding"]),
+      (
+        ["pkgs/morphir-sdk/int/int.mbt"],
+        ["typescript", "embedding", "elm-scheme"],
+      ),
       (["scripts/conformance-check.mbtx"], ["typescript"]),
       (["scripts/installed-lifecycle-check.mbtx"], ["typescript"]),
       (
         ["pkgs/morphir-moonbit-frontend/library.mbt"],
-        ["typescript", "elm-scheme"],
+        ["typescript", "embedding", "elm-scheme"],
       ),
       (
         ["pkgs/morphir-ir/ir.mbt"],

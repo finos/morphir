@@ -97,11 +97,12 @@ async fn compile_process_cases(
     let process = @process.spawn(
       group,
       guest,
-      [],
+      guest_arguments(),
       stdin~,
       stdout~,
       stderr~,
       cwd=root,
+      extra_env=guest_environment(),
     )
     let client = {
       input: writer,
@@ -295,11 +296,39 @@ async fn compile_process_cases(
       cwd=root,
     ),
   )
-  assert_true(
-    checked("moon", ["run", "--target", "native", "consumer"], cwd=root).contains(
-      "Native source consumer passed",
-    ),
+  let consumer_result = checked(
+    "moon",
+    ["run", "--target", "native", "consumer"],
+    cwd=root,
   )
+  assert_true(consumer_result.contains("Native source consumer passed"))
+  // Preserve the complete reproduction, rather than only a few model sidecars.
+  @fs.write_file(
+    evidence + "/source-request.json",
+    source_request().stringify(),
+  )
+  @fs.write_file(evidence + "/consumer-result.txt", consumer_result)
+  for artifact in artifacts {
+    let path = @wire.string(@wire.field(artifact, "path"))
+    let parent = path.split("/").to_array()
+    ignore(parent.pop())
+    @fs.mkdir(
+      evidence + "/generated/" + parent.join("/"),
+      recursive=true,
+      allow_exist=true,
+    )
+    @fs.write_file(
+      evidence + "/generated/" + path,
+      @fs.read_file(root + "/generated/" + path),
+    )
+  }
+  @fs.mkdir(evidence + "/consumer", allow_exist=true)
+  for name in ["moon.mod", "moon.pkg", "main.mbt"] {
+    @fs.write_file(
+      evidence + "/consumer/" + name,
+      @fs.read_file(root + "/consumer/" + name),
+    )
+  }
   @fs.write_file(evidence + "/compiled-envelope.json", model.stringify())
   @fs.write_file(
     evidence + "/compiled-model.ionb",

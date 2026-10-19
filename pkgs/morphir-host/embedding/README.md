@@ -251,3 +251,40 @@ profiles are separate from language profiles and MEP/WIT bindings.
 The production Workbench codec example, complete assembly task, process bridge
 and shared MCK qualification are documented in
 [`mck/packaged`](../../../apps/morphir-workbench/mck/packaged/README.md).
+
+## Portable MEP process host
+
+`loadNodeMepAdapter(saved)` loads the separate
+`morphir/mep-bytes-v1/v1-draft` execution profile in a Node worker. It accepts
+existing MEP JSON-RPC bodies and returns a response, notification silence, or
+terminal exit. Use the Node adapter for bounded execution. The lower-level
+`loadMepAdapter` is synchronous and cannot interrupt a running guest.
+
+The profile requires one unshared wasm32 memory with a maximum of 4,096 pages,
+256 MiB. Requests and responses are limited to 16 MiB. The Node host applies a
+10-second timeout per load/call and awaits worker termination on timeout, trap,
+exit or disposal. Concurrent requests are refused. Protocol refusals from the
+guest leave its negotiated session usable; infrastructure failures are terminal.
+Wire cancellation is unsupported and is not advertised.
+
+```ts
+import {loadNodeMepAdapter, readDirectoryArtifact} from '@morphir/moonbit-toolchain/node';
+const adapter = await loadNodeMepAdapter(await readDirectoryArtifact('./extension'));
+try {
+  const response = await adapter.exchange(new TextEncoder().encode(requestJson));
+  // Preserve the returned JSON-RPC body and its ID.
+} finally {
+  await adapter.dispose();
+}
+```
+
+The executable `node-mep-cli.mjs` adds existing Content-Length framing with
+backpressure and strict byte limits. Importing `runMepExtension` starts no I/O;
+call it explicitly to serve stdin/stdout. The guest has only indexed byte input
+and output callbacks, with no filesystem, network, browser or WASI services.
+Infrastructure diagnostics go to stderr; no file logging is enabled by this
+profile. The host process itself has ordinary Node process access.
+
+See the [portable extension instructions](../../../apps/morphir-extension/README.md#portable-mep-extension)
+for packaging and operation qualification. This profile is core Wasm. It does
+not claim Component Model, browser, installed CLI or additional source support.

@@ -1,0 +1,292 @@
+///|
+/// Independent shared runner owns the cases, expected results and verdicts.
+/// This gate pins inputs, launches native/saved guests and rechecks reports.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+async fn checked(
+  program : String,
+  args : Array[String],
+  environment~ : Map[String, String] = {},
+) -> String {
+  let (code, out, err) = @process.collect_output(
+    program,
+    args,
+    extra_env=environment,
+  )
+  @stdio.stderr.write(err.text())
+  guard code == 0 else {
+    @stdio.stderr.write(out.text())
+    fail("Shared MEP qualification failed: " + program + " " + args.join(" "))
+  }
+  out.text()
+}
+
+///|
+async fn pinned(
+  variable : String,
+  digest_variable : String,
+) -> (String, String) {
+  guard @env.get_env_var(variable) is Some(path) &&
+    @env.get_env_var(digest_variable) is Some(expected) else {
+    fail(
+      "Set " +
+      variable +
+      " and " +
+      digest_variable +
+      " to explicit independent inputs",
+    )
+  }
+  let path = @fs.realpath(path)
+  guard expected.length() == 64 && digest(path) == expected else {
+    fail("Independent input does not match its SHA256 pin: " + variable)
+  }
+  (path, expected)
+}
+
+///|
+/// Build the exact independently checked returned library. Consumer source and
+/// assertions come from the shared kit; the compiler executes those checks.
+async fn consumer_case(
+  root : String,
+  evidence : String,
+  report : Json,
+  kit : Json,
+) -> String {
+  guard field(report, "records") is Array(records) else {
+    fail("Missing shared observations")
+  }
+  let generated = records.filter(record => {
+    field(record, "caseId") == Json("generate-retained")
+  })
+  guard generated.length() == 1 &&
+    field(field(field(generated[0], "observed"), "result"), "artifacts")
+    is Array(artifacts) else {
+    fail("Missing independently qualified generated library")
+  }
+  @fs.mkdir(evidence + "/generated", recursive=true)
+  for artifact in artifacts {
+    guard field(artifact, "path") is String(path) &&
+      !path.has_prefix("/") &&
+      !path.contains("\\") &&
+      !path.contains(":") &&
+      path.split("/").all(p => p != "" && p != "." && p != "..") &&
+      field(artifact, "content") is String(content) &&
+      (
+        field(artifact, "binary") == Json(false) ||
+        field(artifact, "binary") == Json(true)
+      ) else {
+      fail("Invalid generated artifact path or content")
+    }
+    let segments = path.split("/").to_array()
+    ignore(segments.pop())
+    if !segments.is_empty() &&
+      !@fs.exists(evidence + "/generated/" + segments.join("/")) {
+      @fs.mkdir(evidence + "/generated/" + segments.join("/"), recursive=true)
+    }
+    let bytes = if field(artifact, "binary") == Json(true) {
+      @base64.decode(content)
+    } else {
+      @utf8.encode(content)
+    }
+    @fs.write_file(evidence + "/generated/" + path, bytes)
+  }
+  guard field(field(kit, "consumer"), "files") is Object(files) &&
+    files.length() == 3 &&
+    field(field(kit, "consumer"), "expectedStdout") is String(expected) else {
+    fail("Missing independent consumer fixture")
+  }
+  @fs.mkdir(evidence + "/consumer")
+  for name in ["moon.mod", "moon.pkg", "main.mbt"] {
+    guard files.get(name) is Some(String(content)) else {
+      fail("Missing shared consumer source: " + name)
+    }
+    @fs.write_file(evidence + "/consumer/" + name, content)
+  }
+  let members = [
+    evidence + "/generated",
+    evidence + "/consumer",
+    root + "/pkgs/morphir-sdk",
+  ]
+  @fs.write_file(
+    evidence + "/moon.work",
+    "members = " + Json(members).stringify() + "\n",
+  )
+  ignore(
+    checked("moon", [
+      "-C", evidence, "build", "--target", "native", "generated", "consumer",
+    ]),
+  )
+  let result = checked("moon", [
+    "-C", evidence, "run", "--target", "native", "consumer",
+  ])
+  guard result == expected else {
+    fail("Shared consumer expected stdout differs")
+  }
+  @fs.write_file(evidence + "/consumer-result.txt", result)
+  let sources = records.filter(record => {
+    field(record, "caseId") == Json("compile-ion")
+  })
+  guard sources.length() == 1 else {
+    fail("Missing independently qualified source request")
+  }
+  @fs.write_file(
+    evidence + "/source-request.json",
+    field(sources[0], "request").stringify(),
+  )
+  result
+}
+
+///|
+async fn main {
+  let (runner, runner_digest) = pinned("MORPHIR_MCK_BIN", "MORPHIR_MCK_SHA256")
+  let (kit, kit_digest) = pinned("MORPHIR_MEP_KIT", "MORPHIR_MEP_KIT_SHA256")
+  let kit_value = @fs.read_file(kit).json()
+  let root = @fs.realpath(".")
+  let compiler = checked("moon", ["version", "--all"])
+  guard compiler.contains("0.10.15+943464bfa") else {
+    fail("Pinned MoonBit0.10.15 required")
+  }
+  let artifacts = @fs.realpath(
+    @env.get_env_var("MORPHIR_MEP_ARTIFACTS").unwrap_or(".dev/portable-mep") +
+    "/extension",
+  )
+  let evidence = @env.get_env_var("MORPHIR_MEP_MCK_EVIDENCE").unwrap_or(
+    ".dev/portable-mep-mck",
+  )
+  guard !@fs.exists(evidence) else {
+    fail(
+      "Choose a new shared MEP evidence directory to preserve earlier results",
+    )
+  }
+  @fs.mkdir(evidence, recursive=true)
+  let evidence = @fs.realpath(evidence)
+  ignore(
+    checked("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"]),
+  )
+  ignore(
+    checked("moon", [
+      "build", "--target", "native", "--release", "apps/morphir-extension",
+    ]),
+  )
+  let node = checked("node", ["-p", "process.execPath"]).trim().to_owned()
+  guard checked(node, ["--version"]).trim() == "v24.22.0" else {
+    fail("Node24.22.0 is required")
+  }
+  let host_files = [artifacts + "/model.wasm", artifacts + "/manifest.ion"]
+  for
+    name in [
+      "node-mep-cli.mjs", "node-mep-stdio.mjs", "node-mep-adapter.mjs", "node-mep-worker.mjs",
+      "mep-adapter.mjs", "mep-frames.mjs", "wasm-memory.mjs", "node-artifacts.mjs",
+      "artifacts.mjs", "assembly.mjs", "index.mjs", "dist/bridge.mjs",
+    ] {
+    host_files.push(root + "/pkgs/morphir-host/embedding/" + name)
+  }
+  let native = root +
+    "/_build/native/release/build/finos/morphir-extension/morphir-extension.exe"
+  let receipts : Array[Json] = []
+  for portable in [false, true] {
+    let name = if portable { "portable" } else { "native" }
+    let report = evidence + "/" + name + ".json"
+    let args = [
+      "--no-banner",
+      "mck",
+      "mep",
+      "guest-run",
+      "--kit",
+      kit,
+      "--expect-kit-sha256",
+      kit_digest,
+      "--host",
+      if portable {
+        node
+      } else {
+        native
+      },
+      "--report",
+      report,
+    ]
+    if portable {
+      args.append([
+        "--host-arg",
+        root + "/pkgs/morphir-host/embedding/node-mep-cli.mjs",
+        "--host-arg",
+        artifacts,
+      ])
+    }
+    for path in (if portable { host_files } else { [native] }) {
+      args.append(["--identity-file", path])
+    }
+    let result = checked(runner, args, environment={
+      "PATH": "",
+      "MOON_HOME": "",
+    })
+    ignore(
+      checked(runner, [
+        "--no-banner", "mck", "mep", "report-check", "--kit", kit, report,
+      ]),
+    )
+    let observed = @fs.read_file(report).json()
+    guard observed is Object(fields) &&
+      fields.get("qualified") == Some(Json(true)) &&
+      fields.get("suite") == Some(Json("mep-guest")) &&
+      fields.get("corpusSha256") == Some(Json(kit_digest)) &&
+      fields.get("records") is Some(Array(records)) &&
+      !records.is_empty() else {
+      fail("Missing independent shared MEP verdict: " + name)
+    }
+    let consumer = evidence + "/" + name + "-consumer"
+    let consumer_result = consumer_case(root, consumer, observed, kit_value)
+    receipts.push({
+      "guest": name,
+      "observations": records.length(),
+      "report": report,
+      "reportSha256": digest(report),
+      "runnerResult": result.trim().to_owned(),
+      "consumerResult": consumer_result,
+    })
+  }
+  guard digest(runner) == runner_digest && digest(kit) == kit_digest else {
+    fail("Independent qualification inputs changed during the run")
+  }
+  let summary : Json = {
+    "scope": "shared MEP Boolean-library guest suite; installed and host suites separate",
+    "runnerSha256": runner_digest,
+    "kitSha256": kit_digest,
+    "guestCompilerAccess": "PATH and MOON_HOME empty",
+    "compiler": compiler,
+    "sourceRevision": checked("git", ["rev-parse", "HEAD"]).trim().to_owned(),
+    "sourceDirty": checked("git", ["status", "--porcelain"]).trim() != "",
+    "receipts": receipts,
+  }
+  @fs.write_file(
+    evidence + "/qualification.ion",
+    "mep_qualification::" + summary.stringify() + "\n",
+  )
+  println(
+    "Shared MEP runner qualified and rechecked native and saved portable guests",
+  )
+}

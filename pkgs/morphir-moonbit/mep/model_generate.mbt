@@ -1,6 +1,9 @@
 ///|
 fn Session::generate_model(self : Session, id : Json, params : Json) -> Json {
-  guard self.models is Some(transport) && !transport.tuples.is_empty() else {
+  guard self.models is Some(transport) &&
+    transport.tuples.any(tuple => {
+      field(tuple, "operation") == Json::string(GENERATE_MODEL)
+    }) else {
     return rpc_error(
       id, -32013, "Model transport is unavailable in this session",
     )

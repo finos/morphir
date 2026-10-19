@@ -4,6 +4,7 @@ export * from './assembly.mjs';
 export * from './artifacts.mjs';
 export * from './byte-adapter.mjs';
 export * from './ndjson.mjs';
+export * from './mep-adapter.mjs';
 export const compilerVersion = "0.10.15+943464bfa";
 export const capabilities = Object.freeze({protocolVersion: 1, mode: "embedded",
   operations: Object.freeze(["info", "compile", "build", "link", "run"]), targets: Object.freeze(["wasm", "wasm-gc"])});
