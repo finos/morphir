@@ -1,4 +1,4 @@
-//! Independent JSON comparison with literal objects and exact decimal values.
+//! Independent JSON comparison with literal objects and explicit number rules.
 //! No implementation IR codec is linked. An available, recognized release is
 //! evidence, not a claim of consumer support or current-model authority.
 use super::{CaptureInventory, Exchange, InvalidFrame, ReadTarget, TransferError};
@@ -75,7 +75,7 @@ impl fmt::Display for ProjectionError {
 impl std::error::Error for ProjectionError {}
 
 /// Checker work, not a producer/consumer policy. DecodeBytes charges the bytes
-/// passed to each serde decode and exact-number normalization, including
+/// passed to each serde decode, number comparison and normalization, including
 /// repeated container/child decodes. These are logical input-work requests,
 /// not a claim about allocator bytes, physical lexer scans or process RSS.
 /// Values reserves each scalar/container before retaining a child reference.
@@ -296,6 +296,19 @@ fn compare(
     right.remove("formatVersion");
     let mut pending = Vec::new();
     schedule_members(left, right, &mut pending)?;
+    compare_values(pending, NumberComparison::MathematicalDecimal, budget)
+}
+
+enum NumberComparison {
+    ExactToken,
+    MathematicalDecimal,
+}
+
+fn compare_values(
+    mut pending: Vec<(&RawValue, &RawValue)>,
+    numbers: NumberComparison,
+    budget: &mut WorkBudget,
+) -> Result<(), ProjectionError> {
     while let Some((left, right)) = pending.pop() {
         match (shape(left, budget)?, shape(right, budget)?) {
             (Shape::Object(left), Shape::Object(right)) => {
@@ -307,9 +320,14 @@ fn compare(
             (Shape::Atom(Atom::Number(left)), Shape::Atom(Atom::Number(right))) => {
                 budget.decode(left.len())?;
                 budget.decode(right.len())?;
-                if NormalizedDecimal::from_valid_json(left)
-                    != NormalizedDecimal::from_valid_json(right)
-                {
+                let equal = match numbers {
+                    NumberComparison::ExactToken => left == right,
+                    NumberComparison::MathematicalDecimal => {
+                        NormalizedDecimal::from_valid_json(left)
+                            == NormalizedDecimal::from_valid_json(right)
+                    }
+                };
+                if !equal {
                     return Err(ProjectionError::Semantics);
                 }
             }
@@ -318,6 +336,37 @@ fn compare(
         }
     }
     Ok(())
+}
+
+/// Compare ordinary RawJson evidence with exact number tokens. Whitespace and
+/// object member order are insignificant; strings and keys compare after JSON
+/// escape decoding, without Unicode normalization. Array order stays exact.
+/// Projection release/header aliases and mathematical decimal equivalence do
+/// not apply. This reuses the projection checker's bounded literal traversal.
+///
+/// One mutable instance accounts for every comparison in a caller's scope.
+/// Failed comparisons retain their spent work and an exhausted resource stays
+/// exhausted. The bounds are logical decode/value work, not total metadata,
+/// allocator usage, complete workflow cost or execution authority.
+pub struct ExactJsonComparison {
+    budget: WorkBudget,
+}
+impl ExactJsonComparison {
+    pub fn new(limits: ProjectionWorkLimits) -> Self {
+        Self {
+            budget: WorkBudget::new(limits),
+        }
+    }
+
+    pub fn verify(&mut self, expected: &str, actual: &str) -> Result<(), ProjectionError> {
+        let expected = document(expected, &mut self.budget)?;
+        let actual = document(actual, &mut self.budget)?;
+        compare_values(
+            vec![(expected, actual)],
+            NumberComparison::ExactToken,
+            &mut self.budget,
+        )
+    }
 }
 fn schedule_members<'a, 'b>(
     left: BTreeMap<String, &'a RawValue>,
