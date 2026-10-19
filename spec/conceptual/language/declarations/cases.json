@@ -1,0 +1,1560 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "status": "reference-only",
+  "sourcesOfAuthority": [
+    "morphir-ukvn.7 draft 0.17",
+    "morphir-ukvn.7.8 task 1",
+    "spec/conceptual/union/contract.html"
+  ],
+  "comparison": {
+    "nodeIds": "bijective-renaming-for-syntax-only",
+    "sourceBytes": "exact",
+    "diagnostics": "primary-code-and-location-required-additional-diagnostics-permitted"
+  },
+  "cases": [
+    {
+      "id": "alias-scalar",
+      "description": "alias scalar",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/alias-scalar.txt",
+          "id": "source:alias-scalar",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/alias-scalar.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "empty-fragment",
+      "description": "empty fragment",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/empty-fragment.txt",
+          "id": "source:empty-fragment",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/empty-fragment.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "alias-to-existing-type",
+      "description": "alias to existing type",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/alias-to-existing-type.txt",
+          "id": "source:alias-to-existing-type",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/alias-to-existing-type.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "alias-record",
+      "description": "alias record",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/alias-record.txt",
+          "id": "source:alias-record",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/alias-record.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "empty-record",
+      "description": "empty record",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/empty-record.txt",
+          "id": "source:empty-record",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/empty-record.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "opaque-scalar",
+      "description": "opaque scalar",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/opaque-scalar.txt",
+          "id": "source:opaque-scalar",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/opaque-scalar.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "opaque-record",
+      "description": "opaque record",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/opaque-record.txt",
+          "id": "source:opaque-record",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/opaque-record.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "opaque-phantom",
+      "description": "opaque phantom",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/opaque-phantom.txt",
+          "id": "source:opaque-phantom",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/opaque-phantom.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "nullary-constructor",
+      "description": "nullary constructor",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/nullary-constructor.txt",
+          "id": "source:nullary-constructor",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/nullary-constructor.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "leading-constructor-pipe",
+      "description": "leading constructor pipe",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/leading-constructor-pipe.txt",
+          "id": "source:leading-constructor-pipe",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/leading-constructor-pipe.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "custom-generic",
+      "description": "custom generic",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/custom-generic.txt",
+          "id": "source:custom-generic",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/custom-generic.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "opaque-custom",
+      "description": "opaque custom",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/opaque-custom.txt",
+          "id": "source:opaque-custom",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/opaque-custom.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "constructor-two-arguments",
+      "description": "constructor two arguments",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/constructor-two-arguments.txt",
+          "id": "source:constructor-two-arguments",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/constructor-two-arguments.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "constructor-applied-argument",
+      "description": "constructor applied argument",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/constructor-applied-argument.txt",
+          "id": "source:constructor-applied-argument",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/constructor-applied-argument.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "generic-pair",
+      "description": "generic pair",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/generic-pair.txt",
+          "id": "source:generic-pair",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/generic-pair.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "generic-quad",
+      "description": "generic quad",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/generic-quad.txt",
+          "id": "source:generic-quad",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/generic-quad.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "generic-eight",
+      "description": "generic eight",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/generic-eight.txt",
+          "id": "source:generic-eight",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/generic-eight.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "flat-quad",
+      "description": "flat quad",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/flat-quad.txt",
+          "id": "source:flat-quad",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/flat-quad.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "flat-eight",
+      "description": "flat eight",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/flat-eight.txt",
+          "id": "source:flat-eight",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/flat-eight.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "nested-pairs",
+      "description": "nested pairs",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/nested-pairs.txt",
+          "id": "source:nested-pairs",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/nested-pairs.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "unit",
+      "description": "unit",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/unit.txt",
+          "id": "source:unit",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/unit.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "grouping",
+      "description": "grouping",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/grouping.txt",
+          "id": "source:grouping",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/grouping.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "union-members",
+      "description": "union members",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/union-members.txt",
+          "id": "source:union-members",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/union-members.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "union-duplicates",
+      "description": "union duplicates",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/union-duplicates.txt",
+          "id": "source:union-duplicates",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/union-duplicates.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "union-nested",
+      "description": "union nested",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/union-nested.txt",
+          "id": "source:union-nested",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/union-nested.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "union-reordered",
+      "description": "union reordered",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/union-reordered.txt",
+          "id": "source:union-reordered",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/union-reordered.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "application-union-arrow",
+      "description": "application union arrow",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/application-union-arrow.txt",
+          "id": "source:application-union-arrow",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/application-union-arrow.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "right-associative-arrow",
+      "description": "right associative arrow",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/right-associative-arrow.txt",
+          "id": "source:right-associative-arrow",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/right-associative-arrow.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "union-application-argument",
+      "description": "union application argument",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/union-application-argument.txt",
+          "id": "source:union-application-argument",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/union-application-argument.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "bodyless-function",
+      "description": "bodyless function",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/bodyless-function.txt",
+          "id": "source:bodyless-function",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/bodyless-function.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "function-tuple-input",
+      "description": "function tuple input",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/function-tuple-input.txt",
+          "id": "source:function-tuple-input",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/function-tuple-input.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "function-two-inputs",
+      "description": "function two inputs",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/function-two-inputs.txt",
+          "id": "source:function-two-inputs",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/function-two-inputs.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "implicit-function-binder",
+      "description": "implicit function binder",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/implicit-function-binder.txt",
+          "id": "source:implicit-function-binder",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/implicit-function-binder.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "implicit-binder-order",
+      "description": "implicit binder order",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/implicit-binder-order.txt",
+          "id": "source:implicit-binder-order",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/implicit-binder-order.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "function-output-binder",
+      "description": "function output binder",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/function-output-binder.txt",
+          "id": "source:function-output-binder",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/function-output-binder.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "function-valued-output",
+      "description": "function valued output",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/function-valued-output.txt",
+          "id": "source:function-valued-output",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/function-valued-output.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "utf8-crlf",
+      "description": "utf8 crlf",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/utf8-crlf.txt",
+          "id": "source:utf8-crlf",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/utf8-crlf.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "optional-terminator",
+      "description": "optional terminator",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/optional-terminator.txt",
+          "id": "source:optional-terminator",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/optional-terminator.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "multiple-declarations",
+      "description": "multiple declarations",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/multiple-declarations.txt",
+          "id": "source:multiple-declarations",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "parsed",
+        "ast": "fixtures/multiple-declarations.json",
+        "nodeIds": "bijective-renaming"
+      }
+    },
+    {
+      "id": "unbound-variable",
+      "description": "unbound variable",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/unbound-variable.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.resolve.unbound_variable",
+            "path": "/declarations/0/value"
+          }
+        ]
+      }
+    },
+    {
+      "id": "duplicate-type-binder",
+      "description": "duplicate type binder",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/duplicate-type-binder.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.resolve.duplicate_binder",
+            "path": "/declarations/0/typeParameters/1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "named-arity-missing",
+      "description": "named arity missing",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/named-arity-missing.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.resolve.type_arity",
+            "path": "/declarations/0/value"
+          }
+        ]
+      }
+    },
+    {
+      "id": "named-arity-extra",
+      "description": "named arity extra",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/named-arity-extra.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.resolve.type_arity",
+            "path": "/declarations/0/value"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unresolved-type",
+      "description": "unresolved type",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/unresolved-type.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.resolve.unresolved_type",
+            "path": "/declarations/0/value"
+          }
+        ]
+      }
+    },
+    {
+      "id": "duplicate-input",
+      "description": "duplicate input",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/duplicate-input.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.resolve.duplicate_parameter",
+            "path": "/declarations/0/inputs/1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reserved-result-input",
+      "description": "reserved result input",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/reserved-result-input.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.resolve.reserved_parameter",
+            "path": "/declarations/0/inputs/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "forward-alias",
+      "description": "forward alias",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/forward-alias.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "resolved"
+      }
+    },
+    {
+      "id": "alias-cycle",
+      "description": "alias cycle",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/alias-cycle.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.resolve.alias_cycle",
+            "path": "/declarations/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "guarded-recursion",
+      "description": "guarded recursion",
+      "stage": "resolution",
+      "input": {
+        "ast": "fixtures/guarded-recursion.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "resolved"
+      }
+    },
+    {
+      "id": "missing-alias-rhs",
+      "description": "missing alias rhs",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/missing-alias-rhs.txt",
+          "id": "source:missing-alias-rhs",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.expected_type",
+            "span": {
+              "sourceId": "source:missing-alias-rhs",
+              "start": 14,
+              "end": 14,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "alias-leading-pipe",
+      "description": "alias leading pipe",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/alias-leading-pipe.txt",
+          "id": "source:alias-leading-pipe",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.leading_alias_pipe",
+            "span": {
+              "sourceId": "source:alias-leading-pipe",
+              "start": 15,
+              "end": 16,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "singleton-tuple",
+      "description": "singleton tuple",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/singleton-tuple.txt",
+          "id": "source:singleton-tuple",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.tuple_arity",
+            "span": {
+              "sourceId": "source:singleton-tuple",
+              "start": 20,
+              "end": 21,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tuple-trailing-comma",
+      "description": "tuple trailing comma",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/tuple-trailing-comma.txt",
+          "id": "source:tuple-trailing-comma",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.trailing_comma",
+            "span": {
+              "sourceId": "source:tuple-trailing-comma",
+              "start": 28,
+              "end": 29,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "record-trailing-comma",
+      "description": "record trailing comma",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/record-trailing-comma.txt",
+          "id": "source:record-trailing-comma",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.trailing_comma",
+            "span": {
+              "sourceId": "source:record-trailing-comma",
+              "start": 29,
+              "end": 30,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "trailing-constructor-pipe",
+      "description": "trailing constructor pipe",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/trailing-constructor-pipe.txt",
+          "id": "source:trailing-constructor-pipe",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.expected_constructor",
+            "span": {
+              "sourceId": "source:trailing-constructor-pipe",
+              "start": 12,
+              "end": 12,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-constructor",
+      "description": "missing constructor",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/missing-constructor.txt",
+          "id": "source:missing-constructor",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.expected_constructor",
+            "span": {
+              "sourceId": "source:missing-constructor",
+              "start": 10,
+              "end": 10,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-delimiter",
+      "description": "missing delimiter",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/missing-delimiter.txt",
+          "id": "source:missing-delimiter",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.expected_delimiter",
+            "span": {
+              "sourceId": "source:missing-delimiter",
+              "start": 27,
+              "end": 27,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "function-body",
+      "description": "function body",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/function-body.txt",
+          "id": "source:function-body",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.implementation_body",
+            "span": {
+              "sourceId": "source:function-body",
+              "start": 14,
+              "end": 15,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "explicit-fn-binders-unselected",
+      "description": "explicit fn binders unselected",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/explicit-fn-binders-unselected.txt",
+          "id": "source:explicit-fn-binders-unselected",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.explicit_fn_binders",
+            "span": {
+              "sourceId": "source:explicit-fn-binders-unselected",
+              "start": 2,
+              "end": 3,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "higher-kinded-application",
+      "description": "higher kinded application",
+      "stage": "syntax",
+      "input": {
+        "source": {
+          "asset": "sources/higher-kinded-application.txt",
+          "id": "source:higher-kinded-application",
+          "revision": "fixture-1"
+        }
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.syntax.application_head",
+            "span": {
+              "sourceId": "source:higher-kinded-application",
+              "start": 25,
+              "end": 26,
+              "unit": "utf8-byte"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "duplicate-node-id",
+      "description": "duplicate node id",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/duplicate-node-id.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.duplicate_id",
+            "path": "/declarations/0/value/id"
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-span",
+      "description": "missing span",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/missing-span.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.required_member",
+            "path": "/declarations/0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "span-outside-source",
+      "description": "span outside source",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/span-outside-source.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.span_range",
+            "path": "/declarations/0/span"
+          }
+        ]
+      }
+    },
+    {
+      "id": "span-negative",
+      "description": "span negative",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/span-negative.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.span_range",
+            "path": "/declarations/0/span"
+          }
+        ]
+      }
+    },
+    {
+      "id": "span-inside-utf8-codepoint",
+      "description": "span inside utf8 codepoint",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/span-inside-utf8-codepoint.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.span_boundary",
+            "path": "/declarations/0/span"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-source-id",
+      "description": "unknown source id",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/unknown-source-id.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.source_reference",
+            "path": "/declarations/0/span/sourceId"
+          }
+        ]
+      }
+    },
+    {
+      "id": "duplicate-source-id",
+      "description": "duplicate source id",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/duplicate-source-id.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.duplicate_source",
+            "path": "/sources/1/id"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tuple-ast-arity",
+      "description": "tuple ast arity",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/tuple-ast-arity.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.tuple_arity",
+            "path": "/declarations/0/value/elements"
+          }
+        ]
+      }
+    },
+    {
+      "id": "union-ast-arity",
+      "description": "union ast arity",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/union-ast-arity.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.union_arity",
+            "path": "/declarations/0/value/members"
+          }
+        ]
+      }
+    },
+    {
+      "id": "empty-named-path",
+      "description": "empty named path",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/empty-named-path.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.name_path",
+            "path": "/declarations/0/value/path"
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-implicit-binder",
+      "description": "missing implicit binder",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/missing-implicit-binder.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "rejected",
+        "diagnostics": [
+          {
+            "code": "declarations.structure.implicit_binders",
+            "path": "/declarations/0/typeParameters"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-critical-member",
+      "description": "unknown critical member",
+      "stage": "capability",
+      "input": {
+        "ast": "fixtures/unknown-critical-member.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "declarations.unsupported.critical_member",
+            "path": "/critical"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-profile",
+      "description": "unknown profile",
+      "stage": "capability",
+      "input": {
+        "ast": "fixtures/unknown-profile.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "declarations.unsupported.profile",
+            "path": "/profile"
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-declaration-family",
+      "description": "unknown declaration family",
+      "stage": "capability",
+      "input": {
+        "ast": "fixtures/unknown-declaration-family.json",
+        "environment": "environment.json"
+      },
+      "expected": {
+        "outcome": "unsupported",
+        "diagnostics": [
+          {
+            "code": "declarations.unsupported.declaration_kind",
+            "path": "/declarations/0/kind"
+          }
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "transparent-alias": [
+      "alias-scalar"
+    ],
+    "source-final-newline": [
+      "alias-scalar"
+    ],
+    "declaration-boundaries": [
+      "empty-fragment",
+      "optional-terminator",
+      "multiple-declarations"
+    ],
+    "unresolved-authored-path": [
+      "alias-to-existing-type",
+      "empty-named-path"
+    ],
+    "source-no-final-newline": [
+      "alias-to-existing-type"
+    ],
+    "records": [
+      "alias-record",
+      "empty-record",
+      "opaque-record",
+      "record-trailing-comma"
+    ],
+    "opaque-alias": [
+      "opaque-scalar",
+      "opaque-record"
+    ],
+    "opaque-phantom": [
+      "opaque-phantom"
+    ],
+    "rank1-binders": [
+      "opaque-phantom",
+      "custom-generic",
+      "generic-pair",
+      "generic-quad",
+      "generic-eight",
+      "right-associative-arrow",
+      "implicit-binder-order"
+    ],
+    "alias-versus-constructor": [
+      "nullary-constructor",
+      "unresolved-type"
+    ],
+    "optional-leading-pipe": [
+      "leading-constructor-pipe",
+      "alias-leading-pipe",
+      "trailing-constructor-pipe"
+    ],
+    "custom-payloads": [
+      "custom-generic",
+      "missing-constructor"
+    ],
+    "opaque-custom": [
+      "opaque-custom"
+    ],
+    "constructor-argument-grouping": [
+      "constructor-two-arguments",
+      "constructor-applied-argument"
+    ],
+    "tuple-arity": [
+      "generic-pair",
+      "flat-quad",
+      "singleton-tuple",
+      "tuple-trailing-comma",
+      "tuple-ast-arity"
+    ],
+    "tuple-no-small-maximum": [
+      "generic-quad",
+      "generic-eight",
+      "flat-eight"
+    ],
+    "flat-versus-nested": [
+      "flat-quad",
+      "nested-pairs"
+    ],
+    "unit-versus-grouping": [
+      "unit",
+      "grouping"
+    ],
+    "untagged-union": [
+      "union-members",
+      "union-ast-arity"
+    ],
+    "union-order-duplicates-nesting": [
+      "union-duplicates",
+      "union-nested",
+      "union-reordered"
+    ],
+    "precedence": [
+      "application-union-arrow",
+      "right-associative-arrow",
+      "union-application-argument"
+    ],
+    "bodyless-fn": [
+      "bodyless-function",
+      "function-body"
+    ],
+    "ordered-inputs": [
+      "bodyless-function"
+    ],
+    "tuple-input-versus-two-inputs": [
+      "function-tuple-input",
+      "function-two-inputs"
+    ],
+    "implicit-function-binders": [
+      "implicit-function-binder",
+      "implicit-binder-order",
+      "function-output-binder",
+      "explicit-fn-binders-unselected",
+      "missing-implicit-binder"
+    ],
+    "zero-inputs": [
+      "function-output-binder"
+    ],
+    "function-valued-output": [
+      "function-valued-output"
+    ],
+    "utf8-spans": [
+      "utf8-crlf",
+      "missing-span",
+      "span-outside-source",
+      "span-negative",
+      "span-inside-utf8-codepoint"
+    ],
+    "source-crlf": [
+      "utf8-crlf"
+    ],
+    "forward-resolution": [
+      "multiple-declarations",
+      "forward-alias"
+    ],
+    "unbound-variable": [
+      "unbound-variable"
+    ],
+    "duplicate-binders": [
+      "duplicate-type-binder",
+      "duplicate-input"
+    ],
+    "named-arity": [
+      "named-arity-missing",
+      "named-arity-extra"
+    ],
+    "reserved-result": [
+      "reserved-result-input"
+    ],
+    "recursive-declarations": [
+      "alias-cycle",
+      "guarded-recursion"
+    ],
+    "malformed-alias": [
+      "missing-alias-rhs"
+    ],
+    "malformed-delimiter": [
+      "missing-delimiter"
+    ],
+    "first-order-parameters": [
+      "higher-kinded-application"
+    ],
+    "node-identities": [
+      "duplicate-node-id"
+    ],
+    "source-revisions": [
+      "unknown-source-id",
+      "duplicate-source-id"
+    ],
+    "extension-seams": [
+      "unknown-critical-member",
+      "unknown-declaration-family"
+    ],
+    "versioning": [
+      "unknown-profile"
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+type alias Quad = (Int, String, Bool, Int)

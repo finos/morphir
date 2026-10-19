@@ -1,0 +1,64 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:reserved-result-input",
+      "revision": "fixture-1",
+      "text": "fn bad(result: Int) -> Int"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "reserved-result-input:n4",
+      "span": {
+        "sourceId": "source:reserved-result-input",
+        "start": 0,
+        "end": 26,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "bad",
+      "typeParameters": [],
+      "inputs": [
+        {
+          "id": "reserved-result-input:n2",
+          "span": {
+            "sourceId": "source:reserved-result-input",
+            "start": 7,
+            "end": 18,
+            "unit": "utf8-byte"
+          },
+          "name": "result",
+          "type": {
+            "id": "reserved-result-input:n1",
+            "span": {
+              "sourceId": "source:reserved-result-input",
+              "start": 15,
+              "end": 18,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          }
+        }
+      ],
+      "output": {
+        "id": "reserved-result-input:n3",
+        "span": {
+          "sourceId": "source:reserved-result-input",
+          "start": 23,
+          "end": 26,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Int"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

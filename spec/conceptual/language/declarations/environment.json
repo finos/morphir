@@ -1,0 +1,47 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "moduleContext": {
+    "fixtureId": "example/types",
+    "ownership": "explicit-fixture-context-not-an-inferred-package"
+  },
+  "namedTypes": [
+    {
+      "path": [
+        "Int"
+      ],
+      "arity": 0
+    },
+    {
+      "path": [
+        "String"
+      ],
+      "arity": 0
+    },
+    {
+      "path": [
+        "Bool"
+      ],
+      "arity": 0
+    },
+    {
+      "path": [
+        "List"
+      ],
+      "arity": 1
+    },
+    {
+      "path": [
+        "Result"
+      ],
+      "arity": 2
+    },
+    {
+      "path": [
+        "Domain",
+        "Quantity"
+      ],
+      "arity": 0
+    }
+  ],
+  "note": "Named paths and arities are explicit test inputs. This is not a language prelude or canonical FQName inventory."
+}

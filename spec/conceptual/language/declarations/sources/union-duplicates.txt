@@ -1,0 +1,1 @@
+type alias Repeated = Int | Int

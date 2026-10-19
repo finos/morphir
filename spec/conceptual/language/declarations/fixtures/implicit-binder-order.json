@@ -1,0 +1,153 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:implicit-binder-order",
+      "revision": "fixture-1",
+      "text": "fn map(items: List a, transform: a -> b) -> List b"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "implicit-binder-order:n12",
+      "span": {
+        "sourceId": "source:implicit-binder-order",
+        "start": 0,
+        "end": 50,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "map",
+      "typeParameters": [
+        {
+          "id": "implicit-binder-order:n10",
+          "span": {
+            "sourceId": "source:implicit-binder-order",
+            "start": 19,
+            "end": 20,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "implicit"
+        },
+        {
+          "id": "implicit-binder-order:n11",
+          "span": {
+            "sourceId": "source:implicit-binder-order",
+            "start": 38,
+            "end": 39,
+            "unit": "utf8-byte"
+          },
+          "name": "b",
+          "origin": "implicit"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "implicit-binder-order:n3",
+          "span": {
+            "sourceId": "source:implicit-binder-order",
+            "start": 7,
+            "end": 20,
+            "unit": "utf8-byte"
+          },
+          "name": "items",
+          "type": {
+            "id": "implicit-binder-order:n2",
+            "span": {
+              "sourceId": "source:implicit-binder-order",
+              "start": 14,
+              "end": 20,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "List"
+            ],
+            "arguments": [
+              {
+                "id": "implicit-binder-order:n1",
+                "span": {
+                  "sourceId": "source:implicit-binder-order",
+                  "start": 19,
+                  "end": 20,
+                  "unit": "utf8-byte"
+                },
+                "kind": "variable",
+                "name": "a"
+              }
+            ]
+          }
+        },
+        {
+          "id": "implicit-binder-order:n7",
+          "span": {
+            "sourceId": "source:implicit-binder-order",
+            "start": 22,
+            "end": 39,
+            "unit": "utf8-byte"
+          },
+          "name": "transform",
+          "type": {
+            "id": "implicit-binder-order:n6",
+            "span": {
+              "sourceId": "source:implicit-binder-order",
+              "start": 33,
+              "end": 39,
+              "unit": "utf8-byte"
+            },
+            "kind": "function",
+            "input": {
+              "id": "implicit-binder-order:n4",
+              "span": {
+                "sourceId": "source:implicit-binder-order",
+                "start": 33,
+                "end": 34,
+                "unit": "utf8-byte"
+              },
+              "kind": "variable",
+              "name": "a"
+            },
+            "output": {
+              "id": "implicit-binder-order:n5",
+              "span": {
+                "sourceId": "source:implicit-binder-order",
+                "start": 38,
+                "end": 39,
+                "unit": "utf8-byte"
+              },
+              "kind": "variable",
+              "name": "b"
+            }
+          }
+        }
+      ],
+      "output": {
+        "id": "implicit-binder-order:n9",
+        "span": {
+          "sourceId": "source:implicit-binder-order",
+          "start": 44,
+          "end": 50,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "List"
+        ],
+        "arguments": [
+          {
+            "id": "implicit-binder-order:n8",
+            "span": {
+              "sourceId": "source:implicit-binder-order",
+              "start": 49,
+              "end": 50,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "b"
+          }
+        ]
+      }
+    }
+  ]
+}

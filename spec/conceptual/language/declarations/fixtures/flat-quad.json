@@ -1,0 +1,92 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:flat-quad",
+      "revision": "fixture-1",
+      "text": "type alias Quad = (Int, String, Bool, Int)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "flat-quad:n6",
+      "span": {
+        "sourceId": "source:flat-quad",
+        "start": 0,
+        "end": 42,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Quad",
+      "typeParameters": [],
+      "value": {
+        "id": "flat-quad:n5",
+        "span": {
+          "sourceId": "source:flat-quad",
+          "start": 18,
+          "end": 42,
+          "unit": "utf8-byte"
+        },
+        "kind": "tuple",
+        "elements": [
+          {
+            "id": "flat-quad:n1",
+            "span": {
+              "sourceId": "source:flat-quad",
+              "start": 19,
+              "end": 22,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-quad:n2",
+            "span": {
+              "sourceId": "source:flat-quad",
+              "start": 24,
+              "end": 30,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "String"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-quad:n3",
+            "span": {
+              "sourceId": "source:flat-quad",
+              "start": 32,
+              "end": 36,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Bool"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "flat-quad:n4",
+            "span": {
+              "sourceId": "source:flat-quad",
+              "start": 38,
+              "end": 41,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          }
+        ]
+      }
+    }
+  ]
+}

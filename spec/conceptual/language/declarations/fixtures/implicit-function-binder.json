@@ -1,0 +1,70 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:implicit-function-binder",
+      "revision": "fixture-1",
+      "text": "fn identity(value: a) -> a"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "implicit-function-binder:n5",
+      "span": {
+        "sourceId": "source:implicit-function-binder",
+        "start": 0,
+        "end": 26,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "identity",
+      "typeParameters": [
+        {
+          "id": "implicit-function-binder:n4",
+          "span": {
+            "sourceId": "source:implicit-function-binder",
+            "start": 19,
+            "end": 20,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "implicit"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "implicit-function-binder:n2",
+          "span": {
+            "sourceId": "source:implicit-function-binder",
+            "start": 12,
+            "end": 20,
+            "unit": "utf8-byte"
+          },
+          "name": "value",
+          "type": {
+            "id": "implicit-function-binder:n1",
+            "span": {
+              "sourceId": "source:implicit-function-binder",
+              "start": 19,
+              "end": 20,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "a"
+          }
+        }
+      ],
+      "output": {
+        "id": "implicit-function-binder:n3",
+        "span": {
+          "sourceId": "source:implicit-function-binder",
+          "start": 25,
+          "end": 26,
+          "unit": "utf8-byte"
+        },
+        "kind": "variable",
+        "name": "a"
+      }
+    }
+  ]
+}

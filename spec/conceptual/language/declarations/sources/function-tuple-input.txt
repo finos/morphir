@@ -1,0 +1,1 @@
+fn accept(pair: (Int, String)) -> Bool

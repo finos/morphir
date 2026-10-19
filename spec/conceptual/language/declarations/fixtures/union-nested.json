@@ -1,0 +1,90 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:union-nested",
+      "revision": "fixture-1",
+      "text": "type alias Nested = Int | (String | Bool)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "union-nested:n6",
+      "span": {
+        "sourceId": "source:union-nested",
+        "start": 0,
+        "end": 41,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Nested",
+      "typeParameters": [],
+      "value": {
+        "id": "union-nested:n5",
+        "span": {
+          "sourceId": "source:union-nested",
+          "start": 20,
+          "end": 41,
+          "unit": "utf8-byte"
+        },
+        "kind": "union",
+        "members": [
+          {
+            "id": "union-nested:n1",
+            "span": {
+              "sourceId": "source:union-nested",
+              "start": 20,
+              "end": 23,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "union-nested:n4",
+            "span": {
+              "sourceId": "source:union-nested",
+              "start": 26,
+              "end": 41,
+              "unit": "utf8-byte"
+            },
+            "kind": "union",
+            "members": [
+              {
+                "id": "union-nested:n2",
+                "span": {
+                  "sourceId": "source:union-nested",
+                  "start": 27,
+                  "end": 33,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "String"
+                ],
+                "arguments": []
+              },
+              {
+                "id": "union-nested:n3",
+                "span": {
+                  "sourceId": "source:union-nested",
+                  "start": 36,
+                  "end": 40,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "Bool"
+                ],
+                "arguments": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

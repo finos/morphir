@@ -1,0 +1,64 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:union-members",
+      "revision": "fixture-1",
+      "text": "type alias Scalar = Int | String"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "union-members:n4",
+      "span": {
+        "sourceId": "source:union-members",
+        "start": 0,
+        "end": 32,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Scalar",
+      "typeParameters": [],
+      "value": {
+        "id": "union-members:n3",
+        "span": {
+          "sourceId": "source:union-members",
+          "start": 20,
+          "end": 32,
+          "unit": "utf8-byte"
+        },
+        "kind": "union",
+        "members": [
+          {
+            "id": "union-members:n1",
+            "span": {
+              "sourceId": "source:union-members",
+              "start": 20,
+              "end": 23,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          },
+          {
+            "id": "union-members:n2",
+            "span": {
+              "sourceId": "source:union-members",
+              "start": 26,
+              "end": 32,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "String"
+            ],
+            "arguments": []
+          }
+        ]
+      }
+    }
+  ]
+}

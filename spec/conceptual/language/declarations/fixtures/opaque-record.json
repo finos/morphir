@@ -1,0 +1,60 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:opaque-record",
+      "revision": "fixture-1",
+      "text": "opaque type alias Account = { balance: Int }"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "opaque-record:n4",
+      "span": {
+        "sourceId": "source:opaque-record",
+        "start": 0,
+        "end": 44,
+        "unit": "utf8-byte"
+      },
+      "kind": "opaque-alias",
+      "name": "Account",
+      "typeParameters": [],
+      "representation": {
+        "id": "opaque-record:n3",
+        "span": {
+          "sourceId": "source:opaque-record",
+          "start": 28,
+          "end": 44,
+          "unit": "utf8-byte"
+        },
+        "kind": "record",
+        "fields": [
+          {
+            "id": "opaque-record:n2",
+            "span": {
+              "sourceId": "source:opaque-record",
+              "start": 30,
+              "end": 42,
+              "unit": "utf8-byte"
+            },
+            "name": "balance",
+            "type": {
+              "id": "opaque-record:n1",
+              "span": {
+                "sourceId": "source:opaque-record",
+                "start": 39,
+                "end": 42,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

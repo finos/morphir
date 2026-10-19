@@ -1,0 +1,88 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:duplicate-input",
+      "revision": "fixture-1",
+      "text": "fn bad(value: Int, value: String) -> Bool"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "duplicate-input:n6",
+      "span": {
+        "sourceId": "source:duplicate-input",
+        "start": 0,
+        "end": 41,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "bad",
+      "typeParameters": [],
+      "inputs": [
+        {
+          "id": "duplicate-input:n2",
+          "span": {
+            "sourceId": "source:duplicate-input",
+            "start": 7,
+            "end": 17,
+            "unit": "utf8-byte"
+          },
+          "name": "value",
+          "type": {
+            "id": "duplicate-input:n1",
+            "span": {
+              "sourceId": "source:duplicate-input",
+              "start": 14,
+              "end": 17,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          }
+        },
+        {
+          "id": "duplicate-input:n4",
+          "span": {
+            "sourceId": "source:duplicate-input",
+            "start": 19,
+            "end": 32,
+            "unit": "utf8-byte"
+          },
+          "name": "value",
+          "type": {
+            "id": "duplicate-input:n3",
+            "span": {
+              "sourceId": "source:duplicate-input",
+              "start": 26,
+              "end": 32,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "String"
+            ],
+            "arguments": []
+          }
+        }
+      ],
+      "output": {
+        "id": "duplicate-input:n5",
+        "span": {
+          "sourceId": "source:duplicate-input",
+          "start": 37,
+          "end": 41,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Bool"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

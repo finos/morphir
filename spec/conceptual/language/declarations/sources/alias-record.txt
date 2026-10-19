@@ -1,0 +1,1 @@
+type alias Person = { name: String, age: Int }

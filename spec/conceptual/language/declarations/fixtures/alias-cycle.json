@@ -1,0 +1,64 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:alias-cycle",
+      "revision": "fixture-1",
+      "text": "type alias A = B\ntype alias B = A"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "alias-cycle:n2",
+      "span": {
+        "sourceId": "source:alias-cycle",
+        "start": 0,
+        "end": 16,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "A",
+      "typeParameters": [],
+      "value": {
+        "id": "alias-cycle:n1",
+        "span": {
+          "sourceId": "source:alias-cycle",
+          "start": 15,
+          "end": 16,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "B"
+        ],
+        "arguments": []
+      }
+    },
+    {
+      "id": "alias-cycle:n4",
+      "span": {
+        "sourceId": "source:alias-cycle",
+        "start": 17,
+        "end": 33,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "B",
+      "typeParameters": [],
+      "value": {
+        "id": "alias-cycle:n3",
+        "span": {
+          "sourceId": "source:alias-cycle",
+          "start": 32,
+          "end": 33,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "A"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

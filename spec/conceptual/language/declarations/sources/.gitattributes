@@ -1,0 +1,3 @@
+# Source fixtures preserve exact bytes, including CRLF and missing final newlines.
+*.txt -text
+utf8-crlf.txt whitespace=cr-at-eol

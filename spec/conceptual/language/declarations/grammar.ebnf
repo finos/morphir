@@ -1,0 +1,36 @@
+(* morphir-declarations/0.1.0-draft.1: declaration fragments, not L2 containers. *)
+fragment       = { declaration, [ ";" ] } ;
+declaration    = alias | opaque_alias | custom | function_spec ;
+alias          = "type", "alias", upper, { lower }, "=", type ;
+opaque_alias   = "opaque", "type", "alias", upper, { lower }, "=", type ;
+custom         = [ "opaque" ], "type", upper, { lower }, "=",
+                 [ "|" ], constructor, { "|", constructor } ;
+constructor    = upper, { atom } ;
+function_spec  = "fn", lower, "(", [ parameter, { ",", parameter } ], ")", "->", type ;
+parameter      = lower, ":", type ;
+type           = union, [ "->", type ] ;
+union          = application, { "|", application } ;
+application    = named, { atom } | non_named_atom ;
+atom           = named | non_named_atom ;
+non_named_atom = lower | "(", ")" | "(", type, ")"
+               | "(", type, ",", type, { ",", type }, ")"
+               | "{", [ field, { ",", field } ], "}" ;
+field          = lower, ":", type ;
+named          = upper, { ".", upper } ;
+upper          = upper_initial, { letter | digit | "_" } ;
+lower          = lower_initial, { letter | digit | "_" } ;
+upper_initial  = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
+               | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z" ;
+lower_initial  = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m"
+               | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" ;
+letter         = upper_initial | lower_initial ;
+digit          = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+(* Tokens are separated as needed by space, tab, LF, CRLF or // line comments.
+   Keywords type, alias, opaque, fn are reserved, never lower identifiers.
+   There is no implicit newline terminator: a declaration ends before the next
+   declaration keyword, semicolon or fragment EOF after a complete production.
+   Application binds tighter than union; arrow associates to the right.
+   Constructor payloads are atoms: C A B has two arguments; C (List a) has one.
+   No trailing commas/pipes, singleton tuples, implementation bodies, refinement
+   expressions, export syntax, namespace/module/import syntax or explicit fn
+   binder punctuation is selected by this declaration-fragment profile. *)

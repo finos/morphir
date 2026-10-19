@@ -1,0 +1,81 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:duplicate-type-binder",
+      "revision": "fixture-1",
+      "text": "type alias Pair a a = (a, a)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "duplicate-type-binder:n6",
+      "span": {
+        "sourceId": "source:duplicate-type-binder",
+        "start": 0,
+        "end": 28,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Pair",
+      "typeParameters": [
+        {
+          "id": "duplicate-type-binder:n4",
+          "span": {
+            "sourceId": "source:duplicate-type-binder",
+            "start": 16,
+            "end": 17,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "declared"
+        },
+        {
+          "id": "duplicate-type-binder:n5",
+          "span": {
+            "sourceId": "source:duplicate-type-binder",
+            "start": 18,
+            "end": 19,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "declared"
+        }
+      ],
+      "value": {
+        "id": "duplicate-type-binder:n3",
+        "span": {
+          "sourceId": "source:duplicate-type-binder",
+          "start": 22,
+          "end": 28,
+          "unit": "utf8-byte"
+        },
+        "kind": "tuple",
+        "elements": [
+          {
+            "id": "duplicate-type-binder:n1",
+            "span": {
+              "sourceId": "source:duplicate-type-binder",
+              "start": 23,
+              "end": 24,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "a"
+          },
+          {
+            "id": "duplicate-type-binder:n2",
+            "span": {
+              "sourceId": "source:duplicate-type-binder",
+              "start": 26,
+              "end": 27,
+              "unit": "utf8-byte"
+            },
+            "kind": "variable",
+            "name": "a"
+          }
+        ]
+      }
+    }
+  ]
+}
