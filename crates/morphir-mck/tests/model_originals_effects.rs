@@ -19,6 +19,150 @@ fn promise(ledger: &mut EffectLedger<'_>, effect: &EffectRef) {
 }
 
 #[test]
+fn local_evaluation_settlement_does_not_retire_work_or_exact_result() {
+    let work = FixtureAlias::new("local-evaluation-A").unwrap();
+    let effect = reference("A", Kind::LocalEvaluation, 0);
+    let mut l = EffectLedger::new(EffectLedgerLimits::new(4, 32, 128, 128, 512).unwrap());
+    promise(&mut l, &effect);
+    l.record(
+        &effect,
+        Event::WorkStarted {
+            work: &work,
+            owner: WorkOwner::Inline,
+        },
+    )
+    .unwrap();
+    l.record(
+        &effect,
+        Event::ResultPrepared {
+            work: &work,
+            raw_reply: "{\"value\":9007199254740993}",
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        l.record(
+            &effect,
+            Event::PromiseResolved {
+                actual_reply: "{\"value\":9007199254740992}"
+            }
+        ),
+        Err(EffectLedgerError::ResultMismatch)
+    );
+    assert_eq!(l.finish(), Err(EffectLedgerError::PendingPorts));
+    l.record(
+        &effect,
+        Event::PromiseResolved {
+            actual_reply: "{\"value\":9007199254740993}",
+        },
+    )
+    .unwrap();
+    assert_eq!(l.finish(), Err(EffectLedgerError::HeldResults));
+    l.record(
+        &effect,
+        Event::ResultRetired(ResultRetirement::DeliveredToPort),
+    )
+    .unwrap();
+    assert_eq!(l.finish(), Err(EffectLedgerError::RunningWork));
+    assert_eq!(l.held_result_bytes(), 0);
+    assert_eq!(l.produced_result_bytes(), 26);
+    l.record(&effect, Event::WorkExited { work: &work })
+        .unwrap();
+    assert_eq!(
+        l.recorded_work(&effect).unwrap().unwrap().owner(),
+        WorkOwner::Inline
+    );
+    l.finish().unwrap();
+}
+
+#[test]
+fn cancelled_local_evaluation_keeps_work_until_exit_after_late_result_discard() {
+    let work = FixtureAlias::new("cancelled-evaluation").unwrap();
+    let worker = FixtureAlias::new("evaluation-worker").unwrap();
+    let effect = reference("A", Kind::LocalEvaluation, 0);
+    let mut l = EffectLedger::new(EffectLedgerLimits::new(4, 32, 16, 16, 64).unwrap());
+    promise(&mut l, &effect);
+    l.record(
+        &effect,
+        Event::WorkStarted {
+            work: &work,
+            owner: WorkOwner::Worker(&worker),
+        },
+    )
+    .unwrap();
+    l.record(
+        &effect,
+        Event::CancellationRequested {
+            action_index: 1,
+            cause: CancellationCause::CloseModel,
+        },
+    )
+    .unwrap();
+    l.record(&effect, Event::PromiseRejected).unwrap();
+    assert_eq!(l.finish(), Err(EffectLedgerError::RunningWork));
+    l.record(
+        &effect,
+        Event::ResultPrepared {
+            work: &work,
+            raw_reply: "375e-1",
+        },
+    )
+    .unwrap();
+    l.record(
+        &effect,
+        Event::LateSignal {
+            actual_signal: "375e-1",
+            disposition: LateDisposition::SettledPort,
+            source: LateSignalSource::HeldCoreResult,
+        },
+    )
+    .unwrap();
+    l.record(
+        &effect,
+        Event::ResultRetired(ResultRetirement::DiscardedAfterGuard),
+    )
+    .unwrap();
+    assert_eq!(l.finish(), Err(EffectLedgerError::RunningWork));
+    l.record(&effect, Event::WorkExited { work: &work })
+        .unwrap();
+    assert_eq!(
+        l.recorded_work(&effect).unwrap().unwrap().owner(),
+        WorkOwner::Worker(&worker)
+    );
+    l.finish().unwrap();
+}
+
+#[test]
+fn discovery_and_native_transport_are_not_core_evaluation_work() {
+    let work = FixtureAlias::new("not-a-core-invocation").unwrap();
+    let mut l = EffectLedger::new(EffectLedgerLimits::new(8, 32, 128, 128, 512).unwrap());
+    for kind in [Kind::Catalog, Kind::NativeInvoke] {
+        for ordinal in 0..2 {
+            let effect = reference("A", kind, ordinal);
+            promise(&mut l, &effect);
+            let before = l.event_count();
+            assert_eq!(
+                l.record(
+                    &effect,
+                    Event::WorkStarted {
+                        work: &work,
+                        owner: WorkOwner::Inline
+                    }
+                ),
+                Err(EffectLedgerError::Work)
+            );
+            assert_eq!(l.event_count(), before);
+            assert_eq!(l.recorded_work(&effect).unwrap(), None);
+            l.record(&effect, Event::PromiseResolved { actual_reply: "{}" })
+                .unwrap();
+        }
+    }
+    assert_eq!(l.port_count(), 4);
+    assert_eq!(l.produced_result_bytes(), 0);
+    l.finish().unwrap();
+}
+
+#[test]
 fn ordinals_are_gap_free_per_attempt_and_kind_including_cancelled_and_rejected_ports() {
     let mut l = ledger();
     let a = reference("A", Kind::FileRead, 0);
