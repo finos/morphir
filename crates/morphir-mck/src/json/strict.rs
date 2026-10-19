@@ -253,6 +253,10 @@ impl Document {
     pub fn parse(bytes: &[u8]) -> Result<Self, String> {
         document(bytes, number, &mut Unchecked)
     }
+    /// The existing exact literal traversal, without a serde Value conversion.
+    pub(crate) fn parse_exact(bytes: &[u8]) -> Result<Self, String> {
+        document(bytes, exact_number, &mut Unchecked)
+    }
     pub(crate) fn parse_exact_with_work(
         bytes: &[u8],
         work: &mut ReadWork,
@@ -313,7 +317,7 @@ pub(crate) fn parse(text: &str) -> Result<Value, String> {
 /// the same RawValue traversal. Never deserialize arbitrary objects as Value:
 /// serde's private number/raw-value maps could otherwise impersonate scalars.
 pub(crate) fn parse_exact(text: &str) -> Result<Value, String> {
-    document(text.as_bytes(), exact_number, &mut Unchecked).map(|doc| doc.value())
+    Document::parse_exact(text.as_bytes()).map(|doc| doc.value())
 }
 fn exact_number(token: &str) -> Result<Number, String> {
     token.parse::<Number>().map_err(|e| e.to_string())

@@ -7,6 +7,9 @@
 //! One mode replays the frozen protocol transcript of the TypeScript adapter
 //! (`spec/mck/baseline/transcripts/`), checking every request byte for byte.
 
+#[path = "support/raw_multiline_tests.rs"]
+mod raw_multiline_tests;
+
 use std::ffi::OsString;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -18,6 +21,9 @@ use morphir_mck::transport::protocol::{
 };
 use morphir_mck::transport::{Limits, Session, TransportError};
 use serde_json::Value;
+
+#[path = "support/raw_workflow_tests.rs"]
+mod raw_workflow_tests;
 
 const ADAPTER_FLAG: &str = "--mck-test-adapter";
 
@@ -60,6 +66,12 @@ mod adapter {
     }
 
     pub fn run(mode: &str, arg: Option<&str>) {
+        if super::raw_multiline_tests::adapter(mode) {
+            return;
+        }
+        if super::raw_workflow_tests::adapter(mode) {
+            return;
+        }
         match mode {
             "workbench-http-policy-marker" | "workbench-codec-comparison-marker" => {
                 let draft = arg.unwrap();
@@ -1204,7 +1216,14 @@ fn main() {
         return;
     }
 
-    let tests: &[(&str, fn())] = &[("codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined",codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined),("codec_comparison_live_input_preserves_literal_marker_objects",codec_comparison_live_input_preserves_literal_marker_objects),("codec_comparison_live_marker_objects_cannot_forge_observations",codec_comparison_live_marker_objects_cannot_forge_observations),("http_policy_live_observations_cannot_reinterpret_private_json_objects",http_policy_live_observations_cannot_reinterpret_private_json_objects),("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
+    let tests: &[(&str, fn())] = &[
+("literal_newline_request_refuses_actual_lf_without_normalizing_source", raw_multiline_tests::literal_newline_request_refuses_actual_lf_without_normalizing_source),
+("raw_workflow_transport_preserves_whole_request_and_response_tokens", raw_workflow_tests::raw_workflow_transport_preserves_whole_request_and_response_tokens),
+("raw_workflow_selected_outer_ids_are_canonical_positive_u64", raw_workflow_tests::raw_workflow_selected_outer_ids_are_canonical_positive_u64),
+("raw_workflow_duplicate_members_never_disappear_inside_opaque_objects", raw_workflow_tests::raw_workflow_duplicate_members_never_disappear_inside_opaque_objects),
+("raw_workflow_first_transport_fault_precedes_retry_serialization_and_io", raw_workflow_tests::raw_workflow_first_transport_fault_precedes_retry_serialization_and_io),
+("raw_workflow_exact_frame_bound_and_one_less_are_actual_session_limits", raw_workflow_tests::raw_workflow_exact_frame_bound_and_one_less_are_actual_session_limits),
+("codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined",codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined),("codec_comparison_live_input_preserves_literal_marker_objects",codec_comparison_live_input_preserves_literal_marker_objects),("codec_comparison_live_marker_objects_cannot_forge_observations",codec_comparison_live_marker_objects_cannot_forge_observations),("http_policy_live_observations_cannot_reinterpret_private_json_objects",http_policy_live_observations_cannot_reinterpret_private_json_objects),("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
         ("capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         ("capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         (

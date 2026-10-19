@@ -1,4 +1,7 @@
 //! Real subprocess checks for the shared session's MEP framing mode.
+#[path = "support/raw_multiline_mep_tests.rs"]
+mod raw_multiline_mep_tests;
+
 use std::ffi::OsString;
 use std::io::{BufRead, Read, Write};
 use std::time::{Duration, Instant};
@@ -6,7 +9,16 @@ use std::time::{Duration, Instant};
 use morphir_mck::transport::{Limits, Session, TransportError};
 use serde_json::{Value, json};
 
+#[path = "support/raw_mep_tests.rs"]
+mod raw_mep_tests;
+
 fn adapter(mode: &str) {
+    if raw_multiline_mep_tests::adapter(mode) {
+        return;
+    }
+    if raw_mep_tests::adapter(mode) {
+        return;
+    }
     if mode == "stalled-stdin" {
         std::thread::sleep(Duration::from_secs(60));
         return;
@@ -454,6 +466,10 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+("literal_content_length_request_keeps_actual_multiline_raw_bytes", raw_multiline_mep_tests::literal_content_length_request_keeps_actual_multiline_raw_bytes),
+("literal_mep_payload_preserves_body_newlines_whitespace_and_utf8",raw_mep_tests::literal_mep_payload_preserves_body_newlines_whitespace_and_utf8),
+("literal_mep_exact_body_limit_and_one_less_use_existing_framing",raw_mep_tests::literal_mep_exact_body_limit_and_one_less_use_existing_framing),
+("literal_mep_selected_id_policy_refuses_exponent_negative_zero_and_duplicates",raw_mep_tests::literal_mep_selected_id_policy_refuses_exponent_negative_zero_and_duplicates),
         (
             "framed_exchange_preserves_jsonrpc_envelope_and_notification_order",
             framed_exchange_preserves_jsonrpc_envelope_and_notification_order,

@@ -28,8 +28,8 @@ pub(super) struct BoundCorpus<'source> {
 }
 pub(super) struct BoundCase<'source> {
     id: CorpusCaseId,
-    input_token: &'source str,
-    expected_token: &'source str,
+    input_token: &'source RawValue,
+    expected_token: &'source RawValue,
     input: input::Scenario,
     expected: domain::ExpectedWorkflow,
 }
@@ -122,8 +122,8 @@ impl<'source> BoundCorpus<'source> {
             owner.ready()?;
             pair_with_work(&input, &expected, owner)?;
             let members = owner.raw_members(raw_item)?;
-            let input_token = raw_field(&members, "input", owner)?.get();
-            let expected_token = raw_field(&members, "expected", owner)?.get();
+            let input_token = raw_field(&members, "input", owner)?;
+            let expected_token = raw_field(&members, "expected", owner)?;
             // The only string retained beyond the decoder's Document is the
             // actual case ID. Operand bytes remain borrowed, with no copy.
             cases.push(BoundCase {
@@ -149,10 +149,13 @@ impl<'source> BoundCase<'source> {
         self.id.as_str()
     }
     pub(super) fn input_token(&self) -> &'source str {
-        self.input_token
+        self.input_token.get()
     }
     pub(super) fn expected_token(&self) -> &'source str {
-        self.expected_token
+        self.expected_token.get()
+    }
+    pub(super) fn input_raw(&self) -> &'source RawValue {
+        self.input_token
     }
     /// The typed operands are private and immutable, so this reuses the
     /// genuine pairing boundary without a self-reference or lifetime erasure.
