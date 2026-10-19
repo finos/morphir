@@ -471,3 +471,40 @@ fn original_and_projection_runs_preflight_both_full_64mib_streams() {
     source.fill_window(65534, &mut crossing).unwrap();
     assert_eq!(crossing, [0, 0, 1, 1]);
 }
+
+#[test]
+fn fixture_aliases_use_the_shared_exact_128_byte_ascii_grammar() {
+    let source = small_source();
+    let alias = format!("source.{}", "a".repeat(121));
+    assert_eq!(alias.len(), 128);
+    let fixture = InputByteFixture::new(&alias, &source).unwrap();
+    let mut p = plan();
+    p["source"] = json!(alias);
+    p["attempt"] = json!("opening.original-A");
+    let mut run = PeerReadRun::parse(&p.to_string(), fixture, bounds()).unwrap();
+    let observed = ObservedRead::parse(
+        "opening.original-A",
+        ReadEffectKind::Original,
+        0,
+        &request("7", 0, 3),
+    )
+    .unwrap();
+    assert_eq!(
+        run.reply(&observed).unwrap(),
+        controls()["cases"][0]["expected"]["literalRows"][0]
+    );
+    for invalid in [
+        "".to_owned(),
+        format!("{alias}a"),
+        "1source".to_owned(),
+        "source:expected".to_owned(),
+        "source/bytes".to_owned(),
+        "é-source".to_owned(),
+        "source\n".to_owned(),
+    ] {
+        assert!(
+            InputByteFixture::new(&invalid, &source).is_err(),
+            "{invalid:?}"
+        );
+    }
+}

@@ -2,7 +2,7 @@
 //! A production adapter must separately match each real pending port effect and
 //! retain its complete actual request/reply/lifecycle transcript. Parsing a raw
 //! request here grants no pending-effect, capture or connection authority.
-use super::{FixtureBytes, MAX_REQUEST_BYTES, Parameters, ReadTarget, Request};
+use super::{FixtureAlias, FixtureBytes, MAX_REQUEST_BYTES, Parameters, ReadTarget, Request};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -52,32 +52,16 @@ impl fmt::Display for PeerReadError {
 }
 impl std::error::Error for PeerReadError {}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Alias(String);
-impl Alias {
-    fn parse(text: &str) -> Result<Self, PeerReadError> {
-        if text.is_empty()
-            || text.len() > 64
-            || !text.as_bytes()[0].is_ascii_alphabetic()
-            || !text
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
-        {
-            return Err(PeerReadError::Alias);
-        }
-        Ok(Self(text.to_owned()))
-    }
-}
 /// Membership in a caller's independently authored INPUT fixture table. The
 /// caller must not resolve these aliases against expected or observed output.
 pub struct InputByteFixture<'a> {
-    alias: Alias,
+    alias: FixtureAlias,
     bytes: &'a FixtureBytes,
 }
 impl<'a> InputByteFixture<'a> {
     pub fn new(alias: &str, bytes: &'a FixtureBytes) -> Result<Self, PeerReadError> {
         Ok(Self {
-            alias: Alias::parse(alias)?,
+            alias: FixtureAlias::new(alias).map_err(|_| PeerReadError::Alias)?,
             bytes,
         })
     }
@@ -113,7 +97,7 @@ impl Ordinal {
 /// Validated literal observation of a read request. This is deliberately not a
 /// token authorizing delivery to an actual production pending effect.
 pub struct ObservedRead {
-    attempt: Alias,
+    attempt: FixtureAlias,
     kind: ReadEffectKind,
     ordinal: Ordinal,
     request: Request,
@@ -131,7 +115,7 @@ impl ObservedRead {
             return Err(PeerReadError::Request);
         }
         Ok(Self {
-            attempt: Alias::parse(attempt)?,
+            attempt: FixtureAlias::new(attempt).map_err(|_| PeerReadError::Alias)?,
             kind,
             ordinal: Ordinal::new(ordinal)?,
             request,
@@ -249,7 +233,7 @@ enum Progress {
 }
 pub struct PeerReadRun<'a> {
     fixture: InputByteFixture<'a>,
-    attempt: Alias,
+    attempt: FixtureAlias,
     kind: ReadEffectKind,
     first: Ordinal,
     expected: Parameters,
@@ -277,9 +261,9 @@ impl<'a> PeerReadRun<'a> {
         if saved.kind != "read-run" {
             return Err(PeerReadError::Shape);
         }
-        let attempt = Alias::parse(&saved.attempt)?;
+        let attempt = FixtureAlias::new(&saved.attempt).map_err(|_| PeerReadError::Alias)?;
         let first = Ordinal::new(saved.first_ordinal)?;
-        if Alias::parse(&saved.source)? != fixture.alias {
+        if FixtureAlias::new(&saved.source).map_err(|_| PeerReadError::Alias)? != fixture.alias {
             return Err(PeerReadError::Alias);
         }
         let window = saved.window;
