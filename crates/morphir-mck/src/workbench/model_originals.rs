@@ -38,8 +38,8 @@ pub use peer_read::{
 };
 mod projection;
 pub use projection::{
-    CheckedProjectionEvidence, ComparisonResource, ExpectedProjection, ModelRelease,
-    ProjectionError, ProjectionWorkLimits,
+    CheckedProjectionEvidence, ComparisonResource, ExactJsonComparison, ExpectedProjection,
+    ModelRelease, ProjectionError, ProjectionWorkLimits,
 };
 mod transcript;
 pub use transcript::{
