@@ -8,6 +8,9 @@ use std::{collections::BTreeMap, fmt, sync::OnceLock};
 use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::UnicodeNormalization;
 
+mod inventory;
+pub use inventory::{Inventory, InventoryEntry, InventoryError, InventorySha256};
+
 /// Inclusive bound on the complete JSON-RPC request, before parsing.
 pub const MAX_REQUEST_BYTES: usize = 16 * 1024;
 const MAX_RECORD_BYTES: usize = 64 * 1024 * 1024;
@@ -219,47 +222,55 @@ impl RootPath {
         &self.0
     }
     fn parse(value: &Value) -> Result<Self, InvalidFrame> {
-        let path = value.as_str().ok_or(InvalidFrame::Path)?;
-        if path.is_empty()
-            || path.len() > 16000
-            || path.chars().count() > 4000
-            || path.encode_utf16().count() > 8000
-            || path.chars().any(char::is_control)
-            || path.split('/').count() > 128
-        {
+        let path = portable_path(value)?;
+        if path.split('/').count() > 128 {
             return Err(InvalidFrame::Path);
-        }
-        for part in path.split('/') {
-            let stem = part
-                .split('.')
-                .next()
-                .unwrap_or_default()
-                .trim_end_matches(' ')
-                .to_ascii_uppercase();
-            let numbered = |s: &str| {
-                matches!(
-                    s,
-                    "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
-                )
-            };
-            let reserved = matches!(
-                stem.as_str(),
-                "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
-            ) || stem.strip_prefix("COM").is_some_and(numbered)
-                || stem.strip_prefix("LPT").is_some_and(numbered);
-            if part.is_empty()
-                || part.len() > 255
-                || part.encode_utf16().count() > 255
-                || matches!(part, "." | "..")
-                || part.ends_with(['.', ' '])
-                || part.contains(['<', '>', ':', '"', '\\', '|', '?', '*'])
-                || reserved
-            {
-                return Err(InvalidFrame::Path);
-            }
         }
         Ok(Self(path.to_owned()))
     }
+}
+// Inventory descendants have their own depth relative to the selected root.
+// Reusing RootPath's 128-component limit would reject valid deep descendants.
+fn portable_path(value: &Value) -> Result<&str, InvalidFrame> {
+    let path = value.as_str().ok_or(InvalidFrame::Path)?;
+    if path.is_empty()
+        || path.len() > 16000
+        || path.chars().count() > 4000
+        || path.encode_utf16().count() > 8000
+        || path.chars().any(char::is_control)
+    {
+        return Err(InvalidFrame::Path);
+    }
+    for part in path.split('/') {
+        let stem = part
+            .split('.')
+            .next()
+            .unwrap_or_default()
+            .trim_end_matches(' ')
+            .to_ascii_uppercase();
+        let numbered = |s: &str| {
+            matches!(
+                s,
+                "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
+            )
+        };
+        let reserved = matches!(
+            stem.as_str(),
+            "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+        ) || stem.strip_prefix("COM").is_some_and(numbered)
+            || stem.strip_prefix("LPT").is_some_and(numbered);
+        if part.is_empty()
+            || part.len() > 255
+            || part.encode_utf16().count() > 255
+            || matches!(part, "." | "..")
+            || part.ends_with(['.', ' '])
+            || part.contains(['<', '>', ':', '"', '\\', '|', '?', '*'])
+            || reserved
+        {
+            return Err(InvalidFrame::Path);
+        }
+    }
+    Ok(path)
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RootKind {
@@ -345,28 +356,35 @@ fn parse(raw: &str, limit: usize) -> Result<Value, InvalidFrame> {
 enum Schema {
     Request,
     Declaration,
+    Ready,
+    Entry,
+    Inventory,
 }
 fn validate(schema: Schema, value: &Value) -> Result<(), InvalidFrame> {
-    static VALIDATORS: OnceLock<(jsonschema::Validator, jsonschema::Validator)> = OnceLock::new();
+    static VALIDATORS: OnceLock<[jsonschema::Validator; 5]> = OnceLock::new();
     let validators = VALIDATORS.get_or_init(|| {
         let resources = [
             include_str!("../../../../spec/workbench/model-originals/0.1.0-draft.1/schemas/definitions.schema.json"),
             include_str!("../../../../spec/workbench/model-originals/0.1.0-draft.1/schemas/request.schema.json"),
             include_str!("../../../../spec/workbench/model-originals/0.1.0-draft.1/schemas/declaration.schema.json"),
         ].map(|text|serde_json::from_str::<Value>(text).expect("fixed model originals schema"));
-        let compile = |index: usize| {
+        let compile = |schema: &Value| {
             let mut options = jsonschema::options();
             options.with_draft(jsonschema::Draft::Draft202012).with_retriever(OfflineOnly);
             for resource in &resources {
                 options.with_resource(resource["$id"].as_str().expect("schema ID"),jsonschema::Resource::from_contents(resource.clone()).expect("schema resource"));
             }
-            options.build(&resources[index]).expect("fixed offline model originals schema")
+            options.build(schema).expect("fixed offline model originals schema")
         };
-        (compile(1),compile(2))
+        let reference = |name: &str| serde_json::json!({"$ref":format!("{}#/$defs/{name}",resources[0]["$id"].as_str().expect("definitions ID"))});
+        [compile(&resources[1]),compile(&resources[2]),compile(&reference("ready")),compile(&reference("entry")),compile(&reference("inventory"))]
     });
     let validator = match schema {
-        Schema::Request => &validators.0,
-        Schema::Declaration => &validators.1,
+        Schema::Request => &validators[0],
+        Schema::Declaration => &validators[1],
+        Schema::Ready => &validators[2],
+        Schema::Entry => &validators[3],
+        Schema::Inventory => &validators[4],
     };
     validator.validate(value).map_err(|_| InvalidFrame::Shape)
 }
