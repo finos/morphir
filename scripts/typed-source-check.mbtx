@@ -110,10 +110,11 @@ async fn main {
   let private_probes = []
   for model in array(field(output, "models")) {
     let id = string(field(model, "id"))
-    let base_id = id
+    let stripped = id.strip_prefix("sdk").map(s => s.to_owned()).unwrap_or(id)
+    let base_id = stripped
       .strip_prefix("snapshot")
       .map(s => s.to_owned())
-      .unwrap_or(id)
+      .unwrap_or(stripped)
     let model_id = base_id
       .strip_prefix("current")
       .map(s => s.to_owned())
@@ -132,7 +133,7 @@ async fn main {
       "name = \"acceptance/" +
       id +
       "\"\nversion = \"0.0.0\"\n" +
-      (if kind == "pinnedsdk" || id == "math" {
+      (if kind == "pinnedsdk" || kind == "math" || kind == "conversions" {
         "import { \"finos/morphir-sdk@0.1.0\" }\n"
       } else {
         ""
@@ -140,7 +141,9 @@ async fn main {
     )
     @fs.write_file(
       original + "/moon.pkg",
-      if kind == "pinnedsdk" || id == "math" {
+      if kind == "conversions" {
+        "import {\n  \"finos/morphir-sdk\" @sdk,\n  \"finos/morphir-sdk/basics\" @basics,\n  \"finos/morphir-sdk/int\" @int,\n  \"finos/morphir-sdk/integer\" @integer,\n}\n"
+      } else if kind == "pinnedsdk" || kind == "math" {
         "import { \"finos/morphir-sdk/basics\" @basics }\n"
       } else {
         ""
@@ -215,6 +218,71 @@ async fn main {
         "test \"mixed Bool/Int32 original and generated boundaries\" {\n  for flag in [false, true] {\n    let a = @int.to_int32(@integer.from_string(\"-2147483648\").unwrap()).unwrap()\n    let b = @int.to_int32(@integer.from_string(\"2147483647\").unwrap()).unwrap()\n    let original = @ofoundation.choose(flag, -2147483648, 2147483647)\n    assert_eq(original, if flag { -2147483648 } else { 2147483647 })\n    assert_eq(@integer.to_string(@int.from_int32(" +
         g("choose") +
         "(flag)(a)(b))), original.to_string())\n  }\n}\n",
+      )
+    } else if kind == "conversions" {
+      for
+        (name, expected) in [
+          ("rounded", ["-2", "-1", "0", "0", "1", "2", "3"]),
+          ("floored", ["-3", "-2", "-1", "0", "0", "1", "2"]),
+          ("ceiling", ["-2", "-1", "0", "0", "1", "2", "3"]),
+          ("truncated", ["-2", "-1", "0", "0", "0", "1", "2"]),
+        ] {
+        model_tests.write_string(
+          "test " +
+          ("classic SDK " + name).escape() +
+          " {\n  let expected = [" +
+          expected.map(s => s.escape()).join(", ") +
+          "]\n  let inputs = [-2.5, -1.5, -0.5, -0.0, 0.5, 1.5, 2.5]\n  for i = 0; i < inputs.length(); i = i + 1 {\n    assert_eq(@integer.to_string(@oconversions." +
+          name +
+          "(inputs[i])), expected[i])\n    assert_eq(@integer.to_string(" +
+          g(name) +
+          "(inputs[i])), expected[i])\n  }\n  for value in [9007199254740992.0, 1.0e100] {\n    let expected = if value == 9007199254740992.0 { \"9007199254740992\" } else { \"10000000000000000159028911097599180468360808563945281389781327557747838772170381060813469985856815104\" }\n    assert_eq(@integer.to_string(@oconversions." +
+          name +
+          "(value)), expected)\n    assert_eq(@integer.to_string(" +
+          g(name) +
+          "(value)), expected)\n  }\n  for value in [1.0 / 0.0, -1.0 / 0.0, 0.0 / 0.0] {\n    try { ignore(@oconversions." +
+          name +
+          "(value)); fail(\"Expected source error\") } catch { @sdk.InvalidNumber(_) => (); error => raise error }\n    try { ignore(" +
+          g(name) +
+          "(value)); fail(\"Expected generated error\") } catch { @sdk.InvalidNumber(_) => (); error => raise error }\n  }\n}\n",
+        )
+      }
+      for
+        (name, positive, negative) in [
+          ("exact", "None", "None"),
+          ("trunc", "Some(\"1\")", "Some(\"-1\")"),
+          ("floor", "Some(\"1\")", "Some(\"-2\")"),
+          ("ceil", "Some(\"2\")", "Some(\"-1\")"),
+          ("round", "Some(\"2\")", "Some(\"-1\")"),
+        ] {
+        model_tests.write_string(
+          "test " +
+          ("checked SDK " + name).escape() +
+          " {\n  for (value, expected) in [(1.5, " +
+          positive +
+          "), (-1.5, " +
+          negative +
+          "), (2.0, Some(\"2\")), (-0.0, Some(\"0\")), (1.0 / 0.0, None), (0.0 / 0.0, None)] {\n    assert_eq(@oconversions." +
+          name +
+          "(value).map(@integer.to_string), expected)\n    assert_eq(" +
+          g(name) +
+          "(value).map(@integer.to_string), expected)\n  }\n}\n",
+        )
+      }
+      model_tests.write_string(
+        "test \"SDK Integer boundaries exactness overflow and optional guards\" {\n  let edge = @integer.parse(\"9007199254740993\")\n  let exact = @integer.parse(\"9007199254740992\")\n  assert_eq(@oconversions.floating(edge), 9007199254740992.0)\n  assert_eq(CALL_FLOATING(edge), 9007199254740992.0)\n  assert_eq(@oconversions.to_rounded(edge), 9007199254740992.0)\n  assert_eq(CALL_ROUNDED(edge), 9007199254740992.0)\n  assert_eq(@oconversions.to_exact(edge), None)\n  assert_eq(CALL_EXACT(edge), None)\n  assert_eq(@oconversions.to_exact(exact), Some(9007199254740992.0))\n  assert_eq(CALL_EXACT(exact), Some(9007199254740992.0))\n  let huge_float = @integer.parse(\"1\" + \"0\".repeat(400))\n  assert_eq(@oconversions.to_exact(huge_float), None)\n  assert_eq(CALL_EXACT(huge_float), None)\n  assert_true(@oconversions.to_rounded(huge_float).is_inf())\n  assert_true(CALL_ROUNDED(huge_float).is_inf())\n  let negative = @integer.parse(\"-9007199254740993\")\n  assert_eq(@integer.to_string(@oconversions.absolute(negative)), \"9007199254740993\")\n  assert_eq(@integer.to_string(CALL_ABS(negative)), \"9007199254740993\")\n  assert_true(@oconversions.before(exact, edge))\n  assert_true(CALL_BEFORE(exact)(edge))\n  for flag in [false, true] {\n    assert_eq(@oconversions.optional(Some(edge), flag).map(@integer.to_string), Some(\"9007199254740993\"))\n    assert_eq(CALL_OPTIONAL(Some(edge))(flag).map(@integer.to_string), Some(\"9007199254740993\"))\n    assert_eq(CALL_OPTIONAL(None)(flag), None)\n  }\n  let over_budget = @integer.parse(\"1\" + \"0\".repeat(4096))\n  try { ignore(CALL_ABS(over_budget)); fail(\"Expected integer budget\") } catch { @sdk.OutOfRange(_) => (); error => raise error }\n  try { ignore(CALL_OPTIONAL(Some(over_budget))(false)); fail(\"Expected optional integer budget\") } catch { @sdk.OutOfRange(_) => (); error => raise error }\n}\n"
+        .split("CALL_FLOATING")
+        .join(g("floating"))
+        .split("CALL_ROUNDED")
+        .join(g("to-rounded"))
+        .split("CALL_EXACT")
+        .join(g("to-exact"))
+        .split("CALL_ABS")
+        .join(g("absolute"))
+        .split("CALL_BEFORE")
+        .join(g("before"))
+        .split("CALL_OPTIONAL")
+        .join(g("optional")),
       )
     } else if kind == "math" {
       for reference in array(field(model, "mathReferences")) {
@@ -444,7 +512,7 @@ async fn main {
     }
     let original_alias = if [
         "foundation", "numeric", "integer", "float", "indexed", "strings", "bounded",
-        "ordered", "orderedbounded", "pinnedsdk",
+        "ordered", "orderedbounded", "pinnedsdk", "math", "conversions",
       ].contains(kind) {
       kind
     } else {
@@ -508,9 +576,11 @@ async fn main {
   let private_log = StringBuilder()
   for probe in private_probes {
     @fs.write_file(consumer + "/private_test.mbt", probe)
+    // Keep only visibility diagnostics, rather than repeating every workspace
+    // warning for every probe and exhausting the Wasm evidence runner's heap.
     let (private_code, private_out, private_err) = @process.collect_output(
       "moon",
-      ["check", "--frozen", "--target", "native"],
+      ["check", "--frozen", "--target", "native", "--warn-list", "-a"],
       cwd=workspace,
     )
     @fs.remove(consumer + "/private_test.mbt")
@@ -572,8 +642,9 @@ async fn main {
         "moonbit-model-library-v1", "moonbit-model-library-2026-10-17", "moonbit-model-int32-library-v1",
         "moonbit-model-library-2026-10-19", "moonbit-model-integer-library-v1", "moonbit-model-float-library-v1",
         "moonbit-model-pinned-sdk-library-v1", "moonbit-model-library-2026-10-19-r2",
+        "moonbit-model-library-2026-10-19-r3",
       ],
-      "scope": "Local original source, Scheme, generated direct consumers, one pinned SDK source call and private access. Installed qualification remains a separate task.",
+      "scope": "Local original source, Scheme, generated direct consumers, pinned math and Integer conversion SDK calls, and private access. Installed qualification remains a separate task.",
     } : Json)
   let ion = @ion_json.to_ion(receipt)
   let bytes = @binary.write_binary_value(ion)

@@ -27,10 +27,13 @@ fn library_check_body(
   cancelled : () -> Bool,
   mode : LibraryMode,
   bindings : PinnedSourceBindings,
+  effect : LibraryEffect,
 ) -> LibraryTypeUse raise {
   library_poll(cancelled)
   fn check(e) raise {
-    library_check_body(e, functions, types, edges, cancelled, mode, bindings)
+    library_check_body(
+      e, functions, types, edges, cancelled, mode, bindings, effect,
+    )
   }
   match expr {
     Boolean(_, source) => library_boolean(source)
@@ -131,6 +134,9 @@ fn library_check_body(
           )
           abort("unreachable")
         }
+      } else if left.scalar == SdkInteger &&
+        ["==", "!=", "<", "<=", ">", ">="].contains(op) {
+        library_boolean(source)
       } else if left.scalar == Text {
         if op == "+" && mode.supports_strings() {
           left
@@ -169,6 +175,13 @@ fn library_check_body(
     }
     Call(index, arguments, source) => {
       let signature = functions[index].declaration
+      if signature.effect == SdkError && effect != SdkError {
+        library_error(
+          "error_contract",
+          "A call that can raise SDK errors requires raise @sdk.SdkError",
+          Some(source),
+        )
+      }
       if arguments.length() != signature.parameters.length() {
         library_error(
           "call_arity",
@@ -184,6 +197,13 @@ fn library_check_body(
     }
     SdkCall(index, arguments, source) => {
       let binding = bindings.entries[index]
+      if binding.effect == SdkError && effect != SdkError {
+        library_error(
+          "error_contract",
+          "The pinned SDK call requires raise @sdk.SdkError",
+          Some(source),
+        )
+      }
       if arguments.length() != binding.inputs.length() {
         library_error(
           "binding_arity",
@@ -239,6 +259,7 @@ fn library_check(
       cancelled,
       mode,
       bindings,
+      function.declaration.effect,
     )
     library_expect(
       result,

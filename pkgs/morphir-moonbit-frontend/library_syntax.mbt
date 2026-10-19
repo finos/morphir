@@ -329,7 +329,8 @@ fn LibraryAdapter::expression(
       let (name, qualified) = match id.name {
         @ast.Ident(name~) => (name, None)
         @ast.Dot(pkg~, id~) if self.mode == PinnedSdk ||
-          self.mode == NumericMath => ("@" + pkg + "." + id, Some((pkg, id)))
+          self.mode == NumericMath ||
+          self.mode == NumericSdk => ("@" + pkg + "." + id, Some((pkg, id)))
         _ => {
           reject(
             "qualified_reference",
@@ -405,13 +406,30 @@ fn library_adapt(
       decl.is_async is Some(_) ||
       decl.nocancel_ is Some(_) ||
       !decl.quantifiers.is_empty() ||
-      !decl.attrs.is_empty() ||
-      !(decl.error_type is @ast.NoErrorType) {
+      !decl.attrs.is_empty() {
       reject(
         "unsupported_function",
         "Methods, generics, attributes and effects are unsupported",
         decl.loc,
       )
+    }
+    let effect = match decl.error_type {
+      @ast.NoErrorType => LibraryEffect::Pure
+      @ast.ErrorType(
+        ty=@ast.Name(
+          constr_id={ id: @ast.Dot(pkg="sdk", id="SdkError"), .. },
+          tys~,
+          ..
+        )
+      ) if mode == NumericSdk && tys.is_empty() => SdkError
+      _ => {
+        reject(
+          "unsupported_function",
+          "Only the pinned raise @sdk.SdkError declaration is supported in the numeric SDK profile",
+          decl.loc,
+        )
+        abort("unreachable")
+      }
     }
     let public = match decl.vis {
       @ast.Pub(attr=None, ..) => true
@@ -492,11 +510,12 @@ fn library_adapt(
         expr,
         span(decl.name.loc),
         source_documentation(decl.doc),
+        effect,
       ),
     )
   }
   let signature_types : Map[String, Array[LibraryTypeUse]] = Map([])
-  for (name, _, _, input_types, _, _, _, _) in signatures {
+  for (name, _, _, input_types, _, _, _, _, _) in signatures {
     signature_types[name] = input_types
   }
   let adapter = LibraryAdapter::{
@@ -511,7 +530,17 @@ fn library_adapt(
   }
   let functions = []
   for
-    (name, public, parameters, input_types, output_type, body, source, doc) in signatures {
+    (
+      name,
+      public,
+      parameters,
+      input_types,
+      output_type,
+      body,
+      source,
+      doc,
+      effect,
+    ) in signatures {
     adapter.lets = 0
     functions.push({
       name,
@@ -520,6 +549,7 @@ fn library_adapt(
       parameters,
       input_types,
       output_type,
+      effect,
       body: adapter.expression_as(body, 0, output_type.scalar),
       body_source: span(body.loc()),
       source,

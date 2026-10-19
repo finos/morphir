@@ -183,21 +183,30 @@ fn main raise {
         "currentorderedbounded", "fn growth() -> String { \"abc\" + \"def\" }\nfn literal() -> String { \"123456\" }\npub fn first() -> Bool { growth() < literal() }\npub fn second() -> Bool { literal() >= growth() }\npub fn eager() -> Bool { \"\" < literal() }\npub fn short() -> Bool { false && first() }",
       ),
     ]
+  let sdk_source = "pub fn rounded(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.round(v) }\npub fn floored(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.floor(v) }\npub fn ceiling(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.ceiling(v) }\npub fn truncated(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.truncate(v) }\npub fn floating(v : @integer.Integer) -> Double { @basics.to_float(v) }\npub fn absolute(v : @integer.Integer) -> @integer.Integer { @basics.abs_int(v) }\npub fn exact(v : Double) -> @integer.Integer? { @int.from_float64_exact(v) }\npub fn trunc(v : Double) -> @integer.Integer? { @int.from_float64_truncated(v) }\npub fn floor(v : Double) -> @integer.Integer? { @int.from_float64_floor(v) }\npub fn ceil(v : Double) -> @integer.Integer? { @int.from_float64_ceiling(v) }\npub fn round(v : Double) -> @integer.Integer? { @int.from_float64_rounded(v) }\npub fn to_exact(v : @integer.Integer) -> Double? { @int.to_float64_exact(v) }\npub fn to_rounded(v : @integer.Integer) -> Double { @int.to_float64_rounded(v) }\npub fn optional(v : @integer.Integer?, flag : Bool) -> @integer.Integer? { if flag { identity(v) } else { v } }\nfn identity(v : @integer.Integer?) -> @integer.Integer? { v }\npub fn before(a : @integer.Integer, b : @integer.Integer) -> Bool { a < b && a != b }"
+  let r3_cases = cases
+    .filter(row => {
+      !row.0.has_prefix("current") || row.0.has_prefix("currentordered")
+    })
+    .map(row => ("sdk" + row.0, row.1)) +
+    [("sdkconversions", sdk_source)]
   let cases = cases +
     cases
     .filter(row => {
       (!row.0.has_prefix("current") || row.0.has_prefix("currentordered")) &&
       row.0 != "math"
     })
-    .map(row => ("snapshot" + row.0, row.1))
+    .map(row => ("snapshot" + row.0, row.1)) +
+    r3_cases
   let models = []
   for (id, source) in cases {
     let source = "/// Qualification fixture documentation.\n///\n/// Preserve **Markdown** and λ😀.\n" +
       source
-    let base_id = id
+    let stripped = id.strip_prefix("sdk").map(s => s.to_owned()).unwrap_or(id)
+    let base_id = stripped
       .strip_prefix("snapshot")
       .map(s => s.to_owned())
-      .unwrap_or(id)
+      .unwrap_or(stripped)
     let model_id = base_id
       .strip_prefix("current")
       .map(s => s.to_owned())
@@ -212,7 +221,20 @@ fn main raise {
       module_name: "main",
       source,
     }
-    let output = if id.has_prefix("snapshot") || id == "math" {
+    let output = if id.has_prefix("sdk") {
+      @frontend.compile_numeric_sdk_library(
+        input,
+        @frontend.PinnedSourceBindings::sdk_numeric_conversions(
+          "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+          "basics",
+        ),
+        max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
+          5
+        } else {
+          1048576
+        },
+      )
+    } else if id.has_prefix("snapshot") || id == "math" {
       @frontend.compile_math_library(
         input,
         @frontend.PinnedSourceBindings::sdk_numeric_math(
@@ -653,21 +675,23 @@ fn main raise {
       (
         {
           "id": id,
-          "mathReferences": if id == "math" {
+          "mathReferences": if kind == "math" {
             math_references().map(row => {
               ({ "name": row.0, "expected": row.1, "ulps": row.2 } : Json)
             })
           } else {
             []
           },
-          "mathCategories": if id == "math" {
+          "mathCategories": if kind == "math" {
             math_categories().map(row => {
               ({ "name": row.0, "category": row.1 } : Json)
             })
           } else {
             []
           },
-          "profile": if id.has_prefix("snapshot") || id == "math" {
+          "profile": if id.has_prefix("sdk") {
+            @frontend.NUMERIC_SDK_LIBRARY_PROFILE
+          } else if id.has_prefix("snapshot") || id == "math" {
             @frontend.MATH_LIBRARY_PROFILE
           } else if id.has_prefix("current") {
             @frontend.LIBRARY_PROFILE_2026_10_17

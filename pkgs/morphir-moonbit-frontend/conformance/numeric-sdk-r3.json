@@ -1,0 +1,49 @@
+{
+  "profile": "moonbit-model-library-2026-10-19-r3",
+  "inherits": "moonbit-model-library-2026-10-19-r2",
+  "sourceLanguage": "moonbit",
+  "sourceModule": "finos/morphir-sdk",
+  "sourceVersion": "0.1.0",
+  "sourceTree": "9c83a100383570236b3d781362524008f76dd56d",
+  "compiler": "0.10.15+943464bfa",
+  "types": ["@integer.Integer", "@integer.Integer?", "Double?"],
+  "errorAnnotation": "raise @sdk.SdkError",
+  "classic": [
+    {"source": "@basics.round", "canonical": "morphir/SDK:basics#round", "signature": "Double -> @integer.Integer raise @sdk.SdkError", "contract": "nearest integer, ties toward positive infinity; nonfinite InvalidNumber"},
+    {"source": "@basics.floor", "canonical": "morphir/SDK:basics#floor", "signature": "Double -> @integer.Integer raise @sdk.SdkError", "contract": "floor integer; nonfinite InvalidNumber"},
+    {"source": "@basics.ceiling", "canonical": "morphir/SDK:basics#ceiling", "signature": "Double -> @integer.Integer raise @sdk.SdkError", "contract": "ceiling integer; nonfinite InvalidNumber"},
+    {"source": "@basics.truncate", "canonical": "morphir/SDK:basics#truncate", "signature": "Double -> @integer.Integer raise @sdk.SdkError", "contract": "truncate toward zero; nonfinite InvalidNumber"},
+    {"source": "@basics.abs_int", "canonical": "morphir/SDK:basics#abs", "signature": "@integer.Integer -> @integer.Integer", "contract": "exact"},
+    {"source": "@basics.to_float", "canonical": "morphir/SDK:basics#to-float", "signature": "@integer.Integer -> Double", "contract": "binary64 nearest, ties to even; overflow infinity"}
+  ],
+  "numericExtension": {
+    "profile": "morphir-sdk-moonbit-numeric-v1",
+    "calls": [
+      {"source": "@int.from_float64_exact", "canonical": "morphir/SDK:int#from-float64-exact", "signature": "Double -> @integer.Integer?", "contract": "exact integer or None"},
+      {"source": "@int.from_float64_truncated", "canonical": "morphir/SDK:int#from-float64-truncated", "signature": "Double -> @integer.Integer?", "contract": "truncate toward zero; nonfinite None"},
+      {"source": "@int.from_float64_floor", "canonical": "morphir/SDK:int#from-float64-floor", "signature": "Double -> @integer.Integer?", "contract": "floor integer; nonfinite None"},
+      {"source": "@int.from_float64_ceiling", "canonical": "morphir/SDK:int#from-float64-ceiling", "signature": "Double -> @integer.Integer?", "contract": "ceiling integer; nonfinite None"},
+      {"source": "@int.from_float64_rounded", "canonical": "morphir/SDK:int#from-float64-rounded", "signature": "Double -> @integer.Integer?", "contract": "nearest integer, ties toward positive infinity; nonfinite None"},
+      {"source": "@int.to_float64_exact", "canonical": "morphir/SDK:int#to-float64-exact", "signature": "@integer.Integer -> Double?", "contract": "exact binary64 or None, including overflow"},
+      {"source": "@int.to_float64_rounded", "canonical": "morphir/SDK:int#to-float64-rounded", "signature": "@integer.Integer -> Double", "contract": "binary64 nearest, ties to even; overflow infinity"}
+    ]
+  },
+  "support": {
+    "source": true,
+    "scheme": true,
+    "generator": true,
+    "targets": ["native", "js", "wasm", "wasm-gc"],
+    "modes": ["debug", "release"],
+    "integerBoundaryDecimalDigits": 4096,
+    "optionalBoundary": "pass, return and select; budget-check Some Integer; preserve None",
+    "historicalProfiles": "frozen",
+    "classicSdkInventory": "unchanged"
+  },
+  "excluded": ["Float32 SDK carrier conversions", "general Maybe constructors, patterns and APIs", "source error handlers and throw", "host effects", "imports", "Decimal"],
+  "qualification": {
+    "command": "mise run test:typed-source",
+    "receipt": ".dev/typed-source-acceptance/receipt.ion",
+    "focusedTests": ["numeric_sdk_test.mbt", "../morphir-engine/moonbit/numeric_sdk_test.mbt"],
+    "referencePolicy": "exact integer and binary64 bit expectations; inherited transcendental vectors retain per-call 4 ULP contracts"
+  }
+}

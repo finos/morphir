@@ -7,6 +7,7 @@ The source language is `moonbit`; profiles describe the supported subset.
 
 | API | Profile | Source contract | Entry contract |
 | --- | --- | --- | --- |
+| `compile_numeric_sdk_library` | `moonbit-model-library-2026-10-19-r3` | R2 plus pinned SDK Integer, rounding, binary64 optional conversions and explicit `SdkError` declarations | Sorted public entries; Integer and optional Integer budgets |
 | `compile_math_library` | `moonbit-model-library-2026-10-19-r2` | Cumulative Bool/String, all qualified integer and floating forms, and six pinned SDK calls | Sorted public entries with scalar and String guards |
 | `compile_supported_library_2026_10_19` | `moonbit-model-library-2026-10-19` | Cumulative Bool/String/Int32, including signed arithmetic, UTF-16 length and owned slices | Sorted public entries with String guards and Int32 wrappers |
 | `compile_supported_library_2026_10_17` | `moonbit-model-library-2026-10-17` | All qualified Bool/String/Int32 capabilities, including shortlex ordering | Sorted public entries and executable String guards |
@@ -39,8 +40,8 @@ its typed owner is the canonical SDK type. A transport tag does not declare a ty
 
 ## Cumulative source conformance
 
-Use `compile_math_library` with adapter-supplied `PinnedSourceBindings::sdk_numeric_math`, or source profile
-`moonbit-model-library-2026-10-19-r2`,
+Use `compile_numeric_sdk_library` with adapter-supplied `PinnedSourceBindings::sdk_numeric_conversions`, or source profile
+`moonbit-model-library-2026-10-19-r3`,
 for all currently qualified source capabilities together. It combines Bool
 operators, bounded String literals/concatenation/equality/ordering, signed Int32
 literals/arithmetic/comparisons, UTF-16 code-unit `String.length()`, and
@@ -75,7 +76,7 @@ SDK name and numerical contract on their references and applications.
 | `@basics.power_float(Double, Double)` | `power` | Supported | Reference vectors within 4 ULP; exact integer and exceptional cases checked separately |
 | `@basics.abs_float(Double)` | `abs` | Supported | Classic branch semantics preserve negative zero and NaN; other qualified values exact |
 | `@basics.not_(Bool)` | `not` | Supported | Exact Boolean negation |
-| SDK Integer-returning rounding and Maybe conversions | Existing classic / N3 extension names | IR/runtime support only | SDK wrappers do not match source `BigInt` or imply general Maybe source admission |
+| SDK Integer-returning rounding and Maybe conversions | Existing classic / N3 extension names | R3 subset below | R2 remains frozen |
 
 All five numeric calls take and return `Double`. An implicit Float32 promotion
 is refused. These calls reuse classic SDK declarations and leave the 248-value
@@ -88,6 +89,45 @@ NaN payloads are unspecified. The receipt records the compiler/core and SDK pin.
 The old dated snapshots and `moonbit-model-pinned-sdk-library-v1` retain their
 original admission rules. Arbitrary `@math` calls, other SDK names, source casts,
 Decimal and imports remain outside revision 2.
+
+### SDK Integer and binary64 conversions in revision 3
+
+R3 adds `@integer.Integer`, `@integer.Integer?` and `Double?` as explicit
+boundary types. The Integer wrapper is distinct from source `BigInt`, even though
+both lower to Morphir Int. Literals, arithmetic operators and unary minus do not
+construct SDK Integer values. Integer equality and ordering are exact.
+
+| Source calls | Canonical module | Classification | Contract |
+| --- | --- | --- | --- |
+| `@basics.round`, `floor`, `ceiling`, `truncate` | Basics, same names | Classic | `Double -> @integer.Integer raise @sdk.SdkError`; round ties toward positive infinity; other policies follow their names; nonfinite inputs raise `InvalidNumber` |
+| `@basics.abs_int` | `basics#abs` | Classic | Exact Integer absolute value |
+| `@basics.to_float` | `basics#to-float` | Classic | Integer to nearest binary64, ties to even; overflow to infinity |
+| `@int.from_float64_exact`, `from_float64_truncated`, `from_float64_floor`, `from_float64_ceiling`, `from_float64_rounded` | Int, names with hyphens | `morphir-sdk-moonbit-numeric-v1` | `Double -> @integer.Integer?`; nonfinite inputs return None; exact also refuses fractional values; rounded ties toward positive infinity |
+| `@int.to_float64_exact` | `int#to-float64-exact` | Same numeric extension | `@integer.Integer -> Double?`; None for inexact or overflowing results |
+| `@int.to_float64_rounded` | `int#to-float64-rounded` | Same numeric extension | Same rounding and overflow contract as classic `to_float` |
+
+All packages use SDK version `0.1.0` and the tree above. Aliases are fixed:
+`basics`, `int`, `integer`, and root `sdk` for `SdkError`. The pure compiler
+receives the resolved environment; it performs no dependency download or host
+execution. Type uses and call references retain the package pin and authored
+signature. Call metadata distinguishes classic and numeric extension values.
+Ion checkpoints and generated `symbols.10n` receipts preserve these facts.
+
+Only `raise @sdk.SdkError` is admitted as an error annotation. Calling a declared
+raising helper or classic rounding function requires the same annotation on the
+caller, including in unreachable branches. This grants no host effects. Source
+throw, catch, async, imports and general error types remain unsupported.
+Optional values can be passed, returned and selected, but constructors, patterns,
+unwrap and general Maybe APIs are not admitted. Public Integer inputs and outputs,
+including Some values, keep the 4096 decimal digit budget; None passes unchanged.
+
+The source capability inventory is [numeric-sdk-r3.json](conformance/numeric-sdk-r3.json).
+The SDK's historical `morphir-moonbit-source-float-v1` inventory describes its
+earlier source profile, where conversions were IR-only. R3 admits the binary64
+subset explicitly. Float32 SDK conversion functions remain IR-only because their
+Double transport signature does not match the source Float32 semantic type.
+Native, JavaScript, Wasm and Wasm-GC run original and generated consumers in debug
+and release, using independent exact expected integers and binary64 bits.
 
 `mise run test:typed-source` replays the existing Int32, String and Boolean
 fixtures through their narrow profiles, pinned v1 and current dated snapshots. It

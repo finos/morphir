@@ -66,6 +66,10 @@ try {
   const dependency={moduleName:'finos/morphir-sdk',version:'0.1.0',apiProfile:'morphir-sdk-concrete-v1',semanticPin:'bc99af69a8b24d391311fae3822a87eafef3c334'};
   for(const profile of [
     'morphir-sdk-concrete-v1+moonbit-source-int32-v1',
+    'morphir-sdk-concrete-v1+moonbit-source-integer-v1',
+    'morphir-sdk-concrete-v1+moonbit-source-float-v1',
+    'morphir-sdk-concrete-v1+moonbit-source-integer-v1+moonbit-source-float-v1',
+    'morphir-sdk-concrete-v1+moonbit-source-string-v1+moonbit-source-int32-v1+moonbit-source-integer-v1+moonbit-source-float-v1+moonbit-source-string-index-v1',
     'morphir-sdk-concrete-v1+moonbit-source-string-v1+moonbit-source-string-index-v1',
     'morphir-sdk-concrete-v1+moonbit-source-string-v1+moonbit-source-int32-v1+moonbit-source-string-index-v1',
   ])run({dependencies:[{...dependency,apiProfile:profile}],suppliedDependencies:{'finos/morphir-sdk':suppliedSdk}});
@@ -95,5 +99,17 @@ try {
   writeFileSync(join(missingExtension,'moon.mod'),'name="finos/morphir-sdk"\nversion="0.1.0"\n');
   writeFileSync(join(missingExtension,'conformance/bindings.json'),JSON.stringify({pin:'bc99af69a8b24d391311fae3822a87eafef3c334'}));
   run({dependencies:[{moduleName:'finos/morphir-sdk',version:'0.1.0',apiProfile:'morphir-sdk-concrete-v1+moonbit-source-string-v1',semanticPin:'bc99af69a8b24d391311fae3822a87eafef3c334'}],suppliedDependencies:{'finos/morphir-sdk':missingExtension}},/build.missing_source_string_extension/);
+  for(const [suffix,file,code] of [
+    ['integer','moonbit_numeric_extension.json','build.missing_source_integer_extension'],
+    ['float','moonbit_float_extension.json','build.missing_source_float_extension'],
+  ]) {
+    const patch={dependencies:[{...dependency,apiProfile:'morphir-sdk-concrete-v1+moonbit-source-'+suffix+'-v1'}],suppliedDependencies:{'finos/morphir-sdk':missingExtension}};
+    run(patch,new RegExp(code!));
+    writeFileSync(join(missingExtension,'conformance',file!),JSON.stringify({profile:'unaudited'}));
+    run(patch,new RegExp(code!));
+  }
+  for(const profile of ['morphir-sdk-concrete-v1+moonbit-source-integer-v2','morphir-sdk-concrete-v1+moonbit-source-float-v1+moonbit-source-integer-v1']) {
+    run({dependencies:[{...dependency,apiProfile:profile}],suppliedDependencies:{'finos/morphir-sdk':suppliedSdk}},/Expected values/);
+  }
   console.log(JSON.stringify({successful:true,targets,deadline:true,identityChecks:true,outputLimit:true,staleOutputs:true,cleanup:true,sdkAncestors:true,pathPlatforms:['posix','win32-drive','win32-unc']}));
 } finally {rmSync(root,{recursive:true,force:true});}

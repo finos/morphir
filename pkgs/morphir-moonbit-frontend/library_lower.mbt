@@ -654,20 +654,22 @@ fn library_lower(
       }
     }
     if mode.supports_integer() && declaration.public {
-      if declaration.output_type.scalar == UnboundedInteger {
-        body = lowerer.require_integer_budget(
+      if declaration.output_type.scalar.has_integer_boundary() {
+        body = lowerer.require_integer_boundary(
           body,
+          declaration.output_type.scalar,
           declaration.body_source,
           "public-result",
         )
       }
       for j = function.parameters.length() - 1; j >= 0; j = j - 1 {
-        if declaration.input_types[j].scalar == UnboundedInteger {
+        if declaration.input_types[j].scalar.has_integer_boundary() {
           let ty = declaration.input_types[j].to_ir(true)
           let name = function.parameters[j]
           let source = declaration.parameters[j].1
-          let value = lowerer.require_integer_budget(
+          let value = lowerer.require_integer_boundary(
             @ir.Value::Variable(library_attributes(source, ty), name),
+            declaration.input_types[j].scalar,
             source,
             "public-argument",
           )
@@ -736,38 +738,50 @@ fn library_lower(
     let id = "value:" + entries[i].to_canonical()
     metadata.push({
       node_id: id,
-      data: ion_record([
-        ("declaration", library_origin(declaration.name, declaration.source)),
-        (
-          "naming",
-          ion_record([
-            ("policy", @ion.IonValue::string(NAMING_POLICY)),
-            ("original", @ion.IonValue::string(declaration.name)),
-            (
-              "allocation_reason",
-              @ion.IonValue::string(allocated.reason(declaration.name)),
-            ),
-            (
-              "identity",
-              @ion.IonValue::string(
-                allocated.names[declaration.name].to_canonical(),
+      data: ion_record(
+        [
+          ("declaration", library_origin(declaration.name, declaration.source)),
+          ..if mode == NumericSdk {
+            [
+              (
+                "source_error_contract",
+                @ion.IonValue::string(declaration.effect.identifier()),
               ),
-            ),
-          ]),
-        ),
-        (
-          "parameters",
-          @ion.IonValue::list(
-            declaration.parameters.mapi((i, p) => {
-              allocated_origin(
-                library_origin(p.0, p.1),
-                function.parameters[i],
-                function.names.source.reason(p.0),
-              )
-            }),
+            ]
+          } else {
+            []
+          },
+          (
+            "naming",
+            ion_record([
+              ("policy", @ion.IonValue::string(NAMING_POLICY)),
+              ("original", @ion.IonValue::string(declaration.name)),
+              (
+                "allocation_reason",
+                @ion.IonValue::string(allocated.reason(declaration.name)),
+              ),
+              (
+                "identity",
+                @ion.IonValue::string(
+                  allocated.names[declaration.name].to_canonical(),
+                ),
+              ),
+            ]),
           ),
-        ),
-      ]),
+          (
+            "parameters",
+            @ion.IonValue::list(
+              declaration.parameters.mapi((i, p) => {
+                allocated_origin(
+                  library_origin(p.0, p.1),
+                  function.parameters[i],
+                  function.names.source.reason(p.0),
+                )
+              }),
+            ),
+          ),
+        ],
+      ),
     })
     metadata.push({
       node_id: id + "/body",
@@ -1113,9 +1127,15 @@ fn LibraryLowerer::sdk_call(
       ("source_signature", @ir.Data::Text(binding.source_signature)),
       ("canonical", @ir.Data::Text(binding.canonical)),
       ("conversion_policy", @ir.Data::Text(binding.contract.identifier())),
-      ("sdk_classification", @ir.Data::Text("classic")),
+      ("sdk_classification", @ir.Data::Text(binding.origin.identifier())),
     ]),
   )
+  if self.profile == NUMERIC_SDK_LIBRARY_PROFILE &&
+    facts is @ir.Data::Object(fields) {
+    fields["source_error_contract"] = @ir.Data::Text(
+      binding.effect.identifier(),
+    )
+  }
   let output_type = LibraryTypeUse::{
     scalar: binding.output,
     spelling: binding.output.source_name(),

@@ -153,6 +153,7 @@ fn library_resolve(
         parameters: declaration.parameters,
         input_types: declaration.input_types,
         output_type: declaration.output_type,
+        effect: declaration.effect,
         source: declaration.source,
         body_source: declaration.body_source,
       },

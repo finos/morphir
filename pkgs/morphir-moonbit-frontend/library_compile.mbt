@@ -29,6 +29,24 @@ fn library_compile_scoped(
   bindings~ : PinnedSourceBindings = PinnedSourceBindings::empty(),
 ) -> LibraryOutput raise {
   limits.validate()
+  if mode != NumericSdk && !bindings.types.is_empty() {
+    library_error(
+      "binding_identity",
+      "SDK Integer bindings require the numeric SDK source profile",
+      None,
+    )
+  }
+  if mode == NumericSdk &&
+    (
+      !bindings.types.contains(SourceSdkType::Integer) ||
+      !bindings.types.contains(SourceSdkType::Error)
+    ) {
+    library_error(
+      "binding_identity",
+      "The numeric SDK profile requires its audited Integer and SdkError type bindings",
+      None,
+    )
+  }
   if string_limit < 0 || string_limit > 1048576 {
     library_error(
       "invalid_limits",
@@ -144,6 +162,36 @@ pub fn compile_math_library(
         cancelled,
         scope,
         mode=NumericMath,
+        bindings~,
+        string_limit=max_string_code_units,
+      )
+      check_naming_warnings(output.warnings, strict_naming)
+      output
+    },
+    is_cancelled=frontend_cancelled,
+  )
+}
+
+///|
+/// N4 completion snapshot: SDK Integer, rounding and explicit optional conversions.
+pub fn compile_numeric_sdk_library(
+  input : Input,
+  bindings : PinnedSourceBindings,
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  max_string_code_units~ : Int32 = 1048576,
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
+) -> LibraryOutput raise {
+  scope.observe(
+    @observe.Frontend,
+    fn(scope) raise {
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        mode=NumericSdk,
         bindings~,
         string_limit=max_string_code_units,
       )

@@ -622,6 +622,67 @@ pub fn provider(
       }
     }),
   }
+  let conversion_bindings = @frontend.PinnedSourceBindings::sdk_numeric_conversions(
+    "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+    "basics",
+  ) catch {
+    @frontend.Invalid(diagnostic) =>
+      raise @engine.Rejected(
+        diagnostic.code,
+        diagnostic.detail,
+        diagnostic.source,
+      )
+  }
+  let conversion_dependencies = pinned_dependencies.copy()
+  for
+    package_name in [
+      "finos/morphir-sdk", "finos/morphir-sdk/int", "finos/morphir-sdk/integer",
+    ] {
+    conversion_dependencies[package_name] = "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d"
+  }
+  let numeric_sdk : @engine.SourceProfile = {
+    ..math,
+    id: @ids.ProfileId::parse(@frontend.NUMERIC_SDK_LIBRARY_PROFILE),
+    dependencies: conversion_dependencies,
+    capabilities: {
+      ..math.capabilities,
+      summary: "Supported MoonBit library 2026-10-19 revision 3 with SDK Integer conversions",
+      supported: math.capabilities.supported +
+      [
+        "Pinned @integer.Integer, @integer.Integer? and Double? boundaries", "Classic round, floor, ceiling, truncate, to_float and abs_int calls",
+        "Explicit binary64 optional Int conversions through @int", "Declared raise @sdk.SdkError with checked direct-call propagation",
+      ],
+      excluded: [
+        "General source effects, error handlers, Maybe patterns and constructors",
+        "Source numeric casts and Float32 SDK carrier conversions", "Other SDK calls, Decimal, imports, recursion, mutation and indirect calls",
+      ],
+    },
+    compile: @engine.PerFile(fn(source, unit_id, cancelled) raise {
+      let output = @frontend.compile_numeric_sdk_library(
+        input(source, unit_id),
+        conversion_bindings,
+        limits=library_limits,
+        max_string_code_units~,
+        cancelled~,
+        scope=observer.scope(),
+      ) catch {
+        @frontend.Invalid(diagnostic) =>
+          raise @engine.Rejected(
+            diagnostic.code,
+            diagnostic.detail,
+            diagnostic.source,
+          )
+        error => raise error
+      }
+      @data.IRUnit::{
+        id: output.unit_id,
+        distribution: output.ir,
+        metadata: output.metadata.map(m => { node_id: m.node_id, data: m.data, }),
+        annotations: output.annotations.copy(),
+        provenance: output.provenance.copy(),
+      }
+    }),
+  }
   {
     id: @ids.ProviderId::parse(PROVIDER),
     languages: [
@@ -631,7 +692,7 @@ pub fn provider(
         default_profile: @ids.ProfileId::parse(@frontend.PROFILE),
         profiles: [
           seed, library, foundation, numeric, integers, floats, strings, supported,
-          supported_v2, current, indexed, pinned_sdk, math,
+          supported_v2, current, indexed, pinned_sdk, math, numeric_sdk,
         ],
       },
     ],

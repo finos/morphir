@@ -94,6 +94,45 @@ fn LibraryLowerer::require_integer_budget(
 }
 
 ///|
+fn LibraryLowerer::require_integer_boundary(
+  self : LibraryLowerer,
+  value : @ir.Value,
+  scalar : LibraryScalar,
+  source : @ir.SourceLocation,
+  role : String,
+) -> @ir.Value raise {
+  if scalar != OptionalSdkInteger {
+    return self.require_integer_budget(value, source, role)
+  }
+  let item = library_integer_type()
+  let optional = LibraryTypeUse::{
+    scalar,
+    spelling: scalar.source_name(),
+    source,
+    profile: self.profile,
+  }.to_ir(self.metadata)
+  let callback_type = @ir.Type::Function(
+    @ir.TypeAttributes::default(),
+    item,
+    item,
+  )
+  let name = self.fresh(value, "optional-integer-item", source)
+  let attrs = library_attributes(source, item)
+  let callback = @ir.Value::Lambda(
+    library_attributes(source, callback_type),
+    @ir.Pattern::AsPattern(attrs, @ir.Pattern::WildcardPattern(attrs), name),
+    self.require_integer_budget(@ir.Value::Variable(attrs, name), source, role),
+  )
+  self.invoke(
+    "morphir/SDK:maybe#map",
+    [(callback, callback_type), (value, optional)],
+    optional,
+    source,
+    "optional-" + role,
+  )
+}
+
+///|
 fn LibraryLowerer::integer_widen(
   self : LibraryLowerer,
   value : @ir.Value,

@@ -82,9 +82,11 @@ try {
     const sdkProfile=dependency.moduleName==='finos/morphir-sdk'?dependency.apiProfile:'';
     const sourceStrings=sdkProfile.includes('+moonbit-source-string-v1');
     const sourceInt32=sdkProfile.includes('+moonbit-source-int32-v1');
+    const sourceInteger=sdkProfile.includes('+moonbit-source-integer-v1');
+    const sourceFloat=sdkProfile.includes('+moonbit-source-float-v1');
     const sourceIndex=sdkProfile.includes('+moonbit-source-string-index-v1');
     if(dependency.moduleName==='finos/morphir-sdk') {
-      expected[1]='morphir-sdk-concrete-v1'+(sourceStrings?'+moonbit-source-string-v1':'')+(sourceInt32?'+moonbit-source-int32-v1':'')+(sourceIndex?'+moonbit-source-string-index-v1':'');
+      expected[1]='morphir-sdk-concrete-v1'+(sourceStrings?'+moonbit-source-string-v1':'')+(sourceInt32?'+moonbit-source-int32-v1':'')+(sourceInteger?'+moonbit-source-integer-v1':'')+(sourceFloat?'+moonbit-source-float-v1':'')+(sourceIndex?'+moonbit-source-string-index-v1':'');
       assert.ok(!sourceIndex||sourceStrings,'build.missing_source_string_index_extension');
     }
     assert.deepEqual([dependency.version,dependency.apiProfile,dependency.semanticPin],expected);
@@ -107,6 +109,24 @@ try {
       assert.equal(extension.profile,'morphir-moonbit-source-int32-v1','build.missing_source_int32_extension');
       assert.match(extension.semantics,/modulo 2\^32/,'build.missing_source_int32_extension');
       assert.deepEqual(extension.bindings.map((binding: {fqName: string})=>binding.fqName),['morphir/moonbit-source:int32#normalize']);
+    }
+    if(sourceInteger) {
+      const path=join(root,'conformance/moonbit_numeric_extension.json');
+      assert.ok(existsSync(path),'build.missing_source_integer_extension');
+      const extension=JSON.parse(readFileSync(path,'utf8'));
+      assert.equal(extension.profile,'morphir-sdk-moonbit-numeric-v1','build.missing_source_integer_extension');
+      assert.equal(extension.classicSemanticPin,semanticPin,'build.missing_source_integer_extension');
+      assert.equal(extension.sourceRuntimeProfile,'morphir-moonbit-source-integer-v1','build.missing_source_integer_extension');
+      assert.match(extension.sourceNormalization,/Modulo 2\^width/,'build.missing_source_integer_extension');
+    }
+    if(sourceFloat) {
+      const path=join(root,'conformance/moonbit_float_extension.json');
+      assert.ok(existsSync(path),'build.missing_source_float_extension');
+      const extension=JSON.parse(readFileSync(path,'utf8'));
+      assert.equal(extension.profile,'morphir-moonbit-source-float-v1','build.missing_source_float_extension');
+      assert.equal(extension.classicSemanticPin,semanticPin,'build.missing_source_float_extension');
+      assert.equal(extension.sourceType,'morphir/moonbit-source:float32#float32','build.missing_source_float_extension');
+      assert.deepEqual(extension.bindings.slice(0,6).map((binding: {fqName: string})=>binding.fqName),['from-float64','round-boundary','add','subtract','multiply','divide'].map(name=>'morphir/moonbit-source:float32#'+name));
     }
     if(sourceIndex) {
       const path=join(root,'conformance/moonbit_source_string_index_extension.json');
