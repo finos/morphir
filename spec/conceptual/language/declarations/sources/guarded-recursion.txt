@@ -1,0 +1,2 @@
+type A = Wrap B
+type B = End | More A

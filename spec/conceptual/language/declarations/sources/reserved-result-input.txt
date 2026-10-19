@@ -1,0 +1,1 @@
+fn bad(result: Int) -> Int

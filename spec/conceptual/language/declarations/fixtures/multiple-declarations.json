@@ -1,0 +1,64 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:multiple-declarations",
+      "revision": "fixture-1",
+      "text": "type alias First = Int\ntype alias Second = First"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "multiple-declarations:n2",
+      "span": {
+        "sourceId": "source:multiple-declarations",
+        "start": 0,
+        "end": 22,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "First",
+      "typeParameters": [],
+      "value": {
+        "id": "multiple-declarations:n1",
+        "span": {
+          "sourceId": "source:multiple-declarations",
+          "start": 19,
+          "end": 22,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Int"
+        ],
+        "arguments": []
+      }
+    },
+    {
+      "id": "multiple-declarations:n4",
+      "span": {
+        "sourceId": "source:multiple-declarations",
+        "start": 23,
+        "end": 48,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Second",
+      "typeParameters": [],
+      "value": {
+        "id": "multiple-declarations:n3",
+        "span": {
+          "sourceId": "source:multiple-declarations",
+          "start": 43,
+          "end": 48,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "First"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

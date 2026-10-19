@@ -1,0 +1,38 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:unresolved-type",
+      "revision": "fixture-1",
+      "text": "type alias Broken = Missing"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "unresolved-type:n2",
+      "span": {
+        "sourceId": "source:unresolved-type",
+        "start": 0,
+        "end": 27,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Broken",
+      "typeParameters": [],
+      "value": {
+        "id": "unresolved-type:n1",
+        "span": {
+          "sourceId": "source:unresolved-type",
+          "start": 20,
+          "end": 27,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Missing"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

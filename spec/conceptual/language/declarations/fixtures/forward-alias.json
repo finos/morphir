@@ -1,0 +1,64 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:forward-alias",
+      "revision": "fixture-1",
+      "text": "type alias First = Second\ntype alias Second = Int"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "forward-alias:n2",
+      "span": {
+        "sourceId": "source:forward-alias",
+        "start": 0,
+        "end": 25,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "First",
+      "typeParameters": [],
+      "value": {
+        "id": "forward-alias:n1",
+        "span": {
+          "sourceId": "source:forward-alias",
+          "start": 19,
+          "end": 25,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Second"
+        ],
+        "arguments": []
+      }
+    },
+    {
+      "id": "forward-alias:n4",
+      "span": {
+        "sourceId": "source:forward-alias",
+        "start": 26,
+        "end": 49,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Second",
+      "typeParameters": [],
+      "value": {
+        "id": "forward-alias:n3",
+        "span": {
+          "sourceId": "source:forward-alias",
+          "start": 46,
+          "end": 49,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Int"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

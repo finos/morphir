@@ -1,0 +1,73 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:custom-generic",
+      "revision": "fixture-1",
+      "text": "type Maybe a = Nothing | Just a"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "custom-generic:n5",
+      "span": {
+        "sourceId": "source:custom-generic",
+        "start": 0,
+        "end": 31,
+        "unit": "utf8-byte"
+      },
+      "kind": "custom",
+      "name": "Maybe",
+      "typeParameters": [
+        {
+          "id": "custom-generic:n4",
+          "span": {
+            "sourceId": "source:custom-generic",
+            "start": 11,
+            "end": 12,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "declared"
+        }
+      ],
+      "constructorAccess": "module-policy",
+      "constructors": [
+        {
+          "id": "custom-generic:n1",
+          "span": {
+            "sourceId": "source:custom-generic",
+            "start": 15,
+            "end": 22,
+            "unit": "utf8-byte"
+          },
+          "name": "Nothing",
+          "arguments": []
+        },
+        {
+          "id": "custom-generic:n3",
+          "span": {
+            "sourceId": "source:custom-generic",
+            "start": 25,
+            "end": 31,
+            "unit": "utf8-byte"
+          },
+          "name": "Just",
+          "arguments": [
+            {
+              "id": "custom-generic:n2",
+              "span": {
+                "sourceId": "source:custom-generic",
+                "start": 30,
+                "end": 31,
+                "unit": "utf8-byte"
+              },
+              "kind": "variable",
+              "name": "a"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

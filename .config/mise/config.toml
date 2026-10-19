@@ -603,6 +603,9 @@ run = [
     "bun test spec/conceptual/union/fixture-integrity.test.ts",
     "bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/contracts/tsconfig.json",
     "bun test spec/conceptual/contracts/fixture-integrity.test.ts",
+    "bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/language/ast/tsconfig.json",
+    "bun tools/node_modules/typescript/bin/tsc -p spec/conceptual/language/declarations/tsconfig.json",
+    "bun test spec/conceptual/language/ast/fixture-builders.test.ts spec/conceptual/language/declarations/fixture-integrity.test.ts",
 ]
 
 [tasks."vendor:morphir-web"]

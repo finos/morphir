@@ -1,0 +1,116 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:nested-pairs",
+      "revision": "fixture-1",
+      "text": "type alias Nested = ((Int, String), (Bool, Int))"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "nested-pairs:n8",
+      "span": {
+        "sourceId": "source:nested-pairs",
+        "start": 0,
+        "end": 48,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Nested",
+      "typeParameters": [],
+      "value": {
+        "id": "nested-pairs:n7",
+        "span": {
+          "sourceId": "source:nested-pairs",
+          "start": 20,
+          "end": 48,
+          "unit": "utf8-byte"
+        },
+        "kind": "tuple",
+        "elements": [
+          {
+            "id": "nested-pairs:n3",
+            "span": {
+              "sourceId": "source:nested-pairs",
+              "start": 21,
+              "end": 34,
+              "unit": "utf8-byte"
+            },
+            "kind": "tuple",
+            "elements": [
+              {
+                "id": "nested-pairs:n1",
+                "span": {
+                  "sourceId": "source:nested-pairs",
+                  "start": 22,
+                  "end": 25,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "Int"
+                ],
+                "arguments": []
+              },
+              {
+                "id": "nested-pairs:n2",
+                "span": {
+                  "sourceId": "source:nested-pairs",
+                  "start": 27,
+                  "end": 33,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "String"
+                ],
+                "arguments": []
+              }
+            ]
+          },
+          {
+            "id": "nested-pairs:n6",
+            "span": {
+              "sourceId": "source:nested-pairs",
+              "start": 36,
+              "end": 47,
+              "unit": "utf8-byte"
+            },
+            "kind": "tuple",
+            "elements": [
+              {
+                "id": "nested-pairs:n4",
+                "span": {
+                  "sourceId": "source:nested-pairs",
+                  "start": 37,
+                  "end": 41,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "Bool"
+                ],
+                "arguments": []
+              },
+              {
+                "id": "nested-pairs:n5",
+                "span": {
+                  "sourceId": "source:nested-pairs",
+                  "start": 43,
+                  "end": 46,
+                  "unit": "utf8-byte"
+                },
+                "kind": "named",
+                "path": [
+                  "Int"
+                ],
+                "arguments": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

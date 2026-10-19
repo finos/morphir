@@ -1,0 +1,88 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:function-two-inputs",
+      "revision": "fixture-1",
+      "text": "fn accept(number: Int, label: String) -> Bool"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "function-two-inputs:n6",
+      "span": {
+        "sourceId": "source:function-two-inputs",
+        "start": 0,
+        "end": 45,
+        "unit": "utf8-byte"
+      },
+      "kind": "function-spec",
+      "name": "accept",
+      "typeParameters": [],
+      "inputs": [
+        {
+          "id": "function-two-inputs:n2",
+          "span": {
+            "sourceId": "source:function-two-inputs",
+            "start": 10,
+            "end": 21,
+            "unit": "utf8-byte"
+          },
+          "name": "number",
+          "type": {
+            "id": "function-two-inputs:n1",
+            "span": {
+              "sourceId": "source:function-two-inputs",
+              "start": 18,
+              "end": 21,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "Int"
+            ],
+            "arguments": []
+          }
+        },
+        {
+          "id": "function-two-inputs:n4",
+          "span": {
+            "sourceId": "source:function-two-inputs",
+            "start": 23,
+            "end": 36,
+            "unit": "utf8-byte"
+          },
+          "name": "label",
+          "type": {
+            "id": "function-two-inputs:n3",
+            "span": {
+              "sourceId": "source:function-two-inputs",
+              "start": 30,
+              "end": 36,
+              "unit": "utf8-byte"
+            },
+            "kind": "named",
+            "path": [
+              "String"
+            ],
+            "arguments": []
+          }
+        }
+      ],
+      "output": {
+        "id": "function-two-inputs:n5",
+        "span": {
+          "sourceId": "source:function-two-inputs",
+          "start": 41,
+          "end": 45,
+          "unit": "utf8-byte"
+        },
+        "kind": "named",
+        "path": [
+          "Bool"
+        ],
+        "arguments": []
+      }
+    }
+  ]
+}

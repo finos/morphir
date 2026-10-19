@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document title</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> and the CSS as they are, and write the content inside <main>.
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc. See AGENTS.md, "Specs and plans are HTML documents".
+-->
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --code-bg: #f6f8fa;
+  --accent: #0969da; --note-bg: #fff8c5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+    --accent: #4493f8; --note-bg: #3a2d00;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --code-bg: #161b22;
+  --accent: #4493f8; --note-bg: #3a2d00;
+}
+html { color-scheme: light dark; }
+body {
+  margin: 0; padding: 0 16px 48px; background: var(--bg); color: var(--fg);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 56rem; margin: 0 auto; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 1.5rem 0 0.25rem; }
+h2 { font-size: 1.4rem; margin: 2.5rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+p.meta { color: var(--muted); margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { background: var(--code-bg); padding: 0.1em 0.3em; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: 0.85rem; }
+table { border-collapse: collapse; margin: 1rem 0; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+details { border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0.75rem; margin: 1rem 0; }
+summary { cursor: pointer; font-weight: 600; }
+.note { background: var(--note-bg); border-left: 4px solid var(--accent); padding: 0.5rem 0.75rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+nav.toc ul { columns: 2; padding-left: 1.25rem; }
+@media (max-width: 40rem) { nav.toc ul { columns: 1; } }
+section.task { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem; margin: 1.5rem 0; }
+</style>
+<!--
+  Optional syntax highlighting: highlight.js 11.11.1 from cdnjs, pinned with integrity hashes and deferred.
+  Online, code blocks are highlighted. Offline, the browser serves the files from its HTTP cache when it has
+  them; when it has not, the scripts fail to load and the page shows plain code blocks. Nothing else is fetched.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css"
+      integrity="sha384-eFTL69TLRZTkNfYZOLM+G04821K1qZao/4QLJbet1pP4tcF+fdXq/9CdqAbWRl/L" crossorigin="anonymous"
+      media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css"
+      integrity="sha384-wH75j6z1lH97ZOpMOInqhgKzFkAInZPPSPlZpYKYTOqsaizPvhQZmAtLcPKXpLyH" crossorigin="anonymous"
+      media="(prefers-color-scheme: dark)">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha384-RH2xi4eIQ/gjtbs9fUXM68sLSi99C7ZWBRX1vDrVv6GQXRibxXLbwO2NGZB74MbU" crossorigin="anonymous"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"
+        integrity="sha384-0wToQFz7iiWqirMz2oDLVp5zvMALcpCadc6YRGYOvT/eEum6RqzYfYFupG0wQQPV" crossorigin="anonymous"></script>
+<script>
+addEventListener("DOMContentLoaded", () => {
+  if (!window.hljs) return; // offline with an empty cache: plain code blocks
+  hljs.registerAliases(["moonbit", "mbt"], { languageName: "rust" }); // the closest bundled grammar
+  hljs.highlightAll();
+});
+</script>
+</head>
+<body>
+<main>
+<h1>Declaration AST, source spans and grammar fixtures</h1>
+<p class="meta">L1 · morphir-ukvn.7.8.1 · morphir-declarations/0.1.0-draft.1 · 19 October 2026</p>
+<p>Publish a common declaration input for the Morphir parser, resolver and checker. Constructed syntax trees let those consumers develop independently. This package fixes a bounded declaration-fragment profile and independently authored reference outcomes; it does not implement a parser, resolver, evaluator or compatibility runner.</p>
+<nav class="toc" aria-label="Contents"><ul>
+<li><a href="#profile">Profile and authority</a></li><li><a href="#grammar">Declaration grammar</a></li>
+<li><a href="#trees">AST records</a></li><li><a href="#sources">Identity and source spans</a></li>
+<li><a href="#binders">Binders and resolution</a></li><li><a href="#observations">Stages and diagnostics</a></li>
+<li><a href="#extensions">Extension contract and remaining choices</a></li><li><a href="#fixtures">Fixtures and consumer handoff</a></li>
+</ul></nav>
+<section id="profile"><h2>Profile and authority</h2>
+<p><code>morphir-declarations/0.1.0-draft.1</code> is an exact prerelease profile. Its SemVer is independent of the Morphir IR format and other conceptual profiles. No draft-to-draft compatibility is promised. This is the L1 contract proposal for downstream implementation, grounded in the parent conceptual design draft 0.17 and the existing <a href="../../../docs/spec/draft/types.md">IR draft types</a>, <a href="../union/contract.html">U1 union contract</a> and <a href="../model/contract.html">M1 model contract</a>. The parent semantic design remains in bead <code>morphir-ukvn.7</code>.</p>
+<p>Required direction includes alias/custom-type distinctions, opaque identity, optional leading constructor pipe, rank-1 generics, finite tuples of arbitrary arity ≥2, untagged unions and bodyless <code>fn</code>. The exact fragment delimiters, ASCII identifier subset and AST encoding below are scoped L1 draft choices. They do not select the enclosing namespace/package keyword, exports, implementation syntax or the complete future language.</p>
+<p>A fragment is supplied in one explicit module context by L2/L4. It neither declares that context nor infers an IR package from a dotted name. Named types remain unresolved paths. Type syntax alone does not establish successful resolution, assignability, value validation or execution capability. L1 fixes interfaces and expected cases; it does not qualify an implementation.</p>
+</section>
+<section id="grammar"><h2>Declaration grammar</h2>
+<p>The complete token grammar is <a href="declarations/grammar.ebnf">grammar.ebnf</a>. Space, tab, LF, CRLF and <code>//</code> line comments separate tokens. Source bytes remain unchanged. Identifiers use ASCII upper/lower initial letters followed by ASCII letters, digits or underscore; <code>type</code>, <code>alias</code>, <code>opaque</code> and <code>fn</code> are reserved. Broader identifier syntax belongs to a later explicit profile. Source spelling is not canonical IR Name encoding.</p>
+<table><thead><tr><th>Source form</th><th>AST and meaning boundary</th></tr></thead><tbody>
+<tr><td><code>type alias A = B</code></td><td><code>alias</code> with a type expression; B must resolve.</td></tr>
+<tr><td><code>opaque type alias Id a = String</code></td><td><code>opaque-alias</code>; nominal identity and phantom parameters survive resolution.</td></tr>
+<tr><td><code>type A = B | C Int</code></td><td><code>custom</code> with two constructors, B nullary and C with one argument. An initial pipe is optional.</td></tr>
+<tr><td><code>opaque type A = B</code></td><td><code>custom</code> whose constructor access is defining-module only. Ordinary custom types still follow L2 export policy.</td></tr>
+<tr><td><code>type alias A = B | C</code></td><td>Alias to an untagged union of existing types. No constructor or wrapper is introduced.</td></tr>
+<tr><td><code>fn identity(value: a) -&gt; a</code></td><td><code>function-spec</code> with an explicit AST binder for implicitly quantified a, one input and an output. No body is supplied or synthesized.</td></tr>
+</tbody></table>
+<p>Application binds tighter than union, which binds tighter than the right-associative arrow. Thus <code>List a | Int -&gt; Bool</code> is <code>(List a | Int) -&gt; Bool</code>, and <code>a -&gt; b -&gt; c</code> is <code>a -&gt; (b -&gt; c)</code>. Only a named type can head an application in this first-order profile. <code>List (a | b)</code> has one union argument. Union lists preserve authored order, duplicates and nesting; no flattening, sorting or deduplication occurs in the syntax AST. U1 owns membership, substitution and ambiguity semantics.</p>
+<p>Constructor arguments are <em>atoms</em>: <code>C A B</code> has two arguments; <code>C (List a)</code> has one applied argument. A union or arrow used as a constructor argument must be parenthesized. This removes the constructor-pipe versus union-pipe ambiguity without depending on current names in scope.</p>
+<p><code>()</code> is Unit, <code>(A)</code> is grouping, and <code>(A, B, C, D)</code> is one flat four-element tuple. Grouping adds no semantic AST variant; the retained source and outer expression span preserve its spelling. Singleton tuples and trailing commas/pipes are rejected in this profile. Records are closed ordered field lists, including <code>{}</code>. Extensible records need a later explicit AST/grammar extension. There is no language-level tuple maximum; a consumer's size limit is a resource diagnostic, not an arity rule.</p>
+<p>A complete declaration may end with a semicolon. Otherwise it ends at the next declaration keyword or fragment EOF; newline alone is whitespace. Delimiters and complete type expressions establish boundaries. Function parameter lists use comma separators, and output arrows belong to the output type after the first signature arrow. Two inputs and one tuple input remain distinct. A function-valued output remains the output, not additional inputs.</p>
+<pre><code class="language-moonbit">type alias Pair a b = (a, b)
+opaque type alias LoanId = String
+type Maybe a = Nothing | Just a
+type alias Identifier = String | Int
+fn map(items: List a, transform: a -&gt; b) -&gt; List b</code></pre>
+</section>
+<section id="trees"><h2>AST records</h2>
+<p>The normative field inventory is <a href="ast/types.ts">ast/types.ts</a>; independently materialized JSON appears under <a href="declarations/cases.json">declarations/cases.json</a>. The TypeScript declarations describe authored wire records, including deliberate invalid fixture data. They are not validated domain values. In particular, array types permit negative arity and duplicate-ID cases for consumer tests.</p>
+<table><thead><tr><th>Record</th><th>Required content</th></tr></thead><tbody>
+<tr><td>Fragment</td><td>Exact <code>profile</code>, ordered <code>sources</code> and ordered <code>declarations</code>.</td></tr>
+<tr><td>Source</td><td><code>id</code>, exact <code>revision</code>, and retained Unicode <code>text</code> whose UTF-8 encoding defines offsets.</td></tr>
+<tr><td>Node</td><td>Nonempty fragment-local <code>id</code> and <code>span</code>. Every declaration, binder, constructor, parameter, field and type expression is a node.</td></tr>
+<tr><td>Alias / opaque alias</td><td><code>name</code>, explicit <code>typeParameters</code>, and respectively <code>value</code> / <code>representation</code>.</td></tr>
+<tr><td>Custom type</td><td><code>name</code>, explicit <code>typeParameters</code>, nonempty ordered <code>constructors</code>, and <code>constructorAccess</code> of <code>module-policy</code> or <code>defining-module</code>. This is opacity information, not an export grant.</td></tr>
+<tr><td>Function specification</td><td><code>name</code>, explicit <code>typeParameters</code>, ordered named <code>inputs</code>, and <code>output</code>. No implementation-body field.</td></tr>
+<tr><td>Type expression</td><td>One tagged variant: <code>named</code> with nonempty authored <code>path</code> and ordered <code>arguments</code>; <code>variable</code> with <code>name</code>; <code>unit</code>; <code>tuple</code> with ≥2 <code>elements</code>; <code>record</code> with ordered <code>fields</code>; <code>function</code> with <code>input</code>/<code>output</code>; or <code>union</code> with ≥2 <code>members</code>.</td></tr>
+<tr><td>Named child records</td><td>Binders have <code>name</code> and <code>origin</code>; constructors have <code>name</code> and ordered <code>arguments</code>; parameters and fields have <code>name</code> and <code>type</code>.</td></tr>
+</tbody></table>
+<p>No unresolved name is replaced with a guessed FQName. Constructors and type declarations may share a spelling. Distinct source names that normalize to one IR name require L2/L4 diagnostics rather than destructive normalization. References retain the complete ordered path; L2 determines imports and lookup. Builtin fixture references are supplied explicitly by <a href="declarations/environment.json">environment.json</a>, which is test context rather than an implicit language prelude.</p>
+</section>
+<section id="sources"><h2>Identity and source spans</h2>
+<p>Each source ID identifies exactly one retained source revision inside a fragment. Duplicate source IDs are invalid, including different revisions under one ID. Node IDs are nonempty and unique across all nodes in that fragment. They identify authored syntax records for diagnostics and fixture references; they are not M1 conceptual identities, IR FQNames or promises of identity across edits. A later consumer must record an explicit syntax-to-semantic identity mapping. IDs must not be used as proof that spelling or offsets stayed unchanged.</p>
+<pre><code class="language-json">{"sourceId":"source:pair","start":0,"end":29,"unit":"utf8-byte"}</code></pre>
+<p>Spans are half-open UTF-8 byte ranges into the exact referenced Source text, reusing the M1 recovery span convention with an explicit source reference. Require finite nonnegative integer offsets, <code>start ≤ end ≤ byteLength(text)</code>, and both endpoints on UTF-8 code point boundaries. Zero-width spans may identify an insertion point. A source ID must exist. Preserve CRLF, comments, Unicode and a final newline exactly; never convert UTF-16 string indices into byte offsets without encoding the prefix. No normalization or BOM removal is implicit.</p>
+<p>A declaration span covers its declaration from the first keyword through the final token, excluding a separator semicolon and surrounding comments/whitespace. Child spans select their authored text and stay within the owning declaration; overlapping parent/child spans are normal. An implicit function binder uses its first variable occurrence's span, so its span may equal that occurrence's span. Grouping extends the root expression span to include the outermost surrounding parentheses; child spans stay unchanged. There is no separate Group node. For example, the named root of (List a) includes the parentheses, while its a child selects only a. Recovery for absent or incomplete nodes belongs to L8; malformed source cases need not invent a complete declaration tree.</p>
+<p>Parser comparisons permit a bijective renaming of node IDs while requiring exact source IDs, spans, ordered structure and binder origins. The parser is not required to invent fixture authors' node IDs. Constructed-AST resolution cases use the supplied node IDs directly. A full round-trip that rewrites source must publish new source revisions and spans; this profile does not claim that a semantic AST alone reconstructs original formatting.</p>
+</section>
+<section id="binders"><h2>Binders and resolution</h2>
+<p>A type declaration lists all parameters explicitly, each as a binder with <code>origin: declared</code>. A variable occurrence carries its authored lowercase name, not a fabricated resolved binder reference. L4 binds it within the enclosing declaration. Reject duplicate type-parameter names and unbound variables in aliases, opaque aliases and constructor payloads. Constructors inherit their custom type's parameters. Opaque phantom parameters remain in the binder list even when unused by the representation.</p>
+<p>A standalone function implicitly quantifies free type variables over its whole signature. Its AST makes those binders explicit with <code>origin: implicit</code>, once per distinct variable spelling in first-occurrence order. Traverse inputs left to right, then output; traverse nested nodes in their recorded field/list order, and function types input then output. The binder's source span is the first occurrence. Different declarations have independent binders. Builders never infer or generate them; L3's syntax adapter owns this desugaring. Explicit <code>fn[a]</code> punctuation is not selected.</p>
+<p>Named input parameters retain identity, spelling, order and type. Duplicate input names and the reserved input name <code>result</code> are semantic diagnostics. Record field names and custom constructor names must be unique in their owning lists. An alias may refer forward to another declaration; constructed fixture resolution does not depend on file order. Reject unproductive alias cycles; allow mutually recursive algebraic declarations guarded by constructors. General recursion in executable predicates is a different capability.</p>
+<p>Named type application checks arity against the explicitly supplied declaration environment. Parameters stand for complete types; applying a variable as a type constructor is outside rank-1 first-order syntax. Arrow types may occur structurally in declarations even when an evaluator cannot check higher-order values. Opacity, generic instantiation, assignability and IR lowering belong to L4/U2/U3 and must not be inferred merely because a fixture parses.</p>
+</section>
+<section id="observations"><h2>Stages and diagnostics</h2>
+<table><thead><tr><th>Stage</th><th>Reference observations</th><th>Owning consumer</th></tr></thead><tbody>
+<tr><td><code>syntax</code></td><td><code>parsed</code> with expected AST, or <code>rejected</code> with a source diagnostic. Missing RHS and malformed delimiters have no fabricated complete AST.</td><td>L3 parser and source adapter.</td></tr>
+<tr><td><code>structure</code></td><td><code>accepted</code> / <code>rejected</code> for the constructed wire AST: required fields, ID uniqueness, span ranges, list arities and discriminators.</td><td>AST decoding boundary.</td></tr>
+<tr><td><code>resolution</code></td><td><code>resolved</code> / <code>rejected</code> for explicit binders, names, type arity and recursion. Successful parsing does not imply this stage succeeds.</td><td>L4 with the explicit fixture environment.</td></tr>
+<tr><td><code>capability</code></td><td><code>unsupported</code> for an unknown required profile or interpretation. This is not successful validation and not an invented syntax error.</td><td>Consuming operation's capability check.</td></tr>
+</tbody></table>
+<p>Diagnostics use stable codes in <code>declarations.syntax.*</code>, <code>declarations.structure.*</code>, <code>declarations.resolve.*</code> and <code>declarations.unsupported.*</code>. A syntax diagnostic carries a span; an AST diagnostic carries a JSON Pointer into the supplied fragment and may carry a related pointer. The fixture freezes the primary code/location; human wording and additional noncontradictory diagnostics may vary. An operation reports resource exhaustion separately, never as a successful parse or false semantic result.</p>
+<p>The fixture <code>expected</code> object is an independently authored oracle. Integrity tests check its references, locations and frozen assets; they do not execute these observations. Consumers must report actual observations against the shared runner's existing adapter contracts when the corresponding integration task arrives. This package adds no alternative conformance runner.</p>
+</section>
+<section id="extensions"><h2>Extension contract and remaining choices</h2>
+<p>L1 exposes core declaration nodes, IDs and spans for a later source-item union, keeping container and declaration-family ownership separate. L2 owns namespace/module/import containers and exports; L9 owns intent, traits, requirements and contracts; D4 owns dictionary declarations; H6 owns Smithy service/condition/protocol/prompt declarations. Each extension publishes a versioned discriminated AST family and a source/parser/printer adapter which consumes and preserves core declaration references, binders and source revisions. An extension cannot redefine a core discriminator or erase required core content.</p>
+<p>The core <code>Declaration</code> union remains closed. Unknown family nodes are not accepted as validated core declarations through an arbitrary payload field. A consumer may preserve their exact source or opaque extension data using an explicitly supported rich/recovery carrier, but must report unsupported when interpretation is required. Known structural references to extension declarations retain explicit syntax IDs until their owning resolver provides semantic identities.</p>
+<p>Optional <code>critical</code> lists on fragments, sources and nodes name required members at that record level. Names must be distinct and present. Unknown uncritical members may be ignored for interpretation and should survive rich preservation; unknown critical members yield unsupported. A known discriminator with a missing required field is malformed, not an extension. These rules do not make arbitrary unknown data executable.</p>
+<details><summary>Choices deliberately outside this fragment profile</summary><ul>
+<li>Enclosing keyword, dependency-alias punctuation, module exports and canonical-name collision policy are L2 decisions.</li>
+<li>Explicit function binder notation, full Unicode identifier repertoire, extensible records, trailing-comma variants and any implementation-body syntax need an explicit subsequent profile.</li>
+<li>Refinement/contract expression grammar and source attachment syntax belong to L9/C3. L1 retains declaration IDs and source revisions for their future links; a bodyless function is already a complete specification.</li>
+<li>Raw/interpolated strings and templates remain L5/L6; incomplete source snapshots remain L8. A retained comment containing Unicode is not a claim of general Unicode identifier or string-literal support.</li>
+</ul></details>
+</section>
+<section id="fixtures"><h2>Fixtures and consumer handoff</h2>
+<p><a href="declarations/cases.json">cases.json</a> pins stage-specific inputs, independent expectations and requirement-to-case coverage. Every referenced source, AST, environment, grammar and contract asset is byte-counted and SHA-256 pinned in <a href="declarations/assets.json">assets.json</a>. Every syntax input supplies source as an object with asset path, id and revision independently of its expected AST, including negative cases. Source-positive cases pair exact source with a literal expected AST; resolution cases supply constructed ASTs even without a production parser. Source-negative cases retain source and an expected diagnostic only. Malformed-AST cases are deliberate raw records.</p>
+<p><a href="ast/fixture-builders.ts">Fixture builders</a> only deep-clone or append authored records. They preserve duplicate IDs, invalid arity, source bytes, ordered arguments and nested/duplicate union members. They do not resolve names, infer binders, assign identities, calculate semantic expectations or normalize input. This lets downstream tests represent both valid and invalid cases faithfully.</p>
+<pre><code class="language-bash">mise run conceptual:fixtures-check
+bun test spec/conceptual/language/ast/fixture-builders.test.ts \
+  spec/conceptual/language/declarations/fixture-integrity.test.ts</code></pre>
+<p>The versioned repository package is canonical after landing; the L1 bead mirrors this reviewed HTML. The prose and tables render standalone with optional highlighting, while corpus execution and relative source links require the adjacent repository assets listed in assets.json.</p>
+<p>L3 consumes grammar, source pairs and implicit-binder rules. L4 consumes the AST, explicit environment and resolution outcomes without waiting for L3. L8 consumes exact sources, local IDs and byte-span conventions. L9/D4/H6 consume the extension seam and own their new family grammars. A passing integrity suite establishes that these inputs are consistent and recoverable, not that any consumer conforms. Implementation support and unresolved gaps must be recorded by the consuming task.</p>
+</section>
+</main>
+</body>
+</html>

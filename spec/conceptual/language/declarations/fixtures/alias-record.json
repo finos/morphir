@@ -1,0 +1,84 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:alias-record",
+      "revision": "fixture-1",
+      "text": "type alias Person = { name: String, age: Int }"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "alias-record:n6",
+      "span": {
+        "sourceId": "source:alias-record",
+        "start": 0,
+        "end": 46,
+        "unit": "utf8-byte"
+      },
+      "kind": "alias",
+      "name": "Person",
+      "typeParameters": [],
+      "value": {
+        "id": "alias-record:n5",
+        "span": {
+          "sourceId": "source:alias-record",
+          "start": 20,
+          "end": 46,
+          "unit": "utf8-byte"
+        },
+        "kind": "record",
+        "fields": [
+          {
+            "id": "alias-record:n2",
+            "span": {
+              "sourceId": "source:alias-record",
+              "start": 22,
+              "end": 34,
+              "unit": "utf8-byte"
+            },
+            "name": "name",
+            "type": {
+              "id": "alias-record:n1",
+              "span": {
+                "sourceId": "source:alias-record",
+                "start": 28,
+                "end": 34,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "String"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "alias-record:n4",
+            "span": {
+              "sourceId": "source:alias-record",
+              "start": 36,
+              "end": 44,
+              "unit": "utf8-byte"
+            },
+            "name": "age",
+            "type": {
+              "id": "alias-record:n3",
+              "span": {
+                "sourceId": "source:alias-record",
+                "start": 41,
+                "end": 44,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

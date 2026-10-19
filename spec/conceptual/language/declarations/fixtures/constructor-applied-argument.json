@@ -1,0 +1,77 @@
+{
+  "profile": "morphir-declarations/0.1.0-draft.1",
+  "sources": [
+    {
+      "id": "source:constructor-applied-argument",
+      "revision": "fixture-1",
+      "text": "type Bag a = Bag (List a)"
+    }
+  ],
+  "declarations": [
+    {
+      "id": "constructor-applied-argument:n5",
+      "span": {
+        "sourceId": "source:constructor-applied-argument",
+        "start": 0,
+        "end": 25,
+        "unit": "utf8-byte"
+      },
+      "kind": "custom",
+      "name": "Bag",
+      "typeParameters": [
+        {
+          "id": "constructor-applied-argument:n4",
+          "span": {
+            "sourceId": "source:constructor-applied-argument",
+            "start": 9,
+            "end": 10,
+            "unit": "utf8-byte"
+          },
+          "name": "a",
+          "origin": "declared"
+        }
+      ],
+      "constructorAccess": "module-policy",
+      "constructors": [
+        {
+          "id": "constructor-applied-argument:n3",
+          "span": {
+            "sourceId": "source:constructor-applied-argument",
+            "start": 13,
+            "end": 25,
+            "unit": "utf8-byte"
+          },
+          "name": "Bag",
+          "arguments": [
+            {
+              "id": "constructor-applied-argument:n2",
+              "span": {
+                "sourceId": "source:constructor-applied-argument",
+                "start": 17,
+                "end": 25,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "List"
+              ],
+              "arguments": [
+                {
+                  "id": "constructor-applied-argument:n1",
+                  "span": {
+                    "sourceId": "source:constructor-applied-argument",
+                    "start": 23,
+                    "end": 24,
+                    "unit": "utf8-byte"
+                  },
+                  "kind": "variable",
+                  "name": "a"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
