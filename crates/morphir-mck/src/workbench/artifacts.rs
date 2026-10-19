@@ -256,33 +256,6 @@ pub(super) fn integer_u64(value: &Value, bound: u64) -> Result<u64, String> {
     }
 }
 
-#[cfg(test)]
-mod integer_tests {
-    use super::*;
-
-    #[test]
-    fn extreme_exponents_refuse_without_signed_arithmetic_overflow() {
-        for token in [
-            "1e9223372036854775807",
-            "11e9223372036854775807",
-            "1e9223372036854775808",
-            "1e-9223372036854775808",
-        ] {
-            let value: Value = serde_json::from_str(token).unwrap();
-            assert!(integer_u64(&value, u64::MAX).is_err(), "{token}");
-            assert!(integer(&value, usize::MAX).is_err(), "{token}");
-        }
-    }
-
-    #[test]
-    fn exact_u64_bounds_remain_independent_of_the_target_pointer_width() {
-        let maximum: Value = serde_json::from_str("18446744073709551615.0").unwrap();
-        assert_eq!(integer_u64(&maximum, u64::MAX).unwrap(), u64::MAX);
-        assert!(integer_u64(&maximum, u64::MAX - 1).is_err());
-        let over: Value = serde_json::from_str("18446744073709551616").unwrap();
-        assert!(integer_u64(&over, u64::MAX).is_err());
-    }
-}
 pub(super) fn signed_rpc_code(value: &Value) -> Result<i32, String> {
     let token = value
         .as_number()
@@ -701,4 +674,32 @@ fn check(name: &str, value: &Value) -> Result<(), String> {
     validators[name]
         .validate(value)
         .map_err(|e| format!("invalid artifact evidence at {}: {e}", e.instance_path))
+}
+
+#[cfg(test)]
+mod integer_tests {
+    use super::*;
+
+    #[test]
+    fn extreme_exponents_refuse_without_signed_arithmetic_overflow() {
+        for token in [
+            "1e9223372036854775807",
+            "11e9223372036854775807",
+            "1e9223372036854775808",
+            "1e-9223372036854775808",
+        ] {
+            let value: Value = serde_json::from_str(token).unwrap();
+            assert!(integer_u64(&value, u64::MAX).is_err(), "{token}");
+            assert!(integer(&value, usize::MAX).is_err(), "{token}");
+        }
+    }
+
+    #[test]
+    fn exact_u64_bounds_remain_independent_of_the_target_pointer_width() {
+        let maximum: Value = serde_json::from_str("18446744073709551615.0").unwrap();
+        assert_eq!(integer_u64(&maximum, u64::MAX).unwrap(), u64::MAX);
+        assert!(integer_u64(&maximum, u64::MAX - 1).is_err());
+        let over: Value = serde_json::from_str("18446744073709551616").unwrap();
+        assert!(integer_u64(&over, u64::MAX).is_err());
+    }
 }

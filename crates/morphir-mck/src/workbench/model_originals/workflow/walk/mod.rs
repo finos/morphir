@@ -1,9 +1,6 @@
 //! Exhaustive typed alias traversal. No JSON, filesystem, or runtime lookup.
 //! The static sites are issued only by the frozen descriptor macros below.
-use super::{
-    ContentSha256, FixtureAlias, Items, JsonBool, JsonNull, Natural, Nullable, Presence, RawJson,
-    SourcePath, Text, U64Token, UniqueItems, domain, input,
-};
+use super::{FixtureAlias, Items, Natural, Nullable, Presence, Text, UniqueItems, domain, input};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Operand {
