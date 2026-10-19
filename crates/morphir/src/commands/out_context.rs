@@ -201,7 +201,7 @@ fn open_lock_file(path: &Path) -> Result<File, CliError> {
 }
 
 /// Is this the error `fs2` reports when a lock is already held?
-fn is_contended(error: &std::io::Error) -> bool {
+pub(crate) fn is_contended(error: &std::io::Error) -> bool {
     error.raw_os_error() == fs2::lock_contended_error().raw_os_error()
 }
 

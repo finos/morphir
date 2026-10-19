@@ -14,6 +14,7 @@ use server::BoundUiHost;
 pub mod artifacts;
 pub mod assets;
 pub mod auth;
+pub mod model_originals;
 pub mod protocol;
 pub mod provider;
 pub mod rpc;
