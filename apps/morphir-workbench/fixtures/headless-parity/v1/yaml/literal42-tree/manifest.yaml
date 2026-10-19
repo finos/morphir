@@ -1,0 +1,4 @@
+formatVersion: 4
+distribution: Library
+package: parity
+pathBudget: 4000

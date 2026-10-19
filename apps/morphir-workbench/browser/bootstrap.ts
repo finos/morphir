@@ -55,7 +55,8 @@ globalThis.morphirWorkbench = {
     if (!hostExecution && activeRequest?.operation !== 'worksheet') ++generation;
     Promise.resolve(adapter.cancel()).catch(() => { /* The active observer reports retained disconnection evidence. */ });
   },
-  importModel(attempt, receive) { importer.start(attempt, receive); },
+  importModelTree(attempt, receive) { importer.startTree(attempt, receive); },
+  importModel(attempt, format, receive) { importer.start(attempt, receive, format || undefined); },
   releaseModel() { adapter.invalidateArtifacts?.(); },
   async cancelModelOpen(attempt) {
     importer.cancel(attempt);

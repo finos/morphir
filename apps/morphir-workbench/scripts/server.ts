@@ -1,10 +1,11 @@
+import { hostOrigin } from '../../../pkgs/morphir-host/execution-client/origin.mts';
 import type { IncomingMessage, OutgoingHttpHeaders, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ExecutionOperation, ExecutionGateway } from './execution-contracts.ts';
 import { isRecord, workbenchError } from '../../../types/data.ts';
 import { createServer, request as forwardRequest } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { validateManifest } from '../browser/transport.ts';
+import { validateManifest } from '../../../pkgs/morphir-host/execution-client/manifest.mts';
 
 const executionLimit = 1024 * 1024;
 const executionPaths = new Map<string, ExecutionOperation | 'session'>([['/api/workbench/session', 'session'], ['/api/workbench/submit', 'submit'], ['/api/workbench/query', 'query'], ['/api/workbench/cancel', 'cancel'], ['/api/workbench/release', 'release']]);
@@ -62,14 +63,7 @@ function readExecutionBody(request: IncomingMessage, deadlineMs: number) {
   });
 }
 
-export function hostOrigin(value?: string | null) {
-  if (!value) return null;
-  const host = new URL(value);
-  if (host.protocol !== 'http:' || host.hostname !== '127.0.0.1' || !host.port || host.pathname !== '/' || host.search || host.hash || host.username || host.password) {
-    throw new Error('MORPHIR_WORKBENCH_HOST_URL must be http://127.0.0.1:<port> with no path, query or credentials.');
-  }
-  return host;
-}
+export { hostOrigin } from '../../../pkgs/morphir-host/execution-client/origin.mts';
 
 export function createWorkbenchServer({ root = new URL('../dist/', import.meta.url), host = null, executions = null, executionAuthDeadlineMs = 2000, executionBodyDeadlineMs = 5000 }: { root?: URL; host?: string | null; executions?: ExecutionGateway | null; executionAuthDeadlineMs?: number; executionBodyDeadlineMs?: number } = {}) {
   const upstream = hostOrigin(host);

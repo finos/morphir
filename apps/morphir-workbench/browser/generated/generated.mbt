@@ -469,6 +469,8 @@ fn language(path : String, fallback : String) -> String {
       (".pkg", "moonbit"),
       (".mod", "moonbit"),
       (".json", "json"),
+      (".yaml", "yaml"),
+      (".yml", "yaml"),
       (".scala", "scala"),
       (".scm", "scheme"),
       (".ss", "scheme"),

@@ -1,0 +1,38 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-engine/execution/workbench"
+
+// Values
+pub fn decode(String) -> Json raise
+
+pub fn decode_reply(String) -> Json
+
+pub fn evaluate_scheme_claim(Json, project_result? : (Json) -> Json) -> Json raise
+
+// Errors
+pub(all) suberror Invalid {
+  Invalid(String)
+}
+
+// Types and methods
+pub struct Client {
+  // private fields
+}
+pub fn Client::handle(Self, String) -> Json
+pub fn Client::new(project_result? : (Json) -> Json) -> Self
+
+pub struct Host {
+  // private fields
+}
+pub fn Host::claim_selected(Self, SchemeSelection) -> Json raise
+pub fn Host::handle(Self, String) -> Json
+pub fn Host::new(String) -> Self raise
+pub fn Host::scheme_selection(Self, Json) -> SchemeSelection raise
+
+pub struct SchemeSelection {
+  // private fields
+}
+pub fn SchemeSelection::projection(Self) -> Json raise
+
+// Type aliases
+
+// Traits

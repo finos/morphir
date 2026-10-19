@@ -7,9 +7,10 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
           "commands",
           Json::array(
             [
-              "run", "execute", "verify", "conform", "workspace", "project list",
-              "toolchain info", "toolchain setup", "toolchain build", "toolchain run",
-              "toolchain exec",
+              "run", "execute", "verify", "conform", "eval", "worksheet", "generate",
+              "model inspect", "model export-original", "connected connect", "connected run",
+              "connected artifacts", "workspace", "project list", "toolchain info",
+              "toolchain setup", "toolchain build", "toolchain run", "toolchain exec",
             ].map(Json::string),
           ),
         ),
@@ -30,7 +31,10 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
               "--comparison", "--absolute-tolerance", "--relative-tolerance", "--cancel-file",
               "--cases", "--cases-format", "--evaluators", "--require-evaluator",
               "--rust-evaluator", "--rust-evaluator-pin", "--rust-helper", "--receipt",
-              "--receipt-format", "--metadata-grants", "--metadata-timeout",
+              "--receipt-format", "--metadata-grants", "--metadata-timeout", "--provider",
+              "--checking-policy", "--source-id", "--source-revision", "--connection",
+              "--connected-helper", "--build-target", "--backend-option", "--filename",
+              "--overwrite", "--connection-scope", "--transfer-helper",
             ].map(Json::string),
           ),
         ),
@@ -83,6 +87,24 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
   }
   if cli.command.has_prefix("toolchain ") {
     return toolchain_command(cli, mode)
+  }
+  if cli.command == "eval" {
+    return evaluation_command(cli, mode)
+  }
+  if cli.command == "worksheet" {
+    return worksheet_command(cli, mode)
+  }
+  if cli.command == "connected artifacts" {
+    return transfer_command(cli, mode)
+  }
+  if cli.command.has_prefix("connected ") {
+    return connected_command(cli, mode)
+  }
+  if cli.command == "generate" {
+    return generation_command(cli, mode)
+  }
+  if cli.command.has_prefix("model ") {
+    return model_command(cli, mode)
   }
   if cli.command == "execute" ||
     cli.command == "verify" ||

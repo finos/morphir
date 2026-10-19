@@ -114,6 +114,7 @@ async fn main {
       run("node", ["apps/morphir/build-provider/test-supervision.mts"])
     }
     "test-cli" => {
+      install("pkgs/morphir-elm/scripts")
       run("bun", ["run", "build:runtimes"])
       run("bun", ["run", "--cwd", "apps/morphir", "test"])
     }

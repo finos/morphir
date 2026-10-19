@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -6,6 +7,7 @@
 #include "moonbit.h"
 #ifndef _WIN32
 #include <unistd.h>
+#include <dirent.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -119,6 +121,9 @@ static moonbit_bytes_t process_error(const char *message) {
   memcpy(result + 8, message, (size_t)length); return result;
 }
 
+int morphir_host_interruption_requested(void);
+int morphir_host_interruption_active(void);
+
 moonbit_bytes_t morphir_host_process(const char *program, const char *packed,
     int count, const char *cwd, const char *home, int timeout) {
 #ifdef _WIN32
@@ -155,12 +160,17 @@ moonbit_bytes_t morphir_host_process(const char *program, const char *packed,
   free(argv);
   if (pid < 0) { fclose(out); fclose(err); return process_error("Cannot start child process"); }
   setpgid(pid, pid);
-  int status = 0, elapsed = 0, timed_out = 0, oversized = 0;
+  int status = 0, elapsed = 0, timed_out = 0, oversized = 0, interrupt_forwarded = 0;
   struct timespec interval = {0, 10000000};
   for (;;) {
     pid_t waited = waitpid(pid, &status, WNOHANG);
     if (waited == pid) break;
     if (waited < 0 && errno != EINTR) { status = 127 << 8; break; }
+    if (!interrupt_forwarded && morphir_host_interruption_active() && morphir_host_interruption_requested()) {
+      // Forward only to this owned helper. Its protocol decides remote cancel.
+      kill(pid, SIGINT);
+      interrupt_forwarded = 1;
+    }
     struct stat out_stat, err_stat;
     if (!fstat(fileno(out), &out_stat) && !fstat(fileno(err), &err_stat) &&
         out_stat.st_size + err_stat.st_size > 16777216) oversized = 1;
@@ -287,10 +297,162 @@ static int default_log_dirs(const char *root) {
   free(path);
   return result;
 }
+#else
+/* The worker never borrows Moon-managed storage. A timed-out filesystem call
+   may resist cancellation, so retain its snapshot until it actually returns
+   and refuse further drains while it is outstanding. Never terminate a thread
+   that may own CRT/allocator locks or a pending Windows I/O buffer. */
+static volatile LONG log_worker_active = 0;
+typedef struct {
+  volatile LONG references;
+  volatile LONG cancelled;
+  wchar_t *path;
+  wchar_t *root;
+  unsigned char *data;
+  int length;
+  HANDLE stderr_handle;
+} log_work;
+
+static void release_log_work(log_work *work) {
+  if (InterlockedDecrement(&work->references) == 0) {
+    if (work->stderr_handle != INVALID_HANDLE_VALUE) CloseHandle(work->stderr_handle);
+    free(work->path); free(work->root); free(work->data); free(work);
+  }
+}
+
+static int log_cancelled(log_work *work) {
+  return InterlockedCompareExchange(&work->cancelled, 0, 0) != 0;
+}
+
+static int regular_log_file(const wchar_t *path) {
+  DWORD attributes = GetFileAttributesW(path);
+  if (attributes == INVALID_FILE_ATTRIBUTES) {
+    DWORD error = GetLastError();
+    return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND ? 0 : -1;
+  }
+  return attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DEVICE) ? -1 : 1;
+}
+
+static int log_directory(const wchar_t *path) {
+  DWORD attributes = GetFileAttributesW(path);
+  return attributes != INVALID_FILE_ATTRIBUTES &&
+    (attributes & FILE_ATTRIBUTE_DIRECTORY) && !(attributes & FILE_ATTRIBUTE_REPARSE_POINT);
+}
+
+static int default_log_dirs(log_work *work) {
+  if (log_cancelled(work) || !log_directory(work->root)) return -1;
+  size_t length = wcslen(work->root);
+  wchar_t *path = malloc((length + 16) * sizeof(wchar_t));
+  if (!path) return -1;
+  const wchar_t *suffixes[] = {L"/.morphir", L"/.morphir/logs"};
+  int result = 0;
+  for (int i = 0; i < 2; i++) {
+    wcscpy(path, work->root); wcscat(path, suffixes[i]);
+    if (log_cancelled(work) ||
+        (!CreateDirectoryW(path, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) ||
+        !log_directory(path)) { result = -1; break; }
+  }
+  free(path);
+  return result;
+}
+
+static int write_log_bytes(log_work *work, HANDLE file) {
+  int offset = 0;
+  while (offset < work->length) {
+    DWORD written = 0;
+    if (log_cancelled(work) ||
+        !WriteFile(file, work->data + offset, (DWORD)(work->length - offset), &written, NULL) ||
+        written == 0) return -1;
+    offset += (int)written;
+  }
+  return log_cancelled(work) ? -1 : 0;
+}
+
+static int write_log(log_work *work) {
+  size_t length = wcslen(work->path);
+  wchar_t *old = malloc((length + 3) * sizeof(wchar_t));
+  wchar_t *dest = malloc((length + 3) * sizeof(wchar_t));
+  if (!old || !dest) { free(old); free(dest); return -1; }
+  int result = 0;
+  for (int i = 3; i >= 1; i--) {
+    wcscpy(old, work->path); wcscpy(dest, work->path);
+    if (i != 1) { old[length] = L'.'; old[length + 1] = (wchar_t)(L'0' + i - 1); old[length + 2] = 0; }
+    dest[length] = L'.'; dest[length + 1] = (wchar_t)(L'0' + i); dest[length + 2] = 0;
+    if (log_cancelled(work)) { result = -1; break; }
+    int source = regular_log_file(old), target = regular_log_file(dest);
+    if (source < 0 || target < 0) { result = -1; break; }
+    if (source && (log_cancelled(work) || (target && !DeleteFileW(dest)) ||
+        log_cancelled(work) || !MoveFileW(old, dest))) { result = -1; break; }
+  }
+  free(old); free(dest);
+  if (result || log_cancelled(work)) return -1;
+  HANDLE file = CreateFileW(work->path, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+  if (file == INVALID_HANDLE_VALUE) return -1;
+  BY_HANDLE_FILE_INFORMATION info;
+  if (GetFileType(file) != FILE_TYPE_DISK || !GetFileInformationByHandle(file, &info) ||
+      (info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT))) result = -1;
+  else result = write_log_bytes(work, file);
+  if (!CloseHandle(file)) result = -1;
+  return result;
+}
+
+static DWORD WINAPI log_worker(void *argument) {
+  log_work *work = argument;
+  int result = -1;
+  if (!log_cancelled(work)) {
+    if (work->stderr_handle != INVALID_HANDLE_VALUE)
+      result = write_log_bytes(work, work->stderr_handle);
+    else if (!*work->root || !default_log_dirs(work)) result = write_log(work);
+  }
+  release_log_work(work);
+  InterlockedExchange(&log_worker_active, 0);
+  return result == 0 ? 0 : 1;
+}
 #endif
 int morphir_flush_file(const char *path, const unsigned char *data, int length, int timeout, const char *root) {
 #ifdef _WIN32
-  return -1;
+  if (length < 0 || length > 4194304 || timeout < 1 || timeout > 5000 ||
+      strlen(path) > 131068 || strlen(root) > 131068) return -1;
+  if (InterlockedCompareExchange(&log_worker_active, 1, 0) != 0) return -1;
+  log_work *work = calloc(1, sizeof(log_work));
+  if (!work) { InterlockedExchange(&log_worker_active, 0); return -1; }
+  work->references = 1;
+  work->stderr_handle = INVALID_HANDLE_VALUE;
+  work->path = wide_path(path); work->root = wide_path(root);
+  work->data = malloc(length ? (size_t)length : 1);
+  work->length = length;
+  if (!work->path || !work->root || !work->data ||
+      wcslen(work->path) >= 32767 || wcslen(work->root) >= 32767) {
+    release_log_work(work); InterlockedExchange(&log_worker_active, 0); return -1;
+  }
+  memcpy(work->data, data, (size_t)length);
+  if (!strcmp(path, "@stderr") && !DuplicateHandle(GetCurrentProcess(),
+      GetStdHandle(STD_ERROR_HANDLE), GetCurrentProcess(), &work->stderr_handle,
+      0, FALSE, DUPLICATE_SAME_ACCESS)) {
+    work->stderr_handle = INVALID_HANDLE_VALUE;
+    release_log_work(work); InterlockedExchange(&log_worker_active, 0); return -1;
+  }
+  InterlockedIncrement(&work->references);
+  HANDLE worker = CreateThread(NULL, 0, log_worker, work, 0, NULL);
+  if (!worker) {
+    release_log_work(work); release_log_work(work);
+    InterlockedExchange(&log_worker_active, 0); return -1;
+  }
+  int result = -1;
+  if (WaitForSingleObject(worker, (DWORD)timeout) == WAIT_OBJECT_0) {
+    DWORD code;
+    if (GetExitCodeThread(worker, &code) && code == 0) result = 0;
+  } else {
+    InterlockedExchange(&work->cancelled, 1);
+    CancelSynchronousIo(worker);
+    // As with the POSIX worker, shutdown has a separate 20-ms allowance.
+    // Cancellation is a request, not evidence that a pending write was undone.
+    WaitForSingleObject(worker, 20);
+  }
+  CloseHandle(worker);
+  release_log_work(work);
+  return result;
 #else
   if (length < 0 || length > 4194304 || timeout < 1 || timeout > 5000) return -1;
   pid_t pid = fork();
@@ -370,4 +532,148 @@ int morphir_host_file_close(int fd) {
 #else
   return close(fd);
 #endif
+}
+
+/* Command-owned cooperative interruption. The signal handler only sets a flag. */
+static volatile sig_atomic_t morphir_interrupted = 0;
+static int morphir_interrupt_active = 0;
+#ifdef _WIN32
+static void (*morphir_previous_interrupt)(int) = SIG_DFL;
+#else
+static struct sigaction morphir_previous_interrupt;
+#endif
+static void morphir_interrupt_handler(int signal_number) {
+  (void)signal_number;
+  morphir_interrupted = 1;
+}
+void morphir_host_interruption_start(void) {
+  if (morphir_interrupt_active) return;
+  morphir_interrupted = 0;
+#ifdef _WIN32
+  morphir_previous_interrupt = signal(SIGINT, morphir_interrupt_handler);
+  morphir_interrupt_active = morphir_previous_interrupt != SIG_ERR;
+#else
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  action.sa_handler = morphir_interrupt_handler;
+  sigemptyset(&action.sa_mask);
+  morphir_interrupt_active = sigaction(SIGINT, &action, &morphir_previous_interrupt) == 0;
+#endif
+}
+void morphir_host_interruption_stop(void) {
+  if (!morphir_interrupt_active) return;
+#ifdef _WIN32
+  signal(SIGINT, morphir_previous_interrupt);
+#else
+  sigaction(SIGINT, &morphir_previous_interrupt, NULL);
+#endif
+  morphir_interrupt_active = 0;
+}
+int morphir_host_interruption_requested(void) { return morphir_interrupted != 0; }
+int morphir_host_interruption_active(void) { return morphir_interrupt_active; }
+int morphir_host_stdin_read(unsigned char *buffer, int length) {
+  if (length < 1 || length > 65536 || morphir_interrupted) return -1;
+#ifdef _WIN32
+  int previous_mode = _setmode(0, _O_BINARY);
+  int result = _read(0, buffer, (unsigned int)length);
+  if (previous_mode >= 0) _setmode(0, previous_mode);
+  return result;
+#else
+  ssize_t result;
+  do { result = read(0, buffer, (size_t)length); }
+  while (result < 0 && errno == EINTR && !morphir_interrupted);
+  return (int)result;
+#endif
+}
+
+/* A bounded packed result: status byte followed by NUL-terminated UTF-8 names.
+ * Only one OS entry is observed at a time. No unbounded readdir collection is
+ * created, even for limit zero or when the first over-budget entry is found. */
+static int directory_append(unsigned char **data, size_t *used, size_t *capacity,
+    int *count, int limit, const char *name) {
+  if (!strcmp(name, ".") || !strcmp(name, "..")) return 0;
+  if (*count >= limit) return 1;
+  size_t length = strlen(name);
+  if (length > 16384 || length + 1 > 4194304 - *used) return 2;
+  size_t needed = *used + length + 1;
+  if (needed > *capacity) {
+    size_t next = *capacity;
+    while (next < needed) next = next > 2097152 ? 4194304 : next * 2;
+    unsigned char *grown = realloc(*data, next);
+    if (!grown) return 3;
+    *data = grown; *capacity = next;
+  }
+  memcpy(*data + *used, name, length + 1);
+  *used = needed; ++*count;
+  return 0;
+}
+
+moonbit_bytes_t morphir_host_list_bounded(const char *path, int limit) {
+  size_t used = 1, capacity = 64;
+  unsigned char *data = malloc(capacity);
+  int status = 0, count = 0;
+  if (!data || limit < 0 || limit > 65536) {
+    free(data); return moonbit_make_bytes(1, 5);
+  }
+#ifdef _WIN32
+  wchar_t *wide = wide_path(path);
+  HANDLE directory = INVALID_HANDLE_VALUE;
+  if (!wide || morphir_host_kind(path) != 2) status = 5;
+  if (!status) {
+    size_t length = wcslen(wide);
+    wchar_t *pattern = malloc((length + 3) * sizeof(wchar_t));
+    if (!pattern) status = 5;
+    else {
+      memcpy(pattern, wide, length * sizeof(wchar_t));
+      pattern[length] = L'/'; pattern[length + 1] = L'*'; pattern[length + 2] = 0;
+      WIN32_FIND_DATAW entry;
+      directory = FindFirstFileW(pattern, &entry);
+      DWORD open_error = GetLastError();
+      free(pattern);
+      if (directory == INVALID_HANDLE_VALUE) {
+        if (open_error != ERROR_FILE_NOT_FOUND) status = 5;
+      } else for (;;) {
+        if (morphir_interrupted) { status = 6; break; }
+        char name[16385];
+        int length = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+            entry.cFileName, -1, name, sizeof(name), NULL, NULL);
+        if (!length) { status = 3; break; }
+        status = directory_append(&data, &used, &capacity, &count, limit, name);
+        if (status) break;
+        if (!FindNextFileW(directory, &entry)) {
+          if (GetLastError() != ERROR_NO_MORE_FILES) status = 3;
+          break;
+        }
+      }
+    }
+  }
+  free(wide);
+  if (directory != INVALID_HANDLE_VALUE && !FindClose(directory)) status = 4;
+#else
+  DIR *directory = NULL;
+  /* Existing Mount confinement checks every component. Refuse a final symlink
+   * here as well; the portable host assumes caller-owned parents stay stable. */
+  int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+  if (fd < 0) status = 5;
+  else {
+    directory = fdopendir(fd);
+    if (!directory) { status = 5; if (close(fd)) status = 4; }
+  }
+  if (directory) {
+    for (;;) {
+      if (morphir_interrupted) { status = 6; break; }
+      errno = 0;
+      struct dirent *entry = readdir(directory);
+      if (!entry) { if (errno) status = 3; break; }
+      status = directory_append(&data, &used, &capacity, &count, limit, entry->d_name);
+      if (status) break;
+    }
+    if (closedir(directory)) status = 4;
+  }
+#endif
+  moonbit_bytes_t result = moonbit_make_bytes_raw(status ? 1 : (int32_t)used);
+  result[0] = (unsigned char)status;
+  if (!status && used > 1) memcpy(result + 1, data + 1, used - 1);
+  free(data);
+  return result;
 }

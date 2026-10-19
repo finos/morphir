@@ -5,6 +5,21 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LocalAdapter, RpcClient, ConnectedAdapter, chooseVersion, validateManifest } from './transport.ts';
 
+test('tree path overflow refuses before request cloning or worker creation', async () => {
+  const prefix = `${'p'.repeat(240)}/`.repeat(16);
+  const files = Array.from({length: 256}, (_, i) => ({path: prefix + String(i).padStart(240, 'x'), contentBase64: ''}));
+  files.push({path: 'x', contentBase64: ''});
+  let clones = 0, workers = 0;
+  const clone = globalThis.structuredClone;
+  globalThis.structuredClone = () => { clones++; throw new Error('must not clone'); };
+  try {
+    const adapter = new LocalAdapter(() => { workers++; throw new Error('must not create worker'); });
+    await assert.rejects(adapter.execute({operation: 'inspect', source: '', sourceTree: files}), /path text budget/);
+    assert.equal(clones, 0);
+    assert.equal(workers, 0);
+  } finally { globalThis.structuredClone = clone; }
+});
+
 const source = { providerId: 'workspace', locator: 'workspace:demo', displayName: 'Demo' };
 const manifest = {
   protocolVersion: 1, webSocketPath: '/rpc', sessionId: 'test-session', initialSources: [source],

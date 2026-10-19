@@ -1,0 +1,36 @@
+formatVersion: 4
+name: create-order
+def:
+  Public:
+    doc: " Create a new order from a list of products.\n"
+    ExpressionBody:
+      inputTypes:
+        order-id: morphir/SDK:string#string
+        products:
+          Reference:
+            - morphir/SDK:list#list
+            - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+      outputType: elm-compat:main#customer-order
+      body:
+        Record:
+          attributes:
+            inferredType: elm-compat:main#customer-order
+          fields:
+            order-id:
+              Variable:
+                attributes:
+                  inferredType: morphir/SDK:string#string
+                name: order-id
+            products:
+              Variable:
+                attributes:
+                  inferredType:
+                    Reference:
+                      - morphir/SDK:list#list
+                      - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                name: products
+            status:
+              Constructor:
+                attributes:
+                  inferredType: elm-compat:main#order-status
+                fqname: elm-compat:main#pending

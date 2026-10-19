@@ -1,0 +1,441 @@
+{
+  "formatVersion": "0.1.0-draft.27",
+  "cases": [
+{
+      "id": "large-integer",
+      "operation": "worksheet-evaluate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"9007199254740993\"}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir/workbench/worksheet",
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "id": "worksheet-source",
+            "revision": 4,
+            "text": "9007199254740993"
+          },
+          "observations": [
+            {
+              "id": "form-0",
+              "range": {
+                "start": 0,
+                "end": 16
+              },
+              "expression": "9007199254740993",
+              "preview": "9007199254740993",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "int",
+                  "value": "9007199254740993"
+                }
+              }
+            }
+          ],
+          "completion": {
+            "status": "returned",
+            "value": {
+              "type": "unit"
+            }
+          },
+          "diagnostic": null
+        }
+      }
+    },
+{
+      "id": "astral-prefix",
+      "operation": "worksheet-evaluate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"\\\"😀\\\"\\n(+ 1 2)\"}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir/workbench/worksheet",
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "id": "worksheet-source",
+            "revision": 4,
+            "text": "\"😀\"\n(+ 1 2)"
+          },
+          "observations": [
+            {
+              "id": "form-0",
+              "range": {
+                "start": 0,
+                "end": 4
+              },
+              "expression": "\"😀\"",
+              "preview": "\"😀\"",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "text",
+                  "units": [
+                    55357,
+                    56832
+                  ]
+                }
+              }
+            },
+            {
+              "id": "form-1",
+              "range": {
+                "start": 5,
+                "end": 12
+              },
+              "expression": "(+ 1 2)",
+              "preview": "3",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "int",
+                  "value": "3"
+                }
+              }
+            }
+          ],
+          "completion": {
+            "status": "returned",
+            "value": {
+              "type": "unit"
+            }
+          },
+          "diagnostic": null
+        }
+      }
+    },
+{
+      "id": "trivia-crlf",
+      "operation": "worksheet-evaluate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"; header\\r\\n (+ 1 2)  \\r\\n4\"}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir/workbench/worksheet",
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "id": "worksheet-source",
+            "revision": 4,
+            "text": "; header\r\n (+ 1 2)  \r\n4"
+          },
+          "observations": [
+            {
+              "id": "form-0",
+              "range": {
+                "start": 11,
+                "end": 18
+              },
+              "expression": "(+ 1 2)",
+              "preview": "3",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "int",
+                  "value": "3"
+                }
+              }
+            },
+            {
+              "id": "form-1",
+              "range": {
+                "start": 22,
+                "end": 23
+              },
+              "expression": "4",
+              "preview": "4",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "int",
+                  "value": "4"
+                }
+              }
+            }
+          ],
+          "completion": {
+            "status": "returned",
+            "value": {
+              "type": "unit"
+            }
+          },
+          "diagnostic": null
+        }
+      }
+    },
+{
+      "id": "negative-zero",
+      "operation": "worksheet-evaluate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"-0.0\"}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir/workbench/worksheet",
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "id": "worksheet-source",
+            "revision": 4,
+            "text": "-0.0"
+          },
+          "observations": [
+            {
+              "id": "form-0",
+              "range": {
+                "start": 0,
+                "end": 4
+              },
+              "expression": "-0.0",
+              "preview": "-0.0",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "float64",
+                  "bits": "9223372036854775808"
+                }
+              }
+            }
+          ],
+          "completion": {
+            "status": "returned",
+            "value": {
+              "type": "unit"
+            }
+          },
+          "diagnostic": null
+        }
+      }
+    },
+{
+      "id": "runtime-failure-keeps-prefix",
+      "operation": "worksheet-evaluate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"1\\nmissing\\n2\"}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir/workbench/worksheet",
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "id": "worksheet-source",
+            "revision": 4,
+            "text": "1\nmissing\n2"
+          },
+          "observations": [
+            {
+              "id": "form-0",
+              "range": {
+                "start": 0,
+                "end": 1
+              },
+              "expression": "1",
+              "preview": "1",
+              "outcome": {
+                "status": "returned",
+                "value": {
+                  "type": "int",
+                  "value": "1"
+                }
+              }
+            },
+            {
+              "id": "form-1",
+              "range": {
+                "start": 2,
+                "end": 9
+              },
+              "expression": "missing",
+              "preview": "",
+              "outcome": {
+                "status": "failed",
+                "failure": {
+                  "stage": "evaluate",
+                  "code": "worksheet.evaluation_failed",
+                  "message": "Unbound identifier: missing"
+                }
+              }
+            }
+          ],
+          "completion": {
+            "status": "failed",
+            "failure": {
+              "stage": "evaluate",
+              "code": "worksheet.evaluation_failed",
+              "message": "Unbound identifier: missing"
+            }
+          },
+          "diagnostic": {
+            "stage": "evaluate",
+            "range": {
+              "start": 2,
+              "end": 9
+            }
+          }
+        }
+      }
+    },
+{
+      "id": "read-failure-no-prefix",
+      "operation": "worksheet-evaluate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"(+ 1\"}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir/workbench/worksheet",
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "id": "worksheet-source",
+            "revision": 4,
+            "text": "(+ 1"
+          },
+          "observations": [],
+          "completion": {
+            "status": "failed",
+            "failure": {
+              "stage": "evaluate",
+              "code": "worksheet.read_failed",
+              "message": "Syntax at character 4: Unclosed list"
+            }
+          },
+          "diagnostic": {
+            "stage": "read",
+            "range": {
+              "start": 4,
+              "end": 4
+            }
+          }
+        }
+      }
+    },
+{
+      "id": "accept-cancellation",
+      "operation": "worksheet-validate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"(+ 1 2)\"}}",
+        "report": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"(+ 1 2)\"},\"observations\":[],\"completion\":{\"status\":\"cancelled\"},\"diagnostic\":{\"stage\":\"transport\",\"range\":null}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir/workbench/worksheet",
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "id": "worksheet-source",
+            "revision": 4,
+            "text": "(+ 1 2)"
+          },
+          "observations": [],
+          "completion": {
+            "status": "cancelled"
+          },
+          "diagnostic": {
+            "stage": "transport",
+            "range": null
+          }
+        }
+      }
+    },
+{
+      "id": "accept-timeout",
+      "operation": "worksheet-validate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"(+ 1 2)\"}}",
+        "report": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"(+ 1 2)\"},\"observations\":[],\"completion\":{\"status\":\"failed\",\"failure\":{\"stage\":\"evaluate\",\"code\":\"worksheet.timeout\",\"message\":\"Local execution timed out.\"}},\"diagnostic\":{\"stage\":\"transport\",\"range\":null}}"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "profile": "morphir/workbench/worksheet",
+          "contractVersion": "0.1.0-draft.1",
+          "source": {
+            "id": "worksheet-source",
+            "revision": 4,
+            "text": "(+ 1 2)"
+          },
+          "observations": [],
+          "completion": {
+            "status": "failed",
+            "failure": {
+              "stage": "evaluate",
+              "code": "worksheet.timeout",
+              "message": "Local execution timed out."
+            }
+          },
+          "diagnostic": {
+            "stage": "transport",
+            "range": null
+          }
+        }
+      }
+    },
+{
+      "id": "reject-dropped-inventory",
+      "operation": "worksheet-validate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"1\\n2\\n3\"}}",
+        "report": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"1\\n2\\n3\"},\"observations\":[{\"id\":\"form-0\",\"range\":{\"start\":0,\"end\":1},\"expression\":\"1\",\"preview\":\"1\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"1\"}}},{\"id\":\"form-1\",\"range\":{\"start\":4,\"end\":5},\"expression\":\"3\",\"preview\":\"3\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"3\"}}}],\"completion\":{\"status\":\"returned\",\"value\":{\"type\":\"unit\"}},\"diagnostic\":null}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "worksheet.invalid_range"
+      }
+    },
+{
+      "id": "reject-reordered-inventory",
+      "operation": "worksheet-validate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"1\\n2\\n3\"}}",
+        "report": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"1\\n2\\n3\"},\"observations\":[{\"id\":\"form-0\",\"range\":{\"start\":2,\"end\":3},\"expression\":\"2\",\"preview\":\"2\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"2\"}}},{\"id\":\"form-1\",\"range\":{\"start\":0,\"end\":1},\"expression\":\"1\",\"preview\":\"1\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"1\"}}},{\"id\":\"form-2\",\"range\":{\"start\":4,\"end\":5},\"expression\":\"3\",\"preview\":\"3\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"3\"}}}],\"completion\":{\"status\":\"returned\",\"value\":{\"type\":\"unit\"}},\"diagnostic\":null}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "worksheet.invalid_range"
+      }
+    },
+{
+      "id": "reject-split-surrogate-range",
+      "operation": "worksheet-validate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"\\\"😀雪\\\"\"}}",
+        "report": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"\\\"😀雪\\\"\"},\"observations\":[{\"id\":\"form-0\",\"range\":{\"start\":2,\"end\":5},\"expression\":\"\\\"😀雪\\\"\",\"preview\":\"\\\"😀雪\\\"\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"text\",\"units\":[55357,56832,38634]}}}],\"completion\":{\"status\":\"returned\",\"value\":{\"type\":\"unit\"}},\"diagnostic\":null}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "worksheet.invalid_range"
+      }
+    },
+{
+      "id": "reject-wrong-revision",
+      "operation": "worksheet-validate",
+      "format": "json",
+      "input": {
+        "request": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":4,\"text\":\"7\"}}",
+        "report": "{\"profile\":\"morphir/workbench/worksheet\",\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"id\":\"worksheet-source\",\"revision\":5,\"text\":\"7\"},\"observations\":[{\"id\":\"form-0\",\"range\":{\"start\":0,\"end\":1},\"expression\":\"7\",\"preview\":\"7\",\"outcome\":{\"status\":\"returned\",\"value\":{\"type\":\"int\",\"value\":\"7\"}}}],\"completion\":{\"status\":\"returned\",\"value\":{\"type\":\"unit\"}},\"diagnostic\":null}"
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "worksheet.source_mismatch"
+      }
+    }
+  ]
+}

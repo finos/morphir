@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-workbench/executions"
+
+import {
+  "finos/morphir-engine/execution/workbench",
+}
+
+// Values
+pub fn decode(String) -> Json raise
+
+pub fn decode_reply(String) -> Json
+
+pub fn evaluate_scheme_claim(Json) -> Json raise
+
+// Errors
+
+// Types and methods
+pub struct Client {
+  // private fields
+}
+pub fn Client::handle(Self, String) -> Json
+pub fn Client::new() -> Self
+
+// Type aliases
+pub using @workbench {type Host}
+
+pub using @workbench {type Invalid}
+
+pub using @workbench {type SchemeSelection}
+
+// Traits

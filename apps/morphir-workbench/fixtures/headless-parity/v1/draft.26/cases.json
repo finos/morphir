@@ -1,0 +1,401 @@
+{
+  "formatVersion": "0.1.0-draft.26",
+  "cases": [
+{
+      "id": "rich-json-to-ion-binary",
+      "operation": "transcode-invocations",
+      "format": "json",
+      "input": {
+        "sourceFormat": "json",
+        "source": {
+          "utf8": "{\"profile\":\"morphir-invocations-v1\",\"calls\":[{\"id\":\"call\",\"entry\":\"fixture:main#echo\",\"arguments\":[{\"type\":\"int\",\"value\":\"9007199254740993\"},{\"type\":\"int\",\"value\":\"-123456789012345678901234567890\"},{\"type\":\"decimal\",\"coefficient\":\"1200\",\"exponent\":-3},{\"type\":\"float64\",\"bits\":\"9223372036854775808\"},{\"type\":\"float64\",\"bits\":\"9221120237041090626\"},{\"type\":\"text\",\"units\":[0,55296,56320,57343]},{\"type\":\"character\",\"units\":[83,83]},{\"type\":\"unit\"},{\"type\":\"bool\",\"value\":false},{\"type\":\"tuple\",\"items\":[{\"type\":\"int\",\"value\":\"7\"},{\"type\":\"bool\",\"value\":true}]},{\"type\":\"list\",\"items\":[]},{\"type\":\"record\",\"fields\":[{\"name\":\"a/b~c\",\"value\":{\"type\":\"decimal\",\"coefficient\":\"375\",\"exponent\":-1}}]},{\"type\":\"custom\",\"owner\":\"fixture:main#choice\",\"tag\":\"fixture:main#chosen\",\"items\":[{\"type\":\"maybe\",\"case\":\"just\",\"value\":{\"type\":\"result\",\"case\":\"err\",\"value\":{\"type\":\"unit\"}}}]}]}]}"
+        },
+        "targetFormat": "ion-binary"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "targetFormat": "ion-binary",
+          "invocations": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "call",
+                "entry": "fixture:main#echo",
+                "arguments": [
+                  {
+                    "type": "int",
+                    "value": "9007199254740993"
+                  },
+                  {
+                    "type": "int",
+                    "value": "-123456789012345678901234567890"
+                  },
+                  {
+                    "type": "decimal",
+                    "coefficient": "1200",
+                    "exponent": -3
+                  },
+                  {
+                    "type": "float64",
+                    "bits": "9223372036854775808"
+                  },
+                  {
+                    "type": "float64",
+                    "bits": "9221120237041090626"
+                  },
+                  {
+                    "type": "text",
+                    "units": [
+                      0,
+                      55296,
+                      56320,
+                      57343
+                    ]
+                  },
+                  {
+                    "type": "character",
+                    "units": [
+                      83,
+                      83
+                    ]
+                  },
+                  {
+                    "type": "unit"
+                  },
+                  {
+                    "type": "bool",
+                    "value": false
+                  },
+                  {
+                    "type": "tuple",
+                    "items": [
+                      {
+                        "type": "int",
+                        "value": "7"
+                      },
+                      {
+                        "type": "bool",
+                        "value": true
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list",
+                    "items": []
+                  },
+                  {
+                    "type": "record",
+                    "fields": [
+                      {
+                        "name": "a/b~c",
+                        "value": {
+                          "type": "decimal",
+                          "coefficient": "375",
+                          "exponent": -1
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "custom",
+                    "owner": "fixture:main#choice",
+                    "tag": "fixture:main#chosen",
+                    "items": [
+                      {
+                        "type": "maybe",
+                        "case": "just",
+                        "value": {
+                          "type": "result",
+                          "case": "err",
+                          "value": {
+                            "type": "unit"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+{
+      "id": "rich-ion-binary-to-json",
+      "operation": "transcode-invocations",
+      "format": "json",
+      "input": {
+        "sourceFormat": "ion-binary",
+        "source": {
+          "hex": "e00100eaee01918183de018c87be01888770726f66696c658563616c6c7382696485656e74727989617267756d656e74738d6d6f72706869725f76616c75658474797065846269747385756e6974738c6d6f72706869725f756e6974856974656d738576616c7565866669656c6473846e616d658b636f656666696369656e74886578706f6e656e74856f776e6572837461678463617365de03968a8e966d6f72706869722d696e766f636174696f6e732d76318bbe02f9de02f68c8463616c6c8d8e91666978747572653a6d61696e236563686f8ebe02d827200000000000013d018ee90ff6c373e0ee4e3f0ad253c304b0eea3818fde9f9087666c6f61743634918e9339323233333732303336383534373735383038eea3818fde9f9087666c6f61743634918e9339323231313230323337303431303930363236ee96818fde9290847465787492ba2022d80022dc0022dfffee95818fde91908963686172616374657292b421532153e381930f10eea0818fde9c90857475706c6594be92d89083696e74958137d89084626f6f6c9511eb818fd890846c69737494b0eeac818fdea890867265636f726496be9dde9b9785612f627e6395de919087646563696d616c9883333735993101eee2818fdede9086637573746f6d9a8e93666978747572653a6d61696e2363686f6963659b8e93666978747572653a6d61696e2363686f73656e94bea7dea590856d617962659c846a75737495de959086726573756c749c8365727295d69084756e6974"
+        },
+        "targetFormat": "json"
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "targetFormat": "json",
+          "invocations": {
+            "profile": "morphir-invocations-v1",
+            "calls": [
+              {
+                "id": "call",
+                "entry": "fixture:main#echo",
+                "arguments": [
+                  {
+                    "type": "int",
+                    "value": "9007199254740993"
+                  },
+                  {
+                    "type": "int",
+                    "value": "-123456789012345678901234567890"
+                  },
+                  {
+                    "type": "decimal",
+                    "coefficient": "1200",
+                    "exponent": -3
+                  },
+                  {
+                    "type": "float64",
+                    "bits": "9223372036854775808"
+                  },
+                  {
+                    "type": "float64",
+                    "bits": "9221120237041090626"
+                  },
+                  {
+                    "type": "text",
+                    "units": [
+                      0,
+                      55296,
+                      56320,
+                      57343
+                    ]
+                  },
+                  {
+                    "type": "character",
+                    "units": [
+                      83,
+                      83
+                    ]
+                  },
+                  {
+                    "type": "unit"
+                  },
+                  {
+                    "type": "bool",
+                    "value": false
+                  },
+                  {
+                    "type": "tuple",
+                    "items": [
+                      {
+                        "type": "int",
+                        "value": "7"
+                      },
+                      {
+                        "type": "bool",
+                        "value": true
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list",
+                    "items": []
+                  },
+                  {
+                    "type": "record",
+                    "fields": [
+                      {
+                        "name": "a/b~c",
+                        "value": {
+                          "type": "decimal",
+                          "coefficient": "375",
+                          "exponent": -1
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "custom",
+                    "owner": "fixture:main#choice",
+                    "tag": "fixture:main#chosen",
+                    "items": [
+                      {
+                        "type": "maybe",
+                        "case": "just",
+                        "value": {
+                          "type": "result",
+                          "case": "err",
+                          "value": {
+                            "type": "unit"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+{
+      "id": "different-int-exact",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "int",
+          "value": "9007199254740993"
+        },
+        "expected": {
+          "type": "int",
+          "value": "9007199254740992"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+{
+      "id": "decimal-scale",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "decimal",
+          "coefficient": "1250",
+          "exponent": -2
+        },
+        "expected": {
+          "type": "decimal",
+          "coefficient": "125",
+          "exponent": -1
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+{
+      "id": "positive-negative-zero",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "float64",
+          "bits": "0"
+        },
+        "expected": {
+          "type": "float64",
+          "bits": "9223372036854775808"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+{
+      "id": "utf16-isolated-surrogates",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "text",
+          "units": [
+            55296,
+            57343
+          ]
+        },
+        "expected": {
+          "type": "text",
+          "units": [
+            55296,
+            57343
+          ]
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": true,
+          "mismatchPath": null
+        }
+      }
+    },
+{
+      "id": "result-err-vs-model-error",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": {
+          "type": "result",
+          "case": "err",
+          "value": {
+            "type": "unit"
+          }
+        },
+        "expected": {
+          "type": "model-error",
+          "code": "sdk.division_by_zero"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "matches": false,
+          "mismatchPath": ""
+        }
+      }
+    },
+{
+      "id": "opaque-number-outside-ieee-range",
+      "operation": "compare-values",
+      "format": "json",
+      "input": {
+        "actual": 1e400,
+        "expected": {
+          "type": "unit"
+        },
+        "comparison": {
+          "profile": "morphir-comparison-exact-v1"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "execution.expected_struct"
+      }
+    }
+  ]
+}

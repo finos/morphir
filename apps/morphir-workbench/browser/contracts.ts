@@ -17,6 +17,7 @@ export interface WorkRequest {
   sourceCodec?: string;
   /** Private page/worker fields; never emitted as Morphir RPC parameters. */
   sourceFilename?: string;
+  sourceTree?: ModelTreeFile[];
   modelOpenAttempt?: string;
   /** Exact worksheet profile request captured before dispatch. */
   worksheetRequest?: string;
@@ -80,9 +81,11 @@ export interface WorkResult {
   generationMessage?: string;
   execution?: Execution | null;
 }
-export type ModelCodec = 'morphir-json' | 'ion-text' | 'ion-binary';
+export type ModelCodec = 'morphir-json' | 'morphir-yaml' | 'ion-text' | 'ion-binary';
+export interface ModelTreeFile { readonly path: string; readonly contentBase64: string }
 export type ModelSource =
   | { readonly kind: 'original-file'; readonly filename: string; readonly codec: ModelCodec; readonly formatVersion: string; readonly contentBase64: string }
+  | { readonly kind: 'original-tree'; readonly codec: 'morphir-yaml'; readonly formatVersion: string; readonly files: readonly ModelTreeFile[]; readonly directories: readonly string[] }
   | { readonly kind: 'semantic-projection'; readonly reason: 'originals-not-provided' | 'generated-model' };
 export interface Execution {
   state: 'submitted' | 'running' | 'terminal';

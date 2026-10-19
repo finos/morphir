@@ -81,6 +81,16 @@ pub fn TelemetrySession::local(
 
 ///|
 pub fn TelemetrySession::observer(self : TelemetrySession) -> @observe.Observer {
+  self.observer_with_clocks(@platform.monotonic_seconds, @platform.wall_seconds)
+}
+
+///|
+// Keep queue and metric behavior independent of the embedding host's clocks.
+fn TelemetrySession::observer_with_clocks(
+  self : TelemetrySession,
+  monotonic : () -> Double,
+  wall : () -> Double,
+) -> @observe.Observer {
   if self.path is None || self.closed {
     return @observe.Observer::noop()
   }
@@ -189,8 +199,8 @@ pub fn TelemetrySession::observer(self : TelemetrySession) -> @observe.Observer 
       self.records.push(record)
       @observe.Accepted
     },
-    monotonic: @platform.monotonic_seconds,
-    wall: @platform.wall_seconds,
+    monotonic,
+    wall,
     next_id: fn() {
       self.next += 1
       let hex = self.next.to_string(radix=16)

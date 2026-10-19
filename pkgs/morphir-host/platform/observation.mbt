@@ -1,6 +1,11 @@
 ///|
+#cfg(target="wasm-gc")
 pub fn monotonic_seconds() -> Double {
-  0.0
+  let response = call("monotonic_seconds") catch { _ => Json::number(0.0) }
+  match response {
+    Number(value, ..) => value
+    _ => 0.0
+  }
 }
 
 ///|

@@ -321,7 +321,19 @@ pub fn character(value : Json) -> Char raise CodecError {
 ///|
 pub fn float(value : Json) -> Double raise CodecError {
   match value {
-    Number(number, ..) if !number.is_nan() && !number.is_inf() => number
+    Number(number, repr~) if !number.is_nan() && !number.is_inf() => {
+      if number == 0.0 && repr is Some(text) {
+        for character in text {
+          if character is ('e' | 'E') {
+            break
+          }
+          if character >= '1' && character <= '9' {
+            raise Invalid("invalid_literal", "Nonzero float underflows to zero")
+          }
+        }
+      }
+      number
+    }
     _ => raise Invalid("invalid_literal", "Expected finite float")
   }
 }

@@ -1,22 +1,16 @@
 import {
+  "finos/morphir-engine/execution/workbench" @shared,
+  "finos/morphir-workbench/outcomes",
+}
+
+import {
+  "finos/morphir-workbench/executions",
   "finos/morphir-execution" @protocol,
   "finos/morphir-execution/executions" @receipts,
   "finos/morphir-engine/execution/executions" @owner,
   "finos/morphir-engine/execution",
   "finos/morphir-engine/data",
   "finos/morphir-ir/wire",
-  "finos/morphir-workbench-native-session/response" @native_reply,
-  "finos/morphir-ir/versioned/json" @versioned,
-  "finos/morphir-ir/migration",
   "finos/morphir-ir/versions/v4/json" @codec,
-  "finos/morphir-workbench/arguments",
-  "finos/morphir-workbench/outcomes",
-  "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/encoding/base64",
-  "moonrockz/ion/text" @ion_text,
-}
-
-import {
-  "finos/morphir-workbench/executions",
   "finos/morphir-moonbit/fixtures",
 } for "test"

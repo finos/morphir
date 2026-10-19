@@ -22,6 +22,8 @@ import {
   "finos/morphir-workbench/project",
   "finos/morphir-workbench/model-document" @document,
   "finos/morphir-engine/ids",
+  "finos/morphir-engine/data",
+  "moonbitlang/core/encoding/utf8",
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/cmd",

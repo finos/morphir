@@ -9,6 +9,17 @@ schema and explicitly migrates it to current IR. `ion-text` and `ion-binary` rea
 the profile below into the same typed contract. `Registry::checkpoint` defaults
 to Ion binary. Selecting JSON as a source does not change that default.
 
+`morphir-yaml` reads the bounded normative YAML profile into the same typed IR.
+Use the closed `ModelFormat` domain at file and command boundaries:
+`ModelFormat::from_control`, `infer_path`, `codec_id` and `is_binary`.
+`decode_model(format, bytes, unit_id~, limits~)` validates UTF-8 and dispatches
+through shared codecs. `decode_model_tree(files, unit_id~, limits~)` accepts
+relative paths and captured bytes for qualified v4/v3.1 trees. It bounds the
+whole capture and ignores binary sidecars outside the physical tree profile.
+Adapters check `model_tree_file_limit` before inserting captured files.
+See the [YAML package](../../morphir-ir/yaml/README.md) for resource budgets.
+YAML encoding is not implemented; retain original bytes or export normalized JSON.
+
 ```moonbit
 let registry = @data.Registry::new()
 let unit = registry.decode("morphir-json", {

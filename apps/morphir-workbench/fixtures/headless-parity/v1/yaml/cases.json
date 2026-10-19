@@ -1,0 +1,225 @@
+{
+  "fixtureVersion": "1.0.0",
+  "authority": "finos/morphir docs/spec/ir/schemas/v4/yaml-profile.md at 2b0cb1d64ccd0455aba3eaa2b143dbc7d276df70",
+  "cases": [
+    {
+      "id": "readable",
+      "scope": "document",
+      "source": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: parity\n    dependencies: {}\n    def: {modules: {}}\n",
+      "expected": {
+        "status": "ok",
+        "normalizedJson": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+      }
+    },
+    {
+      "id": "structural",
+      "scope": "document",
+      "source": "formatVersion: 4\ndistribution:\n  Library:\n    packageName: [[parity]]\n    dependencies: {}\n    def: {modules: {}}\n",
+      "expected": {
+        "status": "ok",
+        "normalizedJson": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+      }
+    },
+    {
+      "id": "v1-explicit-migration",
+      "scope": "document",
+      "source": "formatVersion: 1\ndistribution: [\"library\", [[\"parity\"]], [], {modules: []}]\n",
+      "expected": {
+        "status": "ok",
+        "normalizedJson": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}",
+        "sourceVersion": "1.0.0"
+      }
+    },
+    {
+      "id": "v2-explicit-migration",
+      "scope": "document",
+      "source": "formatVersion: 2\ndistribution: [\"Library\", [[\"parity\"]], [], {modules: []}]\n",
+      "expected": {
+        "status": "ok",
+        "normalizedJson": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}",
+        "sourceVersion": "2.0.0"
+      }
+    },
+    {
+      "id": "v3-explicit-migration",
+      "scope": "document",
+      "source": "formatVersion: 3\ndistribution: [\"Library\", [[\"parity\"]], [], {modules: []}]\n",
+      "expected": {
+        "status": "ok",
+        "normalizedJson": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}",
+        "sourceVersion": "3.0.0"
+      }
+    },
+    {
+      "id": "bom-crlf-comments",
+      "scope": "document",
+      "source": "\ufeff# retained\r\nformatVersion: '4.0.0' # version\r\ndistribution:\r\n  Library:\r\n    packageName: parity\r\n    dependencies: {}\r\n    def: {modules: {}}\r\n",
+      "expected": {
+        "status": "ok",
+        "normalizedJson": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}",
+        "original": "exact-source-utf8"
+      }
+    },
+    {
+      "id": "exact-integer",
+      "scope": "physical-profile",
+      "source": "value: 9007199254740993\n",
+      "expected": {
+        "status": "ok",
+        "json": "{\"value\":9007199254740993}"
+      }
+    },
+    {
+      "id": "exact-decimal",
+      "scope": "physical-profile",
+      "source": "value: 123.4500\n",
+      "expected": {
+        "status": "ok",
+        "json": "{\"value\":123.4500}"
+      }
+    },
+    {
+      "id": "date-looking",
+      "scope": "physical-profile",
+      "source": "value: 2026-01-15\n",
+      "expected": {
+        "status": "ok",
+        "json": "{\"value\":\"2026-01-15\"}"
+      }
+    },
+    {
+      "id": "multiline",
+      "scope": "physical-profile",
+      "source": "value: |\n  first\n  second\n\n",
+      "expected": {
+        "status": "ok",
+        "json": "{\"value\":\"first\\nsecond\\n\"}"
+      }
+    },
+    {
+      "id": "duplicate",
+      "scope": "physical-profile",
+      "source": "formatVersion: 4\nformatVersion: 4\n",
+      "expected": {
+        "status": "invalid",
+        "code": "duplicate_member"
+      }
+    },
+    {
+      "id": "tag",
+      "scope": "physical-profile",
+      "source": "value: !!int 42\n",
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "anchor",
+      "scope": "physical-profile",
+      "source": "value: &x 42\n",
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "alias",
+      "scope": "physical-profile",
+      "source": "value: *x\n",
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "merge",
+      "scope": "physical-profile",
+      "source": "value: {<<: {a: 1}}\n",
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "directive",
+      "scope": "physical-profile",
+      "source": "%YAML 1.2\n---\nvalue: 1\n",
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "multiple-documents",
+      "scope": "physical-profile",
+      "source": "value: 1\n---\nvalue: 2\n",
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_yaml"
+      }
+    },
+    {
+      "id": "nonfinite",
+      "scope": "physical-profile",
+      "source": "value: .inf\n",
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_literal"
+      }
+    },
+    {
+      "id": "leading-zero",
+      "scope": "physical-profile",
+      "source": "value: 01\n",
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_literal"
+      }
+    },
+    {
+      "id": "nonstring-key",
+      "scope": "physical-profile",
+      "source": "1: value\n",
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_type"
+      }
+    },
+    {
+      "id": "sequence-root",
+      "scope": "physical-profile",
+      "source": "[1, 2]\n",
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_type"
+      }
+    },
+    {
+      "id": "budget-depth",
+      "scope": "physical-profile",
+      "recipe": {
+        "kind": "nested-sequence",
+        "depth": 129
+      },
+      "expected": {
+        "status": "limit",
+        "resource": "depth",
+        "before": "recursive allocation beyond bound"
+      }
+    },
+    {
+      "id": "budget-source",
+      "scope": "physical-profile",
+      "recipe": {
+        "kind": "ascii-comment",
+        "byteLength": 1048577
+      },
+      "expected": {
+        "status": "limit",
+        "resource": "source-bytes",
+        "before": "parse"
+      }
+    }
+  ]
+}

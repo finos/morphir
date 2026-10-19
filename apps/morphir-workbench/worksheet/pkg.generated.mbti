@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-workbench/worksheet"
+
+// Values
+pub const CONTRACT_VERSION : String = "0.1.0-draft.1"
+
+pub const PROFILE : String = "morphir/workbench/worksheet"
+
+pub fn browser_command(String) -> Json
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @finos/morphir-engine/worksheet {type CapturedWorksheetSource}
+
+pub using @finos/morphir-engine/worksheet {type FormId}
+
+pub using @finos/morphir-engine/worksheet {type Observation}
+
+pub using @finos/morphir-engine/worksheet {type SourceRevision}
+
+pub using @finos/morphir-engine/worksheet {type Utf16Offset}
+
+pub using @finos/morphir-engine/worksheet {type Utf16Range}
+
+pub using @finos/morphir-engine/worksheet {type WorkerTermination}
+
+pub using @finos/morphir-engine/worksheet {type WorksheetId}
+
+pub using @finos/morphir-engine/worksheet {type WorksheetReport}
+
+pub using @finos/morphir-engine/worksheet {type WorksheetRequest}
+
+// Traits

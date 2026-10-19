@@ -131,3 +131,127 @@ test "captured model refusal retains user-facing model stage and codec detail" {
   )
   assert_true(@wire.field(reply, "cause") != Json::null())
 }
+
+///|
+test "workspace MEP text and binary retain opaque context without changing IR labels" {
+  let file = @fixtures.invocation_library()
+  let semantic = @codec.to_json(file)
+  let baseline = @pipeline.execute({
+    "operation": "inspect",
+    "source": semantic.stringify(),
+  })
+  let source = "morphir_model::{ir:" +
+    semantic.stringify() +
+    ",enrichments:[{owner:\"future-owner\",data:source_name::target_name::{label:\"must not rename declarations\",huge:18446744073709551616000001,decimal:123.4500,blob:{{AP8=}},duplicate:1,duplicate:2}}],provenance:[origin::\"preserved\"]}"
+  let envelope = @ion_text.read_ion(source[:])
+  let registry = @data.Registry::new()
+  for codec in ["ion-text", "ion-binary"] {
+    let bytes = if codec == "ion-text" {
+      @utf8.encode("\uFEFF// retained presentation\r\n" + source + "\r\n")
+    } else {
+      @ion_binary.write_binary_value(envelope)
+    }
+    let inspected = @pipeline.execute({
+      "operation": "inspect",
+      "source": "",
+      "sourceCodec": codec,
+      "sourceBase64": @base64.encode(bytes[:]),
+    })
+    assert_eq(
+      @wire.field(inspected, "success"),
+      Json::boolean(true),
+      msg=inspected.stringify(),
+    )
+    assert_eq(@wire.field(inspected, "ir"), semantic)
+    assert_eq(@wire.field(inspected, "nodes"), @wire.field(baseline, "nodes"))
+    assert_eq(
+      @wire.field(inspected, "sourceFormatVersion"),
+      Json::string("4.0.0"),
+    )
+    let restored = registry.open_checkpoint(
+      "ion-text",
+      Text(@wire.string(@wire.field(inspected, "sourceUnitIon"))),
+    )
+    assert_eq(restored.id, "mep")
+    assert_eq(restored.distribution, file)
+    assert_true(restored.metadata.is_empty())
+    assert_eq(restored.provenance.length(), 2)
+    assert_true(
+      restored.provenance[0].equals(
+        @ion_text.read_ion("origin::\"preserved\""[:]),
+      ),
+    )
+    let captured = restored.provenance[1]
+    assert_eq(captured.annotations()[0].text(), Some("morphir_model_import"))
+    guard captured.kind() is Struct([field]) else {
+      fail("missing MEP source envelope")
+    }
+    assert_eq(field.name().text(), Some("source_envelope"))
+    assert_true(field.value().equals(envelope))
+  }
+}
+
+///|
+test "workspace shared source selection refuses ambiguous model and checkpoint annotations" {
+  let source = "morphir_model::morphir_pipeline::{ir:{},enrichments:[],provenance:[]}"
+  for codec in ["ion-text", "ion-binary"] {
+    let bytes = if codec == "ion-text" {
+      @utf8.encode(source)
+    } else {
+      @ion_binary.write_binary_value(@ion_text.read_ion(source[:]))
+    }
+    let reply = @pipeline.execute({
+      "operation": "inspect",
+      "source": "",
+      "sourceCodec": codec,
+      "sourceBase64": @base64.encode(bytes[:]),
+    })
+    assert_eq(@wire.field(reply, "success"), Json::boolean(false))
+    assert_eq(@wire.field(reply, "stage"), Json::string("model"))
+    assert_eq(
+      @wire.field(reply, "code"),
+      Json::string("workbench.invalid_model"),
+    )
+    assert_eq(
+      @wire.field(@wire.field(reply, "cause"), "code"),
+      Json::string("data.ambiguous_envelope"),
+    )
+    assert_eq(@wire.optional(reply, "sourceUnitIon"), None)
+  }
+}
+
+///|
+test "private tree input bounds aggregate path text before decoding overflow content" {
+  let prefix = Array::make(16, Array::make(240, "p").join("") + "/").join("")
+  let entries = Array::makei(256, i => {
+    let suffix = i.to_string()
+    Json::object(
+      Map([
+        (
+          "path",
+          Json::string(
+            prefix + Array::make(240 - suffix.length(), "x").join("") + suffix,
+          ),
+        ),
+        ("contentBase64", Json::string("")),
+      ]),
+    )
+  })
+  entries.push({ "path": "x", "contentBase64": "!" })
+  let reply = @pipeline.execute({
+    "operation": "inspect",
+    "source": "",
+    "sourceTree": Json::array(entries),
+  })
+  assert_eq(@wire.field(reply, "success"), Json::boolean(false))
+  assert_eq(@wire.field(reply, "code"), Json::string("workbench.invalid_model"))
+  assert_eq(
+    @wire.field(@wire.field(reply, "cause"), "code"),
+    Json::string("data.tree_limit"),
+  )
+  assert_true(
+    @wire.string(@wire.field(@wire.field(reply, "cause"), "detail")).contains(
+      "path text budget",
+    ),
+  )
+}

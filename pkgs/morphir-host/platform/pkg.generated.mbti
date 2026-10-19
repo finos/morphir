@@ -1,0 +1,82 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-host/platform"
+
+// Values
+pub fn architecture() -> String
+
+pub fn args() -> Array[String]
+
+pub fn arguments() -> Array[String]
+
+pub fn bytes_supported() -> Bool
+
+pub fn cwd() -> String
+
+pub fn environment() -> Map[String, String]
+
+pub fn exit(Int) -> Unit
+
+pub fn file_chunks(String, Int, (Bytes) -> Unit raise) -> Unit raise
+
+pub fn file_chunks_supported() -> Bool
+
+pub fn flush_file(String, Bytes, Int, root? : String) -> Bool
+
+pub fn interruption_requested() -> Bool
+
+pub fn interruption_start() -> Unit
+
+pub fn interruption_stop() -> Unit
+
+pub fn interruption_supported() -> Bool
+
+pub fn kind(String) -> Int raise
+
+pub fn list(String) -> Array[String] raise
+
+pub fn list_bounded(String, Int) -> Array[String] raise
+
+pub fn mkdir(String) -> Unit raise
+
+pub fn monotonic_seconds() -> Double
+
+pub fn observation_id() -> String raise
+
+pub fn process(String, Array[String], String, String, Int) -> Json raise
+
+pub fn process_supported() -> Bool
+
+pub fn read(String) -> String raise
+
+pub fn read_bytes(String) -> Bytes raise
+
+pub fn read_input(String, Int) -> Bytes raise
+
+pub fn remove_dir(String) -> Unit raise
+
+pub fn remove_file(String) -> Unit raise
+
+pub fn rename(String, String) -> Unit raise
+
+pub fn stderr(String) -> Unit
+
+pub fn system_type() -> String
+
+pub fn temporary() -> String raise
+
+pub fn wall_seconds() -> Double
+
+pub fn write(String, String) -> Unit raise
+
+pub fn write_bytes(String, Bytes) -> Unit raise
+
+// Errors
+pub(all) suberror IOError {
+  IOError(String)
+}
+
+// Types and methods
+
+// Type aliases
+
+// Traits

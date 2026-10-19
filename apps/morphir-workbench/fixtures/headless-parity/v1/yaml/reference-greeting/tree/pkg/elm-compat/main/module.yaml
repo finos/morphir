@@ -1,0 +1,5 @@
+formatVersion: 4
+path: main
+doc: " Main module demonstrating Morphir-compatible Elm types and functions.\n\nThis module provides a simple e-commerce domain model for testing\nthe morphir-elm toolchain integration.\n"
+types: [customer-order, order-status, product, product-id, quantity]
+values: [apply-discount, calculate-total, is-valid-order, order-status-to-string]

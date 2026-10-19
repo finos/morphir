@@ -2,6 +2,8 @@
 extends: default
 ignore: |
   .dev/
+  # Byte-frozen inputs exercise original formatting, BOM and CRLF handling.
+  apps/morphir-workbench/fixtures/headless-parity/v1/originals/
 
 rules:
   line-length:

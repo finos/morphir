@@ -1,10 +1,5 @@
 import {
-  "finos/morphir-execution" @execution,
-  "finos/morphir-engine/data",
-  "finos/morphir-ir/wire",
-  "finos/morphir-scheme" @scheme,
-  "moonbitlang/core/encoding/utf8",
-  "moonbitlang/core/debug",
+  "finos/morphir-engine/worksheet" @shared,
 }
 
 import {

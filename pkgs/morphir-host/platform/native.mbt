@@ -202,3 +202,56 @@ extern "C" fn file_read(
 
 ///|
 extern "C" fn file_close(fd : Int32) -> Int32 = "morphir_host_file_close"
+
+///|
+#borrow(buffer)
+extern "C" fn stdin_read(buffer : FixedArray[Byte], length : Int32) -> Int32 = "morphir_host_stdin_read"
+
+///|
+pub extern "C" fn interruption_start() -> Unit = "morphir_host_interruption_start"
+
+///|
+pub extern "C" fn interruption_stop() -> Unit = "morphir_host_interruption_stop"
+
+///|
+pub extern "C" fn interruption_requested() -> Bool = "morphir_host_interruption_requested"
+
+///|
+#borrow(path)
+extern "C" fn list_bounded_c(path : Bytes, limit : Int32) -> Bytes = "morphir_host_list_bounded"
+
+///|
+fn directory_list(path : String, limit : Int32) -> Array[String] raise {
+  let packed = list_bounded_c(cstring(path), limit)
+  if packed.is_empty() || packed[0] != 0 {
+    let code = if packed.is_empty() { 0 } else { packed[0].to_int() }
+    raise IOError(
+      match code {
+        1 => "directory.entry_limit"
+        2 => "directory.name_limit"
+        4 => "directory.close_failed"
+        5 => "directory.open_failed"
+        6 => "Cancelled"
+        _ => "directory.read_failed"
+      },
+    )
+  }
+  let names = []
+  let mut start = 1
+  let mut units = 0
+  for i = 1; i < packed.length(); i = i + 1 {
+    if packed[i] == 0 {
+      if names.length() >= limit {
+        raise IOError("directory.entry_limit")
+      }
+      let name = @utf8.decode(packed[start:i])
+      units = directory_name(name, units)
+      names.push(name)
+      start = i + 1
+    }
+  }
+  if start != packed.length() {
+    raise IOError("directory.invalid_response")
+  }
+  names
+}

@@ -1,0 +1,8 @@
+formatVersion: 4
+name: product-id
+def:
+  Public:
+    doc: " A unique identifier for products.\n"
+    TypeAliasDefinition:
+      typeParams: []
+      typeExp: morphir/SDK:string#string

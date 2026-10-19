@@ -14,7 +14,17 @@ pub const PROFILE : String = "morphir-pipeline-v1"
 
 pub fn apply_rewrite(IRUnit, Rewrite, String, String, MetadataPolicy) -> IRUnit raise
 
+pub fn decode_model(ModelFormat, Bytes, unit_id? : String, limits? : Limits) -> IRUnit raise BoundaryError
+
+pub fn decode_model_tree(Map[String, Bytes], unit_id? : String, limits? : Limits) -> IRUnit raise BoundaryError
+
 pub fn fill_lineage(IRUnit, @v4.IRFile) -> Lineage raise
+
+pub fn inspect_model_source(ModelFormat, Bytes, unit_id? : String, limits? : Limits) -> CheckpointInspection raise BoundaryError
+
+pub fn inspect_model_tree(Map[String, Bytes], unit_id? : String, limits? : Limits) -> CheckpointInspection raise BoundaryError
+
+pub let model_tree_file_limit : Int
 
 pub fn semantic_json(IRUnit) -> String raise
 
@@ -84,6 +94,20 @@ pub fn MetadataPolicy::copy_single_origin() -> Self
 pub fn MetadataPolicy::no_derived() -> Self
 pub fn MetadataPolicy::retain() -> Self
 
+pub(all) enum ModelFormat {
+  JSON
+  YAML
+  IonText
+  IonBinary
+} derive(Eq, @debug.Debug)
+pub fn ModelFormat::codec_id(Self) -> String
+pub fn ModelFormat::equal(Self, Self) -> Bool
+pub fn ModelFormat::from_control(String) -> Self raise BoundaryError
+pub fn ModelFormat::infer_path(String) -> Self?
+pub fn ModelFormat::is_binary(Self) -> Bool
+pub fn ModelFormat::not_equal(Self, Self) -> Bool
+pub fn ModelFormat::to_repr(Self) -> @debug.Repr
+
 pub(all) struct NodeMetadata {
   node_id : String
   data : @ion.IonValue
@@ -98,7 +122,7 @@ pub fn Registry::decode(Self, String, SourceSnapshot) -> IRUnit raise BoundaryEr
 pub fn Registry::encode(Self, String, IRUnit) -> Content raise BoundaryError
 pub fn Registry::has_codec(Self, String) -> Bool
 pub fn Registry::inspect_checkpoint(Self, String, Content) -> CheckpointInspection raise BoundaryError
-pub fn Registry::new(limits? : Limits) -> Self raise
+pub fn Registry::new(limits? : Limits) -> Self raise BoundaryError
 pub fn Registry::open_checkpoint(Self, String, Content) -> IRUnit raise BoundaryError
 pub fn Registry::register(Self, String, Codec) -> Unit raise BoundaryError
 

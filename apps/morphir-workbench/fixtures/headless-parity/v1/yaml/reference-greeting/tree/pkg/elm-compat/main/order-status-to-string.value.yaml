@@ -1,0 +1,79 @@
+formatVersion: 4
+name: order-status-to-string
+def:
+  Public:
+    doc: " Convert an order status to a human-readable string.\n"
+    ExpressionBody:
+      inputTypes:
+        status: elm-compat:main#order-status
+      outputType: morphir/SDK:string#string
+      body:
+        PatternMatch:
+          attributes:
+            inferredType: morphir/SDK:string#string
+          value:
+            Variable:
+              attributes:
+                inferredType: elm-compat:main#order-status
+              name: status
+          cases:
+            - pattern:
+                ConstructorPattern:
+                  attributes:
+                    inferredType: elm-compat:main#order-status
+                  fqname: elm-compat:main#pending
+                  patterns: []
+              body:
+                Literal:
+                  attributes:
+                    inferredType: morphir/SDK:string#string
+                  literal:
+                    StringLiteral: Pending
+            - pattern:
+                ConstructorPattern:
+                  attributes:
+                    inferredType: elm-compat:main#order-status
+                  fqname: elm-compat:main#confirmed
+                  patterns: []
+              body:
+                Literal:
+                  attributes:
+                    inferredType: morphir/SDK:string#string
+                  literal:
+                    StringLiteral: Confirmed
+            - pattern:
+                ConstructorPattern:
+                  attributes:
+                    inferredType: elm-compat:main#order-status
+                  fqname: elm-compat:main#shipped
+                  patterns: []
+              body:
+                Literal:
+                  attributes:
+                    inferredType: morphir/SDK:string#string
+                  literal:
+                    StringLiteral: Shipped
+            - pattern:
+                ConstructorPattern:
+                  attributes:
+                    inferredType: elm-compat:main#order-status
+                  fqname: elm-compat:main#delivered
+                  patterns: []
+              body:
+                Literal:
+                  attributes:
+                    inferredType: morphir/SDK:string#string
+                  literal:
+                    StringLiteral: Delivered
+            - pattern:
+                ConstructorPattern:
+                  attributes:
+                    inferredType: elm-compat:main#order-status
+                  fqname: elm-compat:main#cancelled
+                  patterns: []
+              body:
+                Literal:
+                  attributes:
+                    inferredType: morphir/SDK:string#string
+                  literal:
+                    StringLiteral: Cancelled

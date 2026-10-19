@@ -1,0 +1,59 @@
+{
+  "fixtureVersion": "1.0.0",
+  "provenance": "Hand-authored v4 tree Library/public module/public ExpressionBody IntegerLiteral42 from published document-tree-files.md before CLI tree output is observed.",
+  "entry": "parity:main#answer",
+  "expectedOutcome": {
+    "status": "returned",
+    "value": {
+      "type": "int",
+      "value": "42"
+    }
+  },
+  "expectedNormalizedIr": {
+    "formatVersion": 4,
+    "distribution": {
+      "Library": {
+        "packageName": "parity",
+        "dependencies": {},
+        "def": {
+          "modules": {
+            "main": {
+              "Public": {
+                "types": {},
+                "values": {
+                  "answer": {
+                    "Public": {
+                      "ExpressionBody": {
+                        "inputTypes": {},
+                        "outputType": "morphir/SDK:basics#int",
+                        "body": {
+                          "Literal": {
+                            "IntegerLiteral": 42
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "files": [
+    {
+      "path": "manifest.yaml",
+      "sha256": "b6884e7a5ec43fd236240c472101d4d7bf2c9d314a677afbabe993d652b0f822"
+    },
+    {
+      "path": "pkg/parity/main/module.yaml",
+      "sha256": "036384677a21698c5e1b516b31526e54ddfdc1d6c566cfb977e592a31d97ea34"
+    },
+    {
+      "path": "pkg/parity/main/answer.value.yaml",
+      "sha256": "eea2e0bbb93e642a223dfece42ddaeb0de6179a7be172463eeee8da8bc178f83"
+    }
+  ]
+}

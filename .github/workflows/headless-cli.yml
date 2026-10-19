@@ -1,0 +1,85 @@
+name: Headless CLI qualification
+
+on:
+  pull_request:
+    paths:
+      - 'apps/morphir/**'
+      - 'apps/morphir-workbench/**'
+      - 'pkgs/**'
+      - 'types/**'
+      - 'tools/**'
+      - 'moon.*'
+      - 'package.json'
+      - 'bun.lock'
+      - '.npmrc'
+      - '.config/mise/config.toml'
+      - 'tsconfig*.json'
+      - 'tests/npm.ts'
+      - 'tests/cli-contracts.ts'
+      - 'scripts/headless-host.mbtx'
+      - 'scripts/moonbit-core.mbtx'
+      - '.github/actions/**'
+      - '.github/workflows/headless-cli.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: headless-cli-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  headless:
+    name: Headless CLI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-latest]
+    env:
+      MORPHIR_HEADLESS_ONLY: '1'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - uses: ./.github/actions/setup-typescript
+      - name: Resolve pinned MoonBit packages
+        run: moon update
+      - name: Qualify native log snapshots and rotation
+        run: moon test pkgs/morphir-host/platform/flush_test.mbt --target native --target-dir .dev/headless-native-flush
+      - name: Install pinned generation compilers
+        run: bun install --frozen-lockfile --cwd pkgs/morphir-elm/scripts
+      - name: Check structured host artifact selection
+        run: moonx scripts/headless-host.mbtx --self-test
+      - name: Checkout exact authenticated host and installed producer sources
+        if: runner.os != 'Windows'
+        uses: actions/checkout@v6
+        with:
+          repository: finos/morphir
+          ref: b0de0899b2a9d37a33730d65505f0b3d39274132
+          path: .dev/headless-upstream
+      - name: Populate the host's required Rust submodule
+        if: runner.os != 'Windows'
+        run: git -C .dev/headless-upstream submodule update --init ecosystem/morphir-rust
+      - name: Install pinned host compiler
+        if: runner.os != 'Windows'
+        run: mise install rust@1.98.1
+      - name: Build actual authenticated host and installed artifact producer
+        if: runner.os != 'Windows'
+        run: mise exec rust@1.98.1 -- moonx scripts/headless-host.mbtx .dev/headless-upstream
+      - name: Qualify release Node CLI and installed npm package
+        run: bun run --cwd apps/morphir test js
+      - name: Qualify release native CLI
+        run: bun run --cwd apps/morphir test native
+      - name: Retain independent model reports and source receipts
+        if: always() && runner.os != 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: headless-model-reports-${{ matrix.os }}
+          path: .dev/headless-model-mck-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn

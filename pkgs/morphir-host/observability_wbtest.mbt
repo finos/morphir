@@ -16,7 +16,11 @@ test "bounded telemetry queue counts dropped records while aggregating all stage
     dropped: 0,
     closed: false,
   }
-  let observer = session.observer()
+  // The default WasmGC test runner has no embedding ABI. Supply clocks for
+  // these pure queue/metric tests instead of retaining the platform imports.
+  let observer = session.observer_with_clocks(fn() { 1.0 }, fn() { 2.0 })
+  assert_eq((observer.monotonic)(), 1.0)
+  assert_eq((observer.wall)(), 2.0)
   let event : @observe.Observation = {
     context: {
       run_id: "test",
@@ -63,7 +67,7 @@ test "metric descriptors bound cardinality and account for series overflow witho
     dropped: 0,
     closed: false,
   }
-  let observer = session.observer()
+  let observer = session.observer_with_clocks(fn() { 1.0 }, fn() { 2.0 })
   let mut emitted = 0
   for
     stage in [

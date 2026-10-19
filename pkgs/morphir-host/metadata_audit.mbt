@@ -126,6 +126,17 @@ pub fn MetadataAuditSink::noop() -> MetadataAuditSink {
 pub fn TelemetrySession::metadata_audit_sink(
   self : TelemetrySession,
 ) -> MetadataAuditSink {
+  self.metadata_audit_sink_with_clocks(
+    @platform.monotonic_seconds, @platform.wall_seconds,
+  )
+}
+
+///|
+fn TelemetrySession::metadata_audit_sink_with_clocks(
+  self : TelemetrySession,
+  monotonic : () -> Double,
+  wall : () -> Double,
+) -> MetadataAuditSink {
   {
     enabled: fn() { self.path is Some(_) && !self.closed && self.record_traces },
     try_record: fn(record) {
@@ -144,8 +155,8 @@ pub fn TelemetrySession::metadata_audit_sink(
       self.audit_records.push(record)
       @observe.Accepted
     },
-    monotonic: @platform.monotonic_seconds,
-    wall: @platform.wall_seconds,
+    monotonic,
+    wall,
     run_id: self.run_id,
   }
 }

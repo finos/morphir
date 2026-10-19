@@ -1,0 +1,12 @@
+{
+  "fixtureVersion": "1.0.0",
+  "provenance": "Authored from v4 Library/ExpressionBody/IntegerLiteral and existing engine checkpoint/MEP envelope contracts before observing generate output",
+  "entry": "generated:main#answer",
+  "expectedResult": "42",
+  "readablePublicName": "answer",
+  "moduleName": "morphir-generated/p_67656e657261746564",
+  "checkpointUnitId": "retained-logical",
+  "mepUnitId": "mep",
+  "sourceContext": "Ion annotations, exact decimal scale, opaque blob bytes and provenance survive in the binary symbols sidecar",
+  "lossyRefusal": "Rich input to a target without a source-context carrier refuses before publication"
+}

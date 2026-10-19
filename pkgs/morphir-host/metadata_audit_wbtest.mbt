@@ -43,7 +43,9 @@ test "audit evidence is typed bounded and separate from ordinary metric dimensio
     dropped: 0,
     closed: false,
   }
-  let sink = session.metadata_audit_sink()
+  let sink = session.metadata_audit_sink_with_clocks(fn() { 1.0 }, fn() { 2.0 })
+  assert_eq((sink.monotonic)(), 1.0)
+  assert_eq((sink.wall)(), 2.0)
   let record = an_audit_record()
   assert_true(record.valid())
   assert_false({ ..record, code: "secret body /private/path", }.valid())

@@ -36,3 +36,12 @@ test('local binary encoding preserves all bytes in file and project exports', ()
     assert.throws(()=>artifactBytes([{...binary,content}]),/encoding/);
   }
 });
+
+test('original tree archive uses captured bytes and explicit empty directories', () => {
+  const raw = Buffer.from('\ufeff# source\r\nvalue: 9007199254740993\r\n');
+  const archive = projectArchive({ files: [{ path: 'manifest.yaml', content: raw.toString('base64'), binary: true, encoding: 'base64' }], directories: ['empty'] });
+  const files = unzipSync(archive);
+  assert.deepEqual(Buffer.from(files['manifest.yaml']!), raw);
+  assert.equal(files['empty/']!.length, 0);
+  assert.throws(() => projectArchive({ files: [{ path: 'manifest.yaml', content: '', binary: false }], directories: ['../escape'] }), /directory/);
+});

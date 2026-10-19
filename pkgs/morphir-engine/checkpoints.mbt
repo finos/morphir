@@ -94,13 +94,17 @@ pub fn Plan::boundaries(self : Plan) -> Array[BoundarySelection] {
     for source in job.paths {
       result.push({
         source,
-        unit_id: stem(
-          if job.source_root == "" {
-            source
-          } else {
-            source[job.source_root.length() + 1:].to_owned()
-          },
-        ),
+        unit_id: match job.retained_unit {
+          Some(unit) => unit.id
+          None =>
+            stem(
+              if job.source_root == "" {
+                source
+              } else {
+                source[job.source_root.length() + 1:].to_owned()
+              },
+            )
+        },
         input_format: match job.boundary {
           Some(b) =>
             match b.input {

@@ -1,0 +1,10 @@
+supported_targets = "js"
+
+pkgtype(kind: "executable")
+
+import {
+  "finos/morphir-ir/wire",
+  "moonrockz/ion/ion",
+  "moonrockz/ion/text" @ion_text,
+  "moonrockz/ion/binary" @ion_binary,
+}

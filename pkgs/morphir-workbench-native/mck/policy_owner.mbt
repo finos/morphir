@@ -129,7 +129,7 @@ fn Runtime::selected_action(self : Runtime, action : Json) -> Unit {
   try {
     guard self.aliases.reverse.get(name) is Some(identity) &&
       self.services.get(host_scope(identity)) is Some(service) else {
-      raise @executions.Invalid("workbench.host_selection_mismatch")
+      raise @executions.Invalid::Invalid("workbench.host_selection_mismatch")
     }
     let accepted = service.host.scheme_selection(identity)
     let expected = selected_context(accepted.projection())
@@ -147,14 +147,14 @@ fn Runtime::selected_action(self : Runtime, action : Json) -> Unit {
       guard field(rejected, "ok") == Json::boolean(false) else {
         abort("native policy owner MCK: owner claimed a mismatched selection")
       }
-      raise @executions.Invalid(text(field(rejected, "code")))
+      raise @executions.Invalid::Invalid(text(field(rejected, "code")))
     }
     if op == "claim" {
       let request = service.host.claim_selected(accepted)
       self.claims[name] = Retained(request)
     } else {
       guard self.claims.get(name) is Some(Retained(request)) else {
-        raise @executions.Invalid("workbench.host_already_claimed")
+        raise @executions.Invalid::Invalid("workbench.host_already_claimed")
       }
       self.claims[name] = Consumed
       let result = @executions.evaluate_scheme_claim(request)
@@ -164,11 +164,11 @@ fn Runtime::selected_action(self : Runtime, action : Json) -> Unit {
       )
       if field(completion, "ok") != Json::boolean(true) {
         outcomes = Json::null()
-        raise @executions.Invalid(text(field(completion, "code")))
+        raise @executions.Invalid::Invalid(text(field(completion, "code")))
       }
     }
   } catch {
-    @executions.Invalid(reason) => code = Json::string(reason)
+    @executions.Invalid::Invalid(reason) => code = Json::string(reason)
     @owner.Invalid(reason) => code = Json::string(reason)
     _ => code = Json::string("workbench.host_selection_mismatch")
   }

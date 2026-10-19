@@ -214,3 +214,11 @@ fn retain_input(
   guard required.is_empty() else { raise Refused("unknown_required_guarantee") }
   { input, bytes, model, }
 }
+
+///|
+/// Decode the existing MEP MorphirModel value through its maintained semantic
+/// boundary. Transport envelopes, payload hashes and guarantees remain separate.
+/// The caller must retain the source envelope when preserving unknown enrichments.
+pub fn decode_morphir_model(root : @ion.IonValue) -> @generator.Input raise {
+  rich_input(root)
+}

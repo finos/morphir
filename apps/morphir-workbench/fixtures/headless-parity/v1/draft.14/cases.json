@@ -1,0 +1,1253 @@
+{
+  "formatVersion": "0.1.0-draft.14",
+  "cases": [
+{
+      "id": "cancel-action-does-not-acknowledge",
+      "operation": "reduce-execution",
+      "format": "json",
+      "input": {
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "call"
+        ],
+        "initial": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "actions": [
+          {
+            "op": "cancel-action"
+          },
+          {
+            "op": "cancel-action"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": true,
+          "cancelAction": "send",
+          "observations": [
+            {
+              "op": "cancel-action",
+              "status": "local",
+              "view": {
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "send"
+              }
+            },
+            {
+              "op": "cancel-action",
+              "status": "local",
+              "view": {
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "send"
+              }
+            }
+          ]
+        }
+      }
+    },
+{
+      "id": "ack-then-returned-cleanup",
+      "operation": "reduce-execution",
+      "format": "json",
+      "input": {
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "call"
+        ],
+        "initial": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "actions": [
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 2,
+              "state": "running",
+              "cancelRequested": true,
+              "outcomes": null
+            }
+          },
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 3,
+              "state": "terminal",
+              "cancelRequested": true,
+              "outcomes": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "call",
+                    "outcome": {
+                      "status": "returned",
+                      "value": {
+                        "type": "int",
+                        "value": "42"
+                      }
+                    }
+                  }
+                ],
+                "cleanup": {
+                  "stage": "cleanup",
+                  "code": "provider.dispose",
+                  "message": "Disposal failed"
+                },
+                "extensions": null
+              }
+            }
+          },
+          {
+            "op": "cancel-action"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 3,
+            "state": "terminal",
+            "cancelRequested": true,
+            "outcomes": {
+              "contractVersion": "0.1.0-draft.5",
+              "calls": [
+                {
+                  "id": "call",
+                  "outcome": {
+                    "status": "returned",
+                    "value": {
+                      "type": "int",
+                      "value": "42"
+                    }
+                  }
+                }
+              ],
+              "cleanup": {
+                "stage": "cleanup",
+                "code": "provider.dispose",
+                "message": "Disposal failed"
+              },
+              "extensions": null
+            }
+          },
+          "connected": true,
+          "cancelAction": "already-terminal",
+          "observations": [
+            {
+              "op": "observe",
+              "status": "advanced",
+              "view": {
+                "sequence": 2,
+                "state": "running",
+                "cancelRequested": true,
+                "connected": true,
+                "cancelAction": "pending"
+              }
+            },
+            {
+              "op": "observe",
+              "status": "advanced",
+              "view": {
+                "sequence": 3,
+                "state": "terminal",
+                "cancelRequested": true,
+                "connected": true,
+                "cancelAction": "already-terminal"
+              }
+            },
+            {
+              "op": "cancel-action",
+              "status": "local",
+              "view": {
+                "sequence": 3,
+                "state": "terminal",
+                "cancelRequested": true,
+                "connected": true,
+                "cancelAction": "already-terminal"
+              }
+            }
+          ]
+        }
+      }
+    },
+{
+      "id": "ack-then-cancelled",
+      "operation": "reduce-execution",
+      "format": "json",
+      "input": {
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "call"
+        ],
+        "initial": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "actions": [
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 2,
+              "state": "running",
+              "cancelRequested": true,
+              "outcomes": null
+            }
+          },
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 3,
+              "state": "terminal",
+              "cancelRequested": true,
+              "outcomes": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "call",
+                    "outcome": {
+                      "status": "cancelled"
+                    }
+                  }
+                ],
+                "cleanup": null,
+                "extensions": null
+              }
+            }
+          },
+          {
+            "op": "cancel-action"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 3,
+            "state": "terminal",
+            "cancelRequested": true,
+            "outcomes": {
+              "contractVersion": "0.1.0-draft.5",
+              "calls": [
+                {
+                  "id": "call",
+                  "outcome": {
+                    "status": "cancelled"
+                  }
+                }
+              ],
+              "cleanup": null,
+              "extensions": null
+            }
+          },
+          "connected": true,
+          "cancelAction": "already-terminal",
+          "observations": [
+            {
+              "op": "observe",
+              "status": "advanced",
+              "view": {
+                "sequence": 2,
+                "state": "running",
+                "cancelRequested": true,
+                "connected": true,
+                "cancelAction": "pending"
+              }
+            },
+            {
+              "op": "observe",
+              "status": "advanced",
+              "view": {
+                "sequence": 3,
+                "state": "terminal",
+                "cancelRequested": true,
+                "connected": true,
+                "cancelAction": "already-terminal"
+              }
+            },
+            {
+              "op": "cancel-action",
+              "status": "local",
+              "view": {
+                "sequence": 3,
+                "state": "terminal",
+                "cancelRequested": true,
+                "connected": true,
+                "cancelAction": "already-terminal"
+              }
+            }
+          ]
+        }
+      }
+    },
+{
+      "id": "disconnect-retains-running-offline-observe-rejects",
+      "operation": "reduce-execution",
+      "format": "json",
+      "input": {
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "call"
+        ],
+        "initial": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "actions": [
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "outcomes": null
+            }
+          },
+          {
+            "op": "disconnect"
+          },
+          {
+            "op": "cancel-action"
+          },
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 2,
+              "state": "terminal",
+              "cancelRequested": false,
+              "outcomes": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "call",
+                    "outcome": {
+                      "status": "returned",
+                      "value": {
+                        "type": "int",
+                        "value": "42"
+                      }
+                    }
+                  }
+                ],
+                "cleanup": null,
+                "extensions": null
+              }
+            }
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 1,
+            "state": "running",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": false,
+          "cancelAction": "disconnected",
+          "observations": [
+            {
+              "op": "observe",
+              "status": "advanced",
+              "view": {
+                "sequence": 1,
+                "state": "running",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "send"
+              }
+            },
+            {
+              "op": "disconnect",
+              "status": "local",
+              "view": {
+                "sequence": 1,
+                "state": "running",
+                "cancelRequested": false,
+                "connected": false,
+                "cancelAction": "disconnected"
+              }
+            },
+            {
+              "op": "cancel-action",
+              "status": "local",
+              "view": {
+                "sequence": 1,
+                "state": "running",
+                "cancelRequested": false,
+                "connected": false,
+                "cancelAction": "disconnected"
+              }
+            },
+            {
+              "op": "observe",
+              "status": "invalid",
+              "view": {
+                "sequence": 1,
+                "state": "running",
+                "cancelRequested": false,
+                "connected": false,
+                "cancelAction": "disconnected"
+              },
+              "code": "workbench.execution_disconnected"
+            }
+          ]
+        }
+      }
+    },
+{
+      "id": "same-session-reconnect-reconcile",
+      "operation": "reduce-execution",
+      "format": "json",
+      "input": {
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "call"
+        ],
+        "initial": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "actions": [
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "outcomes": null
+            }
+          },
+          {
+            "op": "disconnect"
+          },
+          {
+            "op": "reconnect",
+            "offer": {
+              "profile": "morphir/workbench/executions",
+              "contractVersion": "0.2.0-draft.1",
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "operations": [
+                "query",
+                "cancel"
+              ]
+            }
+          },
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "outcomes": null
+            }
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 1,
+            "state": "running",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": true,
+          "cancelAction": "send",
+          "observations": [
+            {
+              "op": "observe",
+              "status": "advanced",
+              "view": {
+                "sequence": 1,
+                "state": "running",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "send"
+              }
+            },
+            {
+              "op": "disconnect",
+              "status": "local",
+              "view": {
+                "sequence": 1,
+                "state": "running",
+                "cancelRequested": false,
+                "connected": false,
+                "cancelAction": "disconnected"
+              }
+            },
+            {
+              "op": "reconnect",
+              "status": "local",
+              "view": {
+                "sequence": 1,
+                "state": "running",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "send"
+              }
+            },
+            {
+              "op": "observe",
+              "status": "replay",
+              "view": {
+                "sequence": 1,
+                "state": "running",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "send"
+              }
+            }
+          ]
+        }
+      }
+    },
+{
+      "id": "receipt-authority-providerId",
+      "operation": "reduce-execution",
+      "format": "json",
+      "input": {
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "call"
+        ],
+        "initial": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "actions": [
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "wrong",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 1,
+              "state": "running",
+              "cancelRequested": false,
+              "outcomes": null
+            }
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 0,
+            "state": "submitted",
+            "cancelRequested": false,
+            "outcomes": null
+          },
+          "connected": true,
+          "cancelAction": "send",
+          "observations": [
+            {
+              "op": "observe",
+              "status": "invalid",
+              "view": {
+                "sequence": 0,
+                "state": "submitted",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "send"
+              },
+              "code": "workbench.execution_identity"
+            }
+          ]
+        }
+      }
+    },
+{
+      "id": "same-sequence-cleanup-conflict",
+      "operation": "reduce-execution",
+      "format": "json",
+      "input": {
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "call"
+        ],
+        "initial": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "actions": [
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 1,
+              "state": "terminal",
+              "cancelRequested": false,
+              "outcomes": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "call",
+                    "outcome": {
+                      "status": "cancelled"
+                    }
+                  }
+                ],
+                "cleanup": null,
+                "extensions": null
+              }
+            }
+          },
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 1,
+              "state": "terminal",
+              "cancelRequested": false,
+              "outcomes": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "call",
+                    "outcome": {
+                      "status": "cancelled"
+                    }
+                  }
+                ],
+                "cleanup": {
+                  "stage": "cleanup",
+                  "code": "provider.dispose",
+                  "message": "Disposal failed"
+                },
+                "extensions": null
+              }
+            }
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 1,
+            "state": "terminal",
+            "cancelRequested": false,
+            "outcomes": {
+              "contractVersion": "0.1.0-draft.5",
+              "calls": [
+                {
+                  "id": "call",
+                  "outcome": {
+                    "status": "cancelled"
+                  }
+                }
+              ],
+              "cleanup": null,
+              "extensions": null
+            }
+          },
+          "connected": true,
+          "cancelAction": "already-terminal",
+          "observations": [
+            {
+              "op": "observe",
+              "status": "advanced",
+              "view": {
+                "sequence": 1,
+                "state": "terminal",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "already-terminal"
+              }
+            },
+            {
+              "op": "observe",
+              "status": "invalid",
+              "view": {
+                "sequence": 1,
+                "state": "terminal",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "already-terminal"
+              },
+              "code": "workbench.execution_conflict"
+            }
+          ]
+        }
+      }
+    },
+{
+      "id": "returned-result-err-and-opaque-metadata-retained",
+      "operation": "reduce-execution",
+      "format": "json",
+      "input": {
+        "offer": {
+          "profile": "morphir/workbench/executions",
+          "contractVersion": "0.2.0-draft.1",
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "operations": [
+            "query",
+            "cancel"
+          ]
+        },
+        "identity": {
+          "hostId": "host",
+          "sessionId": "session",
+          "providerId": "provider",
+          "executionId": "execution",
+          "snapshotId": "snapshot"
+        },
+        "calls": [
+          "call"
+        ],
+        "initial": {
+          "contractVersion": "0.2.0-draft.1",
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "sequence": 0,
+          "state": "submitted",
+          "cancelRequested": false,
+          "outcomes": null
+        },
+        "actions": [
+          {
+            "op": "observe",
+            "receipt": {
+              "contractVersion": "0.2.0-draft.1",
+              "identity": {
+                "hostId": "host",
+                "sessionId": "session",
+                "providerId": "provider",
+                "executionId": "execution",
+                "snapshotId": "snapshot"
+              },
+              "sequence": 1,
+              "state": "terminal",
+              "cancelRequested": false,
+              "outcomes": {
+                "contractVersion": "0.1.0-draft.5",
+                "calls": [
+                  {
+                    "id": "call",
+                    "outcome": {
+                      "status": "returned",
+                      "value": {
+                        "type": "result",
+                        "case": "err",
+                        "value": {
+                          "type": "text",
+                          "units": [
+                            69,
+                            114,
+                            114
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ],
+                "cleanup": {
+                  "stage": "cleanup",
+                  "code": "provider.dispose",
+                  "message": "Disposal failed"
+                },
+                "extensions": {
+                  "format": "ion-binary",
+                  "bytes": [
+                    224,
+                    1,
+                    0,
+                    234,
+                    15
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "identity": {
+            "hostId": "host",
+            "sessionId": "session",
+            "providerId": "provider",
+            "executionId": "execution",
+            "snapshotId": "snapshot"
+          },
+          "receipt": {
+            "contractVersion": "0.2.0-draft.1",
+            "identity": {
+              "hostId": "host",
+              "sessionId": "session",
+              "providerId": "provider",
+              "executionId": "execution",
+              "snapshotId": "snapshot"
+            },
+            "sequence": 1,
+            "state": "terminal",
+            "cancelRequested": false,
+            "outcomes": {
+              "contractVersion": "0.1.0-draft.5",
+              "calls": [
+                {
+                  "id": "call",
+                  "outcome": {
+                    "status": "returned",
+                    "value": {
+                      "type": "result",
+                      "case": "err",
+                      "value": {
+                        "type": "text",
+                        "units": [
+                          69,
+                          114,
+                          114
+                        ]
+                      }
+                    }
+                  }
+                }
+              ],
+              "cleanup": {
+                "stage": "cleanup",
+                "code": "provider.dispose",
+                "message": "Disposal failed"
+              },
+              "extensions": {
+                "format": "ion-binary",
+                "bytes": [
+                  224,
+                  1,
+                  0,
+                  234,
+                  15
+                ]
+              }
+            }
+          },
+          "connected": true,
+          "cancelAction": "already-terminal",
+          "observations": [
+            {
+              "op": "observe",
+              "status": "advanced",
+              "view": {
+                "sequence": 1,
+                "state": "terminal",
+                "cancelRequested": false,
+                "connected": true,
+                "cancelAction": "already-terminal"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

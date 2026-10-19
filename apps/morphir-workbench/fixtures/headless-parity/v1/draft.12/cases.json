@@ -1,0 +1,450 @@
+{
+  "formatVersion": "0.1.0-draft.12",
+  "cases": [
+{
+      "id": "selected-permissive-unused-hole-int42",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"doc\":\"Valid unused hole\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "extensions": null,
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "returned",
+                  "value": {
+                    "type": "int",
+                    "value": "42"
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        }
+      }
+    },
+{
+      "id": "selected-strict-rejects-unused-hole",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}},\"unused\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"unused\"}}}}}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "extensions": null,
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "strict"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "strict",
+          "runtime": "scheme",
+          "boundary": null,
+          "outcomes": null,
+          "failure": {
+            "stage": "plan",
+            "code": "moonbit.incomplete_body"
+          }
+        }
+      }
+    },
+{
+      "id": "execute-untaken-hole",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":false,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        },
+        "extensions": null
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "returned",
+                  "value": {
+                    "type": "int",
+                    "value": "42"
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        }
+      }
+    },
+{
+      "id": "execute-reached-hole",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"IfThenElse\":{\"condition\":true,\"then\":{\"Hole\":{\"reason\":{\"DeletedDuringRefactor\":{\"tx-id\":\"fixed-unsupported\"}}}},\"else\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        },
+        "extensions": null
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "failed",
+                  "failure": {
+                    "stage": "evaluate",
+                    "code": "execution.unsupported_reached",
+                    "message": "Unsupported operation reached"
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        }
+      }
+    },
+{
+      "id": "execute-exact-int-json",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{\"argument\":\"morphir/SDK:basics#int\"},\"outputType\":\"morphir/SDK:basics#int\",\"body\":\"argument\"}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[{\"type\":\"int\",\"value\":\"9007199254740993\"}]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        },
+        "extensions": null
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[{\"type\":\"int\"}],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "returned",
+                  "value": {
+                    "type": "int",
+                    "value": "9007199254740993"
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        }
+      }
+    },
+{
+      "id": "execute-exact-negative-zero-json",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{\"argument\":\"morphir/SDK:basics#float\"},\"outputType\":\"morphir/SDK:basics#float\",\"body\":\"argument\"}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[{\"type\":\"float64\",\"bits\":\"9223372036854775808\"}]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        },
+        "extensions": null
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[{\"type\":\"float64\"}],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"float64\"}}]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "returned",
+                  "value": {
+                    "type": "float64",
+                    "bits": "9223372036854775808"
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        }
+      }
+    },
+{
+      "id": "execute-exact-decimal-json",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{\"argument\":\"morphir/SDK:decimal#decimal\"},\"outputType\":\"morphir/SDK:decimal#decimal\",\"body\":\"argument\"}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[{\"type\":\"decimal\",\"coefficient\":\"123400\",\"exponent\":-4}]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        },
+        "extensions": null
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[{\"type\":\"decimal\"}],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"decimal\"}}]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "returned",
+                  "value": {
+                    "type": "decimal",
+                    "coefficient": "1234",
+                    "exponent": -2
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        }
+      }
+    },
+{
+      "id": "selected-permissive-wrong-tagged-argument-rejected",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Selected public Int42\",\"ExpressionBody\":{\"inputTypes\":{\"x\":\"morphir/SDK:basics#int\"},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":42}}}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[{\"type\":\"bool\",\"value\":true}]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "extensions": null,
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": null,
+          "outcomes": null,
+          "failure": {
+            "stage": "plan",
+            "code": "execution.wrong_type"
+          }
+        }
+      }
+    },
+{
+      "id": "execute-wrong-output-cannot-be-published",
+      "operation": "run-capability-policy",
+      "format": "json",
+      "input": {
+        "model": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"selected\",\"dependencies\":{},\"def\":{\"modules\":{\"main\":{\"Public\":{\"types\":{},\"values\":{\"answer\":{\"Public\":{\"doc\":\"Fixed capability-policy fixture\",\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":true}}}}}}}}}}}",
+        "calls": [
+          {
+            "id": "first",
+            "entry": "selected:main#answer",
+            "inputs": {
+              "format": "json",
+              "source": "[]"
+            }
+          }
+        ],
+        "runtime": "scheme",
+        "admission": {
+          "profile": "morphir/workbench/admission",
+          "contractVersion": "0.1.0-draft.1",
+          "policy": "permissive"
+        },
+        "extensions": null
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "mode": "execute",
+          "policy": "permissive",
+          "runtime": "scheme",
+          "boundary": "{\"definitions\":[],\"entries\":[{\"inputs\":[],\"name\":\"selected:main#answer\",\"output\":{\"type\":\"int\"}}]}",
+          "outcomes": {
+            "contractVersion": "0.1.0-draft.5",
+            "calls": [
+              {
+                "id": "first",
+                "outcome": {
+                  "status": "failed",
+                  "failure": {
+                    "stage": "evaluate",
+                    "code": "execution.evaluator_type",
+                    "message": "Invalid typed evaluation result"
+                  }
+                }
+              }
+            ],
+            "cleanup": null,
+            "extensions": null
+          },
+          "failure": null
+        }
+      }
+    }
+  ]
+}

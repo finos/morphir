@@ -29,3 +29,23 @@ test "MCK JSON parsing preserves opaque objects and rejects duplicate or trailin
     )
   }
 }
+
+///|
+test "model evidence has a separate complete 3-MiB envelope budget" {
+  let expanded = " ".repeat(2097152) + "0"
+  assert_eq(model_mck_json(expanded), ({ "ok": true, "value": 0 } : Json))
+  assert_eq(
+    mck_json(expanded),
+    ({ "ok": false, "code": "workbench.mck_frame_limit" } : Json),
+  )
+  assert_eq(
+    model_mck_json(" ".repeat(3145727) + "0"),
+    ({ "ok": true, "value": 0 } : Json),
+  )
+  for source in [" ".repeat(3145728) + "0", "\"" + "😀".repeat(786432) + "\""] {
+    assert_eq(
+      model_mck_json(source),
+      ({ "ok": false, "code": "workbench.mck_frame_limit" } : Json),
+    )
+  }
+}

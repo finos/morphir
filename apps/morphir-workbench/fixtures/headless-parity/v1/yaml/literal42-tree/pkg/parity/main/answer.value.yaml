@@ -1,0 +1,10 @@
+formatVersion: 4
+name: answer
+def:
+  Public:
+    ExpressionBody:
+      inputTypes: {}
+      outputType: morphir/SDK:basics#int
+      body:
+        Literal:
+          IntegerLiteral: 42

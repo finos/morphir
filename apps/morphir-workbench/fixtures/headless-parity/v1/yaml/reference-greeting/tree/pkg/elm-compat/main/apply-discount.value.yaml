@@ -1,0 +1,111 @@
+formatVersion: 4
+name: apply-discount
+def:
+  Public:
+    doc: " Apply a percentage discount to a price.\n\n    applyDiscount 10 100.0 == 90.0\n\n"
+    ExpressionBody:
+      inputTypes:
+        discount-percent: morphir/SDK:basics#float
+        original-price: morphir/SDK:basics#float
+      outputType: morphir/SDK:basics#float
+      body:
+        LetDefinition:
+          attributes:
+            inferredType: morphir/SDK:basics#float
+          name: discount
+          definition:
+            ExpressionBody:
+              inputTypes: {}
+              outputType: t-8
+              body:
+                Apply:
+                  attributes:
+                    inferredType: morphir/SDK:basics#float
+                  function:
+                    Apply:
+                      attributes:
+                        inferredType:
+                          Function:
+                            parameterType: morphir/SDK:basics#float
+                            returnType: morphir/SDK:basics#float
+                      function:
+                        Reference:
+                          attributes:
+                            inferredType:
+                              Function:
+                                parameterType: morphir/SDK:basics#float
+                                returnType:
+                                  Function:
+                                    parameterType: morphir/SDK:basics#float
+                                    returnType: morphir/SDK:basics#float
+                          fqname: morphir/SDK:basics#multiply
+                      argument:
+                        Variable:
+                          attributes:
+                            inferredType: morphir/SDK:basics#float
+                          name: original-price
+                  argument:
+                    Apply:
+                      attributes:
+                        inferredType: morphir/SDK:basics#float
+                      function:
+                        Apply:
+                          attributes:
+                            inferredType:
+                              Function:
+                                parameterType: morphir/SDK:basics#float
+                                returnType: morphir/SDK:basics#float
+                          function:
+                            Reference:
+                              attributes:
+                                inferredType:
+                                  Function:
+                                    parameterType: morphir/SDK:basics#float
+                                    returnType:
+                                      Function:
+                                        parameterType: morphir/SDK:basics#float
+                                        returnType: morphir/SDK:basics#float
+                              fqname: morphir/SDK:basics#divide
+                          argument:
+                            Variable:
+                              attributes:
+                                inferredType: morphir/SDK:basics#float
+                              name: discount-percent
+                      argument:
+                        Literal:
+                          attributes:
+                            inferredType: morphir/SDK:basics#float
+                          literal:
+                            FloatLiteral: 100.0
+          in:
+            Apply:
+              attributes:
+                inferredType: morphir/SDK:basics#float
+              function:
+                Apply:
+                  attributes:
+                    inferredType:
+                      Function:
+                        parameterType: morphir/SDK:basics#float
+                        returnType: morphir/SDK:basics#float
+                  function:
+                    Reference:
+                      attributes:
+                        inferredType:
+                          Function:
+                            parameterType: morphir/SDK:basics#float
+                            returnType:
+                              Function:
+                                parameterType: morphir/SDK:basics#float
+                                returnType: morphir/SDK:basics#float
+                      fqname: morphir/SDK:basics#subtract
+                  argument:
+                    Variable:
+                      attributes:
+                        inferredType: morphir/SDK:basics#float
+                      name: original-price
+              argument:
+                Variable:
+                  attributes:
+                    inferredType: morphir/SDK:basics#float
+                  name: discount

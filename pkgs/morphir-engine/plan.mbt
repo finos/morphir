@@ -32,6 +32,7 @@ priv struct ProjectJob {
 
 ///|
 priv struct Job {
+  retained_unit : @data.IRUnit?
   root : String
   source_root : String
   destination : String
@@ -529,6 +530,7 @@ pub fn Engine::plan(
       request: effective.metadata_provider_request(),
     })
     jobs.push({
+      retained_unit: None,
       root: selected.root,
       source_root,
       destination: output,
@@ -647,8 +649,13 @@ pub fn Engine::execute_content(
           raise @configuration.Invalid("Cancelled")
         }
         let mut checkpoint_unit : @data.IRUnit? = None
-        let unit_id = match job.project {
-          Some(project) => {
+        let unit_id = match (job.retained_unit, job.project) {
+          (Some(unit), _) => {
+            checkpoint_unit = Some(unit)
+            stage = "frontend"
+            unit.id
+          }
+          (None, Some(project)) => {
             let sources : Array[Source] = []
             for source_path in job.paths {
               diagnostic_path = source_path
@@ -677,7 +684,7 @@ pub fn Engine::execute_content(
             )
             project.unit_id
           }
-          None => {
+          (None, None) => {
             let relative_path = relative(job.source_root, path)
             let content = read(path, job.read_bytes)
             let unit_id = stem(relative_path)
@@ -843,7 +850,14 @@ pub fn Engine::execute_content(
           }
           validate_batch(
             batch,
-            join(job.destination, unit_id),
+            join(
+              job.destination,
+              if job.retained_unit is Some(_) {
+                "model"
+              } else {
+                unit_id
+              },
+            ),
             path,
             job.build_policy,
             artifacts,

@@ -1,0 +1,7 @@
+﻿# Original retained presentation
+distribution:
+  Library:
+    packageName: "example/mep-fixture" # quoted name
+    dependencies: {}
+    def: {modules: {}}
+formatVersion: '4.0.0'

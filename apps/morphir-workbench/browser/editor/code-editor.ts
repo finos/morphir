@@ -3,6 +3,7 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { markSet, position } from './marks.ts';
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language';
+import { yaml } from '@codemirror/legacy-modes/mode/yaml';
 import { scheme } from '@codemirror/legacy-modes/mode/scheme';
 import { scala } from '@codemirror/legacy-modes/mode/clike';
 import { elm } from '@codemirror/legacy-modes/mode/elm';
@@ -51,6 +52,7 @@ function languageSupport(id: string) {
     case 'scala': return StreamLanguage.define(scala);
     case 'elm': return StreamLanguage.define(elm);
     case 'json': return json();
+    case 'yaml': case 'yml': return StreamLanguage.define(yaml);
     case 'ion': return StreamLanguage.define(ion);
     case 'moonbit': case 'mbt': return StreamLanguage.define(moonbit);
     case 'javascript': case 'js': return javascript();

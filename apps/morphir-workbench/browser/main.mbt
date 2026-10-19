@@ -35,8 +35,16 @@ extern "js" fn invalidate_artifacts() =
   #| () => globalThis.morphirWorkbench.invalidateArtifacts()
 
 ///|
-extern "js" fn import_model(attempt : String, receive : (String) -> Unit) =
-  #| (attempt, receive) => globalThis.morphirWorkbench.importModel(attempt, receive)
+extern "js" fn import_model_tree(attempt : String, receive : (String) -> Unit) =
+  #| (attempt, receive) => globalThis.morphirWorkbench.importModelTree(attempt, receive)
+
+///|
+extern "js" fn import_model(
+  attempt : String,
+  format : String,
+  receive : (String) -> Unit,
+) =
+  #| (attempt, format, receive) => globalThis.morphirWorkbench.importModel(attempt, format, receive)
 
 ///|
 extern "js" fn cancel_model_open(attempt : String) =
@@ -273,6 +281,7 @@ struct Model {
   reveal : String
   reveal_nonce : Int32
   source_profile : String
+  model_format : @data.ModelFormat?
   profile_choices : Map[String, String]
   explorer_raw : Bool
   collapsed_modules : Array[String]
@@ -375,6 +384,8 @@ enum Msg {
   Cancel
   ResumeExecution
   Import
+  ImportTree
+  ImportFormat(String)
   Imported(@document.OpenAttempt, String)
   ReceiveModel(@document.OpenAttempt, Int32, Int32, String, String)
   Export
@@ -493,6 +504,7 @@ fn initial() -> Model {
     reveal: "",
     reveal_nonce: 0,
     source_profile: "",
+    model_format: None,
     profile_choices: Map([]),
     explorer_raw: false,
     collapsed_modules: [],
@@ -2383,11 +2395,16 @@ fn update_core(
         @cmd.none,
       )
     DownloadOriginal(revision) => {
-      guard model.document.original_for(revision) is Some(original) else {
-        return (model, @cmd.none)
+      let (artifacts, project) = match
+        (
+          model.document.original_for(revision),
+          model.document.original_tree_for(revision),
+        ) {
+        (Some(original), _) => (Json::array([original.download()]), false)
+        (_, Some(tree)) => (tree.download(), true)
+        _ => return (model, @cmd.none)
       }
-      let artifact = original.download()
-      let error = download_generated(Json::array([artifact]).stringify(), false)
+      let error = download_generated(artifacts.stringify(), project)
       let message = if error == "" {
         "Original file download started"
       } else {
@@ -3341,7 +3358,21 @@ fn update_core(
         @cmd.custom_cmd(_ => cancel_host()),
       )
     }
-    Import => {
+    ImportFormat(value) =>
+      (
+        {
+          ..model,
+          model_format: if value == "" {
+            None
+          } else {
+            Some(@data.ModelFormat::from_control(value)) catch {
+              _ => None
+            }
+          },
+        },
+        @cmd.none,
+      )
+    Import | ImportTree => {
       if model.busy && !host_execution_blocks_replacement(model) {
         return ({ ..model, status: busy_reason, }, @cmd.none)
       }
@@ -3374,9 +3405,17 @@ fn update_core(
           status: "Choose a model file…",
         },
         @cmd.custom_cmd(scheduler => {
-          import_model(attempt.to_string(), reply => {
-            scheduler.add(emit(Imported(attempt, reply)))
-          })
+          if msg is ImportTree {
+            import_model_tree(attempt.to_string(), reply => {
+              scheduler.add(emit(Imported(attempt, reply)))
+            })
+          } else {
+            import_model(
+              attempt.to_string(),
+              model.model_format.map(f => f.codec_id()).unwrap_or(""),
+              reply => scheduler.add(emit(Imported(attempt, reply))),
+            )
+          }
         }),
       )
     }
@@ -3397,11 +3436,12 @@ fn update_core(
       }
 
       let selection = @json.parse(source) catch { _ => Json::null() }
-      if text(selection, "kind") != "selected" {
+      let tree = text(selection, "kind") == "selected-tree"
+      if !tree && text(selection, "kind") != "selected" {
         let message = if text(selection, "kind") == "cancelled" {
           "Model import cancelled"
         } else if text(selection, "reason") == "oversized" {
-          "Model import exceeds the 16-MiB limit"
+          "Model import exceeds its file-count, content or path-text limit"
         } else {
           "Could not read the selected model file"
         }
@@ -3415,30 +3455,48 @@ fn update_core(
           @cmd.none,
         )
       }
-      let (filename, codec) = (
-        @document.OriginalFilename::parse(text(selection, "filename")),
-        @document.SourceCodec::parse(text(selection, "codec")),
-      ) catch {
-        _ =>
-          return (
-            {
-              ..model,
-              document: model.document.reject(attempt),
-              busy: false,
-              status: "The selected model file name or format is invalid",
-            },
-            @cmd.none,
-          )
+      let (label, request) = if tree {
+        (
+          "captured YAML tree files",
+          object([
+            ("operation", Json::string("inspect")),
+            ("source", Json::string("")),
+            ("sourceTree", field(selection, "files")),
+          ]),
+        )
+      } else {
+        let (filename, codec) = (
+          @document.OriginalFilename::parse(text(selection, "filename")),
+          @document.SourceCodec::parse(text(selection, "codec")),
+        ) catch {
+          _ =>
+            return (
+              {
+                ..model,
+                document: model.document.reject(attempt),
+                busy: false,
+                status: "The selected model file name or format is invalid",
+              },
+              @cmd.none,
+            )
+        }
+        (
+          filename.to_string(),
+          object([
+            ("operation", Json::string("inspect")),
+            ("source", Json::string("")),
+            ("sourceCodec", Json::string(codec.to_string())),
+            ("sourceBase64", field(selection, "contentBase64")),
+            ("sourceFilename", Json::string(filename.to_string())),
+          ]),
+        )
       }
       let request_id = model.request_id + 1
       let model = note(
         model,
         "Import",
         @bottom_panel.Info,
-        "Started request " +
-        request_id.to_string() +
-        " · inspecting " +
-        filename.to_string(),
+        "Started request " + request_id.to_string() + " · inspecting " + label,
       )
       (
         remember(model, {
@@ -3453,13 +3511,7 @@ fn update_core(
           emit,
           request_id,
           model.revision,
-          object([
-            ("operation", Json::string("inspect")),
-            ("source", Json::string("")),
-            ("sourceCodec", Json::string(codec.to_string())),
-            ("sourceBase64", field(selection, "contentBase64")),
-            ("sourceFilename", Json::string(filename.to_string())),
-          ]),
+          request,
           opening=Some(attempt),
         ),
       )
@@ -4135,11 +4187,44 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           on_click=emit(Request("workspace")),
           [action_icon("folder"), @html.span("Open workspace")],
         ),
+        @html.label([
+          @html.span(class="small muted", "Model format"),
+          @html.select(
+            disabled=model.busy,
+            attrs=@html.Attrs::build()
+              .aria_label("Model format")
+              .value_prop(
+                model.model_format.map(f => f.codec_id()).unwrap_or(""),
+              ),
+            on_change=emit.map(value => ImportFormat(value)),
+            [
+              ("", "Automatic"),
+              ("morphir-json", "JSON"),
+              ("morphir-yaml", "YAML"),
+              ("ion-text", "Ion text"),
+              ("ion-binary", "Ion binary"),
+            ].map(option => {
+              @html.option(
+                value=option.0,
+                selected=model.model_format.map(f => f.codec_id()).unwrap_or("") ==
+                  option.0,
+                option.1,
+              )
+            }),
+          ),
+        ]),
         @html.button(
           class="secondary",
           disabled=model.busy,
           on_click=emit(Import),
           "Import model",
+        ),
+        @html.button(
+          class="secondary",
+          disabled=model.busy,
+          title="Import captured files from a YAML tree; browser pickers do not report empty directories",
+          on_click=emit(ImportTree),
+          "Import YAML tree",
         ),
         @html.button(
           class="ghost",
@@ -4160,6 +4245,20 @@ fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
               [action_icon("download"), @html.span("Original file")],
             )
           _ => @html.span(hidden=true, "")
+        },
+        match
+          (model.document.current_revision(), model.document.original_tree()) {
+          (Some(revision), Some(_)) =>
+            @html.button(
+              class="ghost",
+              attrs=@html.Attrs::build().aria_label(
+                "Download captured original files",
+              ),
+              title="Download captured original files as ZIP; empty directories absent from the picker are not included",
+              on_click=emit(DownloadOriginal(revision)),
+              "Original files",
+            )
+          _ => @html.nothing
         },
         @html.button(
           class="ghost artifact-icon-button close-model-button",
@@ -4530,6 +4629,13 @@ fn explorer_props(model : Model) -> @explorer.Props {
     query: model.query,
     collapsed_modules: model.collapsed_modules,
     raw: model.explorer_raw,
+    original_yaml: match model.document.original() {
+      Some(original) if original.codec.format() is @data.ModelFormat::YAML =>
+        Some(@utf8.decode(original.copy_bytes()[:], ignore_bom=true)) catch {
+          _ => None
+        }
+      _ => None
+    },
   }
 }
 
@@ -4732,21 +4838,21 @@ fn host_execution_disconnected(model : Model) -> Bool {
 
 ///|
 fn host_execution_blocks_replacement(model : Model) -> Bool {
-  host_retention(model) != @document.Idle
+  host_retention(model) != @document.HostRetention::Idle
 }
 
 ///|
 fn host_retention(model : Model) -> @document.HostRetention {
   if model.submission_unknown {
-    @document.UnknownSubmission
+    @document.HostRetention::UnknownSubmission
   } else if model.host_submitting {
-    @document.Submitting
+    @document.HostRetention::Submitting
   } else if host_execution_disconnected(model) {
-    @document.Disconnected
+    @document.HostRetention::Disconnected
   } else if host_execution_pending(model) {
-    @document.Running
+    @document.HostRetention::Running
   } else {
-    @document.Idle
+    @document.HostRetention::Idle
   }
 }
 

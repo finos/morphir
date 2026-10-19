@@ -1,5 +1,7 @@
 ///|
-pub fn Registry::new(limits~ : Limits = Limits::default()) -> Registry raise {
+pub fn Registry::new(
+  limits~ : Limits = Limits::default(),
+) -> Registry raise BoundaryError {
   if limits.max_bytes <= 0 || limits.max_depth < 0 || limits.max_values <= 0 {
     raise Invalid("data.invalid_limits", "Limits must be positive")
   }
@@ -18,6 +20,20 @@ pub fn Registry::new(limits~ : Limits = Limits::default()) -> Registry raise {
         )
       }
       Text(@ir_json.write(unit.distribution))
+    },
+  })
+  registry.register("morphir-yaml", {
+    decode: fn(source, limits) raise {
+      inspect_yaml_checkpoint(
+        require_text(source.content),
+        source.unit_id,
+        limits,
+      ).unit
+    },
+    encode: fn(_, _) raise {
+      raise Invalid(
+        "data.unsupported_encoding", "YAML input is supported; export normalized JSON or retain original YAML bytes",
+      )
     },
   })
   registry.register("ion-text", {
@@ -115,6 +131,25 @@ fn inspect_json_checkpoint(
 }
 
 ///|
+fn inspect_yaml_checkpoint(
+  text : String,
+  unit_id : String,
+  limits : Limits,
+) -> CheckpointInspection raise {
+  let versioned = @yaml.read_versioned(text, limits={
+    ..@yaml.Limits::default(),
+    max_bytes: limits.max_bytes,
+    max_depth: limits.max_depth,
+    max_nodes: limits.max_values,
+    max_assembly_nodes: limits.max_values,
+  })
+  {
+    original_format_version: versioned.format_version(),
+    unit: IRUnit::new(unit_id, @migration.to_current(versioned)),
+  }
+}
+
+///|
 /// Inspect the source format before migration using the same checkpoint rules.
 /// Original bytes must be retained separately by the caller.
 pub fn Registry::inspect_checkpoint(
@@ -126,6 +161,8 @@ pub fn Registry::inspect_checkpoint(
   try {
     let inspection = if codec == "morphir-json" {
       inspect_json_checkpoint(require_text(content), "workbench")
+    } else if codec == "morphir-yaml" {
+      inspect_yaml_checkpoint(require_text(content), "workbench", self.limits)
     } else {
       let value = match (codec, content) {
         ("ion-text", Text(text)) => @ion_text.read_ion(text[:])

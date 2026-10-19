@@ -37,13 +37,27 @@ export function artifactBytes(artifacts: unknown, registry: ArtifactDownloadRegi
   return files;
 }
 
+function inventoryBytes(artifacts: unknown, registry: ArtifactDownloadRegistry = verifiedArtifactDownloads, complete = false) {
+  if (!isRecord(artifacts) || !Array.isArray(artifacts.files) || !Array.isArray(artifacts.directories)) return artifactBytes(artifacts, registry, complete);
+  if (artifacts.files.length > 4096 || artifacts.directories.length > 4096) throw new Error('Original tree exceeds the inventory budget.');
+  const files = artifactBytes(artifacts.files, registry, complete);
+  const names = new Set(Object.keys(files).map(path => path.toLowerCase()));
+  for (const directory of artifacts.directories) {
+    if (typeof directory !== 'string' || !directory || /[\\:\0]/.test(directory) || directory.startsWith('/') || directory.split('/').some(part => !part || part === '.' || part === '..')) throw new Error('Invalid original directory path.');
+    const folded = directory.toLowerCase();
+    if (names.has(folded) || [...names].some(name => folded.startsWith(name + '/'))) throw new Error('Original directory conflicts with a file.');
+    files[directory + '/'] = new Uint8Array(0);
+  }
+  return files;
+}
+
 export function projectArchive(artifacts: unknown, registry: ArtifactDownloadRegistry = verifiedArtifactDownloads) {
-  return zipSync(artifactBytes(artifacts, registry, true), { level: 0, mtime: new Date(1980, 0, 1) });
+  return zipSync(inventoryBytes(artifacts, registry, true), { level: 0, mtime: new Date(1980, 0, 1) });
 }
 
 export function downloadArtifacts(artifacts: unknown, project: boolean) {
   try {
-    const files = artifactBytes(artifacts, verifiedArtifactDownloads, project);
+    const files = inventoryBytes(artifacts, verifiedArtifactDownloads, project);
     const name = project ? 'morphir-project.zip' : Object.keys(files)[0]!.split('/').at(-1)!;
     const bytes = project ? zipSync(files, { level: 0, mtime: new Date(1980, 0, 1) }) : Object.values(files)[0]!;
     const url = URL.createObjectURL(new Blob([bytes], { type: project ? 'application/zip' : 'application/octet-stream' }));

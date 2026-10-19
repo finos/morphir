@@ -75,11 +75,13 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
       ])
     }
     let imported = if operation == "inspect" &&
+      @wire.optional(request, "sourceTree") != None {
+      stage = "model"
+      Some(inspect_tree(request))
+    } else if operation == "inspect" &&
       @wire.optional(request, "sourceCodec") != None {
       let codec = @wire.string(@wire.field(request, "sourceCodec"))
-      guard ["morphir-json", "ion-text", "ion-binary"].contains(codec) else {
-        raise @scheme.Invalid("Unsupported model codec")
-      }
+      let format = @data.ModelFormat::from_control(codec)
       let encoded = @wire.string(@wire.field(request, "sourceBase64"))
       guard encoded.length() <= 22369624 else {
         raise @scheme.Invalid("Model import exceeds the 16-MiB limit")
@@ -89,28 +91,12 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
         raise @scheme.Invalid("Model import exceeds the 16-MiB limit")
       }
       stage = "model"
-      let registry = @data.Registry::new(limits={
-        max_bytes: 16 * 1024 * 1024,
-        max_depth: 128,
-        max_values: 100000,
-      })
       Some(
-        registry.inspect_checkpoint(
-          codec,
-          if codec == "ion-binary" {
-            @data.Binary(bytes)
-          } else {
-            let text = @utf8.decode(bytes)
-            // Preserve the source bytes; remove a JSON BOM only in the parser view.
-            @data.Text(
-              if codec == "morphir-json" && text.has_prefix("\uFEFF") {
-                text[1:].to_owned()
-              } else {
-                text
-              },
-            )
-          },
-        ),
+        @data.inspect_model_source(format, bytes, limits={
+          max_bytes: 16 * 1024 * 1024,
+          max_depth: 128,
+          max_values: 100000,
+        }),
       )
     } else {
       None

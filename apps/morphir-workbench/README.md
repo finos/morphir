@@ -4,6 +4,17 @@ A shared MoonBit/Rabbita frontend for Model Explorer and Try Morphir. It runs as
 a standalone browser app and inside the [Proton desktop host](../morphir-workbench-desktop/README.md).
 The browser adapter can also use Morphir's existing connected protocol v1 when
 these assets are served by an authenticated Morphir host on the same origin.
+
+Model Explorer imports JSON, YAML, Ion text and Ion binary through shared portable
+codecs. The Model format control can select a codec explicitly; `.yaml` and `.yml`
+are recognized automatically. Original YAML has a read-only YAML editor preview,
+and original downloads retain its BOM, line endings, comments and numeric text.
+Import YAML tree captures a directory's files, including binary sidecars, and
+reads qualified v4/v3.1 layouts locally. Original files downloads those captured
+bytes as a ZIP. Browser folder pickers do not report empty directories; the UI
+does not claim to retain directories absent from that capture. The shared desktop
+frontend uses these same import and download paths.
+
 Packaged Proton also negotiates a page-bound desktop session. It
 uses browser workers for compilation and explicitly selected Local Scheme evaluation.
 On qualified macOS Apple Silicon packages, Typed invocation uses owned native

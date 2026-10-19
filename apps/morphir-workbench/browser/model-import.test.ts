@@ -106,3 +106,70 @@ test('original enrichment captures request inputs and requires successful versio
   assert.throws(() => enrich({ success: true }), /input format version/);
   assert.equal(captureOriginalRequest({ operation: 'inspect', source: '' }), null);
 });
+
+
+test('YAML selection captures BOM CRLF and explicit format through the existing owner', async () => {
+  const raw = new TextEncoder().encode('\ufeff# retained\r\nvalue: 9007199254740993\r\n');
+  for (const name of ['model.yaml', 'model.yml', 'MODEL.YAML']) {
+    const selected = await readModelFile(bytes(name, [...raw]));
+    assert.equal(selected.kind, 'selected');
+    if (selected.kind !== 'selected') throw new Error('selection refused');
+    assert.equal(selected.codec, 'morphir-yaml');
+    assert.deepEqual([...Buffer.from(selected.contentBase64, 'base64')], [...raw]);
+  }
+  const selected = await readModelFile(bytes('unknown.txt', [...raw]), 'morphir-yaml');
+  assert.equal(selected.kind, 'selected');
+  if (selected.kind !== 'selected') throw new Error('selection refused');
+  const enrich = captureOriginalRequest({ operation: 'inspect', source: '', sourceFilename: selected.filename,
+    sourceCodec: selected.codec, sourceBase64: selected.contentBase64 })!;
+  const result = enrich({ success: true, sourceFormatVersion: '4.0.0' });
+  assert.equal(result.modelSource?.kind, 'original-file');
+  if (result.modelSource?.kind !== 'original-file') throw new Error('missing original');
+  assert.deepEqual([...Buffer.from(result.modelSource.contentBase64, 'base64')], [...raw]);
+});
+
+test('directory capture keeps sidecar bytes and owns the same picker cancellation', async () => {
+  const { readModelTree, validateModelTreeInput } = await import('./model-import.ts');
+  const manifest = { ...bytes('manifest.yaml', [35, 13, 10]), webkitRelativePath: 'selected/manifest.yaml' };
+  const sidecar = { ...bytes('raw.bin', [0, 255, 128]), webkitRelativePath: 'selected/assets/raw.bin' };
+  const selected = await readModelTree([manifest, sidecar]);
+  assert.equal(selected.kind, 'selected-tree');
+  if (selected.kind !== 'selected-tree') throw new Error('expected tree');
+  assert.deepEqual(selected.files.map(file => file.path), ['manifest.yaml', 'assets/raw.bin']);
+  assert.deepEqual([...Buffer.from(selected.files[1]!.contentBase64, 'base64')], [0, 255, 128]);
+  validateModelTreeInput(selected.files);
+  assert.throws(() => validateModelTreeInput([{ path: '../escape', contentBase64: '' }]), /Invalid/);
+  const request: WorkRequest = { operation: 'inspect', source: '', sourceTree: [...selected.files] };
+  const enrich = captureOriginalRequest(request)!;
+  request.sourceTree = [];
+  const result = enrich({ success: true, sourceFormatVersion: '3.1.0' });
+  assert.equal(result.modelSource?.kind, 'original-tree');
+  if (result.modelSource?.kind !== 'original-tree') throw new Error('expected tree owner');
+  assert.equal(result.modelSource.formatVersion, '3.1.0');
+  assert.deepEqual(result.modelSource.directories, []);
+  assert.equal(result.modelSource.files.length, 2);
+});
+
+test('tree path text allows the exact budget and refuses overflow before reading files', async () => {
+  const {readModelTree, validateModelTreeInput} = await import('./model-import.ts');
+  const prefix = `${'p'.repeat(240)}/`.repeat(16);
+  let reads = 0;
+  const file = (path: string): ModelFile => ({name: path.split('/').at(-1)!, webkitRelativePath: `selected/${path}`, size: 0,
+    async arrayBuffer() { reads++; return new ArrayBuffer(0); }});
+  const selected = [file('manifest.yaml'), ...Array.from({length: 255}, (_, i) => file(prefix + String(i).padStart(240, 'x'))),
+    file(prefix + 'last'.padStart(227, 'x'))];
+  const boundary = await readModelTree(selected);
+  assert.equal(boundary.kind, 'selected-tree');
+  assert.equal(reads, selected.length);
+  if (boundary.kind !== 'selected-tree') throw new Error('exact path budget refused');
+  assert.equal(boundary.files.reduce((sum, entry) => sum + entry.path.length, 0), 1048576);
+  validateModelTreeInput(boundary.files);
+  reads = 0;
+  assert.deepEqual(await readModelTree([...selected, file('x')]), {kind: 'refused', reason: 'oversized'});
+  assert.equal(reads, 0);
+  const overflow = [...boundary.files, {path: 'x', contentBase64: ''}];
+  assert.throws(() => validateModelTreeInput(overflow), /path text budget/);
+  assert.throws(() => captureOriginalRequest({operation: 'inspect', source: '', sourceTree: overflow}), /path text budget/);
+  assert.deepEqual(await readModelTree([file('manifest.yaml'), file('x'.repeat(4097))]), {kind: 'refused', reason: 'invalid-name'});
+  assert.equal(reads, 0);
+});

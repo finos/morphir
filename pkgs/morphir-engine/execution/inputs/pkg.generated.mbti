@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-engine/execution/inputs"
+
+// Values
+pub fn convert_inputs(Json, String, Bool, Bool, Bool) -> String raise
+
+pub fn input_error(Error) -> String
+
+pub fn ion_arguments(Json, String, Bool) -> Json raise
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

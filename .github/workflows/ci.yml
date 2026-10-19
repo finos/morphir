@@ -216,6 +216,10 @@ jobs:
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
 
+      - name: Install pinned generation compiler for Node acceptance
+        if: matrix.target == 'js'
+        run: bun install --frozen-lockfile --cwd pkgs/morphir-elm/scripts
+
       - name: Smoke-test CLI for ${{ matrix.target }}
         run: bun run --cwd apps/morphir test ${{ matrix.target }}
 

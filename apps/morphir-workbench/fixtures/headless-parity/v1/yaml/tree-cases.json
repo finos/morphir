@@ -1,0 +1,252 @@
+{
+  "fixtureVersion": "1.0.0",
+  "provenance": {
+    "revision": "2b0cb1d64ccd0455aba3eaa2b143dbc7d276df70",
+    "sources": [
+      "docs/spec/ir/schemas/v4/document-tree-files.md",
+      "docs/spec/ir/schemas/v3/document-tree-files.md"
+    ],
+    "method": "Hand-authored contract expectations before observing tree assembly output; semantic facts intentionally do not choose normalized JSON member order."
+  },
+  "cases": [
+    {
+      "id": "v4-empty-library",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\n"
+      },
+      "expected": {
+        "status": "ok",
+        "semanticVersion": "4.0.0",
+        "distribution": "Library",
+        "packageName": "parity",
+        "modules": [],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "v4-empty-private-module",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\n",
+        "pkg/parity/main/module.yaml": "formatVersion: 4\npath: main\ntypes: []\nvalues: []\naccess: Private\n"
+      },
+      "expected": {
+        "status": "ok",
+        "semanticVersion": "4.0.0",
+        "distribution": "Library",
+        "modules": [
+          {
+            "name": "main",
+            "access": "Private",
+            "types": [],
+            "values": []
+          }
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "v4-empty-specification-module",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Specs\npackage: parity\npathBudget: 4000\n",
+        "pkg/parity/main/module.yaml": "formatVersion: 4\npath: main\ntypes: []\nvalues: []\n"
+      },
+      "expected": {
+        "status": "ok",
+        "semanticVersion": "4.0.0",
+        "distribution": "Specs",
+        "modules": [
+          {
+            "name": "main",
+            "types": [],
+            "values": [],
+            "annotations": []
+          }
+        ],
+        "dependencies": []
+      }
+    },
+    {
+      "id": "v4-dependency-empty-module",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\ndependencies: [sdk]\n",
+        "deps/sdk/@/main/module.yaml": "formatVersion: 4\npath: main\ntypes: []\nvalues: []\n"
+      },
+      "expected": {
+        "status": "ok",
+        "semanticVersion": "4.0.0",
+        "dependencies": [
+          {
+            "packageName": "sdk",
+            "modules": [
+              {
+                "name": "main",
+                "types": [],
+                "values": [],
+                "annotations": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "v4-yml-physical-extension",
+      "files": {
+        "manifest.yml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\n",
+        "pkg/parity/main/module.yml": "formatVersion: 4\npath: main\ntypes: []\nvalues: []\n"
+      },
+      "expected": {
+        "status": "ok",
+        "modules": [
+          {
+            "name": "main",
+            "access": "Public",
+            "types": [],
+            "values": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "v4-ignore-other-extensions",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\n",
+        "README.txt": "not part of the tree\n"
+      },
+      "expected": {
+        "status": "ok",
+        "modules": []
+      }
+    },
+    {
+      "id": "v31-empty-library",
+      "files": {
+        "manifest.yaml": "formatVersion: \"3.1.0\"\ndistribution: Library\npackage: parity\npathBudget: 4000\n",
+        "pkg/parity/main/module.yaml": "formatVersion: \"3.1.0\"\npath: main\ntypes: []\nvalues: []\n"
+      },
+      "expected": {
+        "status": "ok",
+        "sourceVersion": "3.1.0",
+        "semanticVersion": "4.0.0",
+        "distribution": "Library",
+        "modules": [
+          {
+            "name": "main",
+            "types": [],
+            "values": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "v31-empty-specs",
+      "files": {
+        "manifest.yaml": "formatVersion: \"3.1.0\"\ndistribution: Specs\npackage: parity\npathBudget: 4000\n",
+        "pkg/parity/main/module.yaml": "formatVersion: \"3.1.0\"\npath: main\ntypes: []\nvalues: []\n"
+      },
+      "expected": {
+        "status": "ok",
+        "sourceVersion": "3.1.0",
+        "semanticVersion": "4.0.0",
+        "distribution": "Specs",
+        "modules": [
+          {
+            "name": "main",
+            "types": [],
+            "values": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "ambiguous-manifests",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\n",
+        "manifest.json": "{\"formatVersion\":4,\"distribution\":\"Library\",\"package\":\"parity\",\"pathBudget\":4000}"
+      },
+      "expected": {
+        "status": "invalid",
+        "requirement": "Both JSON and YAML distribution manifests require ambiguity refusal"
+      }
+    },
+    {
+      "id": "mixed-physical-profile",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\n",
+        "pkg/parity/main/module.json": "{\"formatVersion\":4,\"path\":\"main\",\"types\":[],\"values\":[]}"
+      },
+      "expected": {
+        "status": "invalid",
+        "requirement": "Every physical file must use the same serialization profile"
+      }
+    },
+    {
+      "id": "v31-reject-v30-manifest",
+      "files": {
+        "manifest.yaml": "formatVersion: 3\ndistribution: Library\npackage: parity\npathBudget: 4000\n"
+      },
+      "expected": {
+        "status": "invalid",
+        "requirement": "A v3 tree is exactly 3.1.0",
+        "code": "version_mismatch"
+      }
+    },
+    {
+      "id": "v31-reject-mixed-version",
+      "files": {
+        "manifest.yaml": "formatVersion: \"3.1.0\"\ndistribution: Library\npackage: parity\npathBudget: 4000\n",
+        "pkg/parity/main/module.yaml": "formatVersion: 4\npath: main\ntypes: []\nvalues: []\n"
+      },
+      "expected": {
+        "status": "invalid",
+        "requirement": "Every v3 tree document must carry exactly 3.1.0",
+        "code": "version_mismatch"
+      }
+    },
+    {
+      "id": "v31-unknown-manifest-member",
+      "files": {
+        "manifest.yaml": "formatVersion: \"3.1.0\"\ndistribution: Library\npackage: parity\npathBudget: 4000\nlayout: VfsMode\n"
+      },
+      "expected": {
+        "status": "invalid",
+        "requirement": "v3 manifest does not accept v4 layout",
+        "code": "unknown_member"
+      }
+    },
+    {
+      "id": "v31-spec-access-refuses",
+      "files": {
+        "manifest.yaml": "formatVersion: \"3.1.0\"\ndistribution: Specs\npackage: parity\npathBudget: 4000\n",
+        "pkg/parity/main/module.yaml": "formatVersion: \"3.1.0\"\npath: main\ntypes: []\nvalues: []\naccess: Public\n"
+      },
+      "expected": {
+        "status": "invalid",
+        "requirement": "Module specifications cannot carry access",
+        "code": "unknown_member"
+      }
+    },
+    {
+      "id": "versioned-dependency-refuses",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\ndependencies: [sdk]\n",
+        "deps/sdk/@1.0.0/main/module.yaml": "formatVersion: 4\npath: main\ntypes: []\nvalues: []\n"
+      },
+      "expected": {
+        "status": "invalid",
+        "requirement": "Dependency segment is bare @ until package versioning is supported"
+      }
+    },
+    {
+      "id": "unlisted-dependency-refuses",
+      "files": {
+        "manifest.yaml": "formatVersion: 4\ndistribution: Library\npackage: parity\npathBudget: 4000\n",
+        "deps/sdk/@/main/module.yaml": "formatVersion: 4\npath: main\ntypes: []\nvalues: []\n"
+      },
+      "expected": {
+        "status": "invalid",
+        "requirement": "Manifest must list every dependency package"
+      }
+    }
+  ]
+}

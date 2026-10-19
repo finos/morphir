@@ -1,0 +1,78 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-ir/yaml/parser"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub suberror YamlError {
+  YamlError(mark~ : Marker, info~ : String)
+} derive(@debug.Debug)
+pub fn YamlError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub enum Event {
+  StreamStart
+  StreamEnd
+  DocumentStart
+  DocumentEnd
+  Alias(id~ : Int)
+  Scalar(value~ : String, style~ : TScalarStyle, id~ : Int, tag~ : Tag?)
+  SequenceStart(id~ : Int, tag~ : Tag?)
+  SequenceEnd
+  MappingStart(id~ : Int, tag~ : Tag?)
+  MappingEnd
+} derive(Eq, @debug.Debug)
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::not_equal(Self, Self) -> Bool
+pub fn Event::to_repr(Self) -> @debug.Repr
+
+pub struct Marker {
+  index : Int
+  line : Int
+  col : Int
+} derive(Eq, @debug.Debug)
+pub fn Marker::equal(Self, Self) -> Bool
+pub fn Marker::not_equal(Self, Self) -> Bool
+pub fn Marker::to_repr(Self) -> @debug.Repr
+
+type Parser
+#alias(new, deprecated)
+pub fn Parser::Parser(StringView, lenient_quoted_scalar_indentation? : Bool) -> Self
+pub fn Parser::bounded(StringView, max_depth~ : Int, max_tokens~ : Int, max_scalar_units~ : Int) -> Self
+pub fn Parser::keep_tags(Self, Bool) -> Unit
+pub fn[R : MarkedEventReceiver] Parser::load(Self, R, Bool) -> Unit raise YamlError
+pub fn Parser::next_event(Self) -> (Event, Marker) raise YamlError
+
+pub enum TScalarStyle {
+  Plain
+  SingleQuoted
+  DoubleQuoted
+  Literal
+  Folded
+} derive(Eq, @debug.Debug)
+pub fn TScalarStyle::equal(Self, Self) -> Bool
+pub fn TScalarStyle::not_equal(Self, Self) -> Bool
+pub fn TScalarStyle::to_repr(Self) -> @debug.Repr
+
+pub struct Tag {
+  handle : String
+  suffix : String
+} derive(Eq, @debug.Debug)
+pub fn Tag::equal(Self, Self) -> Bool
+pub fn Tag::not_equal(Self, Self) -> Bool
+pub fn Tag::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
+pub(open) trait EventReceiver {
+  fn on_event(Self, Event) -> Unit
+}
+
+pub(open) trait MarkedEventReceiver {
+  fn on_event(Self, Event, Marker) -> Unit
+}

@@ -1,0 +1,94 @@
+{
+  "repository": "https://github.com/finos/morphir-moonbit",
+  "revision": "4ce0f57a84f58fad3106d0de18105eeadf0822f9",
+  "review": "https://github.com/finos/morphir-moonbit/pull/147",
+  "files": [
+    {
+      "source": "apps/morphir-workbench/browser/artifact-transfer.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-transfer.ts",
+      "sha256": "c77ce4e0d461a92e19281e66fbb46e5d000bfe6eaf8039b54132d69a5711af55"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/verified-artifacts.ts",
+      "shared": "pkgs/morphir-host/artifact-client/verified-artifacts.ts",
+      "sha256": "8f551fd6b0b999efa0fbf2b8900ab1b9b95fb18d882393ea2885772a3f220e61"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-rpc.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-rpc.ts",
+      "sha256": "08f49aade5ddc3e543d6e6bb5592b01f1795576f72b3a94318503a5f3c4ca585"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-transfer.test.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-transfer.test.ts",
+      "sha256": "ffa808c33e157a0c215032f099da4f0f89a2f151a40819e3e524a53d613ca887"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/verified-artifacts.test.ts",
+      "shared": "pkgs/morphir-host/artifact-client/verified-artifacts.test.ts",
+      "sha256": "7371ac5af7687187b84f50b2c7941ec27c4776ed561d3cf7168f689dee9ecd02"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-rpc.test.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-rpc.test.ts",
+      "sha256": "cfee189f0a23d8166d60b16e35cf7581cdeb5fd3da7854c8a93bed3ca672d89b"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/LICENSE",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/LICENSE",
+      "sha256": "f48e7a94203e6bd201db737d37cef079b5d37227bb655ec24c10a8986816d62c"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/README.md",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/README.md",
+      "sha256": "5d4529045cf9abbdf93bdeec5b94fe55cd635c073b6124e0b7edee228dbc7334"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/SOURCE.json",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/SOURCE.json",
+      "sha256": "91ea714402f1b4a9b9205f33af261bae9826611e8cf1c534598e49dccb3a1701"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/UNICODE-LICENSE.txt",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/UNICODE-LICENSE.txt",
+      "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/artifact-path.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/artifact-path.ts",
+      "sha256": "2e0f49759fbf950a9a6832205cda8ee3ca4264946f288d0cbd93a2ecfb505f7a"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/artifact-transfer.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/artifact-transfer.ts",
+      "sha256": "f236986ebdea2ad49ccd4ae6cffd6f0a2a2853fa54a25ea4cc5849ecdb3ecb17"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/artifact-unicode-data.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/artifact-unicode-data.ts",
+      "sha256": "767f168bd30dd6128381d62389c1d30ecf556e1b696fd79d609f5a804cbc7d81"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/artifact-unicode.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/artifact-unicode.ts",
+      "sha256": "9ed51b43a6f8582c3a1963e8252e84503a330e2d98a5d1d2a3fe17301fb4f960"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/artifact-wire.ts",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/artifact-wire.ts",
+      "sha256": "f0ded9a787c72ff3f32a7a5c2c46917841f547540f26250ab627ca6a39a6e4a7"
+    },
+    {
+      "source": "apps/morphir-workbench/browser/artifact-client/unicode-sources.json",
+      "shared": "pkgs/morphir-host/artifact-client/artifact-client/unicode-sources.json",
+      "sha256": "5e70e3831c16d9886b7b26f401530d4c39cf4a8b42d17c6ea291b134d9ae49d6"
+    }
+  ],
+  "status": "shared owner integrated with Workbench compatibility facades after PR147 merge",
+  "integration": {
+    "mergeCommit": "47fa644",
+    "sourcePaths": "paths and hashes above refer to immutable revision 4ce0f57, current Workbench paths are compatibility facades",
+    "canonicalSource": "pkgs/morphir-host/artifact-client/artifact-client/SOURCE.json",
+    "sourceCheck": "moonx scripts/artifact-client-source.mbtx check"
+  }
+}

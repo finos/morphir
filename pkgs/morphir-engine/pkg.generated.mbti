@@ -123,6 +123,7 @@ pub fn Engine::languages(Self) -> Array[LanguageOffer]
 pub fn Engine::list_projects(Self, Host, @workspace.Workspace, script? : String, cancelled? : () -> Bool, bind_runtime? : (@morphir-scheme.Runtime) -> Unit raise) -> Array[ProjectInfo] raise
 pub fn Engine::new(limits? : @morphir-scheme.Limits, metadata_capabilities? : @morphir-metadata.Capabilities) -> Self
 pub fn Engine::plan(Self, Host, @workspace.Workspace, Request, cancelled? : () -> Bool, bind_runtime? : (@morphir-scheme.Runtime) -> Unit raise, codecs? : @data.Registry?) -> Plan raise
+pub fn Engine::plan_retained_generation(Self, @data.IRUnit, String, String, options? : Json, policy? : BuildPolicy, project? : String) -> Plan raise
 pub fn Engine::register_backend(Self, String, String, (@v4.IRFile) -> String raise, rich_units? : Bool) -> Unit
 pub fn Engine::register_component(Self, String, Component) -> Unit raise
 pub fn Engine::register_data_format(Self, String, DataFormat) -> Unit raise

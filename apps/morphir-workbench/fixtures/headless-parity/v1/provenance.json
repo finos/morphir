@@ -1,0 +1,286 @@
+{
+  "fixtureVersion": "1.0.0",
+  "origin": {
+    "repository": "https://github.com/finos/morphir",
+    "revision": "8b9e44fd",
+    "method": "Fixed published expected corpora and hand-authored equivalent model presentation; no adapter observation was read to select or calculate expected outcomes.",
+    "sourceFiles": [
+      {
+        "path": "spec/workbench/mck/draft.12/cases.json",
+        "sha256": "9ad05c60f0d06eb62b64c8531288f41c2519901e7a00ff869f6bef8aa7377e23",
+        "selectedCaseIds": [
+          "selected-permissive-unused-hole-int42",
+          "selected-strict-rejects-unused-hole",
+          "execute-untaken-hole",
+          "execute-reached-hole",
+          "execute-exact-int-json",
+          "execute-exact-negative-zero-json",
+          "execute-exact-decimal-json",
+          "selected-permissive-wrong-tagged-argument-rejected",
+          "execute-wrong-output-cannot-be-published"
+        ],
+        "currentSourceSha256": "9ad05c60f0d06eb62b64c8531288f41c2519901e7a00ff869f6bef8aa7377e23"
+      },
+      {
+        "path": "spec/workbench/mck/draft.14/cases.json",
+        "sha256": "43f9007c9fc79f704239470fd5b13bd8e0a65bc18de346c1a072166e98aa6a17",
+        "selectedCaseIds": [
+          "cancel-action-does-not-acknowledge",
+          "ack-then-returned-cleanup",
+          "ack-then-cancelled",
+          "disconnect-retains-running-offline-observe-rejects",
+          "same-session-reconnect-reconcile",
+          "receipt-authority-providerId",
+          "same-sequence-cleanup-conflict",
+          "returned-result-err-and-opaque-metadata-retained"
+        ],
+        "currentSourceSha256": "43f9007c9fc79f704239470fd5b13bd8e0a65bc18de346c1a072166e98aa6a17"
+      },
+      {
+        "path": "spec/workbench/mck/draft.17/cases.json",
+        "sha256": "3c2676a05fafbf99a0ee7cd54f26599580d5752764c69f73fed9bb7fcceb7358",
+        "selectedCaseIds": [
+          "lost-submit-no-blind-retry",
+          "returned-42-json",
+          "returned-42-ion-text",
+          "lost-query-reject-changed-session",
+          "cancel-while-submit-held",
+          "returned-value-survives-cleanup-failure",
+          "workspace-exact-ion-binary",
+          "workspace-two-chunks-exact-offsets",
+          "workspace-reject-wrong-offset"
+        ],
+        "currentSourceSha256": "3c2676a05fafbf99a0ee7cd54f26599580d5752764c69f73fed9bb7fcceb7358"
+      },
+      {
+        "path": "spec/workbench/mck/draft.26/cases.json",
+        "sha256": "22920142b376bd8af223cf0dd2190b21f26f01e104d8c1a4a9cf8a52bdba9ba7",
+        "selectedCaseIds": [
+          "rich-json-to-ion-binary",
+          "rich-ion-binary-to-json",
+          "different-int-exact",
+          "decimal-scale",
+          "positive-negative-zero",
+          "utf16-isolated-surrogates",
+          "result-err-vs-model-error",
+          "opaque-number-outside-ieee-range"
+        ],
+        "currentSourceSha256": "22920142b376bd8af223cf0dd2190b21f26f01e104d8c1a4a9cf8a52bdba9ba7"
+      },
+      {
+        "path": "spec/workbench/mck/draft.27/cases.json",
+        "sha256": "22943f53ac5fa1fa653d60d0a8e2d61cca8f5564d4e9c524fb8eb1a88520ad8e",
+        "selectedCaseIds": [
+          "large-integer",
+          "astral-prefix",
+          "trivia-crlf",
+          "negative-zero",
+          "runtime-failure-keeps-prefix",
+          "read-failure-no-prefix",
+          "accept-cancellation",
+          "accept-timeout",
+          "reject-dropped-inventory",
+          "reject-reordered-inventory",
+          "reject-split-surrogate-range",
+          "reject-wrong-revision"
+        ],
+        "currentSourceSha256": "22943f53ac5fa1fa653d60d0a8e2d61cca8f5564d4e9c524fb8eb1a88520ad8e"
+      },
+      {
+        "path": "spec/mep/mck/fixtures/rich-model.ion",
+        "sha256": "3c314a4e29bb3e1477171aff632fecec35257d0835c2e18549c732c609dfa664"
+      },
+      {
+        "path": "spec/mep/mck/fixtures/rich-model.ionb",
+        "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1"
+      },
+      {
+        "path": "spec/workbench/mck/draft.28/cases.json",
+        "sha256": "adc2e0db5775c414f4f0f9bd8b84065246fe1c910ff7b7ad5ca9ef4a0342254f",
+        "selectedCaseIds": [
+          "bytes-cycle-65537",
+          "bytes-utf8-bom-crlf",
+          "bytes-nul-invalid-utf8",
+          "path-parent",
+          "path-duplicate",
+          "lifecycle-release-idempotent-and-read-after-release-refuses",
+          "lifecycle-failed-sdk-never-retains-partial-artifacts",
+          "negotiation-wrong-draft",
+          "negotiation-wrong-provider"
+        ],
+        "currentSourceSha256": "adc2e0db5775c414f4f0f9bd8b84065246fe1c910ff7b7ad5ca9ef4a0342254f"
+      },
+      {
+        "path": "spec/workbench/mck/draft.28/client/cases.json",
+        "sha256": "ab810f6c007c33aacfc9e3c552f79cc179a73e9d77d2ea5e23d3396e8efc9191",
+        "selectedCaseIds": [
+          "client-original-mixed-bom-crlf-invalid-text",
+          "client-original-chunk-boundaries",
+          "client-rejected-digest",
+          "client-registry-replacement-refuses-old-owner",
+          "client-read-offset",
+          "client-stale-after-read",
+          "client-cancel-pending-digest-release-once",
+          "client-release-malformed-acknowledgement"
+        ],
+        "currentSourceSha256": "ab810f6c007c33aacfc9e3c552f79cc179a73e9d77d2ea5e23d3396e8efc9191"
+      }
+    ],
+    "currentRepositoryRevision": "2b0cb1d64ccd0455aba3eaa2b143dbc7d276df70"
+  },
+  "qualification": "infrastructure-only positive controls are not production adapter evidence",
+  "budgets": {
+    "corpusBytes": 16777216,
+    "reportBytes": 33554432,
+    "retainedObservationBytes": 16777216,
+    "casesPerKit": 1024,
+    "ownedAssetBytes": 1048576
+  },
+  "assets": [
+    {
+      "path": "originals/artifact.bin",
+      "length": 11,
+      "sha256": "a69d0c09daeb194a7bf2217fec304a3f7712e82a8424ad397b9ca8923d1cd485",
+      "hex": "00ff01027f8041420d0a00"
+    },
+    {
+      "path": "originals/exact-scalars.json",
+      "length": 598,
+      "sha256": "2771210fa8d30adfb6b5307ec68c4d924f847bbd4254d3771453902ae5e6cb51",
+      "hex": "7b22666f726d617456657273696f6e223a342c22646973747269627574696f6e223a7b224c696272617279223a7b227061636b6167654e616d65223a22706172697479222c22646570656e64656e63696573223a7b7d2c22646566223a7b226d6f64756c6573223a7b227363616c617273223a7b225075626c6963223a7b227479706573223a7b7d2c2276616c756573223a7b2268756765223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a62617369637323696e74222c22626f6479223a7b224c69746572616c223a7b22496e74656765724c69746572616c223a393030373139393235343734303939337d7d7d7d7d2c227363616c6564223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a646563696d616c23646563696d616c222c22626f6479223a7b224c69746572616c223a7b22446563696d616c4c69746572616c223a223132332e34353030227d7d7d7d7d2c2264617465223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a737472696e6723737472696e67222c22626f6479223a7b224c69746572616c223a7b22537472696e674c69746572616c223a22323032362d30312d3135227d7d7d7d7d7d7d7d7d7d7d7d7d0a"
+    },
+    {
+      "path": "originals/exact-scalars.yaml",
+      "length": 606,
+      "sha256": "4031aa44558226cbd09c9f2439cfddb1fe1d54d78cb004974d6f6edec370ae5b",
+      "hex": "666f726d617456657273696f6e3a20340a646973747269627574696f6e3a0a20204c6962726172793a0a202020207061636b6167654e616d653a207061726974790a20202020646570656e64656e636965733a207b7d0a202020206465663a0a2020202020206d6f64756c65733a0a20202020202020207363616c6172733a207b225075626c6963223a7b227479706573223a7b7d2c2276616c756573223a7b2268756765223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a62617369637323696e74222c22626f6479223a7b224c69746572616c223a7b22496e74656765724c69746572616c223a393030373139393235343734303939337d7d7d7d7d2c227363616c6564223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a646563696d616c23646563696d616c222c22626f6479223a7b224c69746572616c223a7b22446563696d616c4c69746572616c223a223132332e34353030227d7d7d7d7d2c2264617465223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a737472696e6723737472696e67222c22626f6479223a7b224c69746572616c223a7b22537472696e674c69746572616c223a22323032362d30312d3135227d7d7d7d7d7d7d7d0a"
+    },
+    {
+      "path": "originals/model.ion",
+      "length": 650,
+      "sha256": "3c314a4e29bb3e1477171aff632fecec35257d0835c2e18549c732c609dfa664",
+      "hex": "6d6f72706869725f6d6f64656c3a3a7b0a202069723a207b0a20202020666f726d617456657273696f6e3a2022342e302e30222c0a20202020646973747269627574696f6e3a207b0a2020202020204c6962726172793a207b0a20202020202020207061636b6167654e616d653a20226578616d706c652f6d65702d66697874757265222c0a2020202020202020646570656e64656e636965733a207b7d2c0a20202020202020206465663a207b6d6f64756c65733a207b7d7d0a2020202020207d0a202020207d0a20207d2c0a2020656e726963686d656e74733a205b0a202020207b0a2020202020206f776e65723a202275726e3a6d6f72706869723a6d65703a666978747572653a756e6b6e6f776e2d656e726963686d656e74222c0a202020202020646174613a20736f757263655f6e616d653a3a7461726765745f6e616d653a3a7b0a20202020202020206f726967696e616c4e616d653a202269735265616479222c0a20202020202020207461726765744e616d653a202269735f7265616479222c0a2020202020202020736f75726365507265636973696f6e3a207b6b696e643a20696e7436342c2065786163743a20393030373139393235343734303939337d2c0a2020202020202020616d6f756e743a203132332e343530302c0a2020202020202020667574757265466163743a206675747572655f766f636162756c6172793a3a7b656e61626c65643a20747275657d0a2020202020207d0a202020207d0a20205d2c0a202070726f76656e616e63653a205b666978747572655f6f726967696e3a3a7b70726f64756365723a20226d65702d7265666572656e63652d636f72707573222c20736f757263653a2022666978747572652e6d6274227d5d0a7d0a"
+    },
+    {
+      "path": "originals/model.ionb",
+      "length": 499,
+      "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1",
+      "hex": "e00100eaee02a38183de029e87be029a8d6d6f72706869725f6d6f64656c8269728d666f726d617456657273696f6e8c646973747269627574696f6e874c6962726172798b7061636b6167654e616d658c646570656e64656e6369657383646566876d6f64756c65738b656e726963686d656e7473856f776e657284646174618b736f757263655f6e616d658b7461726765745f6e616d658c6f726967696e616c4e616d658a7461726765744e616d658e8f736f75726365507265636973696f6e846b696e6485696e74363485657861637486616d6f756e748a667574757265466163748e916675747572655f766f636162756c61727987656e61626c65648a70726f76656e616e63658e8e666978747572655f6f726967696e8870726f647563657286736f75726365ee01c6818ade01c18bdea98c85342e302e308dde9f8ede9c8f8e936578616d706c652f6d65702d6669787475726590d091d292d093bee5dee3948eaa75726e3a6d6f72706869723a6d65703a666978747572653a756e6b6e6f776e2d656e726963686d656e7495eeb3829697deae988769735265616479998869735f72656164799adc9b711c9d27200000000000019e54c412d6449fe581a0d2a111a2beaaeea881a3dea4a48e946d65702d7265666572656e63652d636f72707573a58b666978747572652e6d6274"
+    },
+    {
+      "path": "originals/model.json",
+      "length": 139,
+      "sha256": "f6806da1a1ff5ca237ddd89259167fa167b414c6ed4c5a717d9a5c8adcc59cb0",
+      "hex": "7b2022646973747269627574696f6e223a207b224c696272617279223a207b227061636b6167654e616d65223a226578616d706c652f6d65702d66697874757265222c2022646570656e64656e63696573223a7b7d2c2022646566223a7b226d6f64756c6573223a7b7d7d7d7d2c2022666f726d617456657273696f6e223a2022342e302e3022207d0d0a"
+    },
+    {
+      "path": "originals/model.yaml",
+      "length": 188,
+      "sha256": "e933d6aace15721565a0ea5562509776742f84b490c9889f4665028f60f0c7c1",
+      "hex": "efbbbf23204f726967696e616c2072657461696e65642070726573656e746174696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a20226578616d706c652f6d65702d666978747572652220232071756f746564206e616d650d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a666f726d617456657273696f6e3a2027342e302e30270d0a"
+    },
+    {
+      "path": "originals/model.yml",
+      "length": 188,
+      "sha256": "e933d6aace15721565a0ea5562509776742f84b490c9889f4665028f60f0c7c1",
+      "hex": "efbbbf23204f726967696e616c2072657461696e65642070726573656e746174696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a20226578616d706c652f6d65702d666978747572652220232071756f746564206e616d650d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a666f726d617456657273696f6e3a2027342e302e30270d0a"
+    }
+  ],
+  "modelExpectation": {
+    "semanticVersion": "4.0.0",
+    "distribution": "Library",
+    "packageName": "example/mep-fixture",
+    "modules": [],
+    "original": "byte-for-byte captured source including Ion enrichments",
+    "projection": "normalized-ir; never label projection as original"
+  },
+  "artifactExpectation": {
+    "bytesHex": "00ff01027f8041420d0a00",
+    "length": 11,
+    "transferReleaseClosesModel": false,
+    "transferReleasePublishesFiles": false,
+    "requiredFailureControls": [
+      "changed-bytes",
+      "missing-chunk",
+      "wrong-offset",
+      "wrong-artifact-identity",
+      "stale-currentness",
+      "publication-collision",
+      "uncertain-publication"
+    ],
+    "publication": "explicit destination and overwrite policy; complete verification before publication"
+  },
+  "frozenCorpusFiles": [
+    {
+      "path": "draft.12/cases.json",
+      "sha256": "4ecb9aff03b4e1259a8e59191bc8ebb81deb4660597994cd22492135f28f47f9"
+    },
+    {
+      "path": "draft.14/cases.json",
+      "sha256": "afb7bf7d41493131709b8bd22ef37bc41e8f19e4f558c0b78023c8ede738e687"
+    },
+    {
+      "path": "draft.17/cases.json",
+      "sha256": "d84ee5af873e685901118a537d0514bee75e6cb06357114589fe140590e150a5"
+    },
+    {
+      "path": "draft.26/cases.json",
+      "sha256": "b350895f569de9987ce2d986d6ac55650564af6cf5644bd10d372ad19721f027"
+    },
+    {
+      "path": "draft.27/cases.json",
+      "sha256": "8f42c7730f6352528cfef474be39530f99889a75870e1080f628be8c64babdb6"
+    },
+    {
+      "path": "draft.28/cases.json",
+      "sha256": "b5690f19a254b468fba647c50157b99941af76eaeebcaa31ffa963cb9288234b"
+    },
+    {
+      "path": "draft.28-client/cases.json",
+      "sha256": "8db7c1e955e23c3db3a06cea29ccda61eb5388e073a107e2d625b198478cb4f9"
+    },
+    {
+      "path": "draft.29/cases.json",
+      "sha256": "27dd83719a5a30075bb37041fe78e71e1c782a06b812fc49ab9ab83d08f07ac8"
+    }
+  ],
+  "yamlCasesSha256": "9a3c08d33ffe0be59fd745289e4f037a59f48814b9ba7cdae9f926431545b744",
+  "modelCasesProvenance": {
+    "method": "Authored from v4 Library and literal contracts before any production adapter observations; additional exact-scalar cases extend the initial 28-case freeze.",
+    "draft29Sha256": "27dd83719a5a30075bb37041fe78e71e1c782a06b812fc49ab9ab83d08f07ac8",
+    "caseCount": 32
+  },
+  "freezeCorrections": [
+    "Subset extraction now preserves raw published case slices. An initial Python serialization changed opaque 1e999 to Infinity; corrected from the original contract before any actual adapter observation. Expected verdicts were unchanged."
+  ],
+  "yamlTreeCasesSha256": "579b423a724c78e21472330eaf9e0077f8498f37e1a40e31dc3ba2603ac5df7d",
+  "ingressExpectations": [
+    {
+      "source": "originals/model.yaml",
+      "selection": "extension",
+      "expectedFormat": "yaml"
+    },
+    {
+      "source": "originals/model.yml",
+      "selection": "extension",
+      "expectedFormat": "yaml"
+    },
+    {
+      "source": "originals/model.yaml",
+      "selection": "explicit-yaml",
+      "expectedFormat": "yaml"
+    },
+    {
+      "source": "originals/model.yaml",
+      "selection": "bounded-stdin-explicit-yaml",
+      "expectedFormat": "yaml"
+    },
+    {
+      "source": "originals/model.json",
+      "selection": "content-detection",
+      "expectedFormat": "json",
+      "reason": "JSON detection precedes YAML because JSON is also YAML syntax"
+    }
+  ],
+  "yamlReferenceGreetingProvenanceSha256": "d2cf08ae45e04f783f47c99338af54e5b12e25080c6f301174d505a18d176bec"
+}

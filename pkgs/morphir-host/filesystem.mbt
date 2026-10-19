@@ -89,12 +89,29 @@ pub fn ContentPublisher::filesystem(
 }
 
 ///|
+/// Original inventories can include empty directories. They use the same
+/// confined transaction, locking, replacement and rollback as generated files.
+pub fn ContentPublisher::filesystem_inventory(
+  root : String,
+  output_root : String,
+  directories : Array[String],
+) -> ContentPublisher raise {
+  filesystem_content_publisher(
+    root,
+    output_root,
+    @platform.rename,
+    directories~,
+  )
+}
+
+///|
 // Keep the default filesystem operations fixed; whitebox fault tests can fail
 // the publish and restore operations independently without timing filesystem races.
 fn filesystem_content_publisher(
   root : String,
   output_root : String,
   rename : (String, String) -> Unit raise,
+  directories~ : Array[String] = [],
 ) -> ContentPublisher raise {
   let output_root = @workspace.normalize(output_root)
   if output_root == "" {
@@ -121,6 +138,17 @@ fn filesystem_content_publisher(
           )
           ensure_dirs(root, @workspace.parent(target))
           @platform.mkdir(confined(root, target))
+        }
+        for directory in directories {
+          if !destinations.any(destination => {
+              @workspace.within(destination, directory)
+            }) {
+            raise @config.Invalid("Directory outside planned destination")
+          }
+          ensure_dirs(
+            root,
+            @workspace.join(stage, relative_to(output_root, directory)),
+          )
         }
       }
       let done = Map([])
@@ -210,6 +238,39 @@ pub fn error_message(error : Error) -> String {
     @platform.IOError(message) => message
     @toolchain.ToolchainError(message) => message
     _ => error.to_string()
+  }
+}
+
+///|
+/// Stable domain codes for machine-readable host adapters. Keep the typed
+/// error's code instead of reconstructing it from its formatted message.
+pub fn error_code(error : Error) -> String {
+  match error {
+    // These compatibility errors carry a code followed by optional context.
+    // The human message retains that context; machine code stays a code.
+    @protocol.Invalid(detail) | @execution.AdmissionInvalid(detail) =>
+      detail.split(":").next().unwrap_or("execution.plan").to_owned()
+    @linked_metadata.Invalid(code, _, _) => code
+    @moonbit.Invalid(code, _, _) => code
+    @data.Invalid(code, _) => code
+    @platform.IOError(detail) | @config.Invalid(detail) => {
+      let code = detail.split(":").next().unwrap_or("").to_owned()
+      if code.contains(".") &&
+        code.length() <= 128 &&
+        code
+        .to_array()
+        .all(c => {
+          (c >= 'a' && c <= 'z') ||
+          (c >= '0' && c <= '9') ||
+          c == '.' ||
+          c == '_'
+        }) {
+        code
+      } else {
+        "host.invalid_input"
+      }
+    }
+    _ => "execution.plan"
   }
 }
 

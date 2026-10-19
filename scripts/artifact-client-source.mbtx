@@ -13,7 +13,7 @@ import {
 }
 
 ///|
-let destination = "apps/morphir-workbench/browser/artifact-client"
+let destination = "pkgs/morphir-host/artifact-client/artifact-client"
 
 ///|
 fn string(value : Json, key : String) -> String {

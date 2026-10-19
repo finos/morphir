@@ -1,0 +1,8 @@
+import {
+  "finos/morphir-ir/wire",
+  "finos/morphir-execution" @protocol,
+  "moonrockz/ion/ion",
+  "moonrockz/ion/text" @ion_text,
+  "moonrockz/ion/json" @ion_json,
+  "moonbitlang/core/encoding/utf8",
+}

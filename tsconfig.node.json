@@ -19,6 +19,7 @@
     "apps/morphir-site/scripts/**/*.ts",
     "pkgs/**/scripts/**/*.mts",
     "pkgs/morphir-host/runners/**/*.mts",
+    "pkgs/morphir-host/artifact-client/**/*.ts",
     "pkgs/morphir-host/embedding/node*.mts",
     "pkgs/morphir-host/embedding/test/**/*.mts",
     "pkgs/morphir-sdk/string/tools/**/*.mts",

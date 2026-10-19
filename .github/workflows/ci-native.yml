@@ -124,6 +124,8 @@ jobs:
           path: .dev/ci/native
       - name: Admit native executable
         run: moon run scripts/ci-artifact.mbtx verify native-cli "$MORPHIR_CI_NATIVE"
+      - name: Install pinned generation compiler
+        run: bun install --frozen-lockfile --cwd pkgs/morphir-elm/scripts
       - name: Smoke-test admitted native CLI without rebuilding
         run: bun run --cwd apps/morphir test native
       - name: Test acquisition without a MoonBit installation

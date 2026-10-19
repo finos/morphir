@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-ir/yaml"
+
+import {
+  "finos/morphir-ir/versioned",
+  "finos/morphir-ir/versions/v4",
+  "finos/morphir-ir/wire",
+}
+
+// Values
+pub fn parse(String, limits? : Limits) -> Json raise @wire.CodecError
+
+pub fn read(String, limits? : Limits) -> @v4.IRFile raise
+
+pub fn read_tree(Map[String, String], limits? : Limits) -> @v4.IRFile raise
+
+pub fn read_tree_versioned(Map[String, String], limits? : Limits) -> @versioned.IRFile raise
+
+pub fn read_versioned(String, limits? : Limits) -> @versioned.IRFile raise
+
+// Errors
+
+// Types and methods
+pub(all) struct Limits {
+  max_bytes : Int
+  max_events : Int
+  max_nodes : Int
+  max_depth : Int
+  max_scalar_units : Int
+  max_assembly_nodes : Int
+}
+pub fn Limits::default() -> Self
+
+// Type aliases
+
+// Traits

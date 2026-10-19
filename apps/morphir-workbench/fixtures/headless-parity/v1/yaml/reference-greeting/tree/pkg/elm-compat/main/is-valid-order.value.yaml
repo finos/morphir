@@ -1,0 +1,150 @@
+formatVersion: 4
+name: is-valid-order
+def:
+  Public:
+    doc: " Check if an order is valid (has at least one product with positive quantity).\n"
+    ExpressionBody:
+      inputTypes:
+        order: elm-compat:main#customer-order
+      outputType: morphir/SDK:basics#bool
+      body:
+        PatternMatch:
+          attributes:
+            inferredType: morphir/SDK:basics#bool
+          value:
+            Field:
+              attributes:
+                inferredType:
+                  Reference:
+                    - morphir/SDK:list#list
+                    - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+              target:
+                Variable:
+                  attributes:
+                    inferredType: elm-compat:main#customer-order
+                  name: order
+              name: products
+          cases:
+            - pattern:
+                EmptyListPattern:
+                  attributes:
+                    inferredType:
+                      Reference:
+                        - morphir/SDK:list#list
+                        - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+              body:
+                Literal:
+                  attributes:
+                    inferredType: morphir/SDK:basics#bool
+                  literal:
+                    BoolLiteral: false
+            - pattern:
+                WildcardPattern:
+                  attributes:
+                    inferredType:
+                      Reference:
+                        - morphir/SDK:list#list
+                        - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+              body:
+                Apply:
+                  attributes:
+                    inferredType: morphir/SDK:basics#bool
+                  function:
+                    Apply:
+                      attributes:
+                        inferredType:
+                          Function:
+                            parameterType:
+                              Reference:
+                                - morphir/SDK:list#list
+                                - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                            returnType: morphir/SDK:basics#bool
+                      function:
+                        Reference:
+                          attributes:
+                            inferredType:
+                              Function:
+                                parameterType:
+                                  Function:
+                                    parameterType:
+                                      Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                    returnType: morphir/SDK:basics#bool
+                                returnType:
+                                  Function:
+                                    parameterType:
+                                      Reference:
+                                        - morphir/SDK:list#list
+                                        - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                    returnType: morphir/SDK:basics#bool
+                          fqname: morphir/SDK:list#all
+                      argument:
+                        Lambda:
+                          attributes:
+                            inferredType:
+                              Function:
+                                parameterType:
+                                  Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                                returnType: morphir/SDK:basics#bool
+                          pattern:
+                            TuplePattern:
+                              attributes:
+                                inferredType:
+                                  Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                              patterns:
+                                - WildcardPattern:
+                                    attributes:
+                                      inferredType: elm-compat:main#product
+                                - AsPattern:
+                                    attributes:
+                                      inferredType: elm-compat:main#quantity
+                                    pattern:
+                                      WildcardPattern:
+                                        attributes:
+                                          inferredType: elm-compat:main#quantity
+                                    name: qty
+                          body:
+                            Apply:
+                              attributes:
+                                inferredType: morphir/SDK:basics#bool
+                              function:
+                                Apply:
+                                  attributes:
+                                    inferredType:
+                                      Function:
+                                        parameterType: elm-compat:main#quantity
+                                        returnType: morphir/SDK:basics#bool
+                                  function:
+                                    Reference:
+                                      attributes:
+                                        inferredType:
+                                          Function:
+                                            parameterType: elm-compat:main#quantity
+                                            returnType:
+                                              Function:
+                                                parameterType: elm-compat:main#quantity
+                                                returnType: morphir/SDK:basics#bool
+                                      fqname: morphir/SDK:basics#greater-than
+                                  argument:
+                                    Variable:
+                                      attributes:
+                                        inferredType: elm-compat:main#quantity
+                                      name: qty
+                              argument:
+                                Literal:
+                                  attributes:
+                                    inferredType: elm-compat:main#quantity
+                                  literal:
+                                    IntegerLiteral: 0
+                  argument:
+                    Field:
+                      attributes:
+                        inferredType:
+                          Reference:
+                            - morphir/SDK:list#list
+                            - Tuple: ["elm-compat:main#product", "elm-compat:main#quantity"]
+                      target:
+                        Variable:
+                          attributes:
+                            inferredType: elm-compat:main#customer-order
+                          name: order
+                      name: products

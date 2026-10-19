@@ -1,0 +1,15 @@
+import {
+  "finos/morphir-ir/yaml/parser",
+  "finos/morphir-ir/wire",
+  "finos/morphir-ir/versioned/json" @versioned,
+  "finos/morphir-ir/versioned" @versions,
+  "finos/morphir-ir" @ir,
+  "finos/morphir-ir/version",
+  "finos/morphir-ir/migration",
+}
+
+import {
+  "finos/morphir-ir/yaml",
+  "finos/morphir-ir" @ir,
+  "finos/morphir-ir/versions/v4/json" @codec,
+} for "test"

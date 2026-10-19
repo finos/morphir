@@ -22,6 +22,12 @@ mise exec -- moon build apps/morphir --target native --release
 ./_build/native/release/build/morphir/morphir/morphir.exe run path/to/workspace --all
 ```
 
+On Windows, the generated native C file requires MSVC's
+[`/bigobj` option](https://learn.microsoft.com/en-us/cpp/build/reference/bigobj-increase-number-of-sections-in-dot-obj-file?view=msvc-170).
+Before running the native source commands above in PowerShell, set
+`$env:CL = "/bigobj $env:CL"`. The native CLI acceptance script sets this option
+for its Windows build subprocess and preserves existing `CL` options.
+
 ## npm package
 
 ```sh
@@ -459,6 +465,123 @@ Repeat `--component` for a sequence of registered components. Dry-run and result
 reports list component transports and metadata policies while the engine and
 checkpoint formats retain their independent defaults.
 
+## Evaluate model functions and Scheme worksheets
+
+These commands complete in a terminal without a browser, display, Workbench
+server or frontend assets. Local function evaluation uses the shared portable
+Scheme evaluator. It does not start or download a provider.
+
+```sh
+morphir eval model.json --suite calls.json --json
+morphir eval model.yaml --suite calls.ion --suite-format ion-text \
+  --checking-policy permissive --provider scheme --json-lines
+cat model.json | morphir eval - --model-format json --suite calls.json --json
+morphir worksheet worksheet.scm --json
+cat worksheet.scm | morphir worksheet - --source-id example --source-revision 1 --json-lines
+```
+
+`eval` accepts the existing `morphir-invocations-v1` suite, with ordered calls,
+public entry names and tagged arguments. For example:
+
+```json
+{"profile":"morphir-invocations-v1","calls":[{"id":"answer","entry":"example:main#answer","arguments":[]}]}
+```
+
+A function invocation is one call inside an evaluation. The suite codec is
+selected independently with `--suite-format json|ion-text|ion-binary` and
+defaults to JSON. Model formats are JSON, YAML, Ion text and Ion binary.
+`--model-format` overrides extension selection; `.yaml` and `.yml` both select
+YAML. Stdin requires an explicit model format, and only one input can consume
+stdin. Model normalization keeps the codec separate from source language,
+generation backend and logical model identity. `--unit-id` supplies a logical
+identity for raw IR; a rich checkpoint retains its envelope's identity.
+
+`--checking-policy strict`, the default, checks the whole model before running.
+`--checking-policy permissive` checks supported behavior as code executes, so an
+unreached unsupported operation can remain in the model. Both policies enforce
+the selected public input/output boundaries, model integrity and resource
+limits. An unsupported selected provider or policy is an error. There is no
+implicit provider fallback.
+
+Evaluation JSON contains canonical `terminalOutcomes` with returned tagged
+values, model errors, failures or cancellation. Integers and decimals retain
+their exact representations; floating values retain their bits. `boundary`
+describes the captured public entry types. A planning refusal has a separate
+`failure` with its stage and domain code. JSON-lines emits each `call` followed
+by a `result`, or an `error` record for a planning refusal.
+
+`worksheet` uses the same source-mapped processor as the Workbench. Definitions
+are shared within one worksheet run. Ordered observations retain exact UTF-16
+source ranges, expressions and typed results. Runtime failure retains its
+completed prefix. Empty input succeeds with no observations. JSON-lines emits
+`observation` records followed by the canonical report in a `result` record.
+
+Both commands accept `--timeout` in milliseconds, from 1 through 600000, with
+default 120000, and `--cancel-file`. Creating the selected cancellation file or
+sending SIGINT requests cancellation. A returned model error, runtime failure
+or timeout exits 1; invalid invocation or input exits 2; cancellation exits 130;
+successful evaluation exits 0. Model errors remain typed outcomes, separate
+from infrastructure failures and ordinary returned `Result.Err` values.
+
+The installed Node launcher handles SIGINT while evaluation runs in an owned
+worker. Native execution uses the host interruption adapter. Portable Wasm
+retains help and pure codec/processor support; its command refuses unavailable
+interruption effects explicitly. A qualified Wasm GC host uses its explicit
+host bridge. See the target acceptance tests for the exercised host bindings.
+
+Evaluation and worksheets produce reports. Use `generate` to generate from an
+existing model, or `run` to compile project sources and publish their outputs.
+
+## Inspect models and save captured originals
+
+```sh
+morphir model inspect model.yaml --json
+morphir model inspect path/to/yaml-tree --json
+morphir model export-original model.ionb --output saved --json
+cat model.yaml | morphir model export-original - --model-format yaml \
+  --filename model.yaml --output saved --json
+```
+
+Inspection reports normalized IR separately from the captured source format
+version and labels it `normalized-ir`. Single files retain their basename and
+exact bytes, including BOM, CRLF, comments and binary Ion. YAML directory inputs
+retain their relative file paths, opaque sidecars and explicit empty directories.
+Stdin requires `--filename` for a portable captured name. Input capture enforces
+finite byte, entry, depth and path limits and refuses symbolic links.
+Native Windows directory enumeration also follows the host's
+[Win32 path-length limit](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilew).
+A deep input can therefore report `directory.open_failed` before reaching the
+application's depth cap. The Windows Node CLI exercises the shared original-path
+depth bound.
+
+Export publishes the captured inventory under `<output>/originals/` through the
+shared transactional publisher. An existing originals directory requires
+`--overwrite`. Failed staging or replacement preserves the previous publication.
+The output directory must be inside the current workspace and must pass the
+host's path confinement checks. A normalized semantic projection cannot be saved
+as an exact original.
+
+## Generate from retained models
+
+```sh
+morphir generate model.yaml --output generated --json
+morphir generate checkpoint.ion --target moonbit --output generated --json
+morphir generate model.json --target elm --output generated --json
+```
+
+`generate` reads JSON, YAML, Ion text and Ion binary through the shared model
+decoder. It reuses engine generation, build validation and transactional
+publication. Rich checkpoints and MEP model envelopes retain their logical unit
+identity and supported source context in binary sidecars. A target that cannot
+preserve required context refuses with `data.lossy_conversion`.
+
+Generation publishes source artifacts. `--validation required` additionally
+requires an explicitly selected build provider and a successful build receipt
+before replacement. Use `execute` or `verify` to invoke generated libraries.
+Default execution logs are written to `.morphir/logs/execution.ionb`; select a
+different sink with `--log-file` and `--log-format ion-binary|json-lines`.
+Unavailable host effects refuse before publication on portable targets.
+
 ## Execute and verify generated libraries
 
 `execute` runs public entries with supported typed boundaries in an E1-generated library. `verify` also
@@ -850,3 +973,64 @@ qualification is tracked separately from these host and wire contracts.
 See the [provider operations guide](../../docs/PROVIDER_OPERATIONS.md) for identity
 preparation, test-only trust provisioning, audit inspection, refusal handling and
 the installed qualification gate.
+
+## Connected execution sessions
+
+`connected` selects the qualified `workbench-http` execution binding. It uses the
+existing authenticated Workbench gateway backed by a Rust connected session.
+The gateway must advertise the exact supported Workbench execution profile.
+The Rust connected v1 manifest or an unauthenticated standalone gateway alone
+does not offer this service. The command needs no browser, frontend assets or
+browser cookie store.
+
+Save the gateway's single-use launch URL in an owner-only file, then exchange it
+into a new connection file. Keep tokens and cookies out of command arguments:
+
+```sh
+morphir connected connect launch.txt --provider workbench-http \
+  --connection connection.json --json
+morphir connected run request.json --provider workbench-http \
+  --connection connection.json --timeout 120000 --json
+```
+
+The connection file is created exclusively with owner-only permissions. An
+existing destination refuses before consuming the launch token. Each run freshly
+authenticates and checks the pinned session and execution offer. A replaced host,
+changed authority, unsupported profile or unreadable private file refuses before
+submission. This connection file stores session credentials; it is separate from
+execution state and must not be committed. Delete it when its session is no
+longer needed. Native callers select the maintained installed Node helper with
+`--connected-helper PATH` and, when needed, `--node PATH`. The installed Node
+launcher selects its adjacent helper automatically.
+
+The bounded request file, or `-` for bounded stdin, captures `source`, `entry` and
+exactly one of `arguments` or `argumentsIon`. `source` is the supported JSON IR
+text. Arguments use the existing typed invocation values. A qualified policy
+mapping additionally accepts the existing `admission` object and
+`executionMode: "capability"`; it never downgrades to another mapping.
+
+A run owns one submission, its query loop and terminal release. Socket reconnect
+reauthenticates and observes that same retained identity once. A lost submission
+reply reports `submission-unknown` and submits no replacement. SIGINT,
+`--cancel-file PATH` or the command timeout requests cancellation; only a received
+terminal receipt proves the outcome. Cancellation acknowledgement does not prove
+termination. If replies remain unavailable, output retains the known identity
+with `observation-stopped`, no invented terminal result and honest release state.
+A value returned before cancellation remains that value. Lost release replies
+are reconciled only after fresh authentication and exact offer validation.
+
+JSON output includes the validated execution view, typed terminal outcomes when
+known, cancellation acknowledgement and release state. JSON-lines wraps that
+report as a `result` record. Exit 0 means returned outcomes and confirmed release,
+130 means confirmed user cancellation or stopping before submission on user request,
+1 means failed,
+unknown or incomplete execution/cleanup, and 2 means refused setup or input.
+Execution state is held only for the current command; no process-restart recovery
+or implicit resubmission is provided. CLI interruption closes its own transport
+and helper and never terminates the remote host.
+
+Connected host effects require Node and POSIX private credential-file support. Portable
+Wasm/Wasm-GC retain pure receipt/core and help support and refuse connected effects
+explicitly. Windows private credential-file protection is not qualified by this
+binding and refuses explicitly. Installed packaging and platform qualification
+remain separate from the authenticated host protocol.

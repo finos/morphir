@@ -113,6 +113,25 @@ pub fn list(path : String) -> Array[String] raise {
 }
 
 ///|
+fn directory_list(path : String, limit : Int32) -> Array[String] raise {
+  match call("list_bounded", a=path, b=limit.to_string()) {
+    Array(items) if items.length() <= limit => {
+      let mut units = 0
+      items.map(fn(item) raise {
+        match item {
+          String(name) => {
+            units = directory_name(name, units)
+            name
+          }
+          _ => raise IOError("directory.invalid_response")
+        }
+      })
+    }
+    _ => raise IOError("directory.invalid_response")
+  }
+}
+
+///|
 pub fn kind(path : String) -> Int32 raise {
   match call("kind", a=path) {
     Number(n, ..) => n.to_int()
@@ -249,6 +268,44 @@ pub fn write_bytes(path : String, content : Bytes) -> Unit raise {
 ///|
 pub fn bytes_supported() -> Bool {
   (call("bytes_supported") is True) catch {
+    _ => false
+  }
+}
+
+///|
+pub fn interruption_requested() -> Bool {
+  let result = call("interruption_requested") catch {
+    _ => Json::boolean(false)
+  }
+  match result {
+    True => true
+    _ => false
+  }
+}
+
+///|
+pub fn read_input(path : String, limit : Int32) -> Bytes raise {
+  if limit < 1 || limit > 16777216 {
+    raise IOError("input.invalid_limit")
+  }
+  let response = call("read_input", a=path, b=limit.to_string())
+  guard response is Array(items) && items.length() <= limit else {
+    raise IOError("input.invalid_response")
+  }
+  let bytes : Array[Byte] = []
+  for item in items {
+    match item {
+      Number(n, ..) if n >= 0.0 && n <= 255.0 && n == n.to_int().to_double() =>
+        bytes.push(n.to_int().to_byte())
+      _ => raise IOError("input.invalid_response")
+    }
+  }
+  Bytes::from_array(bytes)
+}
+
+///|
+pub fn interruption_supported() -> Bool {
+  (call("interruption_supported") is True) catch {
     _ => false
   }
 }

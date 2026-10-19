@@ -144,9 +144,9 @@ test "worker termination keeps only the captured source and transport evidence" 
   )
   for
     reason in [
-      @worksheet.Cancelled,
-      @worksheet.TimedOut,
-      @worksheet.WorkerFailed,
+      @worksheet.WorkerTermination::Cancelled,
+      @worksheet.WorkerTermination::TimedOut,
+      @worksheet.WorkerTermination::WorkerFailed,
     ] {
     let report = captured.terminated(reason)
     assert_eq(@wire.field(report.to_json(), "observations"), Json::array([]))

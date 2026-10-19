@@ -1,0 +1,177 @@
+///|
+/// Checker infrastructure controls only. The maintained parent Rust MCK owns
+/// every verdict; this script never executes or qualifies a production adapter.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+fn set(value : Json, name : String, replacement : Json) -> Unit raise {
+  guard value is Object(fields) else { fail("Expected object: " + name) }
+  fields.set(name, replacement)
+}
+
+///|
+fn digest(bytes : Bytes) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(bytes))
+}
+
+///|
+async fn check(
+  runner : String,
+  kit : String,
+  path : String,
+  source : String,
+  accepted : Bool,
+) -> Unit {
+  @fs.write_file(path, source)
+  let (status, _, stderr) = @process.collect_output(runner, [
+    "--no-banner", "mck", "workbench", "check", "--kit", kit, "--report", path,
+  ])
+  guard (status == 0) == accepted else {
+    fail("Unexpected parent checker verdict: " + path + "\n" + stderr.text())
+  }
+}
+
+///|
+async fn main {
+  guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) else {
+    fail(
+      "Set MORPHIR_MCK_BIN to the maintained Rust runner with exact draft.29 support",
+    )
+  }
+  let root = "apps/morphir-workbench/fixtures/headless-parity/v1"
+  let evidence = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
+    ".dev/headless-parity-controls",
+  )
+  @fs.mkdir(evidence, recursive=true, allow_exist=true)
+  let runner_hash = digest(@fs.read_file(runner).binary())
+  let provenance = @fs.read_file(root + "/provenance.json").json()
+  guard field(provenance, "frozenCorpusFiles") is Array(kits) else {
+    fail("Missing frozen corpus inventory")
+  }
+  let mut total = 0
+  for item in kits {
+    guard field(item, "path") is String(relative) &&
+      field(item, "sha256") is String(expected_hash) else {
+      fail("Malformed frozen corpus inventory")
+    }
+    let kit = root + "/" + relative.replace(old="/cases.json", new="")
+    let bytes = @fs.read_file(kit + "/cases.json").binary()
+    guard digest(bytes) == expected_hash else {
+      fail("Changed fixture: " + kit)
+    }
+    let corpus = @json.parse(@utf8.decode(bytes[:]))
+    guard field(corpus, "formatVersion") is String(version) &&
+      field(corpus, "cases") is Array(cases) &&
+      !cases.is_empty() else {
+      fail("Malformed corpus: " + kit)
+    }
+    let records : Array[Json] = []
+    let operations : Array[Json] = []
+    for case in cases {
+      let operation = field(case, "operation")
+      if !operations.contains(operation) {
+        operations.push(operation)
+      }
+      records.push({
+        "caseId": field(case, "id"),
+        "operation": operation,
+        "format": field(case, "format"),
+        "result": "pass",
+        "observed": field(case, "expected"),
+      })
+    }
+    let positive : Json = {
+      "formatVersion": version,
+      "suite": "workbench",
+      "corpusHash": expected_hash,
+      "capabilities": {
+        "suite": "workbench",
+        "contractVersion": version,
+        "binding": "checker-infrastructure-only",
+        "language": "fixed-independent-expectations",
+        "operations": operations,
+        "formats": ["json"],
+      },
+      "records": records,
+      "errors": [],
+      "qualified": true,
+    }
+    let frozen = positive.stringify()
+    let prefix = evidence + "/" + relative.replace(old="/cases.json", new="")
+    check(runner, kit, prefix + "-positive.json", frozen, true)
+    for
+      attack in [
+        "missing-record", "duplicate-record", "reordered-records", "missing-observation",
+        "changed-observation", "forged-result", "wrong-corpus", "wrong-profile",
+      ] {
+      let tampered = @json.parse(frozen)
+      guard field(tampered, "records") is Array(rows) else {
+        fail("Missing records")
+      }
+      match attack {
+        "missing-record" => ignore(rows.pop())
+        "duplicate-record" => rows.push(rows[0])
+        "reordered-records" => {
+          let first = rows[0]
+          rows[0] = rows[1]
+          rows[1] = first
+        }
+        "missing-observation" => set(rows[0], "observed", Json::null())
+        "changed-observation" =>
+          set(rows[0], "observed", {
+            "status": "invalid",
+            "code": "fixture.tampered",
+          })
+        "forged-result" => set(rows[0], "result", "fail")
+        "wrong-corpus" =>
+          set(
+            tampered, "corpusHash", "0000000000000000000000000000000000000000000000000000000000000000",
+          )
+        "wrong-profile" => set(tampered, "formatVersion", "0.1.0-draft.999")
+        _ => fail("Unknown mutation")
+      }
+      check(
+        runner,
+        kit,
+        prefix + "-" + attack + ".json",
+        tampered.stringify(),
+        false,
+      )
+    }
+    // Preserve a raw duplicate rather than parsing it through this launcher.
+    check(
+      runner,
+      kit,
+      prefix + "-duplicate-key.json",
+      "{\"qualified\":true," + frozen[1:].to_owned(),
+      false,
+    )
+    total += cases.length()
+    guard digest(@fs.read_file(kit + "/cases.json").binary()) == expected_hash else {
+      fail("Corpus changed during checks: " + kit)
+    }
+  }
+  guard digest(@fs.read_file(runner).binary()) == runner_hash else {
+    fail("Runner changed during checks")
+  }
+  @stdio.stdout.write(
+    "Parent checker accepted \{total} fixed positive controls across \{kits.length()} exact kits and rejected nine report attacks per kit. This is checker infrastructure evidence; actual CLI/Workbench qualification remains Task 7.\n",
+  )
+}

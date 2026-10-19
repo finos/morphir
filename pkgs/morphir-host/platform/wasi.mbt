@@ -351,6 +351,63 @@ pub fn list(path : String) -> Array[String] raise {
 }
 
 ///|
+fn directory_list(path : String, limit : Int32) -> Array[String] raise {
+  let fd = open(path, 2, 16384L)
+  defer check(close_ffi(fd), "directory.close_failed")
+  let buffer : FixedArray[Byte] = FixedArray::make(65536, 0)
+  let result : FixedArray[Byte] = FixedArray::make(4, 0)
+  let names = []
+  let mut units = 0
+  let mut cookie = 0L
+  while true {
+    check(
+      readdir_ffi(fd, buffer, buffer.length(), cookie, result),
+      "directory.read_failed",
+    )
+    let n = word(result, 0)
+    if n < 0 || n > buffer.length() {
+      raise IOError("directory.invalid_response")
+    }
+    if n == 0 {
+      break
+    }
+    let mut offset = 0
+    while n - offset >= 24 {
+      let length = word(buffer, offset + 16)
+      if length < 0 || length > 16384 {
+        raise IOError("directory.name_limit")
+      }
+      if length > n - offset - 24 {
+        break
+      }
+      cookie = word(buffer, offset).reinterpret_as_uint().to_int64() |
+        (word(buffer, offset + 4).to_int64() << 32)
+      let dot = (length == 1 && buffer[offset + 24] == 46) ||
+        (length == 2 && buffer[offset + 24] == 46 && buffer[offset + 25] == 46)
+      if !dot {
+        if names.length() >= limit {
+          raise IOError("directory.entry_limit")
+        }
+        let name = @utf8.decode(
+          Bytes::from_array(buffer[offset + 24:offset + 24 + length]),
+        )
+        units = directory_name(name, units)
+        names.push(name)
+      }
+      offset += 24 + length
+    }
+    if offset == n && n < buffer.length() {
+      break
+    }
+    // Resume from the last complete entry if the host truncated its last entry.
+    if offset == 0 {
+      raise IOError("directory.invalid_response")
+    }
+  }
+  names
+}
+
+///|
 fn encode(s : String) -> FixedArray[Byte] {
   @utf8.encode(s[:]).to_fixedarray()
 }
@@ -406,4 +463,65 @@ pub fn write_bytes(path : String, content : Bytes) -> Unit raise {
   let fd = open(path, 9, 64L)
   defer ignore(close_ffi(fd))
   write_fd(fd, FixedArray::from_array(content.to_array()))
+}
+
+///|
+pub fn read_input(path : String, limit : Int32) -> Bytes raise {
+  if limit < 1 || limit > 16777216 {
+    raise IOError("input.invalid_limit")
+  }
+  let fd = if path == "-" {
+    0
+  } else {
+    if kind(path) != 1 {
+      raise IOError("input.regular_file_required")
+    }
+    open(path, 0, 2L)
+  }
+  defer (if fd != 0 { ignore(close_ffi(fd)) })
+  let data : Array[Byte] = []
+  while true {
+    let buffer = FixedArray::make(
+      (limit - data.length() + 1).min(65536),
+      b'\x00',
+    )
+    let result = FixedArray::make(4, b'\x00')
+    check(read_ffi(fd, vectors(buffer, 0), 1, result), "input.read_failed")
+    let count = word(result, 0)
+    if count < 0 || count > buffer.length() {
+      raise IOError("input.read_failed")
+    }
+    if count == 0 {
+      break
+    }
+    if data.length() + count > limit {
+      raise IOError("input.limit")
+    }
+    for byte in buffer[:count] {
+      data.push(byte)
+    }
+  }
+  Bytes::from_array(data)
+}
+
+///|
+#unsafe_skip_stub_check
+#borrow(result)
+fn clock_time_ffi(
+  clock : Int32,
+  precision : Int64,
+  result : FixedArray[Byte],
+) -> Int32 = "wasi_snapshot_preview1" "clock_time_get"
+
+///|
+pub fn monotonic_seconds() -> Double {
+  let result = FixedArray::make(8, b'\x00')
+  if clock_time_ffi(1, 1000000L, result) != 0 {
+    return 0.0
+  }
+  let mut nanos = 0UL
+  for index = 7; index >= 0; index = index - 1 {
+    nanos = (nanos << 8) | result[index].to_int().to_uint64()
+  }
+  nanos.to_double() / 1000000000.0
 }

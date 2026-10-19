@@ -1,0 +1,290 @@
+///|
+/// Build the pinned actual authenticated host and installed artifact producer.
+/// Cargo owns compilation; its structured artifact messages identify the fixture.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+let revision = "b0de0899b2a9d37a33730d65505f0b3d39274132"
+
+///|
+fn executable(messages : String) -> String? {
+  let matches : Array[String] = []
+  for line in messages.split("\n") {
+    let value = @json.parse(line.to_owned()) catch { _ => continue }
+    if value
+      is {
+        "reason": String("compiler-artifact"),
+        "target": { "name": String("ui_artifact_process"), .. },
+        "executable": String(path),
+        ..
+      } {
+      matches.push(path)
+    }
+  }
+  if matches.length() == 1 {
+    Some(matches[0])
+  } else {
+    None
+  }
+}
+
+///|
+async fn output(program : String, args : Array[String], cwd : String) -> String {
+  let (code, stdout, stderr) = @process.collect_output(program, args, cwd~)
+  guard code == 0 else { fail(program + ": " + stderr.text() + stdout.text()) }
+  stdout.text().trim().to_owned()
+}
+
+///|
+async fn clean_inputs(source : String) -> Unit {
+  guard output(
+      "git",
+      [
+        "status", "--porcelain", "--untracked-files=all", "--ignore-submodules=none",
+      ],
+      source,
+    ) ==
+    "" &&
+    output(
+      "git",
+      [
+        "ls-files", "--others", "--ignored", "--exclude-standard", "--", ".cargo",
+      ],
+      source,
+    ) ==
+    "" else {
+    fail(
+      "Clean tracked/untracked source and no ignored Cargo overrides required",
+    )
+  }
+}
+
+///|
+async fn validate_source(source : String, expected : String) -> Unit {
+  guard output("git", ["rev-parse", "HEAD"], source) == expected else {
+    fail("Exact upstream host revision required")
+  }
+  clean_inputs(source)
+  let path = "ecosystem/morphir-rust"
+  let required = output("git", ["rev-parse", "HEAD:" + path], source)
+  guard output("git", ["ls-tree", "HEAD", "--", path], source) ==
+    "160000 commit " + required + "\t" + path else {
+    fail("Required Rust source must be a pinned Git submodule")
+  }
+  let submodule = @fs.realpath(source + "/" + path)
+  guard @fs.realpath(output("git", ["rev-parse", "--show-toplevel"], submodule)) ==
+    submodule &&
+    output("git", ["rev-parse", "HEAD"], submodule) == required else {
+    fail("Exact initialized Rust submodule revision required")
+  }
+  clean_inputs(submodule)
+}
+
+///|
+async fn verified_build(
+  source : String,
+  expected : String,
+  build : async () -> String,
+) -> String {
+  validate_source(source, expected)
+  let messages = build()
+  validate_source(source, expected)
+  messages
+}
+
+///|
+async fn fixture_git(root : String, args : Array[String]) -> String {
+  output(
+    "git",
+    [
+      "-c",
+      "commit.gpgsign=false",
+      "-c",
+      "core.autocrlf=false",
+      "-c",
+      "user.name=Headless host fixture",
+      "-c",
+      "user.email=ci@example.invalid",
+      "-c",
+      "core.hooksPath=" + root + "/no-hooks",
+      ..args,
+    ],
+    root,
+  )
+}
+
+///|
+async fn expect_source_refusal(
+  source : String,
+  expected : String,
+  build : async () -> String,
+) -> Unit {
+  try ignore(verified_build(source, expected, build)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Invalid source reached a successful build")
+  }
+}
+
+///|
+async fn remove_fixture(path : String) -> Unit {
+  // Git object files are read-only on Windows. The pinned project Node host
+  // handles their attributes before unlinking; no caller-owned path is used.
+  let (status, _, error) = @process.collect_output("node", [
+    "-e", "require('node:fs').rmSync(process.argv[1], {recursive:true,force:true,maxRetries:3,retryDelay:100})",
+    path,
+  ])
+  guard status == 0 else {
+    fail("Owned fixture cleanup failed: " + error.text())
+  }
+}
+
+///|
+async fn source_self_test() -> Unit {
+  // Commits and staging below exist only in this disposable fixture repository.
+  // No Rust build, network checkout or caller-owned source is modified.
+  let temporary = @fs.tmpdir(prefix="morphir-headless-host-")
+  defer remove_fixture(temporary)
+  let origin = temporary + "/origin"
+  let source = temporary + "/source"
+  @fs.mkdir(origin)
+  @fs.mkdir(source)
+  ignore(fixture_git(origin, ["init", "-q"]))
+  @fs.write_file(origin + "/source.rs", "// fixed submodule\n")
+  @fs.write_file(origin + "/.gitignore", ".cargo/\n")
+  ignore(fixture_git(origin, ["add", "."]))
+  ignore(fixture_git(origin, ["commit", "-qm", "fixture submodule"]))
+  let required = fixture_git(origin, ["rev-parse", "HEAD"])
+  ignore(fixture_git(source, ["init", "-q"]))
+  @fs.write_file(source + "/README", "fixed parent\n")
+  @fs.write_file(source + "/.gitignore", ".cargo/\ntarget/\n")
+  ignore(
+    fixture_git(source, [
+      "-c", "protocol.file.allow=always", "submodule", "add", "-q", origin, "ecosystem/morphir-rust",
+    ]),
+  )
+  ignore(fixture_git(source, ["add", "."]))
+  ignore(fixture_git(source, ["commit", "-qm", "fixture parent"]))
+  let expected = fixture_git(source, ["rev-parse", "HEAD"])
+  let calls = Ref(0)
+  let build : async () -> String = fn() {
+    calls.val += 1
+    "fixture Cargo messages"
+  }
+  ignore(verified_build(source, expected, build))
+  guard calls.val == 1 else { fail("Clean source did not reach build") }
+  expect_source_refusal(
+    source, "0000000000000000000000000000000000000000", build,
+  )
+  @fs.write_file(source + "/rogue.rs", "untracked build input")
+  expect_source_refusal(source, expected, build)
+  @fs.remove(source + "/rogue.rs")
+  @fs.mkdir(source + "/.cargo")
+  @fs.write_file(
+    source + "/.cargo/config.toml",
+    "[build]\nrustc-wrapper='rogue'\n",
+  )
+  expect_source_refusal(source, expected, build)
+  @fs.rmdir(source + "/.cargo", recursive=true)
+  let submodule = source + "/ecosystem/morphir-rust"
+  @fs.write_file(submodule + "/source.rs", "// wrong revision\n")
+  ignore(fixture_git(submodule, ["add", "."]))
+  ignore(fixture_git(submodule, ["commit", "-qm", "wrong fixture revision"]))
+  expect_source_refusal(source, expected, build)
+  ignore(fixture_git(submodule, ["checkout", "--detach", "-q", required]))
+  @fs.write_file(submodule + "/source.rs", "// dirty submodule\n")
+  expect_source_refusal(source, expected, build)
+  ignore(fixture_git(submodule, ["checkout", "--", "source.rs"]))
+  @fs.write_file(submodule + "/rogue.rs", "untracked submodule input")
+  expect_source_refusal(source, expected, build)
+  @fs.remove(submodule + "/rogue.rs")
+  @fs.mkdir(submodule + "/.cargo")
+  @fs.write_file(
+    submodule + "/.cargo/config",
+    "[build]\nrustc-wrapper='rogue'\n",
+  )
+  expect_source_refusal(source, expected, build)
+  @fs.rmdir(submodule + "/.cargo", recursive=true)
+  ignore(
+    fixture_git(source, [
+      "submodule", "deinit", "-f", "--", "ecosystem/morphir-rust",
+    ]),
+  )
+  expect_source_refusal(source, expected, build)
+  ignore(
+    fixture_git(source, [
+      "-c", "protocol.file.allow=always", "submodule", "update", "--init", "--",
+      "ecosystem/morphir-rust",
+    ]),
+  )
+  guard calls.val == 1 else { fail("Invalid source reached Cargo execution") }
+  ignore(verified_build(source, expected, build))
+  guard calls.val == 2 else { fail("Restored source failed validation") }
+  expect_source_refusal(source, expected, async fn() {
+    @fs.write_file(source + "/README", "changed during build\n")
+    "fixture Cargo messages"
+  })
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  if args == ["--self-test"] {
+    let fixture = "{\"reason\":\"compiler-artifact\",\"target\":{\"name\":\"ui_artifact_process\"},\"executable\":\"/tmp/fixture\"}"
+    guard executable("not-json\n" + fixture) == Some("/tmp/fixture") &&
+      executable(fixture + "\n" + fixture) == None &&
+      executable("{\"reason\":\"build-finished\"}") == None else {
+      fail("Cargo artifact selection must be exact and unambiguous")
+    }
+    source_self_test()
+    @stdio.stdout.write(
+      "headless-host: exact Cargo selection and source/submodule guards passed without Rust builds\n",
+    )
+    return
+  }
+  guard args is [source] else {
+    fail("Usage: headless-host.mbtx UPSTREAM_CHECKOUT | --self-test")
+  }
+  let source = @fs.realpath(source)
+  let messages = verified_build(source, revision, async fn() {
+    ignore(output("cargo", ["build", "--locked", "-p", "morphir"], source))
+    output(
+      "cargo",
+      [
+        "test", "--locked", "-p", "morphir", "--test", "ui_artifact_process", "--no-run",
+        "--message-format=json",
+      ],
+      source,
+    )
+  })
+  guard executable(messages) is Some(fixture) &&
+    fixture.has_prefix(source + "/target/") else {
+    fail("One Cargo-built installed artifact fixture is required")
+  }
+  let host = source + "/target/debug/morphir"
+  for path in [host, fixture] {
+    guard @fs.kind(path, follow_symlink=false) is Regular &&
+      !path.contains("\n") &&
+      !path.contains("\r") else {
+      fail("Regular host executable with a single-line path required")
+    }
+  }
+  let values = "MORPHIR_WORKBENCH_LIVE_HOST=" +
+    host +
+    "\nMORPHIR_MCK_BIN=" +
+    host +
+    "\nMORPHIR_WORKBENCH_ARTIFACT_HOST=" +
+    fixture +
+    "\n"
+  @stdio.stdout.write(values)
+  if @env.get_env_var("GITHUB_ENV") is Some(path) {
+    @fs.write_file(path, @fs.read_file(path).text() + values)
+  }
+}

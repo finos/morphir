@@ -1,0 +1,264 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-host"
+
+import {
+  "finos/morphir-engine",
+  "finos/morphir-engine/config",
+  "finos/morphir-engine/conformance",
+  "finos/morphir-engine/data",
+  "finos/morphir-engine/execution",
+  "finos/morphir-engine/workspace",
+  "finos/morphir-execution/observability",
+  "finos/morphir-host/metadata/grants",
+  "finos/morphir-host/toolchain",
+  "finos/morphir-ir/versions/v3",
+  "finos/morphir-metadata",
+  "moonbitlang/core/debug",
+  "moonrockz/ion/ion",
+}
+
+// Values
+pub fn configuration(Map[String, String]) -> (@config.Document, @config.Document) raise
+
+pub fn error_code(Error) -> String
+
+pub fn error_message(Error) -> String
+
+pub fn locate(String) -> Location raise
+
+pub fn metadata_helper_bundle_sha256(String) -> String raise
+
+pub fn native_telemetry_endpoint(String) -> Bool
+
+pub fn process_execution(String, String, String, Map[String, String], timeout? : Int, toolchain_pin? : Json?, build_mode? : String, cancel_file? : String, payload_capture? : @observability.PayloadCapture, observer? : @observability.Observer) -> @execution.Provider raise
+
+pub fn rust_classic_ir(@data.IRUnit) -> @v3.IRFile raise
+
+pub fn rust_evaluator_lane(String, String, Json?, node? : String, required? : Bool, timeout? : Int, cancel_file? : String) -> @conformance.EvaluatorLane raise
+
+pub fn verify_and_publish(Array[@execution.Plan], @execution.Provider, @execution.Evaluator, ContentPublisher, String, cancelled? : () -> Bool, observer? : @observability.Observer) -> VerificationResult raise
+
+// Errors
+
+// Types and methods
+pub(all) struct ContentPublication {
+  stage : (@morphir-engine.ContentArtifact) -> Unit raise
+  commit : (String) -> Unit raise
+  abort : () -> Unit raise
+}
+
+pub(all) struct ContentPublisher {
+  guarantee : PublicationGuarantee
+  write_bytes : Bool
+  begin : (Array[String]) -> ContentPublication raise
+}
+pub fn ContentPublisher::filesystem(String, String) -> Self raise
+pub fn ContentPublisher::filesystem_inventory(String, String, Array[String]) -> Self raise
+pub fn ContentPublisher::memory(Map[String, @data.Content]) -> Self
+pub fn ContentPublisher::text(Publisher) -> Self
+
+pub(all) struct ContentResult {
+  report : @morphir-engine.ContentReport
+  validated : Array[ValidatedProject]
+  committed : Array[String]
+  publication_error : String?
+  cancelled : Bool
+}
+pub fn ContentResult::successful(Self) -> Bool
+
+pub(all) enum Event {
+  Phase(String)
+  Diagnostic(@morphir-engine.Diagnostic)
+  Generated(@morphir-engine.LibraryProject)
+  Validated(ValidatedProject)
+  Published(String)
+}
+
+pub(all) struct Host {
+  input : Mount
+  publisher : Publisher?
+  toolchain : @toolchain.Provider?
+  library_build : LibraryBuildProvider?
+  metadata_sessions : MetadataSessions
+  environment : Map[String, String]
+  system : @config.Document
+  global : @config.Document
+  cancelled : () -> Bool
+  event : (Event) -> Unit
+  limits : Limits
+}
+pub fn Host::dispose_metadata_sessions(Self) -> Unit raise
+pub fn Host::new(Mount, publisher? : Publisher?, toolchain? : @toolchain.Provider?, library_build? : LibraryBuildProvider?, environment? : Map[String, String], system? : @config.Document, global? : @config.Document, cancelled? : () -> Bool, event? : (Event) -> Unit, limits? : Limits) -> Self
+pub fn Host::register_process_metadata_provider(Self, @morphir-engine.Engine, @grants.Grants?, String, String, timeout? : Int, cancel_file? : String, observer? : @observability.Observer, audit_sink? : MetadataAuditSink) -> Unit raise
+pub fn Host::register_project_metadata_provider(Self, @morphir-engine.Engine, (@morphir-engine.ProjectMetadataScope) -> MetadataSession raise) -> Unit raise
+pub fn Host::run(Self, @morphir-engine.Engine, @morphir-engine.Plan) -> Result raise
+pub fn Host::run_content(Self, @morphir-engine.Engine, @morphir-engine.Plan, ContentPublisher, read_bytes? : ((String) -> Bytes raise)?) -> ContentResult raise
+pub fn Host::snapshot(Self) -> Snapshot raise
+pub fn Host::toolchain_request(Self, Json) -> Json raise
+
+pub(all) struct LibraryBuildLease {
+  id : String
+  build : (LibraryBuildRequest) -> Json raise
+  dispose : () -> Unit raise
+}
+
+pub(all) struct LibraryBuildProvider {
+  contracts : Array[String]
+  acquire : () -> LibraryBuildLease raise
+}
+pub fn LibraryBuildProvider::process(String, String, String, Map[String, String], timeout? : Int) -> Self raise
+
+pub(all) struct LibraryBuildRequest {
+  project : @morphir-engine.LibraryProject
+  snapshot : String
+  source_identity : String
+  target : String
+}
+
+pub(all) struct Limits {
+  max_files : Int
+  max_bytes : Int
+  max_depth : Int
+}
+pub fn Limits::default() -> Self
+
+pub(all) struct Location {
+  root : String
+  invocation : String
+  file : String?
+}
+
+pub(all) struct MetadataAuditEvidence {
+  service : String
+  service_sha256 : String
+  service_verified : Bool
+  release : String
+  native_revision : String?
+  profile : String
+  profile_version : String
+  assurance : String
+  profile_verified : Bool
+}
+
+pub(all) enum MetadataAuditPhase {
+  Acquire
+  Probe
+  Restore
+  Decode
+  Context
+  Admission
+  Cleanup
+} derive(Eq, @debug.Debug)
+pub fn MetadataAuditPhase::name(Self) -> String
+
+pub(all) struct MetadataAuditRecord {
+  run_id : String
+  operation : String
+  project : String
+  phase : MetadataAuditPhase
+  signal : @observability.Signal
+  code : String
+  evidence : MetadataAuditEvidence?
+  wall_seconds : Double
+  duration_seconds : Double
+}
+pub fn MetadataAuditRecord::to_ion(Self) -> @ion.IonValue raise
+pub fn MetadataAuditRecord::to_json(Self) -> Json
+
+pub(all) struct MetadataAuditSink {
+  enabled : () -> Bool
+  try_record : (MetadataAuditRecord) -> @observability.Delivery raise
+  monotonic : () -> Double
+  wall : () -> Double
+  run_id : String
+}
+pub fn MetadataAuditSink::noop() -> Self
+
+pub(all) struct MetadataSession {
+  capabilities : @morphir-metadata.Capabilities
+  dispose : () -> Unit raise
+}
+
+pub struct MetadataSessions {
+  // private fields
+}
+
+pub(all) struct Mount {
+  kind : (String) -> Int raise
+  read : (String) -> String raise
+  list : (String) -> Array[String] raise
+}
+pub fn Mount::filesystem(String) -> Self raise
+pub fn Mount::filesystem_bytes(String) -> ((String) -> Bytes raise) raise
+pub fn Mount::memory(Map[String, String]) -> Self raise
+
+pub struct NativeTelemetry {
+  // private fields
+}
+pub fn NativeTelemetry::new(String, String, String, String, Json, timeout? : Int) -> Self raise
+
+pub(all) struct Publication {
+  stage : (@morphir-engine.Artifact) -> Unit raise
+  commit : (String) -> Unit raise
+  abort : () -> Unit raise
+}
+
+pub(all) enum PublicationGuarantee {
+  AtomicTask
+  RecoverableTask
+  HostManaged
+}
+
+pub(all) struct Publisher {
+  guarantee : PublicationGuarantee
+  begin : (Array[String]) -> Publication raise
+}
+pub fn Publisher::filesystem(String, String) -> Self raise
+pub fn Publisher::memory(Map[String, String]) -> Self
+
+pub(all) struct Result {
+  report : @morphir-engine.Report
+  committed : Array[String]
+  publication_error : String?
+  cancelled : Bool
+}
+pub fn Result::successful(Self) -> Bool
+
+pub(all) struct Snapshot {
+  tree : @workspace.Tree
+  paths : Array[String]
+}
+pub fn Snapshot::engine_host(Self) -> @morphir-engine.Host
+
+pub struct TelemetrySession {
+  // private fields
+}
+pub fn TelemetrySession::event(Self, Event) -> Unit
+pub fn TelemetrySession::flush(Self) -> Unit
+pub fn TelemetrySession::flush_native(Self, NativeTelemetry, String) -> Unit
+pub fn TelemetrySession::flush_to_process(Self, String, String, String, Array[String], timeout? : Int, cancel_file? : String, program_identity? : String?, clear_otel_environment? : Bool) -> Unit
+pub fn TelemetrySession::local(String, String?, enabled? : Bool, kind? : String, format? : String) -> Self raise
+pub fn TelemetrySession::metadata_audit_sink(Self) -> MetadataAuditSink
+pub fn TelemetrySession::metrics(Self) -> Json
+pub fn TelemetrySession::new(String?, format? : String, record_traces? : Bool) -> Self raise
+pub fn TelemetrySession::observer(Self) -> @observability.Observer
+
+pub(all) struct ValidatedProject {
+  project_id : String
+  root : String
+  target : String
+  source_identity : String
+  receipt : String
+  evidence : Json
+}
+
+pub(all) struct VerificationResult {
+  reports : Array[@execution.Report]
+  committed : Bool
+  publication_error : String?
+}
+pub fn VerificationResult::successful(Self) -> Bool
+
+// Type aliases
+
+// Traits
