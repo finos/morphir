@@ -230,7 +230,8 @@ fn SelectedReferences::value(
         self.required_types.check(types)
       }
       if name.package_name.to_canonical() != "morphir/SDK" &&
-        source_string_arity(name.to_canonical()) is None {
+        source_string_arity(name.to_canonical()) is None &&
+        source_int32_arity(name.to_canonical()) is None {
         if self.value_access.get(name.to_canonical()) is Some((owner, exposed)) &&
           owner != self.owner &&
           !exposed {

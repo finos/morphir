@@ -1,0 +1,5 @@
+import {
+  "finos/morphir-sdk" @sdk,
+  "finos/morphir-sdk/int",
+  "finos/morphir-sdk/integer",
+}

@@ -1,0 +1,8 @@
+{
+  "profile": "morphir-moonbit-source-int32-v1",
+  "classification": "MoonBit signed-width runtime extension; excluded from the classic SDK bindings",
+  "bindings": [
+    {"fqName": "morphir/moonbit-source:int32#normalize", "inputs": ["Int"], "output": "Int32Value"}
+  ],
+  "semantics": "Exact modulo 2^32 followed by signed interpretation; distinct from checked SDK to-int-32"
+}

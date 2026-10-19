@@ -207,6 +207,7 @@ pub fn install(
   for
     (fq, count) in sdk_registry() +
     source_string_registry() +
+    source_int32_registry() +
     sdk_int_canonical_aliases() {
     let parameters : Array[String] = []
     for i = 0; i < count; i = i + 1 {

@@ -67,7 +67,11 @@ fn sdk_dispatch_inner(
 ) -> @scheme.Value raise {
   let name = sdk_int_binding(name)
   if name.has_prefix("morphir/moonbit-source:") {
-    return source_string_dispatch(name, args)
+    return if name.has_prefix("morphir/moonbit-source:int32#") {
+      source_int32_dispatch(name, args)
+    } else {
+      source_string_dispatch(name, args)
+    }
   }
   if name.has_prefix("morphir/SDK:basics#") {
     return sdk_basics_dispatch(rt, name, args)
@@ -116,7 +120,11 @@ fn install_sdk(
     match
       (match source_string_arity(name) {
         Some(n) => Some(n)
-        None => sdk_expected_arity(name)
+        None =>
+          match source_int32_arity(name) {
+            Some(n) => Some(n)
+            None => sdk_expected_arity(name)
+          }
       }) {
       Some(expected) => @scheme.arity(args[1:].to_owned(), expected, name)
       None => raise @scheme.Unbound(name)
@@ -137,6 +145,7 @@ fn install_sdk(
   for
     (name, arity) in sdk_registry() +
     source_string_registry() +
+    source_int32_registry() +
     sdk_int_canonical_aliases() {
     runtime.register_native_binding("accelerator:" + name, arity, fn(
       rt,

@@ -693,6 +693,9 @@ test "typed foundation and String profiles preserve source facts through Ion che
         "moonbit-model-typed-library-foundation-v1", "pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let picked : Int = if flag { a } else { b }; identity(picked) }\nfn identity(value : Int32) -> Int { value }",
       ),
       (
+        "moonbit-model-int32-library-v1", "pub fn wrap() -> Int32 { 2147483647 + 1 }",
+      ),
+      (
         "moonbit-model-string-library-v1", "// λ😀\npub fn greet(name : String) -> String { let prefix : String = \"Hello, \\u{1f600} \"; prefix + name }",
       ),
       (
@@ -703,6 +706,9 @@ test "typed foundation and String profiles preserve source facts through Ion che
       ),
       (
         "moonbit-model-library-2026-10-17", "/// Select by name order.\n///\n/// Preserve signed values. λ😀\npub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }",
+      ),
+      (
+        "moonbit-model-library-2026-10-19", "pub fn cut(s : String, a : Int32, b : Int32) -> String { s[a:b].to_owned() }",
       ),
     ] {
     let snapshot = files()

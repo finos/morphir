@@ -172,6 +172,25 @@ async fn main {
         g("choose") +
         "(flag)(a)(b))), original.to_string())\n  }\n}\n",
       )
+    } else if kind == "numeric" {
+      model_tests.write_string(
+        "test \"signed Int32 source and generated consumers wrap and compare\" {\n  let three = @int.to_int32(@integer.parse(\"3\")).unwrap()\n  let four_hundred = @int.to_int32(@integer.parse(\"400\")).unwrap()\n  assert_eq(@onumeric.overflow(), -2147483648)\n  assert_eq(@onumeric.multiply_wrap(), 0)\n  assert_eq(@onumeric.underflow(), 2147483647)\n  assert_eq(@onumeric.total(3, 400), 1100)\n  assert_true(@onumeric.before(-1, 1))\n  assert_true(@onumeric.after(1, -1))\n  assert_true(@onumeric.same(2, 2))\n  assert_false(@onumeric.same(2, 3))\n  assert_eq(@integer.to_string(@int.from_int32(CALL_OVERFLOW)), \"-2147483648\")\n  assert_eq(@integer.to_string(@int.from_int32(CALL_MULTIPLY)), \"0\")\n  assert_eq(@integer.to_string(@int.from_int32(CALL_UNDERFLOW)), \"2147483647\")\n  assert_eq(@integer.to_string(@int.from_int32(CALL_TOTAL(three)(four_hundred))), \"1100\")\n  let negative = @int.to_int32(@integer.parse(\"-1\")).unwrap()\n  let positive = @int.to_int32(@integer.parse(\"1\")).unwrap()\n  assert_true(CALL_BEFORE(negative)(positive))\n  assert_true(CALL_AFTER(positive)(negative))\n  let two = @int.to_int32(@integer.parse(\"2\")).unwrap()\n  let three = @int.to_int32(@integer.parse(\"3\")).unwrap()\n  assert_true(CALL_SAME(two)(two))\n  assert_false(CALL_DIFFERENT(two)(three))\n}\n"
+        .replace(old="CALL_OVERFLOW", new=g("overflow"))
+        .replace(old="CALL_MULTIPLY", new=g("multiply-wrap"))
+        .replace(old="CALL_UNDERFLOW", new=g("underflow"))
+        .replace(old="CALL_TOTAL", new=g("total"))
+        .replace(old="CALL_BEFORE", new=g("before"))
+        .replace(old="CALL_AFTER", new=g("after"))
+        .replace(old="CALL_SAME", new=g("same"))
+        .replace(old="CALL_DIFFERENT", new=g("same")),
+      )
+    } else if kind == "indexed" {
+      model_tests.write_string(
+        "test \"String UTF-16 indexed source and generated consumers\" {\n  let source = \"A😀é\"\n  let text = @sdk.Text::from_string(source)\n  assert_eq(@oindexed.count(source), 5)\n  assert_eq(@integer.to_string(@int.from_int32(CALL_COUNT(text))), \"5\")\n  for (start, end, expected) in [(0, 5, \"A😀é\"), (1, 3, \"😀\"), (2, 3, \"\"), (1, 2, \"\"), (-100, 2, \"A\"), (3, 99, \"é\"), (-2147483648, 2147483647, \"A😀é\"), (2147483647, -2147483648, \"\")] {\n    assert_eq(@oindexed.cut(source, start, end), expected)\n    let a = @int.to_int32(@integer.from_int64(start.to_int64())).unwrap()\n    let b = @int.to_int32(@integer.from_int64(end.to_int64())).unwrap()\n    assert_eq(CALL_CUT(text)(a)(b).to_string(), expected)\n  }\n  assert_eq(@oindexed.count_cut(source, 1, 3), 3)\n  let one = @int.to_int32(@integer.parse(\"1\")).unwrap()\n  let three = @int.to_int32(@integer.parse(\"3\")).unwrap()\n  assert_eq(@integer.to_string(@int.from_int32(CALL_COUNT_CUT(text)(one)(three))), \"3\")\n}\n"
+        .replace(old="CALL_COUNT_CUT", new=g("count-cut"))
+        .replace(old="CALL_COUNT", new=g("count"))
+        .replace(old="CALL_CUT", new=g("cut")),
+      )
     } else if kind == "strings" {
       model_tests.write_string(
         "test \"String original, Scheme and generated greeting\" {\n  for name in [\"\", \"Morphir\", \"😀\", \"é\", \"é\"] {\n    let original = @ostrings.greet(name)\n    assert_eq(original, \"Hello, \" + name)\n    assert_eq(" +
@@ -270,7 +289,7 @@ async fn main {
       )
     }
     let original_alias = if [
-        "foundation", "strings", "bounded", "ordered", "orderedbounded",
+        "foundation", "numeric", "indexed", "strings", "bounded", "ordered", "orderedbounded",
       ].contains(kind) {
       kind
     } else {
@@ -312,7 +331,7 @@ async fn main {
     }
     let log = command("moon", args, cwd=workspace)
     @fs.write_file(root + "/" + mode + ".log", log)
-    assert_eq(log.split("Total tests: 30, passed: 30, failed: 0.").count(), 5)
+    assert_eq(log.split("Total tests: 32, passed: 32, failed: 0.").count(), 5)
     lanes.push(
       ({ "mode": mode, "targets": ["native", "js", "wasm", "wasm-gc"] } : Json),
     )
@@ -362,11 +381,14 @@ async fn main {
       "lexer": "0.4.3",
       "classicSemanticPin": "bc99af69a8b24d391311fae3822a87eafef3c334",
       "sourceStringExtension": "morphir-moonbit-source-string-v1",
+      "sourceInt32Extension": "morphir-moonbit-source-int32-v1",
+      "sourceStringIndexExtension": "morphir-moonbit-source-string-index-v1",
       "lanes": lanes,
       "sdkFiles": identities,
       "models": output,
       "supportedProfiles": [
-        "moonbit-model-library-v1", "moonbit-model-library-2026-10-17",
+        "moonbit-model-library-v1", "moonbit-model-library-2026-10-17", "moonbit-model-int32-library-v1",
+        "moonbit-model-library-2026-10-19",
       ],
       "scope": "Local original source, Scheme, generated direct consumers and private access. Installed qualification remains a separate task.",
     } : Json)

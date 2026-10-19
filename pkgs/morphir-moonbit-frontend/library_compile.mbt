@@ -79,7 +79,7 @@ fn library_compile_scoped(
   )
   let checked = scope.observe(
     @observe.ProfileCheck,
-    fn(_) raise { library_check(resolved, limits, cancelled) },
+    fn(_) raise { library_check(resolved, limits, cancelled, mode) },
     is_cancelled=frontend_cancelled,
   )
   scope.observe(
@@ -141,6 +141,32 @@ pub fn compile_typed_library(
         cancelled,
         scope,
         mode=TypedFoundation,
+      )
+      check_naming_warnings(output.warnings, strict_naming)
+      output
+    },
+    is_cancelled=frontend_cancelled,
+  )
+}
+
+///|
+/// Signed Int32 source expressions with the existing Bool library subset.
+pub fn compile_int32_library(
+  input : Input,
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
+) -> LibraryOutput raise {
+  scope.observe(
+    @observe.Frontend,
+    fn(scope) raise {
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        mode=NumericInt32,
       )
       check_naming_warnings(output.warnings, strict_naming)
       output
@@ -254,6 +280,34 @@ pub fn compile_supported_library_2026_10_17(
         cancelled,
         scope,
         mode=SupportedLibrary20261017,
+        string_limit=max_string_code_units,
+      )
+      check_naming_warnings(output.warnings, strict_naming)
+      output
+    },
+    is_cancelled=frontend_cancelled,
+  )
+}
+
+///|
+/// Cumulative Bool, String, and signed Int32 source subset with indexed String operations.
+pub fn compile_supported_library_2026_10_19(
+  input : Input,
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  max_string_code_units~ : Int32 = 1048576,
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
+) -> LibraryOutput raise {
+  scope.observe(
+    @observe.Frontend,
+    fn(scope) raise {
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        mode=SupportedLibrary20261019,
         string_limit=max_string_code_units,
       )
       check_naming_warnings(output.warnings, strict_naming)

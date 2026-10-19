@@ -14,6 +14,7 @@ fn LibraryResolver::expression(
   library_poll(self.cancelled)
   match expr {
     Boolean(value, source) => Boolean(value, source)
+    Number(value, authored, source) => Number(value, authored, source)
     Text(value, authored, source) => Text(value, authored, source)
     Constraint(value, ty, source) =>
       Constraint(self.expression(value, scope), ty, source)
@@ -34,6 +35,17 @@ fn LibraryResolver::expression(
         }
       }
     Negation(value, source) => Negation(self.expression(value, scope), source)
+    NumericNegation(value, source) =>
+      NumericNegation(self.expression(value, scope), source)
+    StringLength(value, source) =>
+      StringLength(self.expression(value, scope), source)
+    StringSlice(value, start, end, source) =>
+      StringSlice(
+        self.expression(value, scope),
+        self.expression(start, scope),
+        self.expression(end, scope),
+        source,
+      )
     Binary(op, lhs, rhs, source) =>
       Binary(
         op,

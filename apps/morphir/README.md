@@ -200,12 +200,14 @@ morphir run . --frontend-provider finos/morphir-moonbit-frontend --frontend-prof
 ```
 
 For the full currently qualified source subset, select
-`--frontend-profile moonbit-model-library-2026-10-17`. It combines Bool, String basics and
-shortlex ordering, and Int32 identity/selection/call paths in one library. Mixed
+`--frontend-profile moonbit-model-library-2026-10-19`. It combines Bool, String basics and
+shortlex ordering, signed Int32 arithmetic and comparisons, UTF-16 String length,
+and surrogate-aware owned slices in one library. Mixed
 signatures work across these types. String ordering compares UTF-16 length first,
 then lexical code units for ties; `"b" < "aa"` is true. Cumulative v1 remains pinned
 to its earlier contract without ordering.
-This matches the workbench's **Supported MoonBit library 2026-10-17** choice. Existing profile
+The workbench still offers **Supported MoonBit library 2026-10-17** for its
+existing projects. Existing profile
 IDs and the CLI Boolean default remain compatible. This profile's version describes
 a finite tested source contract; it does not imply full MoonBit or installed
 conformance. New features require qualification in a new dated cumulative snapshot.
@@ -218,8 +220,9 @@ direct same-file calls. Public String inputs and outputs enforce well-formed UTF
 and a 1,048,576-unit bound through the separate source String runtime extension.
 Ordering, indexing, methods and imports are not admitted by this profile.
 `moonbit-model-typed-library-foundation-v1` separately exposes narrow Bool/Int32
-identity, conditional and call paths for shared qualification. Numeric arithmetic
-remains separate work. Both are opt-in; the Boolean default stays compatible.
+identity, conditional and call paths for shared qualification.
+`moonbit-model-int32-library-v1` separately admits signed literals, arithmetic
+and comparisons. All remain opt-in; the Boolean default stays compatible.
 
 The library profile accepts multiple explicit Bool functions in one file, public and
 unexported helpers, direct same-file calls including forward and zero-input calls,

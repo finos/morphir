@@ -1,0 +1,10 @@
+{
+  "profile": "morphir-moonbit-source-string-index-v1",
+  "classification": "MoonBit source String indexing extension; excluded from classic SDK bindings",
+  "bindings": [
+    { "fqName": "morphir/moonbit-source:string#length-int32", "inputs": ["String", "Int"], "output": "Int32Value" },
+    { "fqName": "morphir/moonbit-source:string#slice-owned", "inputs": ["String", "Int32Value", "Int32Value", "Int"], "output": "String" }
+  ],
+  "indexUnit": "utf16-code-unit",
+  "splitSurrogateBoundary": "inward"
+}

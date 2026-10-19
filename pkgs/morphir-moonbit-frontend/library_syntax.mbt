@@ -52,6 +52,15 @@ fn LibraryAdapter::expression(
   self.visit(loc, depth)
   match expr {
     @ast.Constant(c=@ast.Bool(value), ..) => Boolean(value, source)
+    @ast.Constant(c=@ast.Int(raw), ..) if self.mode.supports_numeric() => {
+      let start = loc.start.cnum
+      let end = loc.end.cnum
+      if start < 0 || end < start || end > self.source_chars.length() {
+        reject("source_coordinate", "Invalid numeric literal coordinate", loc)
+      }
+      let authored = String::from_array(self.source_chars[start:end].to_owned())
+      Number(library_int32_literal(raw, loc), authored, source)
+    }
     @ast.Constant(c=@ast.String(repr), ..) if self.mode.supports_strings() => {
       // The pinned lexer counts Unicode scalar positions, not UTF-8 bytes or UTF-16 units.
       let start = loc.start.cnum
@@ -77,7 +86,11 @@ fn LibraryAdapter::expression(
         source,
       )
     @ast.Unary(op~, expr~, ..) => {
-      if identifier(op) != "!" {
+      let operator = identifier(op)
+      if operator == "-" && self.mode.supports_numeric() {
+        return NumericNegation(self.expression(expr, depth + 1), source)
+      }
+      if operator != "!" {
         reject(
           "unsupported_operator", "Only Boolean negation is supported", loc,
         )
@@ -88,6 +101,8 @@ fn LibraryAdapter::expression(
       let op = identifier(op)
       if !["&&", "||", "==", "!="].contains(op) &&
         !(self.mode.supports_strings() && op == "+") &&
+        !(self.mode.supports_numeric() &&
+        ["+", "-", "*", "<", "<=", ">", ">="].contains(op)) &&
         !(self.mode.supports_string_order() &&
         ["<", "<=", ">", ">="].contains(op)) {
         reject(
@@ -139,6 +154,34 @@ fn LibraryAdapter::expression(
         source,
       )
     }
+    @ast.DotApply(self=receiver, method_name~, args~, return_self=false, ..) if self.mode.supports_string_index() &&
+      args.is_empty() =>
+      match (method_name.name, receiver) {
+        ("length", value) =>
+          StringLength(self.expression(value, depth + 1), source)
+        (
+          "to_owned",
+          @ast.ArrayGetSlice(
+            array~,
+            start_index=Some(start),
+            end_index=Some(end),
+            ..
+          ),
+        ) =>
+          StringSlice(
+            self.expression(array, depth + 1),
+            self.expression(start, depth + 1),
+            self.expression(end, depth + 1),
+            source,
+          )
+        _ => {
+          reject(
+            "unsupported_expression", "Only String.length() and String[start:end].to_owned() are supported",
+            loc,
+          )
+          abort("unreachable")
+        }
+      }
     @ast.Apply(func~, args~, ..) => {
       guard func is @ast.Ident(id~, ..) else {
         reject(

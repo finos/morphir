@@ -278,7 +278,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.equal(modelPlan.frontends[0].provider,'finos/morphir-moonbit-frontend');
   assert.equal(modelPlan.frontends[0].defaultProfile,true);
   assert.equal(modelPlan.frontends[0].evidence,'local-acceptance');
-  assert.deepEqual(new Set(modelPlan.frontends[0].availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17']));
+  assert.deepEqual(new Set(modelPlan.frontends[0].availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19']));
   assert.equal(modelPlan.frontends[0].capabilities.maxDocuments,1);
   assert.equal(modelPlan.frontends[0].capabilities.incremental,false);
   assert.equal(modelPlan.frontends[0].capabilities.limits.functions,1);
@@ -454,10 +454,12 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.deepEqual(JSON.parse(run(["project","list","moon-library","--frontend","moonbit-library","--json"]).stdout).projects,[]);
   for (const [name,profile,source,marker] of [
     ['typed-foundation','moonbit-model-typed-library-foundation-v1','pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let value : Int = if flag { a } else { b }; identity(value) }\nfn identity(value : Int32) -> Int { value }','signed-32'],
+    ['numeric-int32','moonbit-model-int32-library-v1','pub fn wrap() -> Int32 { 2147483647 + 1 }','moonbit-source-number-v1'],
     ['string-basics','moonbit-model-string-library-v1','fn prefix() -> String { "Hello, " }\npub fn greet(name : String) -> String { let greeting : String = prefix(); greeting + name }\npub fn welcome(name : String, enabled : Bool) -> String { if enabled { greet(name) } else { "" } }','well-formed-utf16'],
     ['supported-library','moonbit-model-library-v1',"pub fn choose_for(name : String, enabled : Bool, first : Int32, second : Int) -> Int32 { let greeting : String = if enabled { \"Hello, \" + name } else { \"\" }; if greeting == \"Hello, Morphir\" { first } else { second } }",'signed-32'],
     ['ordered-library','moonbit-model-library-v2','pub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b && a <= b && !(a > b) && !(a >= b) { x } else { y } }','utf16-shortlex'],
     ['dated-library','moonbit-model-library-2026-10-17','/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀\npub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }','utf16-shortlex'],
+    ['indexed-library','moonbit-model-library-2026-10-19','pub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count(s : String) -> Int32 { s.length() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }','moonbit-source-string-index-v1'],
   ] as const) {
     put(name+'/morphir.toml','[project]\nname="'+name+'"\n[frontend]\nlanguage="moonbit"\nprofile="'+profile+'"\n[pipeline]\nbackend="checkpoint"\n');
     put(name+'/src/Main.mbt',source);
@@ -474,8 +476,9 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     assert.equal(JSON.parse(run([...args,'--backend','moonbit','--validation','source-only','--json']).stdout).successful,true);
     const generated=readFileSync(join(out,'Main/library.mbt'),'utf8');
     if(name==='dated-library') { assert.ok(ion.includes('Choose by shortlex name order.')); assert.ok(generated.includes('/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀')); }
+    if(name==='indexed-library') { assert.ok(ion.includes('moonbit-source-number-v1')); assert.ok(generated.includes('@source_int32.normalize')); assert.ok(generated.includes('@source_string.slice_owned')); }
     if(name==='supported-library'||name==='ordered-library'||name==='dated-library')assert.ok(ion.includes('well-formed-utf16'));
-    if(name==='string-basics'||name==='supported-library'||name==='ordered-library'||name==='dated-library')assert.ok(generated.includes('@source_string.require_valid'));
+    if(name==='string-basics'||name==='supported-library'||name==='ordered-library'||name==='dated-library'||name==='indexed-library')assert.ok(generated.includes('@source_string.require_valid'));
     if(target!=='wasm') {
       const built=JSON.parse(run([...args,'--backend','moonbit','--validation','required','--build-provider','process','--build-helper',buildHelper,'--build-node',process.execPath,'--home',tooling.home,'--sdk',join(workspaceDirectory,'pkgs/morphir-sdk'),'--target','wasm','--json']).stdout);
       assert.equal(built.validated.length,1);

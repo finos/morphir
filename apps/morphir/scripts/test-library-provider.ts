@@ -64,6 +64,11 @@ try {
   // Ancestor names do not exclude an explicitly supplied SDK root.
   const suppliedSdk=fileURLToPath(new URL('../../../pkgs/morphir-sdk/',import.meta.url));
   const dependency={moduleName:'finos/morphir-sdk',version:'0.1.0',apiProfile:'morphir-sdk-concrete-v1',semanticPin:'bc99af69a8b24d391311fae3822a87eafef3c334'};
+  for(const profile of [
+    'morphir-sdk-concrete-v1+moonbit-source-int32-v1',
+    'morphir-sdk-concrete-v1+moonbit-source-string-v1+moonbit-source-string-index-v1',
+    'morphir-sdk-concrete-v1+moonbit-source-string-v1+moonbit-source-int32-v1+moonbit-source-string-index-v1',
+  ])run({dependencies:[{...dependency,apiProfile:profile}],suppliedDependencies:{'finos/morphir-sdk':suppliedSdk}});
   const excluded=new Set(['node_modules','.git','.mooncakes','_build']);
   for(const ancestor of excluded) {
     const sdk=join(root,'ancestor'+serial++,ancestor,'sdk');

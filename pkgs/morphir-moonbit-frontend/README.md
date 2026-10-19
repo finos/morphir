@@ -7,11 +7,13 @@ The source language is `moonbit`; profiles describe the supported subset.
 
 | API | Profile | Source contract | Entry contract |
 | --- | --- | --- | --- |
+| `compile_supported_library_2026_10_19` | `moonbit-model-library-2026-10-19` | Cumulative Bool/String/Int32, including signed arithmetic, UTF-16 length and owned slices | Sorted public entries with String guards and Int32 wrappers |
 | `compile_supported_library_2026_10_17` | `moonbit-model-library-2026-10-17` | All qualified Bool/String/Int32 capabilities, including shortlex ordering | Sorted public entries and executable String guards |
 | `compile_supported_library_v2` | `moonbit-model-library-v2` | Cumulative v1 capabilities plus String shortlex comparisons | Sorted public entries and executable String guards |
 | `compile_supported_library` | `moonbit-model-library-v1` | Pinned v1 source union: Bool, String basics, Int32 identity/selection/calls, including mixed signatures | Sorted public entries and executable String guards |
 | `compile` | `moonbit-model-bool-v1` | One function; Boolean expressions | One `entry`, with `public` visibility |
 | `compile_typed_library` | `moonbit-model-typed-library-foundation-v1` | Bool/Int32 signatures, typed lets, conditionals and direct calls; no numeric literals or arithmetic | Sorted public entries |
+| `compile_int32_library` | `moonbit-model-int32-library-v1` | Signed Int32 literals, wraparound arithmetic and comparisons with Bool expressions | Sorted public entries and Int32 wrappers |
 | `compile_string_library` | `moonbit-model-string-library-v1` | String/Bool signatures, literals, concatenation, equality, typed lets, conditionals and direct calls | Sorted public entries with executable String guards |
 | `compile_library` | `moonbit-model-bool-library-v1` | Several functions; direct calls and immutable lets | Sorted public `entries`; all-private libraries have none |
 
@@ -36,22 +38,23 @@ its typed owner is the canonical SDK type. A transport tag does not declare a ty
 
 ## Cumulative source conformance
 
-Use `compile_supported_library_2026_10_17` or source profile
-`moonbit-model-library-2026-10-17`
+Use `compile_supported_library_2026_10_19` or source profile
+`moonbit-model-library-2026-10-19`
 for all currently qualified source capabilities together. It combines Bool
-operators, bounded String literals/concatenation/equality/ordering, Int32 identity
-and selection, immutable typed bindings, matching-type branches and direct acyclic
+operators, bounded String literals/concatenation/equality/ordering, signed Int32
+literals/arithmetic/comparisons, UTF-16 code-unit `String.length()`, and
+`String[start:end].to_owned()` with Int32 bounds. A slice clamps each bound to
+0…length, moves a split surrogate boundary inward, and returns empty when its
+adjusted start is at or after its end. Combining marks remain separate units.
+The profile also supports Int32 identity and selection, immutable typed bindings,
+matching-type branches and direct acyclic
 calls. Mixed signatures preserve every scalar's ABI. String guards also apply
 when the function returns Int32 or Bool.
 
-The current profile carries its qualification date. Later iterations use another
-date, with a revision suffix when multiple snapshots are qualified on the same day.
-The dated API stays pinned to that snapshot. The v1 and v2 APIs and profile IDs remain
-selectable with their earlier admission rules. Future source features join a new
-dated cumulative snapshot after composition qualification. Backend SDK adapter
-availability alone never widens source admission. These profiles do not claim
-numeric arithmetic/literals/comparisons, String indexing/methods, imports, the
-full MoonBit language, or installed ecosystem qualification.
+The dated APIs stay pinned to their snapshots. The 2026-10-17, v1 and v2 APIs
+retain their earlier admission rules. The current profile does not admit
+unowned slices, single-index String access, imports or the full MoonBit language.
+Backend SDK adapter availability alone never widens source admission.
 
 `mise run test:typed-source` replays the existing Int32, String and Boolean
 fixtures through their narrow profiles, pinned v1 and current dated snapshots. It
@@ -143,6 +146,13 @@ SDK Int32 signatures, including MoonBit's `Int` alias. It preserves authored typ
 uses in `moonbit-source-scalar-v1` extensions. This narrow profile admits identity,
 conditional and direct-call paths; full numeric arithmetic remains separate work.
 
+`compile_int32_library` adds signed literals, unary negation, `+`, `-`, `*`,
+equality and ordered comparisons. It widens operands to exact Morphir Int and
+normalizes arithmetic results to signed 32-bit values. Authored `Int` and
+`Int32` type uses retain `moonbit-source-number-v1` facts. The separate
+`morphir-moonbit-source-int32-v1` helper performs signed-width conversion;
+classic SDK `to-int-32` remains checked narrowing.
+
 `compile_string_library` reuses that pipeline for String/Bool libraries:
 
 ```moonbit
@@ -173,9 +183,14 @@ There is no aggregate allocation guarantee. Existing evaluator limits still appl
 These checks are executable references in the separately inventoried
 `morphir-moonbit-source-string-v1` runtime extension. Its two bindings are
 `morphir/moonbit-source:string#require-valid` and `#append-bounded`.
+The cumulative 2026-10-19 profile adds `#length-int32` and `#slice-owned`
+under `morphir-moonbit-source-string-index-v1`.
 The classic 248-binding inventory is unchanged. Generated consumers require SDK
 profile `morphir-sdk-concrete-v1+moonbit-source-string-v1`; malformed text raises
 `SdkError.UnrepresentableText`, and size refusal raises `SdkError.OutOfRange`.
+Generated dependencies declare `+moonbit-source-int32-v1` when signed-width
+normalization is used and `+moonbit-source-string-index-v1` when length or
+slicing is used.
 Scheme preserves the corresponding `sdk.unrepresentable_text` and
 `sdk.out_of_range` model error codes.
 

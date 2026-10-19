@@ -184,6 +184,44 @@ pub fn provider(
       }
     }),
   }
+  let numeric : @engine.SourceProfile = {
+    ..foundation,
+    id: @ids.ProfileId::parse(@frontend.INT32_LIBRARY_PROFILE),
+    capabilities: {
+      ..foundation.capabilities,
+      summary: "Signed Int32 source library",
+      supported: [
+        "Explicit Bool and Int32 signatures, including the Int alias", "Signed Int32 literals, wraparound arithmetic and comparisons",
+        "Typed immutable bindings, conditionals and direct same-file calls", "Boolean operators",
+      ],
+      excluded: [
+        "String values", "Recursion", "Cross-file imports", "Qualified or indirect calls",
+      ],
+    },
+    compile: @engine.PerFile(fn(source, unit_id, cancelled) raise {
+      let output = @frontend.compile_int32_library(
+        input(source, unit_id),
+        limits=library_limits,
+        cancelled~,
+        scope=observer.scope(),
+      ) catch {
+        @frontend.Invalid(diagnostic) =>
+          raise @engine.Rejected(
+            diagnostic.code,
+            diagnostic.detail,
+            diagnostic.source,
+          )
+        error => raise error
+      }
+      @data.IRUnit::{
+        id: output.unit_id,
+        distribution: output.ir,
+        metadata: output.metadata.map(m => { node_id: m.node_id, data: m.data, }),
+        annotations: output.annotations.copy(),
+        provenance: output.provenance.copy(),
+      }
+    }),
+  }
   let string_limits = library.capabilities.limits.copy()
   string_limits["stringCodeUnits"] = max_string_code_units
   let strings : @engine.SourceProfile = {
@@ -359,6 +397,48 @@ pub fn provider(
       }
     }),
   }
+  let indexed : @engine.SourceProfile = {
+    ..current,
+    id: @ids.ProfileId::parse(@frontend.LIBRARY_PROFILE_2026_10_19),
+    capabilities: {
+      ..current.capabilities,
+      summary: "Supported MoonBit library 2026-10-19",
+      supported: current.capabilities.supported +
+      [
+        "Signed Int32 literals, wraparound arithmetic and comparisons", "String.length() returns UTF-16 code-unit count as Int32",
+        "String[start:end].to_owned() clamps indexes and adjusts split surrogate boundaries inward",
+        "Mixed String and Int32 calls and results",
+      ],
+      excluded: [
+        "Unowned String slices and single-index access", "Imports, recursion, indirect calls and mutation",
+        "Interpolation, multiline strings and other scalar types", "Full MoonBit language conformance",
+      ],
+    },
+    compile: @engine.PerFile(fn(source, unit_id, cancelled) raise {
+      let output = @frontend.compile_supported_library_2026_10_19(
+        input(source, unit_id),
+        limits=library_limits,
+        max_string_code_units~,
+        cancelled~,
+        scope=observer.scope(),
+      ) catch {
+        @frontend.Invalid(diagnostic) =>
+          raise @engine.Rejected(
+            diagnostic.code,
+            diagnostic.detail,
+            diagnostic.source,
+          )
+        error => raise error
+      }
+      @data.IRUnit::{
+        id: output.unit_id,
+        distribution: output.ir,
+        metadata: output.metadata.map(m => { node_id: m.node_id, data: m.data, }),
+        annotations: output.annotations.copy(),
+        provenance: output.provenance.copy(),
+      }
+    }),
+  }
   {
     id: @ids.ProviderId::parse(PROVIDER),
     languages: [
@@ -367,7 +447,8 @@ pub fn provider(
         extensions: [@ids.FileExtension::parse(".mbt")],
         default_profile: @ids.ProfileId::parse(@frontend.PROFILE),
         profiles: [
-          seed, library, foundation, strings, supported, supported_v2, current,
+          seed, library, foundation, numeric, strings, supported, supported_v2, current,
+          indexed,
         ],
       },
     ],

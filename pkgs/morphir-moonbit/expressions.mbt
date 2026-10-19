@@ -164,7 +164,11 @@ fn expression(
           ctx.names.names[value_node(n)] + "()"
         }
         None if n.package_name.to_canonical() == "morphir/moonbit-source" =>
-          source_string_reference(ctx, n, expected, context)
+          if n.module_name.to_canonical() == "int32" {
+            source_int32_reference(ctx, n, expected, context)
+          } else {
+            source_string_reference(ctx, n, expected, context)
+          }
         None if n.package_name.to_canonical() == "morphir/SDK" =>
           sdk_reference(ctx, n, expected, context)
         None =>

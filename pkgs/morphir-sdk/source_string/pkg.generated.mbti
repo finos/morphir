@@ -3,16 +3,23 @@ package "finos/morphir-sdk/source_string"
 
 import {
   "finos/morphir-sdk",
+  "finos/morphir-sdk/int",
 }
 
 // Values
+pub const INDEX_PROFILE : String = "morphir-moonbit-source-string-index-v1"
+
 pub const MAX_CODE_UNITS : Int = 1048576
 
 pub const PROFILE : String = "morphir-moonbit-source-string-v1"
 
 pub fn append_bounded(@morphir-sdk.Text, @morphir-sdk.Text, Int) -> @morphir-sdk.Text raise @morphir-sdk.SdkError
 
+pub fn length_int32(@morphir-sdk.Text, Int) -> @int.Int32Value raise @morphir-sdk.SdkError
+
 pub fn require_valid(@morphir-sdk.Text, Int) -> @morphir-sdk.Text raise @morphir-sdk.SdkError
+
+pub fn slice_owned(@morphir-sdk.Text, @int.Int32Value, @int.Int32Value, Int) -> @morphir-sdk.Text raise @morphir-sdk.SdkError
 
 // Errors
 

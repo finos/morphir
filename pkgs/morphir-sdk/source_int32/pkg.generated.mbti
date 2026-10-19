@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-sdk/source_int32"
+
+import {
+  "finos/morphir-sdk",
+  "finos/morphir-sdk/int",
+  "finos/morphir-sdk/integer",
+}
+
+// Values
+pub const PROFILE : String = "morphir-moonbit-source-int32-v1"
+
+pub fn normalize(@integer.Integer) -> @int.Int32Value raise @morphir-sdk.SdkError
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

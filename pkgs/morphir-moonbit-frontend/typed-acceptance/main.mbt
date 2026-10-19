@@ -25,6 +25,12 @@ fn main raise {
     v1_cases.map(row => ("current" + row.0, row.1)) +
     [
       (
+        "numeric", "pub fn overflow() -> Int32 { 2147483647 + 1 }\npub fn multiply_wrap() -> Int32 { 65536 * 65536 }\npub fn underflow() -> Int32 { -2147483648 - 1 }\npub fn total(a : Int32, b : Int32) -> Int32 { let subtotal = a * b; if subtotal > 1000 { subtotal - 100 } else { subtotal } }\npub fn before(a : Int32, b : Int32) -> Bool { a < b }\npub fn after(a : Int32, b : Int32) -> Bool { a > b }\npub fn same(a : Int32, b : Int32) -> Bool { a <= b && a >= b && a == b && !(a != b) }",
+      ),
+      (
+        "indexed", "pub fn count(s : String) -> Int32 { s.length() }\npub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }",
+      ),
+      (
         "currentordered", "pub fn lt(a : String, b : String) -> Bool { identity(a) < identity(b) }\npub fn le(a : String, b : String) -> Bool { a <= b }\npub fn gt(a : String, b : String) -> Bool { a > b }\npub fn ge(a : String, b : String) -> Bool { a >= b }\npub fn choose(a : String, b : String, yes : Int32, no : Int) -> Int32 { let before : Bool = lt(a, b); if before { yes } else { no } }\nfn identity(s : String) -> String { s }",
       ),
       (
@@ -63,6 +69,10 @@ fn main raise {
         input,
         max_string_code_units=if kind == "bounded" { 5 } else { 1048576 },
       )
+    } else if id == "numeric" {
+      @frontend.compile_int32_library(input)
+    } else if id == "indexed" {
+      @frontend.compile_supported_library_2026_10_19(input)
     } else if id == "foundation" {
       @frontend.compile_typed_library(input)
     } else {
@@ -116,6 +126,62 @@ fn main raise {
           },
         )
       }
+    } else if kind == "numeric" {
+      for
+        (name, expected) in [
+          ("overflow", "-2147483648"),
+          ("multiply-wrap", "0"),
+          ("underflow", "2147483647"),
+        ] {
+        guard @backend.call_entry(runtime, entry(name), [])
+          is Tagged("morphir/SDK:int#int32", [Number(Integer(value))]) else {
+          fail("Expected numeric Int32 wrapper")
+        }
+        assert_eq(value.to_string(), expected)
+      }
+      guard @backend.call_entry(runtime, entry("total"), [
+          @scheme.Tagged("morphir/SDK:int#int32", [@scheme.integer("3")]),
+          @scheme.Tagged("morphir/SDK:int#int32", [@scheme.integer("400")]),
+        ])
+        is Tagged("morphir/SDK:int#int32", [Number(Integer(total))]) else {
+        fail("Expected numeric total")
+      }
+      assert_eq(total.to_string(), "1100")
+      let number = fn(n : String) raise {
+        @scheme.Tagged("morphir/SDK:int#int32", [@scheme.integer(n)])
+      }
+      guard @backend.call_entry(runtime, entry("after"), [
+          number("1"),
+          number("-1"),
+        ])
+        is Boolean(after) else {
+        fail("Expected Int32 comparison")
+      }
+      assert_true(after)
+      guard @backend.call_entry(runtime, entry("same"), [
+          number("2"),
+          number("2"),
+        ])
+        is Boolean(same) else {
+        fail("Expected Int32 equality")
+      }
+      assert_true(same)
+    } else if kind == "indexed" {
+      guard @backend.call_entry(runtime, entry("count"), [
+          @scheme.Text("A😀é"),
+        ])
+        is Tagged("morphir/SDK:int#int32", [Number(Integer(length))]) else {
+        fail("Expected indexed length")
+      }
+      assert_eq(length.to_string(), "5")
+      assert_eq(
+        @backend.call_entry(runtime, entry("cut"), [
+          @scheme.Text("A😀é"),
+          @scheme.Tagged("morphir/SDK:int#int32", [@scheme.integer("1")]),
+          @scheme.Tagged("morphir/SDK:int#int32", [@scheme.integer("3")]),
+        ]).as_text(),
+        "😀",
+      )
     } else if kind == "strings" {
       assert_eq(
         @backend.call_entry(runtime, entry("greet"), [@scheme.Text("😀")]).as_text(),
@@ -319,7 +385,11 @@ fn main raise {
         {
           "id": id,
           "profile": if id.has_prefix("current") {
-            @frontend.CURRENT_LIBRARY_PROFILE
+            @frontend.LIBRARY_PROFILE_2026_10_17
+          } else if id == "indexed" {
+            @frontend.LIBRARY_PROFILE_2026_10_19
+          } else if id == "numeric" {
+            @frontend.INT32_LIBRARY_PROFILE
           } else if id.has_prefix("supported") {
             @frontend.SUPPORTED_LIBRARY_PROFILE
           } else if id == "foundation" {

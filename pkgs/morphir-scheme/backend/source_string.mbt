@@ -3,6 +3,8 @@ fn source_string_registry() -> Array[(String, Int32)] {
   [
     ("morphir/moonbit-source:string#require-valid", 2),
     ("morphir/moonbit-source:string#append-bounded", 3),
+    ("morphir/moonbit-source:string#length-int32", 2),
+    ("morphir/moonbit-source:string#slice-owned", 4),
   ]
 }
 
@@ -24,11 +26,26 @@ fn source_string_dispatch(
     Some(n) => n
     None => raise @sdk.OutOfRange("MoonBit source String limit")
   }
+  if name == "morphir/moonbit-source:string#length-int32" {
+    return sdk_width_value(
+      "int32",
+      @sdk_int.from_int32(@source_string.length_int32(sdk_text(args[0]), limit)),
+    )
+  }
   let value = match name {
     "morphir/moonbit-source:string#require-valid" =>
       @source_string.require_valid(sdk_text(args[0]), limit)
     "morphir/moonbit-source:string#append-bounded" =>
       @source_string.append_bounded(sdk_text(args[0]), sdk_text(args[1]), limit)
+    "morphir/moonbit-source:string#slice-owned" => {
+      guard @sdk_int.to_int32(sdk_width_input("int32", args[1])) is Some(start) else {
+        raise @scheme.Invalid("Invalid slice start")
+      }
+      guard @sdk_int.to_int32(sdk_width_input("int32", args[2])) is Some(end) else {
+        raise @scheme.Invalid("Invalid slice end")
+      }
+      @source_string.slice_owned(sdk_text(args[0]), start, end, limit)
+    }
     _ => raise @scheme.Unbound(name)
   }
   sdk_text_value(value)

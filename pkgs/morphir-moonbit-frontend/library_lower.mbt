@@ -44,6 +44,7 @@ priv struct LibraryLowerer {
   boolean : @ir.Type
   types : Map[@ir.Name, LibraryTypeUse]
   metadata : Bool
+  profile : String
   string_limit : Int32
   cancelled : () -> Bool
   origins : Array[@ion.IonValue]
@@ -106,6 +107,36 @@ fn LibraryLowerer::expression(
   library_poll(self.cancelled)
   match expr {
     Boolean(value, source) => self.literal(value, source)
+    Number(value, authored, source) => {
+      let exact = library_integer_type()
+      let attrs = library_attributes(source, exact)
+      attrs.extensions["moonbit-source-number-v1"] = @ir.Data::Object(
+        Map::from_array([
+          ("kind", @ir.Data::Text("literal")),
+          ("authored_token", @ir.Data::Text(authored)),
+          ("canonical_value", @ir.Data::Text(value)),
+          ("resolved_type", @ir.Data::Text("Int32")),
+          ("signedness", @ir.Data::Text("signed")),
+          ("width", @ir.Data::Number("32")),
+          ("compiler", @ir.Data::Text("0.10.15+943464bfa")),
+        ]),
+      )
+      let result = LibraryTypeUse::{
+        scalar: SignedInt32,
+        spelling: "Int32",
+        source,
+        profile: self.profile,
+      }.to_ir(self.metadata)
+      self.invoke(
+        "morphir/moonbit-source:int32#normalize",
+        [(@ir.Value::Literal(attrs, @ir.Literal::IntegerLiteral(value)), exact)],
+        result,
+        source,
+        "literal-normalization",
+        metadata_key="moonbit-source-number-v1",
+        runtime_extension="morphir-moonbit-source-int32-v1",
+      )
+    }
     Text(value, authored, source) => {
       let attrs = library_attributes(source, self.expr_type(expr))
       attrs.extensions["moonbit-source-string-v1"] = @ir.Data::Object(
@@ -148,6 +179,17 @@ fn LibraryLowerer::expression(
         name,
       )
     Negation(value, source) => self.negate(self.expression(value), source)
+    NumericNegation(value, source) =>
+      self.int32_negate(self.expression(value), source)
+    StringLength(value, source) =>
+      self.string_length(self.expression(value), source)
+    StringSlice(value, start, end, source) =>
+      self.string_slice(
+        self.expression(value),
+        self.expression(start),
+        self.expression(end),
+        source,
+      )
     Conditional(cond, yes, no, source) =>
       @ir.Value::IfThenElse(
         library_attributes(source, self.expr_type(yes)),
@@ -289,6 +331,10 @@ fn LibraryLowerer::expression(
           )
         }
       }
+      if self.expr_type(lhs) is @ir.Type::Reference(_, name, _) &&
+        name.to_canonical() == "morphir/SDK:int#int-32" {
+        return self.int32_binary(op, left, right, source)
+      }
       match op {
         "&&" =>
           @ir.Value::IfThenElse(attrs, left, right, self.literal(false, source))
@@ -356,6 +402,7 @@ fn library_lower(
     boolean,
     types: Map([]),
     metadata: mode != BooleanOnly,
+    profile: mode.profile(),
     string_limit,
     cancelled,
     origins: [],
@@ -474,14 +521,23 @@ fn library_lower(
   }
   public_entries.sort_by(fn(a, b) { a.to_canonical().compare(b.to_canonical()) })
   let module_def : @ir.ModuleDefinition = { types: Map([]), doc: None, values, }
+  let source_modules : Map[@ir.ModuleName, @ir.ModuleSpecification] = Map([])
+  if mode.supports_strings() {
+    source_modules[@ir.Path::parse("string")] = @sdk_spec.source_string_specification().modules[@ir.Path::parse(
+        "string",
+      )]
+  }
+  if mode.supports_numeric() {
+    source_modules[@ir.Path::parse("int32")] = @sdk_spec.source_int32_module_specification()
+  }
   let ir = @ir.IRFile::new(
     @ir.Distribution::Library(
       package_name,
-      if mode.supports_strings() {
+      if !source_modules.is_empty() {
         Map::from_array([
           (
             @sdk_spec.source_string_package_name(),
-            @sdk_spec.source_string_specification(),
+            @ir.PackageSpecification::{ modules: source_modules, },
           ),
         ])
       } else {
@@ -521,12 +577,40 @@ fn LibraryLowerer::expr_type(
 ) -> @ir.Type raise {
   match expr {
     Boolean(_, _) | Negation(_, _) => self.boolean
+    NumericNegation(_, source) =>
+      LibraryTypeUse::{
+        scalar: SignedInt32,
+        spelling: "Int32",
+        source,
+        profile: self.profile,
+      }.to_ir(self.metadata)
+    StringLength(_, source) =>
+      LibraryTypeUse::{
+        scalar: SignedInt32,
+        spelling: "Int32",
+        source,
+        profile: self.profile,
+      }.to_ir(self.metadata)
+    StringSlice(_, _, _, source) =>
+      LibraryTypeUse::{
+        scalar: Text,
+        spelling: "String",
+        source,
+        profile: self.profile,
+      }.to_ir(self.metadata)
+    Number(_, _, source) =>
+      LibraryTypeUse::{
+        scalar: SignedInt32,
+        spelling: "Int32",
+        source,
+        profile: self.profile,
+      }.to_ir(self.metadata)
     Text(_, _, source) =>
-      LibraryTypeUse::{ scalar: Text, spelling: "String", source, }.to_ir(
+      LibraryTypeUse::{ scalar: Text, spelling: "String", source, profile: "", }.to_ir(
         self.metadata,
       )
     Binary(op, lhs, _, _) =>
-      if op == "+" {
+      if ["+", "-", "*"].contains(op) {
         self.expr_type(lhs)
       } else {
         self.boolean
@@ -658,15 +742,18 @@ fn LibraryLowerer::invoke(
   result : @ir.Type,
   source : @ir.SourceLocation,
   role : String,
+  metadata_key~ : String = "moonbit-source-string-v1",
+  runtime_extension~ : String = "morphir-moonbit-source-string-v1",
 ) -> @ir.Value raise {
   let attrs = library_attributes(source, result)
-  attrs.extensions["moonbit-source-string-v1"] = @ir.Data::Object(
-    Map::from_array([
-      ("kind", @ir.Data::Text("synthetic")),
-      ("role", @ir.Data::Text(role)),
-      ("runtime_extension", @ir.Data::Text("morphir-moonbit-source-string-v1")),
-    ]),
-  )
+  let facts = Map::from_array([
+    ("kind", @ir.Data::Text("synthetic")),
+    ("role", @ir.Data::Text(role)),
+  ])
+  if runtime_extension != "" {
+    facts["runtime_extension"] = @ir.Data::Text(runtime_extension)
+  }
+  attrs.extensions[metadata_key] = @ir.Data::Object(facts)
   let mut signature = result
   for i = arguments.length() - 1; i >= 0; i = i - 1 {
     signature = @ir.Type::Function(
@@ -700,9 +787,12 @@ fn LibraryLowerer::require_string(
   source : @ir.SourceLocation,
   role : String,
 ) -> @ir.Value raise {
-  let text = LibraryTypeUse::{ scalar: Text, spelling: "String", source, }.to_ir(
-    self.metadata,
-  )
+  let text = LibraryTypeUse::{
+    scalar: Text,
+    spelling: "String",
+    source,
+    profile: "",
+  }.to_ir(self.metadata)
   self.invoke(
     "morphir/moonbit-source:string#require-valid",
     [(value, text), (self.bound(source), library_integer_type())],

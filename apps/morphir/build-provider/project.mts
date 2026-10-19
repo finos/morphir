@@ -79,8 +79,14 @@ try {
     };
     if(!driver.length)assert.equal(dependency.moduleName,'finos/morphir-sdk','Unaudited dependency contract');
     const expected=allowed[dependency.moduleName];assert.ok(expected,'Unaudited dependency contract');
-    const sourceStrings=dependency.moduleName==='finos/morphir-sdk'&&dependency.apiProfile==='morphir-sdk-concrete-v1+moonbit-source-string-v1';
-    if(sourceStrings)expected[1]=dependency.apiProfile;
+    const sdkProfile=dependency.moduleName==='finos/morphir-sdk'?dependency.apiProfile:'';
+    const sourceStrings=sdkProfile.includes('+moonbit-source-string-v1');
+    const sourceInt32=sdkProfile.includes('+moonbit-source-int32-v1');
+    const sourceIndex=sdkProfile.includes('+moonbit-source-string-index-v1');
+    if(dependency.moduleName==='finos/morphir-sdk') {
+      expected[1]='morphir-sdk-concrete-v1'+(sourceStrings?'+moonbit-source-string-v1':'')+(sourceInt32?'+moonbit-source-int32-v1':'')+(sourceIndex?'+moonbit-source-string-index-v1':'');
+      assert.ok(!sourceIndex||sourceStrings,'build.missing_source_string_index_extension');
+    }
     assert.deepEqual([dependency.version,dependency.apiProfile,dependency.semanticPin],expected);
     const supplied=request.suppliedDependencies[dependency.moduleName];assert.ok(supplied,'build.unresolved_dependency');
     const root=realpathSync(supplied);const info=manifest(root);
@@ -93,6 +99,23 @@ try {
       assert.equal(extension.profile,'morphir-moonbit-source-string-v1','build.missing_source_string_extension');
       assert.equal(extension.maxCodeUnits,1048576);
       assert.deepEqual(extension.bindings.map((binding: {fqName: string})=>binding.fqName),['morphir/moonbit-source:string#require-valid','morphir/moonbit-source:string#append-bounded']);
+    }
+    if(sourceInt32) {
+      const path=join(root,'conformance/moonbit_source_int32_extension.json');
+      assert.ok(existsSync(path),'build.missing_source_int32_extension');
+      const extension=JSON.parse(readFileSync(path,'utf8'));
+      assert.equal(extension.profile,'morphir-moonbit-source-int32-v1','build.missing_source_int32_extension');
+      assert.match(extension.semantics,/modulo 2\^32/,'build.missing_source_int32_extension');
+      assert.deepEqual(extension.bindings.map((binding: {fqName: string})=>binding.fqName),['morphir/moonbit-source:int32#normalize']);
+    }
+    if(sourceIndex) {
+      const path=join(root,'conformance/moonbit_source_string_index_extension.json');
+      assert.ok(existsSync(path),'build.missing_source_string_index_extension');
+      const extension=JSON.parse(readFileSync(path,'utf8'));
+      assert.equal(extension.profile,'morphir-moonbit-source-string-index-v1','build.missing_source_string_index_extension');
+      assert.equal(extension.indexUnit,'utf16-code-unit','build.missing_source_string_index_extension');
+      assert.equal(extension.splitSurrogateBoundary,'inward','build.missing_source_string_index_extension');
+      assert.deepEqual(extension.bindings.map((binding: {fqName: string})=>binding.fqName),['morphir/moonbit-source:string#length-int32','morphir/moonbit-source:string#slice-owned']);
     }
     const sourceIdentity=tree(root);const copied=join(workspace,'dependency'+i);
     cpSync(root,copied,{recursive:true,filter:path=>includeDependencyPath(root,path,excluded)});

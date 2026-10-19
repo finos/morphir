@@ -359,7 +359,10 @@ fn generate_library(
       "\n}\n",
     )
   }
-  let import_names = imports.keys().collect()
+  let import_names = imports
+    .keys()
+    .filter(name => name != "source_string_index")
+    .collect()
   import_names.sort()
   let package_manifest = "import {\n" +
     import_names
@@ -457,11 +460,22 @@ fn generate_library(
         {
           module_name: "finos/morphir-sdk",
           version: "0.1.0",
-          api_profile: if lowering.imports.contains("source_string") {
-            "morphir-sdk-concrete-v1+moonbit-source-string-v1"
+          api_profile: "morphir-sdk-concrete-v1" +
+          (if lowering.imports.contains("source_string") {
+            "+moonbit-source-string-v1"
           } else {
-            "morphir-sdk-concrete-v1"
-          },
+            ""
+          }) +
+          (if lowering.imports.contains("source_int32") {
+            "+moonbit-source-int32-v1"
+          } else {
+            ""
+          }) +
+          (if lowering.imports.contains("source_string_index") {
+            "+moonbit-source-string-index-v1"
+          } else {
+            ""
+          }),
           semantic_pin: "bc99af69a8b24d391311fae3822a87eafef3c334",
         },
       ],

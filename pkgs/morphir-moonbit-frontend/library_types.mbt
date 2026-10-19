@@ -43,10 +43,14 @@ pub(all) struct LibraryOutput {
 ///|
 priv enum LibraryExpr {
   Boolean(Bool, @ir.SourceLocation)
+  Number(String, String, @ir.SourceLocation)
   Text(String, String, @ir.SourceLocation)
   Constraint(LibraryExpr, LibraryTypeUse, @ir.SourceLocation)
   Identifier(String, @ir.SourceLocation)
   Negation(LibraryExpr, @ir.SourceLocation)
+  NumericNegation(LibraryExpr, @ir.SourceLocation)
+  StringLength(LibraryExpr, @ir.SourceLocation)
+  StringSlice(LibraryExpr, LibraryExpr, LibraryExpr, @ir.SourceLocation)
   Binary(String, LibraryExpr, LibraryExpr, @ir.SourceLocation)
   Conditional(LibraryExpr, LibraryExpr, LibraryExpr, @ir.SourceLocation)
   Binding(
@@ -76,10 +80,14 @@ priv struct LibraryFunction {
 /// No parser AST escapes the adapter. Resolved trees hold identities, not spellings.
 priv enum ResolvedExpr {
   Boolean(Bool, @ir.SourceLocation)
+  Number(String, String, @ir.SourceLocation)
   Text(String, String, @ir.SourceLocation)
   Constraint(ResolvedExpr, LibraryTypeUse, @ir.SourceLocation)
   Variable(@ir.Name, @ir.SourceLocation)
   Negation(ResolvedExpr, @ir.SourceLocation)
+  NumericNegation(ResolvedExpr, @ir.SourceLocation)
+  StringLength(ResolvedExpr, @ir.SourceLocation)
+  StringSlice(ResolvedExpr, ResolvedExpr, ResolvedExpr, @ir.SourceLocation)
   Binary(String, ResolvedExpr, ResolvedExpr, @ir.SourceLocation)
   Conditional(ResolvedExpr, ResolvedExpr, ResolvedExpr, @ir.SourceLocation)
   Binding(
@@ -147,13 +155,18 @@ pub extend LibraryLimits with @debug.Debug::{to_repr}
 pub const TYPED_FOUNDATION_PROFILE : String = "moonbit-model-typed-library-foundation-v1"
 
 ///|
+pub const INT32_LIBRARY_PROFILE : String = "moonbit-model-int32-library-v1"
+
+///|
 priv enum LibraryMode {
   BooleanOnly
   TypedFoundation
+  NumericInt32
   StringBasics
   SupportedLibrary
   SupportedLibraryV2
   SupportedLibrary20261017
+  SupportedLibrary20261019
 } derive(Eq)
 
 ///|
@@ -168,6 +181,7 @@ priv struct LibraryTypeUse {
   scalar : LibraryScalar
   spelling : String
   source : @ir.SourceLocation
+  profile : String
 }
 
 ///|
@@ -201,6 +215,24 @@ fn LibraryTypeUse::to_ir(
         ),
       ]),
     )
+    if self.scalar == SignedInt32 &&
+      (
+        self.profile == INT32_LIBRARY_PROFILE ||
+        self.profile == LIBRARY_PROFILE_2026_10_19
+      ) {
+      attrs.extensions["moonbit-source-number-v1"] = @ir.Data::Object(
+        Map::from_array([
+          ("kind", @ir.Data::Text("type-use")),
+          ("language", @ir.Data::Text("moonbit")),
+          ("authored", @ir.Data::Text(self.spelling)),
+          ("canonical_type", @ir.Data::Text("Int32")),
+          ("signedness", @ir.Data::Text("signed")),
+          ("width", @ir.Data::Number("32")),
+          ("compiler", @ir.Data::Text("0.10.15+943464bfa")),
+          ("profile", @ir.Data::Text(self.profile)),
+        ]),
+      )
+    }
   }
   @ir.Type::Reference(
     attrs,
@@ -243,7 +275,7 @@ fn library_type(
       abort("unreachable")
     }
   }
-  { scalar, spelling: name, source: span(loc), }
+  { scalar, spelling: name, source: span(loc), profile: mode.profile(), }
 }
 
 ///|
@@ -259,31 +291,49 @@ pub const SUPPORTED_LIBRARY_PROFILE_V2 : String = "moonbit-model-library-v2"
 
 ///|
 /// Date identifies the current cumulative source qualification snapshot.
-pub const CURRENT_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-17"
+pub const CURRENT_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19"
 
 ///|
 /// Immutable qualification identity retained as the current snapshot advances.
 pub const LIBRARY_PROFILE_2026_10_17 : String = "moonbit-model-library-2026-10-17"
 
 ///|
+pub const LIBRARY_PROFILE_2026_10_19 : String = "moonbit-model-library-2026-10-19"
+
+///|
 fn LibraryMode::supports_strings(self : LibraryMode) -> Bool {
   self == StringBasics ||
   self == SupportedLibrary ||
   self == SupportedLibraryV2 ||
-  self == SupportedLibrary20261017
+  self == SupportedLibrary20261017 ||
+  self == SupportedLibrary20261019
 }
 
 ///|
 fn LibraryMode::supports_int32(self : LibraryMode) -> Bool {
   self == TypedFoundation ||
+  self == NumericInt32 ||
   self == SupportedLibrary ||
   self == SupportedLibraryV2 ||
-  self == SupportedLibrary20261017
+  self == SupportedLibrary20261017 ||
+  self == SupportedLibrary20261019
+}
+
+///|
+fn LibraryMode::supports_numeric(self : LibraryMode) -> Bool {
+  self == NumericInt32 || self == SupportedLibrary20261019
 }
 
 ///|
 fn LibraryMode::supports_string_order(self : LibraryMode) -> Bool {
-  self == SupportedLibraryV2 || self == SupportedLibrary20261017
+  self == SupportedLibraryV2 ||
+  self == SupportedLibrary20261017 ||
+  self == SupportedLibrary20261019
+}
+
+///|
+fn LibraryMode::supports_string_index(self : LibraryMode) -> Bool {
+  self == SupportedLibrary20261019
 }
 
 ///|
@@ -291,9 +341,11 @@ fn LibraryMode::profile(self : LibraryMode) -> String {
   match self {
     BooleanOnly => LIBRARY_PROFILE
     TypedFoundation => TYPED_FOUNDATION_PROFILE
+    NumericInt32 => INT32_LIBRARY_PROFILE
     StringBasics => STRING_LIBRARY_PROFILE
     SupportedLibrary => SUPPORTED_LIBRARY_PROFILE
     SupportedLibraryV2 => SUPPORTED_LIBRARY_PROFILE_V2
     SupportedLibrary20261017 => LIBRARY_PROFILE_2026_10_17
+    SupportedLibrary20261019 => LIBRARY_PROFILE_2026_10_19
   }
 }
