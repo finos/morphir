@@ -52,6 +52,8 @@ impl ModelCaptureUsage {
     pub fn captures(self) -> usize {
         self.captures
     }
+    /// Reserved active-work credits, including private preparation awaiting
+    /// publication. This is not a count of currently running OS threads.
     pub fn active_workers(self) -> usize {
         self.active_workers
     }
@@ -106,7 +108,9 @@ impl HostModelCaptureCapacity {
                 source_bytes: 0,
                 metadata_bytes: 0,
             },
-            WorkPermit(self.clone()),
+            WorkPermit {
+                _reservation: Arc::new(WorkReservation(self.clone())),
+            },
         ))
     }
 }
@@ -150,8 +154,14 @@ impl Drop for Reservation {
         state.usage.captures -= 1;
     }
 }
-struct WorkPermit(HostModelCaptureCapacity);
-impl Drop for WorkPermit {
+// Clones retain the same single credit, never reserve another. Both the actual
+// worker and the private preparation own this guard until their work ends.
+#[derive(Clone)]
+struct WorkPermit {
+    _reservation: Arc<WorkReservation>,
+}
+struct WorkReservation(HostModelCaptureCapacity);
+impl Drop for WorkReservation {
     fn drop(&mut self) {
         self.0
             .0
@@ -214,12 +224,19 @@ impl OwnedCapture {
         }
     }
 }
+// Drop owned buffers and their byte/slot reservation before the work credit.
+struct PreparedOwner {
+    capture: Box<OwnedCapture>,
+    _work: WorkPermit,
+    control: CaptureControl,
+}
 enum ConnectionState {
     Empty,
     Capturing {
         attempt: AttemptKey,
         control: CaptureControl,
     },
+    Prepared(Box<PreparedOwner>),
     Ready(Box<OwnedCapture>),
     Released(CaptureId),
     Closed,
@@ -228,6 +245,7 @@ impl ConnectionState {
     fn matches(&self, key: AttemptKey) -> bool {
         match self {
             Self::Capturing { attempt, .. } => *attempt == key,
+            Self::Prepared(prepared) => prepared.capture.attempt == key,
             Self::Ready(capture) => capture.attempt == key,
             _ => false,
         }
@@ -277,7 +295,9 @@ impl ModelCaptureConnection {
         control.check()?;
         let mut state = self.state.lock().expect("model capture connection");
         match &*state {
-            ConnectionState::Capturing { .. } | ConnectionState::Ready(_) => {
+            ConnectionState::Capturing { .. }
+            | ConnectionState::Prepared(_)
+            | ConnectionState::Ready(_) => {
                 return Err(CaptureError::ActiveCapture);
             }
             ConnectionState::Closed => return Err(CaptureError::UnknownHandle),
@@ -298,7 +318,7 @@ impl ModelCaptureConnection {
         let result = runtime.spawn_blocking(move || {
             // The guard lives until this blocking task exits, even when its
             // JoinHandle/waiter is dropped or the connection is closed.
-            let _permit = permit;
+            let _worker_permit = permit.clone();
             hooks.before_capture();
             let result = capture_accounted(
                 &output,
@@ -309,7 +329,16 @@ impl ModelCaptureConnection {
                 &mut reservation,
             );
             hooks.after_capture();
-            finish(&worker_owner, attempt, &worker_control, result, reservation)
+            let completion = finish(
+                &worker_owner,
+                attempt,
+                &worker_control,
+                result,
+                reservation,
+                permit,
+            );
+            hooks.before_worker_exit();
+            completion
         });
         Ok(PendingModelCapture {
             owner,
@@ -345,8 +374,10 @@ impl ModelCaptureConnection {
             &mut *self.state.lock().expect("model capture connection"),
             ConnectionState::Closed,
         );
-        if let ConnectionState::Capturing { control, .. } = &prior {
-            control.cancel();
+        match &prior {
+            ConnectionState::Capturing { control, .. } => control.cancel(),
+            ConnectionState::Prepared(prepared) => prepared.control.cancel(),
+            _ => {}
         }
         drop(prior);
     }
@@ -360,6 +391,7 @@ impl Drop for ModelCaptureConnection {
 pub(super) trait WorkerHooks: Send + Sync {
     fn before_capture(&self) {}
     fn after_capture(&self) {}
+    fn before_worker_exit(&self) {}
 }
 struct NoopHooks;
 impl WorkerHooks for NoopHooks {}
@@ -382,35 +414,124 @@ pub struct PendingModelCapture {
     owner: Weak<Mutex<ConnectionState>>,
     attempt: AttemptKey,
     control: CaptureControl,
-    result: JoinHandle<Result<ModelCaptureCompletion, CaptureError>>,
+    result: JoinHandle<Result<WorkerCompletion, CaptureError>>,
     armed: bool,
 }
 impl PendingModelCapture {
     pub fn cancel(&self) {
         abandon(&self.owner, self.attempt, &self.control);
     }
-    pub async fn wait(mut self) -> Result<ModelCaptureCompletion, CaptureError> {
+    /// Storage-only convenience for existing callers. This does not establish
+    /// provider authorization. The eventual provider path must revalidate its
+    /// actual authority between private preparation and publication.
+    pub async fn wait(self) -> Result<ModelCaptureCompletion, CaptureError> {
+        match self.wait_prepared().await? {
+            PreparedCaptureCompletion::Prepared(prepared) => prepared.publish(),
+            PreparedCaptureCompletion::Unavailable(reason) => {
+                Ok(ModelCaptureCompletion::Unavailable(reason))
+            }
+        }
+    }
+    pub(super) async fn wait_prepared(mut self) -> Result<PreparedCaptureCompletion, CaptureError> {
         let deadline = tokio::time::Instant::from_std(self.control.deadline());
         let result = tokio::select! {
             result = &mut self.result => result.map_err(|_| CaptureError::CaptureFailed)?,
             () = self.control.cancelled() => return Err(CaptureError::Timeout),
             () = tokio::time::sleep_until(deadline) => return Err(CaptureError::Timeout),
-        };
+        }?;
         self.control.check()?;
-        if let Ok(ModelCaptureCompletion::Ready(_)) = &result {
-            let owner = self.owner.upgrade().ok_or(CaptureError::Timeout)?;
-            if !owner
-                .lock()
-                .expect("model capture connection")
-                .matches(self.attempt)
-            {
-                return Err(CaptureError::Timeout);
+        let completion = match result {
+            WorkerCompletion::Prepared => {
+                let owner = self.owner.upgrade().ok_or(CaptureError::Timeout)?;
+                let state = owner.lock().expect("model capture connection");
+                if !matches!(&*state, ConnectionState::Prepared(prepared)
+                    if prepared.capture.attempt == self.attempt)
+                {
+                    return Err(CaptureError::Timeout);
+                }
+                PreparedCaptureCompletion::Prepared(PreparedModelCapture {
+                    owner: self.owner.clone(),
+                    attempt: self.attempt,
+                    control: self.control.clone(),
+                    armed: true,
+                })
             }
-        }
+            WorkerCompletion::Unavailable(reason) => PreparedCaptureCompletion::Unavailable(reason),
+        };
         self.armed = false;
-        result
+        Ok(completion)
     }
 }
+// No sources, capture ID, or retaining Arc escape through this sealed token.
+// Possession alone is not authority: a real provider caller must perform its
+// current-source/project revalidation before calling publish.
+pub(super) struct PreparedModelCapture {
+    owner: Weak<Mutex<ConnectionState>>,
+    attempt: AttemptKey,
+    control: CaptureControl,
+    armed: bool,
+}
+pub(super) enum PreparedCaptureCompletion {
+    Prepared(PreparedModelCapture),
+    Unavailable(CaptureUnavailable),
+}
+impl PreparedCaptureCompletion {
+    #[cfg(test)]
+    pub(super) fn prepared(self) -> Option<PreparedModelCapture> {
+        match self {
+            Self::Prepared(prepared) => Some(prepared),
+            _ => None,
+        }
+    }
+}
+impl PreparedModelCapture {
+    pub(super) fn publish(mut self) -> Result<ModelCaptureCompletion, CaptureError> {
+        self.control.check()?;
+        let owner = self.owner.upgrade().ok_or(CaptureError::Timeout)?;
+        let mut state = owner.lock().expect("model capture connection");
+        self.control.check()?;
+        if !matches!(&*state, ConnectionState::Prepared(prepared)
+            if prepared.capture.attempt == self.attempt)
+        {
+            return Err(CaptureError::Timeout);
+        }
+        let ConnectionState::Prepared(prepared) =
+            std::mem::replace(&mut *state, ConnectionState::Empty)
+        else {
+            unreachable!()
+        };
+        let PreparedOwner {
+            capture,
+            _work: work,
+            control: _,
+        } = *prepared;
+        let id = capture.id.clone();
+        *state = ConnectionState::Ready(capture);
+        self.armed = false;
+        drop(state);
+        drop(work);
+        Ok(ModelCaptureCompletion::Ready(id))
+    }
+    #[cfg(test)]
+    pub(super) fn id_for_test(&self) -> CaptureId {
+        let owner = self.owner.upgrade().unwrap();
+        let state = owner.lock().unwrap();
+        match &*state {
+            ConnectionState::Prepared(prepared) if prepared.capture.attempt == self.attempt => {
+                prepared.capture.id.clone()
+            }
+            _ => panic!("not current private preparation"),
+        }
+    }
+}
+impl Drop for PreparedModelCapture {
+    fn drop(&mut self) {
+        if self.armed {
+            abandon(&self.owner, self.attempt, &self.control);
+        }
+    }
+}
+
 impl Drop for PendingModelCapture {
     fn drop(&mut self) {
         if self.armed {
@@ -430,13 +551,18 @@ fn abandon(owner: &Weak<Mutex<ConnectionState>>, attempt: AttemptKey, control: &
         drop(prior);
     }
 }
+enum WorkerCompletion {
+    Prepared,
+    Unavailable(CaptureUnavailable),
+}
 fn finish(
     owner: &Weak<Mutex<ConnectionState>>,
     attempt: AttemptKey,
     control: &CaptureControl,
     result: Result<CaptureResult, CaptureError>,
     reservation: Reservation,
-) -> Result<ModelCaptureCompletion, CaptureError> {
+    work: WorkPermit,
+) -> Result<WorkerCompletion, CaptureError> {
     enum Prepared {
         Ready(Box<OwnedCapture>),
         Unavailable(CaptureUnavailable),
@@ -469,13 +595,16 @@ fn finish(
     }
     match prepared {
         Prepared::Ready(capture) => {
-            let id = capture.id.clone();
-            *state = ConnectionState::Ready(capture);
-            Ok(ModelCaptureCompletion::Ready(id))
+            *state = ConnectionState::Prepared(Box::new(PreparedOwner {
+                capture,
+                _work: work,
+                control: control.clone(),
+            }));
+            Ok(WorkerCompletion::Prepared)
         }
         Prepared::Unavailable(reason) => {
             *state = ConnectionState::Empty;
-            Ok(ModelCaptureCompletion::Unavailable(reason))
+            Ok(WorkerCompletion::Unavailable(reason))
         }
         Prepared::Failed(error) => {
             *state = ConnectionState::Empty;

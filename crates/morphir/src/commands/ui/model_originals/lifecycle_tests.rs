@@ -65,6 +65,7 @@ use std::{
 enum HoldAt {
     Before,
     After,
+    BeforeExit,
 }
 struct HoldWorker {
     at: HoldAt,
@@ -95,6 +96,11 @@ impl WorkerHooks for HoldWorker {
     }
     fn after_capture(&self) {
         if matches!(self.at, HoldAt::After) {
+            self.block();
+        }
+    }
+    fn before_worker_exit(&self) {
+        if matches!(self.at, HoldAt::BeforeExit) {
             self.block();
         }
     }
@@ -560,3 +566,222 @@ async fn actual_128mib_host_capacity_accepts_two_64mib_owners_then_refuses_one_b
     drop(third);
     assert_eq!(capacity.usage(), ModelCaptureUsage::default());
 }
+
+#[tokio::test]
+async fn prepared_capture_is_not_addressable_even_with_its_exact_private_id() {
+    let capacity = HostModelCaptureCapacity::default();
+    let owner = ModelCaptureConnection::new(capacity.clone());
+    let (_temp, dir) = fixture(b"private until publication");
+    let prepared = owner
+        .start(
+            dir,
+            SelectedModule::parse("").unwrap(),
+            CaptureScope::Primary,
+        )
+        .unwrap()
+        .wait_prepared()
+        .await
+        .unwrap()
+        .prepared()
+        .unwrap();
+    let private_id = prepared.id_for_test();
+    assert!(matches!(
+        owner.inspect(&private_id),
+        Err(CaptureError::UnknownHandle)
+    ));
+    assert!(matches!(
+        owner.release(&private_id),
+        Err(CaptureError::UnknownHandle)
+    ));
+    assert_eq!(capacity.usage().active_workers(), 1);
+    assert_eq!(capacity.usage().captures(), 1);
+    let (_temp, dir) = fixture(b"replacement");
+    assert!(matches!(
+        owner.start(
+            dir,
+            SelectedModule::parse("").unwrap(),
+            CaptureScope::Primary
+        ),
+        Err(CaptureError::ActiveCapture)
+    ));
+    // This internal step will be called only after actual provider revalidation
+    // and bounded Ready-envelope preparation in the future provider route.
+    let published = prepared.publish().unwrap().ready().unwrap();
+    assert_eq!(published, private_id);
+    assert_eq!(owner.inspect(&published).unwrap().source_byte_length(), 25);
+    assert_eq!(capacity.usage().active_workers(), 0);
+}
+
+#[tokio::test]
+async fn unpublished_empty_capture_holds_slot_and_work_until_its_token_drops() {
+    let capacity = HostModelCaptureCapacity::default();
+    let owner = ModelCaptureConnection::new(capacity.clone());
+    let other = ModelCaptureConnection::new(capacity.clone());
+    let (_temp, dir) = fixture(b"");
+    let prepared = owner
+        .start(
+            dir,
+            SelectedModule::parse("").unwrap(),
+            CaptureScope::Primary,
+        )
+        .unwrap()
+        .wait_prepared()
+        .await
+        .unwrap()
+        .prepared()
+        .unwrap();
+    assert_eq!(capacity.usage().source_bytes(), 0);
+    assert!(capacity.usage().metadata_bytes() > 0);
+    assert_eq!(capacity.usage().captures(), 1);
+    assert_eq!(capacity.usage().active_workers(), 1);
+    let (_replacement, dir) = fixture(b"later");
+    assert!(matches!(
+        other.start(
+            dir,
+            SelectedModule::parse("").unwrap(),
+            CaptureScope::Primary
+        ),
+        Err(CaptureError::Capacity)
+    ));
+    drop(prepared);
+    assert_eq!(capacity.usage(), ModelCaptureUsage::default());
+    let (_replacement, dir) = fixture(b"later");
+    let id = run(&other, dir).await.unwrap();
+    assert_eq!(other.inspect(&id).unwrap().source_byte_length(), 5);
+}
+
+#[tokio::test]
+async fn cancelled_preparation_cannot_publish_and_drops_all_retained_credits() {
+    let capacity = HostModelCaptureCapacity::default();
+    let owner = ModelCaptureConnection::new(capacity.clone());
+    let (_temp, dir) = fixture(b"prepared");
+    let control = CaptureControl::new();
+    let prepared = owner
+        .start_with(
+            dir,
+            SelectedModule::parse("").unwrap(),
+            CaptureScope::Primary,
+            control.clone(),
+            Arc::new(TestNoopHooks),
+        )
+        .unwrap()
+        .wait_prepared()
+        .await
+        .unwrap()
+        .prepared()
+        .unwrap();
+    control.cancel();
+    assert!(matches!(prepared.publish(), Err(CaptureError::Timeout)));
+    assert_eq!(capacity.usage(), ModelCaptureUsage::default());
+    let (_replacement, dir) = fixture(b"replacement");
+    assert!(run(&owner, dir).await.is_ok());
+}
+
+#[tokio::test]
+async fn expired_preparation_rechecks_deadline_at_publication() {
+    let capacity = HostModelCaptureCapacity::default();
+    let owner = ModelCaptureConnection::new(capacity.clone());
+    let (_temp, dir) = fixture(b"prepared");
+    let control = CaptureControl::with_timeout(Duration::from_secs(1));
+    let deadline = control.deadline();
+    let prepared = owner
+        .start_with(
+            dir,
+            SelectedModule::parse("").unwrap(),
+            CaptureScope::Primary,
+            control,
+            Arc::new(TestNoopHooks),
+        )
+        .unwrap()
+        .wait_prepared()
+        .await
+        .unwrap()
+        .prepared()
+        .unwrap();
+    tokio::time::sleep_until(tokio::time::Instant::from_std(deadline)).await;
+    assert_eq!(capacity.usage().active_workers(), 1);
+    assert!(matches!(prepared.publish(), Err(CaptureError::Timeout)));
+    assert_eq!(capacity.usage(), ModelCaptureUsage::default());
+}
+
+#[tokio::test]
+async fn closing_prepared_owner_prevents_publication_without_touching_new_owner() {
+    let capacity = HostModelCaptureCapacity::default();
+    let owner = ModelCaptureConnection::new(capacity.clone());
+    let (_temp, dir) = fixture(b"old");
+    let prepared = owner
+        .start(
+            dir,
+            SelectedModule::parse("").unwrap(),
+            CaptureScope::Primary,
+        )
+        .unwrap()
+        .wait_prepared()
+        .await
+        .unwrap()
+        .prepared()
+        .unwrap();
+    let old_id = prepared.id_for_test();
+    owner.close();
+    assert_eq!(capacity.usage(), ModelCaptureUsage::default());
+    let other = ModelCaptureConnection::new(capacity.clone());
+    let (_replacement, dir) = fixture(b"new");
+    let new_id = run(&other, dir).await.unwrap();
+    let retained = capacity.usage();
+    assert!(matches!(prepared.publish(), Err(CaptureError::Timeout)));
+    assert!(matches!(
+        owner.inspect(&old_id),
+        Err(CaptureError::UnknownHandle)
+    ));
+    assert_eq!(other.inspect(&new_id).unwrap().source_byte_length(), 3);
+    assert_eq!(capacity.usage(), retained);
+}
+
+#[tokio::test]
+async fn closing_prepared_state_cannot_release_still_running_workers_credit() {
+    for close_owner in [false, true] {
+        let capacity = HostModelCaptureCapacity::default();
+        let owner = ModelCaptureConnection::new(capacity.clone());
+        let (_temp, dir) = fixture(b"copied");
+        let (hook, arrived, release) = held(HoldAt::BeforeExit);
+        let pending = owner
+            .start_with(
+                dir,
+                SelectedModule::parse("").unwrap(),
+                CaptureScope::Primary,
+                CaptureControl::new(),
+                hook,
+            )
+            .unwrap();
+        arrived.await.unwrap(); // finish installed Prepared, but worker has not exited
+        assert_eq!(capacity.usage().source_bytes(), 6);
+        assert_eq!(capacity.usage().captures(), 1);
+        assert_eq!(capacity.usage().active_workers(), 1);
+        if close_owner {
+            owner.close();
+        }
+        drop(pending); // drop also abandons Prepared when the owner remains open
+        assert_eq!(capacity.usage().source_bytes(), 0);
+        assert_eq!(capacity.usage().metadata_bytes(), 0);
+        assert_eq!(capacity.usage().captures(), 0);
+        assert_eq!(capacity.usage().active_workers(), 1);
+        let other = ModelCaptureConnection::new(capacity.clone());
+        let (_replacement, dir) = fixture(b"new");
+        assert!(matches!(
+            other.start(
+                dir,
+                SelectedModule::parse("").unwrap(),
+                CaptureScope::Primary
+            ),
+            Err(CaptureError::Capacity)
+        ));
+        release.send(()).unwrap();
+        workers_stopped(&capacity).await;
+        assert_eq!(capacity.usage(), ModelCaptureUsage::default());
+        let (_replacement, dir) = fixture(b"new");
+        assert!(run(&other, dir).await.is_ok());
+    }
+}
+
+struct TestNoopHooks;
+impl WorkerHooks for TestNoopHooks {}
