@@ -30,6 +30,12 @@ Names, Paths, and Fully-Qualified Names now serialize to **canonical strings** i
 ### 4. Canonical Module Definitions (`module.json`)
 First-class support for `module.json` manifests, allowing modules to be defined flexibly within the Document Tree.
 
+### 5. Untagged Union Type Expressions
+
+The draft adds `Union attributes alternatives` for values belonging to at least one existing alternative type. This differs from tagged custom types: `String | Int` adds no constructors. Overlap is allowed, and alternative order does not select a branch. Raw decoding must diagnose distinct typed interpretations rather than accepting the first match.
+
+The [Union specification](./types.md#union) defines compact and expanded JSON, substitution, narrowing, annotation preservation and explicit refusal by unsupported consumers. The [reference corpus and inventory](https://github.com/finos/morphir/tree/main/spec/conceptual/union) distinguish this design from planned runtime, schema and backend adoption. Existing v1-v3 formats have no lossless implicit migration for this node.
+
 ## Migration Guide
 
 (Coming Soon: Guide for migrating v3 IR to v4)

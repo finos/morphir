@@ -1,0 +1,20 @@
+{
+  "manifestVersion": "0.1.0-draft.1",
+  "assets": [
+    {
+      "path": "cases.json",
+      "bytes": 31710,
+      "sha256": "2eb95f0e7013cf32b28aa1d35a9fff9d225de99ebcb81f485ba5e9b3616f7053"
+    },
+    {
+      "path": "environment.json",
+      "bytes": 5997,
+      "sha256": "475090925c2ed595a00d2aec545c41a1fca1d3b1e0c211d925ee4985bad2a6bd"
+    },
+    {
+      "path": "contract.html",
+      "bytes": 27251,
+      "sha256": "3e783fc5c097e2dbd883f9bf2289a65d81910c7ab24a377b035e2acd5c5152e0"
+    }
+  ]
+}

@@ -106,6 +106,49 @@ The type with exactly one value.
   - attributes: `TypeAttributes`
 - **JSON**: `{"Unit": {}}`
 
+### Union
+
+An untagged union contains values belonging to at least one of its existing alternative types. It introduces no constructor, discriminant or preferred alternative. This is a first-class **draft v4 type expression**, not an extension attribute or a `CustomTypeSpecification`. Publishing this contract does not qualify an existing codec or backend to consume it.
+
+- **Structure**: `Union attributes alternatives`
+- **Components**: `attributes: TypeAttributes`; `alternatives: List Type`, with at least two listed alternatives in every authored node, including nested nodes.
+- **JSON (compact)**: `{"Union": ["morphir/SDK:string#string", "morphir/SDK:basics#int"]}`
+- **JSON (expanded)**: `{"Union": {"attributes": {...}, "alternatives": [...]}}`
+
+Readers accept both spellings. Writers use the compact spelling when the union's attributes are empty, and the expanded spelling otherwise, following the existing attributes rule. Each alternative independently uses its own compact or expanded spelling. An expanded payload requires `alternatives`; an absent, non-array, empty or singleton list is invalid. The wrapper has exactly one node-kind key. A bare array remains a **Tuple**, never a Union. No legacy Union spelling is introduced.
+
+#### Membership and equivalence
+
+Membership is inclusive: an existing `String` or `Int` belongs to `String | Int`, while `Bool` does not. Overlap is valid. If two alternatives accept the same typed value, the result is membership, without choosing an arm. Reordering alternatives leaves membership and assignability unchanged; repeated alternatives are idempotent and nested unions are associative. These laws describe meaning, not permission to rewrite the authored tree.
+
+Codecs and structural traversals preserve alternative order, duplicates, nesting, node attributes and each alternative's annotations/refinements. Structural equality and serialized bytes can therefore differ between semantically equivalent unions. A semantic comparison may ignore order and repeated equivalent members only after accounting for applicable constraints and nominal identities. It must not erase an obligation or its provenance. A refinement on the union itself applies to the union as a whole; an alternative's refinement applies when establishing membership through that alternative. A different accepting alternative can establish membership without satisfying a refinement on an unused alternative.
+
+Unions compose with aliases, records, tuples, type applications and type variables. Substitution recursively replaces free variables in every alternative and preserves attributes and the authored list. Substituting `a := String` in `a | String` produces two equivalent listed alternatives and remains valid. It does not produce an invalid singleton node. Transparent aliases may expand for semantic comparison. Opaque alternatives retain their nominal identity and visibility; equal underlying representations do not make distinct opaque types interchangeable.
+
+#### Assignability and narrowing
+
+A known member may widen to a union without runtime conversion. For the initial conservative checker, every possible source alternative must be assignable to the destination. When the destination is a union, each source alternative must have a justified destination alternative. If that cannot be established within the supported profile, the checker must not claim assignability. This rule need not discover every mathematically valid inclusion, such as coverage established only by combining several refinements.
+
+A union value can be used as a narrower type only if every possible alternative is assignable to that type, or a checked type-membership guard establishes the narrower type in that branch. An operation specific to one alternative requires such narrowing. A guard examines the supplied value's type, structure and required refinements, not a fabricated union tag. An unsuccessful guard does not in general identify another arm, because alternatives can overlap.
+
+Use explicit signatures and conservative structural/nominal checks. No solver-based refinement implication, numeric coercion or arbitrary subtyping inference is implied. Concrete first-order membership is bounded by the consumer's declared profile and resource limits. An unsupported member check or exhausted limit is **unknown/unsupported**, not proof of nonmembership. Membership succeeds if a supported alternative proves it; a negative answer requires all alternatives to be checked and rejected. An unknown result cannot authorize either branch of an execution guard.
+
+#### Typed membership versus raw decoding
+
+A supplied typed value has an interpretation already. Raw JSON, Ion or another representation may have several interpretations. If member decoders produce distinct typed values from the same input, decoding must report ambiguity and require an explicit codec decision. It must never select the first successful member. Reordering alternatives cannot change that result. Two successful decoders yielding the same typed value are not ambiguous merely because both accepted it. Equality here includes nominal identity; a numeric token decoded as an Int and as a Float has two interpretations even when their printed numbers match.
+
+A codec must also account for unsupported alternatives. Without an explicit encoding rule excluding them, an unevaluated alternative prevents a claim that decoding has a unique interpretation. A selected codec profile may disambiguate by an explicit, documented representation mapping; adding invented tagged constructors is not an implicit migration. Attribute preservation alone does not implement a refinement or encoding profile.
+
+#### Declarations, projection and compatibility
+
+The conceptual language's `type alias Identifier = String | Int` names existing values. The separate declaration `type IdentifierValue = Text String | Number Int` introduces tagged constructors. A single `type alias A = B` resolves the existing type B; `type A = B` introduces a nullary constructor B. An unresolved alias target is an error. A leading pipe is allowed for tagged constructor lists only.
+
+The proposal that type application binds more tightly than union, and union more tightly than the function arrow, remains a **grammar proposal**, not a finalized parser requirement. Use parentheses in examples requiring a grouping decision until the grammar task settles it.
+
+Union appears inside existing `TypeAliasSpecification`/`TypeAliasDefinition`, record fields, signatures and other Type positions; no new definition kind or distribution envelope is needed. Projection preserves the native node and its members and attributes. A consumer without Union support must explicitly refuse affected operations. Rich inspection may retain the conceptual payload and record a projection gap, omitting the affected declaration and dependent signatures; such a result is not a complete public specification. Bare export must refuse an unsupported projection. Older IR formats cannot silently drop alternatives or invent a tagged ADT. Compiled predicates and backends need capability checks over all required types and reachable definitions, not just the selected entry signature.
+
+The [Union contract, reference fixtures and consumer inventory](https://github.com/finos/morphir/tree/main/spec/conceptual/union) define profile `morphir-untagged-union/0.1.0-draft.1`. U1 (`morphir-ukvn.7.2`) publishes that design. U2 (`morphir-ukvn.7.9.1`) owns native nodes, codecs, traversal, substitution and typing. U3 (`morphir-ukvn.7.9.2`) owns projection and consumer qualification, including schemas and IR/SDK self-specification coverage. The reference corpus does not establish current runtime or schema support.
+
 ## JSON Serialization Summary
 
 IR v4 supports two serialization modes:
@@ -121,6 +164,7 @@ Type expressions use maximally compact forms where context is unambiguous:
 | Reference (with args) | Array with fqname + args | `{"Reference": ["morphir/SDK:list#list", "a"]}` |
 | Record | Object with fields wrapper | `{"Record": {"fields": {"name": "morphir/SDK:string#string"}}}` |
 | Tuple | Bare array, or wrapper with array | `["a", "b"]` or `{"Tuple": ["a", "b"]}` |
+| Union (draft) | Wrapper with alternative array | `{"Union": ["a", "b"]}` |
 | Function | Object with parameter and return | `{"Function": {"parameterType": ..., "returnType": ...}}` |
 | Unit | Empty object | `{"Unit": {}}` |
 
@@ -139,6 +183,7 @@ For tooling that prefers explicit structure, an expanded format is available:
 | Reference | Object with attributes, fqname and args | `{"Reference": {"attributes": {...}, "fqname": "morphir/SDK:list#list", "args": ["a"]}}` |
 | Record | Object with attributes and fields | `{"Record": {"attributes": {...}, "fields": {...}}}` |
 | Tuple | Object with attributes and elements | `{"Tuple": {"attributes": {...}, "elements": [...]}}` |
+| Union (draft) | Object with attributes and alternatives | `{"Union": {"attributes": {...}, "alternatives": [...]}}` |
 | Function | Object with attributes, parameter and return | `{"Function": {"attributes": {...}, "parameterType": ..., "returnType": ...}}` |
 | Unit | Object with attributes | `{"Unit": {"attributes": {...}}}` |
 

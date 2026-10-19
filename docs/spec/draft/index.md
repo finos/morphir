@@ -16,6 +16,7 @@ For the rationale behind these specifications, please see the [Draft Design Docu
 - [Naming](./names.md)
 - [Attributes](./attributes.md)
 - [Type System](./types.md)
+- [Untagged unions](./types.md#union), including draft wire format and consumer adoption boundaries
 - [Value System](./values.md)
 - [Modules](./modules.md)
 - [Package System](./packages.md)
@@ -67,6 +68,7 @@ A `ValueSpecification` contains only the function signature (input types and out
 
 ## Key Changes in v4
 
+- **Untagged unions**: First-class `Union` type expressions contain existing values without new constructors. This is a draft contract; implementation and consumer qualification are tracked separately.
 - **No Generic Parameters**: Types and Values no longer carry a generic attribute parameter `a`. Instead, they contain specific `TypeAttributes` and `ValueAttributes` structures.
 - **Explicit Attributes**: Attributes include source location, constraints (for types), and inferred types (for values).
 - **Module.json**: First-class support for `module.json` files containing full module definitions.
