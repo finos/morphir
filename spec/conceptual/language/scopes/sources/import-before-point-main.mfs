@@ -1,0 +1,7 @@
+module Types exposing (type Quantity) {
+type alias Quantity = Int
+}
+module Use {
+// lookup early
+import Types as T;
+}

@@ -1,0 +1,43 @@
+{
+  "outcome": "resolved",
+  "modules": [
+    {
+      "moduleName": "functions",
+      "symbolIds": [
+        "urn:scopes:symbol:use"
+      ],
+      "exports": [
+        "urn:scopes:symbol:use"
+      ]
+    },
+    {
+      "moduleName": "consumer",
+      "symbolIds": [],
+      "exports": []
+    }
+  ],
+  "references": [
+    {
+      "referenceId": "local",
+      "target": {
+        "kind": "binder",
+        "binderId": "binder:use",
+        "name": "use",
+        "category": "value"
+      }
+    }
+  ],
+  "model": {
+    "id": "urn:scopes:model:lending",
+    "revision": "model-1",
+    "metadata": {
+      "intent": "Keep reviewed context",
+      "requirements": [
+        "urn:requirement:remaining"
+      ],
+      "custom": {
+        "owner": "domain-review"
+      }
+    }
+  }
+}

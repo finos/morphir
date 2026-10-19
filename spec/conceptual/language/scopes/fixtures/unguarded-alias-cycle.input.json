@@ -1,0 +1,214 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:unguarded-alias-cycle:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:unguarded-alias-cycle:main",
+      "revision": "fixture-1",
+      "text": "module Types {\ntype alias A = B\ntype alias B = A\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "unguarded-alias-cycle:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:unguarded-alias-cycle:main",
+            "revision": "fixture-1",
+            "text": "module Types {\ntype alias A = B\ntype alias B = A\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "unguarded-alias-cycle:a:declaration",
+            "span": {
+              "sourceId": "source:unguarded-alias-cycle:main",
+              "start": 15,
+              "end": 31,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "A",
+            "typeParameters": [],
+            "value": {
+              "id": "unguarded-alias-cycle:a:type",
+              "span": {
+                "sourceId": "source:unguarded-alias-cycle:main",
+                "start": 30,
+                "end": 31,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "B"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "unguarded-alias-cycle:b:declaration",
+            "span": {
+              "sourceId": "source:unguarded-alias-cycle:main",
+              "start": 32,
+              "end": 48,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "B",
+            "typeParameters": [],
+            "value": {
+              "id": "unguarded-alias-cycle:b:type",
+              "span": {
+                "sourceId": "source:unguarded-alias-cycle:main",
+                "start": 47,
+                "end": 48,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "A"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:unguarded-alias-cycle:main:root",
+      "sourceId": "source:unguarded-alias-cycle:main",
+      "span": {
+        "sourceId": "source:unguarded-alias-cycle:main",
+        "start": 0,
+        "end": 51,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "unguarded-alias-cycle:r1"
+        }
+      ]
+    },
+    {
+      "id": "unguarded-alias-cycle:r1",
+      "sourceId": "source:unguarded-alias-cycle:main",
+      "span": {
+        "sourceId": "source:unguarded-alias-cycle:main",
+        "start": 0,
+        "end": 51,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:unguarded-alias-cycle:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:a"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:b"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:a",
+      "moduleRegionId": "unguarded-alias-cycle:r1",
+      "name": "A",
+      "canonicalName": "a",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "unguarded-alias-cycle:fragment",
+        "nodeId": "unguarded-alias-cycle:a:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:b",
+      "moduleRegionId": "unguarded-alias-cycle:r1",
+      "name": "B",
+      "canonicalName": "b",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "unguarded-alias-cycle:fragment",
+        "nodeId": "unguarded-alias-cycle:b:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

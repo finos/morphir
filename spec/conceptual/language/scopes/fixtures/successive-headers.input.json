@@ -1,0 +1,259 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:successive-headers:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:successive-headers:main",
+      "revision": "fixture-1",
+      "text": "namespace Finos.Lending;\nmodule Types exposing (type Quantity);\ntype alias Quantity = Int\nmodule Returns;\nimport Finos.Lending.Types as Types;\n// lookup use\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "successive-headers:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:successive-headers:main",
+            "revision": "fixture-1",
+            "text": "namespace Finos.Lending;\nmodule Types exposing (type Quantity);\ntype alias Quantity = Int\nmodule Returns;\nimport Finos.Lending.Types as Types;\n// lookup use\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "successive-headers:quantity:declaration",
+            "span": {
+              "sourceId": "source:successive-headers:main",
+              "start": 64,
+              "end": 89,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "successive-headers:quantity:type",
+              "span": {
+                "sourceId": "source:successive-headers:main",
+                "start": 86,
+                "end": 89,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:successive-headers:main:root",
+      "sourceId": "source:successive-headers:main",
+      "span": {
+        "sourceId": "source:successive-headers:main",
+        "start": 0,
+        "end": 157,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "successive-headers:r1"
+        }
+      ]
+    },
+    {
+      "id": "successive-headers:r1",
+      "sourceId": "source:successive-headers:main",
+      "span": {
+        "sourceId": "source:successive-headers:main",
+        "start": 0,
+        "end": 157,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos",
+        "Lending"
+      ],
+      "parentId": "source:successive-headers:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "successive-headers:r2"
+        },
+        {
+          "kind": "region",
+          "id": "successive-headers:r3"
+        }
+      ]
+    },
+    {
+      "id": "successive-headers:r2",
+      "sourceId": "source:successive-headers:main",
+      "span": {
+        "sourceId": "source:successive-headers:main",
+        "start": 25,
+        "end": 90,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "header",
+      "name": [
+        "Types"
+      ],
+      "parentId": "successive-headers:r1",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    },
+    {
+      "id": "successive-headers:r3",
+      "sourceId": "source:successive-headers:main",
+      "span": {
+        "sourceId": "source:successive-headers:main",
+        "start": 90,
+        "end": 157,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "header",
+      "name": [
+        "Returns"
+      ],
+      "parentId": "successive-headers:r1",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "types-import"
+        },
+        {
+          "kind": "reference",
+          "id": "use"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "successive-headers:r2",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "successive-headers:fragment",
+        "nodeId": "successive-headers:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "types-import",
+      "regionId": "successive-headers:r3",
+      "span": {
+        "sourceId": "source:successive-headers:main",
+        "start": 106,
+        "end": 142,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Finos",
+          "Lending",
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "Types"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "use",
+      "regionId": "successive-headers:r3",
+      "span": {
+        "sourceId": "source:successive-headers:main",
+        "start": 157,
+        "end": 157,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "Types",
+        "Quantity"
+      ],
+      "category": "type",
+      "localBinders": []
+    }
+  ]
+}

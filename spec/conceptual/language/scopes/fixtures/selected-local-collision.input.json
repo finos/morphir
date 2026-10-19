@@ -1,0 +1,272 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:selected-local-collision:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:selected-local-collision:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Use {\ntype alias Quantity = Int\nimport Types exposing (type Quantity);\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "selected-local-collision:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:selected-local-collision:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Use {\ntype alias Quantity = Int\nimport Types exposing (type Quantity);\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "selected-local-collision:quantity:declaration",
+            "span": {
+              "sourceId": "source:selected-local-collision:main",
+              "start": 40,
+              "end": 65,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "selected-local-collision:quantity:type",
+              "span": {
+                "sourceId": "source:selected-local-collision:main",
+                "start": 62,
+                "end": 65,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "selected-local-collision:local-q:declaration",
+            "span": {
+              "sourceId": "source:selected-local-collision:main",
+              "start": 81,
+              "end": 106,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "selected-local-collision:local-q:type",
+              "span": {
+                "sourceId": "source:selected-local-collision:main",
+                "start": 103,
+                "end": 106,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:selected-local-collision:main:root",
+      "sourceId": "source:selected-local-collision:main",
+      "span": {
+        "sourceId": "source:selected-local-collision:main",
+        "start": 0,
+        "end": 148,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "selected-local-collision:r1"
+        },
+        {
+          "kind": "region",
+          "id": "selected-local-collision:r2"
+        }
+      ]
+    },
+    {
+      "id": "selected-local-collision:r1",
+      "sourceId": "source:selected-local-collision:main",
+      "span": {
+        "sourceId": "source:selected-local-collision:main",
+        "start": 0,
+        "end": 68,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:selected-local-collision:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    },
+    {
+      "id": "selected-local-collision:r2",
+      "sourceId": "source:selected-local-collision:main",
+      "span": {
+        "sourceId": "source:selected-local-collision:main",
+        "start": 68,
+        "end": 148,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:selected-local-collision:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:local-q"
+        },
+        {
+          "kind": "import",
+          "id": "selected"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "selected-local-collision:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "selected-local-collision:fragment",
+        "nodeId": "selected-local-collision:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:local-q",
+      "moduleRegionId": "selected-local-collision:r2",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "selected-local-collision:fragment",
+        "nodeId": "selected-local-collision:local-q:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "selected",
+      "regionId": "selected-local-collision:r2",
+      "span": {
+        "sourceId": "source:selected-local-collision:main",
+        "start": 107,
+        "end": 145,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "selected",
+        "selectors": [
+          {
+            "kind": "type",
+            "name": "Quantity"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,7 @@
+namespace Finos {
+namespace Lending {
+module Types exposing (type Quantity) {
+type alias Quantity = Int
+}
+}
+}

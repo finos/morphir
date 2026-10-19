@@ -1,0 +1,270 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:binder-shadowing:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:binder-shadowing:main",
+      "revision": "fixture-1",
+      "text": "module Functions exposing (fn use) {\nfn use(value: Int) -> Int\n}\nmodule Consumer {\nimport Functions exposing (fn use);\n// lookup local\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "binder-shadowing:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:binder-shadowing:main",
+            "revision": "fixture-1",
+            "text": "module Functions exposing (fn use) {\nfn use(value: Int) -> Int\n}\nmodule Consumer {\nimport Functions exposing (fn use);\n// lookup local\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "binder-shadowing:use:declaration",
+            "span": {
+              "sourceId": "source:binder-shadowing:main",
+              "start": 37,
+              "end": 62,
+              "unit": "utf8-byte"
+            },
+            "kind": "function-spec",
+            "name": "use",
+            "typeParameters": [],
+            "inputs": [
+              {
+                "id": "binder-shadowing:use:parameter",
+                "span": {
+                  "sourceId": "source:binder-shadowing:main",
+                  "start": 44,
+                  "end": 54,
+                  "unit": "utf8-byte"
+                },
+                "name": "value",
+                "type": {
+                  "id": "binder-shadowing:use:input-type",
+                  "span": {
+                    "sourceId": "source:binder-shadowing:main",
+                    "start": 51,
+                    "end": 54,
+                    "unit": "utf8-byte"
+                  },
+                  "kind": "named",
+                  "path": [
+                    "Int"
+                  ],
+                  "arguments": []
+                }
+              }
+            ],
+            "output": {
+              "id": "binder-shadowing:use:output",
+              "span": {
+                "sourceId": "source:binder-shadowing:main",
+                "start": 59,
+                "end": 62,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:binder-shadowing:main:root",
+      "sourceId": "source:binder-shadowing:main",
+      "span": {
+        "sourceId": "source:binder-shadowing:main",
+        "start": 0,
+        "end": 137,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "binder-shadowing:r1"
+        },
+        {
+          "kind": "region",
+          "id": "binder-shadowing:r2"
+        }
+      ]
+    },
+    {
+      "id": "binder-shadowing:r1",
+      "sourceId": "source:binder-shadowing:main",
+      "span": {
+        "sourceId": "source:binder-shadowing:main",
+        "start": 0,
+        "end": 65,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Functions"
+      ],
+      "parentId": "source:binder-shadowing:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:use"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "value",
+          "name": "use"
+        }
+      ]
+    },
+    {
+      "id": "binder-shadowing:r2",
+      "sourceId": "source:binder-shadowing:main",
+      "span": {
+        "sourceId": "source:binder-shadowing:main",
+        "start": 65,
+        "end": 137,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Consumer"
+      ],
+      "parentId": "source:binder-shadowing:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "selected"
+        },
+        {
+          "kind": "reference",
+          "id": "local"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:use",
+      "moduleRegionId": "binder-shadowing:r1",
+      "name": "use",
+      "canonicalName": "use",
+      "category": "value",
+      "declaration": {
+        "fragmentId": "binder-shadowing:fragment",
+        "nodeId": "binder-shadowing:use:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "selected",
+      "regionId": "binder-shadowing:r2",
+      "span": {
+        "sourceId": "source:binder-shadowing:main",
+        "start": 83,
+        "end": 118,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Functions"
+        ]
+      },
+      "mode": {
+        "kind": "selected",
+        "selectors": [
+          {
+            "kind": "value",
+            "name": "use"
+          }
+        ]
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "local",
+      "regionId": "binder-shadowing:r2",
+      "span": {
+        "sourceId": "source:binder-shadowing:main",
+        "start": 135,
+        "end": 135,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "use"
+      ],
+      "category": "value",
+      "localBinders": [
+        {
+          "id": "binder:use",
+          "name": "use",
+          "category": "value"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+namespace Finos.Lending;
+model LendingRules {
+module Returns {
+type alias Quantity = Int
+}
+}

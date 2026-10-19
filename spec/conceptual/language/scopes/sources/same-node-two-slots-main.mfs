@@ -1,0 +1,6 @@
+module Use {
+import first::Collections.List as First;
+// lookup first-use
+import second::Collections.List as Second;
+// lookup second-use
+}

@@ -1,0 +1,9 @@
+module Types {
+}
+module Other {
+}
+namespace Finos;
+import Types as T;
+module Use {
+import Other as T;
+}

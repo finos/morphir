@@ -1,0 +1,283 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:reopened-import-isolation:one",
+      "source:reopened-import-isolation:two"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:reopened-import-isolation:one",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Use {\nimport Types as T;\n}\n"
+    },
+    {
+      "id": "source:reopened-import-isolation:two",
+      "revision": "fixture-1",
+      "text": "module Use {\n// lookup leak\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "reopened-import-isolation:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:reopened-import-isolation:one",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Use {\nimport Types as T;\n}\n"
+          },
+          {
+            "id": "source:reopened-import-isolation:two",
+            "revision": "fixture-1",
+            "text": "module Use {\n// lookup leak\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "reopened-import-isolation:quantity:declaration",
+            "span": {
+              "sourceId": "source:reopened-import-isolation:one",
+              "start": 40,
+              "end": 65,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "reopened-import-isolation:quantity:type",
+              "span": {
+                "sourceId": "source:reopened-import-isolation:one",
+                "start": 62,
+                "end": 65,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:reopened-import-isolation:one:root",
+      "sourceId": "source:reopened-import-isolation:one",
+      "span": {
+        "sourceId": "source:reopened-import-isolation:one",
+        "start": 0,
+        "end": 102,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "reopened-import-isolation:r1"
+        },
+        {
+          "kind": "region",
+          "id": "reopened-import-isolation:r2"
+        }
+      ]
+    },
+    {
+      "id": "reopened-import-isolation:r1",
+      "sourceId": "source:reopened-import-isolation:one",
+      "span": {
+        "sourceId": "source:reopened-import-isolation:one",
+        "start": 0,
+        "end": 68,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:reopened-import-isolation:one:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    },
+    {
+      "id": "reopened-import-isolation:r2",
+      "sourceId": "source:reopened-import-isolation:one",
+      "span": {
+        "sourceId": "source:reopened-import-isolation:one",
+        "start": 68,
+        "end": 102,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:reopened-import-isolation:one:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "local"
+        }
+      ],
+      "exports": []
+    },
+    {
+      "id": "source:reopened-import-isolation:two:root",
+      "sourceId": "source:reopened-import-isolation:two",
+      "span": {
+        "sourceId": "source:reopened-import-isolation:two",
+        "start": 0,
+        "end": 30,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "reopened-import-isolation:r3"
+        }
+      ]
+    },
+    {
+      "id": "reopened-import-isolation:r3",
+      "sourceId": "source:reopened-import-isolation:two",
+      "span": {
+        "sourceId": "source:reopened-import-isolation:two",
+        "start": 0,
+        "end": 30,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:reopened-import-isolation:two:root",
+      "entries": [
+        {
+          "kind": "reference",
+          "id": "leak"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "reopened-import-isolation:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "reopened-import-isolation:fragment",
+        "nodeId": "reopened-import-isolation:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "local",
+      "regionId": "reopened-import-isolation:r2",
+      "span": {
+        "sourceId": "source:reopened-import-isolation:one",
+        "start": 81,
+        "end": 99,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "T"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "leak",
+      "regionId": "reopened-import-isolation:r3",
+      "span": {
+        "sourceId": "source:reopened-import-isolation:two",
+        "start": 28,
+        "end": 28,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "T",
+        "Quantity"
+      ],
+      "category": "type",
+      "localBinders": []
+    }
+  ]
+}

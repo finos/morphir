@@ -1,0 +1,245 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:public-private-type-leak:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:public-private-type-leak:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (fn use) {\ntype alias Secret = Int\nfn use(value: Secret) -> Int\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "public-private-type-leak:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:public-private-type-leak:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (fn use) {\ntype alias Secret = Int\nfn use(value: Secret) -> Int\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "public-private-type-leak:secret:declaration",
+            "span": {
+              "sourceId": "source:public-private-type-leak:main",
+              "start": 33,
+              "end": 56,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Secret",
+            "typeParameters": [],
+            "value": {
+              "id": "public-private-type-leak:secret:type",
+              "span": {
+                "sourceId": "source:public-private-type-leak:main",
+                "start": 53,
+                "end": 56,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "public-private-type-leak:use:declaration",
+            "span": {
+              "sourceId": "source:public-private-type-leak:main",
+              "start": 57,
+              "end": 85,
+              "unit": "utf8-byte"
+            },
+            "kind": "function-spec",
+            "name": "use",
+            "typeParameters": [],
+            "inputs": [
+              {
+                "id": "public-private-type-leak:use:parameter",
+                "span": {
+                  "sourceId": "source:public-private-type-leak:main",
+                  "start": 64,
+                  "end": 77,
+                  "unit": "utf8-byte"
+                },
+                "name": "value",
+                "type": {
+                  "id": "public-private-type-leak:use:input-type",
+                  "span": {
+                    "sourceId": "source:public-private-type-leak:main",
+                    "start": 71,
+                    "end": 77,
+                    "unit": "utf8-byte"
+                  },
+                  "kind": "named",
+                  "path": [
+                    "Secret"
+                  ],
+                  "arguments": []
+                }
+              }
+            ],
+            "output": {
+              "id": "public-private-type-leak:use:output",
+              "span": {
+                "sourceId": "source:public-private-type-leak:main",
+                "start": 82,
+                "end": 85,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:public-private-type-leak:main:root",
+      "sourceId": "source:public-private-type-leak:main",
+      "span": {
+        "sourceId": "source:public-private-type-leak:main",
+        "start": 0,
+        "end": 88,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "public-private-type-leak:r1"
+        }
+      ]
+    },
+    {
+      "id": "public-private-type-leak:r1",
+      "sourceId": "source:public-private-type-leak:main",
+      "span": {
+        "sourceId": "source:public-private-type-leak:main",
+        "start": 0,
+        "end": 88,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:public-private-type-leak:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:secret"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:use"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "value",
+          "name": "use"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:secret",
+      "moduleRegionId": "public-private-type-leak:r1",
+      "name": "Secret",
+      "canonicalName": "secret",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "public-private-type-leak:fragment",
+        "nodeId": "public-private-type-leak:secret:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:use",
+      "moduleRegionId": "public-private-type-leak:r1",
+      "name": "use",
+      "canonicalName": "use",
+      "category": "value",
+      "declaration": {
+        "fragmentId": "public-private-type-leak:fragment",
+        "nodeId": "public-private-type-leak:use:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

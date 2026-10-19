@@ -1,0 +1,209 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:namespace-nested:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:namespace-nested:main",
+      "revision": "fixture-1",
+      "text": "namespace Finos {\nnamespace Lending {\nmodule Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\n}\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "namespace-nested:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:namespace-nested:main",
+            "revision": "fixture-1",
+            "text": "namespace Finos {\nnamespace Lending {\nmodule Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\n}\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "namespace-nested:quantity:declaration",
+            "span": {
+              "sourceId": "source:namespace-nested:main",
+              "start": 78,
+              "end": 103,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "namespace-nested:quantity:type",
+              "span": {
+                "sourceId": "source:namespace-nested:main",
+                "start": 100,
+                "end": 103,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:namespace-nested:main:root",
+      "sourceId": "source:namespace-nested:main",
+      "span": {
+        "sourceId": "source:namespace-nested:main",
+        "start": 0,
+        "end": 110,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "namespace-nested:r1"
+        }
+      ]
+    },
+    {
+      "id": "namespace-nested:r1",
+      "sourceId": "source:namespace-nested:main",
+      "span": {
+        "sourceId": "source:namespace-nested:main",
+        "start": 0,
+        "end": 110,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "block",
+      "name": [
+        "Finos"
+      ],
+      "parentId": "source:namespace-nested:main:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "namespace-nested:r2"
+        }
+      ]
+    },
+    {
+      "id": "namespace-nested:r2",
+      "sourceId": "source:namespace-nested:main",
+      "span": {
+        "sourceId": "source:namespace-nested:main",
+        "start": 18,
+        "end": 108,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "block",
+      "name": [
+        "Lending"
+      ],
+      "parentId": "namespace-nested:r1",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "namespace-nested:r3"
+        }
+      ]
+    },
+    {
+      "id": "namespace-nested:r3",
+      "sourceId": "source:namespace-nested:main",
+      "span": {
+        "sourceId": "source:namespace-nested:main",
+        "start": 38,
+        "end": 106,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "namespace-nested:r2",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "namespace-nested:r3",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "namespace-nested:fragment",
+        "nodeId": "namespace-nested:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

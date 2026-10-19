@@ -1,0 +1,125 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:normalized-module-collision:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:normalized-module-collision:main",
+      "revision": "fixture-1",
+      "text": "module LoanId {\n}\nmodule Loan_Id {\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "normalized-module-collision:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:normalized-module-collision:main",
+            "revision": "fixture-1",
+            "text": "module LoanId {\n}\nmodule Loan_Id {\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:normalized-module-collision:main:root",
+      "sourceId": "source:normalized-module-collision:main",
+      "span": {
+        "sourceId": "source:normalized-module-collision:main",
+        "start": 0,
+        "end": 37,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "normalized-module-collision:r1"
+        },
+        {
+          "kind": "region",
+          "id": "normalized-module-collision:r2"
+        }
+      ]
+    },
+    {
+      "id": "normalized-module-collision:r1",
+      "sourceId": "source:normalized-module-collision:main",
+      "span": {
+        "sourceId": "source:normalized-module-collision:main",
+        "start": 0,
+        "end": 18,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "LoanId"
+      ],
+      "parentId": "source:normalized-module-collision:main:root",
+      "entries": [],
+      "exports": []
+    },
+    {
+      "id": "normalized-module-collision:r2",
+      "sourceId": "source:normalized-module-collision:main",
+      "span": {
+        "sourceId": "source:normalized-module-collision:main",
+        "start": 18,
+        "end": 37,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Loan_Id"
+      ],
+      "parentId": "source:normalized-module-collision:main:root",
+      "entries": [],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [],
+  "references": []
+}

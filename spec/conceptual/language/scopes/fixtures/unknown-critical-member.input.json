@@ -1,0 +1,109 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:unknown-critical-member:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:unknown-critical-member:main",
+      "revision": "fixture-1",
+      "text": "module Types {\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "unknown-critical-member:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:unknown-critical-member:main",
+            "revision": "fixture-1",
+            "text": "module Types {\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:unknown-critical-member:main:root",
+      "sourceId": "source:unknown-critical-member:main",
+      "span": {
+        "sourceId": "source:unknown-critical-member:main",
+        "start": 0,
+        "end": 17,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "unknown-critical-member:r1"
+        }
+      ]
+    },
+    {
+      "id": "unknown-critical-member:r1",
+      "sourceId": "source:unknown-critical-member:main",
+      "span": {
+        "sourceId": "source:unknown-critical-member:main",
+        "start": 0,
+        "end": 17,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:unknown-critical-member:main:root",
+      "entries": [],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [],
+  "references": [],
+  "futureSemantics": {
+    "required": true
+  },
+  "critical": [
+    "futureSemantics"
+  ]
+}

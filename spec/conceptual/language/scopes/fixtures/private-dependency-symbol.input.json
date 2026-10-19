@@ -1,0 +1,189 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:private-dependency-symbol:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [
+    {
+      "slot": "sdk",
+      "resolvedNodeId": "release:sdk:1",
+      "packageName": "morphir/SDK",
+      "revision": "1.0.0",
+      "exportTable": [
+        {
+          "path": "collections/list",
+          "moduleName": "data/sequences"
+        }
+      ],
+      "symbols": [
+        {
+          "id": "urn:scopes:symbol:sdk-list",
+          "moduleName": "data/sequences",
+          "name": "List",
+          "canonicalName": "list",
+          "visibility": "private",
+          "category": "type",
+          "links": [
+            {
+              "kind": "contract",
+              "id": "urn:contract:quantity",
+              "revision": "contract-1"
+            }
+          ],
+          "provenance": [
+            {
+              "id": "urn:design:lending",
+              "revision": "review-1"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "source:private-dependency-symbol:main",
+      "revision": "fixture-1",
+      "text": "module Use {\nimport sdk::Collections.List as L;\n// lookup list\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "private-dependency-symbol:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:private-dependency-symbol:main",
+            "revision": "fixture-1",
+            "text": "module Use {\nimport sdk::Collections.List as L;\n// lookup list\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:private-dependency-symbol:main:root",
+      "sourceId": "source:private-dependency-symbol:main",
+      "span": {
+        "sourceId": "source:private-dependency-symbol:main",
+        "start": 0,
+        "end": 65,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "private-dependency-symbol:r1"
+        }
+      ]
+    },
+    {
+      "id": "private-dependency-symbol:r1",
+      "sourceId": "source:private-dependency-symbol:main",
+      "span": {
+        "sourceId": "source:private-dependency-symbol:main",
+        "start": 0,
+        "end": 65,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:private-dependency-symbol:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "sdk"
+        },
+        {
+          "kind": "reference",
+          "id": "list"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [
+    {
+      "id": "sdk",
+      "regionId": "private-dependency-symbol:r1",
+      "span": {
+        "sourceId": "source:private-dependency-symbol:main",
+        "start": 13,
+        "end": 47,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "dependency",
+        "slot": "sdk",
+        "exportPath": "collections/list",
+        "authoredPath": [
+          "Collections",
+          "List"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "L"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "list",
+      "regionId": "private-dependency-symbol:r1",
+      "span": {
+        "sourceId": "source:private-dependency-symbol:main",
+        "start": 63,
+        "end": 63,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "L",
+        "List"
+      ],
+      "category": "type",
+      "localBinders": []
+    }
+  ]
+}

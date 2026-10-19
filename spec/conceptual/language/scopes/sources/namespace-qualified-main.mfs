@@ -1,0 +1,3 @@
+module Finos.Lending.Types exposing (type Quantity) {
+type alias Quantity = Int
+}

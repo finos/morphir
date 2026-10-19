@@ -1,0 +1,65 @@
+{
+  "outcome": "resolved",
+  "modules": [
+    {
+      "moduleName": "types",
+      "symbolIds": [
+        "urn:scopes:symbol:choice",
+        "urn:scopes:symbol:choice-ctor"
+      ],
+      "exports": [
+        "urn:scopes:symbol:choice",
+        "urn:scopes:symbol:choice-ctor"
+      ]
+    },
+    {
+      "moduleName": "use",
+      "symbolIds": [],
+      "exports": []
+    }
+  ],
+  "references": [
+    {
+      "referenceId": "ctor",
+      "target": {
+        "kind": "symbol",
+        "symbolId": "urn:scopes:symbol:choice-ctor",
+        "binding": {
+          "kind": "unit",
+          "unitId": "unit:lending"
+        },
+        "packageName": "acme/lending",
+        "moduleName": "types",
+        "canonicalName": "yes",
+        "category": "constructor",
+        "ownerTypeId": "urn:scopes:symbol:choice",
+        "links": [
+          {
+            "kind": "contract",
+            "id": "urn:contract:quantity",
+            "revision": "contract-1"
+          }
+        ],
+        "provenance": [
+          {
+            "id": "urn:design:lending",
+            "revision": "review-1"
+          }
+        ]
+      }
+    }
+  ],
+  "model": {
+    "id": "urn:scopes:model:lending",
+    "revision": "model-1",
+    "metadata": {
+      "intent": "Keep reviewed context",
+      "requirements": [
+        "urn:requirement:remaining"
+      ],
+      "custom": {
+        "owner": "domain-review"
+      }
+    }
+  }
+}

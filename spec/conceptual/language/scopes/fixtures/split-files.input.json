@@ -1,0 +1,308 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:split-files:types",
+      "source:split-files:returns"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:split-files:types",
+      "revision": "fixture-1",
+      "text": "namespace Finos.Lending;\nmodule Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\n"
+    },
+    {
+      "id": "source:split-files:returns",
+      "revision": "fixture-1",
+      "text": "namespace Finos.Lending;\nmodule Returns {\nimport Finos.Lending.Types as Types;\n// lookup use\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "split-files:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:split-files:types",
+            "revision": "fixture-1",
+            "text": "namespace Finos.Lending;\nmodule Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\n"
+          },
+          {
+            "id": "source:split-files:returns",
+            "revision": "fixture-1",
+            "text": "namespace Finos.Lending;\nmodule Returns {\nimport Finos.Lending.Types as Types;\n// lookup use\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "split-files:quantity:declaration",
+            "span": {
+              "sourceId": "source:split-files:types",
+              "start": 65,
+              "end": 90,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "split-files:quantity:type",
+              "span": {
+                "sourceId": "source:split-files:types",
+                "start": 87,
+                "end": 90,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:split-files:types:root",
+      "sourceId": "source:split-files:types",
+      "span": {
+        "sourceId": "source:split-files:types",
+        "start": 0,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "split-files:r1"
+        }
+      ]
+    },
+    {
+      "id": "split-files:r1",
+      "sourceId": "source:split-files:types",
+      "span": {
+        "sourceId": "source:split-files:types",
+        "start": 0,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos",
+        "Lending"
+      ],
+      "parentId": "source:split-files:types:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "split-files:r2"
+        }
+      ]
+    },
+    {
+      "id": "split-files:r2",
+      "sourceId": "source:split-files:types",
+      "span": {
+        "sourceId": "source:split-files:types",
+        "start": 25,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "split-files:r1",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    },
+    {
+      "id": "source:split-files:returns:root",
+      "sourceId": "source:split-files:returns",
+      "span": {
+        "sourceId": "source:split-files:returns",
+        "start": 0,
+        "end": 95,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "split-files:r3"
+        }
+      ]
+    },
+    {
+      "id": "split-files:r3",
+      "sourceId": "source:split-files:returns",
+      "span": {
+        "sourceId": "source:split-files:returns",
+        "start": 0,
+        "end": 95,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos",
+        "Lending"
+      ],
+      "parentId": "source:split-files:returns:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "split-files:r4"
+        }
+      ]
+    },
+    {
+      "id": "split-files:r4",
+      "sourceId": "source:split-files:returns",
+      "span": {
+        "sourceId": "source:split-files:returns",
+        "start": 25,
+        "end": 95,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Returns"
+      ],
+      "parentId": "split-files:r3",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "types-import"
+        },
+        {
+          "kind": "reference",
+          "id": "use"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "split-files:r2",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "split-files:fragment",
+        "nodeId": "split-files:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "types-import",
+      "regionId": "split-files:r4",
+      "span": {
+        "sourceId": "source:split-files:returns",
+        "start": 42,
+        "end": 78,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Finos",
+          "Lending",
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "Types"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "use",
+      "regionId": "split-files:r4",
+      "span": {
+        "sourceId": "source:split-files:returns",
+        "start": 93,
+        "end": 93,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "Types",
+        "Quantity"
+      ],
+      "category": "type",
+      "localBinders": []
+    }
+  ]
+}

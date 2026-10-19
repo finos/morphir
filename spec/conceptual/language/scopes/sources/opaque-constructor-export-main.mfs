@@ -1,0 +1,3 @@
+module Types exposing (type Secret, constructor Secret.MakeSecret) {
+opaque type Secret = MakeSecret
+}

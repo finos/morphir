@@ -1,0 +1,4 @@
+module Types {
+type alias A = B
+type alias B = A
+}

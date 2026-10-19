@@ -1,0 +1,129 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:unknown-module:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:unknown-module:main",
+      "revision": "fixture-1",
+      "text": "module Use {\nimport Missing as M;\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "unknown-module:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:unknown-module:main",
+            "revision": "fixture-1",
+            "text": "module Use {\nimport Missing as M;\n}\n"
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:unknown-module:main:root",
+      "sourceId": "source:unknown-module:main",
+      "span": {
+        "sourceId": "source:unknown-module:main",
+        "start": 0,
+        "end": 36,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "unknown-module:r1"
+        }
+      ]
+    },
+    {
+      "id": "unknown-module:r1",
+      "sourceId": "source:unknown-module:main",
+      "span": {
+        "sourceId": "source:unknown-module:main",
+        "start": 0,
+        "end": 36,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:unknown-module:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "bad"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [],
+  "imports": [
+    {
+      "id": "bad",
+      "regionId": "unknown-module:r1",
+      "span": {
+        "sourceId": "source:unknown-module:main",
+        "start": 13,
+        "end": 33,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Missing"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "M"
+      }
+    }
+  ],
+  "references": []
+}

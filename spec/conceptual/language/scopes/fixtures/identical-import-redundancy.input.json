@@ -1,0 +1,280 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:identical-import-redundancy:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:identical-import-redundancy:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Other {\n}\nmodule Use {\nimport Types as T;\nimport Types as T;\n// lookup use\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "identical-import-redundancy:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:identical-import-redundancy:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\nmodule Other {\n}\nmodule Use {\nimport Types as T;\nimport Types as T;\n// lookup use\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "identical-import-redundancy:quantity:declaration",
+            "span": {
+              "sourceId": "source:identical-import-redundancy:main",
+              "start": 40,
+              "end": 65,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "identical-import-redundancy:quantity:type",
+              "span": {
+                "sourceId": "source:identical-import-redundancy:main",
+                "start": 62,
+                "end": 65,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:identical-import-redundancy:main:root",
+      "sourceId": "source:identical-import-redundancy:main",
+      "span": {
+        "sourceId": "source:identical-import-redundancy:main",
+        "start": 0,
+        "end": 152,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "identical-import-redundancy:r1"
+        },
+        {
+          "kind": "region",
+          "id": "identical-import-redundancy:r2"
+        },
+        {
+          "kind": "region",
+          "id": "identical-import-redundancy:r3"
+        }
+      ]
+    },
+    {
+      "id": "identical-import-redundancy:r1",
+      "sourceId": "source:identical-import-redundancy:main",
+      "span": {
+        "sourceId": "source:identical-import-redundancy:main",
+        "start": 0,
+        "end": 68,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:identical-import-redundancy:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    },
+    {
+      "id": "identical-import-redundancy:r2",
+      "sourceId": "source:identical-import-redundancy:main",
+      "span": {
+        "sourceId": "source:identical-import-redundancy:main",
+        "start": 68,
+        "end": 85,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Other"
+      ],
+      "parentId": "source:identical-import-redundancy:main:root",
+      "entries": [],
+      "exports": []
+    },
+    {
+      "id": "identical-import-redundancy:r3",
+      "sourceId": "source:identical-import-redundancy:main",
+      "span": {
+        "sourceId": "source:identical-import-redundancy:main",
+        "start": 85,
+        "end": 152,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Use"
+      ],
+      "parentId": "source:identical-import-redundancy:main:root",
+      "entries": [
+        {
+          "kind": "import",
+          "id": "one"
+        },
+        {
+          "kind": "import",
+          "id": "two"
+        },
+        {
+          "kind": "reference",
+          "id": "use"
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "identical-import-redundancy:r1",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "identical-import-redundancy:fragment",
+        "nodeId": "identical-import-redundancy:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [
+    {
+      "id": "one",
+      "regionId": "identical-import-redundancy:r3",
+      "span": {
+        "sourceId": "source:identical-import-redundancy:main",
+        "start": 98,
+        "end": 116,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "T"
+      }
+    },
+    {
+      "id": "two",
+      "regionId": "identical-import-redundancy:r3",
+      "span": {
+        "sourceId": "source:identical-import-redundancy:main",
+        "start": 117,
+        "end": 135,
+        "unit": "utf8-byte"
+      },
+      "target": {
+        "kind": "unit",
+        "path": [
+          "Types"
+        ]
+      },
+      "mode": {
+        "kind": "qualified",
+        "alias": "T"
+      }
+    }
+  ],
+  "references": [
+    {
+      "id": "use",
+      "regionId": "identical-import-redundancy:r3",
+      "span": {
+        "sourceId": "source:identical-import-redundancy:main",
+        "start": 150,
+        "end": 150,
+        "unit": "utf8-byte"
+      },
+      "path": [
+        "T",
+        "Quantity"
+      ],
+      "category": "type",
+      "localBinders": []
+    }
+  ]
+}

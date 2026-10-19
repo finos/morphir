@@ -1,0 +1,80 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:empty-source:empty"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:empty-source:empty",
+      "revision": "fixture-1",
+      "text": ""
+    }
+  ],
+  "fragments": [
+    {
+      "id": "empty-source:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:empty-source:empty",
+            "revision": "fixture-1",
+            "text": ""
+          }
+        ],
+        "declarations": []
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:empty-source:empty:root",
+      "sourceId": "source:empty-source:empty",
+      "span": {
+        "sourceId": "source:empty-source:empty",
+        "start": 0,
+        "end": 0,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": []
+    }
+  ],
+  "symbols": [],
+  "imports": [],
+  "references": []
+}

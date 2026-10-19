@@ -1,0 +1,7 @@
+module Types {
+type alias Quantity = Int
+}
+module Use {
+import Types as T;
+// lookup use
+}

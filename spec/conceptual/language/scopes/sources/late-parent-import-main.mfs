@@ -1,0 +1,8 @@
+module Types exposing (type Quantity) {
+type alias Quantity = Int
+}
+namespace Finos;
+module Use {
+// lookup early
+}
+import Types as T;

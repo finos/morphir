@@ -1,0 +1,411 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:model-wrapper-reopened:one",
+      "source:model-wrapper-reopened:two"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      },
+      "qualifiedName": [
+        "Finos",
+        "Lending",
+        "LendingRules"
+      ]
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:model-wrapper-reopened:one",
+      "revision": "fixture-1",
+      "text": "namespace Finos.Lending;\nmodel LendingRules {\nmodule Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\n}\n"
+    },
+    {
+      "id": "source:model-wrapper-reopened:two",
+      "revision": "fixture-1",
+      "text": "namespace Finos.Lending;\nmodel LendingRules {\nmodule Types exposing (type Other) {\ntype alias Other = Int\n}\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "model-wrapper-reopened:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:model-wrapper-reopened:one",
+            "revision": "fixture-1",
+            "text": "namespace Finos.Lending;\nmodel LendingRules {\nmodule Types exposing (type Quantity) {\ntype alias Quantity = Int\n}\n}\n"
+          },
+          {
+            "id": "source:model-wrapper-reopened:two",
+            "revision": "fixture-1",
+            "text": "namespace Finos.Lending;\nmodel LendingRules {\nmodule Types exposing (type Other) {\ntype alias Other = Int\n}\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "model-wrapper-reopened:quantity:declaration",
+            "span": {
+              "sourceId": "source:model-wrapper-reopened:one",
+              "start": 86,
+              "end": 111,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Quantity",
+            "typeParameters": [],
+            "value": {
+              "id": "model-wrapper-reopened:quantity:type",
+              "span": {
+                "sourceId": "source:model-wrapper-reopened:one",
+                "start": 108,
+                "end": 111,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          },
+          {
+            "id": "model-wrapper-reopened:other:declaration",
+            "span": {
+              "sourceId": "source:model-wrapper-reopened:two",
+              "start": 83,
+              "end": 105,
+              "unit": "utf8-byte"
+            },
+            "kind": "alias",
+            "name": "Other",
+            "typeParameters": [],
+            "value": {
+              "id": "model-wrapper-reopened:other:type",
+              "span": {
+                "sourceId": "source:model-wrapper-reopened:two",
+                "start": 102,
+                "end": 105,
+                "unit": "utf8-byte"
+              },
+              "kind": "named",
+              "path": [
+                "Int"
+              ],
+              "arguments": []
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [
+    {
+      "regionId": "model-wrapper-reopened:r2",
+      "model": {
+        "id": "urn:scopes:model:lending",
+        "revision": "model-1",
+        "metadata": {
+          "intent": "Keep reviewed context",
+          "requirements": [
+            "urn:requirement:remaining"
+          ],
+          "custom": {
+            "owner": "domain-review"
+          }
+        },
+        "qualifiedName": [
+          "Finos",
+          "Lending",
+          "LendingRules"
+        ]
+      }
+    },
+    {
+      "regionId": "model-wrapper-reopened:r5",
+      "model": {
+        "id": "urn:scopes:model:lending",
+        "revision": "model-1",
+        "metadata": {
+          "intent": "Keep reviewed context",
+          "requirements": [
+            "urn:requirement:remaining"
+          ],
+          "custom": {
+            "owner": "domain-review"
+          }
+        },
+        "qualifiedName": [
+          "Finos",
+          "Lending",
+          "LendingRules"
+        ]
+      }
+    }
+  ],
+  "regions": [
+    {
+      "id": "source:model-wrapper-reopened:one:root",
+      "sourceId": "source:model-wrapper-reopened:one",
+      "span": {
+        "sourceId": "source:model-wrapper-reopened:one",
+        "start": 0,
+        "end": 116,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-reopened:r1"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-reopened:r1",
+      "sourceId": "source:model-wrapper-reopened:one",
+      "span": {
+        "sourceId": "source:model-wrapper-reopened:one",
+        "start": 0,
+        "end": 116,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos",
+        "Lending"
+      ],
+      "parentId": "source:model-wrapper-reopened:one:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-reopened:r2"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-reopened:r2",
+      "sourceId": "source:model-wrapper-reopened:one",
+      "span": {
+        "sourceId": "source:model-wrapper-reopened:one",
+        "start": 25,
+        "end": 116,
+        "unit": "utf8-byte"
+      },
+      "kind": "model",
+      "form": "block",
+      "name": [
+        "LendingRules"
+      ],
+      "parentId": "model-wrapper-reopened:r1",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-reopened:r3"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-reopened:r3",
+      "sourceId": "source:model-wrapper-reopened:one",
+      "span": {
+        "sourceId": "source:model-wrapper-reopened:one",
+        "start": 46,
+        "end": 114,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "model-wrapper-reopened:r2",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:quantity"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Quantity"
+        }
+      ]
+    },
+    {
+      "id": "source:model-wrapper-reopened:two:root",
+      "sourceId": "source:model-wrapper-reopened:two",
+      "span": {
+        "sourceId": "source:model-wrapper-reopened:two",
+        "start": 0,
+        "end": 110,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-reopened:r4"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-reopened:r4",
+      "sourceId": "source:model-wrapper-reopened:two",
+      "span": {
+        "sourceId": "source:model-wrapper-reopened:two",
+        "start": 0,
+        "end": 110,
+        "unit": "utf8-byte"
+      },
+      "kind": "namespace",
+      "form": "header",
+      "name": [
+        "Finos",
+        "Lending"
+      ],
+      "parentId": "source:model-wrapper-reopened:two:root",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-reopened:r5"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-reopened:r5",
+      "sourceId": "source:model-wrapper-reopened:two",
+      "span": {
+        "sourceId": "source:model-wrapper-reopened:two",
+        "start": 25,
+        "end": 110,
+        "unit": "utf8-byte"
+      },
+      "kind": "model",
+      "form": "block",
+      "name": [
+        "LendingRules"
+      ],
+      "parentId": "model-wrapper-reopened:r4",
+      "entries": [
+        {
+          "kind": "region",
+          "id": "model-wrapper-reopened:r6"
+        }
+      ]
+    },
+    {
+      "id": "model-wrapper-reopened:r6",
+      "sourceId": "source:model-wrapper-reopened:two",
+      "span": {
+        "sourceId": "source:model-wrapper-reopened:two",
+        "start": 46,
+        "end": 108,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "model-wrapper-reopened:r5",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:other"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "type",
+          "name": "Other"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:quantity",
+      "moduleRegionId": "model-wrapper-reopened:r3",
+      "name": "Quantity",
+      "canonicalName": "quantity",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "model-wrapper-reopened:fragment",
+        "nodeId": "model-wrapper-reopened:quantity:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:other",
+      "moduleRegionId": "model-wrapper-reopened:r6",
+      "name": "Other",
+      "canonicalName": "other",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "model-wrapper-reopened:fragment",
+        "nodeId": "model-wrapper-reopened:other:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    }
+  ],
+  "imports": [],
+  "references": []
+}

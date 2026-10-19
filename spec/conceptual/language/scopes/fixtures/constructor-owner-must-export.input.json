@@ -1,0 +1,195 @@
+{
+  "profile": "morphir-scopes/0.1.0-draft.1",
+  "declarationProfile": "morphir-declarations/0.1.0-draft.1",
+  "typeEnvironment": {
+    "namedTypes": [
+      {
+        "id": "urn:fixture:type:Int",
+        "path": [
+          "Int"
+        ],
+        "arity": 0,
+        "visibility": "public"
+      }
+    ]
+  },
+  "context": {
+    "unitId": "unit:lending",
+    "packageName": "acme/lending",
+    "sourceSet": [
+      "source:constructor-owner-must-export:main"
+    ],
+    "model": {
+      "id": "urn:scopes:model:lending",
+      "revision": "model-1",
+      "metadata": {
+        "intent": "Keep reviewed context",
+        "requirements": [
+          "urn:requirement:remaining"
+        ],
+        "custom": {
+          "owner": "domain-review"
+        }
+      }
+    }
+  },
+  "dependencies": [],
+  "sources": [
+    {
+      "id": "source:constructor-owner-must-export:main",
+      "revision": "fixture-1",
+      "text": "module Types exposing (constructor Choice.Yes) {\ntype Choice = Yes\n}\n"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "constructor-owner-must-export:fragment",
+      "fragment": {
+        "profile": "morphir-declarations/0.1.0-draft.1",
+        "sources": [
+          {
+            "id": "source:constructor-owner-must-export:main",
+            "revision": "fixture-1",
+            "text": "module Types exposing (constructor Choice.Yes) {\ntype Choice = Yes\n}\n"
+          }
+        ],
+        "declarations": [
+          {
+            "id": "constructor-owner-must-export:choice:declaration",
+            "span": {
+              "sourceId": "source:constructor-owner-must-export:main",
+              "start": 49,
+              "end": 66,
+              "unit": "utf8-byte"
+            },
+            "kind": "custom",
+            "name": "Choice",
+            "typeParameters": [],
+            "constructorAccess": "module-policy",
+            "constructors": [
+              {
+                "id": "constructor-owner-must-export:choice:constructor",
+                "span": {
+                  "sourceId": "source:constructor-owner-must-export:main",
+                  "start": 63,
+                  "end": 66,
+                  "unit": "utf8-byte"
+                },
+                "name": "Yes",
+                "arguments": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "modelBindings": [],
+  "regions": [
+    {
+      "id": "source:constructor-owner-must-export:main:root",
+      "sourceId": "source:constructor-owner-must-export:main",
+      "span": {
+        "sourceId": "source:constructor-owner-must-export:main",
+        "start": 0,
+        "end": 69,
+        "unit": "utf8-byte"
+      },
+      "kind": "file",
+      "form": "file",
+      "name": [],
+      "entries": [
+        {
+          "kind": "region",
+          "id": "constructor-owner-must-export:r1"
+        }
+      ]
+    },
+    {
+      "id": "constructor-owner-must-export:r1",
+      "sourceId": "source:constructor-owner-must-export:main",
+      "span": {
+        "sourceId": "source:constructor-owner-must-export:main",
+        "start": 0,
+        "end": 69,
+        "unit": "utf8-byte"
+      },
+      "kind": "module",
+      "form": "block",
+      "name": [
+        "Types"
+      ],
+      "parentId": "source:constructor-owner-must-export:main:root",
+      "entries": [
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:choice"
+        },
+        {
+          "kind": "symbol",
+          "id": "urn:scopes:symbol:choice-ctor"
+        }
+      ],
+      "exports": [
+        {
+          "kind": "constructor",
+          "name": "Yes",
+          "typeName": "Choice"
+        }
+      ]
+    }
+  ],
+  "symbols": [
+    {
+      "id": "urn:scopes:symbol:choice",
+      "moduleRegionId": "constructor-owner-must-export:r1",
+      "name": "Choice",
+      "canonicalName": "choice",
+      "category": "type",
+      "declaration": {
+        "fragmentId": "constructor-owner-must-export:fragment",
+        "nodeId": "constructor-owner-must-export:choice:declaration"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ]
+    },
+    {
+      "id": "urn:scopes:symbol:choice-ctor",
+      "moduleRegionId": "constructor-owner-must-export:r1",
+      "name": "Yes",
+      "canonicalName": "yes",
+      "category": "constructor",
+      "declaration": {
+        "fragmentId": "constructor-owner-must-export:fragment",
+        "nodeId": "constructor-owner-must-export:choice:constructor"
+      },
+      "links": [
+        {
+          "kind": "contract",
+          "id": "urn:contract:quantity",
+          "revision": "contract-1"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "urn:design:lending",
+          "revision": "review-1"
+        }
+      ],
+      "ownerTypeId": "urn:scopes:symbol:choice"
+    }
+  ],
+  "imports": [],
+  "references": []
+}

@@ -1,0 +1,9 @@
+namespace Finos;
+namespace Lending {
+module Types {
+type alias Quantity = Int
+}
+}
+module Audit {
+type alias Audit = Int
+}

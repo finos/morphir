@@ -1,0 +1,8 @@
+namespace Loans;
+module Types {
+type alias Loan = Int
+}
+namespace Accounting;
+module Types {
+type alias Entry = Int
+}
