@@ -2,6 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-projection.schema.json",
   "title": "Local model parity projection, exact offline draft.29",
+  "description": "Independent local model inspection or exact original-byte evidence. Semantic comparison and source-byte binding are defined in README.html",
+  "examples": [
+    {
+      "providerId": "local-model-fixture",
+      "inputFormat": "json",
+      "irVersion": "4.0.0",
+      "distribution": "Library",
+      "packageName": "example/mep-fixture",
+      "modules": [],
+      "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+    }
+  ],
   "oneOf": [
     {
       "type": "object",
@@ -17,33 +29,24 @@
       "properties": {
         "providerId": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 128
+          "maxLength": 128,
+          "minLength": 1
         },
         "inputFormat": {
-          "enum": [
-            "json",
-            "yaml",
-            "ion-text",
-            "ion-binary"
-          ]
+          "enum": [ "json", "yaml", "ion-text", "ion-binary" ]
         },
         "irVersion": {
           "type": "string",
-          "minLength": 5,
-          "maxLength": 128
+          "maxLength": 128,
+          "minLength": 5
         },
         "distribution": {
-          "enum": [
-            "Library",
-            "Specs",
-            "Application"
-          ]
+          "enum": [ "Library", "Specs", "Application" ]
         },
         "packageName": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 65536
+          "maxLength": 65536,
+          "minLength": 1
         },
         "modules": {
           "type": "array",
@@ -51,14 +54,14 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 65536
+            "maxLength": 65536,
+            "minLength": 1
           }
         },
         "normalizedIr": {
           "type": "string",
-          "minLength": 2,
-          "maxLength": 1048576
+          "maxLength": 1048576,
+          "minLength": 2
         }
       },
       "additionalProperties": false
@@ -76,19 +79,14 @@
       "properties": {
         "providerId": {
           "type": "string",
-          "minLength": 1,
-          "maxLength": 128
+          "maxLength": 128,
+          "minLength": 1
         },
         "kind": {
           "const": "original"
         },
         "format": {
-          "enum": [
-            "json",
-            "yaml",
-            "ion-text",
-            "ion-binary"
-          ]
+          "enum": [ "json", "yaml", "ion-text", "ion-binary" ]
         },
         "hex": {
           "type": "string",
@@ -97,8 +95,8 @@
         },
         "byteLength": {
           "type": "integer",
-          "minimum": 0,
-          "maximum": 1048576
+          "maximum": 1048576,
+          "minimum": 0
         },
         "sha256": {
           "type": "string",

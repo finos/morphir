@@ -2,13 +2,25 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-observation.schema.json",
   "title": "Local model parity observation, exact offline draft.29",
+  "description": "Closed successful model evidence or a stable bounded decoder refusal for the selected exact local operation",
+  "examples": [
+    {
+      "status": "ok",
+      "value": {
+        "providerId": "local-model-fixture",
+        "inputFormat": "json",
+        "irVersion": "4.0.0",
+        "distribution": "Library",
+        "packageName": "example/mep-fixture",
+        "modules": [],
+        "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+      }
+    }
+  ],
   "oneOf": [
     {
       "type": "object",
-      "required": [
-        "status",
-        "value"
-      ],
+      "required": [ "status", "value" ],
       "properties": {
         "status": {
           "const": "ok"
@@ -21,10 +33,7 @@
     },
     {
       "type": "object",
-      "required": [
-        "status",
-        "code"
-      ],
+      "required": [ "status", "code" ],
       "properties": {
         "status": {
           "const": "invalid"

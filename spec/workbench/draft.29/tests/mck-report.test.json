@@ -1,0 +1,94 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-report.schema.json",
+  "tests": [
+    {
+      "description": "valid documented shape from the frozen model fixture",
+      "data": {
+        "formatVersion": "0.1.0-draft.29",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.29",
+          "binding": "schema-example-only",
+          "language": "example",
+          "operations": [
+            "inspect-model",
+            "export-model-original"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "inspect-model-json",
+            "operation": "inspect-model",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "providerId": "local-model-fixture",
+                "inputFormat": "json",
+                "irVersion": "4.0.0",
+                "distribution": "Library",
+                "packageName": "example/mep-fixture",
+                "modules": [],
+                "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true
+      },
+      "valid": true
+    },
+    {
+      "description": "unknown top-level member refuses",
+      "data": {
+        "formatVersion": "0.1.0-draft.29",
+        "suite": "workbench",
+        "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "capabilities": {
+          "suite": "workbench",
+          "contractVersion": "0.1.0-draft.29",
+          "binding": "schema-example-only",
+          "language": "example",
+          "operations": [
+            "inspect-model",
+            "export-model-original"
+          ],
+          "formats": [
+            "json"
+          ]
+        },
+        "records": [
+          {
+            "caseId": "inspect-model-json",
+            "operation": "inspect-model",
+            "format": "json",
+            "result": "pass",
+            "observed": {
+              "status": "ok",
+              "value": {
+                "providerId": "local-model-fixture",
+                "inputFormat": "json",
+                "irVersion": "4.0.0",
+                "distribution": "Library",
+                "packageName": "example/mep-fixture",
+                "modules": [],
+                "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+              }
+            }
+          }
+        ],
+        "errors": [],
+        "qualified": true,
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

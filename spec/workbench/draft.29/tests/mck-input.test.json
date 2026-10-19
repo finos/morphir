@@ -1,0 +1,28 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-input.schema.json",
+  "tests": [
+    {
+      "description": "valid documented shape from the frozen model fixture",
+      "data": {
+        "providerId": "local-model-fixture",
+        "format": "json",
+        "source": {
+          "hex": "7b2022646973747269627574696f6e223a207b224c696272617279223a207b227061636b6167654e616d65223a226578616d706c652f6d65702d66697874757265222c2022646570656e64656e63696573223a7b7d2c2022646566223a7b226d6f64756c6573223a7b7d7d7d7d2c2022666f726d617456657273696f6e223a2022342e302e3022207d0d0a"
+        }
+      },
+      "valid": true
+    },
+    {
+      "description": "unknown top-level member refuses",
+      "data": {
+        "providerId": "local-model-fixture",
+        "format": "json",
+        "source": {
+          "hex": "7b2022646973747269627574696f6e223a207b224c696272617279223a207b227061636b6167654e616d65223a226578616d706c652f6d65702d66697874757265222c2022646570656e64656e63696573223a7b7d2c2022646566223a7b226d6f64756c6573223a7b7d7d7d7d2c2022666f726d617456657273696f6e223a2022342e302e3022207d0d0a"
+        },
+        "unexpected": true
+      },
+      "valid": false
+    }
+  ]
+}

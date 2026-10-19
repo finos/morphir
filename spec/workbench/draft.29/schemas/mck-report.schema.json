@@ -2,6 +2,44 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-report.schema.json",
   "title": "Local model parity report, exact offline draft.29",
+  "description": "Saved local model parity evidence. Examples illustrate shape only; the shared checker separately verifies corpus hash, completeness and every observation",
+  "examples": [
+    {
+      "formatVersion": "0.1.0-draft.29",
+      "suite": "workbench",
+      "corpusHash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "capabilities": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.29",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [ "inspect-model", "export-model-original" ],
+        "formats": [ "json" ]
+      },
+      "records": [
+        {
+          "caseId": "inspect-model-json",
+          "operation": "inspect-model",
+          "format": "json",
+          "result": "pass",
+          "observed": {
+            "status": "ok",
+            "value": {
+              "providerId": "local-model-fixture",
+              "inputFormat": "json",
+              "irVersion": "4.0.0",
+              "distribution": "Library",
+              "packageName": "example/mep-fixture",
+              "modules": [],
+              "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+            }
+          }
+        }
+      ],
+      "errors": [],
+      "qualified": true
+    }
+  ],
   "type": "object",
   "required": [
     "formatVersion",
@@ -35,39 +73,25 @@
     },
     "records": {
       "type": "array",
-      "minItems": 1,
       "maxItems": 1024,
+      "minItems": 1,
       "items": {
         "type": "object",
-        "required": [
-          "caseId",
-          "operation",
-          "format",
-          "result",
-          "observed"
-        ],
+        "required": [ "caseId", "operation", "format", "result", "observed" ],
         "properties": {
           "caseId": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 128
+            "maxLength": 128,
+            "minLength": 1
           },
           "operation": {
-            "enum": [
-              "inspect-model",
-              "export-model-original"
-            ]
+            "enum": [ "inspect-model", "export-model-original" ]
           },
           "format": {
             "const": "json"
           },
           "result": {
-            "enum": [
-              "pass",
-              "fail",
-              "unsupported",
-              "error"
-            ]
+            "enum": [ "pass", "fail", "unsupported", "error" ]
           },
           "observed": {
             "anyOf": [
@@ -88,23 +112,15 @@
       "maxItems": 3,
       "items": {
         "type": "object",
-        "required": [
-          "phase",
-          "message"
-        ],
+        "required": [ "phase", "message" ],
         "properties": {
           "phase": {
-            "enum": [
-              "spawn",
-              "capabilities",
-              "exchange",
-              "shutdown"
-            ]
+            "enum": [ "spawn", "capabilities", "exchange", "shutdown" ]
           },
           "message": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 16384
+            "maxLength": 16384,
+            "minLength": 1
           }
         },
         "additionalProperties": false
