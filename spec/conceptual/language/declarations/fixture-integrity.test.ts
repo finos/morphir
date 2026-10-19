@@ -8,6 +8,13 @@ const json = (path: string): any => JSON.parse(bytes(path).toString("utf8"));
 const digest = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
 
 describe("declaration reference corpus", () => {
+  test("structural decoding has positive and negative independent expectations", () => {
+    const structure = json("cases.json").cases.filter((item: any) => item.stage === "structure");
+    expect(structure.some((item: any) => item.expected.outcome === "accepted")).toBe(true);
+    expect(structure.some((item: any) => item.expected.outcome === "rejected")).toBe(true);
+    for (const item of structure) expect(item.input.ast, item.id).toBeDefined();
+  });
+
   test("the reviewed corpus has pinned assets and unique case identities", () => {
     const corpus = json("cases.json");
     const assets = json("assets.json").assets;
@@ -41,7 +48,7 @@ describe("declaration reference corpus", () => {
 
   test("complete authored trees have exact source pairs and usable byte spans", () => {
     for (const item of json("cases.json").cases) {
-      if (item.stage !== "syntax" && item.stage !== "resolution") continue;
+      if (item.stage !== "syntax" && item.stage !== "resolution" && item.expected.outcome !== "accepted") continue;
       const astPath = item.expected.ast ?? item.input.ast;
       if (!astPath) continue;
       const fragment = json(astPath);

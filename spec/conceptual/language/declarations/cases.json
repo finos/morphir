@@ -1380,6 +1380,50 @@
           }
         ]
       }
+    },
+    {
+      "id": "accepted-structure-alias-scalar",
+      "description": "Accept the complete constructed alias-scalar AST without parsing source",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/alias-scalar.json"
+      },
+      "expected": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "accepted-structure-empty-fragment",
+      "description": "Accept the complete constructed empty-fragment AST without parsing source",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/empty-fragment.json"
+      },
+      "expected": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "accepted-structure-utf8-crlf",
+      "description": "Accept the complete constructed utf8-crlf AST without parsing source",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/utf8-crlf.json"
+      },
+      "expected": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "accepted-structure-generic-eight",
+      "description": "Accept the complete constructed generic-eight AST without parsing source",
+      "stage": "structure",
+      "input": {
+        "ast": "fixtures/generic-eight.json"
+      },
+      "expected": {
+        "outcome": "accepted"
+      }
     }
   ],
   "coverage": {
@@ -1555,6 +1599,12 @@
     ],
     "versioning": [
       "unknown-profile"
+    ],
+    "positive-structural-validation": [
+      "accepted-structure-alias-scalar",
+      "accepted-structure-empty-fragment",
+      "accepted-structure-utf8-crlf",
+      "accepted-structure-generic-eight"
     ]
   }
 }
