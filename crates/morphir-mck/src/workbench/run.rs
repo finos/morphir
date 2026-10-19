@@ -20,7 +20,8 @@ pub(super) trait Testee {
 
 impl Testee for Session {
     fn exchange(&mut self, request: &Value) -> Result<Value, String> {
-        let response = if request["contractVersion"] == super::contract::ARTIFACT_TRANSFER_VERSION
+        let response = if request["contractVersion"] == super::contract::LOCAL_MODELS_VERSION
+            || request["contractVersion"] == super::contract::ARTIFACT_TRANSFER_VERSION
             || request["contractVersion"] == super::contract::WORKSHEET_VERSION
             || request["contractVersion"] == super::contract::CODEC_COMPARISON_VERSION
             || request["contractVersion"] == super::contract::HTTP_POLICY_BOUNDARY_VERSION
@@ -105,6 +106,7 @@ pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
                 "format":case.format,"input":case.input}),
                 )
                 .and_then(|value| {
+                    if matches!(case.operation(), super::contract::Operation::InspectModel | super::contract::Operation::ExportModelOriginal) { super::local_models::validate_observation_shape(&value)?; }
                     if case.operation() == super::contract::Operation::ArtifactServer { super::artifacts::validate_observation_shape(&value)?; }
                     if case.operation() == super::contract::Operation::ArtifactClient { super::artifact_client::validate_observation_shape(&value)?; }
                     if matches!(case.operation(),super::contract::Operation::WorksheetEvaluate | super::contract::Operation::WorksheetValidate) {super::worksheet::validate_observation_shape(&value)?;}

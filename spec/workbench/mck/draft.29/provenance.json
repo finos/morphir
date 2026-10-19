@@ -1,0 +1,39 @@
+{
+  "fixtureVersion": "1.0.0",
+  "formatVersion": "0.1.0-draft.29",
+  "caseCount": 32,
+  "casesSha256": "27dd83719a5a30075bb37041fe78e71e1c782a06b812fc49ab9ab83d08f07ac8",
+  "expectations": {
+    "method": "Hand-authored model and byte expectations before production adapter observations. Normalized IR was not captured from any adapter.",
+    "authorityRevision": "2b0cb1d64ccd0455aba3eaa2b143dbc7d276df70",
+    "authorities": [
+      "docs/spec/ir/schemas/v4/yaml-profile.md",
+      "docs/spec/ir/schemas/v4/semantic-model.md",
+      "spec/ir/mck/distributions.feature",
+      "spec/ir/mck/versions.feature",
+      "spec/mep/mck/fixtures/rich-model.ion",
+      "spec/mep/mck/fixtures/rich-model.ionb"
+    ],
+    "historicalSources": "Minimal v1 lowercase library and v2/v3 Library envelopes normalize to the independently authored v4 empty Library; their originals remain distinct.",
+    "exactScalars": [
+      "IntegerLiteral 9007199254740993",
+      "DecimalLiteral text 123.4500",
+      "StringLiteral 2026-01-15"
+    ]
+  },
+  "scope": {
+    "operations": [
+      "inspect-model",
+      "export-model-original"
+    ],
+    "provider": "explicit local-model-fixture identity, not an authenticated/live provider offer",
+    "modelFormats": [
+      "json",
+      "yaml",
+      "ion-text",
+      "ion-binary"
+    ],
+    "transportFormat": "json"
+  },
+  "controls": "Positive controls are checker infrastructure only; production reports must come from explicit adapters."
+}

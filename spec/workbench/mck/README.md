@@ -118,3 +118,11 @@ The MoonBit repository owns its adapter and the opt-in `test:workbench-mck` gate
 which requires explicitly selected parent runner/corpus paths and exercises Node
 and native debug/release lanes. The pure protocol component runs on JS, native,
 Wasm and Wasm GC; browser/Wasm process adapters are not claimed by that gate.
+
+## Local model inspection and originals
+
+Exact offline [draft.29](draft.29/README.md) adds `inspect-model` and
+`export-model-original` for explicit local providers and JSON/YAML/Ion model bytes.
+The parent owns fixed semantic and original-byte expectations; it never links a
+model codec. Its positive controls are checker infrastructure evidence only.
+Historical exact kits and connected model-service ownership remain unchanged.

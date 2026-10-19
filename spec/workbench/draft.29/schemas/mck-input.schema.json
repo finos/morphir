@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-input.schema.json",
+  "title": "Local model parity input, exact offline draft.29",
+  "type": "object",
+  "required": [
+    "providerId",
+    "format",
+    "source"
+  ],
+  "properties": {
+    "providerId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "format": {
+      "enum": [
+        "json",
+        "yaml",
+        "ion-text",
+        "ion-binary"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "hex"
+      ],
+      "properties": {
+        "hex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})*$",
+          "maxLength": 2097154
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

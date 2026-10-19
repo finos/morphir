@@ -27,6 +27,7 @@ pub const HTTP_POLICY_PROVIDER_VERSION: &str = "0.1.0-draft.25";
 pub const WORKSHEET_PROFILE_VERSION: &str = "0.1.0-draft.1";
 pub const WORKSHEET_VERSION: &str = "0.1.0-draft.27";
 pub const CODEC_COMPARISON_VERSION: &str = "0.1.0-draft.26";
+pub const LOCAL_MODELS_VERSION: &str = "0.1.0-draft.29";
 pub const ARTIFACT_TRANSFER_VERSION: &str = "0.1.0-draft.28";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
@@ -81,6 +82,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.26",
         "=0.1.0-draft.27",
         "=0.1.0-draft.28",
+        "=0.1.0-draft.29",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -102,6 +104,10 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Operation {
+    #[serde(rename = "inspect-model")]
+    InspectModel,
+    #[serde(rename = "export-model-original")]
+    ExportModelOriginal,
     #[serde(rename = "artifact-server")]
     ArtifactServer,
     #[serde(rename = "artifact-client")]
@@ -156,6 +162,16 @@ pub enum Operation {
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if version == LOCAL_MODELS_VERSION {
+            return if matches!(self, Self::InspectModel | Self::ExportModelOriginal) {
+                Ok(())
+            } else {
+                Err("operation is not defined by this Workbench draft".into())
+            };
+        }
+        if matches!(self, Self::InspectModel | Self::ExportModelOriginal) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if version == ARTIFACT_TRANSFER_VERSION {
             return if matches!(self, Self::ArtifactServer | Self::ArtifactClient) {
                 Ok(())
@@ -241,6 +257,10 @@ impl Operation {
     }
 
     pub(super) fn validate_format(self, format: Format) -> Result<(), String> {
+        if matches!(self, Self::InspectModel | Self::ExportModelOriginal) && format != Format::Json
+        {
+            return Err("local model parity requires JSON framing".into());
+        }
         if matches!(
             self,
             Self::ArtifactServer
@@ -408,6 +428,9 @@ impl Capabilities {
         if self.contract_version == WORKSHEET_VERSION && self.formats != [Format::Json] {
             return Err("worksheet requires JSON framing".into());
         }
+        if self.contract_version == LOCAL_MODELS_VERSION && self.formats != [Format::Json] {
+            return Err("local model parity requires JSON framing".into());
+        }
         if self.contract_version == ARTIFACT_TRANSFER_VERSION && self.formats != [Format::Json] {
             return Err("artifact transfer requires JSON framing".into());
         }
@@ -504,6 +527,14 @@ impl Observation {
                         "selected Scheme domain failures belong in the witness projection".into(),
                     );
                 }
+                if matches!(
+                    operation,
+                    Operation::InspectModel | Operation::ExportModelOriginal
+                ) {
+                    super::local_models::validate_observation_shape(
+                        &serde_json::json!({"status":"invalid","code":code}),
+                    )?;
+                }
                 identity(code, 128)?;
                 if matches!(
                     operation,
@@ -581,6 +612,9 @@ impl Observation {
 
 fn projection_for(value: &Value, operation: Operation) -> Result<Value, String> {
     match operation {
+        Operation::InspectModel | Operation::ExportModelOriginal => {
+            super::local_models::projection(value, operation)
+        }
         Operation::ArtifactServer => super::artifacts::projection(value),
         Operation::ArtifactClient => super::artifact_client::projection(value),
         Operation::WorksheetEvaluate | Operation::WorksheetValidate => {

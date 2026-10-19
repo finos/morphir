@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-observation.schema.json",
+  "title": "Local model parity observation, exact offline draft.29",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "status",
+        "value"
+      ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "value": {
+          "$ref": "https://morphir.finos.org/spec/workbench/0.1.0-draft.29/mck-projection.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "status",
+        "code"
+      ],
+      "properties": {
+        "status": {
+          "const": "invalid"
+        },
+        "code": {
+          "enum": [
+            "invalid_yaml",
+            "unsupported_yaml_feature",
+            "duplicate_member",
+            "invalid_type",
+            "invalid_literal",
+            "invalid_ion",
+            "invalid_json",
+            "invalid_distribution_shape",
+            "unsupported_version",
+            "input_limit",
+            "depth_limit",
+            "node_limit",
+            "scalar_limit",
+            "event_limit"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -1,0 +1,674 @@
+{
+  "formatVersion": "0.1.0-draft.29",
+  "cases": [
+    {
+      "id": "inspect-model-json",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "json",
+        "source": {
+          "hex": "7b2022646973747269627574696f6e223a207b224c696272617279223a207b227061636b6167654e616d65223a226578616d706c652f6d65702d66697874757265222c2022646570656e64656e63696573223a7b7d2c2022646566223a7b226d6f64756c6573223a7b7d7d7d7d2c2022666f726d617456657273696f6e223a2022342e302e3022207d0d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "json",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "example/mep-fixture",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "export-model-original-json",
+      "operation": "export-model-original",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "json",
+        "source": {
+          "hex": "7b2022646973747269627574696f6e223a207b224c696272617279223a207b227061636b6167654e616d65223a226578616d706c652f6d65702d66697874757265222c2022646570656e64656e63696573223a7b7d2c2022646566223a7b226d6f64756c6573223a7b7d7d7d7d2c2022666f726d617456657273696f6e223a2022342e302e3022207d0d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "kind": "original",
+          "format": "json",
+          "hex": "7b2022646973747269627574696f6e223a207b224c696272617279223a207b227061636b6167654e616d65223a226578616d706c652f6d65702d66697874757265222c2022646570656e64656e63696573223a7b7d2c2022646566223a7b226d6f64756c6573223a7b7d7d7d7d2c2022666f726d617456657273696f6e223a2022342e302e3022207d0d0a",
+          "byteLength": 139,
+          "sha256": "f6806da1a1ff5ca237ddd89259167fa167b414c6ed4c5a717d9a5c8adcc59cb0"
+        }
+      }
+    },
+    {
+      "id": "inspect-model-yaml",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "efbbbf23204f726967696e616c2072657461696e65642070726573656e746174696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a20226578616d706c652f6d65702d666978747572652220232071756f746564206e616d650d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a666f726d617456657273696f6e3a2027342e302e30270d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "example/mep-fixture",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "export-model-original-yaml",
+      "operation": "export-model-original",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "efbbbf23204f726967696e616c2072657461696e65642070726573656e746174696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a20226578616d706c652f6d65702d666978747572652220232071756f746564206e616d650d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a666f726d617456657273696f6e3a2027342e302e30270d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "kind": "original",
+          "format": "yaml",
+          "hex": "efbbbf23204f726967696e616c2072657461696e65642070726573656e746174696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a20226578616d706c652f6d65702d666978747572652220232071756f746564206e616d650d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a666f726d617456657273696f6e3a2027342e302e30270d0a",
+          "byteLength": 188,
+          "sha256": "e933d6aace15721565a0ea5562509776742f84b490c9889f4665028f60f0c7c1"
+        }
+      }
+    },
+    {
+      "id": "inspect-model-yml",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "efbbbf23204f726967696e616c2072657461696e65642070726573656e746174696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a20226578616d706c652f6d65702d666978747572652220232071756f746564206e616d650d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a666f726d617456657273696f6e3a2027342e302e30270d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "example/mep-fixture",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "export-model-original-yml",
+      "operation": "export-model-original",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "efbbbf23204f726967696e616c2072657461696e65642070726573656e746174696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a20226578616d706c652f6d65702d666978747572652220232071756f746564206e616d650d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a666f726d617456657273696f6e3a2027342e302e30270d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "kind": "original",
+          "format": "yaml",
+          "hex": "efbbbf23204f726967696e616c2072657461696e65642070726573656e746174696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a20226578616d706c652f6d65702d666978747572652220232071756f746564206e616d650d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a666f726d617456657273696f6e3a2027342e302e30270d0a",
+          "byteLength": 188,
+          "sha256": "e933d6aace15721565a0ea5562509776742f84b490c9889f4665028f60f0c7c1"
+        }
+      }
+    },
+    {
+      "id": "inspect-model-ion",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "ion-text",
+        "source": {
+          "hex": "6d6f72706869725f6d6f64656c3a3a7b0a202069723a207b0a20202020666f726d617456657273696f6e3a2022342e302e30222c0a20202020646973747269627574696f6e3a207b0a2020202020204c6962726172793a207b0a20202020202020207061636b6167654e616d653a20226578616d706c652f6d65702d66697874757265222c0a2020202020202020646570656e64656e636965733a207b7d2c0a20202020202020206465663a207b6d6f64756c65733a207b7d7d0a2020202020207d0a202020207d0a20207d2c0a2020656e726963686d656e74733a205b0a202020207b0a2020202020206f776e65723a202275726e3a6d6f72706869723a6d65703a666978747572653a756e6b6e6f776e2d656e726963686d656e74222c0a202020202020646174613a20736f757263655f6e616d653a3a7461726765745f6e616d653a3a7b0a20202020202020206f726967696e616c4e616d653a202269735265616479222c0a20202020202020207461726765744e616d653a202269735f7265616479222c0a2020202020202020736f75726365507265636973696f6e3a207b6b696e643a20696e7436342c2065786163743a20393030373139393235343734303939337d2c0a2020202020202020616d6f756e743a203132332e343530302c0a2020202020202020667574757265466163743a206675747572655f766f636162756c6172793a3a7b656e61626c65643a20747275657d0a2020202020207d0a202020207d0a20205d2c0a202070726f76656e616e63653a205b666978747572655f6f726967696e3a3a7b70726f64756365723a20226d65702d7265666572656e63652d636f72707573222c20736f757263653a2022666978747572652e6d6274227d5d0a7d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "ion-text",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "example/mep-fixture",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "export-model-original-ion",
+      "operation": "export-model-original",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "ion-text",
+        "source": {
+          "hex": "6d6f72706869725f6d6f64656c3a3a7b0a202069723a207b0a20202020666f726d617456657273696f6e3a2022342e302e30222c0a20202020646973747269627574696f6e3a207b0a2020202020204c6962726172793a207b0a20202020202020207061636b6167654e616d653a20226578616d706c652f6d65702d66697874757265222c0a2020202020202020646570656e64656e636965733a207b7d2c0a20202020202020206465663a207b6d6f64756c65733a207b7d7d0a2020202020207d0a202020207d0a20207d2c0a2020656e726963686d656e74733a205b0a202020207b0a2020202020206f776e65723a202275726e3a6d6f72706869723a6d65703a666978747572653a756e6b6e6f776e2d656e726963686d656e74222c0a202020202020646174613a20736f757263655f6e616d653a3a7461726765745f6e616d653a3a7b0a20202020202020206f726967696e616c4e616d653a202269735265616479222c0a20202020202020207461726765744e616d653a202269735f7265616479222c0a2020202020202020736f75726365507265636973696f6e3a207b6b696e643a20696e7436342c2065786163743a20393030373139393235343734303939337d2c0a2020202020202020616d6f756e743a203132332e343530302c0a2020202020202020667574757265466163743a206675747572655f766f636162756c6172793a3a7b656e61626c65643a20747275657d0a2020202020207d0a202020207d0a20205d2c0a202070726f76656e616e63653a205b666978747572655f6f726967696e3a3a7b70726f64756365723a20226d65702d7265666572656e63652d636f72707573222c20736f757263653a2022666978747572652e6d6274227d5d0a7d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "kind": "original",
+          "format": "ion-text",
+          "hex": "6d6f72706869725f6d6f64656c3a3a7b0a202069723a207b0a20202020666f726d617456657273696f6e3a2022342e302e30222c0a20202020646973747269627574696f6e3a207b0a2020202020204c6962726172793a207b0a20202020202020207061636b6167654e616d653a20226578616d706c652f6d65702d66697874757265222c0a2020202020202020646570656e64656e636965733a207b7d2c0a20202020202020206465663a207b6d6f64756c65733a207b7d7d0a2020202020207d0a202020207d0a20207d2c0a2020656e726963686d656e74733a205b0a202020207b0a2020202020206f776e65723a202275726e3a6d6f72706869723a6d65703a666978747572653a756e6b6e6f776e2d656e726963686d656e74222c0a202020202020646174613a20736f757263655f6e616d653a3a7461726765745f6e616d653a3a7b0a20202020202020206f726967696e616c4e616d653a202269735265616479222c0a20202020202020207461726765744e616d653a202269735f7265616479222c0a2020202020202020736f75726365507265636973696f6e3a207b6b696e643a20696e7436342c2065786163743a20393030373139393235343734303939337d2c0a2020202020202020616d6f756e743a203132332e343530302c0a2020202020202020667574757265466163743a206675747572655f766f636162756c6172793a3a7b656e61626c65643a20747275657d0a2020202020207d0a202020207d0a20205d2c0a202070726f76656e616e63653a205b666978747572655f6f726967696e3a3a7b70726f64756365723a20226d65702d7265666572656e63652d636f72707573222c20736f757263653a2022666978747572652e6d6274227d5d0a7d0a",
+          "byteLength": 650,
+          "sha256": "3c314a4e29bb3e1477171aff632fecec35257d0835c2e18549c732c609dfa664"
+        }
+      }
+    },
+    {
+      "id": "inspect-model-ionb",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "ion-binary",
+        "source": {
+          "hex": "e00100eaee02a38183de029e87be029a8d6d6f72706869725f6d6f64656c8269728d666f726d617456657273696f6e8c646973747269627574696f6e874c6962726172798b7061636b6167654e616d658c646570656e64656e6369657383646566876d6f64756c65738b656e726963686d656e7473856f776e657284646174618b736f757263655f6e616d658b7461726765745f6e616d658c6f726967696e616c4e616d658a7461726765744e616d658e8f736f75726365507265636973696f6e846b696e6485696e74363485657861637486616d6f756e748a667574757265466163748e916675747572655f766f636162756c61727987656e61626c65648a70726f76656e616e63658e8e666978747572655f6f726967696e8870726f647563657286736f75726365ee01c6818ade01c18bdea98c85342e302e308dde9f8ede9c8f8e936578616d706c652f6d65702d6669787475726590d091d292d093bee5dee3948eaa75726e3a6d6f72706869723a6d65703a666978747572653a756e6b6e6f776e2d656e726963686d656e7495eeb3829697deae988769735265616479998869735f72656164799adc9b711c9d27200000000000019e54c412d6449fe581a0d2a111a2beaaeea881a3dea4a48e946d65702d7265666572656e63652d636f72707573a58b666978747572652e6d6274"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "ion-binary",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "example/mep-fixture",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"example/mep-fixture\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "export-model-original-ionb",
+      "operation": "export-model-original",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "ion-binary",
+        "source": {
+          "hex": "e00100eaee02a38183de029e87be029a8d6d6f72706869725f6d6f64656c8269728d666f726d617456657273696f6e8c646973747269627574696f6e874c6962726172798b7061636b6167654e616d658c646570656e64656e6369657383646566876d6f64756c65738b656e726963686d656e7473856f776e657284646174618b736f757263655f6e616d658b7461726765745f6e616d658c6f726967696e616c4e616d658a7461726765744e616d658e8f736f75726365507265636973696f6e846b696e6485696e74363485657861637486616d6f756e748a667574757265466163748e916675747572655f766f636162756c61727987656e61626c65648a70726f76656e616e63658e8e666978747572655f6f726967696e8870726f647563657286736f75726365ee01c6818ade01c18bdea98c85342e302e308dde9f8ede9c8f8e936578616d706c652f6d65702d6669787475726590d091d292d093bee5dee3948eaa75726e3a6d6f72706869723a6d65703a666978747572653a756e6b6e6f776e2d656e726963686d656e7495eeb3829697deae988769735265616479998869735f72656164799adc9b711c9d27200000000000019e54c412d6449fe581a0d2a111a2beaaeea881a3dea4a48e946d65702d7265666572656e63652d636f72707573a58b666978747572652e6d6274"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "kind": "original",
+          "format": "ion-binary",
+          "hex": "e00100eaee02a38183de029e87be029a8d6d6f72706869725f6d6f64656c8269728d666f726d617456657273696f6e8c646973747269627574696f6e874c6962726172798b7061636b6167654e616d658c646570656e64656e6369657383646566876d6f64756c65738b656e726963686d656e7473856f776e657284646174618b736f757263655f6e616d658b7461726765745f6e616d658c6f726967696e616c4e616d658a7461726765744e616d658e8f736f75726365507265636973696f6e846b696e6485696e74363485657861637486616d6f756e748a667574757265466163748e916675747572655f766f636162756c61727987656e61626c65648a70726f76656e616e63658e8e666978747572655f6f726967696e8870726f647563657286736f75726365ee01c6818ade01c18bdea98c85342e302e308dde9f8ede9c8f8e936578616d706c652f6d65702d6669787475726590d091d292d093bee5dee3948eaa75726e3a6d6f72706869723a6d65703a666978747572653a756e6b6e6f776e2d656e726963686d656e7495eeb3829697deae988769735265616479998869735f72656164799adc9b711c9d27200000000000019e54c412d6449fe581a0d2a111a2beaaeea881a3dea4a48e946d65702d7265666572656e63652d636f72707573a58b666978747572652e6d6274",
+          "byteLength": 499,
+          "sha256": "49f87687c033a8ec39a7f42b93bb1c54b4856ceab0b05246d81ea0a8b27e10b1"
+        }
+      }
+    },
+    {
+      "id": "yaml-readable",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "666f726d617456657273696f6e3a20340a646973747269627574696f6e3a0a20204c6962726172793a0a202020207061636b6167654e616d653a207061726974790a20202020646570656e64656e636965733a207b7d0a202020206465663a207b6d6f64756c65733a207b7d7d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "parity",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "yaml-structural",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "666f726d617456657273696f6e3a20340a646973747269627574696f6e3a0a20204c6962726172793a0a202020207061636b6167654e616d653a205b5b7061726974795d5d0a20202020646570656e64656e636965733a207b7d0a202020206465663a207b6d6f64756c65733a207b7d7d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "parity",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "yaml-v1-explicit-migration",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "666f726d617456657273696f6e3a20310a646973747269627574696f6e3a205b226c696272617279222c205b5b22706172697479225d5d2c205b5d2c207b6d6f64756c65733a205b5d7d5d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "parity",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "yaml-v2-explicit-migration",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "666f726d617456657273696f6e3a20320a646973747269627574696f6e3a205b224c696272617279222c205b5b22706172697479225d5d2c205b5d2c207b6d6f64756c65733a205b5d7d5d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "parity",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "yaml-v3-explicit-migration",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "666f726d617456657273696f6e3a20330a646973747269627574696f6e3a205b224c696272617279222c205b5b22706172697479225d5d2c205b5d2c207b6d6f64756c65733a205b5d7d5d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "parity",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "yaml-bom-crlf-comments",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "efbbbf232072657461696e65640d0a666f726d617456657273696f6e3a2027342e302e302720232076657273696f6e0d0a646973747269627574696f6e3a0d0a20204c6962726172793a0d0a202020207061636b6167654e616d653a207061726974790d0a20202020646570656e64656e636965733a207b7d0d0a202020206465663a207b6d6f64756c65733a207b7d7d0d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "parity",
+          "modules": [],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{}}}}}"
+        }
+      }
+    },
+    {
+      "id": "yaml-duplicate",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "666f726d617456657273696f6e3a20340a666f726d617456657273696f6e3a20340a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "duplicate_member"
+      }
+    },
+    {
+      "id": "yaml-tag",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "76616c75653a202121696e742034320a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "yaml-anchor",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "76616c75653a2026782034320a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "yaml-alias",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "76616c75653a202a780a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "yaml-merge",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "76616c75653a207b3c3c3a207b613a20317d7d0a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "yaml-directive",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "2559414d4c20312e320a2d2d2d0a76616c75653a20310a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "unsupported_yaml_feature"
+      }
+    },
+    {
+      "id": "yaml-multiple-documents",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "76616c75653a20310a2d2d2d0a76616c75653a20320a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_yaml"
+      }
+    },
+    {
+      "id": "yaml-nonfinite",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "76616c75653a202e696e660a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_literal"
+      }
+    },
+    {
+      "id": "yaml-leading-zero",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "76616c75653a2030310a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_literal"
+      }
+    },
+    {
+      "id": "yaml-nonstring-key",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "313a2076616c75650a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_type"
+      }
+    },
+    {
+      "id": "yaml-sequence-root",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "5b312c20325d0a"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_type"
+      }
+    },
+    {
+      "id": "ion-binary-truncated",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "ion-binary",
+        "source": {
+          "hex": "e00100"
+        }
+      },
+      "expected": {
+        "status": "invalid",
+        "code": "invalid_ion"
+      }
+    },
+    {
+      "id": "exact-scalars-json-inspect-model",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "json",
+        "source": {
+          "hex": "7b22666f726d617456657273696f6e223a342c22646973747269627574696f6e223a7b224c696272617279223a7b227061636b6167654e616d65223a22706172697479222c22646570656e64656e63696573223a7b7d2c22646566223a7b226d6f64756c6573223a7b227363616c617273223a7b225075626c6963223a7b227479706573223a7b7d2c2276616c756573223a7b2268756765223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a62617369637323696e74222c22626f6479223a7b224c69746572616c223a7b22496e74656765724c69746572616c223a393030373139393235343734303939337d7d7d7d7d2c227363616c6564223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a646563696d616c23646563696d616c222c22626f6479223a7b224c69746572616c223a7b22446563696d616c4c69746572616c223a223132332e34353030227d7d7d7d7d2c2264617465223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a737472696e6723737472696e67222c22626f6479223a7b224c69746572616c223a7b22537472696e674c69746572616c223a22323032362d30312d3135227d7d7d7d7d7d7d7d7d7d7d7d7d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "json",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "parity",
+          "modules": [
+            "scalars"
+          ],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{\"scalars\":{\"Public\":{\"types\":{},\"values\":{\"huge\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":9007199254740993}}}}},\"scaled\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:decimal#decimal\",\"body\":{\"Literal\":{\"DecimalLiteral\":\"123.4500\"}}}}},\"date\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:string#string\",\"body\":{\"Literal\":{\"StringLiteral\":\"2026-01-15\"}}}}}}}}}}}}}"
+        }
+      }
+    },
+    {
+      "id": "exact-scalars-json-export-model-original",
+      "operation": "export-model-original",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "json",
+        "source": {
+          "hex": "7b22666f726d617456657273696f6e223a342c22646973747269627574696f6e223a7b224c696272617279223a7b227061636b6167654e616d65223a22706172697479222c22646570656e64656e63696573223a7b7d2c22646566223a7b226d6f64756c6573223a7b227363616c617273223a7b225075626c6963223a7b227479706573223a7b7d2c2276616c756573223a7b2268756765223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a62617369637323696e74222c22626f6479223a7b224c69746572616c223a7b22496e74656765724c69746572616c223a393030373139393235343734303939337d7d7d7d7d2c227363616c6564223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a646563696d616c23646563696d616c222c22626f6479223a7b224c69746572616c223a7b22446563696d616c4c69746572616c223a223132332e34353030227d7d7d7d7d2c2264617465223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a737472696e6723737472696e67222c22626f6479223a7b224c69746572616c223a7b22537472696e674c69746572616c223a22323032362d30312d3135227d7d7d7d7d7d7d7d7d7d7d7d7d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "kind": "original",
+          "format": "json",
+          "hex": "7b22666f726d617456657273696f6e223a342c22646973747269627574696f6e223a7b224c696272617279223a7b227061636b6167654e616d65223a22706172697479222c22646570656e64656e63696573223a7b7d2c22646566223a7b226d6f64756c6573223a7b227363616c617273223a7b225075626c6963223a7b227479706573223a7b7d2c2276616c756573223a7b2268756765223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a62617369637323696e74222c22626f6479223a7b224c69746572616c223a7b22496e74656765724c69746572616c223a393030373139393235343734303939337d7d7d7d7d2c227363616c6564223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a646563696d616c23646563696d616c222c22626f6479223a7b224c69746572616c223a7b22446563696d616c4c69746572616c223a223132332e34353030227d7d7d7d7d2c2264617465223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a737472696e6723737472696e67222c22626f6479223a7b224c69746572616c223a7b22537472696e674c69746572616c223a22323032362d30312d3135227d7d7d7d7d7d7d7d7d7d7d7d7d0a",
+          "byteLength": 598,
+          "sha256": "2771210fa8d30adfb6b5307ec68c4d924f847bbd4254d3771453902ae5e6cb51"
+        }
+      }
+    },
+    {
+      "id": "exact-scalars-yaml-inspect-model",
+      "operation": "inspect-model",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "666f726d617456657273696f6e3a20340a646973747269627574696f6e3a0a20204c6962726172793a0a202020207061636b6167654e616d653a207061726974790a20202020646570656e64656e636965733a207b7d0a202020206465663a0a2020202020206d6f64756c65733a0a20202020202020207363616c6172733a207b225075626c6963223a7b227479706573223a7b7d2c2276616c756573223a7b2268756765223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a62617369637323696e74222c22626f6479223a7b224c69746572616c223a7b22496e74656765724c69746572616c223a393030373139393235343734303939337d7d7d7d7d2c227363616c6564223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a646563696d616c23646563696d616c222c22626f6479223a7b224c69746572616c223a7b22446563696d616c4c69746572616c223a223132332e34353030227d7d7d7d7d2c2264617465223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a737472696e6723737472696e67222c22626f6479223a7b224c69746572616c223a7b22537472696e674c69746572616c223a22323032362d30312d3135227d7d7d7d7d7d7d7d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "inputFormat": "yaml",
+          "irVersion": "4.0.0",
+          "distribution": "Library",
+          "packageName": "parity",
+          "modules": [
+            "scalars"
+          ],
+          "normalizedIr": "{\"formatVersion\":4,\"distribution\":{\"Library\":{\"packageName\":\"parity\",\"dependencies\":{},\"def\":{\"modules\":{\"scalars\":{\"Public\":{\"types\":{},\"values\":{\"huge\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:basics#int\",\"body\":{\"Literal\":{\"IntegerLiteral\":9007199254740993}}}}},\"scaled\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:decimal#decimal\",\"body\":{\"Literal\":{\"DecimalLiteral\":\"123.4500\"}}}}},\"date\":{\"Public\":{\"ExpressionBody\":{\"inputTypes\":{},\"outputType\":\"morphir/SDK:string#string\",\"body\":{\"Literal\":{\"StringLiteral\":\"2026-01-15\"}}}}}}}}}}}}}"
+        }
+      }
+    },
+    {
+      "id": "exact-scalars-yaml-export-model-original",
+      "operation": "export-model-original",
+      "format": "json",
+      "input": {
+        "providerId": "local-model-fixture",
+        "format": "yaml",
+        "source": {
+          "hex": "666f726d617456657273696f6e3a20340a646973747269627574696f6e3a0a20204c6962726172793a0a202020207061636b6167654e616d653a207061726974790a20202020646570656e64656e636965733a207b7d0a202020206465663a0a2020202020206d6f64756c65733a0a20202020202020207363616c6172733a207b225075626c6963223a7b227479706573223a7b7d2c2276616c756573223a7b2268756765223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a62617369637323696e74222c22626f6479223a7b224c69746572616c223a7b22496e74656765724c69746572616c223a393030373139393235343734303939337d7d7d7d7d2c227363616c6564223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a646563696d616c23646563696d616c222c22626f6479223a7b224c69746572616c223a7b22446563696d616c4c69746572616c223a223132332e34353030227d7d7d7d7d2c2264617465223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a737472696e6723737472696e67222c22626f6479223a7b224c69746572616c223a7b22537472696e674c69746572616c223a22323032362d30312d3135227d7d7d7d7d7d7d7d0a"
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "value": {
+          "providerId": "local-model-fixture",
+          "kind": "original",
+          "format": "yaml",
+          "hex": "666f726d617456657273696f6e3a20340a646973747269627574696f6e3a0a20204c6962726172793a0a202020207061636b6167654e616d653a207061726974790a20202020646570656e64656e636965733a207b7d0a202020206465663a0a2020202020206d6f64756c65733a0a20202020202020207363616c6172733a207b225075626c6963223a7b227479706573223a7b7d2c2276616c756573223a7b2268756765223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a62617369637323696e74222c22626f6479223a7b224c69746572616c223a7b22496e74656765724c69746572616c223a393030373139393235343734303939337d7d7d7d7d2c227363616c6564223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a646563696d616c23646563696d616c222c22626f6479223a7b224c69746572616c223a7b22446563696d616c4c69746572616c223a223132332e34353030227d7d7d7d7d2c2264617465223a7b225075626c6963223a7b2245787072657373696f6e426f6479223a7b22696e7075745479706573223a7b7d2c226f757470757454797065223a226d6f72706869722f53444b3a737472696e6723737472696e67222c22626f6479223a7b224c69746572616c223a7b22537472696e674c69746572616c223a22323032362d30312d3135227d7d7d7d7d7d7d7d0a",
+          "byteLength": 606,
+          "sha256": "4031aa44558226cbd09c9f2439cfddb1fe1d54d78cb004974d6f6edec370ae5b"
+        }
+      }
+    }
+  ]
+}
