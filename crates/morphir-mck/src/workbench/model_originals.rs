@@ -42,6 +42,7 @@ pub use projection::{
     ModelRelease, ProjectionError, ProjectionWorkLimits,
 };
 mod transcript;
+mod workflow;
 pub use transcript::{
     CaptureCompletion, CheckedCaptureTranscript, ConnectedCaptureExpectation,
     ExpectedProjectionState, Transcript, TranscriptError, TranscriptLimits,

@@ -10,6 +10,11 @@ use std::fmt;
 
 const MAX_ROWS: usize = 8192;
 const MAX_REPLY_BYTES: usize = 128 * 1024;
+mod plan;
+pub(super) use plan::{ReadRunShape, ReadWorkBounds, ReplyPartView};
+
+#[cfg(test)]
+mod plan_tests;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PeerReadResource {
@@ -162,7 +167,7 @@ impl PeerReadWork {
     pub fn observer_bytes(self) -> usize {
         self.observer_bytes
     }
-    fn check(self, bounds: PeerReadBounds) -> Result<(), PeerReadError> {
+    fn check(self, bounds: ReadWorkBounds) -> Result<(), PeerReadError> {
         for (used, limit, resource) in [
             (self.rows, bounds.rows, PeerReadResource::Rows),
             (
@@ -227,6 +232,17 @@ enum Part {
     RowNextOffset,
     Base64Window,
 }
+impl Part {
+    fn view(&self) -> ReplyPartView<'_> {
+        match self {
+            Self::Literal { text } => ReplyPartView::Literal(text),
+            Self::CorrelatedRequestId => ReplyPartView::CorrelatedRequestId,
+            Self::RowOffset => ReplyPartView::RowOffset,
+            Self::RowNextOffset => ReplyPartView::RowNextOffset,
+            Self::Base64Window => ReplyPartView::Base64Window,
+        }
+    }
+}
 enum Progress {
     Next(usize),
     Complete,
@@ -268,24 +284,14 @@ impl<'a> PeerReadRun<'a> {
         }
         let window = saved.window;
         let length = fixture.bytes.byte_length();
-        if length > 64 * 1024 * 1024
-            || window.first_offset >= window.after_offset
-            || window.after_offset > length
-            || !(1..=65536).contains(&window.chunk_bytes)
-            || !(1..=MAX_ROWS).contains(&window.rows)
-        {
-            return Err(PeerReadError::Range);
-        }
-        let span = window.after_offset - window.first_offset;
-        if span.div_ceil(window.chunk_bytes) != window.rows
-            || (window.after_offset < length && !span.is_multiple_of(window.chunk_bytes))
-            || first
-                .0
-                .checked_add(window.rows)
-                .is_none_or(|end| end > MAX_ROWS)
-        {
-            return Err(PeerReadError::Range);
-        }
+        let shape = ReadRunShape::new(
+            length,
+            first.0,
+            window.first_offset,
+            window.after_offset,
+            window.chunk_bytes,
+            window.rows,
+        )?;
         let request = saved.expected_request;
         if request.method != "morphir.model-originals.read"
             || request.contract_version != "0.1.0-draft.1"
@@ -304,41 +310,7 @@ impl<'a> PeerReadRun<'a> {
         {
             return Err(PeerReadError::Request);
         }
-        if saved.reply_parts.is_empty()
-            || saved.reply_parts.len() > 32
-            || saved
-                .reply_parts
-                .iter()
-                .any(|part| matches!(part, Part::Literal {text} if text.len() > 16 * 1024))
-        {
-            return Err(PeerReadError::Shape);
-        }
-        let mut work = PeerReadWork {
-            rows: window.rows,
-            window_bytes: 0,
-            wire_bytes: 0,
-            observer_bytes: 0,
-        };
-        for row in 0..window.rows {
-            let offset = window.first_offset + row * window.chunk_bytes;
-            let size = window.chunk_bytes.min(length - offset);
-            let next = offset + size;
-            let payload = size
-                .div_ceil(3)
-                .checked_mul(4)
-                .ok_or(PeerReadError::Range)?;
-            let frame = frame_length(&saved.reply_parts, 20, offset, next, payload)?;
-            if frame > MAX_REPLY_BYTES {
-                return Err(PeerReadError::Range);
-            }
-            work.window_bytes = add(work.window_bytes, size)?;
-            work.wire_bytes = add(work.wire_bytes, add(MAX_REQUEST_BYTES, frame)?)?;
-            work.observer_bytes = add(
-                work.observer_bytes,
-                add(add(mul(size, 3)?, payload)?, mul(frame, 2)?)?,
-            )?;
-        }
-        work.check(bounds)?;
+        let work = shape.measure(saved.reply_parts.iter().map(Part::view), bounds.into())?;
         Ok(Self {
             fixture,
             attempt,
@@ -427,16 +399,13 @@ fn frame_length(
     next: usize,
     payload: usize,
 ) -> Result<usize, PeerReadError> {
-    parts.iter().try_fold(0, |total, part| {
-        let size = match part {
-            Part::Literal { text } => text.len(),
-            Part::CorrelatedRequestId => id_width,
-            Part::RowOffset => offset.to_string().len(),
-            Part::RowNextOffset => next.to_string().len(),
-            Part::Base64Window => payload,
-        };
-        add(total, size)
-    })
+    plan::frame_length(
+        parts.iter().map(Part::view),
+        id_width,
+        offset,
+        next,
+        payload,
+    )
 }
 fn add(a: usize, b: usize) -> Result<usize, PeerReadError> {
     a.checked_add(b).ok_or(PeerReadError::Range)

@@ -1,9 +1,26 @@
 //! Duplicate-aware JSON, retaining fixture member order for JSON.stringify inputs.
-use serde::de::{Error, MapAccess, Visitor};
+use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Number, Value};
 use std::fmt;
+
+mod work;
+pub(crate) use work::{ReadWork, ReadWorkLimits, ReadWorkResource, ReadWorkUsage, StrictReadError};
+
+trait Work {
+    fn decode(&mut self, bytes: usize) -> Result<(), String>;
+    fn value(&mut self) -> Result<(), String>;
+}
+struct Unchecked;
+impl Work for Unchecked {
+    fn decode(&mut self, _: usize) -> Result<(), String> {
+        Ok(())
+    }
+    fn value(&mut self) -> Result<(), String> {
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) enum Document {
@@ -17,38 +34,94 @@ pub(crate) enum Document {
 // Borrow subtrees from the original bytes. Inspecting raw token kinds avoids
 // serde_json's feature-dependent synthetic maps for arbitrary-precision numbers.
 // The member visitor still sees every decoded key, including duplicate keys.
-struct Members<'a>(Vec<(String, &'a serde_json::value::RawValue)>);
-impl<'de> Deserialize<'de> for Members<'de> {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct MemberVisitor;
-        impl<'de> Visitor<'de> for MemberVisitor {
-            type Value = Members<'de>;
-            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str("JSON without duplicate members")
-            }
-            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-                let mut values = Vec::new();
-                let mut keys = std::collections::BTreeSet::new();
-                while let Some(key) = map.next_key::<String>()? {
-                    if !keys.insert(key.clone()) {
-                        return Err(A::Error::custom(format!("duplicate key {key}")));
-                    }
-                    values.push((key, map.next_value()?));
-                }
-                Ok(Members(values))
-            }
-        }
-        deserializer.deserialize_map(MemberVisitor)
+struct MembersSeed<'a, W>(&'a mut W);
+struct KeySeed<'a, W>(&'a mut W);
+impl<'de, W: Work> DeserializeSeed<'de> for KeySeed<'_, W> {
+    type Value = String;
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<String, D::Error> {
+        // MapAccess calls this seed only when a real member exists. Reserve
+        // its child before decoding/allocating the key or buffering its value.
+        self.0.value().map_err(D::Error::custom)?;
+        String::deserialize(deserializer)
     }
 }
-fn from_raw(raw: &serde_json::value::RawValue, depth: usize) -> Result<Document, String> {
-    from_raw_numbers(raw, depth, number)
+impl<'de, W: Work> DeserializeSeed<'de> for MembersSeed<'_, W> {
+    type Value = Vec<(String, &'de serde_json::value::RawValue)>;
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
+        deserializer.deserialize_map(self)
+    }
+}
+impl<'de, W: Work> Visitor<'de> for MembersSeed<'_, W> {
+    type Value = Vec<(String, &'de serde_json::value::RawValue)>;
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("JSON without duplicate members")
+    }
+    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        let mut values = Vec::new();
+        let mut keys = std::collections::BTreeSet::new();
+        while let Some(key) = map.next_key_seed(KeySeed(&mut *self.0))? {
+            if !keys.insert(key.clone()) {
+                return Err(A::Error::custom(format!("duplicate key {key}")));
+            }
+            values.push((key, map.next_value()?));
+        }
+        Ok(values)
+    }
 }
 
-fn from_raw_numbers(
+struct ElementsSeed<'a, W>(&'a mut W);
+struct ElementSeed<'a, W>(&'a mut W);
+impl<'de, W: Work> DeserializeSeed<'de> for ElementSeed<'_, W> {
+    type Value = &'de serde_json::value::RawValue;
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
+        self.0.value().map_err(D::Error::custom)?;
+        Deserialize::deserialize(deserializer)
+    }
+}
+impl<'de, W: Work> DeserializeSeed<'de> for ElementsSeed<'_, W> {
+    type Value = Vec<&'de serde_json::value::RawValue>;
+    fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
+        deserializer.deserialize_seq(self)
+    }
+}
+impl<'de, W: Work> Visitor<'de> for ElementsSeed<'_, W> {
+    type Value = Vec<&'de serde_json::value::RawValue>;
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("JSON array")
+    }
+    fn visit_seq<A: SeqAccess<'de>>(self, mut sequence: A) -> Result<Self::Value, A::Error> {
+        let mut values = Vec::new();
+        while let Some(value) = sequence.next_element_seed(ElementSeed(&mut *self.0))? {
+            values.push(value);
+        }
+        Ok(values)
+    }
+}
+fn seeded<'de, S: DeserializeSeed<'de>>(text: &'de str, seed: S) -> Result<S::Value, String> {
+    let mut deserializer = serde_json::Deserializer::from_str(text);
+    let value = seed
+        .deserialize(&mut deserializer)
+        .map_err(|e| e.to_string())?;
+    deserializer.end().map_err(|e| e.to_string())?;
+    Ok(value)
+}
+fn document<W: Work>(
+    bytes: &[u8],
+    parse_number: fn(&str) -> Result<Number, String>,
+    work: &mut W,
+) -> Result<Document, String> {
+    work.value()?;
+    work.decode(bytes.len())?;
+    let raw =
+        serde_json::from_slice::<&serde_json::value::RawValue>(bytes).map_err(|e| e.to_string())?;
+    from_raw_numbers(raw, 0, parse_number, work)
+}
+
+fn from_raw_numbers<W: Work>(
     raw: &serde_json::value::RawValue,
     depth: usize,
     parse_number: fn(&str) -> Result<Number, String>,
+    work: &mut W,
 ) -> Result<Document, String> {
     let token = raw.get();
     let kind = token.as_bytes()[0];
@@ -59,30 +132,38 @@ fn from_raw_numbers(
     }
     match kind {
         b'{' => {
-            let members: Members<'_> = serde_json::from_str(token).map_err(|e| e.to_string())?;
+            work.decode(token.len())?;
+            let members = seeded(token, MembersSeed(&mut *work))?;
             members
-                .0
                 .into_iter()
-                .map(|(key, value)| Ok((key, from_raw_numbers(value, depth + 1, parse_number)?)))
+                .map(|(key, value)| {
+                    Ok((key, from_raw_numbers(value, depth + 1, parse_number, work)?))
+                })
                 .collect::<Result<_, _>>()
                 .map(Document::Object)
         }
         b'[' => {
-            let values: Vec<&serde_json::value::RawValue> =
-                serde_json::from_str(token).map_err(|e| e.to_string())?;
+            work.decode(token.len())?;
+            let values = seeded(token, ElementsSeed(&mut *work))?;
             values
                 .into_iter()
-                .map(|value| from_raw_numbers(value, depth + 1, parse_number))
+                .map(|value| from_raw_numbers(value, depth + 1, parse_number, work))
                 .collect::<Result<_, _>>()
                 .map(Document::Array)
         }
-        b'"' => serde_json::from_str(token)
-            .map(Document::String)
-            .map_err(|e| e.to_string()),
+        b'"' => {
+            work.decode(token.len())?;
+            serde_json::from_str(token)
+                .map(Document::String)
+                .map_err(|e| e.to_string())
+        }
         b't' => Ok(Document::Bool(true)),
         b'f' => Ok(Document::Bool(false)),
         b'n' => Ok(Document::Null),
-        _ => parse_number(token).map(Document::Number),
+        _ => {
+            work.decode(token.len())?;
+            parse_number(token).map(Document::Number)
+        }
     }
 }
 fn number(token: &str) -> Result<Number, String> {
@@ -138,9 +219,13 @@ impl Serialize for Document {
 }
 impl Document {
     pub fn parse(bytes: &[u8]) -> Result<Self, String> {
-        let raw = serde_json::from_slice::<&serde_json::value::RawValue>(bytes)
-            .map_err(|e| e.to_string())?;
-        from_raw(raw, 0)
+        document(bytes, number, &mut Unchecked)
+    }
+    pub(crate) fn parse_exact_with_work(
+        bytes: &[u8],
+        work: &mut ReadWork,
+    ) -> Result<Self, StrictReadError> {
+        document(bytes, exact_number, work).map_err(|error| work.error(error))
     }
     pub fn value(&self) -> Value {
         serde_json::to_value(self).expect("JSON value")
@@ -190,17 +275,106 @@ pub(crate) fn parse(text: &str) -> Result<Value, String> {
 /// the same RawValue traversal. Never deserialize arbitrary objects as Value:
 /// serde's private number/raw-value maps could otherwise impersonate scalars.
 pub(crate) fn parse_exact(text: &str) -> Result<Value, String> {
-    let raw =
-        serde_json::from_str::<&serde_json::value::RawValue>(text).map_err(|e| e.to_string())?;
-    from_raw_numbers(raw, 0, |token| {
-        token.parse::<Number>().map_err(|e| e.to_string())
-    })
-    .map(|doc| doc.value())
+    document(text.as_bytes(), exact_number, &mut Unchecked).map(|doc| doc.value())
+}
+fn exact_number(token: &str) -> Result<Number, String> {
+    token.parse::<Number>().map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exact_work_is_cumulative_across_documents_and_refusals_stay_latched() {
+        let mut work = ReadWork::new(ReadWorkLimits::new(31, 5).unwrap());
+        let doc = Document::parse_exact_with_work(br#"{"a":[1,2]}"#, &mut work).unwrap();
+        assert_eq!(doc.text(), r#"{"a":[1,2]}"#);
+        assert_eq!(
+            work.usage(),
+            ReadWorkUsage {
+                decode_bytes: 29,
+                values: 4
+            }
+        );
+        Document::parse_exact_with_work(b"0", &mut work).unwrap();
+        assert_eq!(
+            work.usage(),
+            ReadWorkUsage {
+                decode_bytes: 31,
+                values: 5
+            }
+        );
+        assert!(matches!(
+            Document::parse_exact_with_work(b"0", &mut work),
+            Err(StrictReadError::Work(ReadWorkResource::Values))
+        ));
+        assert!(matches!(
+            Document::parse_exact_with_work(b"null", &mut work),
+            Err(StrictReadError::Work(ReadWorkResource::Values))
+        ));
+        assert_eq!(
+            work.usage(),
+            ReadWorkUsage {
+                decode_bytes: 31,
+                values: 5
+            }
+        );
+    }
+
+    #[test]
+    fn value_refusal_precedes_child_buffering_and_decode_refusal_precedes_number_parse() {
+        let mut values = ReadWork::new(ReadWorkLimits::new(100, 3).unwrap());
+        assert!(matches!(
+            Document::parse_exact_with_work(br#"{"a":[1,2]}"#, &mut values),
+            Err(StrictReadError::Work(ReadWorkResource::Values))
+        ));
+        assert_eq!(
+            values.usage(),
+            ReadWorkUsage {
+                decode_bytes: 27,
+                values: 3
+            }
+        );
+        let mut bytes = ReadWork::new(ReadWorkLimits::new(28, 4).unwrap());
+        assert!(matches!(
+            Document::parse_exact_with_work(br#"{"a":[1,2]}"#, &mut bytes),
+            Err(StrictReadError::Work(ReadWorkResource::DecodeBytes))
+        ));
+        assert_eq!(
+            bytes.usage(),
+            ReadWorkUsage {
+                decode_bytes: 28,
+                values: 4
+            }
+        );
+    }
+
+    #[test]
+    fn budgeted_exact_reader_preserves_literals_and_rejects_hidden_duplicate_keys() {
+        let mut work = ReadWork::new(ReadWorkLimits::new(8192, 128).unwrap());
+        let doc = Document::parse_exact_with_work(
+            br#"{"$serde_json::private::Number":"1","v":9007199254740993,"z":-0.0}"#,
+            &mut work,
+        )
+        .unwrap();
+        assert!(
+            matches!(doc.get("$serde_json::private::Number").unwrap(), Document::String(s) if s == "1")
+        );
+        assert!(
+            matches!(doc.get("v").unwrap(), Document::Number(n) if n.to_string() == "9007199254740993")
+        );
+        assert!(matches!(doc.get("z").unwrap(), Document::Number(n) if n.to_string() == "-0.0"));
+        assert!(matches!(
+            Document::parse_exact_with_work(br#"{"a":[{"x":1,"\u0078":2}]}"#, &mut work),
+            Err(StrictReadError::Json(_))
+        ));
+        let spent = work.usage();
+        assert!(spent.decode_bytes > 0 && spent.values > 0);
+        Document::parse_exact_with_work(b"true", &mut work).unwrap();
+        assert_eq!(work.usage().values, spent.values + 1);
+        assert_eq!(work.usage().decode_bytes, spent.decode_bytes + 4);
+    }
 
     #[test]
     fn numeric_tokens_keep_their_values_under_unified_serde_features() {

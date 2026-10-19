@@ -5,6 +5,13 @@ use super::{EvidenceError, ExpectedBytes};
 use serde_json::Value;
 use std::{fmt, num::NonZeroUsize};
 
+#[cfg(test)]
+thread_local! {static LITERAL_FACTORIES:std::cell::Cell<usize>=const {std::cell::Cell::new(0)};}
+#[cfg(test)]
+pub(super) fn literal_factories() -> usize {
+    LITERAL_FACTORIES.with(std::cell::Cell::get)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixtureByteError {
     Limits,
@@ -177,13 +184,7 @@ impl<'a> Plan<'a> {
             Some("hex") => {
                 fields(value, &["kind", "hex"])?;
                 let text = value["hex"].as_str().ok_or(FixtureByteError::Shape)?;
-                if text.len() % 2 != 0
-                    || !text
-                        .bytes()
-                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-                {
-                    return Err(FixtureByteError::Hex);
-                }
+                hex_byte_length(text)?;
                 Ok(Self::Hex(text))
             }
             Some("utf8") => {
@@ -225,6 +226,10 @@ impl<'a> Plan<'a> {
         }
     }
     fn decode(self) -> Atom {
+        #[cfg(test)]
+        if matches!(&self, Self::Hex(_) | Self::Utf8(_)) {
+            LITERAL_FACTORIES.with(|count| count.set(count.get() + 1));
+        }
         fn digit(byte: u8) -> u8 {
             if byte.is_ascii_digit() {
                 byte - b'0'
@@ -245,6 +250,17 @@ impl<'a> Plan<'a> {
             Self::Pattern(atom) => atom,
         }
     }
+}
+/// Shared exact hex length validation. This does not allocate decoded bytes.
+pub(super) fn hex_byte_length(text: &str) -> Result<usize, FixtureByteError> {
+    if !text.len().is_multiple_of(2)
+        || !text
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(FixtureByteError::Hex);
+    }
+    Ok(text.len() / 2)
 }
 fn fields(value: &Value, names: &[&str]) -> Result<(), FixtureByteError> {
     let object = value.as_object().ok_or(FixtureByteError::Shape)?;
