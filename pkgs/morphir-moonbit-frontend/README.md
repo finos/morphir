@@ -7,6 +7,7 @@ The source language is `moonbit`; profiles describe the supported subset.
 
 | API | Profile | Source contract | Entry contract |
 | --- | --- | --- | --- |
+| `compile_math_library` | `moonbit-model-library-2026-10-19-r2` | Cumulative Bool/String, all qualified integer and floating forms, and six pinned SDK calls | Sorted public entries with scalar and String guards |
 | `compile_supported_library_2026_10_19` | `moonbit-model-library-2026-10-19` | Cumulative Bool/String/Int32, including signed arithmetic, UTF-16 length and owned slices | Sorted public entries with String guards and Int32 wrappers |
 | `compile_supported_library_2026_10_17` | `moonbit-model-library-2026-10-17` | All qualified Bool/String/Int32 capabilities, including shortlex ordering | Sorted public entries and executable String guards |
 | `compile_supported_library_v2` | `moonbit-model-library-v2` | Cumulative v1 capabilities plus String shortlex comparisons | Sorted public entries and executable String guards |
@@ -38,15 +39,17 @@ its typed owner is the canonical SDK type. A transport tag does not declare a ty
 
 ## Cumulative source conformance
 
-Use `compile_supported_library_2026_10_19` or source profile
-`moonbit-model-library-2026-10-19`
+Use `compile_math_library` with adapter-supplied `PinnedSourceBindings::sdk_numeric_math`, or source profile
+`moonbit-model-library-2026-10-19-r2`,
 for all currently qualified source capabilities together. It combines Bool
 operators, bounded String literals/concatenation/equality/ordering, signed Int32
 literals/arithmetic/comparisons, UTF-16 code-unit `String.length()`, and
 `String[start:end].to_owned()` with Int32 bounds. A slice clamps each bound to
 0…length, moves a split surrogate boundary inward, and returns empty when its
 adjusted start is at or after its end. Combining marks remain separate units.
-The profile also supports Int32 identity and selection, immutable typed bindings,
+Revision 2 additionally composes the integer and floating profiles with those
+capabilities, including binary32 rounding at each operation and all qualified
+integer widths. The profile also supports Int32 identity and selection, immutable typed bindings,
 matching-type branches and direct acyclic
 calls. Mixed signatures preserve every scalar's ABI. String guards also apply
 when the function returns Int32 or Bool.
@@ -55,6 +58,36 @@ The dated APIs stay pinned to their snapshots. The 2026-10-17, v1 and v2 APIs
 retain their earlier admission rules. The current profile does not admit
 unowned slices, single-index String access, imports or the full MoonBit language.
 Backend SDK adapter availability alone never widens source admission.
+
+### Pinned numeric SDK calls
+
+The adapter freezes `finos/morphir-sdk/basics` version `0.1.0`, SDK tree
+`9c83a100383570236b3d781362524008f76dd56d`, and alias `basics`.
+Source aliases cannot register packages or calls. Qualified calls bind arguments
+once, left to right, and retain the pin, concrete signature, canonical classic
+SDK name and numerical contract on their references and applications.
+
+| Source call | Canonical Basics value | Source / Scheme / generated consumer | Qualification contract |
+| --- | --- | --- | --- |
+| `@basics.sqrt(Double)` | `sqrt` | Supported | Exact reference bits, including negative zero; negative inputs produce NaN |
+| `@basics.sin(Double)` | `sin` | Supported | Reference vectors within 4 ULP; signed zero exact; infinity produces NaN |
+| `@basics.cos(Double)` | `cos` | Supported | Reference vectors within 4 ULP; zero returns one; infinity produces NaN |
+| `@basics.power_float(Double, Double)` | `power` | Supported | Reference vectors within 4 ULP; exact integer and exceptional cases checked separately |
+| `@basics.abs_float(Double)` | `abs` | Supported | Classic branch semantics preserve negative zero and NaN; other qualified values exact |
+| `@basics.not_(Bool)` | `not` | Supported | Exact Boolean negation |
+| SDK Integer-returning rounding and Maybe conversions | Existing classic / N3 extension names | IR/runtime support only | SDK wrappers do not match source `BigInt` or imply general Maybe source admission |
+
+All five numeric calls take and return `Double`. An implicit Float32 promotion
+is refused. These calls reuse classic SDK declarations and leave the 248-value
+inventory unchanged. Native, JavaScript, Wasm and Wasm-GC qualification runs in
+debug and release. High-precision finite references were computed with mpmath
+1.3.0 at 100 decimal digits, then rounded to binary64. The 4 ULP bound applies
+to those reference vectors, not a global accuracy guarantee for every input.
+NaN payloads are unspecified. The receipt records the compiler/core and SDK pin.
+
+The old dated snapshots and `moonbit-model-pinned-sdk-library-v1` retain their
+original admission rules. Arbitrary `@math` calls, other SDK names, source casts,
+Decimal and imports remain outside revision 2.
 
 `mise run test:typed-source` replays the existing Int32, String and Boolean
 fixtures through their narrow profiles, pinned v1 and current dated snapshots. It

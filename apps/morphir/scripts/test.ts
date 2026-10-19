@@ -278,7 +278,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.equal(modelPlan.frontends[0].provider,'finos/morphir-moonbit-frontend');
   assert.equal(modelPlan.frontends[0].defaultProfile,true);
   assert.equal(modelPlan.frontends[0].evidence,'local-acceptance');
-  assert.deepEqual(new Set(modelPlan.frontends[0].availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-integer-library-v1','moonbit-model-float-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19','moonbit-model-pinned-sdk-library-v1']));
+  assert.deepEqual(new Set(modelPlan.frontends[0].availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-integer-library-v1','moonbit-model-float-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19','moonbit-model-pinned-sdk-library-v1','moonbit-model-library-2026-10-19-r2']));
   assert.equal(modelPlan.frontends[0].capabilities.maxDocuments,1);
   assert.equal(modelPlan.frontends[0].capabilities.incremental,false);
   assert.equal(modelPlan.frontends[0].capabilities.limits.functions,1);
@@ -460,6 +460,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     ['ordered-library','moonbit-model-library-v2','pub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b && a <= b && !(a > b) && !(a >= b) { x } else { y } }','utf16-shortlex'],
     ['dated-library','moonbit-model-library-2026-10-17','/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀\npub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }','utf16-shortlex'],
     ['indexed-library','moonbit-model-library-2026-10-19','pub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count(s : String) -> Int32 { s.length() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }','moonbit-source-string-index-v1'],
+    ['math-library','moonbit-model-library-2026-10-19-r2','pub fn root(value : Double) -> Double { @basics.sqrt(value) }\npub fn wave(value : Double) -> Double { @basics.sin(value) + @basics.cos(value) }\npub fn power(value : Double) -> Double { @basics.power_float(value, 2.0) }','moonbit-source-binding-v1'],
   ] as const) {
     put(name+'/morphir.toml','[project]\nname="'+name+'"\n[frontend]\nlanguage="moonbit"\nprofile="'+profile+'"\n[pipeline]\nbackend="checkpoint"\n');
     put(name+'/src/Main.mbt',source);

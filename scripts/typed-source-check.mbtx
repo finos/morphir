@@ -87,7 +87,8 @@ async fn main {
   assert_true(
     command("git", ["status", "--porcelain", "--", "pkgs/morphir-sdk"])
     .trim()
-    .to_owned() == "",
+    .to_owned() ==
+    "",
   )
   assert_true(core_manifest.contains("version = \"0.1.0\""))
   let output = @json.parse(
@@ -109,10 +110,14 @@ async fn main {
   let private_probes = []
   for model in array(field(output, "models")) {
     let id = string(field(model, "id"))
-    let model_id = id
-      .strip_prefix("current")
+    let base_id = id
+      .strip_prefix("snapshot")
       .map(s => s.to_owned())
       .unwrap_or(id)
+    let model_id = base_id
+      .strip_prefix("current")
+      .map(s => s.to_owned())
+      .unwrap_or(base_id)
     let kind = model_id
       .strip_prefix("supported")
       .map(s => s.to_owned())
@@ -124,8 +129,10 @@ async fn main {
     @fs.mkdir(generated, allow_exist=true)
     @fs.write_file(
       original + "/moon.mod",
-      "name = \"acceptance/" + id + "\"\nversion = \"0.0.0\"\n" +
-      (if id == "pinnedsdk" {
+      "name = \"acceptance/" +
+      id +
+      "\"\nversion = \"0.0.0\"\n" +
+      (if kind == "pinnedsdk" || id == "math" {
         "import { \"finos/morphir-sdk@0.1.0\" }\n"
       } else {
         ""
@@ -133,7 +140,7 @@ async fn main {
     )
     @fs.write_file(
       original + "/moon.pkg",
-      if id == "pinnedsdk" {
+      if kind == "pinnedsdk" || id == "math" {
         "import { \"finos/morphir-sdk/basics\" @basics }\n"
       } else {
         ""
@@ -209,6 +216,57 @@ async fn main {
         g("choose") +
         "(flag)(a)(b))), original.to_string())\n  }\n}\n",
       )
+    } else if kind == "math" {
+      for reference in array(field(model, "mathReferences")) {
+        let name = string(field(reference, "name"))
+        let expected = field(reference, "expected").stringify()
+        // -0.0 is explicitly reconstructed because JSON can normalize its sign.
+        let expected = if name.has_suffix("-zero") &&
+          name != "cosine-zero" &&
+          name != "power-nan-zero" {
+          "-0.0"
+        } else {
+          expected
+        }
+        let ulps = field(reference, "ulps").stringify()
+        model_tests.write_string(
+          "test " +
+          ("math reference " + name).escape() +
+          " {\n  let expected : Double = " +
+          expected +
+          "\n  let wanted = expected.reinterpret_as_uint64()\n  for value in [@omath." +
+          name.split("-").join("_") +
+          "(), " +
+          g(name) +
+          "] {\n    let actual = value.reinterpret_as_uint64()\n    let distance = if actual > wanted { actual - wanted } else { wanted - actual }\n    assert_true(distance <= " +
+          ulps +
+          "UL)\n  }\n}\n",
+        )
+      }
+      for reference in array(field(model, "mathCategories")) {
+        let name = string(field(reference, "name"))
+        let check = if string(field(reference, "category")) == "nan" {
+          "value.is_nan()"
+        } else {
+          "value == 1.0 / 0.0"
+        }
+        model_tests.write_string(
+          "test " +
+          ("math domain " + name).escape() +
+          " {\n  for value in [@omath." +
+          name.split("-").join("_") +
+          "(), " +
+          g(name) +
+          "] { assert_true(" +
+          check +
+          ") }\n}\n",
+        )
+      }
+      model_tests.write_string(
+        "test \"math composes with Bool String and Int32\" {\n  let count = @int.to_int32(@integer.parse(\"1\")).unwrap()\n  for enabled in [false, true] {\n    assert_eq(@omath.mixed(\"A😀\", enabled, 1, 3.0), 3.0)\n    assert_eq(" +
+        g("mixed") +
+        "(@sdk.Text::from_string(\"A😀\"))(enabled)(count)(3.0), 3.0)\n  }\n}\n",
+      )
     } else if kind == "pinnedsdk" {
       model_tests.write_string(
         "test \"pinned SDK source and generated consumers use exact Boolean negation\" {\n  for flag in [false, true] {\n    assert_eq(@opinnedsdk.invert(flag), !flag)\n    assert_eq(CALL_INVERT(flag), !flag)\n  }\n}\n".replace(
@@ -253,8 +311,10 @@ async fn main {
         .replace(old="CALL_INVALID", new=g("invalid")),
       )
       model_tests.write_string(
-        "test \"Float32 public arguments round at their declared boundary\" {\n  assert_eq(@ofloat.identity(Float::from_double(16777217.0)).to_double(), 16777216.0)\n  assert_eq(CALL_IDENTITY(16777217.0), 16777216.0)\n}\n"
-        .replace(old="CALL_IDENTITY", new=g("identity")),
+        "test \"Float32 public arguments round at their declared boundary\" {\n  assert_eq(@ofloat.identity(Float::from_double(16777217.0)).to_double(), 16777216.0)\n  assert_eq(CALL_IDENTITY(16777217.0), 16777216.0)\n}\n".replace(
+          old="CALL_IDENTITY",
+          new=g("identity"),
+        ),
       )
       model_tests.write_string(
         "test \"Float64 signed zero subnormal and nonfinite outcomes\" {\n  assert_eq(@ofloat.double_zero().reinterpret_as_uint64(), 9223372036854775808UL)\n  assert_eq(CALL_DOUBLE_ZERO.reinterpret_as_uint64(), 9223372036854775808UL)\n  assert_eq(@ofloat.double_tiny().reinterpret_as_uint64(), 1UL)\n  assert_eq(CALL_DOUBLE_TINY.reinterpret_as_uint64(), 1UL)\n  assert_true(@ofloat.double_infinity().is_inf())\n  assert_true(CALL_DOUBLE_INFINITY.is_inf())\n  assert_true(@ofloat.double_invalid().is_nan())\n  assert_true(CALL_DOUBLE_INVALID.is_nan())\n}\n"
@@ -383,8 +443,8 @@ async fn main {
       )
     }
     let original_alias = if [
-        "foundation", "numeric", "integer", "float", "indexed", "strings", "bounded", "ordered",
-        "orderedbounded", "pinnedsdk",
+        "foundation", "numeric", "integer", "float", "indexed", "strings", "bounded",
+        "ordered", "orderedbounded", "pinnedsdk",
       ].contains(kind) {
       kind
     } else {
@@ -428,10 +488,15 @@ async fn main {
     }
     let log = command("moon", args, cwd=workspace)
     @fs.write_file(root + "/" + mode + ".log", log)
-    assert_eq(log.split("Total tests: 38, passed: 38, failed: 0.").count(), 5)
-    let driver_args = [
-      "check", "--frozen", "--target", "all",
-    ]
+    let test_count = tests.to_string().split("test \"").count() - 1
+    let count = test_count.to_string()
+    assert_eq(
+      log
+      .split("Total tests: " + count + ", passed: " + count + ", failed: 0.")
+      .count(),
+      5,
+    )
+    let driver_args = ["check", "--frozen", "--target", "all"]
     if mode == "release" {
       driver_args.push("--release")
     }
@@ -505,9 +570,8 @@ async fn main {
       "models": output,
       "supportedProfiles": [
         "moonbit-model-library-v1", "moonbit-model-library-2026-10-17", "moonbit-model-int32-library-v1",
-        "moonbit-model-library-2026-10-19", "moonbit-model-integer-library-v1",
-        "moonbit-model-float-library-v1",
-        "moonbit-model-pinned-sdk-library-v1",
+        "moonbit-model-library-2026-10-19", "moonbit-model-integer-library-v1", "moonbit-model-float-library-v1",
+        "moonbit-model-pinned-sdk-library-v1", "moonbit-model-library-2026-10-19-r2",
       ],
       "scope": "Local original source, Scheme, generated direct consumers, one pinned SDK source call and private access. Installed qualification remains a separate task.",
     } : Json)

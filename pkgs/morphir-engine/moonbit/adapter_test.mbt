@@ -117,6 +117,75 @@ test "pinned binding rejects unknown, mismatched and shadowed source calls throu
 }
 
 ///|
+test "math snapshot resolves finite calls and refuses invalid bindings through engine" {
+  let snapshot = files()
+  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+    old="language='moonbit'",
+    new="language='moonbit'\nprofile='moonbit-model-library-2026-10-19-r2'",
+  )
+  let engine = @engine.Engine::new()
+  @adapter.register(engine)
+  snapshot["src/Main.mbt"] = "pub fn root() -> Double { @basics.sqrt(4.0) }"
+  let report = execute(engine, snapshot)
+  assert_true(report.successful())
+  let registry = @data.Registry::new()
+  let unit = registry.decode("ion-binary", {
+    unit_id: "Main",
+    content: report.artifacts[0].content,
+  })
+  // Future facts on the real checkpoint survive both Ion encodings.
+  let future = @ion.IonValue::from_fields([
+    @ion.Field::new("future_math", @ion.IonValue::string("retain-me")),
+  ])
+  let metadata = unit.metadata.copy()
+  let owner = metadata[0]
+  let original = owner.data
+  metadata[0] = {
+    ..owner,
+    data: @ion.IonValue::from_fields([
+      @ion.Field::new("source_facts", original),
+      @ion.Field::new("future_math", future),
+    ]),
+  }
+  let unit = { ..unit, metadata, }
+  for format in ["ion-text", "ion-binary"] {
+    let replay = registry.decode(format, {
+      unit_id: "Main",
+      content: registry.encode(format, unit),
+    })
+    assert_true(replay.metadata[0].data.equals(unit.metadata[0].data))
+  }
+  let suite = @protocol.Suite::from_json({
+    "profile": "morphir-invocations-v1",
+    "calls": [
+      { "id": "root", "entry": "pricing:app/main#root", "arguments": [] },
+    ],
+  })
+  assert_eq(
+    @execution.plan_scheme(unit, suite).evaluate().map(@protocol.Value::to_json),
+    [{ "type": "float64", "bits": "4611686018427387904" }],
+  )
+  for
+    (source, code) in [
+      ("pub fn root() -> Double { @other.sqrt(4.0) }", "unknown_binding"),
+      ("pub fn root() -> Double { @basics.tan(4.0) }", "unknown_binding"),
+      ("pub fn root() -> Double { @basics.sqrt(true) }", "type_mismatch"),
+      ("pub fn root() -> Double { @basics.sqrt() }", "binding_arity"),
+      (
+        "pub fn root(basics : Double) -> Double { @basics.sqrt(basics) }", "shadowed_binding",
+      ),
+    ] {
+    snapshot["src/Main.mbt"] = source
+    let failed = execute(engine, snapshot)
+    assert_false(failed.successful())
+    assert_true(failed.artifacts.is_empty())
+    assert_true(
+      failed.diagnostics[0].message.has_prefix("moonbit_frontend." + code + ":"),
+    )
+  }
+}
+
+///|
 fn plan(
   engine : @engine.Engine,
   snapshot : Map[String, String],

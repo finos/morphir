@@ -328,8 +328,8 @@ fn LibraryAdapter::expression(
       }
       let (name, qualified) = match id.name {
         @ast.Ident(name~) => (name, None)
-        @ast.Dot(pkg~, id~) if self.mode == PinnedSdk =>
-          ("@" + pkg + "." + id, Some((pkg, id)))
+        @ast.Dot(pkg~, id~) if self.mode == PinnedSdk ||
+          self.mode == NumericMath => ("@" + pkg + "." + id, Some((pkg, id)))
         _ => {
           reject(
             "qualified_reference",

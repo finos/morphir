@@ -180,6 +180,7 @@ priv enum LibraryMode {
   SupportedLibrary20261017
   SupportedLibrary20261019
   PinnedSdk
+  NumericMath
 } derive(Eq)
 
 ///|
@@ -195,7 +196,25 @@ priv struct ResolvedSourceBinding {
   canonical : String
   inputs : Array[LibraryScalar]
   output : LibraryScalar
-  conversion_policy : String
+  contract : SourceBindingContract
+}
+
+///|
+priv enum SourceBindingContract {
+  ExactBool
+  Binary64Sqrt
+  Binary64Reference4Ulp
+  ClassicFloatAbs
+}
+
+///|
+fn SourceBindingContract::identifier(self : SourceBindingContract) -> String {
+  match self {
+    ExactBool => "exact-bool"
+    Binary64Sqrt => "binary64-sqrt-exact-reference-bits"
+    Binary64Reference4Ulp => "binary64-reference-4ulp"
+    ClassicFloatAbs => "exact-classic-abs-signed-zero"
+  }
 }
 
 ///|
@@ -240,10 +259,49 @@ pub fn PinnedSourceBindings::sdk_basics_not(
         canonical: "morphir/SDK:basics#not",
         inputs: [Boolean],
         output: Boolean,
-        conversion_policy: "exact-bool",
+        contract: ExactBool,
       },
     ],
   }
+}
+
+///|
+/// Finite N4 additions to the audited resolver. No source text can extend it.
+pub fn PinnedSourceBindings::sdk_numeric_math(
+  source_package : String,
+  source_version : String,
+  source_tree : String,
+  source_alias : String,
+) -> PinnedSourceBindings raise FrontendError {
+  let bindings = PinnedSourceBindings::sdk_basics_not(
+    source_package, source_version, source_tree, source_alias,
+  )
+  for
+    (name, canonical, inputs, policy) in [
+      ("sqrt", "sqrt", [Floating64], SourceBindingContract::Binary64Sqrt),
+      ("sin", "sin", [Floating64], Binary64Reference4Ulp),
+      ("cos", "cos", [Floating64], Binary64Reference4Ulp),
+      ("power_float", "power", [Floating64, Floating64], Binary64Reference4Ulp),
+      ("abs_float", "abs", [Floating64], ClassicFloatAbs),
+    ] {
+    bindings.entries.push({
+      source_alias,
+      source_name: name,
+      source_package,
+      source_version,
+      source_tree,
+      source_signature: if inputs.length() == 2 {
+        "(Double, Double) -> Double"
+      } else {
+        "Double -> Double"
+      },
+      canonical: "morphir/SDK:basics#" + canonical,
+      inputs,
+      output: Floating64,
+      contract: policy,
+    })
+  }
+  bindings
 }
 
 ///|
@@ -401,6 +459,7 @@ fn LibraryTypeUse::to_ir(
         self.profile == INTEGER_LIBRARY_PROFILE ||
         self.profile == INT32_LIBRARY_PROFILE ||
         self.profile == FLOAT_LIBRARY_PROFILE ||
+        self.profile == MATH_LIBRARY_PROFILE ||
         self.profile == LIBRARY_PROFILE_2026_10_19
       ) {
       let facts = Map::from_array([
@@ -521,7 +580,11 @@ pub const SUPPORTED_LIBRARY_PROFILE_V2 : String = "moonbit-model-library-v2"
 
 ///|
 /// Date identifies the current cumulative source qualification snapshot.
-pub const CURRENT_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19"
+pub const CURRENT_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r2"
+
+///|
+/// N4 cumulative snapshot, including all qualified integer and float forms.
+pub const MATH_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r2"
 
 ///|
 /// Immutable qualification identity retained as the current snapshot advances.
@@ -535,6 +598,7 @@ pub const PINNED_SDK_LIBRARY_PROFILE : String = "moonbit-model-pinned-sdk-librar
 
 ///|
 fn LibraryMode::supports_strings(self : LibraryMode) -> Bool {
+  self == NumericMath ||
   self == StringBasics ||
   self == SupportedLibrary ||
   self == SupportedLibraryV2 ||
@@ -544,6 +608,7 @@ fn LibraryMode::supports_strings(self : LibraryMode) -> Bool {
 
 ///|
 fn LibraryMode::supports_int32(self : LibraryMode) -> Bool {
+  self == NumericMath ||
   self == TypedFoundation ||
   self == NumericInt32 ||
   self == NumericInteger ||
@@ -556,6 +621,7 @@ fn LibraryMode::supports_int32(self : LibraryMode) -> Bool {
 
 ///|
 fn LibraryMode::supports_numeric(self : LibraryMode) -> Bool {
+  self == NumericMath ||
   self == NumericInt32 ||
   self == NumericInteger ||
   self == NumericFloat ||
@@ -564,16 +630,17 @@ fn LibraryMode::supports_numeric(self : LibraryMode) -> Bool {
 
 ///|
 fn LibraryMode::supports_float(self : LibraryMode) -> Bool {
-  self == NumericFloat
+  self == NumericFloat || self == NumericMath
 }
 
 ///|
 fn LibraryMode::supports_integer(self : LibraryMode) -> Bool {
-  self == NumericInteger
+  self == NumericInteger || self == NumericMath
 }
 
 ///|
 fn LibraryMode::supports_string_order(self : LibraryMode) -> Bool {
+  self == NumericMath ||
   self == SupportedLibraryV2 ||
   self == SupportedLibrary20261017 ||
   self == SupportedLibrary20261019
@@ -581,7 +648,7 @@ fn LibraryMode::supports_string_order(self : LibraryMode) -> Bool {
 
 ///|
 fn LibraryMode::supports_string_index(self : LibraryMode) -> Bool {
-  self == SupportedLibrary20261019
+  self == SupportedLibrary20261019 || self == NumericMath
 }
 
 ///|
@@ -598,5 +665,6 @@ fn LibraryMode::profile(self : LibraryMode) -> String {
     SupportedLibrary20261017 => LIBRARY_PROFILE_2026_10_17
     SupportedLibrary20261019 => LIBRARY_PROFILE_2026_10_19
     PinnedSdk => PINNED_SDK_LIBRARY_PROFILE
+    NumericMath => MATH_LIBRARY_PROFILE
   }
 }

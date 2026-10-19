@@ -2,7 +2,7 @@
   "semanticPin": "bc99af69a8b24d391311fae3822a87eafef3c334",
   "profile": "morphir-sdk-concrete-v1",
   "bindingCount": 248,
-  "supportedBindings": 103,
+  "supportedBindings": 106,
   "values": [
     {
       "fqName": "morphir/SDK:basics#add",
@@ -157,8 +157,8 @@
     },
     {
       "fqName": "morphir/SDK:basics#sqrt",
-      "status": "unsupported",
-      "reason": "No generator adapter; fails with moonbit.unsupported_sdk.",
+      "status": "supported-concrete-instances",
+      "reason": "Concrete Float -> Float signature is checked by sdk.mbt.",
       "bindings": [
         "finos/morphir-sdk/basics:sqrt"
       ]
@@ -189,16 +189,16 @@
     },
     {
       "fqName": "morphir/SDK:basics#cos",
-      "status": "unsupported",
-      "reason": "No generator adapter; fails with moonbit.unsupported_sdk.",
+      "status": "supported-concrete-instances",
+      "reason": "Concrete Float -> Float signature is checked by sdk.mbt.",
       "bindings": [
         "finos/morphir-sdk/basics:cos"
       ]
     },
     {
       "fqName": "morphir/SDK:basics#sin",
-      "status": "unsupported",
-      "reason": "No generator adapter; fails with moonbit.unsupported_sdk.",
+      "status": "supported-concrete-instances",
+      "reason": "Concrete Float -> Float signature is checked by sdk.mbt.",
       "bindings": [
         "finos/morphir-sdk/basics:sin"
       ]

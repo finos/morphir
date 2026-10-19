@@ -14,7 +14,8 @@ provider `finos/morphir-moonbit-frontend`, exported as `PROVIDER`, for language
 
 | Profile | Source behavior |
 | --- | --- |
-| `moonbit-model-library-2026-10-19`, opt-in | Current cumulative qualification snapshot: Bool, bounded String operations and ordering, signed Int32 arithmetic, UTF-16 length, and owned slicing |
+| `moonbit-model-library-2026-10-19-r2`, opt-in | Current cumulative snapshot: Bool/String, all qualified integer/float forms, and pinned Basics sqrt/sin/cos/power_float/abs_float/not_ calls |
+| `moonbit-model-library-2026-10-19`, opt-in | Frozen snapshot: Bool, bounded String operations and ordering, signed Int32 arithmetic, UTF-16 length, and owned slicing |
 | `moonbit-model-library-2026-10-17`, opt-in | Pinned earlier cumulative snapshot, including Bool, bounded String operations and ordering, and Int32 identity/selection/calls |
 | `moonbit-model-library-v2`, opt-in | Cumulative v1 plus UTF-16 shortlex String comparisons, with the same String guards |
 | `moonbit-model-library-v1`, opt-in | Pinned v1 source union: Bool, String basics and Int32 identity/selection/calls in one library, including mixed signatures |
@@ -28,7 +29,7 @@ The workbench prefers **Supported MoonBit library 2026-10-17** for fresh local p
 and CLI callers select it explicitly with `frontend.profile = "moonbit-model-library-2026-10-17"`
 or `--frontend-profile moonbit-model-library-2026-10-17`. Existing saved profile choices and
 the engine/CLI Boolean default remain compatible. This cumulative version covers
-local source conformance. Select `moonbit-model-library-2026-10-19` explicitly for
+local source conformance. Select `moonbit-model-library-2026-10-19-r2` explicitly for
 signed arithmetic, String length and owned slicing. Imports and full ecosystem
 qualification remain outside these profiles.
 

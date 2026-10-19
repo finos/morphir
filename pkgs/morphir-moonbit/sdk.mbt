@@ -80,7 +80,10 @@ fn sdk_reference(
       | "round"
       | "floor"
       | "ceiling"
-      | "truncate",
+      | "truncate"
+      | "sqrt"
+      | "sin"
+      | "cos",
     )
     | ("decimal", "negate" | "abs" | "truncate" | "round" | "from-int")
     | ("list", "sum" | "product" | "length" | "reverse")
@@ -307,6 +310,10 @@ fn sdk_reference(
     }
     ("basics", "round" | "floor" | "ceiling" | "truncate") => {
       require([float], int)
+      call = native("basics", binding)
+    }
+    ("basics", "sqrt" | "sin" | "cos") => {
+      require([float], float)
       call = native("basics", binding)
     }
     (

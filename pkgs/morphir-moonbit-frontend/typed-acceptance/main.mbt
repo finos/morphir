@@ -80,7 +80,9 @@ fn add_float_conversion_cases(
         ),
       },
     }
-    entries.push(@ir.FQName::parse("typed/acceptance/float:main#" + name))
+    entries.push(
+      @ir.FQName::parse(package_name.to_canonical() + ":main#" + name),
+    )
   }
   let modules = package_def.modules.copy()
   modules[module_path] = {
@@ -95,6 +97,41 @@ fn add_float_conversion_cases(
     ),
     entries,
   }
+}
+
+///|
+// Independently rounded from mpmath 1.3.0 at 100 decimal digits. Tolerances
+// belong to each function contract, never to integer or basic IEEE operations.
+fn math_references() -> Array[(String, Double, Int32)] {
+  [
+    ("root-two", 1.4142135623730951, 0),
+    ("root-half", 0.7071067811865476, 0),
+    ("sine-one", 0.8414709848078965, 4),
+    ("cosine-one", 0.5403023058681398, 4),
+    ("sine-hundred", -0.5063656411097588, 4),
+    ("cosine-hundred", 0.8623188722876839, 4),
+    ("power-quarter", 1.7782794100389228, 4),
+    ("power-integer", -8.0, 0),
+    ("absolute", 3.5, 0),
+    ("root-zero", -0.0, 0),
+    ("sine-zero", -0.0, 0),
+    ("absolute-zero", -0.0, 0),
+    ("cosine-zero", 1.0, 0),
+    ("power-nan-zero", 1.0, 0),
+  ]
+}
+
+///|
+fn math_categories() -> Array[(String, String)] {
+  [
+    ("root-invalid", "nan"),
+    ("sine-invalid", "nan"),
+    ("cosine-invalid", "nan"),
+    ("power-invalid", "nan"),
+    ("absolute-invalid", "nan"),
+    ("root-infinity", "positive-infinity"),
+    ("power-infinity", "positive-infinity"),
+  ]
 }
 
 ///|
@@ -137,20 +174,34 @@ fn main raise {
       ),
       ("pinnedsdk", "pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"),
       (
+        "math", "pub fn root_two() -> Double { @basics.sqrt(2.0) }\npub fn root_half() -> Double { @basics.sqrt(0.5) }\npub fn sine_one() -> Double { @basics.sin(1.0) }\npub fn cosine_one() -> Double { @basics.cos(1.0) }\npub fn sine_hundred() -> Double { @basics.sin(100.0) }\npub fn cosine_hundred() -> Double { @basics.cos(100.0) }\npub fn power_quarter() -> Double { @basics.power_float(10.0, 0.25) }\npub fn power_integer() -> Double { @basics.power_float(-2.0, 3.0) }\npub fn absolute() -> Double { @basics.abs_float(-3.5) }\npub fn root_zero() -> Double { @basics.sqrt(-0.0) }\npub fn sine_zero() -> Double { @basics.sin(-0.0) }\npub fn absolute_zero() -> Double { @basics.abs_float(-0.0) }\npub fn cosine_zero() -> Double { @basics.cos(-0.0) }\npub fn power_nan_zero() -> Double { @basics.power_float(0.0 / 0.0, 0.0) }\npub fn root_invalid() -> Double { @basics.sqrt(-1.0) }\npub fn sine_invalid() -> Double { @basics.sin(1.0 / 0.0) }\npub fn cosine_invalid() -> Double { @basics.cos(1.0 / 0.0) }\npub fn power_invalid() -> Double { @basics.power_float(-1.0, 0.5) }\npub fn absolute_invalid() -> Double { @basics.abs_float(0.0 / 0.0) }\npub fn root_infinity() -> Double { @basics.sqrt(1.0 / 0.0) }\npub fn power_infinity() -> Double { @basics.power_float(0.0, -1.0) }\npub fn mixed(label : String, enabled : Bool, count : Int32, amount : Double) -> Double { let yes = @basics.not_(enabled); if yes && label.length() > count { @basics.sqrt(amount * amount) } else { @basics.abs_float(-amount) } }",
+      ),
+      (
         "currentordered", "pub fn lt(a : String, b : String) -> Bool { identity(a) < identity(b) }\npub fn le(a : String, b : String) -> Bool { a <= b }\npub fn gt(a : String, b : String) -> Bool { a > b }\npub fn ge(a : String, b : String) -> Bool { a >= b }\npub fn choose(a : String, b : String, yes : Int32, no : Int) -> Int32 { let before : Bool = lt(a, b); if before { yes } else { no } }\nfn identity(s : String) -> String { s }",
       ),
       (
         "currentorderedbounded", "fn growth() -> String { \"abc\" + \"def\" }\nfn literal() -> String { \"123456\" }\npub fn first() -> Bool { growth() < literal() }\npub fn second() -> Bool { literal() >= growth() }\npub fn eager() -> Bool { \"\" < literal() }\npub fn short() -> Bool { false && first() }",
       ),
     ]
+  let cases = cases +
+    cases
+    .filter(row => {
+      (!row.0.has_prefix("current") || row.0.has_prefix("currentordered")) &&
+      row.0 != "math"
+    })
+    .map(row => ("snapshot" + row.0, row.1))
   let models = []
   for (id, source) in cases {
     let source = "/// Qualification fixture documentation.\n///\n/// Preserve **Markdown** and λ😀.\n" +
       source
-    let model_id = id
-      .strip_prefix("current")
+    let base_id = id
+      .strip_prefix("snapshot")
       .map(s => s.to_owned())
       .unwrap_or(id)
+    let model_id = base_id
+      .strip_prefix("current")
+      .map(s => s.to_owned())
+      .unwrap_or(base_id)
     let kind = model_id
       .strip_prefix("supported")
       .map(s => s.to_owned())
@@ -161,7 +212,20 @@ fn main raise {
       module_name: "main",
       source,
     }
-    let output = if id.has_prefix("current") {
+    let output = if id.has_prefix("snapshot") || id == "math" {
+      @frontend.compile_math_library(
+        input,
+        @frontend.PinnedSourceBindings::sdk_numeric_math(
+          "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+          "basics",
+        ),
+        max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
+          5
+        } else {
+          1048576
+        },
+      )
+    } else if id.has_prefix("current") {
       @frontend.compile_supported_library_2026_10_17(
         input,
         max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
@@ -199,7 +263,7 @@ fn main raise {
         max_string_code_units=if id == "bounded" { 5 } else { 1048576 },
       )
     }
-    let output = if id == "float" {
+    let output = if kind == "float" {
       add_float_conversion_cases(output)
     } else {
       output
@@ -338,6 +402,45 @@ fn main raise {
         ]).as_text(),
         "😀",
       )
+    } else if kind == "math" {
+      fn observed(name : String) -> Double raise {
+        guard @backend.call_entry(runtime, entry(name), [])
+          is Number(Real(value)) else {
+          fail("Expected math result")
+        }
+        value
+      }
+      for (name, expected, ulps) in math_references() {
+        let actual = observed(name).reinterpret_as_uint64()
+        let wanted = expected.reinterpret_as_uint64()
+        let distance = if actual > wanted {
+          actual - wanted
+        } else {
+          wanted - actual
+        }
+        assert_true(distance <= ulps.to_uint64(), msg=name)
+      }
+      for (name, category) in math_categories() {
+        let actual = observed(name)
+        assert_true(
+          if category == "nan" {
+            actual.is_nan()
+          } else {
+            actual == 1.0 / 0.0
+          },
+          msg=name,
+        )
+      }
+      guard @backend.call_entry(runtime, entry("mixed"), [
+          @scheme.Text("A😀"),
+          @scheme.Boolean(false),
+          @scheme.Tagged("morphir/SDK:int#int32", [@scheme.integer("1")]),
+          @scheme.Value::Number(@scheme.Number::Real(3.0)),
+        ])
+        is Number(Real(mixed)) else {
+        fail("Expected mixed math")
+      }
+      assert_eq(mixed, 3.0)
     } else if kind == "pinnedsdk" {
       for flag in [false, true] {
         guard @backend.call_entry(runtime, entry("invert"), [
@@ -550,7 +653,23 @@ fn main raise {
       (
         {
           "id": id,
-          "profile": if id.has_prefix("current") {
+          "mathReferences": if id == "math" {
+            math_references().map(row => {
+              ({ "name": row.0, "expected": row.1, "ulps": row.2 } : Json)
+            })
+          } else {
+            []
+          },
+          "mathCategories": if id == "math" {
+            math_categories().map(row => {
+              ({ "name": row.0, "category": row.1 } : Json)
+            })
+          } else {
+            []
+          },
+          "profile": if id.has_prefix("snapshot") || id == "math" {
+            @frontend.MATH_LIBRARY_PROFILE
+          } else if id.has_prefix("current") {
             @frontend.LIBRARY_PROFILE_2026_10_17
           } else if id == "indexed" {
             @frontend.LIBRARY_PROFILE_2026_10_19

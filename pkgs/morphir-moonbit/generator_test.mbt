@@ -661,6 +661,19 @@ test "multi module pricing lowers concrete records functions and constructors" {
 }
 
 ///|
+test "classic math adapters refuse non Float signatures" {
+  let int = @fixtures.scalar("morphir/SDK:basics#int")
+  let signature = @ir.Type::Function(Default::default(), int, int)
+  for name in ["sqrt", "sin", "cos"] {
+    let reference = @ir.Value::Reference(
+      { ..@fixtures.attrs(), inferred_type: Some(signature), },
+      @ir.FQName::parse("morphir/SDK:basics#" + name),
+    )
+    assert_eq(error(single(signature, reference)).0, "moonbit.sdk_signature")
+  }
+}
+
+///|
 test "compound lowering rejects generic open and unsupported SDK types" {
   let a : @ir.TypeAttributes = {
     source: None,

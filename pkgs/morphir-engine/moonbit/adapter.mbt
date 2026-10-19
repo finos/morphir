@@ -567,6 +567,61 @@ pub fn provider(
       }
     }),
   }
+  let math_bindings = @frontend.PinnedSourceBindings::sdk_numeric_math(
+    "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+    "basics",
+  ) catch {
+    @frontend.Invalid(diagnostic) =>
+      raise @engine.Rejected(
+        diagnostic.code,
+        diagnostic.detail,
+        diagnostic.source,
+      )
+  }
+  let math : @engine.SourceProfile = {
+    ..indexed,
+    id: @ids.ProfileId::parse(@frontend.MATH_LIBRARY_PROFILE),
+    dependencies: pinned_dependencies,
+    capabilities: {
+      ..indexed.capabilities,
+      summary: "Supported MoonBit library 2026-10-19 revision 2 with pinned math calls",
+      supported: indexed.capabilities.supported +
+      integers.capabilities.supported +
+      floats.capabilities.supported +
+      [
+        "Pinned @basics.not_, sqrt, sin, cos, power_float and abs_float", "Classic binary64 SDK math with declared per-function reference contracts",
+      ],
+      excluded: [
+        "Source numeric casts and Integer-returning SDK rounding calls", "Other qualified SDK calls, Decimal and generic values",
+        "Integer division, recursion, cross-file imports, mutation and indirect calls",
+      ],
+    },
+    compile: @engine.PerFile(fn(source, unit_id, cancelled) raise {
+      let output = @frontend.compile_math_library(
+        input(source, unit_id),
+        math_bindings,
+        limits=library_limits,
+        max_string_code_units~,
+        cancelled~,
+        scope=observer.scope(),
+      ) catch {
+        @frontend.Invalid(diagnostic) =>
+          raise @engine.Rejected(
+            diagnostic.code,
+            diagnostic.detail,
+            diagnostic.source,
+          )
+        error => raise error
+      }
+      @data.IRUnit::{
+        id: output.unit_id,
+        distribution: output.ir,
+        metadata: output.metadata.map(m => { node_id: m.node_id, data: m.data, }),
+        annotations: output.annotations.copy(),
+        provenance: output.provenance.copy(),
+      }
+    }),
+  }
   {
     id: @ids.ProviderId::parse(PROVIDER),
     languages: [
@@ -576,7 +631,7 @@ pub fn provider(
         default_profile: @ids.ProfileId::parse(@frontend.PROFILE),
         profiles: [
           seed, library, foundation, numeric, integers, floats, strings, supported,
-          supported_v2, current, indexed, pinned_sdk,
+          supported_v2, current, indexed, pinned_sdk, math,
         ],
       },
     ],

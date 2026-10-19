@@ -1112,7 +1112,8 @@ fn LibraryLowerer::sdk_call(
       ("source_tree", @ir.Data::Text(binding.source_tree)),
       ("source_signature", @ir.Data::Text(binding.source_signature)),
       ("canonical", @ir.Data::Text(binding.canonical)),
-      ("conversion_policy", @ir.Data::Text(binding.conversion_policy)),
+      ("conversion_policy", @ir.Data::Text(binding.contract.identifier())),
+      ("sdk_classification", @ir.Data::Text("classic")),
     ]),
   )
   let output_type = LibraryTypeUse::{

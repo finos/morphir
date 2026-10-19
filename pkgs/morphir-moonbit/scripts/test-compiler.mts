@@ -100,6 +100,15 @@ try {
   assert.equal(symbols.get('pricing:quotes#approved')!.name,'approved');
   const call = (name: string) => '@generated.'+symbols.get('pricing:'+name)!.name+'()';
   const test = `///|
+    test "generated classic math adapters retain domain and signed zero behavior" {
+      assert_eq(${call('audit#basics-sqrt')}(4.0), 2.0)
+      assert_eq(${call('audit#basics-sqrt')}(-0.0).reinterpret_as_uint64(), 9223372036854775808UL)
+      assert_true(${call('audit#basics-sqrt')}(-1.0).is_nan())
+      assert_eq(${call('audit#basics-sin')}(0.0), 0.0)
+      assert_eq(${call('audit#basics-cos')}(0.0), 1.0)
+      assert_true(${call('audit#basics-sin')}(1.0 / 0.0).is_nan())
+      assert_true(${call('audit#basics-cos')}(1.0 / 0.0).is_nan())
+    }
     test "generated scalar API preserves exact values" {
       assert_eq(@integer.to_string(${call('scalars#huge')}), "1234567890123456789012345678901234567890")
       assert_eq(@integer.to_string(${call('other#copy')}), "1234567890123456789012345678901234567890")
@@ -227,7 +236,7 @@ try {
       assert.equal(build.status,0,`generated ${target}/${mode} build: ${build.stdout}\n${build.stderr}`);
       const result=spawnSync(moon,['test','--frozen','--target',target,...modeArgs,'-p',output.moduleName],{cwd:workspace,encoding:'utf8'});
       assert.equal(result.status,0,`generated ${target}/${mode} tests: ${result.stdout}\n${result.stderr}`);
-      assert.match(result.stdout,/passed: 1, failed: 0/);
+      assert.match(result.stdout,/passed: 2, failed: 0/);
     }
     const namingResult=spawnSync(moon,['test','--frozen','--target',target,'-p',output.namingModule+'/consumer'],{cwd:workspace,encoding:'utf8'});
     assert.equal(namingResult.status,0,`readable naming ${target}: ${namingResult.stdout}\n${namingResult.stderr}`);

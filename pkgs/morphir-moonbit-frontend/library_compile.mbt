@@ -125,6 +125,36 @@ pub fn compile_pinned_sdk_library(
 }
 
 ///|
+/// Cumulative N4 snapshot. The adapter supplies the frozen numeric SDK mapping.
+pub fn compile_math_library(
+  input : Input,
+  bindings : PinnedSourceBindings,
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  max_string_code_units~ : Int32 = 1048576,
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
+) -> LibraryOutput raise {
+  scope.observe(
+    @observe.Frontend,
+    fn(scope) raise {
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        mode=NumericMath,
+        bindings~,
+        string_limit=max_string_code_units,
+      )
+      check_naming_warnings(output.warnings, strict_naming)
+      output
+    },
+    is_cancelled=frontend_cancelled,
+  )
+}
+
+///|
 /// Check library budgets without parsing a source document.
 pub fn LibraryLimits::validate(
   self : LibraryLimits,
