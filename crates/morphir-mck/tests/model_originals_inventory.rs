@@ -71,6 +71,18 @@ fn original_frozen_inventory_and_digest_are_accepted_without_erasing_empty_direc
 }
 
 #[test]
+fn primary_coverage_rejects_companions_even_with_a_consistent_inventory() {
+    let (mut summary, entries) = fixture();
+    summary["coverage"] = json!({"kind":"primary"});
+    assert!(!accepts(&summary, &entries));
+
+    summary["companions"] = json!([]);
+    let primary = &entries[..1];
+    resign(&mut summary, primary);
+    assert!(accepts(&summary, primary));
+}
+
+#[test]
 fn omission_extra_entries_counts_and_digest_are_independent_controls() {
     let (summary, entries) = fixture();
     let mut omitted = entries.clone();

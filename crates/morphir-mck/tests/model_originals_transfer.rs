@@ -30,6 +30,14 @@ fn reply(id: u64, result: &Value) -> String {
 }
 
 #[test]
+fn capture_expectation_rejects_companions_in_a_primary_only_summary() {
+    let packet = packet();
+    let mut summary = packet["cases"][0]["expected"]["summary"].clone();
+    summary["coverage"] = json!({"kind":"primary"});
+    assert!(CaptureExpectation::parse(&summary.to_string()).is_err());
+}
+
+#[test]
 fn frozen_pages_and_separate_original_projection_chunks_verify() {
     let packet = packet();
     let expected =

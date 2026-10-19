@@ -266,13 +266,15 @@ pub(super) fn ready_metadata(ready: &Value) -> Result<(Vec<Root>, Summary), Inva
         count(length, MAX_BYTES)?;
     }
     validate(Schema::Ready, ready)?;
+    let companions = ready["companions"].as_array().ok_or(InvalidFrame::Shape)?;
+    // A primary-only summary describes only the selected primary. Ignoring an
+    // out-of-scope declaration at capture time cannot authorize companion roots
+    // in the resulting summary, even when their inventory digest is consistent.
+    if ready["coverage"]["kind"] == "primary" && !companions.is_empty() {
+        return Err(InvalidFrame::Shape);
+    }
     let roots = std::iter::once(&ready["primary"])
-        .chain(
-            ready["companions"]
-                .as_array()
-                .ok_or(InvalidFrame::Shape)?
-                .iter(),
-        )
+        .chain(companions.iter())
         .map(|root| {
             Ok(Root {
                 kind: match root["kind"].as_str() {
