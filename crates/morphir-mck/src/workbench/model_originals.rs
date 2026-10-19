@@ -10,6 +10,11 @@ use unicode_normalization::UnicodeNormalization;
 
 mod inventory;
 pub use inventory::{Inventory, InventoryEntry, InventoryError, InventorySha256};
+mod transfer;
+pub use transfer::{
+    CaptureExpectation, CaptureInventory, CheckedStream, Exchange, FailureCode, RemoteFailure,
+    RpcFailureKind, TransferError,
+};
 
 /// Inclusive bound on the complete JSON-RPC request, before parsing.
 pub const MAX_REQUEST_BYTES: usize = 16 * 1024;
@@ -76,6 +81,7 @@ bounded_identity!(CaptureId, 128);
 bounded_identity!(EntryId, 128);
 bounded_identity!(SourceLocator, 4096);
 bounded_identity!(ProjectId, 12288);
+bounded_identity!(SessionId, 128);
 
 macro_rules! bounded_count {
     ($name:ident, $minimum:expr, $maximum:expr) => {
@@ -359,9 +365,11 @@ enum Schema {
     Ready,
     Entry,
     Inventory,
+    InventoryResult,
+    ReadResult,
 }
 fn validate(schema: Schema, value: &Value) -> Result<(), InvalidFrame> {
-    static VALIDATORS: OnceLock<[jsonschema::Validator; 5]> = OnceLock::new();
+    static VALIDATORS: OnceLock<[jsonschema::Validator; 7]> = OnceLock::new();
     let validators = VALIDATORS.get_or_init(|| {
         let resources = [
             include_str!("../../../../spec/workbench/model-originals/0.1.0-draft.1/schemas/definitions.schema.json"),
@@ -377,7 +385,7 @@ fn validate(schema: Schema, value: &Value) -> Result<(), InvalidFrame> {
             options.build(schema).expect("fixed offline model originals schema")
         };
         let reference = |name: &str| serde_json::json!({"$ref":format!("{}#/$defs/{name}",resources[0]["$id"].as_str().expect("definitions ID"))});
-        [compile(&resources[1]),compile(&resources[2]),compile(&reference("ready")),compile(&reference("entry")),compile(&reference("inventory"))]
+        [compile(&resources[1]),compile(&resources[2]),compile(&reference("ready")),compile(&reference("entry")),compile(&reference("inventory")),compile(&reference("inventoryResult")),compile(&reference("readResult"))]
     });
     let validator = match schema {
         Schema::Request => &validators[0],
@@ -385,6 +393,8 @@ fn validate(schema: Schema, value: &Value) -> Result<(), InvalidFrame> {
         Schema::Ready => &validators[2],
         Schema::Entry => &validators[3],
         Schema::Inventory => &validators[4],
+        Schema::InventoryResult => &validators[5],
+        Schema::ReadResult => &validators[6],
     };
     validator.validate(value).map_err(|_| InvalidFrame::Shape)
 }

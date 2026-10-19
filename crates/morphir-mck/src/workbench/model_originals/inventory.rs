@@ -55,15 +55,15 @@ impl std::error::Error for InventoryError {}
 // Separate digest roles prevent a source-file digest being used as an inventory
 // commitment. The constructors remain private to these validated boundaries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ContentSha256([u8; 32]);
+pub(super) struct ContentSha256(pub(super) [u8; 32]);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct InventorySha256([u8; 32]);
+pub struct InventorySha256(pub(super) [u8; 32]);
 impl InventorySha256 {
     pub fn to_hex(self) -> String {
         self.0.iter().map(|byte| format!("{byte:02x}")).collect()
     }
 }
-fn hash(value: &Value) -> Result<[u8; 32], InvalidFrame> {
+pub(super) fn hash(value: &Value) -> Result<[u8; 32], InvalidFrame> {
     let text = value.as_str().ok_or(InvalidFrame::Shape)?;
     if text.len() != 64
         || !text
@@ -79,7 +79,7 @@ fn hash(value: &Value) -> Result<[u8; 32], InvalidFrame> {
     }
     Ok(result)
 }
-fn count(value: &Value, maximum: usize) -> Result<usize, InvalidFrame> {
+pub(super) fn count(value: &Value, maximum: usize) -> Result<usize, InvalidFrame> {
     super::super::artifacts::integer(value, maximum).map_err(|_| InvalidFrame::Range)
 }
 
@@ -97,7 +97,7 @@ impl EntryPath {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum EntryContent {
+pub(super) enum EntryContent {
     Directory,
     File {
         byte_length: usize,
@@ -123,7 +123,7 @@ impl InventoryEntry {
             EntryContent::File { .. } => RootKind::File,
         }
     }
-    fn parse(value: &Value) -> Result<Self, InvalidFrame> {
+    pub(super) fn parse(value: &Value) -> Result<Self, InvalidFrame> {
         // A malformed directory can still carry a file-only numeric member.
         // Guard every numeric schema location before evaluating oneOf branches.
         let byte_length = value
@@ -146,15 +146,32 @@ impl InventoryEntry {
             content,
         })
     }
+    pub(super) fn content(&self) -> &EntryContent {
+        &self.content
+    }
+    pub(super) fn wire_value(&self) -> Value {
+        match self.content {
+            EntryContent::Directory => {
+                serde_json::json!({"kind":"directory","entryId":self.id.as_str(),"path":self.path()})
+            }
+            EntryContent::File {
+                byte_length,
+                sha256,
+            } => {
+                serde_json::json!({"kind":"file","entryId":self.id.as_str(),"path":self.path(),"byteLength":byte_length,
+                "sha256":sha256.0.iter().map(|byte|format!("{byte:02x}")).collect::<String>()})
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Summary {
-    entries: usize,
-    files: usize,
-    directories: usize,
-    source_bytes: usize,
-    digest: InventorySha256,
+pub(super) struct Summary {
+    pub(super) entries: usize,
+    pub(super) files: usize,
+    pub(super) directories: usize,
+    pub(super) source_bytes: usize,
+    pub(super) digest: InventorySha256,
 }
 impl Summary {
     fn parse(value: &Value) -> Result<Self, InvalidFrame> {
@@ -197,39 +214,7 @@ impl Inventory {
     /// independent checks; this parser does not grant those authorities.
     pub fn parse(ready: &str, entry_frames: &[&str]) -> Result<Self, InventoryError> {
         let ready = parse(ready, MAX_REPLY_BYTES)?;
-        let summary = Summary::parse(&ready["inventory"])?;
-        // These other ready-result numbers must also be safe before schema
-        // validation, even though this boundary verifies only the inventory.
-        if let Some(record) = ready["origin"].get("record") {
-            if let Some(length) = record.get("byteLength") {
-                count(length, MAX_BYTES)?;
-            }
-            if let Some(schema) = record.get("schema") {
-                count(schema, 1)?;
-            }
-        }
-        if let Some(length) = ready["projection"].get("byteLength") {
-            count(length, MAX_BYTES)?;
-        }
-        validate(Schema::Ready, &ready)?;
-        let roots = std::iter::once(&ready["primary"])
-            .chain(
-                ready["companions"]
-                    .as_array()
-                    .ok_or(InvalidFrame::Shape)?
-                    .iter(),
-            )
-            .map(|root| {
-                Ok(Root {
-                    kind: match root["kind"].as_str() {
-                        Some("file") => RootKind::File,
-                        Some("directory") => RootKind::Directory,
-                        _ => return Err(InvalidFrame::Shape),
-                    },
-                    path: RootPath::parse(&root["path"])?,
-                })
-            })
-            .collect::<Result<Vec<_>, InvalidFrame>>()?;
+        let (roots, summary) = ready_metadata(&ready)?;
         if entry_frames.len() > MAX_ENTRIES || entry_frames.len() != summary.entries {
             return Err(InventoryError::Counts);
         }
@@ -250,9 +235,56 @@ impl Inventory {
                 .ok_or(InventoryError::MetadataBudget)?;
             entries.push(entry);
         }
-        check(&roots, &summary, &entries)?;
+        Self::assemble(&roots, summary, entries)
+    }
+    pub(super) fn assemble(
+        roots: &[Root],
+        summary: Summary,
+        entries: Vec<InventoryEntry>,
+    ) -> Result<Self, InventoryError> {
+        if entries.len() != summary.entries || entries.len() > MAX_ENTRIES {
+            return Err(InventoryError::Counts);
+        }
+        check(roots, &summary, &entries)?;
         Ok(Self { entries, summary })
     }
+}
+
+pub(super) fn ready_metadata(ready: &Value) -> Result<(Vec<Root>, Summary), InvalidFrame> {
+    let summary = Summary::parse(&ready["inventory"])?;
+    // These other ready-result numbers must also be safe before schema
+    // validation, even though this boundary verifies only the inventory.
+    if let Some(record) = ready["origin"].get("record") {
+        if let Some(length) = record.get("byteLength") {
+            count(length, MAX_BYTES)?;
+        }
+        if let Some(schema) = record.get("schema") {
+            count(schema, 1)?;
+        }
+    }
+    if let Some(length) = ready["projection"].get("byteLength") {
+        count(length, MAX_BYTES)?;
+    }
+    validate(Schema::Ready, ready)?;
+    let roots = std::iter::once(&ready["primary"])
+        .chain(
+            ready["companions"]
+                .as_array()
+                .ok_or(InvalidFrame::Shape)?
+                .iter(),
+        )
+        .map(|root| {
+            Ok(Root {
+                kind: match root["kind"].as_str() {
+                    Some("file") => RootKind::File,
+                    Some("directory") => RootKind::Directory,
+                    _ => return Err(InvalidFrame::Shape),
+                },
+                path: RootPath::parse(&root["path"])?,
+            })
+        })
+        .collect::<Result<Vec<_>, InvalidFrame>>()?;
+    Ok((roots, summary))
 }
 
 struct NamespacePath<'a> {
