@@ -40,3 +40,9 @@ mod source_compile;
 
 #[cfg(test)]
 mod bound_input_tests;
+
+#[cfg(test)]
+mod observed_tests;
+
+mod observation_check;
+mod observed;
