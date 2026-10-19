@@ -1,4 +1,66 @@
-# MEP model transport reference cases
+# MEP compatibility cases
+
+## Executable guest qualification
+
+`morphir mck mep guest-run` runs a real Content-Length framed JSON-RPC guest
+through the shared Rust MCK engine. The executable and repeated arguments are
+explicit. A Wasm guest can run through its installed Node embedding host; a
+native stdio guest uses its executable directly. No shell interprets arguments.
+
+```bash
+morphir mck mep guest-run \
+  --kit spec/mep/mck/guest-moonbit-bool.json \
+  --expect-kit-sha256 <fixed-sha256> \
+  --host /absolute/path/to/node \
+  --host-arg /absolute/path/to/node-mep-cli.mjs \
+  --host-arg /absolute/path/to/extension \
+  --identity-file /absolute/path/to/node-mep-cli.mjs \
+  --identity-file /absolute/path/to/extension/manifest.ion \
+  --identity-file /absolute/path/to/extension/model.wasm \
+  --report .dev/mep-guest.json
+morphir mck mep report-check \
+  --kit spec/mep/mck/guest-moonbit-bool.json .dev/mep-guest.json
+```
+
+Pin every runtime host module and guest artifact with repeated `--identity-file`
+arguments, including imported modules. The runner records the executable's
+resolved path and SHA-256, its ordered argument list, all identity files, its own
+binary and build identity, and the exact corpus SHA-256. Report rechecking
+requires the same checker binary and unchanged files. The kit is an explicit
+local input, independent of the IR kit embedded in the CLI.
+
+The initial profile is `moonbit-model-bool-library-v1`. Its fixed source contains
+an identity function with mixed-case and underscore names, and a Boolean
+constant. The shared corpus fixes their complete canonical IR semantics and
+generated function bodies, signatures, names, manifests, and artifact inventory.
+Function declaration order is unrestricted. Rich model payloads must have valid
+canonical base64, exact length and SHA-256, the model annotation, complete IR,
+bounded structure, original source names and locations, and exact compilation
+context provenance. The symbols sidecar must preserve original metadata as Ion,
+including decimal scale and ordered annotations, and bind source and generated
+node identities. Original model bytes and envelope must survive generation.
+
+Every case is required. The suite exercises description and negotiation,
+compilation and generation, repeat calls, unknown rich Ion facts, malformed
+payloads and requests with recovery, lossy JSON export refusal, independent plain
+JSON model generation, legacy JSON generation, notifications, shutdown and exit.
+Separate fresh processes exercise legacy-only, compile-only, and tightly bounded
+negotiation. A request cannot widen negotiated bounds. The process transport
+reuses MCK deadlines, stderr draining, frame limits and process-tree cleanup.
+
+Reports retain every request and complete response, including the first failed
+comparison. `report-check` reconstructs the required case order and requests,
+validates every response envelope, rechecks models and artifacts against the
+independent corpus, and verifies identities. A stored `qualified:true` flag does
+not establish qualification. Exit 0 means every required observation qualified;
+failures and operational errors return 1, and missing CLI arguments return 2.
+
+This is bounded guest qualification. It does not qualify independent host
+admission, all languages/backends, every Boolean frontend construct, cancellation,
+progress, or trusted remote evidence. The broader host qualification remains
+[#965](https://github.com/finos/morphir/issues/965).
+
+## Model transport reference corpus
 
 [`model-transport.cases.json`](model-transport.cases.json) records fixed examples
 for the additive `compileModel` and `generateModel` contract. Its corpus contract
@@ -6,15 +68,16 @@ is `0.1.0-draft.1`, its MEP target is exactly `0.2.0-draft.1`, and the independe
 model envelope is exactly `0.1.0-draft.1`. The unchanged JSON operations remain
 available through legacy MEP `0.1`.
 
-**These are reference cases, not executable host or guest qualification.** The
+**The model-transport corpus contains reference cases.** The
 existing contract test checks corpus identity, case inventory, and asset byte
 lengths, digests, and literal base64 content. Positive JSON payloads also pass
 the existing IR codec structural checks and the shared reference IR support
 table. These checks do not implement MEP negotiation, host admission, a guest,
 or an independent compatibility runner. Passing
 those integrity checks does not establish support for the methods, the model
-profile, IR `4.0.0`, or any guarantee. Executable host/guest cases and delivery
-through the existing native MCK runner remain [#965](https://github.com/finos/morphir/issues/965).
+profile, IR `4.0.0`, or any guarantee. The bounded guest suite above is separate
+from these reference cases. Broader host qualification remains
+[#965](https://github.com/finos/morphir/issues/965).
 
 The additive methods refine [#967](https://github.com/finos/morphir/issues/967):
 IR has an explicit representation, Ion can pass without conversion, and JSON

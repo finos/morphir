@@ -16,6 +16,7 @@ pub mod format_version;
 pub mod ir;
 pub mod json;
 pub mod kit;
+pub mod mep;
 pub mod metadata;
 pub mod node_address;
 pub mod package;

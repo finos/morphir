@@ -1,0 +1,67 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "profile": "moonbit-model-bool-library-v1",
+  "mepVersion": "0.2.0-draft.1",
+  "opaqueFixture": "{enrichment:{owner:\"urn:morphir:mck:unknown\",data:source_name::target_name::{exact:9007199254740993,amount:123.4500,future:future_vocabulary::{enabled:true}}},provenance:future_origin::{producer:\"independent-mck\"},futureBody:future_body::{values:[null.int,123.4500]}}",
+  "consumer": {
+    "files": {
+      "moon.mod": "name = \"mck/bool-consumer\"\nversion = \"0.0.0\"\nimport {\n  \"morphir-generated/p_6d636b2f626f6f6c@0.0.0\",\n}\n",
+      "moon.pkg": "pkgtype(kind: \"executable\")\nimport {\n  \"morphir-generated/p_6d636b2f626f6f6c\" @generated,\n}\n",
+      "main.mbt": "fn main raise {\n  assert_true(@generated.isReady()(true))\n  assert_true(!@generated.isReady()(false))\n  assert_true(@generated.always())\n  println(\"Independent MEP consumer passed\")\n}\n"
+    },
+    "expectedStdout": "Independent MEP consumer passed\n"
+  },
+  "source": {
+    "languageId": "moonbit",
+    "sources": {
+      "root": "file:///mck/source",
+      "documents": [{
+        "uri": "file:///mck/source/main.mbt",
+        "languageId": "moonbit",
+        "version": 19,
+        "text": "pub fn isReady(flag_value : Bool) -> Bool { flag_value }\npub fn always() -> Bool { true }"
+      }]
+    },
+    "package": { "name": "mck/bool", "exposedModules": ["main"] },
+    "options": { "typesOnly": false, "irVersion": "4.0.0", "profile": "moonbit-model-bool-library-v1" },
+    "contextDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "expectedIr": {
+    "formatVersion": 4,
+    "distribution": { "Library": {
+      "packageName": "mck/bool", "dependencies": {}, "def": { "modules": {
+        "main": { "Public": { "types": {}, "values": {
+          "is-ready": { "Public": { "ExpressionBody": {
+            "inputTypes": { "flag-value": "morphir/SDK:basics#bool" },
+            "outputType": "morphir/SDK:basics#bool", "body": { "Variable": "flag-value" }
+          }}},
+          "always": { "Public": { "ExpressionBody": {
+            "inputTypes": {}, "outputType": "morphir/SDK:basics#bool", "body": { "Literal": { "BoolLiteral": true } }
+          }}}
+        }}}
+      }}
+    }}
+  },
+  "plainIr": {
+    "formatVersion": 4,
+    "distribution": { "Library": {
+      "packageName": "mck/bool", "dependencies": {}, "def": { "modules": {
+        "main": { "Public": { "types": {}, "values": {
+          "always": { "Public": { "ExpressionBody": {
+            "inputTypes": {}, "outputType": "morphir/SDK:basics#bool", "body": { "Literal": { "BoolLiteral": true } }
+          }}}
+        }}}
+      }}
+    }}
+  },
+  "expectedJsonArtifacts": {
+    "library.mbt": "///|\npub fn always() -> Bool raise @sdk.SdkError {\n  true\n}\n",
+    "moon.pkg": "import {\n  \"finos/morphir-sdk\" @sdk,\n}\n",
+    "moon.mod": "name = \"morphir-generated/p_6d636b2f626f6f6c\"\nversion = \"0.0.0\"\nimport {\n  \"finos/morphir-sdk@0.1.0\",\n}\n"
+  },
+  "expectedArtifacts": {
+    "library.mbt": "///|\npub fn always() -> Bool raise @sdk.SdkError {\n  true\n}\n\n///|\npub fn isReady() -> ((Bool) -> Bool raise @sdk.SdkError) raise @sdk.SdkError {\n  fn(flag_value : Bool) -> Bool raise @sdk.SdkError { flag_value }\n}\n",
+    "moon.pkg": "import {\n  \"finos/morphir-sdk\" @sdk,\n}\n",
+    "moon.mod": "name = \"morphir-generated/p_6d636b2f626f6f6c\"\nversion = \"0.0.0\"\nimport {\n  \"finos/morphir-sdk@0.1.0\",\n}\n"
+  }
+}

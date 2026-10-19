@@ -39,7 +39,7 @@ spec/mep/
     mep.ir.json
     json-schema/            later: finos/morphir-rust#242
     wit/morphir-mep/        later: finos/morphir-rust#243
-  mck/                      fixed reference cases; executable suite follows #965
+  mck/                      reference cases and bounded executable guest suite
 ```
 
 ## Wire mapping
@@ -139,7 +139,8 @@ Not covered yet:
 
 - Rust, TypeScript and Python types generated from the IR
 - JSON Schema and WIT output (`generated/json-schema/`, `generated/wit/`)
-- executable host/guest MEP conformance; `mck/` currently contains reference cases
+- broader independent host MEP conformance; `mck/` includes a bounded executable
+  guest suite through `morphir mck mep` alongside reference cases
 - runtime implementation of rich-model SDK/host adapters; legacy `Json` fields remain supported
 - workspace discovery payloads, which live in `morphir_workspace`
 - validate and transform payloads

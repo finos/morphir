@@ -15,7 +15,7 @@ serde_json = { workspace = true, features = ["raw_value", "arbitrary_precision"]
 indexmap = { version = "2", features = ["serde"] }
 serde-saphyr.workspace = true
 granit-parser.workspace = true
-ion-rs = "1.0.1"
+ion-rs = { version = "1.0.1", features = ["experimental-reader-writer"] }
 jsonschema.workspace = true
 sha2.workspace = true
 regex.workspace = true
@@ -58,6 +58,11 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 [[test]]
 name = "transport"
 path = "tests/transport.rs"
+harness = false
+
+[[test]]
+name = "mep_transport"
+path = "tests/mep_transport.rs"
 harness = false
 
 # Proves cucumber-rs's `inventory` step collection links across the finos/morphir and
