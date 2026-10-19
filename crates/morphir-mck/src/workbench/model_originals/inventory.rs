@@ -269,6 +269,20 @@ pub(super) fn ready_metadata(ready: &Value) -> Result<(Vec<Root>, Summary), Inva
         count(length, MAX_BYTES)?;
     }
     validate(Schema::Ready, ready)?;
+    if ready["sourceFormatVersion"]["status"] == "reported" {
+        super::ModelRelease::parse(
+            ready["sourceFormatVersion"]["release"]
+                .as_str()
+                .ok_or(InvalidFrame::Shape)?,
+        )?;
+    }
+    if ready["projection"]["status"] == "available" {
+        super::ModelRelease::parse(
+            ready["projection"]["formatVersion"]
+                .as_str()
+                .ok_or(InvalidFrame::Shape)?,
+        )?;
+    }
     let companions = ready["companions"].as_array().ok_or(InvalidFrame::Shape)?;
     // A primary-only summary describes only the selected primary. Ignoring an
     // out-of-scope declaration at capture time cannot authorize companion roots

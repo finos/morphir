@@ -2,7 +2,8 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use morphir_mck::workbench::model_originals::{
     CaptureEvidence, EvidenceError, Exchange, ExpectedBytes, ExpectedOriginalEntry,
-    ExpectedOriginals, OriginalTransfer, Parameters, Request, SessionId,
+    ExpectedOriginals, ExpectedProjection, OriginalTransfer, Parameters, ProjectionWorkLimits,
+    Request, SessionId,
 };
 use serde_json::{Value, json};
 
@@ -345,11 +346,11 @@ fn actual_64_mib_original_verifies_against_the_frozen_compact_recipe() {
     let mut summary = packet["cases"][0]["expected"]["summary"].clone();
     summary["coverage"] = json!({"kind":"primary"});
     summary["companions"] = json!([]);
-    summary["projection"] = json!({"status":"not-requested"});
+    summary["projection"] = json!({"status":"available","codec":"morphir-json","byteLength":length,"sha256":source_digest,"formatVersion":"4.0.0"});
     summary["inventory"] = json!({"entryCount":1,"fileCount":1,"directoryCount":0,"sourceByteLength":length,"sha256":inventory_digest});
     let mut capture = packet["cases"][0]["input"]["request"].clone();
     capture["params"]["scope"] = json!("primary");
-    capture["params"]["semantic"] = json!("none");
+    capture["params"]["semantic"] = json!("projection");
     let capture = Request::parse(&capture.to_string()).unwrap();
     let capture_reply = reply(&summary);
     let page = request(
@@ -409,5 +410,34 @@ fn actual_64_mib_original_verifies_against_the_frozen_compact_recipe() {
         )
         .unwrap();
     assert_eq!(checked.inventory().source_byte_length(), length);
+    assert_eq!(reads.len(), 1024);
+    drop(reads);
+    drop(replies);
+    drop(requests);
+    // A second real64MiB transfer uses the independent projection role. This
+    // verifies both byte streams, not a host retained-pool or allocator ledger.
+    let mut requests = Vec::new();
+    let mut replies = Vec::new();
+    for offset in (0..length).step_by(65536) {
+        requests.push(request("read",json!({"contractVersion":"0.1.0-draft.1","captureId":"capture-A","target":{"kind":"semantic-projection"},"offset":offset,"maxBytes":65536})));
+        let mut bytes = vec![b' '; 65536];
+        if offset + 65536 == length {
+            bytes[65536 - tail.len()..].copy_from_slice(tail);
+        }
+        replies.push(reply(&json!({"profile":"morphir/workbench/model-originals","contractVersion":"0.1.0-draft.1","binding":summary["binding"],"captureId":"capture-A","target":{"kind":"semantic-projection"},"offset":offset,"nextOffset":offset+65536,"content":STANDARD.encode(bytes)})));
+    }
+    let reads = requests
+        .iter()
+        .zip(&replies)
+        .map(|(request, reply)| Exchange { request, reply })
+        .collect::<Vec<_>>();
+    let expectation = ExpectedProjection::json(
+        std::str::from_utf8(tail).unwrap(),
+        ProjectionWorkLimits::new(128 * 1024 * 1024, 1_000_000).unwrap(),
+    )
+    .unwrap();
+    let projection = checked.verify_projection(&expectation, &reads).unwrap();
+    assert_eq!(projection.byte_length(), length);
+    assert_eq!(projection.format_version().as_str(), "4.0.0");
     assert_eq!(reads.len(), 1024);
 }

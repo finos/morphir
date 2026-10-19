@@ -4,8 +4,9 @@
 use super::inventory::{EntryContent, Summary, count, hash, ready_metadata};
 use super::{
     CaptureId, CaptureScope, EntryId, InvalidFrame, Inventory, InventoryEntry, InventoryError,
-    InventoryIndex, Parameters, ProjectId, ProviderId, ReadTarget, Request, RequestId, Root,
-    Schema, SemanticRequest, SessionId, SourceIdentity, SourceLocator, parse, validate,
+    InventoryIndex, ModelRelease, Parameters, ProjectId, ProviderId, ReadTarget, Request,
+    RequestId, Root, Schema, SemanticRequest, SessionId, SourceIdentity, SourceLocator, parse,
+    validate,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Deserialize;
@@ -197,6 +198,43 @@ struct ByteContentDescriptor {
     length: usize,
     digest: [u8; 32],
 }
+#[derive(Debug, Clone)]
+enum ProjectionDescriptor {
+    NotRequested,
+    Unavailable(ProjectionRefusal),
+    Available {
+        bytes: ByteContentDescriptor,
+        version: ModelRelease,
+    },
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectionRefusal {
+    UnsupportedRepresentation,
+    InvalidModel,
+    DecodeLimit,
+    ProjectionLimit,
+    Capacity,
+    Timeout,
+}
+impl ProjectionRefusal {
+    fn parse(value: &Value) -> Result<Self, InvalidFrame> {
+        match value.as_str() {
+            Some("unsupported_representation") => Ok(Self::UnsupportedRepresentation),
+            Some("invalid_model") => Ok(Self::InvalidModel),
+            Some("decode_limit") => Ok(Self::DecodeLimit),
+            Some("projection_limit") => Ok(Self::ProjectionLimit),
+            Some("capacity") => Ok(Self::Capacity),
+            Some("timeout") => Ok(Self::Timeout),
+            _ => Err(InvalidFrame::Shape),
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectionStatus {
+    NotRequested,
+    Unavailable(ProjectionRefusal),
+    Available,
+}
 
 /// A caller-supplied expected ready description. Its binding must come from the
 /// independently authored fixture/current connection, not from an untrusted page.
@@ -206,7 +244,7 @@ pub struct CaptureExpectation {
     capture: CaptureId,
     roots: Vec<Root>,
     summary: Summary,
-    projection_bytes: Option<ByteContentDescriptor>,
+    projection: ProjectionDescriptor,
 }
 impl CaptureExpectation {
     pub fn parse(ready: &str) -> Result<Self, TransferError> {
@@ -272,20 +310,30 @@ impl CaptureExpectation {
         let (roots, summary) = ready_metadata(ready)?;
         let binding = Binding::parse(&ready["binding"])?;
         let capture = CaptureId::parse(&ready["captureId"])?;
-        let projection_bytes = if ready["projection"]["status"] == "available" {
-            Some(ByteContentDescriptor {
-                length: count(&ready["projection"]["byteLength"], MAX_SOURCE_BYTES)?,
-                digest: hash(&ready["projection"]["sha256"])?,
-            })
-        } else {
-            None
+        let projection = match ready["projection"]["status"].as_str() {
+            Some("available") => ProjectionDescriptor::Available {
+                bytes: ByteContentDescriptor {
+                    length: count(&ready["projection"]["byteLength"], MAX_SOURCE_BYTES)?,
+                    digest: hash(&ready["projection"]["sha256"])?,
+                },
+                version: ModelRelease::parse(
+                    ready["projection"]["formatVersion"]
+                        .as_str()
+                        .ok_or(InvalidFrame::Shape)?,
+                )?,
+            },
+            Some("not-requested") => ProjectionDescriptor::NotRequested,
+            Some("unavailable") => ProjectionDescriptor::Unavailable(ProjectionRefusal::parse(
+                &ready["projection"]["reason"],
+            )?),
+            _ => return Err(InvalidFrame::Shape.into()),
         };
         Ok(Self {
             binding,
             capture,
             roots,
             summary,
-            projection_bytes,
+            projection,
         })
     }
     pub fn verify_inventory(
@@ -432,6 +480,19 @@ pub struct CaptureInventory {
     inventory: Inventory,
 }
 impl CaptureInventory {
+    pub fn projection_status(&self) -> ProjectionStatus {
+        match self.expected.projection {
+            ProjectionDescriptor::NotRequested => ProjectionStatus::NotRequested,
+            ProjectionDescriptor::Unavailable(reason) => ProjectionStatus::Unavailable(reason),
+            ProjectionDescriptor::Available { .. } => ProjectionStatus::Available,
+        }
+    }
+    pub fn projection_version(&self) -> Option<&ModelRelease> {
+        match &self.expected.projection {
+            ProjectionDescriptor::Available { version, .. } => Some(version),
+            ProjectionDescriptor::NotRequested | ProjectionDescriptor::Unavailable(_) => None,
+        }
+    }
     pub fn inventory(&self) -> &Inventory {
         &self.inventory
     }
@@ -506,9 +567,12 @@ impl CaptureInventory {
                     EntryContent::Directory => Err(TransferError::Target),
                 }
             }
-            ReadTarget::SemanticProjection => {
-                self.expected.projection_bytes.ok_or(TransferError::Target)
-            }
+            ReadTarget::SemanticProjection => match &self.expected.projection {
+                ProjectionDescriptor::Available { bytes, .. } => Ok(*bytes),
+                ProjectionDescriptor::NotRequested | ProjectionDescriptor::Unavailable(_) => {
+                    Err(TransferError::Target)
+                }
+            },
         }
     }
     pub fn verify_stream(

@@ -12,13 +12,18 @@ mod inventory;
 pub use inventory::{Inventory, InventoryEntry, InventoryError, InventorySha256};
 mod transfer;
 pub use transfer::{
-    CaptureExpectation, CaptureInventory, CheckedStream, Exchange, FailureCode, RemoteFailure,
-    RpcFailureKind, TransferError,
+    CaptureExpectation, CaptureInventory, CheckedStream, Exchange, FailureCode, ProjectionRefusal,
+    ProjectionStatus, RemoteFailure, RpcFailureKind, TransferError,
 };
 mod evidence;
 pub use evidence::{
     CaptureEvidence, CheckedOriginalsEvidence, EvidenceError, ExpectedBytes, ExpectedOriginalEntry,
     ExpectedOriginals, OriginalTransfer,
+};
+mod projection;
+pub use projection::{
+    CheckedProjectionEvidence, ComparisonResource, ExpectedProjection, ModelRelease,
+    ProjectionError, ProjectionWorkLimits,
 };
 
 /// Inclusive bound on the complete JSON-RPC request, before parsing.

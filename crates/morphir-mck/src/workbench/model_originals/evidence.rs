@@ -257,6 +257,15 @@ impl CheckedOriginalsEvidence {
     pub fn inventory(&self) -> &Inventory {
         self.capture.inventory()
     }
+    /// Check projection bytes/semantics against this already verified capture.
+    /// The result still grants no current-model or execution authority.
+    pub fn verify_projection(
+        &self,
+        expected: &super::ExpectedProjection<'_>,
+        exchanges: &[Exchange<'_>],
+    ) -> Result<super::CheckedProjectionEvidence, super::ProjectionError> {
+        expected.verify(&self.capture, exchanges)
+    }
 }
 
 #[cfg(test)]
