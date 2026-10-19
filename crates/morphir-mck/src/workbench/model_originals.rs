@@ -12,8 +12,25 @@ mod inventory;
 pub use inventory::{Inventory, InventoryEntry, InventoryError, InventorySha256};
 mod transfer;
 pub use transfer::{
-    CaptureExpectation, CaptureInventory, CheckedStream, Exchange, FailureCode, RemoteFailure,
-    RpcFailureKind, TransferError,
+    CaptureExpectation, CaptureInventory, CheckedStream, Exchange, FailureCode, ProjectionRefusal,
+    ProjectionStatus, RemoteFailure, RpcFailureKind, TransferError,
+};
+mod evidence;
+mod fixture_bytes;
+pub use evidence::{
+    CaptureEvidence, CheckedOriginalsEvidence, EvidenceError, ExpectedBytes, ExpectedOriginalEntry,
+    ExpectedOriginals, ExpectedSource, OriginalTransfer,
+};
+pub use fixture_bytes::{FixtureByteError, FixtureByteLimits, FixtureBytes};
+mod projection;
+pub use projection::{
+    CheckedProjectionEvidence, ComparisonResource, ExpectedProjection, ModelRelease,
+    ProjectionError, ProjectionWorkLimits,
+};
+mod transcript;
+pub use transcript::{
+    CaptureCompletion, CheckedCaptureTranscript, ConnectedCaptureExpectation,
+    ExpectedProjectionState, Transcript, TranscriptError, TranscriptLimits,
 };
 
 /// Inclusive bound on the complete JSON-RPC request, before parsing.
@@ -66,12 +83,14 @@ macro_rules! bounded_identity {
             pub fn as_str(&self) -> &str {
                 &self.0
             }
-            fn parse(value: &Value) -> Result<Self, InvalidFrame> {
-                let text = value.as_str().ok_or(InvalidFrame::Identity)?;
+            pub fn new(text: &str) -> Result<Self, InvalidFrame> {
                 if text.is_empty() || text.len() > $limit || text.chars().any(char::is_control) {
                     return Err(InvalidFrame::Identity);
                 }
                 Ok(Self(text.to_owned()))
+            }
+            fn parse(value: &Value) -> Result<Self, InvalidFrame> {
+                Self::new(value.as_str().ok_or(InvalidFrame::Identity)?)
             }
         }
     };
@@ -288,6 +307,38 @@ pub struct Root {
     pub kind: RootKind,
     pub path: RootPath,
 }
+impl Root {
+    pub fn file(path: &str) -> Result<Self, InvalidFrame> {
+        Ok(Self {
+            kind: RootKind::File,
+            path: RootPath::parse(&path.into())?,
+        })
+    }
+    pub fn directory(path: &str) -> Result<Self, InvalidFrame> {
+        Ok(Self {
+            kind: RootKind::Directory,
+            path: RootPath::parse(&path.into())?,
+        })
+    }
+}
+/// An actual source-header claim, independent of projection availability and
+/// consumer support. Expected values must come from independent source facts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SourceFormatVersion {
+    NotReported,
+    Reported(ModelRelease),
+}
+impl SourceFormatVersion {
+    fn parse(value: &Value) -> Result<Self, InvalidFrame> {
+        match value["status"].as_str() {
+            Some("not-reported") => Ok(Self::NotReported),
+            Some("reported") => Ok(Self::Reported(ModelRelease::parse(
+                value["release"].as_str().ok_or(InvalidFrame::Shape)?,
+            )?)),
+            _ => Err(InvalidFrame::Shape),
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     companions: Vec<Root>,
@@ -317,38 +368,42 @@ impl Declaration {
                 })
             })
             .collect::<Result<Vec<_>, InvalidFrame>>()?;
-        let mut prefixes = BTreeMap::new();
-        let mut complete = Vec::new();
-        for root in &companions {
-            let path = root.path.as_str();
-            let key = folded(path);
-            if complete.iter().any(|previous: &String| {
-                key == *previous
-                    || key
-                        .strip_prefix(previous)
-                        .is_some_and(|s| s.starts_with('/'))
-                    || previous
-                        .strip_prefix(&key)
-                        .is_some_and(|s| s.starts_with('/'))
-            }) {
-                return Err(InvalidFrame::PathSet);
-            }
-            for end in path
-                .match_indices('/')
-                .map(|(i, _)| i)
-                .chain(std::iter::once(path.len()))
-            {
-                let prefix = &path[..end];
-                if let Some(previous) = prefixes.insert(folded(prefix), prefix)
-                    && previous != prefix
-                {
-                    return Err(InvalidFrame::PathSet);
-                }
-            }
-            complete.push(key);
-        }
+        validate_root_set(&companions)?;
         Ok(Self { companions })
     }
+}
+fn validate_root_set(roots: &[Root]) -> Result<(), InvalidFrame> {
+    let mut prefixes = BTreeMap::new();
+    let mut complete = Vec::new();
+    for root in roots {
+        let path = root.path.as_str();
+        let key = folded(path);
+        if complete.iter().any(|previous: &String| {
+            key == *previous
+                || key
+                    .strip_prefix(previous)
+                    .is_some_and(|s| s.starts_with('/'))
+                || previous
+                    .strip_prefix(&key)
+                    .is_some_and(|s| s.starts_with('/'))
+        }) {
+            return Err(InvalidFrame::PathSet);
+        }
+        for end in path
+            .match_indices('/')
+            .map(|(i, _)| i)
+            .chain(std::iter::once(path.len()))
+        {
+            let prefix = &path[..end];
+            if let Some(previous) = prefixes.insert(folded(prefix), prefix)
+                && previous != prefix
+            {
+                return Err(InvalidFrame::PathSet);
+            }
+        }
+        complete.push(key);
+    }
+    Ok(())
 }
 fn folded(path: &str) -> String {
     path.nfkc().case_fold().nfc().collect()

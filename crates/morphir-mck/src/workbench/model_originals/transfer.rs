@@ -3,9 +3,10 @@
 //! original/model owner. Those decisions require actual host/client evidence.
 use super::inventory::{EntryContent, Summary, count, hash, ready_metadata};
 use super::{
-    CaptureId, EntryId, InvalidFrame, Inventory, InventoryEntry, InventoryError, InventoryIndex,
-    Parameters, ProjectId, ProviderId, ReadTarget, Request, RequestId, Root, Schema, SessionId,
-    SourceIdentity, SourceLocator, parse, validate,
+    CaptureId, CaptureScope, EntryId, InvalidFrame, Inventory, InventoryEntry, InventoryError,
+    InventoryIndex, ModelRelease, Parameters, ProjectId, ProviderId, ReadTarget, Request,
+    RequestId, Root, Schema, SemanticRequest, SessionId, SourceIdentity, SourceLocator, parse,
+    validate,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Deserialize;
@@ -23,6 +24,8 @@ pub enum TransferError {
     Method,
     RequestIdentity,
     Binding,
+    CaptureScope,
+    SemanticRequest,
     Capture,
     Progress,
     Pagination,
@@ -50,6 +53,8 @@ impl fmt::Display for TransferError {
             Self::Method => "exchange has the wrong model-originals method",
             Self::RequestIdentity => "reply does not preserve the exact request identity",
             Self::Binding => "reply differs from its expected session/source/project binding",
+            Self::CaptureScope => "ready coverage differs from the requested capture scope",
+            Self::SemanticRequest => "projection status differs from the requested semantic mode",
             Self::Capture => "exchange differs from its expected capture",
             Self::Progress => "exchange does not make exact contiguous progress",
             Self::Pagination => "inventory page is not the largest permitted prefix",
@@ -193,6 +198,43 @@ struct ByteContentDescriptor {
     length: usize,
     digest: [u8; 32],
 }
+#[derive(Debug, Clone)]
+enum ProjectionDescriptor {
+    NotRequested,
+    Unavailable(ProjectionRefusal),
+    Available {
+        bytes: ByteContentDescriptor,
+        version: ModelRelease,
+    },
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectionRefusal {
+    UnsupportedRepresentation,
+    InvalidModel,
+    DecodeLimit,
+    ProjectionLimit,
+    Capacity,
+    Timeout,
+}
+impl ProjectionRefusal {
+    fn parse(value: &Value) -> Result<Self, InvalidFrame> {
+        match value.as_str() {
+            Some("unsupported_representation") => Ok(Self::UnsupportedRepresentation),
+            Some("invalid_model") => Ok(Self::InvalidModel),
+            Some("decode_limit") => Ok(Self::DecodeLimit),
+            Some("projection_limit") => Ok(Self::ProjectionLimit),
+            Some("capacity") => Ok(Self::Capacity),
+            Some("timeout") => Ok(Self::Timeout),
+            _ => Err(InvalidFrame::Shape),
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectionStatus {
+    NotRequested,
+    Unavailable(ProjectionRefusal),
+    Available,
+}
 
 /// A caller-supplied expected ready description. Its binding must come from the
 /// independently authored fixture/current connection, not from an untrusted page.
@@ -201,29 +243,129 @@ pub struct CaptureExpectation {
     binding: Binding,
     capture: CaptureId,
     roots: Vec<Root>,
+    source_format: super::SourceFormatVersion,
     summary: Summary,
-    projection_bytes: Option<ByteContentDescriptor>,
+    projection: ProjectionDescriptor,
 }
 impl CaptureExpectation {
+    pub fn primary(&self) -> &Root {
+        &self.roots[0]
+    }
+    pub fn companions(&self) -> &[Root] {
+        &self.roots[1..]
+    }
+    pub fn source_format_version(&self) -> &super::SourceFormatVersion {
+        &self.source_format
+    }
+    /// Validate an actual release acknowledgement for this exact capture. Two
+    /// calls can establish the protocol's immediate idempotent release; this
+    /// proves neither memory reclamation nor another connection's authority.
+    pub fn verify_release(&self, exchange: &Exchange<'_>) -> Result<(), TransferError> {
+        let Parameters::Release { capture } = exchange.request.parameters() else {
+            return Err(TransferError::Method);
+        };
+        if capture != &self.capture {
+            return Err(TransferError::Capture);
+        }
+        let result = reply(exchange)?;
+        if result.as_object().is_none_or(|fields| fields.len() != 4)
+            || result["profile"] != "morphir/workbench/model-originals"
+            || result["contractVersion"] != "0.1.0-draft.1"
+            || result["status"] != "released"
+            || result["captureId"].as_str() != Some(self.capture.as_str())
+        {
+            return Err(InvalidFrame::Shape.into());
+        }
+        Ok(())
+    }
     pub fn parse(ready: &str) -> Result<Self, TransferError> {
         let ready = parse(ready, MAX_REPLY_BYTES)?;
-        let (roots, summary) = ready_metadata(&ready)?;
+        Self::from_value(&ready)
+    }
+    /// Bind a ready result to the independently supplied current session and
+    /// actual capture request. This verifies metadata correspondence; the caller
+    /// still checks the enclosing RPC reply, source facts and current authority.
+    pub fn parse_for_request(
+        ready: &str,
+        request: &Request,
+        session: &SessionId,
+    ) -> Result<Self, TransferError> {
+        let ready = parse(ready, MAX_REPLY_BYTES)?;
+        Self::for_request_value(&ready, request, session)
+    }
+    /// Verify the literal enclosing reply as well as its ready result. The
+    /// independent current session is supplied by the caller, never the reply.
+    pub fn from_exchange(
+        exchange: &Exchange<'_>,
+        session: &SessionId,
+    ) -> Result<Self, TransferError> {
+        let ready = reply(exchange)?;
+        Self::for_request_value(&ready, exchange.request, session)
+    }
+    fn for_request_value(
+        ready: &Value,
+        request: &Request,
+        session: &SessionId,
+    ) -> Result<Self, TransferError> {
+        let Parameters::Capture {
+            source,
+            project,
+            scope,
+            semantic,
+        } = request.parameters()
+        else {
+            return Err(TransferError::Method);
+        };
+        let expected = Self::from_value(ready)?;
+        if &expected.binding.session != session
+            || &expected.binding.source != source
+            || &expected.binding.project != project
+        {
+            return Err(TransferError::Binding);
+        }
+        let coverage = match ready["coverage"]["kind"].as_str() {
+            Some("primary") => CaptureScope::Primary,
+            Some("complete") => CaptureScope::Complete,
+            _ => return Err(InvalidFrame::Shape.into()),
+        };
+        if coverage != *scope {
+            return Err(TransferError::CaptureScope);
+        }
+        match (semantic, ready["projection"]["status"].as_str()) {
+            (SemanticRequest::None, Some("not-requested"))
+            | (SemanticRequest::Projection, Some("available" | "unavailable")) => Ok(expected),
+            _ => Err(TransferError::SemanticRequest),
+        }
+    }
+    fn from_value(ready: &Value) -> Result<Self, TransferError> {
+        let (roots, summary) = ready_metadata(ready)?;
         let binding = Binding::parse(&ready["binding"])?;
         let capture = CaptureId::parse(&ready["captureId"])?;
-        let projection_bytes = if ready["projection"]["status"] == "available" {
-            Some(ByteContentDescriptor {
-                length: count(&ready["projection"]["byteLength"], MAX_SOURCE_BYTES)?,
-                digest: hash(&ready["projection"]["sha256"])?,
-            })
-        } else {
-            None
+        let projection = match ready["projection"]["status"].as_str() {
+            Some("available") => ProjectionDescriptor::Available {
+                bytes: ByteContentDescriptor {
+                    length: count(&ready["projection"]["byteLength"], MAX_SOURCE_BYTES)?,
+                    digest: hash(&ready["projection"]["sha256"])?,
+                },
+                version: ModelRelease::parse(
+                    ready["projection"]["formatVersion"]
+                        .as_str()
+                        .ok_or(InvalidFrame::Shape)?,
+                )?,
+            },
+            Some("not-requested") => ProjectionDescriptor::NotRequested,
+            Some("unavailable") => ProjectionDescriptor::Unavailable(ProjectionRefusal::parse(
+                &ready["projection"]["reason"],
+            )?),
+            _ => return Err(InvalidFrame::Shape.into()),
         };
         Ok(Self {
             binding,
             capture,
             roots,
+            source_format: super::SourceFormatVersion::parse(&ready["sourceFormatVersion"])?,
             summary,
-            projection_bytes,
+            projection,
         })
     }
     pub fn verify_inventory(
@@ -370,6 +512,19 @@ pub struct CaptureInventory {
     inventory: Inventory,
 }
 impl CaptureInventory {
+    pub fn projection_status(&self) -> ProjectionStatus {
+        match self.expected.projection {
+            ProjectionDescriptor::NotRequested => ProjectionStatus::NotRequested,
+            ProjectionDescriptor::Unavailable(reason) => ProjectionStatus::Unavailable(reason),
+            ProjectionDescriptor::Available { .. } => ProjectionStatus::Available,
+        }
+    }
+    pub fn projection_version(&self) -> Option<&ModelRelease> {
+        match &self.expected.projection {
+            ProjectionDescriptor::Available { version, .. } => Some(version),
+            ProjectionDescriptor::NotRequested | ProjectionDescriptor::Unavailable(_) => None,
+        }
+    }
     pub fn inventory(&self) -> &Inventory {
         &self.inventory
     }
@@ -444,9 +599,12 @@ impl CaptureInventory {
                     EntryContent::Directory => Err(TransferError::Target),
                 }
             }
-            ReadTarget::SemanticProjection => {
-                self.expected.projection_bytes.ok_or(TransferError::Target)
-            }
+            ReadTarget::SemanticProjection => match &self.expected.projection {
+                ProjectionDescriptor::Available { bytes, .. } => Ok(*bytes),
+                ProjectionDescriptor::NotRequested | ProjectionDescriptor::Unavailable(_) => {
+                    Err(TransferError::Target)
+                }
+            },
         }
     }
     pub fn verify_stream(
