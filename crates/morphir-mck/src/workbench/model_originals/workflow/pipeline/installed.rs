@@ -7,6 +7,8 @@ use super::super::{
 };
 use super::*;
 
+pub(super) mod observation;
+
 pub(super) struct PreparedInstalledClientInventory<'inventory, 'case, 'sources, 'raw, 'supplied> {
     cases: &'inventory [CompiledExecution<'case, 'sources, 'raw, 'supplied>],
     selected: &'inventory CompiledSourceCase<'case, 'sources, 'raw, 'supplied>,

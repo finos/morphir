@@ -1011,3 +1011,6 @@ pub(in crate::workbench) fn replay(
 
 #[cfg(test)]
 mod installed_client_tests;
+
+#[cfg(test)]
+mod installed_observation_tests;

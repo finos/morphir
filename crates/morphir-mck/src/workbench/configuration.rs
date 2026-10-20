@@ -27,6 +27,82 @@ pub(super) enum Configuration {
 pub struct RecordRetentionLimits {
     retained_bytes: u64,
 }
+/// Explicit whole-run permissions for retained installed-client observation.
+/// Zero provides no positive credit. These are neither OS grants nor measured
+/// reads, process starts, current residency, allocator peaks or RSS bounds.
+pub struct InstalledObservationLimits {
+    retained_bytes: u64,
+    stdout_prefix_bytes: u64,
+    stderr_prefix_bytes: u64,
+    snapshot_read_bytes: u64,
+    byte_visits: u64,
+    records: u64,
+}
+impl InstalledObservationLimits {
+    pub fn retained_bytes(&self) -> u64 {
+        self.retained_bytes
+    }
+    pub fn stdout_prefix_bytes(&self) -> u64 {
+        self.stdout_prefix_bytes
+    }
+    pub fn stderr_prefix_bytes(&self) -> u64 {
+        self.stderr_prefix_bytes
+    }
+    pub fn snapshot_read_bytes(&self) -> u64 {
+        self.snapshot_read_bytes
+    }
+    pub fn byte_visits(&self) -> u64 {
+        self.byte_visits
+    }
+    pub fn records(&self) -> u64 {
+        self.records
+    }
+    /// The caller must preserve unsigned count tokens with the existing
+    /// Document::parse_unsigned_counts boundary. No selected dispatch or
+    /// production default is introduced by this component-only parser.
+    pub(super) fn from_document(value: &Document) -> Result<Self, String> {
+        use super::model_originals::workflow::pipeline::policy::{closed, get};
+        fn count(value: &Document) -> Result<u64, String> {
+            let Document::Number(number) = value else {
+                return Err("installed observation count requires canonical u64".into());
+            };
+            let token = number.as_str();
+            if token.is_empty()
+                || !token.bytes().all(|byte| byte.is_ascii_digit())
+                || (token.len() > 1 && token.starts_with('0'))
+            {
+                return Err("installed observation count requires canonical u64".into());
+            }
+            token
+                .parse()
+                .map_err(|_| "installed observation count exceeds u64".into())
+        }
+        let fields = closed(
+            value,
+            &[
+                "rpcFrames",
+                "retainedBytes",
+                "stdoutPrefixBytes",
+                "stderrPrefixBytes",
+                "snapshotReadBytes",
+                "byteVisits",
+                "records",
+            ],
+        )?;
+        if !matches!(get(fields, "rpcFrames")?, Document::String(mode) if mode == "checker-capture")
+        {
+            return Err("installed observation requires checker-capture RPC permission".into());
+        }
+        Ok(Self {
+            retained_bytes: count(get(fields, "retainedBytes")?)?,
+            stdout_prefix_bytes: count(get(fields, "stdoutPrefixBytes")?)?,
+            stderr_prefix_bytes: count(get(fields, "stderrPrefixBytes")?)?,
+            snapshot_read_bytes: count(get(fields, "snapshotReadBytes")?)?,
+            byte_visits: count(get(fields, "byteVisits")?)?,
+            records: count(get(fields, "records")?)?,
+        })
+    }
+}
 impl RecordRetentionLimits {
     pub fn retained_bytes(&self) -> u64 {
         self.retained_bytes
