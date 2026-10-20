@@ -13,6 +13,10 @@ The latest IR model supported by this implementation. Its meaning advances when 
 **Versioned IR**:
 An IR document whose format version remains explicit, including historical representations.
 
+**Source profile channel**:
+A named, cumulative source-language contract. Stable contains promoted capabilities and is the default. Experimental contains stable plus capabilities awaiting qualification. Promotion moves a qualified capability into stable while retaining the same channel identities.
+_Avoid_: Feature checkpoint, Boolean baseline, a new profile per implementation step
+
 **Original model source**:
 The exact source document or inventory accepted for a model, retaining its bytes, storage format and original IR format version.
 

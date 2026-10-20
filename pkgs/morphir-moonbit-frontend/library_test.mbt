@@ -119,7 +119,7 @@ test "library grammar and resolution reject unsupported forms deterministically"
       ),
       ("pub fn f(x : Bool, x : Bool) -> Bool { x }", "duplicate_parameter"),
       ("pub fn f(x~ : Bool) -> Bool { x }", "unsupported_parameters"),
-      ("pub fn f(x : Int) -> Bool { true }", "unsupported_type"),
+      ("pub fn f(x : Array[Bool]) -> Bool { true }", "unsupported_type"),
       ("pub fn f() -> Bool { g }\nfn g() -> Bool { true }", "function_value"),
       ("pub fn f() -> Bool { g() }", "unknown_function"),
       (
@@ -132,8 +132,8 @@ test "library grammar and resolution reject unsupported forms deterministically"
       (
         "pub fn f() -> Bool { g(x=true) }\nfn g(x : Bool) -> Bool { x }", "unsupported_arguments",
       ),
-      ("pub fn f() -> Bool { @other.g() }", "qualified_reference"),
-      ("pub fn f() -> Bool { let x : Int = true; x }", "unsupported_type"),
+      ("pub fn f() -> Bool { @other.g() }", "unknown_binding"),
+      ("pub fn f() -> Bool { let x : Int = true; x }", "type_mismatch"),
       (
         "pub fn f() -> Bool { let (x, y) = (true, false); x }", "unsupported_binding",
       ),
@@ -267,7 +267,7 @@ test "library native Ion origins preserve local binding and call annotations" {
   guard body_fields[1].value().kind() is @ion.List(nodes) else {
     fail("Expected local origins")
   }
-  assert_eq(nodes.length(), 2)
+  assert_eq(nodes.length(), 3)
   guard nodes[0].kind() is @ion.Struct(binding_fields) else {
     fail("Expected binding origin")
   }
@@ -275,6 +275,21 @@ test "library native Ion origins preserve local binding and call annotations" {
     fail("Expected source spelling")
   }
   assert_true(binding_origin[0].value().equals(@ion.IonValue::string("y")))
+  for (node, field) in [(nodes[1], "call"), (nodes[2], "temporary")] {
+    guard node.kind() is @ion.Struct(fields) else {
+      fail("Expected owned call origin")
+    }
+    assert_eq(fields[0].name().text(), Some(field))
+  }
+  guard nodes[2].kind() is @ion.Struct(temporary_fields) else {
+    fail("Expected argument origin")
+  }
+  guard temporary_fields[0].value().kind() is @ion.Struct(temporary_origin) else {
+    fail("Expected temporary role")
+  }
+  assert_true(
+    temporary_origin[0].value().equals(@ion.IonValue::string("call-argument")),
+  )
 }
 
 ///|

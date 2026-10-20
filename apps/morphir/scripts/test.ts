@@ -277,23 +277,23 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.ok(!existsSync(sourceDryLog));
   assert.ok(!existsSync(join(directory,"moon-model/.morphir/logs")));
   assert.deepEqual(modelPlan.sources, ["src/Main.mbt"]);
-  assert.deepEqual(modelPlan.frontends.map((f: FrontendInventory) => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))), [{source: "src/Main.mbt", unitId: "Main", frontend: "moonbit", profile: "moonbit-model-bool-v1", dependencies: {"moonbitlang/parser": "0.4.5", "moonbitlang/lexer": "0.4.3"}, outputContract: "ir-unit"}]);
+  assert.deepEqual(modelPlan.frontends.map((f: FrontendInventory) => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))), [{source: "src/Main.mbt", unitId: "Main", frontend: "moonbit", profile: "moonbit-model-stable-v1", dependencies: {"moonbitlang/parser": "0.4.5", "moonbitlang/lexer": "0.4.3", "finos/morphir-sdk": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "finos/morphir-sdk/basics": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d"}, outputContract: "ir-unit"}]);
   assert.equal(modelPlan.frontends[0].language,'moonbit');
   assert.equal(modelPlan.frontends[0].provider,'finos/morphir-moonbit-frontend');
   assert.equal(modelPlan.frontends[0].defaultProfile,true);
   assert.equal(modelPlan.frontends[0].evidence,'local-acceptance');
-  assert.deepEqual(new Set(modelPlan.frontends[0].availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-integer-library-v1','moonbit-model-float-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19','moonbit-model-pinned-sdk-library-v1','moonbit-model-library-2026-10-19-r2','moonbit-model-library-2026-10-19-r3','moonbit-model-library-2026-10-19-r4']));
+  assert.deepEqual(new Set(modelPlan.frontends[0].availableProfiles),new Set(['moonbit-model-stable-v1','moonbit-model-experimental-v1']));
   assert.equal(modelPlan.frontends[0].capabilities.maxDocuments,1);
   assert.equal(modelPlan.frontends[0].capabilities.incremental,false);
-  assert.equal(modelPlan.frontends[0].capabilities.limits.functions,1);
+  assert.equal(modelPlan.frontends[0].capabilities.limits.functions,64);
   assert.equal(modelPlan.boundaries[0].outputFormat, "ion-binary");
-  assert.equal(lines([...modelArgs, "--dry-run"]).find(r => r.type === "frontend").data.profile, "moonbit-model-bool-v1");
+  assert.equal(lines([...modelArgs, "--dry-run"]).find(r => r.type === "frontend").data.profile, "moonbit-model-stable-v1");
   assert.ok(!existsSync(join(directory, "moon-model/.morphir/out")));
   const modelSource = '// λ😀\npub fn eligible(active : Bool, vip : Bool) -> Bool { active && !vip }';
   put("moon-model/src/Main.mbt", modelSource);
   const modelResult = JSON.parse(run([...modelArgs, "--json"]).stdout);
   assert.equal(modelResult.successful, true);
-  assert.equal(modelResult.frontends[0].profile, "moonbit-model-bool-v1");
+  assert.equal(modelResult.frontends[0].profile, "moonbit-model-stable-v1");
   const modelOutput = join(directory, "moon-model/.morphir/out/compile.dest");
   const modelBinary = readFileSync(join(modelOutput, "Main.ionb"));
   assert.deepEqual([...modelBinary.subarray(0, 4)], [0xe0, 0x01, 0x00, 0xea]);
@@ -325,8 +325,8 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     }
     if (format === "json-lines") {
       const records = contents.toString().trim().split("\n").map(line => JSON.parse(line));
-      assert.deepEqual(records.filter(r => r.signal === "succeeded").map(r => r.stage), ["parse", "profile-check", "lower", "frontend"]);
-      assert.equal(records.length, 8);
+      assert.deepEqual(records.filter(r => r.signal === "succeeded").map(r => r.stage), ["parse", "profile-check", "resolve", "profile-check", "lower", "frontend"]);
+      assert.equal(records.length, 12);
       for (const record of records) {
         assert.equal(record.profile, "morphir-observation-v1");
         assert.equal(record.details, null);
@@ -343,7 +343,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.equal(modelText.successful, true);
   const modelIon = readFileSync(join(modelOutput, "Main.ion"), "utf8");
   assert.match(modelIon, /morphir_moonbit_frontend/);
-  assert.match(modelIon, /moonbit-model-bool-v1/);
+  assert.match(modelIon, /moonbit-model-stable-v1/);
   assert.match(modelIon, /moonbit-parser-position-v1/);
   // An explicit JSON component projection retains the native metadata sidecar.
   const modelLibrary = JSON.parse(run([...modelArgs, "--backend", "moonbit", "--validation", "source-only", "--json"]).stdout);
@@ -384,7 +384,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.deepEqual([...schemeSymbols.subarray(0, 4)], [0xe0, 0x01, 0x00, 0xea]);
   assert.match(readFileSync(join(modelOutput, "Main.scm"), "utf8"), /^;; \S+ \(\S*Main\.mbt:\d+:\d+\)$/m);
   // Language identity stays MoonBit while profile selection changes its supported source.
-  const libraryProfile = "moonbit-model-bool-library-v1";
+  const libraryProfile = "moonbit-model-stable-v1";
   const sourceProvider = "finos/morphir-moonbit-frontend";
   put("moon-library/morphir.toml", '[project]\nname="LibraryModel"\nmodule_prefix="App"\n[frontend]\nlanguage="moonbit"\nprofile="' + libraryProfile + '"\n[pipeline]\nbackend="checkpoint"\ncomponents=["json-identity"]\n');
   put("moon-library/src/Main.mbt", 'pub fn broken(');
@@ -392,14 +392,14 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   const librarySourcePlan = JSON.parse(run([...librarySourceArgs,"--dry-run","--log","--json"]).stdout);
   assert.equal(librarySourcePlan.frontends[0].language,"moonbit");
   assert.equal(librarySourcePlan.frontends[0].profile,libraryProfile);
-  assert.equal(librarySourcePlan.frontends[0].defaultProfile,false);
+  assert.equal(librarySourcePlan.frontends[0].defaultProfile,true);
   assert.equal(librarySourcePlan.frontends[0].capabilities.limits.functions,64);
   assert.equal(librarySourcePlan.frontends[0].evidence,"local-acceptance");
   assert.ok(!existsSync(join(directory,"moon-library/.morphir")));
   const humanSourcePlan = run([...librarySourceArgs,"--dry-run"]).stdout;
   assert.match(humanSourcePlan,/Language: moonbit; provider: finos\/morphir-moonbit-frontend/);
-  assert.match(humanSourcePlan,/Boolean library; documents per unit: 1; incremental: false/);
-  assert.match(humanSourcePlan,/Direct same-file calls/);
+  assert.match(humanSourcePlan,/Stable typed MoonBit library; documents per unit: 1; incremental: false/);
+  assert.match(humanSourcePlan,/direct same-file calls/i);
   assert.equal(lines([...librarySourceArgs,"--dry-run"]).find(r=>r.type==='frontend').data.provider,sourceProvider);
   for (const [flags,code] of [
     [["--frontend-provider","absent"],"frontend.unknown_provider"],
@@ -408,7 +408,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     [["--frontend","ion-text"],"frontend.source_constraint_on_data_format"],
     [["--frontend-profile="],"Missing value for --frontend-profile"],
   ] as const) assert.ok(JSON.parse(run([...librarySourceArgs,...flags,"--dry-run","--json"],2).stdout).error.includes(code),code + ": " + run([...librarySourceArgs,...flags,"--dry-run","--json"],2).stdout);
-  put("library-choice.scm", '(pipeline (frontend-profile "moonbit-model-bool-v1"))');
+  put("library-choice.scm", '(pipeline (frontend-profile "moonbit-model-stable-v1"))');
   assert.equal(JSON.parse(run([...librarySourceArgs,"--config","library-choice.scm","--dry-run","--json"]).stdout).frontends[0].defaultProfile,true);
   assert.equal(JSON.parse(run([...librarySourceArgs,"--config","library-choice.scm","--frontend-profile",libraryProfile,"--frontend-provider",sourceProvider,"--dry-run","--json"]).stdout).frontends[0].profile,libraryProfile);
   const sourceLibrary = 'fn helper(x : Bool) -> Bool { !x }\npub fn eligible(x : Bool) -> Bool { let y = helper(x); y }\npub fn zero() -> Bool { eligible(false) }';
@@ -425,7 +425,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.deepEqual(readFileSync(join(librarySourceRoot,"Main.ionb")),savedLibrarySource);
   run([...librarySourceArgs,"--checkpoint-format","ion-text","--json"]);
   const librarySourceIon = readFileSync(join(librarySourceRoot,"Main.ion"),"utf8");
-  assert.match(librarySourceIon,/moonbit-model-bool-library-v1/);
+  assert.match(librarySourceIon,/moonbit-model-stable-v1/);
   assert.match(librarySourceIon,/binding/);
   assert.match(librarySourceIon,/call/);
   const libraryCalls = [
@@ -448,7 +448,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.equal((libraryGenerated.match(/^fn /gm)||[]).length,1);
   put("moon-library/src/Main.mbt", 'pub fn bad(x : Bool) -> Bool { bad(x) }');
   const libraryRejected = JSON.parse(run([...librarySourceArgs,"--json"],1).stdout);
-  assert.match(libraryRejected.diagnostics[0].message,/^moonbit_frontend\.recursive_call:.*provider finos\/morphir-moonbit-frontend; profile moonbit-model-bool-library-v1.* at 1:/);
+  assert.match(libraryRejected.diagnostics[0].message,/^moonbit_frontend\.recursive_call:.*provider finos\/morphir-moonbit-frontend; profile moonbit-model-stable-v1.* at 1:/);
   assert.equal(readFileSync(join(librarySourceRoot,"Main/library.mbt"),"utf8"),libraryGenerated);
   put("moon-library/src/Main.mbt", 'fn hidden() -> Bool { true }');
   run([...librarySourceArgs,"--backend","moonbit","--validation","source-only","--json"]);
@@ -457,16 +457,16 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.equal(languageList.projects[0].frontend,"moonbit");
   assert.deepEqual(JSON.parse(run(["project","list","moon-library","--frontend","moonbit-library","--json"]).stdout).projects,[]);
   for (const [name,profile,source,marker] of [
-    ['typed-foundation','moonbit-model-typed-library-foundation-v1','pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let value : Int = if flag { a } else { b }; identity(value) }\nfn identity(value : Int32) -> Int { value }','signed-32'],
-    ['numeric-int32','moonbit-model-int32-library-v1','pub fn wrap() -> Int32 { 2147483647 + 1 }','moonbit-source-number-v1'],
-    ['string-basics','moonbit-model-string-library-v1','fn prefix() -> String { "Hello, " }\npub fn greet(name : String) -> String { let greeting : String = prefix(); greeting + name }\npub fn welcome(name : String, enabled : Bool) -> String { if enabled { greet(name) } else { "" } }','well-formed-utf16'],
-    ['supported-library','moonbit-model-library-v1',"pub fn choose_for(name : String, enabled : Bool, first : Int32, second : Int) -> Int32 { let greeting : String = if enabled { \"Hello, \" + name } else { \"\" }; if greeting == \"Hello, Morphir\" { first } else { second } }",'signed-32'],
-    ['ordered-library','moonbit-model-library-v2','pub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b && a <= b && !(a > b) && !(a >= b) { x } else { y } }','utf16-shortlex'],
-    ['dated-library','moonbit-model-library-2026-10-17','/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀\npub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }','utf16-shortlex'],
-    ['indexed-library','moonbit-model-library-2026-10-19','pub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count(s : String) -> Int32 { s.length() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }','moonbit-source-string-index-v1'],
-    ['math-library','moonbit-model-library-2026-10-19-r2','pub fn root(value : Double) -> Double { @basics.sqrt(value) }\npub fn wave(value : Double) -> Double { @basics.sin(value) + @basics.cos(value) }\npub fn power(value : Double) -> Double { @basics.power_float(value, 2.0) }','moonbit-source-binding-v1'],
-    ['numeric-sdk-library','moonbit-model-library-2026-10-19-r3','pub fn rounded(value : Double) -> @integer.Integer raise @sdk.SdkError { @basics.round(value) }\npub fn exact(value : Double) -> @integer.Integer? { @int.from_float64_exact(value) }\npub fn single(value : Float) -> Float { value + 1.0F }','moonbit-source-binding-v1'],
-    ['decimal-library','moonbit-model-library-2026-10-19-r4','pub fn amount(value : String) -> @decimal.Decimal raise @decimal.DecimalError { let a = @decimal.from_string_exact(value); @decimal.divide(@decimal.mul(a, a), a) }\npub fn rounded(value : @decimal.Decimal) -> @decimal.Decimal { @decimal.round(value) }','moonbit-source-decimal-v1'],
+    ['typed-foundation','moonbit-model-stable-v1','pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let value : Int = if flag { a } else { b }; identity(value) }\nfn identity(value : Int32) -> Int { value }','signed-32'],
+    ['numeric-int32','moonbit-model-experimental-v1','pub fn wrap() -> Int32 { 2147483647 + 1 }','moonbit-source-number-v1'],
+    ['string-basics','moonbit-model-stable-v1','fn prefix() -> String { "Hello, " }\npub fn greet(name : String) -> String { let greeting : String = prefix(); greeting + name }\npub fn welcome(name : String, enabled : Bool) -> String { if enabled { greet(name) } else { "" } }','well-formed-utf16'],
+    ['supported-library','moonbit-model-stable-v1',"pub fn choose_for(name : String, enabled : Bool, first : Int32, second : Int) -> Int32 { let greeting : String = if enabled { \"Hello, \" + name } else { \"\" }; if greeting == \"Hello, Morphir\" { first } else { second } }",'signed-32'],
+    ['ordered-library','moonbit-model-stable-v1','pub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b && a <= b && !(a > b) && !(a >= b) { x } else { y } }','utf16-shortlex'],
+    ['documented-library','moonbit-model-stable-v1','/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀\npub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }','utf16-shortlex'],
+    ['indexed-library','moonbit-model-stable-v1','pub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count(s : String) -> Int32 { s.length() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }','moonbit-source-string-index-v1'],
+    ['math-library','moonbit-model-experimental-v1','pub fn root(value : Double) -> Double { @basics.sqrt(value) }\npub fn wave(value : Double) -> Double { @basics.sin(value) + @basics.cos(value) }\npub fn power(value : Double) -> Double { @basics.power_float(value, 2.0) }','moonbit-source-binding-v1'],
+    ['numeric-sdk-library','moonbit-model-experimental-v1','pub fn rounded(value : Double) -> @integer.Integer raise @sdk.SdkError { @basics.round(value) }\npub fn exact(value : Double) -> @integer.Integer? { @int.from_float64_exact(value) }\npub fn single(value : Float) -> Float { value + 1.0F }','moonbit-source-binding-v1'],
+    ['decimal-library','moonbit-model-experimental-v1','pub fn amount(value : String) -> @decimal.Decimal raise @decimal.DecimalError { let a = @decimal.from_string_exact(value); @decimal.divide(@decimal.mul(a, a), a) }\npub fn rounded(value : @decimal.Decimal) -> @decimal.Decimal { @decimal.round(value) }','moonbit-source-decimal-v1'],
   ] as const) {
     put(name+'/morphir.toml','[project]\nname="'+name+'"\n[frontend]\nlanguage="moonbit"\nprofile="'+profile+'"\n[pipeline]\nbackend="checkpoint"\n');
     put(name+'/src/Main.mbt',source);
@@ -482,10 +482,10 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     assert.equal(JSON.parse(run([...args,'--backend','scheme','--validation','source-only','--json']).stdout).successful,true);
     assert.equal(JSON.parse(run([...args,'--backend','moonbit','--validation','source-only','--json']).stdout).successful,true);
     const generated=readFileSync(join(out,'Main/library.mbt'),'utf8');
-    if(name==='dated-library') { assert.ok(ion.includes('Choose by shortlex name order.')); assert.ok(generated.includes('/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀')); }
+    if(name==='documented-library') { assert.ok(ion.includes('Choose by shortlex name order.')); assert.ok(generated.includes('/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀')); }
     if(name==='indexed-library') { assert.ok(ion.includes('moonbit-source-number-v1')); assert.ok(generated.includes('@source_int32.normalize')); assert.ok(generated.includes('@source_string.slice_owned')); }
-    if(name==='supported-library'||name==='ordered-library'||name==='dated-library')assert.ok(ion.includes('well-formed-utf16'));
-    if(name==='string-basics'||name==='supported-library'||name==='ordered-library'||name==='dated-library'||name==='indexed-library')assert.ok(generated.includes('@source_string.require_valid'));
+    if(name==='supported-library'||name==='ordered-library'||name==='documented-library')assert.ok(ion.includes('well-formed-utf16'));
+    if(name==='string-basics'||name==='supported-library'||name==='ordered-library'||name==='documented-library'||name==='indexed-library')assert.ok(generated.includes('@source_string.require_valid'));
     if(target!=='wasm') {
       const built=JSON.parse(run([...args,'--backend','moonbit','--validation','required','--build-provider','process','--build-helper',buildHelper,'--build-node',process.execPath,'--home',tooling.home,'--sdk',join(workspaceDirectory,'pkgs/morphir-sdk'),'--target','wasm','--json']).stdout);
       assert.equal(built.validated.length,1);

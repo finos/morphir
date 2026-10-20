@@ -6,7 +6,7 @@ test "frontend recovery warning survives each generation target" {
       "operation": "compile",
       "source": source,
       "languageId": "moonbit",
-      "frontendProfile": "moonbit-model-bool-library-v1",
+      "frontendProfile": "moonbit-model-stable-v1",
       "target": target,
     })
     assert_eq(@wire.field(reply, "success"), Json::boolean(true))

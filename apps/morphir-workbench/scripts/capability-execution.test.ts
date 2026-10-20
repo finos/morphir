@@ -128,7 +128,7 @@ test('current MoonBit String and Int32 libraries retain policy through real Sche
     assert.equal(typeof scope.onmessage, 'function');
     scope.onmessage!({ data: { id: 1, request: {
       operation: 'compile', languageId: 'moonbit', target: 'moonbit',
-      frontendProfile: 'moonbit-model-library-2026-10-17',
+      frontendProfile: 'moonbit-model-stable-v1',
       source: 'pub fn welcome(name : String) -> String { "Hi " + name }\n'
         + 'pub fn choose(count : Int, other : Int, left : String, right : String) -> Int { if left < right { count } else { other } }',
     } } });

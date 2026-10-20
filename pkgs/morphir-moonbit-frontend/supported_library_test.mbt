@@ -5,7 +5,7 @@ fn supported_source() -> String {
 
 ///|
 test "supported profile combines Bool, String and Int32 through the checked pipeline" {
-  let output = @frontend.compile_supported_library(input(supported_source()))
+  let output = @frontend.compile_library(input(supported_source()))
   ignore(library_generated(output))
   let runtime = string_runtime(output)
   let entry = output.entries.filter(e => {
@@ -35,31 +35,14 @@ test "supported profile combines Bool, String and Int32 through the checked pipe
   assert_true(
     output.provenance[0].kind() is @ion.Struct(fields) &&
     fields.any(f => {
-      f
-      .value()
-      .equals(@ion.IonValue::string(@frontend.SUPPORTED_LIBRARY_PROFILE))
+      f.value().equals(@ion.IonValue::string(@frontend.STABLE_PROFILE))
     }),
   )
-  // The cumulative profile does not silently widen either pinned lane.
-  for
-    narrow in [
-      fn(input) raise { @frontend.compile_string_library(input) },
-      fn(input) raise { @frontend.compile_typed_library(input) },
-    ] {
-    try {
-      ignore(narrow(input(supported_source())))
-      fail("Expected lane refusal")
-    } catch {
-      @frontend.Invalid(diagnostic) =>
-        assert_eq(diagnostic.code, "moonbit_frontend.unsupported_type")
-      error => raise error
-    }
-  }
 }
 
 ///|
 test "supported profile keeps String guards on public entries returning Int32" {
-  let output = @frontend.compile_supported_library(
+  let output = @frontend.compile_library(
     input("pub fn keep(s : String, value : Int32) -> Int32 { value }"),
     max_string_code_units=1,
   )
@@ -89,15 +72,9 @@ test "supported profile keeps String guards on public entries returning Int32" {
 
 ///|
 test "supported profile refuses source operations beyond the qualified union" {
-  for
-    source in [
-      "pub fn f(a : Int32, b : Int32) -> Int32 { a + b }", "pub fn f(a : Int32, b : Int32) -> Bool { a == b }",
-      "pub fn f() -> Int32 { 1 }", "pub fn f(s : String) -> Int32 { s.length() }",
-      "pub fn f(s : String) -> Bool { s < \"a\" }", "pub fn f(x : Double) -> Double { x }",
-      "pub fn f(s : String) -> String { f(s) }",
-    ] {
+  for source in ["pub fn f(s : String) -> String { f(s) }"] {
     try {
-      ignore(@frontend.compile_supported_library(input(source)))
+      ignore(@frontend.compile_library(input(source)))
       fail("Expected qualification refusal")
     } catch {
       @frontend.Invalid(_) => ()

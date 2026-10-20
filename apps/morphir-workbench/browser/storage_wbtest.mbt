@@ -188,9 +188,7 @@ test "moving the active file marks the language dirty without a revision change"
 
 ///|
 fn stored_moonbit_library(model : Model) -> String {
-  let library = with_selection(
-    model, "moonbit", "moonbit-model-bool-library-v1",
-  )
+  let library = with_selection(model, "moonbit", "moonbit-model-stable-v1")
   default_project(library, "moonbit").to_json().stringify()
 }
 
@@ -218,13 +216,13 @@ test "a restored profile survives the first visit to its language and is saved" 
       active_project(visited).profile.map(p => p.to_string()),
       label="project profile",
     )
-    .to_equal(Some("moonbit-model-bool-library-v1"))
+    .to_equal(Some("moonbit-model-stable-v1"))
     s
     .expect(visited.source_profile, label="selector")
-    .to_equal("moonbit-model-bool-library-v1")
+    .to_equal("moonbit-model-stable-v1")
     s
     .expect(active_project(edited).to_json().stringify(), label="saved text")
-    .to_contain("moonbit-model-bool-library-v1")
+    .to_contain("moonbit-model-stable-v1")
   })
 }
 
@@ -237,7 +235,7 @@ test "a restored profile the catalog does not list is dropped with a note" {
     language: "scheme",
   }
   let stored = stored_moonbit_library(model).replace_all(
-    old="moonbit-model-bool-library-v1",
+    old="moonbit-model-stable-v1",
     new="gone-profile-v1",
   )
   let loaded = restore_all_with(model, key => {
@@ -263,7 +261,7 @@ test "a restored profile the catalog does not list is dropped with a note" {
       active_project(visited).profile.map(p => p.to_string()),
       label="default profile",
     )
-    .to_equal(Some("moonbit-model-bool-v1"))
+    .to_equal(Some("moonbit-model-stable-v1"))
   })
 }
 

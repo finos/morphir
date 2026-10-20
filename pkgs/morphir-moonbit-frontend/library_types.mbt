@@ -1,5 +1,42 @@
 ///|
-pub const LIBRARY_PROFILE : String = "moonbit-model-bool-library-v1"
+pub const STABLE_PROFILE : String = "moonbit-model-stable-v1"
+
+///|
+pub const EXPERIMENTAL_PROFILE : String = "moonbit-model-experimental-v1"
+
+///|
+/// Channels advance by promotion, never by adding another historical profile.
+pub(all) enum SourceChannel {
+  Stable
+  Experimental
+} derive(Eq, Debug)
+
+///|
+pub fn SourceChannel::profile(self : SourceChannel) -> String {
+  match self {
+    Stable => STABLE_PROFILE
+    Experimental => EXPERIMENTAL_PROFILE
+  }
+}
+
+///|
+fn SourceChannel::require_scalar(
+  self : SourceChannel,
+  ty : LibraryTypeUse,
+) -> Unit raise {
+  if self == Stable &&
+    ![LibraryScalar::Boolean, Text, SignedInt32].contains(ty.scalar) {
+    library_error(
+      "experimental_capability",
+      "Select " +
+      EXPERIMENTAL_PROFILE +
+      " for " +
+      ty.spelling +
+      "; this capability has not been promoted to stable",
+      Some(ty.source),
+    )
+  }
+}
 
 ///|
 /// Caller budgets may tighten, but cannot exceed, the profile's hard bounds.
@@ -156,36 +193,6 @@ pub extend LibraryLimits with Eq::{equal, not_equal}
 
 ///|
 pub extend LibraryLimits with @debug.Debug::{to_repr}
-
-///|
-pub const TYPED_FOUNDATION_PROFILE : String = "moonbit-model-typed-library-foundation-v1"
-
-///|
-pub const INT32_LIBRARY_PROFILE : String = "moonbit-model-int32-library-v1"
-
-///|
-pub const INTEGER_LIBRARY_PROFILE : String = "moonbit-model-integer-library-v1"
-
-///|
-pub const FLOAT_LIBRARY_PROFILE : String = "moonbit-model-float-library-v1"
-
-///|
-priv enum LibraryMode {
-  BooleanOnly
-  TypedFoundation
-  NumericInt32
-  NumericInteger
-  NumericFloat
-  StringBasics
-  SupportedLibrary
-  SupportedLibraryV2
-  SupportedLibrary20261017
-  SupportedLibrary20261019
-  PinnedSdk
-  NumericMath
-  NumericSdk
-  DecimalSdk
-} derive(Eq)
 
 ///|
 /// Only the named SDK model errors are admitted; this grants no host effects.
@@ -685,10 +692,7 @@ fn LibraryTypeUse::to_ir(
         ),
       ]),
     )
-    if (
-        self.profile == NUMERIC_SDK_LIBRARY_PROFILE ||
-        self.profile == DECIMAL_LIBRARY_PROFILE
-      ) &&
+    if self.profile == EXPERIMENTAL_PROFILE &&
       (self.scalar == SdkInteger || self.scalar == OptionalSdkInteger) {
       attrs.extensions["moonbit-source-sdk-type-v1"] = @ir.Data::Object(
         Map::from_array([
@@ -709,15 +713,7 @@ fn LibraryTypeUse::to_ir(
         self.scalar.is_floating() ||
         self.scalar == SdkInteger
       ) &&
-      (
-        self.profile == INTEGER_LIBRARY_PROFILE ||
-        self.profile == INT32_LIBRARY_PROFILE ||
-        self.profile == FLOAT_LIBRARY_PROFILE ||
-        self.profile == MATH_LIBRARY_PROFILE ||
-        self.profile == NUMERIC_SDK_LIBRARY_PROFILE ||
-        self.profile == DECIMAL_LIBRARY_PROFILE ||
-        self.profile == LIBRARY_PROFILE_2026_10_19
-      ) {
+      self.profile == EXPERIMENTAL_PROFILE {
       let facts = Map::from_array([
         ("kind", @ir.Data::Text("type-use")),
         ("language", @ir.Data::Text("moonbit")),
@@ -823,11 +819,10 @@ fn LibraryTypeUse::to_ir(
 fn library_type(
   ty : @ast.Type?,
   loc : @location.Location,
-  mode : LibraryMode,
+  channel : SourceChannel,
 ) -> LibraryTypeUse raise {
-  if (mode == NumericSdk || mode == DecimalSdk) &&
-    ty is Some(@ast.Option(ty=inner, ..)) {
-    let inner = library_type(Some(inner), inner.loc(), mode)
+  if ty is Some(@ast.Option(ty=inner, ..)) {
+    let inner = library_type(Some(inner), inner.loc(), channel)
     let scalar = match inner.scalar {
       SdkInteger => LibraryScalar::OptionalSdkInteger
       Floating64 => OptionalDouble
@@ -843,7 +838,7 @@ fn library_type(
       scalar,
       spelling: inner.spelling + "?",
       source: span(loc),
-      profile: mode.profile(),
+      profile: channel.profile(),
     }
   }
   guard ty is Some(@ast.Name(constr_id~, tys~, ..)) && tys.is_empty() else {
@@ -855,31 +850,28 @@ fn library_type(
   }
   let name = match constr_id.id {
     @ast.Ident(name~) => name
-    @ast.Dot(pkg="integer", id="Integer") if mode == NumericSdk ||
-      mode == DecimalSdk => "@integer.Integer"
-    @ast.Dot(pkg="decimal", id="Decimal") if mode == DecimalSdk =>
-      "@decimal.Decimal"
+    @ast.Dot(pkg="integer", id="Integer") => "@integer.Integer"
+    @ast.Dot(pkg="decimal", id="Decimal") => "@decimal.Decimal"
     _ => {
       reject("unsupported_type", "An audited source type is required", loc)
       abort("unreachable")
     }
   }
   let scalar = match name {
-    "@integer.Integer" if mode == NumericSdk || mode == DecimalSdk =>
-      LibraryScalar::SdkInteger
-    "@decimal.Decimal" if mode == DecimalSdk => LibraryScalar::SdkDecimal
+    "@integer.Integer" => LibraryScalar::SdkInteger
+    "@decimal.Decimal" => LibraryScalar::SdkDecimal
     "Bool" => LibraryScalar::Boolean
-    "String" if mode.supports_strings() => LibraryScalar::Text
-    "Int32" | "Int" if mode.supports_int32() => LibraryScalar::SignedInt32
-    "Int16" if mode.supports_integer() => LibraryScalar::SignedInt16
-    "Int64" if mode.supports_integer() => LibraryScalar::SignedInt64
-    "Byte" if mode.supports_integer() => LibraryScalar::UnsignedByte
-    "UInt16" if mode.supports_integer() => LibraryScalar::UnsignedInt16
-    "UInt32" | "UInt" if mode.supports_integer() => LibraryScalar::UnsignedInt32
-    "UInt64" if mode.supports_integer() => LibraryScalar::UnsignedInt64
-    "BigInt" if mode.supports_integer() => LibraryScalar::UnboundedInteger
-    "Float" if mode.supports_float() => LibraryScalar::Floating32
-    "Double" if mode.supports_float() => LibraryScalar::Floating64
+    "String" => LibraryScalar::Text
+    "Int32" | "Int" => LibraryScalar::SignedInt32
+    "Int16" => LibraryScalar::SignedInt16
+    "Int64" => LibraryScalar::SignedInt64
+    "Byte" => LibraryScalar::UnsignedByte
+    "UInt16" => LibraryScalar::UnsignedInt16
+    "UInt32" | "UInt" => LibraryScalar::UnsignedInt32
+    "UInt64" => LibraryScalar::UnsignedInt64
+    "BigInt" => LibraryScalar::UnboundedInteger
+    "Float" => LibraryScalar::Floating32
+    "Double" => LibraryScalar::Floating64
     _ => {
       reject(
         "unsupported_type",
@@ -889,138 +881,18 @@ fn library_type(
       abort("unreachable")
     }
   }
-  { scalar, spelling: name, source: span(loc), profile: mode.profile(), }
+  let result : LibraryTypeUse = {
+    scalar,
+    spelling: name,
+    source: span(loc),
+    profile: channel.profile(),
+  }
+  channel.require_scalar(result)
+  result
 }
-
-///|
-pub const STRING_LIBRARY_PROFILE : String = "moonbit-model-string-library-v1"
-
-///|
-/// The versioned union of qualified source capabilities, rather than a type lane.
-pub const SUPPORTED_LIBRARY_PROFILE : String = "moonbit-model-library-v1"
-
-///|
-/// Cumulative v1 capabilities plus qualified String shortlex comparisons.
-pub const SUPPORTED_LIBRARY_PROFILE_V2 : String = "moonbit-model-library-v2"
-
-///|
-/// Date identifies the current cumulative source qualification snapshot.
-pub const CURRENT_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r4"
-
-///|
-pub const DECIMAL_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r4"
 
 ///|
 pub const DECIMAL_SDK_TREE : String = "642fd13ea74bc46c3f5344844c9cca4ffbae368a"
-
-///|
-pub const NUMERIC_SDK_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r3"
-
-///|
-/// N4 cumulative snapshot, including all qualified integer and float forms.
-pub const MATH_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r2"
-
-///|
-/// Immutable qualification identity retained as the current snapshot advances.
-pub const LIBRARY_PROFILE_2026_10_17 : String = "moonbit-model-library-2026-10-17"
-
-///|
-pub const LIBRARY_PROFILE_2026_10_19 : String = "moonbit-model-library-2026-10-19"
-
-///|
-pub const PINNED_SDK_LIBRARY_PROFILE : String = "moonbit-model-pinned-sdk-library-v1"
-
-///|
-fn LibraryMode::supports_strings(self : LibraryMode) -> Bool {
-  self == DecimalSdk ||
-  self == NumericSdk ||
-  self == NumericMath ||
-  self == StringBasics ||
-  self == SupportedLibrary ||
-  self == SupportedLibraryV2 ||
-  self == SupportedLibrary20261017 ||
-  self == SupportedLibrary20261019
-}
-
-///|
-fn LibraryMode::supports_int32(self : LibraryMode) -> Bool {
-  self == DecimalSdk ||
-  self == NumericSdk ||
-  self == NumericMath ||
-  self == TypedFoundation ||
-  self == NumericInt32 ||
-  self == NumericInteger ||
-  self == SupportedLibrary ||
-  self == SupportedLibraryV2 ||
-  self == SupportedLibrary20261017 ||
-  self == SupportedLibrary20261019 ||
-  self == PinnedSdk
-}
-
-///|
-fn LibraryMode::supports_numeric(self : LibraryMode) -> Bool {
-  self == DecimalSdk ||
-  self == NumericSdk ||
-  self == NumericMath ||
-  self == NumericInt32 ||
-  self == NumericInteger ||
-  self == NumericFloat ||
-  self == SupportedLibrary20261019
-}
-
-///|
-fn LibraryMode::supports_float(self : LibraryMode) -> Bool {
-  self == NumericFloat ||
-  self == NumericMath ||
-  self == NumericSdk ||
-  self == DecimalSdk
-}
-
-///|
-fn LibraryMode::supports_integer(self : LibraryMode) -> Bool {
-  self == NumericInteger ||
-  self == NumericMath ||
-  self == NumericSdk ||
-  self == DecimalSdk
-}
-
-///|
-fn LibraryMode::supports_string_order(self : LibraryMode) -> Bool {
-  self == DecimalSdk ||
-  self == NumericSdk ||
-  self == NumericMath ||
-  self == SupportedLibraryV2 ||
-  self == SupportedLibrary20261017 ||
-  self == SupportedLibrary20261019
-}
-
-///|
-fn LibraryMode::supports_string_index(self : LibraryMode) -> Bool {
-  self == SupportedLibrary20261019 ||
-  self == NumericMath ||
-  self == NumericSdk ||
-  self == DecimalSdk
-}
-
-///|
-fn LibraryMode::profile(self : LibraryMode) -> String {
-  match self {
-    BooleanOnly => LIBRARY_PROFILE
-    TypedFoundation => TYPED_FOUNDATION_PROFILE
-    NumericInt32 => INT32_LIBRARY_PROFILE
-    NumericInteger => INTEGER_LIBRARY_PROFILE
-    NumericFloat => FLOAT_LIBRARY_PROFILE
-    StringBasics => STRING_LIBRARY_PROFILE
-    SupportedLibrary => SUPPORTED_LIBRARY_PROFILE
-    SupportedLibraryV2 => SUPPORTED_LIBRARY_PROFILE_V2
-    SupportedLibrary20261017 => LIBRARY_PROFILE_2026_10_17
-    SupportedLibrary20261019 => LIBRARY_PROFILE_2026_10_19
-    PinnedSdk => PINNED_SDK_LIBRARY_PROFILE
-    NumericMath => MATH_LIBRARY_PROFILE
-    NumericSdk => NUMERIC_SDK_LIBRARY_PROFILE
-    DecimalSdk => DECIMAL_LIBRARY_PROFILE
-  }
-}
 
 ///|
 pub fn PinnedSourceBindings::sdk_decimal(
@@ -1171,3 +1043,9 @@ pub fn PinnedSourceBindings::sdk_decimal(
   }
   bindings
 }
+
+///|
+pub extend SourceChannel with Eq::{equal, not_equal}
+
+///|
+pub extend SourceChannel with @debug.Debug::{to_repr}

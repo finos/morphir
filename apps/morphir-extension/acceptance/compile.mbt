@@ -73,7 +73,7 @@ fn source_request() -> Json {
     "options": {
       "typesOnly": false,
       "irVersion": "4.0.0",
-      "profile": "moonbit-model-bool-library-v1",
+      "profile": "moonbit-model-stable-v1",
     },
     "contextDigest": "a".repeat(64),
     "output": source_tuple("morphir.frontend.compileModel"),

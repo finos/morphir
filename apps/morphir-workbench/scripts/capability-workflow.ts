@@ -172,7 +172,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     await openSample(page, 'MoonBit library');
     await compile();
     const sourceProfile = page.getByRole('combobox', { name: 'Source profile', exact: true });
-    assert.equal(await sourceProfile.inputValue(), 'moonbit-model-library-2026-10-17');
+    assert.equal(await sourceProfile.inputValue(), 'moonbit-model-stable-v1');
     await showModel(page);
     await page.locator('.tree-item[title="user:main#welcome"]').click();
     await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
@@ -180,7 +180,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     const args = '[{"type":"text","units":[55357,56832]},{"type":"bool","value":true}]';
     await inputs.fill(args); await choosePolicy('permissive');
     await showCompile(page);
-    assert.equal(await sourceProfile.inputValue(), 'moonbit-model-library-2026-10-17');
+    assert.equal(await sourceProfile.inputValue(), 'moonbit-model-stable-v1');
     await showModel(page);
     assert.equal(await readInputs(), args);
     await evaluate();
@@ -208,8 +208,8 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     await evaluate('Evaluation failed');
     await page.locator('.evaluation-result').filter({ hasText: 'execution.int32_range' }).waitFor();
     for (const [sample, profile] of [
-      ['MoonBit Boolean library', 'moonbit-model-bool-library-v1'],
-      ['MoonBit Boolean', 'moonbit-model-bool-v1'],
+      ['MoonBit Boolean library', 'moonbit-model-stable-v1'],
+      ['MoonBit Boolean', 'moonbit-model-stable-v1'],
     ]) {
       await showCompile(page);
       await openSample(page, sample!);

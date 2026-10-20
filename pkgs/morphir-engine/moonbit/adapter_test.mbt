@@ -22,7 +22,7 @@ test "pinned Basics not source call reaches the engine evaluator" {
   let snapshot = files()
   snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
     old="language='moonbit'",
-    new="language='moonbit'\nprofile='moonbit-model-pinned-sdk-library-v1'",
+    new="language='moonbit'\nprofile='moonbit-model-stable-v1'",
   )
   snapshot["src/Main.mbt"] = "pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"
   let engine = @engine.Engine::new()
@@ -65,7 +65,7 @@ test "pinned binding rejects unknown, mismatched and shadowed source calls throu
   let snapshot = files()
   snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
     old="language='moonbit'",
-    new="language='moonbit'\nprofile='moonbit-model-pinned-sdk-library-v1'",
+    new="language='moonbit'\nprofile='moonbit-model-stable-v1'",
   )
   let engine = @engine.Engine::new()
   @adapter.register(engine)
@@ -94,22 +94,8 @@ test "pinned binding rejects unknown, mismatched and shadowed source calls throu
     )
     assert_true(report.diagnostics[0].message.contains(" at 1:"))
   }
-  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
-    old="profile='moonbit-model-pinned-sdk-library-v1'",
-    new="profile='moonbit-model-bool-library-v1'",
-  )
   snapshot["src/Main.mbt"] = "pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"
-  let legacy = execute(engine, snapshot)
-  assert_true(
-    legacy.diagnostics[0].message.has_prefix(
-      "moonbit_frontend.qualified_reference:",
-    ),
-  )
-  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
-      old="profile='moonbit-model-bool-library-v1'",
-      new="profile='moonbit-model-pinned-sdk-library-v1'",
-    ) +
-    "\ncheckpoint_format='morphir-json'"
+  snapshot["morphir.toml"] += "\ncheckpoint_format='morphir-json'"
   let lossy = execute(engine, snapshot)
   assert_false(lossy.successful())
   assert_true(lossy.artifacts.is_empty())
@@ -121,7 +107,7 @@ test "math snapshot resolves finite calls and refuses invalid bindings through e
   let snapshot = files()
   snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
     old="language='moonbit'",
-    new="language='moonbit'\nprofile='moonbit-model-library-2026-10-19-r2'",
+    new="language='moonbit'\nprofile='moonbit-model-experimental-v1'",
   )
   let engine = @engine.Engine::new()
   @adapter.register(engine)
@@ -227,7 +213,7 @@ test "adapter observation is lazy and leaves binary Ion checkpoints unchanged" {
   let planned = plan(engine, snapshot)
   assert_eq(
     planned.source_frontends()[0].profile,
-    Some("moonbit-model-bool-v1"),
+    Some("moonbit-model-stable-v1"),
   )
   assert_true(records.is_empty())
   let actual = execute(engine, snapshot)
@@ -241,7 +227,14 @@ test "adapter observation is lazy and leaves binary Ion checkpoints unchanged" {
   assert_eq(a, b)
   assert_eq(
     records.filter(r => r.signal == @observe.Succeeded).map(r => r.stage),
-    [@observe.Parse, @observe.ProfileCheck, @observe.Lower, @observe.Frontend],
+    [
+      @observe.Parse,
+      @observe.ProfileCheck,
+      @observe.Resolve,
+      @observe.ProfileCheck,
+      @observe.Lower,
+      @observe.Frontend,
+    ],
   )
 }
 
@@ -340,7 +333,7 @@ test "MoonBit dry runs describe the parser without parsing malformed source" {
   snapshot["src/Main.mbt"] = "pub fn broken("
   let planned = plan(engine, snapshot)
   let descriptor = planned.source_frontends()[0]
-  assert_eq(descriptor.profile, Some("moonbit-model-bool-v1"))
+  assert_eq(descriptor.profile, Some("moonbit-model-stable-v1"))
   assert_eq(descriptor.dependencies["moonbitlang/parser"], "0.4.5")
   assert_eq(descriptor.unit_id, "Main")
   let report = engine.execute_content(planned, fn(path, _) {
@@ -417,7 +410,7 @@ fn library_files(backend~ : String = "checkpoint") -> Map[String, String] {
   let snapshot = files(backend~, component=true)
   snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
     old="language='moonbit'",
-    new="language='moonbit'\nprofile='moonbit-model-bool-library-v1'",
+    new="language='moonbit'\nprofile='moonbit-model-stable-v1'",
   )
   snapshot["src/Main.mbt"] = "fn helper(x : Bool) -> Bool { !x }\npub fn eligible(x : Bool) -> Bool { let y = helper(x); y }\npub fn zero() -> Bool { eligible(false) }"
   snapshot
@@ -431,8 +424,8 @@ test "library selection preserves native origins, calls and all public entries" 
   let descriptor = plan(engine, snapshot).source_frontends()[0]
   assert_eq(descriptor.language, "moonbit")
   assert_eq(descriptor.provider, @adapter.PROVIDER)
-  assert_eq(descriptor.profile, Some("moonbit-model-bool-library-v1"))
-  assert_false(descriptor.default_profile)
+  assert_eq(descriptor.profile, Some("moonbit-model-stable-v1"))
+  assert_true(descriptor.default_profile)
   assert_eq(descriptor.evidence.name(), "local-acceptance")
   assert_eq(descriptor.capabilities.unwrap().limits["functions"], 64)
   let baseline = execute(engine, snapshot)
@@ -537,9 +530,7 @@ test "profile limits and diagnostics identify selection without parsing during p
   let report = execute(engine, snapshot)
   assert_false(report.successful())
   assert_true(
-    report.diagnostics[0].message.contains(
-      "profile moonbit-model-bool-library-v1",
-    ),
+    report.diagnostics[0].message.contains("profile moonbit-model-stable-v1"),
   )
   assert_true(report.diagnostics[0].message.contains(@adapter.PROVIDER))
   assert_true(report.artifacts.is_empty())
@@ -618,11 +609,9 @@ test "invalid parser budgets cannot become registered capability claims" {
   let engine = @engine.Engine::new()
   assert_true(
     try {
-      @adapter.register(engine, limits={
+      @adapter.register(engine, library_limits={
+        ..@frontend.LibraryLimits::default(),
         max_bytes: 70000,
-        max_parameters: 16,
-        max_depth: 64,
-        max_expressions: 4096,
       })
       false
     } catch {
@@ -637,7 +626,7 @@ test "invalid parser budgets cannot become registered capability claims" {
   @adapter.register(engine)
   assert_eq(
     plan(engine, files()).source_frontends()[0].profile,
-    Some("moonbit-model-bool-v1"),
+    Some("moonbit-model-stable-v1"),
   )
 }
 
@@ -858,31 +847,29 @@ test "typed foundation and String profiles preserve source facts through Ion che
   for
     (profile, source) in [
       (
-        "moonbit-model-typed-library-foundation-v1", "pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let picked : Int = if flag { a } else { b }; identity(picked) }\nfn identity(value : Int32) -> Int { value }",
+        "moonbit-model-stable-v1", "pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let picked : Int = if flag { a } else { b }; identity(picked) }\nfn identity(value : Int32) -> Int { value }",
+      ),
+      ("moonbit-model-stable-v1", "pub fn wrap() -> Int32 { 2147483647 + 1 }"),
+      (
+        "moonbit-model-experimental-v1", "pub fn wrap() -> UInt64 { 18446744073709551615UL + 1UL }\npub fn grow() -> BigInt { 18446744073709551616N + 1N }",
       ),
       (
-        "moonbit-model-int32-library-v1", "pub fn wrap() -> Int32 { 2147483647 + 1 }",
+        "moonbit-model-experimental-v1", "pub fn rounded() -> Float { 16777216.0F + 1.0F }\npub fn wider() -> Double { 9007199254740992.0 + 2.0 }",
       ),
       (
-        "moonbit-model-integer-library-v1", "pub fn wrap() -> UInt64 { 18446744073709551615UL + 1UL }\npub fn grow() -> BigInt { 18446744073709551616N + 1N }",
+        "moonbit-model-stable-v1", "// λ😀\npub fn greet(name : String) -> String { let prefix : String = \"Hello, \\u{1f600} \"; prefix + name }",
       ),
       (
-        "moonbit-model-float-library-v1", "pub fn rounded() -> Float { 16777216.0F + 1.0F }\npub fn wider() -> Double { 9007199254740992.0 + 2.0 }",
+        "moonbit-model-stable-v1", "pub fn choose(s : String, flag : Bool, a : Int32, b : Int) -> Int32 { let text : String = \"Hello, \" + s; if flag && text == \"Hello, Morphir\" { a } else { b } }",
       ),
       (
-        "moonbit-model-string-library-v1", "// λ😀\npub fn greet(name : String) -> String { let prefix : String = \"Hello, \\u{1f600} \"; prefix + name }",
+        "moonbit-model-stable-v1", "pub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }",
       ),
       (
-        "moonbit-model-library-v1", "pub fn choose(s : String, flag : Bool, a : Int32, b : Int) -> Int32 { let text : String = \"Hello, \" + s; if flag && text == \"Hello, Morphir\" { a } else { b } }",
+        "moonbit-model-stable-v1", "/// Select by name order.\n///\n/// Preserve signed values. λ😀\npub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }",
       ),
       (
-        "moonbit-model-library-v2", "pub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }",
-      ),
-      (
-        "moonbit-model-library-2026-10-17", "/// Select by name order.\n///\n/// Preserve signed values. λ😀\npub fn choose(a : String, b : String, x : Int32, y : Int) -> Int32 { if a < b { x } else { y } }",
-      ),
-      (
-        "moonbit-model-library-2026-10-19", "pub fn cut(s : String, a : Int32, b : Int32) -> String { s[a:b].to_owned() }",
+        "moonbit-model-stable-v1", "pub fn cut(s : String, a : Int32, b : Int32) -> String { s[a:b].to_owned() }",
       ),
     ] {
     let snapshot = files()
@@ -921,7 +908,7 @@ test "typed foundation and String profiles preserve source facts through Ion che
 test "source scalar libraries use strict and selected Scheme invocation plans" {
   let cases : Array[(String, String, Array[Json], Json)] = [
     (
-      "moonbit-model-typed-library-foundation-v1",
+      "moonbit-model-stable-v1",
       "pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { if flag { a } else { b } }",
       [
         { "type": "bool", "value": true },
@@ -947,7 +934,7 @@ test "source scalar libraries use strict and selected Scheme invocation plans" {
         } : Json),
     ),
     (
-      "moonbit-model-string-library-v1",
+      "moonbit-model-stable-v1",
       "pub fn choose(s : String) -> String { \"Hello \" + s }",
       [{ "type": "text", "units": [55357, 56832] }],
       (
@@ -955,7 +942,7 @@ test "source scalar libraries use strict and selected Scheme invocation plans" {
         Json),
     ),
     (
-      "moonbit-model-integer-library-v1",
+      "moonbit-model-experimental-v1",
       "pub fn choose(value : UInt64) -> UInt64 { value + 1UL }",
       [
         {
@@ -974,31 +961,31 @@ test "source scalar libraries use strict and selected Scheme invocation plans" {
         } : Json),
     ),
     (
-      "moonbit-model-float-library-v1",
+      "moonbit-model-experimental-v1",
       "pub fn choose(value : Float) -> Float { value + 1.0F }",
       [{ "type": "float64", "bits": "4715268809856909312" }],
       ({ "type": "float64", "bits": "4715268809856909312" } : Json),
     ),
     (
-      "moonbit-model-float-library-v1",
+      "moonbit-model-experimental-v1",
       "pub fn choose() -> Float { -0.0F }",
       [],
       ({ "type": "float64", "bits": "9223372036854775808" } : Json),
     ),
     (
-      "moonbit-model-float-library-v1",
+      "moonbit-model-experimental-v1",
       "pub fn choose() -> Float { 1.401298464324817e-45F }",
       [],
       ({ "type": "float64", "bits": "3936146074321813504" } : Json),
     ),
     (
-      "moonbit-model-float-library-v1",
+      "moonbit-model-experimental-v1",
       "pub fn choose() -> Float { 1.0F / 0.0F }",
       [],
       ({ "type": "float64", "bits": "9218868437227405312" } : Json),
     ),
     (
-      "moonbit-model-library-v1",
+      "moonbit-model-stable-v1",
       "pub fn choose(name : String, enabled : Bool, first : Int32, second : Int) -> Int32 { let greeting : String = if enabled { \"Hello, \" + name } else { \"\" }; if greeting == \"Hello, Morphir\" { first } else { second } }",
       [
         { "type": "text", "units": [77, 111, 114, 112, 104, 105, 114] },
@@ -1025,7 +1012,7 @@ test "source scalar libraries use strict and selected Scheme invocation plans" {
         } : Json),
     ),
     (
-      "moonbit-model-library-v2",
+      "moonbit-model-stable-v1",
       "pub fn choose(a : String, b : String) -> Bool { a < b && a <= b && !(a > b) && !(a >= b) }",
       [{ "type": "text", "units": [98] }, { "type": "text", "units": [97, 97] }],
       ({ "type": "bool", "value": true } : Json),
@@ -1059,6 +1046,39 @@ test "source scalar libraries use strict and selected Scheme invocation plans" {
     for policy in [@execution.Strict, @execution.Permissive] {
       let plan = @execution.plan_scheme(unit, suite, policy~)
       assert_eq(plan.evaluate().map(@protocol.Value::to_json), [expected])
+    }
+  }
+}
+
+///|
+test "catalog exposes stable and experimental and retired IDs fail selection" {
+  let provider = @adapter.provider()
+  assert_eq(provider.languages[0].profiles.map(p => Some(p.id.to_string())), [
+    Some("moonbit-model-stable-v1"),
+    Some("moonbit-model-experimental-v1"),
+  ])
+  let engine = @engine.Engine::new()
+  @adapter.register(engine)
+  for
+    retired in [
+      "moonbit-model-bool-v1", "moonbit-model-library-v1", "moonbit-model-bool-library-v1",
+      "moonbit-model-typed-library-foundation-v1", "moonbit-model-int32-library-v1",
+      "moonbit-model-integer-library-v1", "moonbit-model-float-library-v1", "moonbit-model-string-library-v1",
+      "moonbit-model-pinned-sdk-library-v1", "moonbit-model-library-v2", "moonbit-model-library-2026-10-17",
+      "moonbit-model-library-2026-10-19", "moonbit-model-library-2026-10-19-r2",
+      "moonbit-model-library-2026-10-19-r3", "moonbit-model-library-2026-10-19-r4",
+    ] {
+    let snapshot = files()
+    snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+      old="language='moonbit'",
+      new="language='moonbit'\nprofile='" + retired + "'",
+    )
+    try {
+      ignore(plan(engine, snapshot))
+      fail("Retired profile must not silently select another compiler")
+    } catch {
+      @config.Invalid(message) => assert_true(message.contains(retired))
+      error => raise error
     }
   }
 }

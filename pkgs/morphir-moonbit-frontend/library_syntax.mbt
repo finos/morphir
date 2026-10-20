@@ -19,7 +19,7 @@ fn library_parse(input : Input, cancelled : () -> Bool) -> ParsedLibrary raise {
 ///|
 priv struct LibraryAdapter {
   source_chars : Array[Char]
-  mode : LibraryMode
+  channel : SourceChannel
   signatures : Map[String, Array[LibraryTypeUse]]
   limits : LibraryLimits
   cancelled : () -> Bool
@@ -107,9 +107,7 @@ fn LibraryAdapter::expression_as(
   depth : Int32,
   scalar : LibraryScalar,
 ) -> LibraryExpr raise {
-  if !self.mode.supports_integer() ||
-    !scalar.is_integer() ||
-    scalar == SignedInt32 {
+  if !scalar.is_integer() || scalar == SignedInt32 {
     return self.expression(expr, depth)
   }
   let loc = expr.loc()
@@ -170,21 +168,16 @@ fn LibraryAdapter::expression(
   self.visit(loc, depth)
   match expr {
     @ast.Constant(c=@ast.Bool(value), ..) => Boolean(value, source)
-    @ast.Constant(c=@ast.Int(raw), ..) if self.mode.supports_numeric() =>
-      self.number(raw, SignedInt32, loc)
-    @ast.Constant(c=@ast.Int64(raw), ..) if self.mode.supports_integer() =>
-      self.number(raw, SignedInt64, loc)
-    @ast.Constant(c=@ast.UInt(raw), ..) if self.mode.supports_integer() =>
-      self.number(raw, UnsignedInt32, loc)
-    @ast.Constant(c=@ast.UInt64(raw), ..) if self.mode.supports_integer() =>
+    @ast.Constant(c=@ast.Int(raw), ..) => self.number(raw, SignedInt32, loc)
+    @ast.Constant(c=@ast.Int64(raw), ..) => self.number(raw, SignedInt64, loc)
+    @ast.Constant(c=@ast.UInt(raw), ..) => self.number(raw, UnsignedInt32, loc)
+    @ast.Constant(c=@ast.UInt64(raw), ..) =>
       self.number(raw, UnsignedInt64, loc)
-    @ast.Constant(c=@ast.BigInt(raw), ..) if self.mode.supports_integer() =>
+    @ast.Constant(c=@ast.BigInt(raw), ..) =>
       self.number(raw, UnboundedInteger, loc)
-    @ast.Constant(c=@ast.Float(raw), ..) if self.mode.supports_float() =>
-      self.floating(raw, Floating32, loc)
-    @ast.Constant(c=@ast.Double(raw), ..) if self.mode.supports_float() =>
-      self.floating(raw, Floating64, loc)
-    @ast.Constant(c=@ast.String(repr), ..) if self.mode.supports_strings() => {
+    @ast.Constant(c=@ast.Float(raw), ..) => self.floating(raw, Floating32, loc)
+    @ast.Constant(c=@ast.Double(raw), ..) => self.floating(raw, Floating64, loc)
+    @ast.Constant(c=@ast.String(repr), ..) => {
       // The pinned lexer counts Unicode scalar positions, not UTF-8 bytes or UTF-16 units.
       let start = loc.start.cnum
       let end = loc.end.cnum
@@ -203,7 +196,7 @@ fn LibraryAdapter::expression(
     @ast.Ident(id~, ..) => Identifier(identifier(id), source)
     @ast.Group(expr~, ..) => self.expression(expr, depth + 1)
     @ast.Constraint(expr~, ty~, ..) => {
-      let target = library_type(Some(ty), ty.loc(), self.mode)
+      let target = library_type(Some(ty), ty.loc(), self.channel)
       Constraint(
         self.expression_as(expr, depth + 1, target.scalar),
         target,
@@ -212,7 +205,7 @@ fn LibraryAdapter::expression(
     }
     @ast.Unary(op~, expr~, ..) => {
       let operator = identifier(op)
-      if operator == "-" && self.mode.supports_numeric() {
+      if operator == "-" {
         return NumericNegation(self.expression(expr, depth + 1), source)
       }
       if operator != "!" {
@@ -224,15 +217,12 @@ fn LibraryAdapter::expression(
     }
     @ast.Infix(op~, lhs~, rhs~, ..) => {
       let op = identifier(op)
-      if !["&&", "||", "==", "!="].contains(op) &&
-        !(self.mode.supports_strings() && op == "+") &&
-        !(self.mode.supports_numeric() &&
-        ["+", "-", "*", "<", "<=", ">", ">="].contains(op)) &&
-        !(self.mode.supports_float() && op == "/") &&
-        !(self.mode.supports_string_order() &&
-        ["<", "<=", ">", ">="].contains(op)) {
+      if !["&&", "||", "==", "!=", "+", "-", "*", "/", "<", "<=", ">", ">="].contains(
+          op,
+        ) {
         reject(
-          "unsupported_operator", "Only Boolean operators are supported", loc,
+          "unsupported_operator", "Operator is outside the supported library subset",
+          loc,
         )
       }
       Binary(
@@ -258,7 +248,7 @@ fn LibraryAdapter::expression(
       let binder = match pattern {
         @ast.Var(binder) => binder
         @ast.Constraint(pat=@ast.Var(binder), ty~, ..) => {
-          annotation = Some(library_type(Some(ty), ty.loc(), self.mode))
+          annotation = Some(library_type(Some(ty), ty.loc(), self.channel))
           binder
         }
         _ => {
@@ -285,8 +275,7 @@ fn LibraryAdapter::expression(
         source,
       )
     }
-    @ast.DotApply(self=receiver, method_name~, args~, return_self=false, ..) if self.mode.supports_string_index() &&
-      args.is_empty() =>
+    @ast.DotApply(self=receiver, method_name~, args~, return_self=false, ..) if args.is_empty() =>
       match (method_name.name, receiver) {
         ("length", value) =>
           StringLength(self.expression(value, depth + 1), source)
@@ -316,7 +305,7 @@ fn LibraryAdapter::expression(
     @ast.Apply(func~, args~, ..) => {
       guard func is @ast.Ident(id~, ..) else {
         reject(
-          "unsupported_expression", "Only direct unqualified function calls are supported",
+          "unsupported_expression", "Only direct same-file or audited SDK calls are supported",
           loc,
         )
         abort("unreachable")
@@ -328,18 +317,7 @@ fn LibraryAdapter::expression(
       }
       let (name, qualified) = match id.name {
         @ast.Ident(name~) => (name, None)
-        @ast.Dot(pkg~, id~) if self.mode == PinnedSdk ||
-          self.mode == NumericMath ||
-          self.mode == NumericSdk ||
-          self.mode == DecimalSdk => ("@" + pkg + "." + id, Some((pkg, id)))
-        _ => {
-          reject(
-            "qualified_reference",
-            "Qualified calls require the pinned SDK source profile",
-            func.loc(),
-          )
-          abort("unreachable")
-        }
+        @ast.Dot(pkg~, id~) => ("@" + pkg + "." + id, Some((pkg, id)))
       }
       let arguments = []
       let mut i = 0
@@ -380,7 +358,7 @@ fn library_adapt(
   parsed : ParsedLibrary,
   limits : LibraryLimits,
   cancelled : () -> Bool,
-  mode : LibraryMode,
+  channel : SourceChannel,
 ) -> Array[LibraryFunction] raise {
   let nodes = parsed.nodes
   if nodes.is_empty() || nodes.length() > limits.max_functions {
@@ -422,15 +400,14 @@ fn library_adapt(
           tys~,
           ..
         )
-      ) if (mode == NumericSdk || mode == DecimalSdk) && tys.is_empty() =>
-        SdkError
+      ) if tys.is_empty() => SdkError
       @ast.ErrorType(
         ty=@ast.Name(
           constr_id={ id: @ast.Dot(pkg="decimal", id="DecimalError"), .. },
           tys~,
           ..
         )
-      ) if mode == DecimalSdk && tys.is_empty() => DecimalError
+      ) if tys.is_empty() => DecimalError
       _ => {
         reject(
           "unsupported_function",
@@ -439,6 +416,13 @@ fn library_adapt(
         )
         abort("unreachable")
       }
+    }
+    if channel == Stable && effect != Pure {
+      library_error(
+        "experimental_capability",
+        "SDK error declarations require " + EXPERIMENTAL_PROFILE,
+        Some(span(decl.loc)),
+      )
     }
     let public = match decl.vis {
       @ast.Pub(attr=None, ..) => true
@@ -463,7 +447,7 @@ fn library_adapt(
     let output_type = library_type(
       decl.return_type,
       decl.return_type.map(t => t.loc()).unwrap_or(decl.loc),
-      mode,
+      channel,
     )
     guard decl.decl_params is Some(parameters) else {
       reject(
@@ -489,7 +473,7 @@ fn library_adapt(
         abort("unreachable")
       }
       input_types.push(
-        library_type(ty, ty.map(t => t.loc()).unwrap_or(binder.loc), mode),
+        library_type(ty, ty.map(t => t.loc()).unwrap_or(binder.loc), channel),
       )
       if parameter_names.contains(binder.name) {
         reject(
@@ -529,7 +513,7 @@ fn library_adapt(
   }
   let adapter = LibraryAdapter::{
     source_chars: parsed.source_chars,
-    mode,
+    channel,
     signatures: signature_types,
     limits,
     cancelled,

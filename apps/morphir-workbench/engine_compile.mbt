@@ -301,13 +301,6 @@ fn compile_reply(
     }
     entries.sort()
     result.push(("sourceEntries", Json::array(entries.map(@wire.text))))
-    if profile == @moonbit_frontend.PROFILE &&
-      unit.metadata.get(0) is Some(first) &&
-      first.node_id.strip_prefix("value:") is Some(entry) {
-      let entry = entry.to_owned()
-      result.push(("sourceEntry", @wire.text(entry)))
-      result.push(("sourcePublic", Json::boolean(entries.contains(entry))))
-    }
   }
   if target != "" {
     result.append(generation_fields(run.report, target))

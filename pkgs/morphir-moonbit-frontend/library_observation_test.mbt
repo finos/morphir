@@ -36,7 +36,7 @@ test "library failures close active spans and skip later phases" {
     (source, code, stage, start_count) in [
       ("pub fn f(", "syntax", @observe.Parse, 2),
       (
-        "pub fn f(x : Int) -> Bool { true }",
+        "pub fn f(x : Array[Bool]) -> Bool { true }",
         "unsupported_type",
         @observe.ProfileCheck,
         3,

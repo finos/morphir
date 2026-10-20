@@ -1,5 +1,5 @@
 ///|
-pub const PROFILE : String = "moonbit-model-bool-v1"
+pub const LEGACY_BOOL_PROFILE : String = "moonbit-model-bool-v1"
 
 ///|
 pub const PARSER_VERSION : String = "0.4.5"

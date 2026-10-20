@@ -147,8 +147,7 @@ fn main raise {
       "bounded", "pub fn join(a : String, b : String) -> String { a + b }\npub fn short() -> Bool { false && (join(\"abc\", \"def\") == \"\") }\npub fn ignore_text(s : String) -> Bool { true }\npub fn order() -> String { take(fail_growth(), fail_literal()) }\nfn take(a : String, b : String) -> String { a }\nfn fail_growth() -> String { \"abc\" + \"def\" }\nfn fail_literal() -> String { \"123456\" }",
     ),
   ]
-  let v1_cases = sources +
-    sources.map(row => ("supported" + row.0, row.1)) +
+  let library_cases = sources +
     [
       (
         "supported", "pub fn choose_for(name : String, enabled : Bool, first : Int32, second : Int) -> Int32 { let greeting : String = welcome(name, enabled); if greeting == \"Hello, Morphir\" { identity(first) } else { identity(second) } }\npub fn welcome(name : String, enabled : Bool) -> String { if enabled { \"Hello, \" + name } else { \"\" } }\nfn identity(value : Int32) -> Int { (value : Int32) }",
@@ -157,8 +156,7 @@ fn main raise {
         "supportedbool", "pub fn both(a : Bool, b : Bool) -> Bool { let a : Bool = identity(a); a && b }\npub fn either(a : Bool, b : Bool) -> Bool { identity(a) || identity(b) }\npub fn equal(a : Bool, b : Bool) -> Bool { identity(a) == identity(b) }\npub fn unequal(a : Bool, b : Bool) -> Bool { identity(a) != identity(b) }\npub fn shadow(a : Bool) -> Bool { let a = !a; let a : Bool = !a; (a : Bool) }\npub fn yes() -> Bool { identity(true) }\nfn identity(a : Bool) -> Bool { a }",
       ),
     ]
-  let cases = v1_cases +
-    v1_cases.map(row => ("current" + row.0, row.1)) +
+  let cases = library_cases +
     [
       (
         "numeric", "pub fn overflow() -> Int32 { 2147483647 + 1 }\npub fn multiply_wrap() -> Int32 { 65536 * 65536 }\npub fn underflow() -> Int32 { -2147483648 - 1 }\npub fn total(a : Int32, b : Int32) -> Int32 { let subtotal = a * b; if subtotal > 1000 { subtotal - 100 } else { subtotal } }\npub fn before(a : Int32, b : Int32) -> Bool { a < b }\npub fn after(a : Int32, b : Int32) -> Bool { a > b }\npub fn same(a : Int32, b : Int32) -> Bool { a <= b && a >= b && a == b && !(a != b) }",
@@ -177,48 +175,20 @@ fn main raise {
         "math", "pub fn root_two() -> Double { @basics.sqrt(2.0) }\npub fn root_half() -> Double { @basics.sqrt(0.5) }\npub fn sine_one() -> Double { @basics.sin(1.0) }\npub fn cosine_one() -> Double { @basics.cos(1.0) }\npub fn sine_hundred() -> Double { @basics.sin(100.0) }\npub fn cosine_hundred() -> Double { @basics.cos(100.0) }\npub fn power_quarter() -> Double { @basics.power_float(10.0, 0.25) }\npub fn power_integer() -> Double { @basics.power_float(-2.0, 3.0) }\npub fn absolute() -> Double { @basics.abs_float(-3.5) }\npub fn root_zero() -> Double { @basics.sqrt(-0.0) }\npub fn sine_zero() -> Double { @basics.sin(-0.0) }\npub fn absolute_zero() -> Double { @basics.abs_float(-0.0) }\npub fn cosine_zero() -> Double { @basics.cos(-0.0) }\npub fn power_nan_zero() -> Double { @basics.power_float(0.0 / 0.0, 0.0) }\npub fn root_invalid() -> Double { @basics.sqrt(-1.0) }\npub fn sine_invalid() -> Double { @basics.sin(1.0 / 0.0) }\npub fn cosine_invalid() -> Double { @basics.cos(1.0 / 0.0) }\npub fn power_invalid() -> Double { @basics.power_float(-1.0, 0.5) }\npub fn absolute_invalid() -> Double { @basics.abs_float(0.0 / 0.0) }\npub fn root_infinity() -> Double { @basics.sqrt(1.0 / 0.0) }\npub fn power_infinity() -> Double { @basics.power_float(0.0, -1.0) }\npub fn mixed(label : String, enabled : Bool, count : Int32, amount : Double) -> Double { let yes = @basics.not_(enabled); if yes && label.length() > count { @basics.sqrt(amount * amount) } else { @basics.abs_float(-amount) } }",
       ),
       (
-        "currentordered", "pub fn lt(a : String, b : String) -> Bool { identity(a) < identity(b) }\npub fn le(a : String, b : String) -> Bool { a <= b }\npub fn gt(a : String, b : String) -> Bool { a > b }\npub fn ge(a : String, b : String) -> Bool { a >= b }\npub fn choose(a : String, b : String, yes : Int32, no : Int) -> Int32 { let before : Bool = lt(a, b); if before { yes } else { no } }\nfn identity(s : String) -> String { s }",
+        "ordered", "pub fn lt(a : String, b : String) -> Bool { identity(a) < identity(b) }\npub fn le(a : String, b : String) -> Bool { a <= b }\npub fn gt(a : String, b : String) -> Bool { a > b }\npub fn ge(a : String, b : String) -> Bool { a >= b }\npub fn choose(a : String, b : String, yes : Int32, no : Int) -> Int32 { let before : Bool = lt(a, b); if before { yes } else { no } }\nfn identity(s : String) -> String { s }",
       ),
       (
-        "currentorderedbounded", "fn growth() -> String { \"abc\" + \"def\" }\nfn literal() -> String { \"123456\" }\npub fn first() -> Bool { growth() < literal() }\npub fn second() -> Bool { literal() >= growth() }\npub fn eager() -> Bool { \"\" < literal() }\npub fn short() -> Bool { false && first() }",
+        "orderedbounded", "fn growth() -> String { \"abc\" + \"def\" }\nfn literal() -> String { \"123456\" }\npub fn first() -> Bool { growth() < literal() }\npub fn second() -> Bool { literal() >= growth() }\npub fn eager() -> Bool { \"\" < literal() }\npub fn short() -> Bool { false && first() }",
       ),
     ]
   let sdk_source = "pub fn rounded(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.round(v) }\npub fn floored(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.floor(v) }\npub fn ceiling(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.ceiling(v) }\npub fn truncated(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.truncate(v) }\npub fn floating(v : @integer.Integer) -> Double { @basics.to_float(v) }\npub fn absolute(v : @integer.Integer) -> @integer.Integer { @basics.abs_int(v) }\npub fn exact(v : Double) -> @integer.Integer? { @int.from_float64_exact(v) }\npub fn trunc(v : Double) -> @integer.Integer? { @int.from_float64_truncated(v) }\npub fn floor(v : Double) -> @integer.Integer? { @int.from_float64_floor(v) }\npub fn ceil(v : Double) -> @integer.Integer? { @int.from_float64_ceiling(v) }\npub fn round(v : Double) -> @integer.Integer? { @int.from_float64_rounded(v) }\npub fn to_exact(v : @integer.Integer) -> Double? { @int.to_float64_exact(v) }\npub fn to_rounded(v : @integer.Integer) -> Double { @int.to_float64_rounded(v) }\npub fn optional(v : @integer.Integer?, flag : Bool) -> @integer.Integer? { if flag { identity(v) } else { v } }\nfn identity(v : @integer.Integer?) -> @integer.Integer? { v }\npub fn before(a : @integer.Integer, b : @integer.Integer) -> Bool { a < b && a != b }"
-  let r3_cases = cases
-    .filter(row => {
-      !row.0.has_prefix("current") || row.0.has_prefix("currentordered")
-    })
-    .map(row => ("sdk" + row.0, row.1)) +
-    [("sdkconversions", sdk_source)]
   let cases = cases +
-    cases
-    .filter(row => {
-      (!row.0.has_prefix("current") || row.0.has_prefix("currentordered")) &&
-      row.0 != "math"
-    })
-    .map(row => ("snapshot" + row.0, row.1)) +
-    r3_cases +
-    r3_cases.map(row => {
-      ("r4" + row.0.strip_prefix("sdk").unwrap().to_owned(), row.1)
-    }) +
-    [("decimal", decimal_source())]
+    [("conversions", sdk_source), ("decimal", decimal_source())]
   let models = []
   for (id, source) in cases {
     let source = "/// Qualification fixture documentation.\n///\n/// Preserve **Markdown** and λ😀.\n" +
       source
-    let snapshot_id = id.strip_prefix("r4").map(s => s.to_owned()).unwrap_or(id)
-    let stripped = snapshot_id
-      .strip_prefix("sdk")
-      .map(s => s.to_owned())
-      .unwrap_or(snapshot_id)
-    let base_id = stripped
-      .strip_prefix("snapshot")
-      .map(s => s.to_owned())
-      .unwrap_or(stripped)
-    let model_id = base_id
-      .strip_prefix("current")
-      .map(s => s.to_owned())
-      .unwrap_or(base_id)
+    let model_id = id
     let kind = model_id
       .strip_prefix("supported")
       .map(s => s.to_owned())
@@ -229,85 +199,15 @@ fn main raise {
       module_name: "main",
       source,
     }
-    let output = if id == "decimal" || id.has_prefix("r4") {
-      @frontend.compile_decimal_library(
-        input,
-        @frontend.PinnedSourceBindings::sdk_decimal(
-          "finos/morphir-sdk/decimal",
-          "0.1.0",
-          @frontend.DECIMAL_SDK_TREE,
-          "decimal",
-        ),
-        max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
-          5
-        } else {
-          1048576
-        },
-      )
-    } else if id.has_prefix("sdk") {
-      @frontend.compile_numeric_sdk_library(
-        input,
-        @frontend.PinnedSourceBindings::sdk_numeric_conversions(
-          "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
-          "basics",
-        ),
-        max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
-          5
-        } else {
-          1048576
-        },
-      )
-    } else if id.has_prefix("snapshot") || id == "math" {
-      @frontend.compile_math_library(
-        input,
-        @frontend.PinnedSourceBindings::sdk_numeric_math(
-          "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
-          "basics",
-        ),
-        max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
-          5
-        } else {
-          1048576
-        },
-      )
-    } else if id.has_prefix("current") {
-      @frontend.compile_supported_library_2026_10_17(
-        input,
-        max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
-          5
-        } else {
-          1048576
-        },
-      )
-    } else if id.has_prefix("supported") {
-      @frontend.compile_supported_library(
-        input,
-        max_string_code_units=if kind == "bounded" { 5 } else { 1048576 },
-      )
-    } else if id == "numeric" {
-      @frontend.compile_int32_library(input)
-    } else if id == "integer" {
-      @frontend.compile_integer_library(input)
-    } else if id == "float" {
-      @frontend.compile_float_library(input)
-    } else if id == "indexed" {
-      @frontend.compile_supported_library_2026_10_19(input)
-    } else if id == "pinnedsdk" {
-      @frontend.compile_pinned_sdk_library(
-        input,
-        @frontend.PinnedSourceBindings::sdk_basics_not(
-          "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
-          "basics",
-        ),
-      )
-    } else if id == "foundation" {
-      @frontend.compile_typed_library(input)
-    } else {
-      @frontend.compile_string_library(
-        input,
-        max_string_code_units=if id == "bounded" { 5 } else { 1048576 },
-      )
-    }
+    let output = @frontend.compile_library(
+      channel=@frontend.Experimental,
+      input,
+      max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
+        5
+      } else {
+        1048576
+      },
+    )
     let output = if kind == "float" {
       add_float_conversion_cases(output)
     } else {
@@ -772,31 +672,7 @@ fn main raise {
           } else {
             []
           },
-          "profile": if id == "decimal" || id.has_prefix("r4") {
-            @frontend.DECIMAL_LIBRARY_PROFILE
-          } else if id.has_prefix("sdk") {
-            @frontend.NUMERIC_SDK_LIBRARY_PROFILE
-          } else if id.has_prefix("snapshot") || id == "math" {
-            @frontend.MATH_LIBRARY_PROFILE
-          } else if id.has_prefix("current") {
-            @frontend.LIBRARY_PROFILE_2026_10_17
-          } else if id == "indexed" {
-            @frontend.LIBRARY_PROFILE_2026_10_19
-          } else if id == "pinnedsdk" {
-            @frontend.PINNED_SDK_LIBRARY_PROFILE
-          } else if id == "numeric" {
-            @frontend.INT32_LIBRARY_PROFILE
-          } else if id == "integer" {
-            @frontend.INTEGER_LIBRARY_PROFILE
-          } else if id == "float" {
-            @frontend.FLOAT_LIBRARY_PROFILE
-          } else if id.has_prefix("supported") {
-            @frontend.SUPPORTED_LIBRARY_PROFILE
-          } else if id == "foundation" {
-            @frontend.TYPED_FOUNDATION_PROFILE
-          } else {
-            @frontend.STRING_LIBRARY_PROFILE
-          },
+          "profile": @frontend.EXPERIMENTAL_PROFILE,
           "source": source,
           "module": generated.project.module_name,
           "symbols": generated.symbols.map(s => {

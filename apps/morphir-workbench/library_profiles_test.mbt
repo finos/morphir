@@ -27,7 +27,7 @@ fn library_compile(source~ : String = library_source) -> Json {
     "source": source,
     "languageId": "moonbit",
     "frontendProvider": "finos/morphir-moonbit-frontend",
-    "frontendProfile": "moonbit-model-bool-library-v1",
+    "frontendProfile": "moonbit-model-stable-v1",
     "target": "moonbit",
   })
 }
@@ -42,29 +42,16 @@ test "local catalog exposes one MoonBit language and the registered profile desc
   assert_eq(moonbit.length(), 1)
   assert_eq(
     @wire.field(moonbit[0], "defaultProfile"),
-    @wire.text(@moonbit_frontend.PROFILE),
+    @wire.text(@moonbit_frontend.STABLE_PROFILE),
   )
   let profiles = @wire.array(@wire.field(moonbit[0], "profiles"))
   assert_eq(profiles.map(p => @wire.string(@wire.field(p, "id"))), [
-    @moonbit_frontend.PROFILE,
-    @moonbit_frontend.LIBRARY_PROFILE,
-    @moonbit_frontend.TYPED_FOUNDATION_PROFILE,
-    @moonbit_frontend.INT32_LIBRARY_PROFILE,
-    @moonbit_frontend.INTEGER_LIBRARY_PROFILE,
-    @moonbit_frontend.FLOAT_LIBRARY_PROFILE,
-    @moonbit_frontend.STRING_LIBRARY_PROFILE,
-    @moonbit_frontend.SUPPORTED_LIBRARY_PROFILE,
-    @moonbit_frontend.SUPPORTED_LIBRARY_PROFILE_V2,
-    @moonbit_frontend.LIBRARY_PROFILE_2026_10_17,
-    @moonbit_frontend.LIBRARY_PROFILE_2026_10_19,
-    @moonbit_frontend.PINNED_SDK_LIBRARY_PROFILE,
-    @moonbit_frontend.MATH_LIBRARY_PROFILE,
-    @moonbit_frontend.NUMERIC_SDK_LIBRARY_PROFILE,
-    @moonbit_frontend.DECIMAL_LIBRARY_PROFILE,
+    @moonbit_frontend.STABLE_PROFILE,
+    @moonbit_frontend.EXPERIMENTAL_PROFILE,
   ])
   assert_eq(
     @wire.field(profiles[1], "displayName"),
-    @wire.text("Boolean library"),
+    @wire.text("Experimental typed MoonBit library"),
   )
   assert_eq(
     @wire.field(profiles[1], "evidence"),
@@ -82,7 +69,7 @@ test "library selection preserves every source label and origin without inferrin
   )
   assert_eq(
     @wire.field(result, "sourceProfile"),
-    @wire.text(@moonbit_frontend.LIBRARY_PROFILE),
+    @wire.text(@moonbit_frontend.STABLE_PROFILE),
   )
   assert_eq(@wire.optional(result, "sourceEntry"), None)
   let entries = @wire.array(@wire.field(result, "sourceEntries"))
@@ -170,7 +157,7 @@ test "library calls and lets evaluate through JSON and Ion while private entry r
 test "profile and provider refusals cannot fall back to the seed or another source language" {
   for
     provider, profile in [
-      ("unknown/compiler", @moonbit_frontend.LIBRARY_PROFILE),
+      ("unknown/compiler", @moonbit_frontend.STABLE_PROFILE),
       ("finos/morphir-moonbit-frontend", "unknown-profile"),
     ] {
     let result = @pipeline.execute({
@@ -182,13 +169,17 @@ test "profile and provider refusals cannot fall back to the seed or another sour
     })
     assert_eq(@wire.field(result, "success"), Json::boolean(false))
   }
-  let seed = compile_moonbit(library_source)
-  assert_eq(@wire.field(seed, "success"), Json::boolean(false))
+  let stable = compile_moonbit(library_source)
+  assert_eq(@wire.field(stable, "success"), Json::boolean(true))
+  assert_eq(
+    @wire.field(stable, "sourceProfile"),
+    @wire.text(@moonbit_frontend.STABLE_PROFILE),
+  )
   let scheme = @pipeline.execute({
     "operation": "compile",
     "source": "(+ 1 2)",
     "languageId": "scheme",
-    "frontendProfile": @moonbit_frontend.LIBRARY_PROFILE,
+    "frontendProfile": @moonbit_frontend.STABLE_PROFILE,
   })
   assert_eq(@wire.field(scheme, "success"), Json::boolean(false))
   let recursion = library_compile(
@@ -224,7 +215,7 @@ test "String source compiles and executes typed public entries in the workbench"
   let compiled = @pipeline.execute({
     "operation": "compile",
     "languageId": "moonbit",
-    "frontendProfile": "moonbit-model-string-library-v1",
+    "frontendProfile": "moonbit-model-stable-v1",
     "target": "moonbit",
     "source": "fn prefix() -> String { \"Hello, \" }\npub fn welcome(name : String, enabled : Bool) -> String { if enabled { prefix() + name } else { \"\" } }",
   })

@@ -19,15 +19,15 @@ export function testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llv
   const sourceDryLog=join(project,'.morphir/logs/frontend.ionb');
   const inventory: PipelineReport=JSON.parse(sourceCall(['run','.','--dry-run','--log','--json']).stdout);
   assert.ok(!existsSync(sourceDryLog));
-  assert.deepEqual(inventory.frontends.map(f => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))),[{source:'src/Main.mbt',unitId:'Main',frontend:'moonbit',profile:'moonbit-model-bool-v1',dependencies:{'moonbitlang/parser':'0.4.5','moonbitlang/lexer':'0.4.3'},outputContract:'ir-unit'}]);
+  assert.deepEqual(inventory.frontends.map(f => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))),[{source:'src/Main.mbt',unitId:'Main',frontend:'moonbit',profile:'moonbit-model-stable-v1',dependencies:{'moonbitlang/parser':'0.4.5','moonbitlang/lexer':'0.4.3','finos/morphir-sdk':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','finos/morphir-sdk/basics':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d'},outputContract:'ir-unit'}]);
   assert.equal(inventory.frontends[0]!.language,'moonbit');
   assert.equal(inventory.frontends[0]!.provider,'finos/morphir-moonbit-frontend');
   assert.equal(inventory.frontends[0]!.defaultProfile,true);
   assert.equal(inventory.frontends[0]!.evidence,'local-acceptance');
-  assert.deepEqual(new Set(inventory.frontends[0]!.availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-integer-library-v1','moonbit-model-float-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19','moonbit-model-pinned-sdk-library-v1','moonbit-model-library-2026-10-19-r2','moonbit-model-library-2026-10-19-r3','moonbit-model-library-2026-10-19-r4']));
+  assert.deepEqual(new Set(inventory.frontends[0]!.availableProfiles),new Set(['moonbit-model-stable-v1','moonbit-model-experimental-v1']));
   assert.equal(inventory.frontends[0]!.capabilities.maxDocuments,1);
   assert.equal(inventory.frontends[0]!.capabilities.incremental,false);
-  assert.equal(inventory.frontends[0]!.capabilities.limits.functions,1);
+  assert.equal(inventory.frontends[0]!.capabilities.limits.functions,64);
   assert.equal(inventory.boundaries[0]!.outputFormat,'ion-binary');
   assert.ok(!existsSync(join(project,'.morphir/out')),'Source dry-run must not publish');
   writeFileSync(sourcePath,source);writeFileSync(join(output,'Main.mbt'),source);writeFileSync(join(output,'morphir.toml'),manifest);
@@ -48,7 +48,7 @@ export function testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llv
   assert.equal(framedSource.find(r=>r.type==='result').data.successful,true);
   writeFileSync(join(output,'frontend.jsonl'),readFileSync(sourceJsonLog));
   const sourceRecords: Observation[]=readFileSync(sourceJsonLog,'utf8').trim().split('\n').map(line => JSON.parse(line));
-  assert.deepEqual(sourceRecords.filter(r=>r.signal==='succeeded').map(r=>r.stage),['parse','profile-check','lower','frontend']);
+  assert.deepEqual(sourceRecords.filter(r=>r.signal==='succeeded').map(r=>r.stage),['parse','profile-check','resolve','profile-check','lower','frontend']);
   assert.ok(!readFileSync(sourceJsonLog,'utf8').includes('eligible'));
   assert.deepEqual(readFileSync(join(project,'.morphir/out/compile.dest/Main.ionb')),bytes);
   const failedSourceSink=sourceCall(['run','.','--log-file',root,'--json']);
@@ -59,7 +59,7 @@ export function testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llv
   const text=JSON.parse(sourceCall(['run','.','--checkpoint-format','ion-text','--json']).stdout);
   assert.equal(text.successful,true);
   const ion=readFileSync(join(project,'.morphir/out/compile.dest/Main.ion'),'utf8');
-  for(const token of ['morphir_moonbit_frontend','moonbit-model-bool-v1','moonbit-parser-position-v1','eligible','metadata','provenance'])assert.ok(ion.includes(token),token);
+  for(const token of ['morphir_moonbit_frontend','moonbit-model-stable-v1','moonbit-parser-position-v1','eligible','metadata','provenance'])assert.ok(ion.includes(token),token);
   writeFileSync(join(output,'Main.ion'),ion);
   const generated=JSON.parse(sourceCall(['run','.','--backend','moonbit','--validation','source-only','--json']).stdout);
   assert.equal(generated.successful,true);assert.equal(generated.projects.length,1);

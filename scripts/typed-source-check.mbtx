@@ -113,19 +113,7 @@ async fn main {
   let private_probes = []
   for model in array(field(output, "models")) {
     let id = string(field(model, "id"))
-    let snapshot_id = id.strip_prefix("r4").map(s => s.to_owned()).unwrap_or(id)
-    let stripped = snapshot_id
-      .strip_prefix("sdk")
-      .map(s => s.to_owned())
-      .unwrap_or(snapshot_id)
-    let base_id = stripped
-      .strip_prefix("snapshot")
-      .map(s => s.to_owned())
-      .unwrap_or(stripped)
-    let model_id = base_id
-      .strip_prefix("current")
-      .map(s => s.to_owned())
-      .unwrap_or(base_id)
+    let model_id = id
     let kind = model_id
       .strip_prefix("supported")
       .map(s => s.to_owned())
@@ -766,7 +754,7 @@ async fn main {
       "sourceFloatExtension": "morphir-moonbit-source-float-v1",
       "sourceStringIndexExtension": "morphir-moonbit-source-string-index-v1",
       "pinnedSourceBinding": {
-        "profile": "moonbit-model-pinned-sdk-library-v1",
+        "profile": "moonbit-model-experimental-v1",
         "sourcePackage": "finos/morphir-sdk/basics",
         "sourceVersion": "0.1.0",
         "sourceTree": "9c83a100383570236b3d781362524008f76dd56d",
@@ -780,12 +768,7 @@ async fn main {
       "lanes": lanes,
       "sdkFiles": identities,
       "models": output,
-      "supportedProfiles": [
-        "moonbit-model-library-v1", "moonbit-model-library-2026-10-17", "moonbit-model-int32-library-v1",
-        "moonbit-model-library-2026-10-19", "moonbit-model-integer-library-v1", "moonbit-model-float-library-v1",
-        "moonbit-model-pinned-sdk-library-v1", "moonbit-model-library-2026-10-19-r2",
-        "moonbit-model-library-2026-10-19-r3", "moonbit-model-library-2026-10-19-r4",
-      ],
+      "supportedProfiles": ["moonbit-model-experimental-v1"],
       "scope": "Local original source, Scheme, generated direct consumers, pinned math, Integer conversion and checked Decimal SDK calls, and private access. Installed qualification remains a separate task.",
     } : Json)
   let ion = @ion_json.to_ion(receipt)

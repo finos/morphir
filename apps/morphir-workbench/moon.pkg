@@ -19,7 +19,6 @@ import {
   "finos/morphir-engine/config",
   "finos/morphir-engine/workspace",
   "finos/morphir-moonbit" @moonbit,
-  "finos/morphir-moonbit-frontend" @moonbit_frontend,
   "moonbitlang/core/encoding/base64",
   "moonbitlang/core/encoding/utf8",
   "finos/morphir-workbench/arguments",
@@ -40,6 +39,7 @@ import {
   "moonrockz/ion/binary" @ion_binary,
   "moonrockz/ion/text" @ion_text,
   "moonrockz/expect",
+  "finos/morphir-moonbit-frontend" @moonbit_frontend,
 } for "test"
 
 import {

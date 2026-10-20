@@ -264,7 +264,7 @@ fn Lowerer::lower(
     _ => {
       reject(
         "unsupported_expression",
-        "Expected a pure Boolean expression in " + PROFILE,
+        "Expected a pure Boolean expression in " + LEGACY_BOOL_PROFILE,
         loc,
       )
       abort("unreachable")

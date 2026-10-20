@@ -1,6 +1,6 @@
 ///|
 test "String length counts UTF-16 units through the mixed source profile" {
-  let output = @frontend.compile_supported_library_2026_10_19(
+  let output = @frontend.compile_library(
     input("pub fn count(s : String) -> Int32 { s.length() }"),
   )
   let runtime = string_runtime(output)
@@ -25,7 +25,7 @@ test "String length counts UTF-16 units through the mixed source profile" {
 
 ///|
 test "String slices adjust split surrogate boundaries inward" {
-  let output = @frontend.compile_supported_library_2026_10_19(
+  let output = @frontend.compile_library(
     input(
       "pub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }",
     ),
@@ -63,24 +63,18 @@ test "indexed String syntax and bound types stay inside the cumulative profile" 
       "pub fn wrong(s : String, flag : Bool, b : Int32) -> String { s[flag:b].to_owned() }",
     ] {
     try {
-      ignore(@frontend.compile_supported_library_2026_10_19(input(source)))
+      ignore(@frontend.compile_library(input(source)))
       fail("Expected indexed String admission failure")
     } catch {
       @frontend.Invalid(_) => ()
       error => raise error
     }
   }
-  try {
-    ignore(
-      @frontend.compile_supported_library_2026_10_17(
-        input("pub fn count(s : String) -> Int32 { s.length() }"),
-      ),
-    )
-    fail("Historical profile admitted String indexing")
-  } catch {
-    @frontend.Invalid(_) => ()
-    error => raise error
-  }
+  ignore(
+    @frontend.compile_library(
+      input("pub fn count(s : String) -> Int32 { s.length() }"),
+    ),
+  )
 }
 
 ///|
@@ -91,7 +85,7 @@ test "cumulative source profile rejects arithmetic on String and Bool" {
       "pub fn bad() -> Bool { true - false }", "pub fn bad() -> Bool { true * false }",
     ] {
     try {
-      ignore(@frontend.compile_supported_library_2026_10_19(input(source)))
+      ignore(@frontend.compile_library(input(source)))
       fail("Expected unsupported operand/operator pair: " + source)
     } catch {
       @frontend.Invalid(d) =>

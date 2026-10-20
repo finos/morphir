@@ -5,7 +5,7 @@ fn ordered_source() -> String {
 
 ///|
 test "ordered cumulative profile preserves UTF-16 shortlex rather than SDK lexical order" {
-  let output = @frontend.compile_supported_library_v2(input(ordered_source()))
+  let output = @frontend.compile_library(input(ordered_source()))
   ignore(library_generated(output))
   let runtime = string_runtime(output)
   for
@@ -47,31 +47,14 @@ test "ordered cumulative profile preserves UTF-16 shortlex rather than SDK lexic
 }
 
 ///|
-test "ordering is String-only and does not widen pinned v1 profiles" {
-  for
-    compile in [
-      fn(i) raise { @frontend.compile_library(i) },
-      fn(i) raise { @frontend.compile_typed_library(i) },
-      fn(i) raise { @frontend.compile_string_library(i) },
-      fn(i) raise { @frontend.compile_supported_library(i) },
-    ] {
-    try {
-      ignore(
-        compile(input("pub fn f(a : String, b : String) -> Bool { a < b }")),
-      )
-      fail("Expected pinned refusal")
-    } catch {
-      @frontend.Invalid(_) => ()
-      error => raise error
-    }
-  }
+test "ordering rejects mixed types, Bool ordering and unsupported methods" {
   for
     source in [
-      "pub fn f(a : Int32, b : Int32) -> Bool { a < b }", "pub fn f(a : Bool, b : Bool) -> Bool { a >= b }",
-      "pub fn f(a : String, b : Bool) -> Bool { a <= b }", "pub fn f(a : String) -> Int32 { a.compare(\"a\") }",
+      "pub fn f(a : Bool, b : Bool) -> Bool { a >= b }", "pub fn f(a : String, b : Bool) -> Bool { a <= b }",
+      "pub fn f(a : String) -> Int32 { a.compare(\"a\") }",
     ] {
     try {
-      ignore(@frontend.compile_supported_library_v2(input(source)))
+      ignore(@frontend.compile_library(input(source)))
       fail("Expected type refusal")
     } catch {
       @frontend.Invalid(diagnostic) => assert_true(diagnostic.source is Some(_))
@@ -82,7 +65,7 @@ test "ordering is String-only and does not widen pinned v1 profiles" {
 
 ///|
 test "ordering evaluates operands strictly left to right and retains source guards" {
-  let output = @frontend.compile_supported_library_v2(
+  let output = @frontend.compile_library(
     input(
       "fn growth() -> String { \"abc\" + \"def\" }\nfn literal() -> String { \"123456\" }\npub fn first() -> Bool { growth() < literal() }\npub fn second() -> Bool { literal() >= growth() }\npub fn eager() -> Bool { \"\" < literal() }\npub fn short() -> Bool { false && first() }\npub fn less(a : String, b : String) -> Bool { a < b }",
     ),
@@ -132,9 +115,9 @@ test "ordering evaluates operands strictly left to right and retains source guar
 ///|
 test "ordered profile retains observation neutrality and cancellation boundaries" {
   let source = input(ordered_source())
-  let expected = @frontend.compile_supported_library_v2(source)
+  let expected = @frontend.compile_library(source)
   let records = []
-  let actual = @frontend.compile_supported_library_v2(
+  let actual = @frontend.compile_library(
     source,
     scope=observer(records, Ref(0)).scope(),
   )
@@ -158,7 +141,7 @@ test "ordered profile retains observation neutrality and cancellation boundaries
     }
     try {
       ignore(
-        @frontend.compile_supported_library_v2(source, scope=o.scope(), cancelled=fn() {
+        @frontend.compile_library(source, scope=o.scope(), cancelled=fn() {
           starts.val == phase
         }),
       )
@@ -172,7 +155,7 @@ test "ordered profile retains observation neutrality and cancellation boundaries
   }
   try {
     ignore(
-      @frontend.compile_supported_library_v2(source, limits={
+      @frontend.compile_library(source, limits={
         ..@frontend.LibraryLimits::default(),
         max_expressions: 1,
       }),

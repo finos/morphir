@@ -6,7 +6,7 @@ import {capabilities} from '../build-provider/capabilities.mts';
 import {excluded,hash,treeIdentity} from '../build-provider/identity.mts';
 import {includeDependencyPath} from '../build-provider/paths.mts';
 
-const profile='moonbit-model-bool-library-v1';
+const profile='moonbit-model-stable-v1';
 const provider='finos/morphir-moonbit-frontend';
 
 // The L1 fixture expectations are hand-authored, never computed from generated IR.
@@ -38,7 +38,7 @@ export function testInstalledLibrary({run,root,receipts,cli,helper,cwd,home,llvm
     const dry=JSON.parse(call(['run','.','--dry-run','--log','--json'],0,project).stdout);
     const descriptor=dry.frontends[0];
     assert.equal(descriptor.language,'moonbit');assert.equal(descriptor.provider,provider);
-    assert.equal(descriptor.profile,profile);assert.equal(descriptor.defaultProfile,false);
+    assert.equal(descriptor.profile,profile);assert.equal(descriptor.defaultProfile,true);
     assert.equal(descriptor.evidence,'local-acceptance');assert.equal(descriptor.outputContract,'ir-unit');
     assert.equal(descriptor.capabilities.maxDocuments,1);assert.equal(descriptor.capabilities.incremental,false);
     assert.ok(!existsSync(join(project,'.morphir')),'Library dry-run must not read source or create logs/output');
@@ -90,7 +90,7 @@ export function testInstalledLibrary({run,root,receipts,cli,helper,cwd,home,llvm
       const failure=JSON.parse(call(['run','.','--json'],1,project).stdout);
       assert.equal(failure.successful,false);assert.deepEqual(failure.committed,[]);
       assert.match(failure.diagnostics[0].message,diagnostic!);
-      assert.match(failure.diagnostics[0].message,/provider finos\/morphir-moonbit-frontend; profile moonbit-model-bool-library-v1/);
+      assert.match(failure.diagnostics[0].message,/provider finos\/morphir-moonbit-frontend; profile moonbit-model-stable-v1/);
       assert.equal(treeIdentity(published),before,'Rejected '+id+' preserves all published artifacts');
       writeFileSync(join(artifact,'rejected-'+id+'.json'),JSON.stringify(failure,null,2)+'\n');
     }
@@ -155,7 +155,7 @@ export function testInstalledLibrary({run,root,receipts,cli,helper,cwd,home,llvm
       assert.deepEqual(readFileSync(join(published,'Main.ionb')),bytes);
       const sourceStderr=call(['run','.','--log-file','@stderr','--log-format','text','--json'],0,project);
       assert.deepEqual(JSON.parse(sourceStderr.stdout),compiled);assert.match(sourceStderr.stderr,/morphir-observation-v1/);
-      assert.equal(JSON.parse(call(['run','.','--frontend-profile','moonbit-model-bool-v1','--dry-run','--json'],0,project).stdout).frontends[0].defaultProfile,true);
+      assert.equal(JSON.parse(call(['run','.','--frontend-profile','moonbit-model-stable-v1','--dry-run','--json'],0,project).stdout).frontends[0].defaultProfile,true);
       assert.ok(JSON.parse(call(['run','.','--frontend-provider','absent','--dry-run','--json'],2,project).stdout).error.includes('frontend.unknown_provider'));
       const target=required[0],quiet=JSON.parse(verify(target!,'debug',['--telemetry-adapter','none','--json']).stdout);
       const logged=JSON.parse(verify(target!,'debug',['--log-file',join(artifact,'execution.ionb'),'--json']).stdout);

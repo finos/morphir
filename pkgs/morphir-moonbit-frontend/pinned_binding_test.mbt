@@ -1,11 +1,14 @@
 ///|
 test "pinned Basics not owns a canonical typed call and replayable source facts" {
   let source = "pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"
-  let output = @frontend.compile_pinned_sdk_library(
+  let output = @frontend.compile_library(
+    channel=@frontend.Experimental,
     input(source),
-    @frontend.PinnedSourceBindings::sdk_basics_not(
-      "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
-      "basics",
+    bindings=Some(
+      @frontend.PinnedSourceBindings::sdk_basics_not(
+        "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+        "basics",
+      ),
     ),
   )
   assert_eq(output.entries.length(), 1)
@@ -74,9 +77,10 @@ test "pinned Basics not owns a canonical typed call and replayable source facts"
 test "a source alias without an adapter supplied binding is refused" {
   let failed = try {
     ignore(
-      @frontend.compile_pinned_sdk_library(
+      @frontend.compile_library(
+        channel=@frontend.Experimental,
         input("pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"),
-        @frontend.PinnedSourceBindings::empty(),
+        bindings=Some(@frontend.PinnedSourceBindings::empty()),
       ),
     )
     false
@@ -137,11 +141,14 @@ test "pinned calls cannot be redirected by a source package owning the SDK ident
   }
   let rejected = try {
     ignore(
-      @frontend.compile_pinned_sdk_library(
+      @frontend.compile_library(
+        channel=@frontend.Experimental,
         bad,
-        @frontend.PinnedSourceBindings::sdk_basics_not(
-          "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
-          "basics",
+        bindings=Some(
+          @frontend.PinnedSourceBindings::sdk_basics_not(
+            "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+            "basics",
+          ),
         ),
       ),
     )
@@ -154,4 +161,32 @@ test "pinned calls cannot be redirected by a source package owning the SDK ident
     error => raise error
   }
   assert_true(rejected)
+}
+
+///|
+test "narrow binding environments require audited SDK type uses even without calls" {
+  for
+    source in [
+      "pub fn f(v : @integer.Integer) -> @integer.Integer { v }", "pub fn f(v : @integer.Integer?) -> @integer.Integer? { v }",
+      "pub fn f(v : @decimal.Decimal) -> @decimal.Decimal { v }", "pub fn f() -> Bool raise @sdk.SdkError { true }",
+      "pub fn f() -> Bool raise @decimal.DecimalError { true }",
+    ] {
+    try {
+      ignore(
+        @frontend.compile_library(
+          channel=@frontend.Experimental,
+          input(source),
+          bindings=Some(@frontend.PinnedSourceBindings::empty()),
+        ),
+      )
+      fail("Expected missing SDK type refusal")
+    } catch {
+      @frontend.Invalid(d) =>
+        assert_eq(d.code, "moonbit_frontend.binding_identity")
+      error => raise error
+    }
+    ignore(
+      @frontend.compile_library(channel=@frontend.Experimental, input(source)),
+    )
+  }
 }

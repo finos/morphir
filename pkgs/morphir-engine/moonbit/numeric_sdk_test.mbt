@@ -3,7 +3,7 @@ test "numeric SDK snapshot pins types and preserves contracts through Ion and ex
   let snapshot = files()
   snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
     old="language='moonbit'",
-    new="language='moonbit'\nprofile='moonbit-model-library-2026-10-19-r3'",
+    new="language='moonbit'\nprofile='moonbit-model-experimental-v1'",
   )
   snapshot["src/Main.mbt"] = "pub fn rounded(v : Double) -> @integer.Integer raise @sdk.SdkError { @basics.round(v) }\npub fn checked(v : Double) -> @integer.Integer? { @int.from_float64_exact(v) }\npub fn exact(v : @integer.Integer) -> Double? { @int.to_float64_exact(v) }"
   let engine = @engine.Engine::new()

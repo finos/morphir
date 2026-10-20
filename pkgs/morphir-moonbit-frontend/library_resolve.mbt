@@ -1,4 +1,23 @@
 ///|
+fn PinnedSourceBindings::require_type(
+  self : PinnedSourceBindings,
+  ty : LibraryTypeUse,
+) -> Unit raise {
+  let required = match ty.scalar {
+    SdkInteger | OptionalSdkInteger => Some(SourceSdkType::Integer)
+    SdkDecimal => Some(SourceSdkType::Decimal)
+    _ => None
+  }
+  if required is Some(required) && !self.types.contains(required) {
+    library_error(
+      "binding_identity",
+      "Source type requires its audited SDK binding: " + ty.spelling,
+      Some(ty.source),
+    )
+  }
+}
+
+///|
 priv struct LibraryResolver {
   functions : Map[String, Int32]
   bindings : PinnedSourceBindings
@@ -20,8 +39,10 @@ fn LibraryResolver::expression(
     Floating(value, authored, scalar, source) =>
       Floating(value, authored, scalar, source)
     Text(value, authored, source) => Text(value, authored, source)
-    Constraint(value, ty, source) =>
+    Constraint(value, ty, source) => {
+      self.bindings.require_type(ty)
       Constraint(self.expression(value, scope), ty, source)
+    }
     Identifier(text, source) =>
       match scope.get(text) {
         Some(name) => Variable(name, source)
@@ -131,6 +152,23 @@ fn library_resolve(
   let resolved = []
   for declaration in functions {
     library_poll(cancelled)
+    for ty in [..declaration.input_types, declaration.output_type] {
+      bindings.require_type(ty)
+    }
+    if declaration.effect != Pure &&
+      !bindings.types.contains(
+        if declaration.effect == DecimalError {
+          SourceSdkType::Decimal
+        } else {
+          SourceSdkType::Error
+        },
+      ) {
+      library_error(
+        "binding_identity",
+        "Error annotation requires its audited SDK binding",
+        Some(declaration.source),
+      )
+    }
     let scope : Map[String, @ir.Name] = Map([])
     let bound_names = declaration.parameters.copy()
     collect_bindings(declaration.body, bound_names)

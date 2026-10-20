@@ -1,6 +1,5 @@
 {
-  "profile": "moonbit-model-library-2026-10-19-r4",
-  "inherits": "moonbit-model-library-2026-10-19-r3",
+  "profile": "moonbit-model-experimental-v1",
   "sourceLanguage": "moonbit",
   "sourcePackage": "finos/morphir-sdk/decimal",
   "sourceVersion": "0.1.0",

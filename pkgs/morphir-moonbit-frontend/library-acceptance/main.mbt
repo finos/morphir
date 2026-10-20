@@ -182,7 +182,7 @@ fn main raise {
     Json::object(
       Map::from_array([
         ("language", Json::string("moonbit")),
-        ("profile", Json::string(@frontend.LIBRARY_PROFILE)),
+        ("profile", Json::string(@frontend.STABLE_PROFILE)),
         ("parserVersion", Json::string(@frontend.PARSER_VERSION)),
         ("models", Json::array(models)),
       ]),

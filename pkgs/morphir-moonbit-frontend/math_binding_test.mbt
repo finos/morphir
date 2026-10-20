@@ -23,9 +23,10 @@ test "math Scheme references and exceptional categories match independent expect
       ("@basics.sin(-0.0)", -0.0, 0UL),
       ("@basics.abs_float(-0.0)", -0.0, 0UL),
     ] {
-    let output = @frontend.compile_math_library(
+    let output = @frontend.compile_library(
+      channel=@frontend.Experimental,
       input("pub fn calculate() -> Double { " + expression + " }"),
-      math_bindings(),
+      bindings=Some(math_bindings()),
     )
     let runtime = string_runtime(output)
     guard @backend.call_entry(runtime, output.entries[0], [])
@@ -45,9 +46,10 @@ test "math Scheme references and exceptional categories match independent expect
       "@basics.sqrt(-1.0)", "@basics.sin(1.0 / 0.0)", "@basics.cos(1.0 / 0.0)", "@basics.power_float(-1.0, 0.5)",
       "@basics.abs_float(0.0 / 0.0)",
     ] {
-    let output = @frontend.compile_math_library(
+    let output = @frontend.compile_library(
+      channel=@frontend.Experimental,
       input("pub fn calculate() -> Double { " + expression + " }"),
-      math_bindings(),
+      bindings=Some(math_bindings()),
     )
     let runtime = string_runtime(output)
     guard @backend.call_entry(runtime, output.entries[0], [])
@@ -60,9 +62,10 @@ test "math Scheme references and exceptional categories match independent expect
 
 ///|
 test "math source facts own canonical references and survive checked IR roundtrip" {
-  let output = @frontend.compile_math_library(
+  let output = @frontend.compile_library(
+    channel=@frontend.Experimental,
     input("pub fn root(value : Double) -> Double { @basics.sqrt(value) }"),
-    math_bindings(),
+    bindings=Some(math_bindings()),
   )
   guard output.ir.distribution is Library(_, _, package_def) else {
     fail("Expected library")
@@ -110,7 +113,7 @@ test "math source facts own canonical references and survive checked IR roundtri
 }
 
 ///|
-test "math admission stays explicit and historical source profiles stay frozen" {
+test "SDK calls require audited names and matching argument types" {
   for
     (source, code) in [
       ("pub fn f() -> Double { @math.sqrt(2.0) }", "unknown_binding"),
@@ -122,32 +125,27 @@ test "math admission stays explicit and historical source profiles stay frozen" 
         "pub fn f(basics : Double) -> Double { @basics.sqrt(basics) }", "shadowed_binding",
       ),
     ] {
-    let rejected = try {
-      ignore(@frontend.compile_math_library(input(source), math_bindings()))
-      false
+    try {
+      ignore(
+        @frontend.compile_library(
+          channel=@frontend.Experimental,
+          input(source),
+          bindings=Some(math_bindings()),
+        ),
+      )
+      fail("Expected binding refusal")
     } catch {
       @frontend.Invalid(diagnostic) => {
         assert_eq(diagnostic.code, "moonbit_frontend." + code)
         assert_true(diagnostic.source is Some(_))
-        true
       }
       error => raise error
     }
-    assert_true(rejected)
   }
-  let rejected = try {
-    ignore(
-      @frontend.compile_float_library(
-        input("pub fn f() -> Double { @basics.sqrt(2.0) }"),
-      ),
-    )
-    false
-  } catch {
-    @frontend.Invalid(diagnostic) => {
-      assert_eq(diagnostic.code, "moonbit_frontend.qualified_reference")
-      true
-    }
-    error => raise error
-  }
-  assert_true(rejected)
+  ignore(
+    @frontend.compile_library(
+      channel=@frontend.Experimental,
+      input("pub fn f() -> Double { @basics.sqrt(2.0) }"),
+    ),
+  )
 }

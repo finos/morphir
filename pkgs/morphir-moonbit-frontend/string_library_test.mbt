@@ -3,7 +3,7 @@ fn string_output(
   source : String,
   limit~ : Int32 = 1048576,
 ) -> @frontend.LibraryOutput raise {
-  @frontend.compile_string_library(input(source), max_string_code_units=limit)
+  @frontend.compile_library(input(source), max_string_code_units=limit)
 }
 
 ///|
@@ -89,10 +89,10 @@ test "bounded concatenation rejects growth and preserves short circuiting" {
 test "String basics refuse unqualified operations and malformed literal scalars" {
   for
     source in [
-      "pub fn f(s : String) -> Bool { s < \"a\" }", "pub fn f(s : String) -> Bool { s.is_empty() }",
-      "pub fn f(s : String) -> String { s + true }", "pub fn f(s : String) -> String { if s { s } else { s } }",
-      "pub fn f(s : String) -> Bool { s == false }", "pub fn f() -> String { \"\\uD800\" }",
-      "pub fn f() -> String { \"\\u{110000}\" }", "pub fn f() -> String { \"\\{true}\" }",
+      "pub fn f(s : String) -> Bool { s.is_empty() }", "pub fn f(s : String) -> String { s + true }",
+      "pub fn f(s : String) -> String { if s { s } else { s } }", "pub fn f(s : String) -> Bool { s == false }",
+      "pub fn f() -> String { \"\\uD800\" }", "pub fn f() -> String { \"\\u{110000}\" }",
+      "pub fn f() -> String { \"\\{true}\" }",
     ] {
     try {
       ignore(string_output(source))
@@ -102,10 +102,6 @@ test "String basics refuse unqualified operations and malformed literal scalars"
       error => raise error
     }
   }
-  assert_eq(
-    library_failure("pub fn f() -> String { \"a\" }").code,
-    "moonbit_frontend.unsupported_type",
-  )
 }
 
 ///|
@@ -113,7 +109,7 @@ test "source String declarations cannot shadow runtime extension identities" {
   for package_name in ["morphir/SDK", "morphir/moonbit-source"] {
     try {
       ignore(
-        @frontend.compile_string_library({
+        @frontend.compile_library({
           ..input("pub fn require_valid(s : String) -> String { s }"),
           package_name,
         }),

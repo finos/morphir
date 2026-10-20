@@ -61,7 +61,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await body.waitFor();
   assert.equal(await tab('Logs').getAttribute('aria-selected'), 'true');
   const logs = body.locator('.tool-log');
-  assert.match((await logs.filter({ hasText: 'Started request' }).first().textContent()!)!, /Compile.*Started request \d+ · source revision \d+ · moonbit \(moonbit-model-bool-library-v1\)/);
+  assert.match((await logs.filter({ hasText: 'Started request' }).first().textContent()!)!, /Compile.*Started request \d+ · source revision \d+ · moonbit \(moonbit-model-stable-v1\)/);
   assert.match((await logs.first().textContent()!)!, /Compile.*Request \d+ finished in \d+ ms · user · 1 modules, 0 types, 3 values/);
   const open = await geometry(page);
   assert.ok(Math.abs(collapsed.source - open.source - open.body) <= 4, `Opening the panel takes its height from the code panes (${collapsed.source} → ${open.source}, panel ${open.body})`);
@@ -78,7 +78,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await tab('Logs').click();
   await source.press('ControlOrMeta+z');
   await page.waitForFunction(text => document.querySelector<CodeEditor>('#source')?.value === text, library);
-  assert.equal(await page.getByRole('combobox', { name: 'Source profile', exact: true }).inputValue(), 'moonbit-model-bool-library-v1');
+  assert.equal(await page.getByRole('combobox', { name: 'Source profile', exact: true }).inputValue(), 'moonbit-model-stable-v1');
 
   // A real frontend refusal is a current diagnostic with code and location until the source changes.
   await source.fill(recursion);

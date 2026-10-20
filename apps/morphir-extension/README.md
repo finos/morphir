@@ -14,7 +14,7 @@ MEP `0.2.0-draft.1` with a `modelTransport` offer to use
 `morphir.frontend.compileModel` and `morphir.backend.generateModel`. The extension
 advertises rich frontend compilation and backend generation. Legacy frontend
 `compile`, incremental compilation, fragments, streaming and wire cancellation
-remain unavailable. The frontend language is `moonbit`; its Boolean library
+remain unavailable. The frontend language is `moonbit`; its typed library
 profile is a separate capability, not a language name.
 
 ## Rich source compilation
@@ -25,7 +25,8 @@ embedders can continue using `Session::new()`; the native executable supplies
 `frontend=Some(...)`. Compilation and generation tuples are negotiated separately:
 permission for one operation never authorizes the other.
 
-The qualified source profile is `moonbit-model-bool-library-v1`. The vendor root
+The default source profile is `moonbit-model-stable-v1`; explicit
+`moonbit-model-experimental-v1` adds capabilities awaiting promotion. The vendor root
 capability `moonbitFrontendProfiles` describes it alongside the canonical
 frontend language capability. Keeping the vendor declaration at the capability
 root lets the typed SDK retain it as an extension member. A host that only knows
@@ -36,7 +37,7 @@ Compile requests use the canonical `languageId`, `sources`, `package`, `options`
 with a nonnegative integer version and its complete text. External dependencies,
 imports and incremental baselines are refused. Supported options are
 `typesOnly=false`, `irVersion="4.0.0"` and an optional `profile` selecting the
-Boolean library profile, which is also the default. Unknown options fail.
+typed library profile, which is also the default. Unknown options fail.
 
 When supplied, `sources.root` must be absolute. Relative document paths retain
 their nesting; absolute `.mbt` document paths are resolved relative to that root.

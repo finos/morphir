@@ -17,7 +17,7 @@ test "MoonBit source preserves typed identities, source labels, rich Ion and bin
     Json::boolean(true),
     msg=result.stringify(),
   )
-  let entry = @wire.string(@wire.field(result, "sourceEntry"))
+  let entry = @wire.string(@wire.array(@wire.field(result, "sourceEntries"))[0])
   assert_true(entry.has_prefix("user:main#"))
   let node = @wire.array(@wire.field(result, "nodes")).filter(n => {
       @wire.field(n, "id") == @wire.text(entry)
@@ -41,7 +41,7 @@ test "MoonBit source preserves typed identities, source labels, rich Ion and bin
   assert_true(!unit.metadata.is_empty())
   assert_true(!unit.provenance.is_empty())
   assert_eq(@codec.to_json(unit.distribution), @wire.field(result, "ir"))
-  let original = @moonbit_frontend.compile({
+  let original = @moonbit_frontend.compile_library({
     unit_id: "main",
     package_name: "user",
     module_name: "main",
@@ -93,7 +93,9 @@ test "MoonBit public entries evaluate every Boolean input combination through ty
       "operation": "evaluate",
       "source": @wire.string(@wire.field(result, "irSource")),
       "executionMode": "typed",
-      "entry": @wire.string(@wire.field(result, "sourceEntry")),
+      "entry": @wire.string(
+        @wire.array(@wire.field(result, "sourceEntries"))[0],
+      ),
       "arguments": [
         { "type": "bool", "value": active },
         { "type": "bool", "value": vip },
@@ -112,24 +114,17 @@ test "MoonBit public entries evaluate every Boolean input combination through ty
 test "MoonBit private function remains inspectable but has no public typed entry" {
   let result = compile_moonbit("fn hidden(x : Bool) -> Bool { x }")
   assert_eq(@wire.field(result, "success"), Json::boolean(true))
-  let entry = @wire.string(@wire.field(result, "sourceEntry"))
-  assert_eq(
-    @wire.optional(
-      @wire.field(@wire.field(result, "typedEvaluations"), "entries"),
-      entry,
-    ),
-    None,
-  )
+  assert_eq(@wire.field(result, "sourceEntries"), Json::array([]))
 }
 
 ///|
 test "MoonBit profile rejections retain source coordinates and never fall back to Scheme" {
-  let result = compile_moonbit("pub fn answer(x : Int) -> Int { x }")
+  let result = compile_moonbit("pub fn answer(x : Double) -> Double { x }")
   assert_eq(@wire.field(result, "success"), Json::boolean(false))
   let diagnostic = @wire.field(result, "frontendDiagnostic")
   assert_eq(
     @wire.field(diagnostic, "code"),
-    @wire.text("moonbit_frontend.unsupported_type"),
+    @wire.text("moonbit_frontend.experimental_capability"),
   )
   assert_true(@wire.field(diagnostic, "source") != Json::null())
   let result = compile_moonbit("(+ 1 2)")

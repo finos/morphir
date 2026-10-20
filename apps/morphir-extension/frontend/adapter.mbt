@@ -83,7 +83,7 @@ fn compile(
   @wire.fields(input.options, ["typesOnly", "irVersion", "profile"]) catch {
     _ =>
       return failed(
-        "moonbit_frontend.unsupported_options", "Supported options are typesOnly=false, irVersion=4.0.0 and the Boolean library profile",
+        "moonbit_frontend.unsupported_options", "Supported options are typesOnly=false, irVersion=4.0.0 and the typed library profile",
       )
   }
   guard @wire.optional(input.options, "typesOnly") == Some(Json::boolean(false)) else {
@@ -92,12 +92,19 @@ fn compile(
     )
   }
   let profile = @wire.optional(input.options, "profile").unwrap_or(
-    Json::string(@source_frontend.LIBRARY_PROFILE),
+    Json::string(@source_frontend.STABLE_PROFILE),
   )
-  guard profile == Json::string(@source_frontend.LIBRARY_PROFILE) else {
+  let channel = if profile == Json::string(@source_frontend.STABLE_PROFILE) {
+    @source_frontend.Stable
+  } else if profile == Json::string(@source_frontend.EXPERIMENTAL_PROFILE) {
+    @source_frontend.Experimental
+  } else {
     return failed(
       "moonbit_frontend.unsupported_profile",
-      "Select " + @source_frontend.LIBRARY_PROFILE,
+      "Select " +
+      @source_frontend.STABLE_PROFILE +
+      " or " +
+      @source_frontend.EXPERIMENTAL_PROFILE,
     )
   }
   let module_name = module_name(input) catch {
@@ -121,6 +128,7 @@ fn compile(
       module_name,
       source: input.text,
     },
+    channel~,
     cancelled~,
   ) catch {
     @source_frontend.Invalid(problem) =>
@@ -178,15 +186,17 @@ pub fn provider() -> @mep.Frontend {
   {
     language_id: "moonbit",
     file_extensions: [".mbt"],
-    profiles: [
-      {
-        "id": @source_frontend.LIBRARY_PROFILE,
-        "summary": "Boolean library",
-        "maxDocuments": 1,
-        "imports": false,
-        "dependencies": false,
+    profiles: [@source_frontend.Stable, @source_frontend.Experimental].map(channel => {
+      "id": channel.profile(),
+      "summary": if channel == @source_frontend.Stable {
+        "Stable typed MoonBit library"
+      } else {
+        "Experimental typed MoonBit library"
       },
-    ],
+      "maxDocuments": 1,
+      "imports": false,
+      "dependencies": false,
+    }),
     compile,
   }
 }

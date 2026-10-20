@@ -30,7 +30,7 @@ fn main raise {
     let source = "// λ😀 source origin fixture\npub fn decide(active : Bool, vip : Bool) -> Bool { " +
       body +
       " }"
-    let output = @frontend.compile({
+    let output = @frontend.compile_library({
       unit_id: id + ".mbt",
       package_name: "boolean/" + id,
       module_name: "main",
@@ -47,7 +47,7 @@ fn main raise {
         (true, false),
         (true, true),
       ] {
-      guard @backend.call_entry(runtime, output.entry, [
+      guard @backend.call_entry(runtime, output.entries[0], [
           @scheme.Boolean(active),
           @scheme.Boolean(vip),
         ])
@@ -70,7 +70,7 @@ fn main raise {
           ("id", Json::string(id)),
           ("source", Json::string(source)),
           ("ir", Json::string(@ir_json.write(output.ir))),
-          ("entry", Json::string(output.entry.to_canonical())),
+          ("entry", Json::string(output.entries[0].to_canonical())),
           ("module", Json::string(generated.project.module_name)),
           ("function", Json::string(generated.symbols[0].generated_name)),
           ("expected", Json::array(expected.map(Json::boolean))),
@@ -104,7 +104,7 @@ fn main raise {
   println(
     Json::object(
       Map::from_array([
-        ("profile", Json::string(@frontend.PROFILE)),
+        ("profile", Json::string(@frontend.STABLE_PROFILE)),
         ("parserVersion", Json::string(@frontend.PARSER_VERSION)),
         ("models", Json::array(models)),
       ]),

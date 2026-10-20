@@ -571,9 +571,9 @@ fn library_lower(
   module_name : @ir.Path,
   checked : CheckedLibrary,
   cancelled : () -> Bool,
-  mode : LibraryMode,
   string_limit : Int32,
   bindings : PinnedSourceBindings,
+  channel : SourceChannel,
 ) -> LibraryOutput raise {
   let boolean = boolean_type()
   let allocated = allocate_source_names(
@@ -599,8 +599,8 @@ fn library_lower(
     entries,
     boolean,
     types: Map([]),
-    metadata: mode != BooleanOnly,
-    profile: mode.profile(),
+    metadata: true,
+    profile: channel.profile(),
     string_limit,
     cancelled,
     origins: [],
@@ -623,7 +623,7 @@ fn library_lower(
       lowerer.types[name] = ty
     }
     let mut body = lowerer.expression(function.body)
-    if mode.supports_float() && declaration.public {
+    if declaration.public {
       if declaration.output_type.scalar == Floating32 {
         body = lowerer.round_float32(
           body,
@@ -653,7 +653,7 @@ fn library_lower(
         }
       }
     }
-    if mode.supports_integer() && declaration.public {
+    if declaration.public {
       if declaration.output_type.scalar.has_integer_boundary() {
         body = lowerer.require_integer_boundary(
           body,
@@ -685,7 +685,7 @@ fn library_lower(
         }
       }
     }
-    if mode.supports_strings() && declaration.public {
+    if declaration.public {
       if declaration.output_type.scalar == Text {
         body = lowerer.require_string(
           body,
@@ -725,9 +725,9 @@ fn library_lower(
         doc: declaration.doc,
         value: @ir.ValueDefinition::ExpressionBody(
           function.parameters.mapi((j, name) => {
-            (name, declaration.input_types[j].to_ir(mode != BooleanOnly))
+            (name, declaration.input_types[j].to_ir(true))
           }),
-          declaration.output_type.to_ir(mode != BooleanOnly),
+          declaration.output_type.to_ir(true),
           body,
         ),
       },
@@ -738,50 +738,42 @@ fn library_lower(
     let id = "value:" + entries[i].to_canonical()
     metadata.push({
       node_id: id,
-      data: ion_record(
-        [
-          ("declaration", library_origin(declaration.name, declaration.source)),
-          ..if mode == NumericSdk || mode == DecimalSdk {
-            [
-              (
-                "source_error_contract",
-                @ion.IonValue::string(declaration.effect.identifier()),
-              ),
-            ]
-          } else {
-            []
-          },
-          (
-            "naming",
-            ion_record([
-              ("policy", @ion.IonValue::string(NAMING_POLICY)),
-              ("original", @ion.IonValue::string(declaration.name)),
-              (
-                "allocation_reason",
-                @ion.IonValue::string(allocated.reason(declaration.name)),
-              ),
-              (
-                "identity",
-                @ion.IonValue::string(
-                  allocated.names[declaration.name].to_canonical(),
-                ),
-              ),
-            ]),
-          ),
-          (
-            "parameters",
-            @ion.IonValue::list(
-              declaration.parameters.mapi((i, p) => {
-                allocated_origin(
-                  library_origin(p.0, p.1),
-                  function.parameters[i],
-                  function.names.source.reason(p.0),
-                )
-              }),
+      data: ion_record([
+        ("declaration", library_origin(declaration.name, declaration.source)),
+        (
+          "source_error_contract",
+          @ion.IonValue::string(declaration.effect.identifier()),
+        ),
+        (
+          "naming",
+          ion_record([
+            ("policy", @ion.IonValue::string(NAMING_POLICY)),
+            ("original", @ion.IonValue::string(declaration.name)),
+            (
+              "allocation_reason",
+              @ion.IonValue::string(allocated.reason(declaration.name)),
             ),
+            (
+              "identity",
+              @ion.IonValue::string(
+                allocated.names[declaration.name].to_canonical(),
+              ),
+            ),
+          ]),
+        ),
+        (
+          "parameters",
+          @ion.IonValue::list(
+            declaration.parameters.mapi((i, p) => {
+              allocated_origin(
+                library_origin(p.0, p.1),
+                function.parameters[i],
+                function.names.source.reason(p.0),
+              )
+            }),
           ),
-        ],
-      ),
+        ),
+      ]),
     })
     metadata.push({
       node_id: id + "/body",
@@ -794,24 +786,20 @@ fn library_lower(
   public_entries.sort_by(fn(a, b) { a.to_canonical().compare(b.to_canonical()) })
   let module_def : @ir.ModuleDefinition = { types: Map([]), doc: None, values, }
   let source_modules : Map[@ir.ModuleName, @ir.ModuleSpecification] = Map([])
-  if mode.supports_strings() {
-    source_modules[@ir.Path::parse("string")] = @sdk_spec.source_string_specification().modules[@ir.Path::parse(
-        "string",
-      )]
+  source_modules[@ir.Path::parse("string")] = @sdk_spec.source_string_specification().modules[@ir.Path::parse(
+      "string",
+    )]
+
+  source_modules[@ir.Path::parse("int32")] = @sdk_spec.source_int32_module_specification()
+
+  for (name, module_spec) in @sdk_spec.source_integer_specification().modules {
+    source_modules[name] = module_spec
   }
-  if mode.supports_numeric() {
-    source_modules[@ir.Path::parse("int32")] = @sdk_spec.source_int32_module_specification()
+
+  for (name, module_spec) in @sdk_spec.source_float_specification().modules {
+    source_modules[name] = module_spec
   }
-  if mode.supports_integer() {
-    for (name, module_spec) in @sdk_spec.source_integer_specification().modules {
-      source_modules[name] = module_spec
-    }
-  }
-  if mode.supports_float() {
-    for (name, module_spec) in @sdk_spec.source_float_specification().modules {
-      source_modules[name] = module_spec
-    }
-  }
+
   let ir = @ir.IRFile::new(
     @ir.Distribution::Library(
       package_name,
@@ -842,7 +830,7 @@ fn library_lower(
     provenance: [
       ion_record([
         ("language", @ion.IonValue::string("moonbit")),
-        ("profile", @ion.IonValue::string(mode.profile())),
+        ("profile", @ion.IonValue::string(channel.profile())),
         ("parser_version", @ion.IonValue::string(PARSER_VERSION)),
         ("naming_policy", @ion.IonValue::string(NAMING_POLICY)),
         ("unit_id", @ion.IonValue::string(input.unit_id)),
@@ -1130,11 +1118,7 @@ fn LibraryLowerer::sdk_call(
       ("sdk_classification", @ir.Data::Text(binding.origin.identifier())),
     ]),
   )
-  if (
-      self.profile == NUMERIC_SDK_LIBRARY_PROFILE ||
-      self.profile == DECIMAL_LIBRARY_PROFILE
-    ) &&
-    facts is @ir.Data::Object(fields) {
+  if self.profile == EXPERIMENTAL_PROFILE && facts is @ir.Data::Object(fields) {
     fields["source_error_contract"] = @ir.Data::Text(
       binding.effect.identifier(),
     )

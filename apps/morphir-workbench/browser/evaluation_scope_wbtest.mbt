@@ -147,7 +147,7 @@ fn policy_scope_model() -> Model {
 test "policy changes retain exact drafts and source profiles while making results stale" {
   let model = {
     ..policy_scope_model(),
-    source_profile: "moonbit-model-library-2026-10-17",
+    source_profile: "moonbit-model-stable-v1",
     evaluation_mode: @evaluation.Ion,
     evaluation_arguments: "[invalid Ion draft",
     evaluation_result_revision: 0,

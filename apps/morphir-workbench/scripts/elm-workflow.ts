@@ -429,7 +429,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await page.getByRole('button',{name:'Show binary summary',exact:true}).click();
   assert.deepEqual(await download('Download file','symbols.10n'),archive['symbols.10n']);
   const unit=strFromU8(await download('Download source unit','main.ion'));
-  assert.match(unit,/morphir_pipeline/);assert.match(unit,/moonbit-model-bool-v1/);assert.match(unit,/eligible/);
+  assert.match(unit,/morphir_pipeline/);assert.match(unit,/moonbit-model-stable-v1/);assert.match(unit,/eligible/);
   if(process.env.MORPHIR_WORKBENCH_MOONBIT_PROJECT){
     const directory=process.env.MORPHIR_WORKBENCH_MOONBIT_PROJECT;
     await mkdir(directory,{recursive:true});
@@ -454,10 +454,10 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await page.waitForFunction(()=>JSON.parse(document.querySelector<CodeEditor>('#evaluation-output')?.value ?? '{}').value === false);
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(editor=>(editor as CodeEditor).value)),{type:'bool',value:false});
   await showSource(page);
-  await sourceEditor.fill('pub fn answer(x : Int) -> Int { x }');
+  await sourceEditor.fill('pub fn answer(x : Double) -> Double { x }');
   await page.getByRole('button',{name:'Compile',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'moonbit_frontend.unsupported_type'}).waitFor();
-  assert.equal(await page.locator('#source').evaluate(editor=>(editor as CodeEditor).value),'pub fn answer(x : Int) -> Int { x }');
+  await page.getByRole('status').filter({hasText:'moonbit_frontend.experimental_capability'}).waitFor();
+  assert.equal(await page.locator('#source').evaluate(editor=>(editor as CodeEditor).value),'pub fn answer(x : Double) -> Double { x }');
   await openSample(page, 'MoonBit Boolean');
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
@@ -513,7 +513,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await page.locator('.model-tree .tree-item[title="user:main#main"]').click();
   assert.equal(await page.getByRole('button',{name:'Local Scheme',exact:true}).getAttribute('aria-pressed'),'true');
   await showSource(page);
-  console.log(JSON.stringify({moonbitInput:'moonbit-model-bool-v1',moonbitGeneration:true,languageDraftsAndUndo:true,worksheetIndependent:true,typedPublicEvaluation:true,richIonUnit:true,exactTextAndBinaryExports:true,replacementModelResetsRuntime:true,nativeDownloads}));
+  console.log(JSON.stringify({moonbitInput:'moonbit-model-stable-v1',moonbitGeneration:true,languageDraftsAndUndo:true,worksheetIndependent:true,typedPublicEvaluation:true,richIonUnit:true,exactTextAndBinaryExports:true,replacementModelResetsRuntime:true,nativeDownloads}));
 }
 
 export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {}) {
@@ -524,20 +524,20 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   const source=page.getByRole('textbox',{name:'Source editor',exact:true});
   await language.selectOption('moonbit');
   assert.equal(await language.locator('option[value="moonbit"]').count(),1);
-  await profile.selectOption('moonbit-model-bool-v1');
+  await profile.selectOption('moonbit-model-experimental-v1');
   const seed='pub fn seed(active : Bool) -> Bool { active }';
   await source.fill(seed);
   // One project for each language: a profile change keeps the text.
-  await profile.selectOption('moonbit-model-bool-library-v1');
+  await profile.selectOption('moonbit-model-stable-v1');
   await page.waitForFunction(text=>document.querySelector<CodeEditor>('#source')?.value===text,seed);
   await openSample(page, 'MoonBit Boolean library');
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value.includes('pub fn welcome'));
   const library=await page.locator('#source').evaluate(editor=>(editor as CodeEditor).value);
   await source.press('ControlOrMeta+End');await source.press('Enter');await source.pressSequentially('// library draft');
   const edited=await page.locator('#source').evaluate(editor=>(editor as CodeEditor).value);
-  await profile.selectOption('moonbit-model-bool-v1');
+  await profile.selectOption('moonbit-model-experimental-v1');
   await page.waitForFunction(text=>document.querySelector<CodeEditor>('#source')?.value===text,edited);
-  await profile.selectOption('moonbit-model-bool-library-v1');
+  await profile.selectOption('moonbit-model-stable-v1');
   await page.waitForFunction(text=>document.querySelector<CodeEditor>('#source')?.value===text,edited);
   await source.press('ControlOrMeta+z');
   await page.waitForFunction(()=>!document.querySelector<CodeEditor>('#source')?.value.includes('library draft'));
@@ -545,7 +545,7 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   await page.locator('.source-capabilities summary').focus();
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('.source-capabilities').getAttribute('open'),'','Profile details open from the keyboard');
-  await page.getByText('Direct same-file calls, including forward and zero-input calls', {exact:false}).first().waitFor();
+  await page.getByText('direct same-file calls', {exact:false}).first().waitFor();
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
   await page.getByText('Source changed · rerun',{exact:true}).waitFor({state:'hidden'});
@@ -584,7 +584,7 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   await page.getByRole('status').filter({hasText:'recursive_call'}).waitFor();
   assert.equal(await page.locator('#source').evaluate(editor=>(editor as CodeEditor).value),rejected);
   await openSample(page, 'MoonBit Boolean library');
-  assert.equal(await profile.inputValue(),'moonbit-model-bool-library-v1');
+  assert.equal(await profile.inputValue(),'moonbit-model-stable-v1');
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
   await page.getByText('Source changed · rerun',{exact:true}).waitFor({state:'hidden'});
@@ -606,7 +606,7 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.dataset.document==='generated|symbols.10n');
   assert.deepEqual(await downloadArtifact(page,'Download file','symbols.10n',nativeDownloads),archive['symbols.10n']);
   const unit=strFromU8(await downloadArtifact(page,'Download source unit','main.ion',nativeDownloads));
-  assert.match(unit,/moonbit-model-bool-library-v1/);
+  assert.match(unit,/moonbit-model-stable-v1/);
   for(const name of ['gate','eligible','welcome','activeUser','vipMember'])assert.ok(unit.includes(name));
   if(process.env.MORPHIR_WORKBENCH_LIBRARY_PROJECT){
     const directory=process.env.MORPHIR_WORKBENCH_LIBRARY_PROJECT;
@@ -636,8 +636,8 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
     await setRightSidebar(page,rightOpen);
   }
   await openSample(page, 'MoonBit Boolean');
-  await page.waitForFunction(()=>document.querySelector<HTMLSelectElement>('select[aria-label="Source profile"]')?.value==='moonbit-model-bool-v1');
-  assert.equal(await profile.inputValue(),'moonbit-model-bool-v1');
+  await page.waitForFunction(()=>document.querySelector<HTMLSelectElement>('select[aria-label="Source profile"]')?.value==='moonbit-model-stable-v1');
+  assert.equal(await profile.inputValue(),'moonbit-model-stable-v1');
   console.log(JSON.stringify({libraryProfile:true,profileDraftsAndUndo:true,publicMultiEntryEvaluation:true,fieldsJsonIon:true,privateEntriesBlocked:true,recursionRecovery:true}));
 }
 
@@ -666,7 +666,7 @@ async function downloadArtifact(page: Page, button: string, name: string, native
 export async function stringWorkflow(page: Page) {
   await showCompile(page);
   await openSample(page, 'MoonBit String library');
-  assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).inputValue(),'moonbit-model-library-2026-10-17');
+  assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).inputValue(),'moonbit-model-stable-v1');
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value.includes('pub fn greet(name : String)'));
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
@@ -703,7 +703,7 @@ export async function stringWorkflow(page: Page) {
 export async function supportedWorkflow(page: Page) {
   await showCompile(page);
   await openSample(page,'MoonBit library');
-  assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).inputValue(),'moonbit-model-library-2026-10-17');
+  assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).inputValue(),'moonbit-model-stable-v1');
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value.includes('choose_for'));
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
@@ -761,5 +761,5 @@ export async function supportedWorkflow(page: Page) {
   const navigator=page.getByRole('navigation',{name:'Generated files',exact:true});
   await navigator.getByRole('button',{name:'library.mbt',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value.includes('/// Build a greeting while preserving the supplied name.'));
-  console.log(JSON.stringify({supportedMoonbitProfile:true,mixedBoolStringInt32:true,checkedInt32Results:true,shortlexOrder:true,datedProfile:true,expandedExample:true,sourceDocs:true}));
+  console.log(JSON.stringify({supportedMoonbitProfile:true,mixedBoolStringInt32:true,checkedInt32Results:true,shortlexOrder:true,canonicalLibraryProfile:true,expandedExample:true,sourceDocs:true}));
 }

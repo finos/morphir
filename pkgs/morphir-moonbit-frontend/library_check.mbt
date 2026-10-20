@@ -25,31 +25,31 @@ fn library_check_body(
   types : Map[@ir.Name, LibraryTypeUse],
   edges : Map[Int32, Bool],
   cancelled : () -> Bool,
-  mode : LibraryMode,
   bindings : PinnedSourceBindings,
   effect : LibraryEffect,
+  channel : SourceChannel,
 ) -> LibraryTypeUse raise {
   library_poll(cancelled)
   fn check(e) raise {
     library_check_body(
-      e, functions, types, edges, cancelled, mode, bindings, effect,
+      e, functions, types, edges, cancelled, bindings, effect, channel,
     )
   }
-  match expr {
+  let result = match expr {
     Boolean(_, source) => library_boolean(source)
     Number(_, _, scalar, source) =>
       {
         scalar,
         spelling: scalar.source_name(),
         source,
-        profile: mode.profile(),
+        profile: channel.profile(),
       }
     Floating(_, _, scalar, source) =>
       {
         scalar,
         spelling: scalar.source_name(),
         source,
-        profile: mode.profile(),
+        profile: channel.profile(),
       }
     Text(_, _, source) =>
       { scalar: Text, spelling: "String", source, profile: "", }
@@ -65,8 +65,7 @@ fn library_check_body(
     }
     NumericNegation(value, source) => {
       let ty = check(value)
-      if !(ty.scalar.is_signed() || ty.scalar.is_floating()) ||
-        !mode.supports_numeric() {
+      if !(ty.scalar.is_signed() || ty.scalar.is_floating()) {
         library_error(
           "unsupported_operator",
           "Unary minus requires a signed integer",
@@ -78,37 +77,47 @@ fn library_check_body(
     StringLength(value, source) => {
       library_expect(
         check(value),
-        { scalar: Text, spelling: "String", source, profile: mode.profile(), },
+        {
+          scalar: Text,
+          spelling: "String",
+          source,
+          profile: channel.profile(),
+        },
         source,
       )
       {
         scalar: SignedInt32,
         spelling: "Int32",
         source,
-        profile: mode.profile(),
+        profile: channel.profile(),
       }
     }
     StringSlice(value, start, end, source) => {
       library_expect(
         check(value),
-        { scalar: Text, spelling: "String", source, profile: mode.profile(), },
+        {
+          scalar: Text,
+          spelling: "String",
+          source,
+          profile: channel.profile(),
+        },
         source,
       )
       let bound : LibraryTypeUse = {
         scalar: SignedInt32,
         spelling: "Int32",
         source,
-        profile: mode.profile(),
+        profile: channel.profile(),
       }
       library_expect(check(start), bound, source)
       library_expect(check(end), bound, source)
-      { scalar: Text, spelling: "String", source, profile: mode.profile(), }
+      { scalar: Text, spelling: "String", source, profile: channel.profile(), }
     }
     Binary(op, lhs, rhs, source) => {
       let left = check(lhs)
       let right = check(rhs)
       library_expect(right, left, source)
-      if left.scalar.is_integer() && mode.supports_numeric() {
+      if left.scalar.is_integer() {
         if ["+", "-", "*"].contains(op) {
           left
         } else if ["==", "!=", "<", "<=", ">", ">="].contains(op) {
@@ -121,7 +130,7 @@ fn library_check_body(
           )
           abort("unreachable")
         }
-      } else if left.scalar.is_floating() && mode.supports_float() {
+      } else if left.scalar.is_floating() {
         if ["+", "-", "*", "/"].contains(op) {
           left
         } else if ["==", "!=", "<", "<=", ">", ">="].contains(op) {
@@ -138,10 +147,10 @@ fn library_check_body(
         ["==", "!=", "<", "<=", ">", ">="].contains(op) {
         library_boolean(source)
       } else if left.scalar == Text {
-        if op == "+" && mode.supports_strings() {
+        if op == "+" {
           left
         } else if ["==", "!="].contains(op) ||
-          (mode.supports_string_order() && ["<", "<=", ">", ">="].contains(op)) {
+          ["<", "<=", ">", ">="].contains(op) {
           library_boolean(source)
         } else {
           library_error(
@@ -197,6 +206,13 @@ fn library_check_body(
     }
     SdkCall(index, arguments, source) => {
       let binding = bindings.entries[index]
+      if channel == Stable && !(binding.contract is ExactBool) {
+        library_error(
+          "experimental_capability",
+          "Numeric SDK calls require " + EXPERIMENTAL_PROFILE,
+          Some(source),
+        )
+      }
       if binding.effect != Pure && effect != binding.effect {
         library_error(
           "error_contract",
@@ -221,7 +237,7 @@ fn library_check_body(
           scalar: binding.inputs[i],
           spelling: binding.inputs[i].source_name(),
           source,
-          profile: mode.profile(),
+          profile: channel.profile(),
         }
         library_expect(check(arguments[i]), expected, source)
       }
@@ -229,10 +245,12 @@ fn library_check_body(
         scalar: binding.output,
         spelling: binding.output.source_name(),
         source,
-        profile: mode.profile(),
+        profile: channel.profile(),
       }
     }
   }
+  channel.require_scalar(result)
+  result
 }
 
 ///|
@@ -242,8 +260,8 @@ fn library_check(
   functions : Array[ResolvedFunction],
   limits : LibraryLimits,
   cancelled : () -> Bool,
-  mode : LibraryMode,
   bindings : PinnedSourceBindings,
+  channel : SourceChannel,
 ) -> CheckedLibrary raise {
   let edges = functions.map(_ => Map([]))
   for i = 0; i < functions.length(); i = i + 1 {
@@ -257,9 +275,9 @@ fn library_check(
       function.types,
       edges[i],
       cancelled,
-      mode,
       bindings,
       function.declaration.effect,
+      channel,
     )
     library_expect(
       result,

@@ -8,7 +8,11 @@ fn numeric_sdk_bindings() -> @frontend.PinnedSourceBindings raise {
 
 ///|
 fn numeric_sdk(source : String) -> @frontend.LibraryOutput raise {
-  @frontend.compile_numeric_sdk_library(input(source), numeric_sdk_bindings())
+  @frontend.compile_library(
+    channel=@frontend.Experimental,
+    input(source),
+    bindings=Some(numeric_sdk_bindings()),
+  )
 }
 
 ///|
@@ -315,48 +319,31 @@ test "SDK effects propagate statically and source types remain distinct" {
 }
 
 ///|
-test "R3 requires the audited type environment and older profiles cannot borrow it" {
+test "library binding environment cannot invent unregistered SDK calls" {
   for bindings in [@frontend.PinnedSourceBindings::empty(), math_bindings()] {
     try {
       ignore(
-        @frontend.compile_numeric_sdk_library(
-          input("pub fn f() -> Bool { true }"),
-          bindings,
+        @frontend.compile_library(
+          channel=@frontend.Experimental,
+          input(
+            "pub fn f(v : Double) -> Double { let converted = @int.from_float64_exact(v); v }",
+          ),
+          bindings=Some(bindings),
         ),
       )
-      fail("Expected type identity refusal")
+      fail("Expected unknown binding refusal")
     } catch {
       @frontend.Invalid(d) =>
-        assert_eq(d.code, "moonbit_frontend.binding_identity")
+        assert_eq(d.code, "moonbit_frontend.unknown_binding")
       error => raise error
     }
   }
-  try {
-    ignore(
-      @frontend.compile_math_library(
-        input(
-          "pub fn f() -> Bool { let x = @int.from_float64_exact(1.0); true }",
-        ),
-        numeric_sdk_bindings(),
+  ignore(
+    @frontend.compile_library(
+      channel=@frontend.Experimental,
+      input(
+        "pub fn f(v : Double) -> Double { let converted = @int.from_float64_exact(v); v }",
       ),
-    )
-    fail("Expected frozen profile")
-  } catch {
-    @frontend.Invalid(d) =>
-      assert_eq(d.code, "moonbit_frontend.binding_identity")
-    error => raise error
-  }
-  try {
-    ignore(
-      @frontend.compile_math_library(
-        input("pub fn f(v : @integer.Integer) -> @integer.Integer { v }"),
-        math_bindings(),
-      ),
-    )
-    fail("Expected historical type refusal")
-  } catch {
-    @frontend.Invalid(d) =>
-      assert_eq(d.code, "moonbit_frontend.unsupported_type")
-    error => raise error
-  }
+    ),
+  )
 }

@@ -3,7 +3,7 @@ test "checked Decimal engine errors remain portable model outcomes" {
   let snapshot = files()
   snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
     old="language='moonbit'",
-    new="language='moonbit'\nprofile='moonbit-model-library-2026-10-19-r4'",
+    new="language='moonbit'\nprofile='moonbit-model-experimental-v1'",
   )
   let failures = [
     (
@@ -58,7 +58,7 @@ test "checked Decimal engine profile preserves precision through Ion replay and 
   let snapshot = files()
   snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
     old="language='moonbit'",
-    new="language='moonbit'\nprofile='moonbit-model-library-2026-10-19-r4'",
+    new="language='moonbit'\nprofile='moonbit-model-experimental-v1'",
   )
   snapshot["src/Main.mbt"] = "pub fn amount() -> @decimal.Decimal raise @decimal.DecimalError { let a = @decimal.from_string_exact(\"12.3400\"); @decimal.add(a, @decimal.from_string_exact(\"0.660\")) }\npub fn identity(v : @decimal.Decimal) -> @decimal.Decimal { v }"
   let engine = @engine.Engine::new()

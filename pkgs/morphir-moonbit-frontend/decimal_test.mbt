@@ -1,12 +1,15 @@
 ///|
 fn decimal_source(source : String) -> @frontend.LibraryOutput raise {
-  @frontend.compile_decimal_library(
+  @frontend.compile_library(
+    channel=@frontend.Experimental,
     input(source),
-    @frontend.PinnedSourceBindings::sdk_decimal(
-      "finos/morphir-sdk/decimal",
-      "0.1.0",
-      @frontend.DECIMAL_SDK_TREE,
-      "decimal",
+    bindings=Some(
+      @frontend.PinnedSourceBindings::sdk_decimal(
+        "finos/morphir-sdk/decimal",
+        "0.1.0",
+        @frontend.DECIMAL_SDK_TREE,
+        "decimal",
+      ),
     ),
   )
 }
@@ -59,39 +62,20 @@ test "checked Decimal calls execute and preserve owned source scale and concrete
 }
 
 ///|
-test "checked Decimal bindings require their own frozen identity and source profile" {
+test "checked Decimal bindings require their audited identity" {
   let bindings = @frontend.PinnedSourceBindings::sdk_decimal(
     "finos/morphir-sdk/decimal",
     "0.1.0",
     @frontend.DECIMAL_SDK_TREE,
     "decimal",
   )
-  try {
-    ignore(
-      @frontend.compile_numeric_sdk_library(
-        input("pub fn f() -> Bool { true }"),
-        bindings,
-      ),
-    )
-    fail("Expected frozen R3 refusal")
-  } catch {
-    @frontend.Invalid(d) =>
-      assert_eq(d.code, "moonbit_frontend.binding_identity")
-    error => raise error
-  }
-  try {
-    ignore(
-      @frontend.compile_decimal_library(
-        input("pub fn f() -> Bool { true }"),
-        numeric_sdk_bindings(),
-      ),
-    )
-    fail("Expected missing Decimal environment refusal")
-  } catch {
-    @frontend.Invalid(d) =>
-      assert_eq(d.code, "moonbit_frontend.binding_identity")
-    error => raise error
-  }
+  ignore(
+    @frontend.compile_library(
+      channel=@frontend.Experimental,
+      input("pub fn f() -> Bool { true }"),
+      bindings=Some(bindings),
+    ),
+  )
   for
     (tree, alias) in [
       ("9c83a100383570236b3d781362524008f76dd56d", "decimal"),

@@ -72,7 +72,7 @@ test "the source shorthand of other languages is one file in src" {
     {
       "languageId": "moonbit",
       "source": "pub fn t() -> Bool { true }",
-      "frontendProfile": "moonbit-model-bool-v1",
+      "frontendProfile": "moonbit-model-stable-v1",
     },
     offers(),
   )
@@ -85,7 +85,7 @@ test "the source shorthand of other languages is one file in src" {
     s.expect(paths(moonbit), label="moonbit files").to_equal(["src/main.mbt"])
     s
     .expect(moonbit.profile.map(p => p.to_string()), label="moonbit profile")
-    .to_equal(Some("moonbit-model-bool-v1"))
+    .to_equal(Some("moonbit-model-stable-v1"))
   })
 }
 

@@ -1,6 +1,6 @@
 ///|
 test "source Int32 signatures resolve the pinned SDK declaration" {
-  let output = @frontend.compile_typed_library(
+  let output = @frontend.compile_library(
     input("pub fn identity(value : Int32) -> Int { value }"),
   )
   guard output.ir.distribution is Library(_, _, package_def) else {
@@ -27,7 +27,7 @@ test "source Int32 signatures resolve the pinned SDK declaration" {
 
 ///|
 test "typed foundation checks mixed branches, calls, shadowing and authored type uses" {
-  let output = @frontend.compile_typed_library(
+  let output = @frontend.compile_library(
     input(
       "pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let value : Int = if flag { a } else { b }; identity(value) }\nfn identity(value : Int32) -> Int { value }",
     ),
@@ -54,7 +54,7 @@ test "typed foundation checks mixed branches, calls, shadowing and authored type
 }
 
 ///|
-test "typed foundation rejects mismatched scalars without widening Boolean admission" {
+test "library rejects mismatched scalars" {
   for
     source in [
       "pub fn f(x : Int32) -> Bool { x }", "pub fn f(x : Int32) -> Int32 { if x { x } else { x } }",
@@ -62,7 +62,7 @@ test "typed foundation rejects mismatched scalars without widening Boolean admis
       "pub fn f(x : Int32) -> Int32 { g(x) }\nfn g(x : Bool) -> Int32 { f(true) }",
     ] {
     try {
-      ignore(@frontend.compile_typed_library(input(source)))
+      ignore(@frontend.compile_library(input(source)))
       fail("Expected mismatch")
     } catch {
       @frontend.Invalid(diagnostic) =>
@@ -70,15 +70,12 @@ test "typed foundation rejects mismatched scalars without widening Boolean admis
       error => raise error
     }
   }
-  assert_eq(
-    library_failure("pub fn f(x : Int32) -> Int32 { x }").code,
-    "moonbit_frontend.unsupported_type",
-  )
+  ignore(@frontend.compile_library(input("pub fn f(x : Int32) -> Int32 { x }")))
 }
 
 ///|
 test "expression constraints retain their own authored type use" {
-  let output = @frontend.compile_typed_library(
+  let output = @frontend.compile_library(
     input("pub fn identity(x : Int32) -> Int32 { (x : Int) }"),
   )
   // Int occurs only in the constraint, not in either declaration type use.

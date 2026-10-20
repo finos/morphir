@@ -1,24 +1,32 @@
 # MoonBit source frontend
 
 This pure package lowers restricted, explicitly typed MoonBit source to current typed
-Morphir library IR. Its additive APIs are checked against
+Morphir library IR. Its two APIs are checked against
 the MoonBit compiler, independent truth tables and the Morphir Scheme evaluator.
 The source language is `moonbit`; profiles describe the supported subset.
 
-| API | Profile | Source contract | Entry contract |
-| --- | --- | --- | --- |
-| `compile_decimal_library` | `moonbit-model-library-2026-10-19-r4` | R3 plus concrete Decimal, exact construction, arithmetic/comparisons, half-even rounding and checked division | Explicit DecimalError, preserved literal scale |
-| `compile_numeric_sdk_library` | `moonbit-model-library-2026-10-19-r3` | R2 plus pinned SDK Integer, rounding, binary64 optional conversions and explicit `SdkError` declarations | Sorted public entries; Integer and optional Integer budgets |
-| `compile_math_library` | `moonbit-model-library-2026-10-19-r2` | Cumulative Bool/String, all qualified integer and floating forms, and six pinned SDK calls | Sorted public entries with scalar and String guards |
-| `compile_supported_library_2026_10_19` | `moonbit-model-library-2026-10-19` | Cumulative Bool/String/Int32, including signed arithmetic, UTF-16 length and owned slices | Sorted public entries with String guards and Int32 wrappers |
-| `compile_supported_library_2026_10_17` | `moonbit-model-library-2026-10-17` | All qualified Bool/String/Int32 capabilities, including shortlex ordering | Sorted public entries and executable String guards |
-| `compile_supported_library_v2` | `moonbit-model-library-v2` | Cumulative v1 capabilities plus String shortlex comparisons | Sorted public entries and executable String guards |
-| `compile_supported_library` | `moonbit-model-library-v1` | Pinned v1 source union: Bool, String basics, Int32 identity/selection/calls, including mixed signatures | Sorted public entries and executable String guards |
-| `compile` | `moonbit-model-bool-v1` | One function; Boolean expressions | One `entry`, with `public` visibility |
-| `compile_typed_library` | `moonbit-model-typed-library-foundation-v1` | Bool/Int32 signatures, typed lets, conditionals and direct calls; no numeric literals or arithmetic | Sorted public entries |
-| `compile_int32_library` | `moonbit-model-int32-library-v1` | Signed Int32 literals, wraparound arithmetic and comparisons with Bool expressions | Sorted public entries and Int32 wrappers |
-| `compile_string_library` | `moonbit-model-string-library-v1` | String/Bool signatures, literals, concatenation, equality, typed lets, conditionals and direct calls | Sorted public entries with executable String guards |
-| `compile_library` | `moonbit-model-bool-library-v1` | Several functions; direct calls and immutable lets | Sorted public `entries`; all-private libraries have none |
+| Channel | Profile | Source contract |
+| --- | --- | --- |
+| Stable, default | `moonbit-model-stable-v1` | Typed Bool/String/Int32 libraries, immutable bindings, direct acyclic calls, String ordering, length and owned slices, audited Boolean SDK binding |
+| Experimental, explicit opt-in | `moonbit-model-experimental-v1` | Stable plus expanded integer widths, BigInt, Float/Double, audited SDK math/conversions and checked Decimal |
+
+`compile_library(input)` uses `SourceChannel::Stable`. Opt in with
+`compile_library(input, channel=Experimental)`. Both channels use the same compiler;
+channel checks refuse unpromoted types and bindings even in private functions or
+unused expressions. Supplying a broader host binding map cannot widen stable.
+The old `compile` single-Boolean helper remains for historical checkpoint
+compatibility tests, outside the selectable profile catalog.
+
+These are advancing channels, not feature snapshots. Add a capability to
+experimental first, with explicit limits and refusal cases. Promote it to stable
+only after independent expectations, original source, Scheme, generated consumers,
+and installed-client qualification pass for the claimed targets and modes. Include
+Ion metadata/receipt replay, wrapper ABI, failure/publication behavior and
+observability neutrality in that evidence. Promotion updates the stable allowlist,
+capability inventory, shared regression corpus and documentation together; it does
+not add a third profile. Keep experimental a superset of stable. A breaking semantic
+or ABI change needs an explicit versioned migration rather than silently changing
+an existing contract. Checkpoints retain their recorded provenance.
 
 ```moonbit
 pub fn eligible(active : Bool, vip : Bool) -> Bool {
@@ -41,25 +49,24 @@ its typed owner is the canonical SDK type. A transport tag does not declare a ty
 
 ## Cumulative source conformance
 
-Use `compile_decimal_library` with adapter-supplied `PinnedSourceBindings::sdk_decimal`, or source profile
-`moonbit-model-library-2026-10-19-r4`,
-for all currently qualified source capabilities together. It combines Bool
-operators, bounded String literals/concatenation/equality/ordering, signed Int32
-literals/arithmetic/comparisons, UTF-16 code-unit `String.length()`, and
-`String[start:end].to_owned()` with Int32 bounds. A slice clamps each bound to
-0…length, moves a split surrogate boundary inward, and returns empty when its
-adjusted start is at or after its end. Combining marks remain separate units.
-Revision 2 additionally composes the integer and floating profiles with those
-capabilities, including binary32 rounding at each operation and all qualified
-integer widths. The profile also supports Int32 identity and selection, immutable typed bindings,
-matching-type branches and direct acyclic
-calls. Mixed signatures preserve every scalar's ABI. String guards also apply
-when the function returns Int32 or Bool.
+Use `compile_library(..., channel=Experimental)`, or source profile
+`moonbit-model-experimental-v1`, for the full implemented capability set. It combines Bool operators,
+bounded String literals, concatenation, equality and shortlex ordering; signed
+and unsigned integer widths, BigInt, Float and Double; UTF-16 code-unit
+`String.length()`; and `String[start:end].to_owned()` with Int32 bounds.
+A slice clamps each bound to 0…length, moves a split surrogate boundary inward,
+and returns empty when its adjusted start is at or after its end. Combining marks
+remain separate units. Float32 operations round at each operation.
 
-The dated APIs stay pinned to their snapshots. The 2026-10-17, v1 and v2 APIs
-retain their earlier admission rules. The current profile does not admit
-unowned slices, single-index String access, imports or the full MoonBit language.
-Backend SDK adapter availability alone never widens source admission.
+Typed immutable bindings, matching-type branches and direct acyclic calls compose
+these capabilities in one file. Mixed signatures preserve each scalar's ABI.
+String guards also apply when a function returns another type. Unowned slices,
+single-index String access, imports and the full MoonBit language are unsupported.
+SDK adapter availability alone does not admit arbitrary source calls.
+
+Stable defaults to the audited Boolean binding. Experimental defaults to the
+audited numeric SDK and checked Decimal bindings. A host can supply a narrower `PinnedSourceBindings` with
+`bindings=Some(...)`; source cannot register or redirect bindings.
 
 ### Pinned numeric SDK calls
 
@@ -77,7 +84,7 @@ SDK name and numerical contract on their references and applications.
 | `@basics.power_float(Double, Double)` | `power` | Supported | Reference vectors within 4 ULP; exact integer and exceptional cases checked separately |
 | `@basics.abs_float(Double)` | `abs` | Supported | Classic branch semantics preserve negative zero and NaN; other qualified values exact |
 | `@basics.not_(Bool)` | `not` | Supported | Exact Boolean negation |
-| SDK Integer-returning rounding and Maybe conversions | Existing classic / N3 extension names | R3 subset below | R2 remains frozen |
+| SDK Integer-returning rounding and Maybe conversions | Existing classic / numeric extension names | Supported subset below | Explicit optional and error boundaries |
 
 All five numeric calls take and return `Double`. An implicit Float32 promotion
 is refused. These calls reuse classic SDK declarations and leave the 248-value
@@ -87,13 +94,11 @@ debug and release. High-precision finite references were computed with mpmath
 to those reference vectors, not a global accuracy guarantee for every input.
 NaN payloads are unspecified. The receipt records the compiler/core and SDK pin.
 
-The old dated snapshots and `moonbit-model-pinned-sdk-library-v1` retain their
-original admission rules. Arbitrary `@math` calls, other SDK names, source casts,
-Decimal and imports remain outside revision 2.
+Arbitrary `@math` calls, other SDK names, source casts and imports are unsupported.
 
-### SDK Integer and binary64 conversions in revision 3
+### SDK Integer and binary64 conversions
 
-R3 adds `@integer.Integer`, `@integer.Integer?` and `Double?` as explicit
+The library admits `@integer.Integer`, `@integer.Integer?` and `Double?` as explicit
 boundary types. The Integer wrapper is distinct from source `BigInt`, even though
 both lower to Morphir Int. Literals, arithmetic operators and unary minus do not
 construct SDK Integer values. Integer equality and ordering are exact.
@@ -114,7 +119,7 @@ execution. Type uses and call references retain the package pin and authored
 signature. Call metadata distinguishes classic and numeric extension values.
 Ion checkpoints and generated `symbols.10n` receipts preserve these facts.
 
-Only `raise @sdk.SdkError` is admitted as an error annotation. Calling a declared
+`raise @sdk.SdkError` and `raise @decimal.DecimalError` are the supported error annotations. Calling a declared
 raising helper or classic rounding function requires the same annotation on the
 caller, including in unreachable branches. This grants no host effects. Source
 throw, catch, async, imports and general error types remain unsupported.
@@ -122,27 +127,25 @@ Optional values can be passed, returned and selected, but constructors, patterns
 unwrap and general Maybe APIs are not admitted. Public Integer inputs and outputs,
 including Some values, keep the 4096 decimal digit budget; None passes unchanged.
 
-The source capability inventory is [numeric-sdk-r3.json](conformance/numeric-sdk-r3.json).
+The source capability inventory is [numeric-sdk.json](conformance/numeric-sdk.json).
 The SDK's historical `morphir-moonbit-source-float-v1` inventory describes its
-earlier source profile, where conversions were IR-only. R3 admits the binary64
+earlier source profile, where conversions were IR-only. The library admits the binary64
 subset explicitly. Float32 SDK conversion functions remain IR-only because their
 Double transport signature does not match the source Float32 semantic type.
 Native, JavaScript, Wasm and Wasm-GC run original and generated consumers in debug
 and release, using independent exact expected integers and binary64 bits.
 
-`mise run test:typed-source` replays the existing Int32, String and Boolean
-fixtures through their narrow profiles, pinned v1 and current dated snapshots. It
-checks original MoonBit, Scheme and compiled generated consumers on all four targets in
-debug and release. The Ion receipt identifies each model's profile, compiler
-and supplied SDK.
+`mise run test:typed-source` checks the distinct Boolean, String and numeric
+fixtures through `compile_library`. It compares original MoonBit, Scheme and
+compiled generated consumers on all four targets in debug and release. The Ion
+receipt identifies each model's profile, compiler and supplied SDK.
 
 ### String ordering
 
 String `<`, `<=`, `>` and `>=` return Bool and use MoonBit's UTF-16 shortlex
 ordering. Length wins first, so `"b" < "aa"` is true. Equal lengths use lexical
 code-unit order, so `"😀" < "\u{e000}a"` is true despite Unicode scalar ordering.
-No normalization or locale conversion occurs. Numeric and Bool ordering remain
-unavailable, as do Int32-returning comparison methods.
+No normalization or locale conversion occurs. Bool ordering and Int32-returning comparison methods remain unsupported.
 
 Lowering binds each operand once, left to right, then compares SDK integer lengths
 and uses classic SDK comparison only for equal-length ties. It adds no runtime
@@ -171,7 +174,7 @@ are rejected. Equality binds operands once in source order. Boolean conjunction
 and disjunction lower to short-circuit conditionals. Every lowered value has a
 Boolean type attribute. Source names use the readable allocation policy below, with checked allocation for generated temporary bindings.
 
-## Boolean libraries
+## Typed libraries
 
 `compile_library` accepts the same `Input` and returns `LibraryOutput`: typed IR,
 the canonical public entry list, native Ion metadata, annotations and provenance.
@@ -191,14 +194,13 @@ fn ready(active : Bool, vip : Bool) -> Bool { active || vip }
 
 Beyond the original expression forms, this profile supports direct, unqualified,
 fully applied within-file calls, including zero-argument calls, and sequential
-single-name immutable `let` bindings with optional `Bool` annotations. An initializer
+single-name immutable `let` bindings with optional supported type annotations. An initializer
 sees the preceding scope; each shadowed binding receives a distinct identity. A
-Boolean binding shadowing a function name cannot be called. All call arguments,
-binding values and function results must be Boolean.
+binding shadowing a function name cannot be called. Call arguments, binding
+values and function results must match their declared types.
 
 Function values, partial applications, labelled or optional arguments, destructuring,
-local functions and discarded expression statements are rejected. Imports, other
-types, effects and the remaining exclusions above also remain unsupported. Direct
+local functions and discarded expression statements are rejected. Imports, general effects and the remaining exclusions above remain unsupported. Direct
 and indirect recursion are rejected across the whole unit, including calls in
 constant-false branches. Calls remain references in IR; lowering never inlines or
 expands the call graph. Equality binds operands once, lets are eager, and Boolean
@@ -206,28 +208,21 @@ conjunction/disjunction retain their short-circuit boundaries.
 
 This pure API compiles a library without host access. The
 [engine adapter](../morphir-engine/moonbit/README.md) offers both profiles under
-language `moonbit`, preserving the seed default. Select the library with
-`frontend.profile = "moonbit-model-bool-library-v1"` or CLI
-`--frontend-profile moonbit-model-bool-library-v1`. Provider identity and configured
-source capabilities belong to the engine descriptor. Full installed library parity
-qualification and A2 extension packaging remain separate roadmap work.
+language `moonbit`, with stable as the default. Select the stable library with
+`frontend.profile = "moonbit-model-stable-v1"` or CLI
+`--frontend-profile moonbit-model-stable-v1`. Provider identity and configured
+source capabilities belong to the engine descriptor. Installed numeric qualification remains separate roadmap work and is required
+before promoting numeric/Decimal capabilities.
 
 
-## String libraries and the typed foundation
+## Strings and scalar types
 
-`compile_typed_library` qualifies the shared mixed-type pipeline with Bool and
-SDK Int32 signatures, including MoonBit's `Int` alias. It preserves authored type
-uses in `moonbit-source-scalar-v1` extensions. This narrow profile admits identity,
-conditional and direct-call paths; full numeric arithmetic remains separate work.
+Int and Int32 use signed 32-bit wraparound arithmetic; the separate
+`morphir-moonbit-source-int32-v1` helper normalizes source arithmetic. Classic
+SDK `to-int-32` remains checked narrowing. Authored type uses retain their source
+spelling and numeric facts.
 
-`compile_int32_library` adds signed literals, unary negation, `+`, `-`, `*`,
-equality and ordered comparisons. It widens operands to exact Morphir Int and
-normalizes arithmetic results to signed 32-bit values. Authored `Int` and
-`Int32` type uses retain `moonbit-source-number-v1` facts. The separate
-`morphir-moonbit-source-int32-v1` helper performs signed-width conversion;
-classic SDK `to-int-32` remains checked narrowing.
-
-`compile_string_library` reuses that pipeline for String/Bool libraries:
+`compile_library` accepts mixed String, Boolean and numeric libraries:
 
 ```moonbit
 fn prefix() -> String { "Hello, " }
@@ -240,12 +235,12 @@ pub fn welcome(name : String, enabled : Bool) -> String {
 }
 ```
 
-The profile supports ordinary quoted literals, standard and numeric escapes,
+The library supports ordinary quoted literals, standard and numeric escapes,
 String `+`, exact `==`/`!=`, immutable lets, explicit scalar constraints, Bool
 conditions with matching branch types, and fully applied acyclic same-file calls.
 Call arguments evaluate once in source order. Equality does not normalize Unicode.
-Ordering, length, slices, methods, imports, interpolation, multiline strings,
-Char/StringView values and numeric expressions remain outside this profile.
+Length, owned slices and shortlex ordering use the contracts above. General
+methods, imports, interpolation, multiline strings and Char/StringView are unsupported.
 
 Source Strings use classic `morphir/SDK:string#string` and SDK `Text` storage but
 require well-formed UTF-16. Every public String argument is checked, even when
@@ -257,7 +252,7 @@ There is no aggregate allocation guarantee. Existing evaluator limits still appl
 These checks are executable references in the separately inventoried
 `morphir-moonbit-source-string-v1` runtime extension. Its two bindings are
 `morphir/moonbit-source:string#require-valid` and `#append-bounded`.
-The cumulative 2026-10-19 profile adds `#length-int32` and `#slice-owned`
+Length and owned slicing use `#length-int32` and `#slice-owned`
 under `morphir-moonbit-source-string-index-v1`.
 The classic 248-binding inventory is unchanged. Generated consumers require SDK
 profile `morphir-sdk-concrete-v1+moonbit-source-string-v1`; malformed text raises
@@ -278,8 +273,7 @@ libraries cannot own the reserved `morphir/SDK` or `morphir/moonbit-source` pack
 
 `mise run test:typed-source` compiles original and generated direct consumers on
 native, JS, WASM and WASM-GC in debug and release, checks Scheme results and private
-access, and writes an Ion receipt under `.dev/typed-source-acceptance/`. Installed
-qualification and the remaining String profiles keep their own roadmap tasks.
+access, and writes an Ion receipt under `.dev/typed-source-acceptance/`. Installed qualification keeps its own roadmap tasks.
 
 
 ## Function documentation
@@ -412,7 +406,7 @@ Library provenance separates `language: "moonbit"` from `profile`; the original
 profile's provenance shape stays unchanged. Library body metadata retains nested
 binding and call origins beneath its stable body node ID, including both source
 spelling and unique binding identity. Intermediate `Reference` and `Apply` values
-carry the appropriate curried function types; final results carry `Bool`.
+carry the appropriate curried function types; final results carry their checked source types.
 
 ## Observations
 
@@ -454,7 +448,7 @@ and core `0.10.15+943464bfa` and the SDK's pinned semantic bindings. It performs
 registry acquisition in the external workspace. The acceptance executable is a
 test fixture, not an engine integration API.
 
-The gate covers 11 original-profile models and six libraries with 13 public entries:
+The gate covers 11 stable Boolean models and six libraries with 13 public entries:
 86 Boolean rows per target/mode. It also checks that every private fixture symbol
 is inaccessible to a separate consumer in both original and generated libraries,
 and that the pinned compiler rejects explicit `priv fn` (diagnostic 3005). The
@@ -468,11 +462,10 @@ identities. `MORPHIR_FRONTEND_SDK` can supply an explicit SDK source directory.
 
 ## Checked Decimal source calls
 
-Revision 4 adds the SDK library type `@decimal.Decimal`. It is a concrete type,
+The library admits the SDK library type `@decimal.Decimal`. It is a concrete type,
 not a built-in MoonBit scalar. The finite binding factory requires package
 `finos/morphir-sdk/decimal`, version `0.1.0`, alias `decimal` and SDK tree
-`642fd13ea74bc46c3f5344844c9cca4ffbae368a`. Earlier profiles and bindings keep
-their resolved identities. This does not introduce an SDK flavor switch.
+`642fd13ea74bc46c3f5344844c9cca4ffbae368a`. Numeric bindings retain their audited identities.
 
 ```moonbit
 pub fn amount(text : String) -> @decimal.Decimal raise @decimal.DecimalError {
@@ -512,10 +505,10 @@ this enrichment rather than dropping it.
 
 Generated functions in a library using checked Decimal calls declare `raise Error`
 because Decimal errors and existing SDK boundary errors can both escape. Callers
-can catch the concrete `@decimal.DecimalError` cases. Earlier libraries retain
+can catch the concrete `@decimal.DecimalError` cases. Libraries without checked Decimal calls use
 `raise @sdk.SdkError`; `symbols.10n` records the generated error type.
 
-[numeric-decimal-r4.json](conformance/numeric-decimal-r4.json) records the admitted
+[numeric-decimal.json](conformance/numeric-decimal.json) records the admitted
 calls and local qualification scope. `mise run test:typed-source` compares original
 source, Scheme and generated consumers against independent exact expectations
 on native, JavaScript, Wasm and Wasm GC in debug/release. Installed numeric

@@ -1,6 +1,6 @@
 ///|
 test "MoonBit documentation survives library IR and generated backends" {
-  let output = @frontend.compile_supported_library_v2(
+  let output = @frontend.compile_library(
     input(
       "/// Compare names without normalization.\n///\n/// Uses **shortlex** order. λ😀\npub fn before(a : String, b : String) -> Bool { helper(a) < b }\n/// Preserve the exact text.\nfn helper(s : String) -> String { s }\n// Ordinary comment stays out of the API docs.\npub fn plain() -> Bool { true }",
     ),

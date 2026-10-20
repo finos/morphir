@@ -318,7 +318,7 @@ fn compile_scoped(
         warnings,
         provenance: [
           ion_record([
-            ("frontend", @ion.IonValue::string(PROFILE)),
+            ("frontend", @ion.IonValue::string(LEGACY_BOOL_PROFILE)),
             ("parser_version", @ion.IonValue::string(PARSER_VERSION)),
             ("naming_policy", @ion.IonValue::string(NAMING_POLICY)),
             ("unit_id", @ion.IonValue::string(input.unit_id)),

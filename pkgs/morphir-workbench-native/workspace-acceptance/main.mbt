@@ -71,7 +71,7 @@ async fn main {
       "source": "pub fn eligible(activeUser : Bool, vipMember : Bool) -> Bool { activeUser && !vipMember }",
       "languageId": "moonbit",
       "frontendProvider": "finos/morphir-moonbit-frontend",
-      "frontendProfile": "moonbit-model-bool-library-v1",
+      "frontendProfile": "moonbit-model-stable-v1",
       "target": "",
     })
     assert_eq(

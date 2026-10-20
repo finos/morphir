@@ -1,8 +1,11 @@
 ///|
-/// Compile a pure Boolean library without host access or entry inference.
+/// Compile the current typed library subset without host access or entry inference.
 pub fn compile_library(
   input : Input,
+  channel~ : SourceChannel = Stable,
+  bindings~ : PinnedSourceBindings? = None,
   limits~ : LibraryLimits = LibraryLimits::default(),
+  max_string_code_units~ : Int32 = 1048576,
   strict_naming~ : Bool = false,
   cancelled~ : () -> Bool = fn() { false },
   scope~ : @observe.Scope = @observe.Observer::noop().scope(),
@@ -10,7 +13,30 @@ pub fn compile_library(
   scope.observe(
     @observe.Frontend,
     fn(scope) raise {
-      let output = library_compile_scoped(input, limits, cancelled, scope)
+      let bindings = match bindings {
+        Some(bindings) => bindings
+        None if channel == Stable =>
+          PinnedSourceBindings::sdk_basics_not(
+            "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+            "basics",
+          )
+        None =>
+          PinnedSourceBindings::sdk_decimal(
+            "finos/morphir-sdk/decimal",
+            "0.1.0",
+            DECIMAL_SDK_TREE,
+            "decimal",
+          )
+      }
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        channel,
+        bindings~,
+        string_limit=max_string_code_units,
+      )
       check_naming_warnings(output.warnings, strict_naming)
       output
     },
@@ -24,36 +50,11 @@ fn library_compile_scoped(
   limits : LibraryLimits,
   cancelled : () -> Bool,
   scope : @observe.Scope,
-  mode~ : LibraryMode = BooleanOnly,
+  channel : SourceChannel,
   string_limit~ : Int32 = 1048576,
   bindings~ : PinnedSourceBindings = PinnedSourceBindings::empty(),
 ) -> LibraryOutput raise {
   limits.validate()
-  if mode != NumericSdk && mode != DecimalSdk && !bindings.types.is_empty() {
-    library_error(
-      "binding_identity",
-      "SDK Integer bindings require the numeric SDK source profile",
-      None,
-    )
-  }
-  if (mode == NumericSdk || mode == DecimalSdk) &&
-    (
-      !bindings.types.contains(SourceSdkType::Integer) ||
-      !bindings.types.contains(SourceSdkType::Error)
-    ) {
-    library_error(
-      "binding_identity",
-      "The numeric SDK profile requires its audited Integer and SdkError type bindings",
-      None,
-    )
-  }
-  if (mode == DecimalSdk) != bindings.types.contains(SourceSdkType::Decimal) {
-    library_error(
-      "binding_identity",
-      "Decimal bindings require the checked Decimal profile",
-      None,
-    )
-  }
   if string_limit < 0 || string_limit > 1048576 {
     library_error(
       "invalid_limits",
@@ -77,11 +78,8 @@ fn library_compile_scoped(
   }
   let package_name = logical_path(input.package_name)
   let module_name = logical_path(input.module_name)
-  if (mode.supports_strings() || mode == PinnedSdk) &&
-    (
-      package_name.to_canonical() == "morphir/SDK" ||
-      package_name.to_canonical() == "morphir/moonbit-source"
-    ) {
+  if package_name.to_canonical() == "morphir/SDK" ||
+    package_name.to_canonical() == "morphir/moonbit-source" {
     library_error(
       "invalid_identity",
       "Source libraries cannot own reserved SDK or source-runtime packages",
@@ -95,7 +93,7 @@ fn library_compile_scoped(
   )
   let declarations = scope.observe(
     @observe.ProfileCheck,
-    fn(_) raise { library_adapt(nodes, limits, cancelled, mode) },
+    fn(_) raise { library_adapt(nodes, limits, cancelled, channel) },
     is_cancelled=frontend_cancelled,
   )
   let resolved = scope.observe(
@@ -105,105 +103,18 @@ fn library_compile_scoped(
   )
   let checked = scope.observe(
     @observe.ProfileCheck,
-    fn(_) raise { library_check(resolved, limits, cancelled, mode, bindings) },
+    fn(_) raise {
+      library_check(resolved, limits, cancelled, bindings, channel)
+    },
     is_cancelled=frontend_cancelled,
   )
   scope.observe(
     @observe.Lower,
     fn(_) raise {
       library_lower(
-        input, package_name, module_name, checked, cancelled, mode, string_limit,
-        bindings,
+        input, package_name, module_name, checked, cancelled, string_limit, bindings,
+        channel,
       )
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// The adapter supplies a resolved, pinned SDK binding environment. Existing
-/// source profiles do not opt into qualified calls.
-pub fn compile_pinned_sdk_library(
-  input : Input,
-  bindings : PinnedSourceBindings,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=PinnedSdk,
-        bindings~,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// Cumulative N4 snapshot. The adapter supplies the frozen numeric SDK mapping.
-pub fn compile_math_library(
-  input : Input,
-  bindings : PinnedSourceBindings,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  max_string_code_units~ : Int32 = 1048576,
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=NumericMath,
-        bindings~,
-        string_limit=max_string_code_units,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// N4 completion snapshot: SDK Integer, rounding and explicit optional conversions.
-pub fn compile_numeric_sdk_library(
-  input : Input,
-  bindings : PinnedSourceBindings,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  max_string_code_units~ : Int32 = 1048576,
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=NumericSdk,
-        bindings~,
-        string_limit=max_string_code_units,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
     },
     is_cancelled=frontend_cancelled,
   )
@@ -237,280 +148,4 @@ pub fn LibraryLimits::validate(
       None,
     )
   }
-}
-
-///|
-/// Narrow mixed Bool/Int32 qualification profile. No numeric operators or literals.
-pub fn compile_typed_library(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=TypedFoundation,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// Signed Int32 source expressions with the existing Bool library subset.
-pub fn compile_int32_library(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=NumericInt32,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// Exact integral source forms with Bool and the previously qualified Int32 subset.
-pub fn compile_integer_library(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=NumericInteger,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// IEEE binary32 and binary64 source expressions, with operation-local Float rounding.
-pub fn compile_float_library(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=NumericFloat,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// Compile String/Bool basics with executable source String boundary guards.
-pub fn compile_string_library(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  max_string_code_units~ : Int32 = 1048576,
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=StringBasics,
-        string_limit=max_string_code_units,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// Pinned cumulative v1 subset: Bool, bounded String basics and Int32
-/// identity/selection/call paths. Ordering and numeric arithmetic are excluded.
-pub fn compile_supported_library(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  max_string_code_units~ : Int32 = 1048576,
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=SupportedLibrary,
-        string_limit=max_string_code_units,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// Cumulative v2 source subset, including String shortlex ordering.
-/// Existing v1 source contracts remain pinned.
-pub fn compile_supported_library_v2(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  max_string_code_units~ : Int32 = 1048576,
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=SupportedLibraryV2,
-        string_limit=max_string_code_units,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// The 2026-10-17 cumulative source snapshot. Historical APIs remain pinned.
-pub fn compile_supported_library_2026_10_17(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  max_string_code_units~ : Int32 = 1048576,
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=SupportedLibrary20261017,
-        string_limit=max_string_code_units,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// Cumulative Bool, String, and signed Int32 source subset with indexed String operations.
-pub fn compile_supported_library_2026_10_19(
-  input : Input,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  max_string_code_units~ : Int32 = 1048576,
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=SupportedLibrary20261019,
-        string_limit=max_string_code_units,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
-}
-
-///|
-/// Checked Decimal source library with pinned versioned failure contracts.
-pub fn compile_decimal_library(
-  input : Input,
-  bindings : PinnedSourceBindings,
-  limits~ : LibraryLimits = LibraryLimits::default(),
-  max_string_code_units~ : Int32 = 1048576,
-  strict_naming~ : Bool = false,
-  cancelled~ : () -> Bool = fn() { false },
-  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
-) -> LibraryOutput raise {
-  scope.observe(
-    @observe.Frontend,
-    fn(scope) raise {
-      let output = library_compile_scoped(
-        input,
-        limits,
-        cancelled,
-        scope,
-        mode=DecimalSdk,
-        bindings~,
-        string_limit=max_string_code_units,
-      )
-      check_naming_warnings(output.warnings, strict_naming)
-      output
-    },
-    is_cancelled=frontend_cancelled,
-  )
 }
