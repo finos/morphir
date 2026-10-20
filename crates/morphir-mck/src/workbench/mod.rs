@@ -26,7 +26,7 @@ mod run;
 mod selected_scheme;
 mod worksheet;
 
-pub use configuration::{AdapterProtocol, RunConfiguration};
+pub use configuration::{AdapterProtocol, RunConfiguration, WorkbenchExecutionMode};
 pub use contract::{
     ADMISSION_VERSION, ARTIFACT_TRANSFER_VERSION, CAPABILITY_EXECUTIONS_VERSION,
     CAPABILITY_POLICY_VERSION, CODEC_COMPARISON_VERSION, Capabilities, EXECUTIONS_VERSION, Format,

@@ -1,8 +1,10 @@
 //! CLI boundaries for parent-owned Workbench codec qualification.
 
 mod adapter_selection;
+mod installed_launch;
 
 use adapter_selection::{AdapterSelectionError, WorkbenchAdapter};
+use installed_launch::{InstalledTarget, WorkbenchLaunch};
 
 use std::ffi::OsString;
 use std::io::Read;
@@ -40,6 +42,21 @@ pub struct RunArgs {
     /// Explicit caller-owned checker policy; required for selected workflow corpora
     #[arg(long, value_name = "FILE")]
     pub checker_policy: Option<PathBuf>,
+    /// Explicit installed client launch kind; only the matching builtin policy accepts it
+    #[arg(long, value_enum)]
+    installed_client_target: Option<InstalledTarget>,
+    /// Absolute installed package directory; lexical input until observed by a producer
+    #[arg(long, value_name = "DIR")]
+    installed_client_package: Option<PathBuf>,
+    /// Absolute Node executable shared by the installed client and its helpers
+    #[arg(long, value_name = "PROGRAM")]
+    installed_client_node: Option<PathBuf>,
+    /// Absolute native installed executable; required for native, forbidden for node
+    #[arg(long, value_name = "PROGRAM")]
+    installed_client_program: Option<PathBuf>,
+    /// Absolute source checkout association input; this does not prove build provenance
+    #[arg(long, value_name = "DIR")]
+    installed_client_source_checkout: Option<PathBuf>,
     /// Maximum duration of one adapter exchange, in milliseconds
     #[arg(long, value_name = "MS", default_value_t = 30_000, value_parser = clap::value_parser!(u64).range(1..))]
     pub timeout: u64,
@@ -65,8 +82,8 @@ fn configuration(path: Option<&Path>) -> Result<RunConfiguration, String> {
 }
 
 pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
-    let adapter = match WorkbenchAdapter::parse(&args.adapter, &args.adapter_args) {
-        Ok(adapter) => adapter,
+    match WorkbenchAdapter::parse(&args.adapter, &args.adapter_args) {
+        Ok(_) => (),
         Err(AdapterSelectionError::BuiltinArguments) => {
             return finish(Outcome::Usage(
                 "builtin:morphir-workbench does not accept --adapter-arg".into(),
@@ -77,19 +94,19 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
         Ok(configuration) => configuration,
         Err(error) => return finish(Outcome::Error(error)),
     };
-    match (&adapter, configuration.native_observation_limits()) {
-        (WorkbenchAdapter::BuiltinNativeWorkbench, None) => {
+    let adapter = match WorkbenchLaunch::select(&args, configuration.execution_mode()) {
+        Ok(WorkbenchLaunch::NativeHost) => WorkbenchAdapter::BuiltinNativeWorkbench,
+        Ok(WorkbenchLaunch::External { program, arguments }) => {
+            WorkbenchAdapter::External { program, arguments }
+        }
+        Ok(WorkbenchLaunch::InstalledClient(_)) => {
             return finish(Outcome::Usage(
-                "builtin:morphir-workbench requires an explicit native checker policy".into(),
+                "installed client process execution is not implemented; no report was produced"
+                    .into(),
             ));
         }
-        (WorkbenchAdapter::External { .. }, Some(_)) => {
-            return finish(Outcome::Usage(
-                "a native checker policy requires --adapter builtin:morphir-workbench".into(),
-            ));
-        }
-        _ => {}
-    }
+        Err(error) => return finish(Outcome::Usage(error.to_string())),
+    };
     let source = args.kit.join("cases.json");
     let same_source = if args.report.exists() {
         match same_file::is_same_file(&source, &args.report) {
@@ -239,3 +256,7 @@ fn print_summary(report: &Report) {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "workbench/installed_launch/tests.rs"]
+mod installed_launch_tests;

@@ -6,6 +6,15 @@ use crate::json::strict::Document;
 pub struct RunConfiguration {
     pub(super) mode: Configuration,
 }
+/// Readonly dispatch choice from the validated configuration. Limit getters
+/// describe available bounds and do not select execution or grant authority.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkbenchExecutionMode {
+    Historical,
+    ModelOriginals,
+    NativeOriginals,
+    InstalledOriginals,
+}
 /// Existing adapter framing selected by a validated checker configuration.
 /// This is a pure choice; only the actual session factory starts a process.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -200,6 +209,14 @@ impl NativeObservationLimits {
     }
 }
 impl RunConfiguration {
+    pub fn execution_mode(&self) -> WorkbenchExecutionMode {
+        match &self.mode {
+            Configuration::Historical => WorkbenchExecutionMode::Historical,
+            Configuration::ModelOriginals(_) => WorkbenchExecutionMode::ModelOriginals,
+            Configuration::NativeOriginals { .. } => WorkbenchExecutionMode::NativeOriginals,
+            Configuration::InstalledOriginals { .. } => WorkbenchExecutionMode::InstalledOriginals,
+        }
+    }
     pub fn installed_observation_limits(&self) -> Option<&InstalledObservationLimits> {
         match &self.mode {
             Configuration::InstalledOriginals {
