@@ -62,106 +62,121 @@ impl ModelCaptureConnection {
         let worker_control = control.clone();
         let guest_runtime = runtime.clone();
         let capacity = self.capacity.clone();
+        let worker_observation = self.observation.prepare(attempt);
+        let body_observation = worker_observation.observation();
+        #[cfg(test)]
+        let spawn_hooks = hooks.clone();
         let result = runtime.spawn_blocking(move || {
-            // Never abort this worker on waiter cancellation. It owns the same
-            // one permit through genuine synchronous/async guest effects and
-            // their cleanup, including private preparation and publication.
-            let _worker_permit = permit.clone();
-            hooks.before_capture();
-            worker_control.check()?;
-            offer.with_current(|valid| valid)?;
-            let provider = offer.provider();
-            let selection = offer.selection();
-            let resolved = match guest_runtime.block_on(provider.resolve(selection, &capacity))? {
-                SourceResolution::Compiled(resolved) => resolved,
-                SourceResolution::NotCompiled => {
-                    finish(
-                        &worker_owner,
-                        attempt,
-                        &worker_control,
-                        Ok(CaptureResult::Unavailable(CaptureUnavailable::NotCompiled)),
-                        reservation,
-                        permit,
-                    )?;
-                    return Ok(ModelCaptureCompletion::Unavailable(
-                        CaptureUnavailable::NotCompiled,
-                    ));
-                }
-            };
-            worker_control.check()?;
-            let captured = capture_accounted(
-                resolved.output(),
-                resolved.module(),
-                scope,
-                &worker_control,
-                Limits::default(),
-                &mut reservation,
-            )
-            .and_then(|mut result| {
-                if let CaptureResult::Ready(sources) = &mut result {
-                    worker_control.check()?;
-                    let bytes = std::mem::size_of::<SourceVersionEvidence>();
-                    let metadata = sources
-                        .metadata_bytes
-                        .checked_add(bytes)
-                        .filter(|total| *total <= MAX_METADATA_BYTES)
-                        .ok_or(CaptureError::InventoryLimit)?;
-                    // The closed retained evidence is charged on the SAME host
-                    // ledger before probing, before its final owned value exists.
-                    reservation.metadata(bytes)?;
-                    sources.metadata_bytes = metadata;
-                    hooks.before_source_header();
-                    worker_control.check()?;
-                    sources.source_version = frozen_source_version(sources);
-                    worker_control.check()?;
-                }
-                Ok(result)
-            });
-            let completion = finish(
-                &worker_owner,
-                attempt,
-                &worker_control,
-                captured,
-                reservation,
-                permit,
-            )?;
-            let WorkerCompletion::Prepared = completion else {
-                let WorkerCompletion::Unavailable(reason) = completion else {
-                    unreachable!()
-                };
-                return Ok(ModelCaptureCompletion::Unavailable(reason));
-            };
-            let prepared = PreparedModelCapture {
-                owner: worker_owner,
-                attempt,
-                control: worker_control.clone(),
-                armed: true,
-            };
-            hooks.after_capture(); // private Prepared, before actual revalidation
-            worker_control.check()?;
-            let current = guest_runtime.block_on(provider.resolve(selection, &capacity));
-            let result = match current {
-                Ok(SourceResolution::Compiled(current)) if resolved.same_authority(&current) => {
-                    offer.with_current(|valid| match valid {
-                        Ok(()) => prepared.publish().map_err(Into::into),
-                        Err(error) => {
-                            prepared.reject();
-                            Err(error)
+            observation::run_body(body_observation, move || {
+                // Never abort this worker on waiter cancellation. It owns the same
+                // one permit through genuine synchronous/async guest effects and
+                // their cleanup, including private preparation and publication.
+                let _worker_permit = permit.clone();
+                hooks.before_capture();
+                worker_control.check()?;
+                offer.with_current(|valid| valid)?;
+                let provider = offer.provider();
+                let selection = offer.selection();
+                let resolved =
+                    match guest_runtime.block_on(provider.resolve(selection, &capacity))? {
+                        SourceResolution::Compiled(resolved) => resolved,
+                        SourceResolution::NotCompiled => {
+                            finish(
+                                &worker_owner,
+                                attempt,
+                                &worker_control,
+                                Ok(CaptureResult::Unavailable(CaptureUnavailable::NotCompiled)),
+                                reservation,
+                                permit,
+                            )?;
+                            return Ok(ModelCaptureCompletion::Unavailable(
+                                CaptureUnavailable::NotCompiled,
+                            ));
                         }
-                    })
-                }
-                Ok(_) => {
-                    prepared.reject();
-                    Err(ProviderCaptureError::Changed)
-                }
-                Err(error) => {
-                    prepared.reject();
-                    Err(error)
-                }
-            };
-            hooks.before_worker_exit();
-            result
+                    };
+                worker_control.check()?;
+                let captured = capture_accounted(
+                    resolved.output(),
+                    resolved.module(),
+                    scope,
+                    &worker_control,
+                    Limits::default(),
+                    &mut reservation,
+                )
+                .and_then(|mut result| {
+                    if let CaptureResult::Ready(sources) = &mut result {
+                        worker_control.check()?;
+                        let bytes = std::mem::size_of::<SourceVersionEvidence>();
+                        let metadata = sources
+                            .metadata_bytes
+                            .checked_add(bytes)
+                            .filter(|total| *total <= MAX_METADATA_BYTES)
+                            .ok_or(CaptureError::InventoryLimit)?;
+                        // The closed retained evidence is charged on the SAME host
+                        // ledger before probing, before its final owned value exists.
+                        reservation.metadata(bytes)?;
+                        sources.metadata_bytes = metadata;
+                        hooks.before_source_header();
+                        worker_control.check()?;
+                        sources.source_version = frozen_source_version(sources);
+                        worker_control.check()?;
+                    }
+                    Ok(result)
+                });
+                let completion = finish(
+                    &worker_owner,
+                    attempt,
+                    &worker_control,
+                    captured,
+                    reservation,
+                    permit,
+                )?;
+                let WorkerCompletion::Prepared = completion else {
+                    let WorkerCompletion::Unavailable(reason) = completion else {
+                        unreachable!()
+                    };
+                    return Ok(ModelCaptureCompletion::Unavailable(reason));
+                };
+                let prepared = PreparedModelCapture {
+                    owner: worker_owner,
+                    attempt,
+                    control: worker_control.clone(),
+                    armed: true,
+                };
+                hooks.after_capture(); // private Prepared, before actual revalidation
+                worker_control.check()?;
+                let current = guest_runtime.block_on(provider.resolve(selection, &capacity));
+                let result = match current {
+                    Ok(SourceResolution::Compiled(current))
+                        if resolved.same_authority(&current) =>
+                    {
+                        offer.with_current(|valid| match valid {
+                            Ok(()) => prepared.publish().map_err(Into::into),
+                            Err(error) => {
+                                prepared.reject();
+                                Err(error)
+                            }
+                        })
+                    }
+                    Ok(_) => {
+                        prepared.reject();
+                        Err(ProviderCaptureError::Changed)
+                    }
+                    Err(error) => {
+                        prepared.reject();
+                        Err(error)
+                    }
+                };
+                hooks.before_worker_exit();
+                result
+            })
         });
+        #[cfg(test)]
+        {
+            spawn_hooks.after_spawn_before_tracking();
+            drop(spawn_hooks);
+        }
+        let result = TrackedJoin::new(result, worker_observation);
         Ok(PendingProviderCapture {
             owner,
             attempt,
@@ -241,10 +256,16 @@ pub struct PendingProviderCapture {
     owner: Weak<Mutex<ConnectionState>>,
     attempt: AttemptKey,
     control: CaptureControl,
-    result: JoinHandle<Result<ModelCaptureCompletion, ProviderCaptureError>>,
+    result: TrackedJoin<Result<ModelCaptureCompletion, ProviderCaptureError>>,
     armed: bool,
 }
 impl PendingProviderCapture {
+    pub fn worker_observation(&self) -> WorkerAttemptObservation {
+        self.result.observation()
+    }
+    pub fn is_finished(&self) -> bool {
+        self.result.is_finished()
+    }
     pub fn cancel(&self) {
         abandon(&self.owner, self.attempt, &self.control);
     }

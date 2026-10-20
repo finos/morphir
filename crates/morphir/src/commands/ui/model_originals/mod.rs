@@ -6,6 +6,7 @@
 mod capture;
 mod domain;
 mod lifecycle;
+pub(super) mod observation;
 mod record;
 pub(super) mod source_header;
 pub(crate) mod wire;
@@ -22,3 +23,9 @@ mod tests;
 
 #[cfg(test)]
 mod lifecycle_tests;
+
+#[cfg(test)]
+mod worker_observation_tests;
+
+#[cfg(test)]
+mod worker_boundary_tests;

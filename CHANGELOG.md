@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Bounded model-original capture observations distinguish worker issuance, body
+  outcomes, owned handles and actual joins. Retained connection views and
+  detached workers cannot certify joined cleanup. This internal observation
+  component does not advertise connected profile qualification.
 - `spec/mep/`: the Morphir Extension Protocol contract as a Gleam model,
   compiled to committed Morphir IR (`spec/mep/generated/mep.ir.json`) with a
   drift check in CI (`mise run spec:mep`, `mise run spec:mep-check`). It

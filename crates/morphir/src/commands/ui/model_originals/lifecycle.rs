@@ -3,11 +3,14 @@
 mod provider;
 pub use provider::{PendingProviderCapture, ProviderCaptureError};
 
+use super::observation::{
+    self, TrackedJoin, WorkerAttemptObservation, WorkerConnectionObservation,
+    WorkerObservationScope,
+};
 use cap_std::fs::Dir;
 use morphir_distribution::Sha256Digest;
 use serde::Serialize;
 use std::sync::{Arc, Mutex, Weak};
-use tokio::task::JoinHandle;
 
 use super::{
     capture::{CaptureAccounting, Limits, capture_accounted},
@@ -36,7 +39,7 @@ impl CaptureId {
     }
 }
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-struct AttemptKey(uuid::Uuid);
+pub(super) struct AttemptKey(uuid::Uuid);
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub struct ModelCaptureUsage {
@@ -322,13 +325,28 @@ impl ConnectionState {
 pub struct ModelCaptureConnection {
     capacity: HostModelCaptureCapacity,
     state: Arc<Mutex<ConnectionState>>,
+    observation: WorkerConnectionObservation,
 }
 impl ModelCaptureConnection {
     pub fn new(capacity: HostModelCaptureCapacity) -> Self {
         Self {
             capacity,
             state: Arc::new(Mutex::new(ConnectionState::Empty)),
+            observation: WorkerConnectionObservation::unobserved(),
         }
+    }
+    /// Bind read-only worker evidence to this actual connection. The scope
+    /// supplies no output/provider authority and does not affect business work.
+    pub fn new_observed(
+        capacity: HostModelCaptureCapacity,
+        scope: &WorkerObservationScope,
+    ) -> Self {
+        let mut connection = Self::new(capacity);
+        connection.observation = WorkerConnectionObservation::bind(scope);
+        connection
+    }
+    pub fn worker_observation(&self) -> WorkerConnectionObservation {
+        self.observation.clone()
     }
     /// Must be called inside a Tokio runtime. All owned work is moved into the
     /// blocking worker; dropping the waiter never drops that worker's permit.
@@ -379,31 +397,43 @@ impl ModelCaptureConnection {
         let worker_control = control.clone();
         let owner = Arc::downgrade(&self.state);
         let worker_owner = owner.clone();
+        let worker_observation = self.observation.prepare(attempt);
+        let body_observation = worker_observation.observation();
+        #[cfg(test)]
+        let spawn_hooks = hooks.clone();
         let result = runtime.spawn_blocking(move || {
-            // The guard lives until this blocking task exits, even when its
-            // JoinHandle/waiter is dropped or the connection is closed.
-            let _worker_permit = permit.clone();
-            hooks.before_capture();
-            let result = capture_accounted(
-                &output,
-                &module,
-                scope,
-                &worker_control,
-                Limits::default(),
-                &mut reservation,
-            );
-            hooks.after_capture();
-            let completion = finish(
-                &worker_owner,
-                attempt,
-                &worker_control,
-                result,
-                reservation,
-                permit,
-            );
-            hooks.before_worker_exit();
-            completion
+            observation::run_body(body_observation, move || {
+                // The guard lives until this blocking task exits, even when its
+                // JoinHandle/waiter is dropped or the connection is closed.
+                let _worker_permit = permit.clone();
+                hooks.before_capture();
+                let result = capture_accounted(
+                    &output,
+                    &module,
+                    scope,
+                    &worker_control,
+                    Limits::default(),
+                    &mut reservation,
+                );
+                hooks.after_capture();
+                let completion = finish(
+                    &worker_owner,
+                    attempt,
+                    &worker_control,
+                    result,
+                    reservation,
+                    permit,
+                );
+                hooks.before_worker_exit();
+                completion
+            })
         });
+        #[cfg(test)]
+        {
+            spawn_hooks.after_spawn_before_tracking();
+            drop(spawn_hooks);
+        }
+        let result = TrackedJoin::new(result, worker_observation);
         Ok(PendingModelCapture {
             owner,
             attempt,
@@ -471,6 +501,8 @@ pub(super) trait WorkerHooks: Send + Sync {
     fn before_source_header(&self) {}
     fn after_capture(&self) {}
     fn before_worker_exit(&self) {}
+    #[cfg(test)]
+    fn after_spawn_before_tracking(&self) {}
 }
 struct NoopHooks;
 impl WorkerHooks for NoopHooks {}
@@ -493,10 +525,16 @@ pub struct PendingModelCapture {
     owner: Weak<Mutex<ConnectionState>>,
     attempt: AttemptKey,
     control: CaptureControl,
-    result: JoinHandle<Result<WorkerCompletion, CaptureError>>,
+    result: TrackedJoin<Result<WorkerCompletion, CaptureError>>,
     armed: bool,
 }
 impl PendingModelCapture {
+    pub fn worker_observation(&self) -> WorkerAttemptObservation {
+        self.result.observation()
+    }
+    pub fn is_finished(&self) -> bool {
+        self.result.is_finished()
+    }
     pub fn cancel(&self) {
         abandon(&self.owner, self.attempt, &self.control);
     }
