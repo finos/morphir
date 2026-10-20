@@ -1,0 +1,14 @@
+supported_targets = "js"
+
+pkgtype(kind: "executable")
+
+import {
+  "finos/morphir-ir/wire",
+  "moonbitlang/core/encoding/base64",
+  "finos/morphir-engine/data",
+  "finos/morphir-engine/execution",
+  "finos/morphir-execution" @protocol,
+  "moonrockz/ion/ion",
+  "moonrockz/ion/text" @ion_text,
+  "moonrockz/ion/binary" @ion_binary,
+}

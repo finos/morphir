@@ -263,8 +263,9 @@ This pure API compiles a library without host access. The
 language `moonbit`, with stable as the default. Select the stable library with
 `frontend.profile = "moonbit-model-stable-v1"` or CLI
 `--frontend-profile moonbit-model-stable-v1`. Provider identity and configured
-source capabilities belong to the engine descriptor. Installed numeric qualification remains separate roadmap work and is required
-before promoting numeric/Decimal capabilities.
+source capabilities belong to the engine descriptor. The installed numeric gate in
+`mise run test:installed-lifecycle` qualifies the experimental numeric and Decimal
+capabilities. It does not promote them; promotion to stable is a separate decision.
 
 
 ## Strings and scalar types
@@ -325,7 +326,8 @@ libraries cannot own the reserved `morphir/SDK` or `morphir/moonbit-source` pack
 
 `mise run test:typed-source` compiles original and generated direct consumers on
 native, JS, WASM and WASM-GC in debug and release, checks Scheme results and private
-access, and writes an Ion receipt under `.dev/typed-source-acceptance/`. Installed qualification keeps its own roadmap tasks.
+access, and writes an Ion receipt under `.dev/typed-source-acceptance/`. The installed
+lifecycle gate repeats the numeric rows through the packed npm CLI.
 
 
 ## Function documentation
@@ -563,8 +565,9 @@ can catch the concrete `@decimal.DecimalError` cases. Libraries without checked 
 [numeric-decimal.json](conformance/numeric-decimal.json) records the admitted
 calls and local qualification scope. `mise run test:typed-source` compares original
 source, Scheme and generated consumers against independent exact expectations
-on native, JavaScript, Wasm and Wasm GC in debug/release. Installed numeric
-qualification remains N6, `morphir-ukvn.1.10.12.1.6`.
+on native, JavaScript, Wasm and Wasm GC in debug/release. The installed numeric
+gate (`MORPHIR_INSTALLED_SCOPE=numeric`) runs the Decimal rows, failures and a
+deliberate mismatch through the packed npm CLI.
 
 Generated invocation drivers map the four concrete Decimal errors to the same
 `sdk.decimal.*` model-error values as Scheme. Generated dependency contracts

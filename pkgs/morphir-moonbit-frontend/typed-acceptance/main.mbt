@@ -243,6 +243,7 @@ fn main raise {
         1048576
       },
     )
+    let source_entries = output.entries.map(@ir.FQName::to_canonical)
     let output = if kind == "float" {
       add_float_conversion_cases(output)
     } else {
@@ -752,6 +753,10 @@ fn main raise {
             []
           },
           "profile": @frontend.EXPERIMENTAL_PROFILE,
+          "sourceEntries": source_entries,
+          "irOnlyEntries": output.entries
+          .map(@ir.FQName::to_canonical)
+          .filter(entry => !source_entries.contains(entry)),
           "source": source,
           "module": generated.project.module_name,
           "symbols": generated.symbols.map(s => {

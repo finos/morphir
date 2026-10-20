@@ -21,10 +21,17 @@ permissions:
 
 jobs:
   lifecycle:
-    name: Installed lifecycle (${{ inputs.runner }})
+    name: Installed ${{ matrix.scope }} (${{ inputs.runner }})
     runs-on: ${{ inputs.runner }}
     if: inputs.lifecycle
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # The numeric gate runs beside the lifecycle gate on the same packed CLI.
+        scope: [lifecycle, numeric]
+    env:
+      MORPHIR_INSTALLED_SCOPE: ${{ matrix.scope }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -65,7 +72,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: installed-lifecycle-${{ inputs.runner }}
+          name: installed-${{ matrix.scope }}-${{ inputs.runner }}
           path: |
             .dev/installed-ci/
             .dev/llvm-pin.json

@@ -827,6 +827,28 @@ keeps the published checkpoint, private-entry refusal, cancellation and a
 deliberate mismatch. `--string-only` runs this part alone. Receipts and a
 `summary.json` evidence matrix are retained under `moonbit-string/`.
 
+The numeric gate qualifies the experimental `moonbit-model-experimental-v1`
+numeric and Decimal capabilities without promoting them. It compiles seven
+source libraries with the packed CLI: Int32 boundaries and wrapping, fixed-width
+and big integers, Float and Double carriers, math functions, Integer/Double
+conversions and Decimal calculations. Their 80 public entries have 178
+hand-authored rows. On every required target in debug and release, 164 exact rows
+go through `conform` against the independent evaluator and Scheme. The other 14
+rows use `execute` and an authored bound: 4 ULP for 5 math rows, or a NaN or
+infinity category. Scheme checks all 178 rows on the installed checkpoint. One
+consumer workspace compiles the original sources and the installed-generated
+wrappers; it runs 356 assertions on native, JS, Wasm and Wasm GC in debug and
+release. The gate also decodes the primary Ion receipts, checks generated
+visibility and replays Ion text, an unknown metadata fact and a JSON receipt with
+exact values. Lossy checkpoint JSON is refused. Rejected sources keep the
+published checkpoint: the stable channel, an unsupported function, literal
+overflow, a missing error annotation and the function budget. The gate also checks
+wrongly typed input, a missing SDK dependency, the 4096 digit Integer budget,
+cancellation, a deliberate Decimal mismatch and default and explicit log paths.
+`--numeric-only` or `MORPHIR_INSTALLED_SCOPE=numeric` runs this part alone. CI
+runs it as a separate job beside `MORPHIR_INSTALLED_SCOPE=lifecycle`. Receipts
+and `summary.json` are retained under `moonbit-numeric/`.
+
 Library checks include lazy planning, explicit profile selection, preservation
 of published output after rejected source or lossy JSON export, optional logging
 under `.morphir/logs/`, explicit log paths, failed sinks, stdout framing, execution
