@@ -5,6 +5,7 @@ use super::input::{self, ClientAction};
 use super::observed::{self, ClientCheckpoint};
 use super::pairing::{PairedRun, PairedWorkflow};
 use super::{FixtureAlias, Nullable, Presence};
+pub(super) mod installed;
 pub(super) mod server;
 mod workspace;
 
@@ -62,6 +63,7 @@ pub(super) enum ObservationError {
     SizeOverflow,
     Role,
     ExpectedBlocked,
+    InstalledClient(InstalledClientFault),
     UnsupportedServer,
     NativeDeclaration(server::NativeFault),
     UnsupportedClientCheck {
@@ -88,6 +90,24 @@ pub(super) enum ObservationError {
         index: usize,
         kind: PredicateFault,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum InstalledClientFault {
+    SourceBinding,
+    ProcessOrder,
+    ProcessOutcome,
+    ProcessClaims,
+    SocketAssociation,
+    SocketOrder,
+    SocketFrame,
+    SendOutcome,
+    RecordAdoption,
+    DestinationCoverage,
+    DestinationEntries,
+    DestinationBytes,
+    ScratchCoverage,
+    ScratchEntries,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

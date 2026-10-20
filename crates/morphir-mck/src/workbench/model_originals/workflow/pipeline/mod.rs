@@ -16,7 +16,8 @@ use crate::json::strict::Document;
 use crate::transport::{Session, TransportError};
 use crate::workbench::corpus::CorpusSource;
 use crate::workbench::report::{MAX_REPORT_BYTES, WorkflowExchangeRecord};
-use installed::prepared_installed_client;
+#[cfg(test)]
+use installed::{prepared_installed_client, replay_installed};
 pub(in crate::workbench) use policy::Policy;
 use policy::{CaptureFault, Owners};
 use raw::VERSION;
@@ -220,6 +221,56 @@ impl RunFault {
                 "observation",
                 "expected-blocked",
                 "expected workflow is explicitly blocked",
+            ),
+            Self::Record(WorkflowRecordError::Observation(ObservationError::InstalledClient(
+                fault,
+            ))) => (
+                "observation",
+                match fault {
+                    super::observation_check::InstalledClientFault::SourceBinding => {
+                        "installed-source-binding"
+                    }
+                    super::observation_check::InstalledClientFault::ProcessOrder => {
+                        "installed-process-order"
+                    }
+                    super::observation_check::InstalledClientFault::ProcessOutcome => {
+                        "installed-process-outcome"
+                    }
+                    super::observation_check::InstalledClientFault::ProcessClaims => {
+                        "installed-process-claims"
+                    }
+                    super::observation_check::InstalledClientFault::SocketAssociation => {
+                        "installed-socket-association"
+                    }
+                    super::observation_check::InstalledClientFault::SocketOrder => {
+                        "installed-socket-order"
+                    }
+                    super::observation_check::InstalledClientFault::SocketFrame => {
+                        "installed-socket-frame"
+                    }
+                    super::observation_check::InstalledClientFault::SendOutcome => {
+                        "installed-send-outcome"
+                    }
+                    super::observation_check::InstalledClientFault::RecordAdoption => {
+                        "installed-record-adoption"
+                    }
+                    super::observation_check::InstalledClientFault::DestinationCoverage => {
+                        "installed-destination-coverage"
+                    }
+                    super::observation_check::InstalledClientFault::DestinationEntries => {
+                        "installed-destination-entries"
+                    }
+                    super::observation_check::InstalledClientFault::DestinationBytes => {
+                        "installed-destination-bytes"
+                    }
+                    super::observation_check::InstalledClientFault::ScratchCoverage => {
+                        "installed-scratch-coverage"
+                    }
+                    super::observation_check::InstalledClientFault::ScratchEntries => {
+                        "installed-scratch-entries"
+                    }
+                },
+                "installed factual consistency refused",
             ),
             Self::Record(WorkflowRecordError::Observation(_)) => (
                 "observation",
@@ -990,7 +1041,7 @@ pub(in crate::workbench) fn replay(
                     Evidence::NotAttempted { .. } => {
                         return Err("inventory omits required actual attempt".into());
                     }
-                    Evidence::NativeMeasured { .. } => {
+                    Evidence::NativeMeasured { .. } | Evidence::ClientProcessMeasured { .. } => {
                         return Err("native measurements require native configuration".into());
                     }
                 }

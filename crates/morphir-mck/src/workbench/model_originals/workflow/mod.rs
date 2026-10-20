@@ -9,6 +9,7 @@ mod expansion;
 mod identity_input;
 mod input;
 mod installed_client;
+mod installed_measurements;
 mod meaning;
 pub mod native;
 mod native_original;

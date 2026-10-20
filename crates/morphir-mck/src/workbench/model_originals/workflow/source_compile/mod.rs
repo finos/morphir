@@ -125,6 +125,13 @@ impl<'case, 'raw> WorkflowReportContext<'_, 'case, '_, 'raw, '_> {
     pub(super) fn lineage(&self) -> LineageStatus {
         self.compiled.source.lineage()
     }
+    pub(super) fn check_installed_process(
+        &self,
+        actual: &super::installed_measurements::InstalledClientMeasurements,
+        owner: &mut CompareOwner,
+    ) -> Result<(), ObservationError> {
+        observation_check::installed::check(self.paired(), self.compiled.installed(), actual, owner)
+    }
     pub(super) fn check_observation<'actual>(
         &self,
         actual: &'actual observed::Observation,

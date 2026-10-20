@@ -440,7 +440,10 @@ fn validate_root_set(roots: &[Root]) -> Result<(), InvalidFrame> {
     Ok(())
 }
 fn folded(path: &str) -> String {
-    path.nfkc().case_fold().nfc().collect()
+    folded_chars(path).collect()
+}
+fn folded_chars(path: &str) -> impl Iterator<Item = char> + '_ {
+    path.nfkc().case_fold().nfc()
 }
 fn parse(raw: &str, limit: usize) -> Result<Value, InvalidFrame> {
     if raw.len() > limit {

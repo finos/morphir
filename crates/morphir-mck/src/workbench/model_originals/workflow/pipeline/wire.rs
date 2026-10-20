@@ -1,4 +1,5 @@
 //! Selected Report wire data only. These types grant no source or runtime proof.
+use super::super::installed_measurements::InstalledClientMeasurements;
 use super::super::native_original::NativeDeclarationObservation;
 use super::super::pairing::{PairedRun, PairedWorkflow};
 use super::super::source_compile::CompiledExecution;
@@ -326,6 +327,10 @@ pub(super) enum Verdict {
 #[derive(Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub(super) enum Evidence {
+    ClientProcessMeasured {
+        measurement: ClientProcessMeasurement,
+        verdict: Verdict,
+    },
     NativeMeasured {
         measurement: NativeMeasurement,
         verdict: Verdict,
@@ -348,6 +353,30 @@ pub(super) enum Evidence {
 /// native header for every not-attempted row; no unsafe/fallible-Box shim is
 /// needed. The existing decoder charges the actual extra storage slot first.
 pub(super) struct NativeMeasurement(Vec<NativeDeclarationObservation>);
+/// Exactly one fallibly retained factual DATA value; no live issuer.
+pub(super) struct ClientProcessMeasurement(Vec<InstalledClientMeasurements>);
+impl ClientProcessMeasurement {
+    pub(super) fn retain(
+        value: InstalledClientMeasurements,
+        owner: &mut Decoder,
+    ) -> Result<Self, DecodeError> {
+        owner.slots(1)?;
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(1)
+            .map_err(|_| DecodeError::Allocation)?;
+        values.push(value);
+        Ok(Self(values))
+    }
+    pub(super) fn value(&self) -> &InstalledClientMeasurements {
+        &self.0[0]
+    }
+}
+impl Serialize for ClientProcessMeasurement {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.value().serialize(serializer)
+    }
+}
 impl NativeMeasurement {
     pub(super) fn retain(
         value: NativeDeclarationObservation,
@@ -476,6 +505,18 @@ fn evidence(doc: Document, owner: &mut Decoder) -> Result<Evidence, DecodeError>
     };
     let kind = owned_text(take(&mut fields, "kind", owner)?, owner)?;
     match kind.as_str() {
+        "client-process-measured" if fields.len() == 2 => {
+            let measurement = InstalledClientMeasurements::decode(
+                &take(&mut fields, "measurement", owner)?,
+                owner,
+            )?;
+            let measurement = ClientProcessMeasurement::retain(measurement, owner)?;
+            let verdict = verdict(take(&mut fields, "verdict", owner)?, owner)?;
+            Ok(Evidence::ClientProcessMeasured {
+                measurement,
+                verdict,
+            })
+        }
         "native-measured" if fields.len() == 2 => {
             let measurement = NativeDeclarationObservation::decode(
                 &take(&mut fields, "measurement", owner)?,

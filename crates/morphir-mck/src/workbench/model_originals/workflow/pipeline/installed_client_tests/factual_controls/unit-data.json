@@ -1,0 +1,390 @@
+{
+  "processes": [
+    {
+      "actionIndex": 2,
+      "command": "connect",
+      "completion": {
+        "kind": "finished",
+        "exit": {
+          "kind": "code",
+          "value": 0
+        }
+      },
+      "stdout": {
+        "kind": "utf8",
+        "text": "{\"profile\":\"morphir/cli/connected-command\",\"contractVersion\":\"0.1.0\",\"operation\":\"connect\",\"binding\":\"workbench-http\",\"connectionScope\":\"models\",\"connected\":true,\"origin\":\"http://127.0.0.1:1111\",\"sessionId\":\"unit-session\",\"sources\":[{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\",\"displayName\":\"Unit workspace\"}]}\n"
+      },
+      "stderr": {
+        "kind": "hex",
+        "hex": ""
+      },
+      "stderrTruncated": false,
+      "descendants": "unobserved"
+    },
+    {
+      "actionIndex": 5,
+      "command": "list",
+      "completion": {
+        "kind": "finished",
+        "exit": {
+          "kind": "code",
+          "value": 0
+        }
+      },
+      "stdout": {
+        "kind": "utf8",
+        "text": "{\"profile\":\"morphir/cli/originals-command\",\"contractVersion\":\"0.1.0\",\"operation\":\"list\",\"binding\":\"workbench-http\",\"observation\":\"discovered\",\"stopReason\":null,\"cleanup\":{\"kind\":\"connection-closed\"},\"source\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\"},\"projects\":[{\"projectId\":\"[\\\"unit-provider\\\",\\\"workspace:initial\\\",\\\"packages/orders\\\"]\",\"name\":\"acme/orders\"}]}\n"
+      },
+      "stderr": {
+        "kind": "hex",
+        "hex": ""
+      },
+      "stderrTruncated": false,
+      "descendants": "unobserved"
+    },
+    {
+      "actionIndex": 8,
+      "command": "publish",
+      "completion": {
+        "kind": "finished",
+        "exit": {
+          "kind": "code",
+          "value": 0
+        }
+      },
+      "stdout": {
+        "kind": "utf8",
+        "text": "{\"profile\":\"morphir/cli/originals-command\",\"contractVersion\":\"0.1.0\",\"operation\":\"originals\",\"binding\":\"workbench-http\",\"observation\":\"published\",\"stopReason\":null,\"cleanup\":{\"kind\":\"released\"},\"inventorySha256\":\"55dcd6a7593beef8b007f0e5ace66ae9bd1208c10ade11a69e127b9c4f9b3357\",\"fileCount\":2,\"directoryCount\":0,\"sourceByteLength\":115,\"publication\":\"cli\",\"representation\":\"original-bytes\",\"published\":[\"/unit-output/originals\"],\"sourceFormatVersion\":{\"status\":\"reported\",\"release\":\"4.0.0\"}}\n"
+      },
+      "stderr": {
+        "kind": "hex",
+        "hex": ""
+      },
+      "stderrTruncated": false,
+      "descendants": "unobserved"
+    }
+  ],
+  "host": {
+    "association": "invocation-credential",
+    "selection": {
+      "sessionId": "unit-session",
+      "source": {
+        "providerId": "unit-provider",
+        "locator": "workspace:initial"
+      },
+      "projectId": "[\"unit-provider\",\"workspace:initial\",\"packages/orders\"]"
+    },
+    "events": [
+      {
+        "sequence": 0,
+        "connection": 0,
+        "event": {
+          "kind": "authenticated-connection"
+        }
+      },
+      {
+        "sequence": 1,
+        "connection": 0,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"morphir.session.initialize\",\"params\":{\"protocolVersion\":1,\"sessionId\":\"unit-session\"}}"
+        }
+      },
+      {
+        "sequence": 2,
+        "connection": 0,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":1}}"
+        }
+      },
+      {
+        "sequence": 3,
+        "connection": 0,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 2,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 4,
+        "connection": 0,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"morphir.workspace.open\",\"params\":{\"source\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\",\"displayName\":\"Unit workspace\"}}}"
+        }
+      },
+      {
+        "sequence": 5,
+        "connection": 0,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"snapshot\":{\"id\":\"unit-workspace\",\"root\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\",\"displayName\":\"Unit workspace\"},\"state\":\"open\",\"projects\":[{\"id\":\"[\\\"unit-provider\\\",\\\"workspace:initial\\\",\\\"packages/orders\\\"]\",\"name\":\"acme/orders\",\"state\":\"unloaded\"}]}}}"
+        }
+      },
+      {
+        "sequence": 6,
+        "connection": 0,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 5,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 7,
+        "connection": 1,
+        "event": {
+          "kind": "authenticated-connection"
+        }
+      },
+      {
+        "sequence": 8,
+        "connection": 1,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"morphir.session.initialize\",\"params\":{\"protocolVersion\":1,\"sessionId\":\"unit-session\"}}"
+        }
+      },
+      {
+        "sequence": 9,
+        "connection": 1,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":1}}"
+        }
+      },
+      {
+        "sequence": 10,
+        "connection": 1,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 9,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 11,
+        "connection": 1,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"morphir.workspace.open\",\"params\":{\"source\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\",\"displayName\":\"Unit workspace\"}}}"
+        }
+      },
+      {
+        "sequence": 12,
+        "connection": 1,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"snapshot\":{\"id\":\"unit-workspace\",\"root\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\",\"displayName\":\"Unit workspace\"},\"state\":\"open\",\"projects\":[{\"id\":\"[\\\"unit-provider\\\",\\\"workspace:initial\\\",\\\"packages/orders\\\"]\",\"name\":\"acme/orders\",\"state\":\"unloaded\"}]}}}"
+        }
+      },
+      {
+        "sequence": 13,
+        "connection": 1,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 12,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 14,
+        "connection": 1,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"morphir.model-originals.capture\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"source\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\"},\"projectId\":\"[\\\"unit-provider\\\",\\\"workspace:initial\\\",\\\"packages/orders\\\"]\",\"scope\":\"complete\",\"semantic\":\"none\"}}"
+        }
+      },
+      {
+        "sequence": 15,
+        "connection": 1,
+        "event": {
+          "kind": "ready-record-adopted",
+          "bytes": {
+            "kind": "hex",
+            "hex": "7b22736368656d61223a312c227461736b223a22636f6d70696c65222c226d6f64756c65223a227061636b616765732f6f7264657273222c22636f6d706c657465644174223a22696e646570656e64656e746c792d617574686f726564222c226972223a7b2270617468223a226d6f72706869722d69722e6a736f6e222c226c61796f7574223a2273696e676c652d66696c65222c22666f726d6174223a226a736f6e222c2276657273696f6e223a227634227d2c2276616c7565223a5b226d6f72706869722d69722e6a736f6e222c2270617273652f6173742e6a736f6e225d2c22696e7374616c6c6564223a7b222f686f6d652f616c6963652f707269766174652d696e7374616c6c223a5b226d6f72706869722d69722e6a736f6e225d7d2c226578747261223a7b2273656c656374696f6e223a5b222f707269766174652f736f757263652e7363616c61225d2c22736563726574223a2270726976617465227d2c226d6f72706869724d6f64656c4f726967696e616c73223a7b22636f6e747261637456657273696f6e223a22302e312e302d64726166742e31222c22636f6d70616e696f6e73223a5b7b226b696e64223a2266696c65222c2270617468223a226e6f7465732f6f70617175652e62696e227d5d7d7d"
+          }
+        }
+      },
+      {
+        "sequence": 16,
+        "connection": 1,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":3,\"result\":{\"profile\":\"morphir/workbench/model-originals\",\"contractVersion\":\"0.1.0-draft.1\",\"status\":\"ready\",\"binding\":{\"sessionId\":\"unit-session\",\"source\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\"},\"projectId\":\"[\\\"unit-provider\\\",\\\"workspace:initial\\\",\\\"packages/orders\\\"]\"},\"captureId\":\"unit-capture\",\"coverage\":{\"kind\":\"complete\",\"declaration\":\"0.1.0-draft.1\"},\"origin\":{\"kind\":\"compiled\",\"record\":{\"byteLength\":474,\"sha256\":\"49e6d17357d685db4a2296b9f6a842d2ce3b37149a64675692e5761ae9807b77\",\"schema\":1,\"task\":\"compile\",\"module\":\"packages/orders\",\"ir\":{\"path\":\"morphir-ir.json\",\"layout\":\"single-file\",\"format\":\"json\",\"version\":\"v4\"}}},\"primary\":{\"kind\":\"file\",\"path\":\"morphir-ir.json\"},\"companions\":[{\"kind\":\"file\",\"path\":\"notes/opaque.bin\"}],\"sourceFormatVersion\":{\"status\":\"reported\",\"release\":\"4.0.0\"},\"projection\":{\"status\":\"not-requested\"},\"inventory\":{\"entryCount\":2,\"fileCount\":2,\"directoryCount\":0,\"sourceByteLength\":115,\"sha256\":\"55dcd6a7593beef8b007f0e5ace66ae9bd1208c10ade11a69e127b9c4f9b3357\"}}}"
+        }
+      },
+      {
+        "sequence": 17,
+        "connection": 1,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 16,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 18,
+        "connection": 1,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"morphir.model-originals.inventory\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"captureId\":\"unit-capture\",\"startIndex\":0,\"maxEntries\":256}}"
+        }
+      },
+      {
+        "sequence": 19,
+        "connection": 1,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"profile\":\"morphir/workbench/model-originals\",\"contractVersion\":\"0.1.0-draft.1\",\"binding\":{\"sessionId\":\"unit-session\",\"source\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\"},\"projectId\":\"[\\\"unit-provider\\\",\\\"workspace:initial\\\",\\\"packages/orders\\\"]\"},\"captureId\":\"unit-capture\",\"inventorySha256\":\"55dcd6a7593beef8b007f0e5ace66ae9bd1208c10ade11a69e127b9c4f9b3357\",\"startIndex\":0,\"entries\":[{\"kind\":\"file\",\"entryId\":\"unit-entry-0\",\"path\":\"morphir-ir.json\",\"byteLength\":111,\"sha256\":\"0cfa7c0335577f650276cca8f9b6543d8142734cc023bc04ee2ae1cbbd67acd1\"},{\"kind\":\"file\",\"entryId\":\"unit-entry-1\",\"path\":\"notes/opaque.bin\",\"byteLength\":4,\"sha256\":\"3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56\"}],\"next\":{\"kind\":\"complete\"}}}"
+        }
+      },
+      {
+        "sequence": 20,
+        "connection": 1,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 19,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 21,
+        "connection": 1,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"morphir.model-originals.read\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"captureId\":\"unit-capture\",\"target\":{\"kind\":\"original\",\"entryId\":\"unit-entry-0\"},\"offset\":0,\"maxBytes\":65536}}"
+        }
+      },
+      {
+        "sequence": 22,
+        "connection": 1,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":5,\"result\":{\"profile\":\"morphir/workbench/model-originals\",\"contractVersion\":\"0.1.0-draft.1\",\"binding\":{\"sessionId\":\"unit-session\",\"source\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\"},\"projectId\":\"[\\\"unit-provider\\\",\\\"workspace:initial\\\",\\\"packages/orders\\\"]\"},\"captureId\":\"unit-capture\",\"target\":{\"kind\":\"original\",\"entryId\":\"unit-entry-0\"},\"offset\":0,\"nextOffset\":111,\"content\":\"eyJmb3JtYXRWZXJzaW9uIjo0LCJkaXN0cmlidXRpb24iOnsiTGlicmFyeSI6eyJwYWNrYWdlTmFtZSI6InByaWNpbmciLCJkZXBlbmRlbmNpZXMiOnt9LCJkZWYiOnsibW9kdWxlcyI6e319fX19\"}}"
+        }
+      },
+      {
+        "sequence": 23,
+        "connection": 1,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 22,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 24,
+        "connection": 1,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"morphir.model-originals.read\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"captureId\":\"unit-capture\",\"target\":{\"kind\":\"original\",\"entryId\":\"unit-entry-1\"},\"offset\":0,\"maxBytes\":65536}}"
+        }
+      },
+      {
+        "sequence": 25,
+        "connection": 1,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":6,\"result\":{\"profile\":\"morphir/workbench/model-originals\",\"contractVersion\":\"0.1.0-draft.1\",\"binding\":{\"sessionId\":\"unit-session\",\"source\":{\"providerId\":\"unit-provider\",\"locator\":\"workspace:initial\"},\"projectId\":\"[\\\"unit-provider\\\",\\\"workspace:initial\\\",\\\"packages/orders\\\"]\"},\"captureId\":\"unit-capture\",\"target\":{\"kind\":\"original\",\"entryId\":\"unit-entry-1\"},\"offset\":0,\"nextOffset\":4,\"content\":\"AAEC/w==\"}}"
+        }
+      },
+      {
+        "sequence": 26,
+        "connection": 1,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 25,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 27,
+        "connection": 1,
+        "event": {
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"morphir.model-originals.release\",\"params\":{\"contractVersion\":\"0.1.0-draft.1\",\"captureId\":\"unit-capture\"}}"
+        }
+      },
+      {
+        "sequence": 28,
+        "connection": 1,
+        "event": {
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":7,\"result\":{\"profile\":\"morphir/workbench/model-originals\",\"contractVersion\":\"0.1.0-draft.1\",\"status\":\"released\",\"captureId\":\"unit-capture\"}}"
+        }
+      },
+      {
+        "sequence": 29,
+        "connection": 1,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 28,
+          "outcome": "completed"
+        }
+      }
+    ],
+    "source": {
+      "kind": "unobserved"
+    },
+    "workers": {
+      "kind": "unobserved"
+    }
+  },
+  "publishedRelativeRoot": "originals",
+  "destination": {
+    "afterAction": 8,
+    "root": "/unit-output",
+    "coverage": "complete",
+    "rawEntries": [
+      {
+        "kind": "physical-directory",
+        "path": "originals"
+      },
+      {
+        "kind": "file",
+        "path": "originals/morphir-ir.json",
+        "bytes": {
+          "kind": "hex",
+          "hex": "7b22666f726d617456657273696f6e223a342c22646973747269627574696f6e223a7b224c696272617279223a7b227061636b6167654e616d65223a2270726963696e67222c22646570656e64656e63696573223a7b7d2c22646566223a7b226d6f64756c6573223a7b7d7d7d7d7d"
+        }
+      },
+      {
+        "kind": "physical-directory",
+        "path": "originals/notes"
+      },
+      {
+        "kind": "file",
+        "path": "originals/notes/opaque.bin",
+        "bytes": {
+          "kind": "hex",
+          "hex": "000102ff"
+        }
+      }
+    ],
+    "files": [
+      {
+        "path": "originals/morphir-ir.json",
+        "byteLength": 111,
+        "sha256": "0cfa7c0335577f650276cca8f9b6543d8142734cc023bc04ee2ae1cbbd67acd1"
+      },
+      {
+        "path": "originals/notes/opaque.bin",
+        "byteLength": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      }
+    ]
+  },
+  "scratch": {
+    "afterAction": 8,
+    "root": "/unit-tmp",
+    "coverage": "complete",
+    "rawEntries": [],
+    "files": []
+  },
+  "dynamicCommit": "unobserved",
+  "dynamicScratchCleanup": "unobserved",
+  "clientReleaseAcceptance": "unobserved"
+}

@@ -19,6 +19,7 @@ const MAX_SOURCE_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransferError {
+    Allocation,
     Frame(InvalidFrame),
     Inventory(InventoryError),
     Method,
@@ -48,6 +49,7 @@ impl From<InventoryError> for TransferError {
 impl fmt::Display for TransferError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
+            Self::Allocation => "transfer destination allocation refused",
             Self::Frame(_) => "invalid model-originals transfer frame",
             Self::Inventory(_) => "inconsistent model-originals inventory",
             Self::Method => "exchange has the wrong model-originals method",
@@ -372,6 +374,14 @@ impl CaptureExpectation {
         &self,
         exchanges: &[Exchange<'_>],
     ) -> Result<CaptureInventory, TransferError> {
+        self.verify_inventory_borrowed(exchanges.iter().copied())
+    }
+    /// The same verification with borrowed, repeatable exchanges. Selected
+    /// callers precredit actual parse/output destinations on their Decoder.
+    pub(super) fn verify_inventory_borrowed<'a>(
+        &self,
+        exchanges: impl Iterator<Item = Exchange<'a>> + Clone,
+    ) -> Result<CaptureInventory, TransferError> {
         let mut entries = Vec::new();
         let mut next = PageNext::More(InventoryIndex(0));
         let mut strings = self
@@ -379,8 +389,10 @@ impl CaptureExpectation {
             .iter()
             .map(|root| root.path.as_str().len())
             .sum::<usize>();
-        for exchange in exchanges {
-            let page = self.page(exchange)?;
+        let mut observed = false;
+        for exchange in exchanges.clone() {
+            observed = true;
+            let page = self.page(&exchange)?;
             if next != PageNext::More(page.start) {
                 return Err(TransferError::Progress);
             }
@@ -391,10 +403,13 @@ impl CaptureExpectation {
                     .filter(|n| *n <= MAX_SOURCE_BYTES)
                     .ok_or(TransferError::MetadataBudget)?;
             }
+            entries
+                .try_reserve(page.entries.len())
+                .map_err(|_| TransferError::Allocation)?;
             entries.extend(page.entries);
             next = page.next;
         }
-        if exchanges.is_empty() || next != PageNext::Complete {
+        if !observed || next != PageNext::Complete {
             return Err(TransferError::Progress);
         }
         let inventory = Inventory::assemble(&self.roots, self.summary.clone(), entries)?;
@@ -403,7 +418,7 @@ impl CaptureExpectation {
             inventory,
         };
         for exchange in exchanges {
-            captured.check_page(exchange)?;
+            captured.check_page(&exchange)?;
         }
         Ok(captured)
     }
@@ -489,6 +504,7 @@ impl CaptureExpectation {
 
 /// Literal request/reply evidence. Requests have already crossed the exact raw
 /// request boundary; replies remain raw until the independent check below.
+#[derive(Clone, Copy)]
 pub struct Exchange<'a> {
     pub request: &'a Request,
     pub reply: &'a str,
@@ -612,13 +628,23 @@ impl CaptureInventory {
         target: &ReadTarget,
         exchanges: &[Exchange<'_>],
     ) -> Result<CheckedStream, TransferError> {
+        self.verify_stream_borrowed(target, exchanges.iter().copied())
+    }
+    /// Borrow the same actual exchanges without retaining copied frame groups.
+    pub(super) fn verify_stream_borrowed<'a>(
+        &self,
+        target: &ReadTarget,
+        exchanges: impl Iterator<Item = Exchange<'a>>,
+    ) -> Result<CheckedStream, TransferError> {
         let ByteContentDescriptor { length, digest } = self.descriptor(target)?;
-        if exchanges.is_empty() {
-            return Err(TransferError::Progress);
-        }
-        let mut bytes = Vec::with_capacity(length);
+        let mut bytes = Vec::new();
+        bytes
+            .try_reserve_exact(length)
+            .map_err(|_| TransferError::Allocation)?;
         let mut hasher = Sha256::new();
+        let mut observed = false;
         for exchange in exchanges {
+            observed = true;
             let Parameters::Read {
                 capture,
                 target: requested,
@@ -637,7 +663,7 @@ impl CaptureInventory {
             if offset.get() != bytes.len() || offset.get() > length {
                 return Err(TransferError::Progress);
             }
-            let result = reply(exchange)?;
+            let result = reply(&exchange)?;
             let start = count(&result["offset"], MAX_SOURCE_BYTES)?;
             let next = count(&result["nextOffset"], MAX_SOURCE_BYTES)?;
             validate(Schema::ReadResult, &result)?;
@@ -680,7 +706,7 @@ impl CaptureInventory {
             hasher.update(&chunk);
             bytes.extend_from_slice(&chunk);
         }
-        if bytes.len() != length {
+        if !observed || bytes.len() != length {
             return Err(TransferError::Progress);
         }
         if <[u8; 32]>::from(hasher.finalize()) != digest {
@@ -698,6 +724,9 @@ pub struct CheckedStream {
     bytes: Vec<u8>,
 }
 impl CheckedStream {
+    pub(super) fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
     pub fn target(&self) -> &ReadTarget {
         &self.target
     }

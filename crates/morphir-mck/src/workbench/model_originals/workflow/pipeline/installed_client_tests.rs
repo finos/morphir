@@ -271,3 +271,12 @@ fn genuine_cumulative_closure_and_expansion_refusal_precedes_invocation() {
         assert_eq!(calls.get(), 0);
     }
 }
+
+#[cfg(test)]
+mod factual;
+
+#[cfg(test)]
+mod supplement;
+
+#[cfg(test)]
+mod review;

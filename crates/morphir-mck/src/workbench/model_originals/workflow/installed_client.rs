@@ -224,6 +224,7 @@ pub(super) struct InstalledClientPlan<'a> {
     reviewed: ReviewedMaterialization,
     // Real old expected byte-source operands, not copied/decoded substitutes.
     byte_sources: Vec<&'a domain::ExpectedByteSource>,
+    file_sources: Vec<&'a domain::ExpectedByteSource>,
 }
 fn closure(error: ClosureError) -> CompilationError {
     CompilationError::Closure(CompileError::Owner(error))
@@ -294,13 +295,76 @@ impl<'a> InstalledClientPlan<'a> {
                 }
             }
         }
+        let mut file_sources = Vec::new();
+        for path in &reviewed.payload().original.files.0 {
+            let mut found = None;
+            for node in &draft.fixture.nodes.0 {
+                owner
+                    .charge(Resource::StructuralVisits, 1)
+                    .map_err(closure)?;
+                if let FixtureNode::ByteSource {
+                    path: physical,
+                    source,
+                } = node
+                {
+                    owner
+                        .charge(
+                            Resource::LookupBytes,
+                            physical.as_str().len().saturating_add(path.as_str().len()),
+                        )
+                        .map_err(closure)?;
+                    if physical
+                        .as_str()
+                        .split_once("/compile.dest/")
+                        .map(|(_, suffix)| suffix)
+                        == Some(path.as_str())
+                    {
+                        if found.is_some() {
+                            return Err(closure(ClosureError::Ambiguous));
+                        }
+                        for candidate in &resolved {
+                            if owner
+                                .same_alias(source, &candidate.alias)
+                                .map_err(closure)?
+                            {
+                                found = Some(*candidate);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            let source = found.ok_or_else(|| closure(ClosureError::Missing))?;
+            owner.reserve(&mut file_sources).map_err(closure)?;
+            file_sources.push(source);
+        }
         Ok(Self {
             reviewed,
             byte_sources: resolved,
+            file_sources,
         })
     }
     pub(super) fn actions(&self) -> impl Iterator<Item = &Action> {
         self.reviewed.payload().draft.actions.0.iter()
+    }
+    pub(super) fn files(&self) -> impl ExactSizeIterator<Item = (&SourcePath, &domain::Bytes)> {
+        self.reviewed
+            .payload()
+            .original
+            .files
+            .0
+            .iter()
+            .zip(&self.file_sources)
+            .map(|(path, source)| (path, &source.bytes))
+    }
+    pub(super) fn record_bytes(&self) -> &domain::Bytes {
+        &self.byte_sources[2].bytes
+    }
+    pub(super) fn companion(&self) -> &OriginalCompanion {
+        &self.reviewed.payload().original.companion
+    }
+    pub(super) fn module(&self) -> &str {
+        self.reviewed.payload().draft.fixture.module.as_str()
     }
     pub(super) fn publication(&self) -> PublicationObservation {
         match self.reviewed.payload().draft.publication {

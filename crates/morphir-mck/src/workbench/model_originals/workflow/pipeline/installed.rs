@@ -109,3 +109,102 @@ pub(super) fn prepared_installed_client<R>(
         action(PreparedInstalledClientInventory { cases, selected }, owners)
     })
 }
+
+/// Saved DATA undergoes the same source preparation and factual checker. It
+/// cannot recreate a live invocation, host credential or qualified result.
+pub(super) fn replay_installed(
+    source: &Source,
+    policy: &Policy,
+    report: &StoredReport,
+) -> Result<(), String> {
+    prepared_installed_client(
+        source,
+        policy,
+        ReviewedSources::installed_client_selected(),
+        |prepared, owners| {
+            ready(owners).map_err(|_| "source owners refused before replay")?;
+            let document =
+                Document::parse_exact_with_work(report.text().as_bytes(), &mut owners.saved)
+                    .map_err(|_| "saved report decode refused")?;
+            let saved = wire::saved(document, &mut owners.decode)
+                .map_err(|_| "saved report decode refused")?;
+            let compiled = prepared.cases();
+            if saved.corpus_hash != source.digest() || saved.records.len() != compiled.len() {
+                return Err("inventory fullfile/count differs".into());
+            }
+            if saved.capabilities.is_some() || saved.negotiation.is_some() {
+                return Err("installed report cannot claim external negotiation".into());
+            }
+            for (row, case) in saved.records.iter().zip(compiled) {
+                owners
+                    .decode
+                    .bytes(
+                        row.case_id
+                            .len()
+                            .checked_add(case.case().id().len())
+                            .ok_or("inventory overflow")?,
+                    )
+                    .map_err(|_| "inventory work refused")?;
+                if row.case_id != case.case().id()
+                    || !row
+                        .execution
+                        .matches_compiled(case, &mut owners.decode)
+                        .map_err(|_| "inventory work refused")?
+                {
+                    return Err("inventory execution key/order differs".into());
+                }
+            }
+            let mut attempt = Attempt { fault: None };
+            for (row, case) in saved.records.iter().zip(compiled) {
+                if attempt.ready().is_err() {
+                    if !matches!(
+                        row.evidence,
+                        Evidence::NotAttempted {
+                            prior_failure_index: 0
+                        }
+                    ) {
+                        return Err("evidence after first failure".into());
+                    }
+                    continue;
+                }
+                let Some(case) = case.current() else {
+                    return Err("installed evidence source kind differs".into());
+                };
+                let Evidence::ClientProcessMeasured {
+                    measurement,
+                    verdict,
+                } = &row.evidence
+                else {
+                    return Err("installed factual evidence missing".into());
+                };
+                ready(owners).map_err(|_| "replay owner refused")?;
+                let size = crate::workbench::contract::encoded_size(
+                    measurement.value(),
+                    MAX_REPORT_BYTES,
+                )?;
+                owners
+                    .capture
+                    .retain(0, size)
+                    .map_err(|_| "capture aggregate refused")?;
+                match case
+                    .report_context()
+                    .check_installed_process(measurement.value(), &mut owners.comparison)
+                {
+                    Err(error) if matches!(verdict, Verdict::Failed { failure_index: 0 }) => {
+                        attempt.fail(RunFault::Record(WorkflowRecordError::Observation(error)))
+                    }
+                    _ => return Err("forged installed factual verdict".into()),
+                }
+            }
+            match &attempt.fault {
+                Some(error)
+                    if saved.errors.len() == 1 && saved.errors[0].matches(error.summary()) => {}
+                _ => return Err("saved first failure differs".into()),
+            }
+            if saved.qualified {
+                return Err("forged qualified claim for partial/unproven source set".into());
+            }
+            Ok(())
+        },
+    )
+}
