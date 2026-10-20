@@ -67,7 +67,13 @@ pub fn capabilities(props : Props) -> @html.Html {
     })
   }
   @html.details(class="source-capabilities", hidden=profiles.is_empty(), [
-    @html.summary(text(profile, "displayName") + " · profile details"),
+    // The profile's name is in the selection beside it; the summary stays short so the editor header stays compact.
+    @html.summary(
+      attrs=@html.Attrs::build().aria_label(
+        text(profile, "displayName") + " profile details",
+      ),
+      "Profile details",
+    ),
     @html.div(class="source-capabilities-grid", [
       @html.div([@html.strong("Supported"), @html.ul(descriptions("supported"))]),
       @html.div([

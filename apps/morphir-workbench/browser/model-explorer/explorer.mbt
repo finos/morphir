@@ -71,9 +71,10 @@ fn declaration_button(
     } else {
       "tree-item"
     },
-    attrs=@html.Attrs::build().aria_pressed(
-      (selected == text(node, "key")).to_string(),
-    ),
+    attrs=@html.Attrs::build()
+      .aria_pressed((selected == text(node, "key")).to_string())
+      .data_set("tree-row", "declaration")
+      .data_set("level", "1"),
     title=text(node, "id"),
     on_click=emit(text(node, "key")),
     [
@@ -160,7 +161,9 @@ pub fn navigation(
                   "Expand " + text(module_node, "label")
                 },
               )
-              .aria_expanded(expanded.to_string()),
+              .aria_expanded(expanded.to_string())
+              .data_set("tree-row", "module")
+              .data_set("level", "0"),
             on_click=on_toggle(id),
             if expanded {
               "▾"
@@ -203,7 +206,13 @@ pub fn navigation(
       ),
     )
   }
-  @html.div(class="model-tree", groups)
+  @html.div(
+    class="model-tree",
+    attrs=@html.Attrs::build()
+      .data_set("tree", "models")
+      .on_keydown(@shell.on_tree_key),
+    groups,
+  )
 }
 
 ///|

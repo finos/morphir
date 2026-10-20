@@ -7,6 +7,7 @@ import {
   "finos/morphir-workbench/browser/editor",
   "finos/morphir-workbench/browser/context-menu" @context_menu,
   "finos/morphir-workbench/browser/keys",
+  "finos/morphir-workbench/browser/shell",
   "moonbitlang/core/encoding/base64",
   "moonbitlang/core/debug",
 }

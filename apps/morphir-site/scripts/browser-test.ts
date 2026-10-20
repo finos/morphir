@@ -112,9 +112,8 @@ try {
   await tryPage.goto(`${origin}try/`);
   await tryPage.waitForSelector('#app *', { timeout: 15000 });
   check(true, 'workbench mounts at /try/');
-  check(await tryPage.locator('a.brand[href="../"]').count() === 1, '/try/ sidebar logo links to the site home');
-  const home = tryPage.locator('.breadcrumb a', { hasText: 'Morphir' });
-  check(await home.count() === 1, '/try/ breadcrumb links to the site home');
+  const home = tryPage.locator('a.brand[href="../"]');
+  check(await home.count() === 1, '/try/ header logo links to the site home');
   if (await home.count() === 1) {
     await home.click();
     await tryPage.waitForURL(origin, { timeout: 5000 }).catch(() => {});

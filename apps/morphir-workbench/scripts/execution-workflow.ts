@@ -4,6 +4,7 @@ import type { Page, Locator, Request, Response, WebSocket, Browser, BrowserConte
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
+import { showCompile, showModel } from './workbench-steps.ts';
 
 const quote = [{ type: 'record', fields: [
   { name: 'price', value: { type: 'decimal', coefficient: '125', exponent: -1 } },
@@ -84,7 +85,7 @@ export async function executionWorkflow(page: Page, { screenshot, submitVersion 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('status').filter({ hasText: 'Connected' }).waitFor();
     assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.connected), true);
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
     await (await chooser).setFiles(fileURLToPath(new URL('../fixtures/typed-pricing.json', import.meta.url)));
@@ -172,12 +173,12 @@ export async function executionWorkflow(page: Page, { screenshot, submitVersion 
     await resultJson(decimal);
     await page.unroute('**/api/workbench/release', releaseRoute); releaseRoute = null;
     const compileCalls = methods.filter(method => method === 'morphir.playground.compile').length;
-    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+    await showCompile(page);
     await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('pub fn replacement(value: Int) -> Int { value }');
     await page.getByRole('button', { name: 'Compile', exact: true }).click();
     await page.waitForFunction(() => /before replacing the model|Model ready/.test(document.querySelector<HTMLElement>('.statusbar')?.textContent ?? ''));
     assert.equal(methods.filter(method => method === 'morphir.playground.compile').length, compileCalls, 'A disconnected terminal execution blocks model replacement before reconnect');
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     await page.locator('.tree-item[title="pricing:quotes#total"]').waitFor();
     await resultJson(decimal);
     const releaseSubmissionCount = submissions.length;

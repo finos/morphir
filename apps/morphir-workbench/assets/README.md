@@ -12,7 +12,9 @@ and logo remain FINOS Morphir brand assets.
 are original workbench drawings under this repository's license. They are
 functional icons, not official Morphir brand marks. CSS masks let navigation
 icons inherit the control's text color; labels provide their accessible names.
-The workspace icon is reserved for the design's future workspace experience.
+The workspace icon marks workspaces in the header picker. `icon-home.svg`, `icon-idea.svg`, `icon-plus.svg`,
+`icon-explorer.svg`, `icon-sidebar-right.svg`, `icon-move.svg` and `icon-concept.svg` are original drawings under the
+same terms, for the rail, getting started, sidebars and drafts.
 
 The project explorer and command palette icons are original workbench drawings under the same terms:
 `icon-file-new.svg`, `icon-import.svg`, `icon-collapse-all.svg`, `icon-more.svg`, `icon-folder-open.svg`,

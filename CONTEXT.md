@@ -89,6 +89,30 @@ The resolved projects, sources, configuration and stages for one invocation.
 **Publication**:
 Making a completed set of artifacts available at its destination.
 
+## Workbench
+
+**Workbench workspace**:
+A user-facing working context for related intent, conceptual models, source projects, model documents, generated artifacts and scratch work. Its contents can be mixed, and it need not be backed by a filesystem workspace. It is not the root-based **Workspace** above, and it grants no host authority.
+_Avoid_: Try Morphir, Model Explorer when naming the top-level working context
+
+**Workspace preset**:
+A starting arrangement of a workbench workspace's contents. A preset does not restrict the kinds of content the workspace can contain later.
+
+**Sandbox workspace**:
+A workbench workspace for trying ideas with scratch work and other content, without requiring an attached source project.
+
+**Modeling intent**:
+A description of the outcome, domain meaning, rules and constraints a person wants to express or investigate. It can precede a conceptual model or source implementation.
+
+**Conceptual model**:
+A description of domain concepts, relationships and rules, independent of a source-language implementation or an executable Morphir model.
+
+**Explorer view**:
+A navigable presentation of one aspect of a workbench workspace's contents, such as source files, model declarations or generated files.
+
+**Provisional workspace**:
+A workbench workspace that waits for its folder, model or folder grant. It becomes a saved workspace only when that arrives; a cancellation or failure removes it.
+
 ## Workbench execution
 
 **Operation**:

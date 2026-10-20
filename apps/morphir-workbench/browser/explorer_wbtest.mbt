@@ -46,10 +46,17 @@ test "the palette opens from a shortcut and runs Compile" {
 ///|
 test "quick open shows the file in Try Morphir and opens its folders" {
   let model = two_folders(ready_model())
-  let hidden = send({ ..model, explorer: true, try_collapsed: true, }, [
-    Files(Toggle(literal_path("src/Workbench/Extra"))),
-    Files(Open(literal_path("src/Workbench/Main.elm"))),
-  ])
+  let hidden = send(
+    {
+      ..model,
+      doc: Model,
+      layout: model.layout.apply(SetOpen(Primary, false)),
+    },
+    [
+      Files(Toggle(literal_path("src/Workbench/Extra"))),
+      Files(Open(literal_path("src/Workbench/Main.elm"))),
+    ],
+  )
   let opened = send(hidden, [
     RunCommand(GoToFile),
     Palette(Query("util")),
@@ -62,8 +69,8 @@ test "quick open shows the file in Try Morphir and opens its folders" {
     s
     .expect(active_project(opened).active.to_string(), label="opened")
     .to_equal("src/Workbench/Extra/Util.elm")
-    s.expect(opened.explorer, label="Try Morphir").to_be_false()
-    s.expect(opened.try_collapsed, label="sidebar open").to_be_false()
+    s.expect(opened.doc, label="source document").to_equal(Source)
+    s.expect(opened.layout.is_open(Primary), label="sidebar open").to_be_true()
     s.expect(opened.files_edit.collapsed, label="revealed").to_be_empty()
     s.expect(opened.palette.open, label="closed").to_be_false()
   })
@@ -121,7 +128,7 @@ test "a second list in the palette switches the language" {
 ///|
 test "file commands act on the open file and show it in the explorer" {
   let model = two_folders(ready_model())
-  let renaming = send({ ..model, explorer: true, }, [RunCommand(RenameFile)])
+  let renaming = send({ ..model, doc: Model, }, [RunCommand(RenameFile)])
   let deleting = send(model, [RunCommand(DeleteFile)])
   let hidden = send(model, [RunCommand(ToggleExposed)])
   @expect.expect_all(s => {
@@ -130,7 +137,7 @@ test "file commands act on the open file and show it in the explorer" {
     .to_equal(
       Renaming(File(literal_path("src/Workbench/Extra/Util.elm")), "Util.elm"),
     )
-    s.expect(renaming.explorer, label="shown").to_be_false()
+    s.expect(renaming.doc, label="shown").to_equal(Source)
     s
     .expect(deleting.files_edit.edit, label="delete")
     .to_equal(Deleting(File(literal_path("src/Workbench/Extra/Util.elm"))))

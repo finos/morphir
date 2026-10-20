@@ -630,3 +630,40 @@ test "the project menu lists the samples in one section and opens them" {
     s.expect(effects, label="opens").to_equal([LoadSample("examples-tutorial")])
   })
 }
+
+///|
+test "a filter shows matching files inside open folders and keeps the project" {
+  let env = env(shop_with_util())
+  let collapsed = {
+    ..@project_files.State::new(),
+    collapsed: env.project.files.map(f => f.path),
+  }
+  let (filtered, project, effects) = @project_files.apply(
+    collapsed,
+    env,
+    Filter("API"),
+  )
+  let paths = filtered
+    .rows(env, Map([]))
+    .map(row => row.item.path().to_string())
+  @expect.expect_all(s => {
+    s.expect(project).to_equal(env.project)
+    s.expect(effects).to_equal([])
+    s
+    .expect(
+      paths
+      .iter()
+      .all(p => !p.has_suffix(".elm") || p.to_lower().contains("api")),
+    )
+    .to_equal(true)
+    s.expect(paths.iter().any(p => p.has_suffix("Api.elm"))).to_equal(true)
+    s
+    .expect(
+      @project_files.apply(filtered, env, Filter("")).0
+      .rows(env, Map([]))
+      .length() >
+      0,
+    )
+    .to_equal(true)
+  })
+}

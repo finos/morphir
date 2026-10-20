@@ -114,3 +114,11 @@ test('readDropped takes every dropped entry before reading, so a second folder i
   assert.equal(found.ok, true);
   assert.deepEqual(filesOf(found).map(f => f.path).sort(), ['a/one.elm', 'b/two.elm']);
 });
+
+test('storage lists keys by prefix and reports none when storage is unavailable', () => {
+  globals.localStorage = { get length(): number { throw new Error('denied'); }, key() { return null; } };
+  assert.deepEqual(storage.keys('morphir-workbench.workspace.'), []);
+  const keys = ['morphir-workbench.workspace.w2.intent.v1', 'other', 'morphir-workbench.workspace.w10.project.elm.v1'];
+  globals.localStorage = { length: keys.length, key: (i: number) => keys[i] ?? null };
+  assert.deepEqual(storage.keys('morphir-workbench.workspace.'), [keys[0], keys[2]]);
+});

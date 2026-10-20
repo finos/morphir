@@ -213,3 +213,17 @@ test "verified Ion previews never authorize whole-file decoding" {
     .to_equal([])
   })
 }
+
+///|
+test "the explorer filter keeps the selection and matches paths without case" {
+  let state = { ..@generated.State::new(), selected: "src/Main.elm", }
+  let (filtered, effects) = state.apply([], Filter("MAIN"))
+  @expect.expect_all(s => {
+    s.expect(filtered.filter).to_equal("MAIN")
+    s.expect(filtered.selected).to_equal("src/Main.elm")
+    s.expect(effects).to_equal([])
+    s.expect(@generated.matches_filter("src/Main.elm", " main ")).to_equal(true)
+    s.expect(@generated.matches_filter("elm.json", "main")).to_equal(false)
+    s.expect(@generated.matches_filter("elm.json", "")).to_equal(true)
+  })
+}

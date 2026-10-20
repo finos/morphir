@@ -8,6 +8,7 @@ import { unzipSync } from 'fflate';
 import type { AddressInfo } from 'node:net';
 import { chromium } from 'playwright';
 import { createWorkbenchServer } from './server.ts';
+import { gettingStarted } from './workbench-steps.ts';
 
 const desktopAssets = process.argv.includes('--desktop');
 const server = createWorkbenchServer({ root: desktopAssets ? new URL('../../morphir-workbench-desktop/frontend/dist/', import.meta.url) : undefined });
@@ -21,8 +22,7 @@ try {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
-  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await gettingStarted(page);
   await page.evaluate(() => {
     const request = globalThis.morphirWorkbench.request;
     globalThis.morphirWorkbench.request = (input, receive) => request(input, raw => {
@@ -35,9 +35,15 @@ try {
   });
   const source = Buffer.from('\ufeff# retained\r\nformatVersion: 4\r\ndistribution: {Library: {packageName: yaml-browser, dependencies: {}, def: {modules: {}}}}\r\n');
   for (const [name, format] of [['model.yaml', ''], ['model.yml', 'morphir-yaml'], ['unknown.txt', 'morphir-yaml']]) {
-    await page.getByLabel('Model format', { exact: true }).selectOption(format!);
     const chooser = page.waitForEvent('filechooser');
-    await page.getByRole('button', { name: 'Import model', exact: true }).click();
+    if (name === 'model.yaml') {
+      // The first model opens a model workspace from getting started; the automatic format detects YAML.
+      await page.getByRole('button', { name: 'Explore a model', exact: true }).click();
+      await page.getByRole('button', { name: 'Import a model file…', exact: true }).click();
+    } else {
+      await page.getByLabel('Model format', { exact: true }).selectOption(format!);
+      await page.getByRole('button', { name: 'Import model', exact: true }).click();
+    }
     await (await chooser).setFiles({ name: name!, mimeType: 'application/yaml', buffer: source });
     await page.waitForFunction(name => (globalThis as unknown as { yamlImportedName: string }).yamlImportedName === name, name);
     await page.getByRole('button', { name: 'Download original file', exact: true }).waitFor();
@@ -51,6 +57,9 @@ try {
     assert.deepEqual(await readFile((await saved.path())!), source);
     assert.equal(saved.suggestedFilename(), name);
   }
+  // Later imports replace the model in the workspace the first one opened; it holds a model and no source files.
+  await page.getByRole('button', { name: 'Workspace: model.yaml', exact: true }).waitFor();
+  assert.equal(await page.locator('#section-files').count(), 0);
   // The shared inspector also accepts explicit raw IR, engine checkpoints and
   // MEP model envelopes. Keep their bytes separate from the normalized IR view.
   const expectation = JSON.parse(await readFile(new URL('../fixtures/headless-parity/v1/yaml/literal42-tree/expectation.json', import.meta.url), 'utf8'));

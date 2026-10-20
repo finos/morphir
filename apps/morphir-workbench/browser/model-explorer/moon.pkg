@@ -4,5 +4,6 @@ import {
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/cmd",
   "finos/morphir-workbench/browser/editor",
+  "finos/morphir-workbench/browser/shell",
   "moonbitlang/core/json",
 }

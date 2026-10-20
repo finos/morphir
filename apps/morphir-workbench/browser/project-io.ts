@@ -78,7 +78,10 @@ export async function readFiles(fileList: ArrayLike<FolderEntryFile> | Iterable<
   return { ok: true, files, skipped };
 }
 
-/** Opens the folder picker and reports the files as JSON text; a cancelled picker reports nothing. */
+/**
+ * Opens the folder picker and reports the files as JSON text. A cancelled picker reports `{ ok: false, cancelled: true }`
+ * where the browser signals cancellation; older browsers report nothing.
+ */
 export function pickFolder(receive: (reply: string) => void): void {
   const input = document.createElement('input');
   input.type = 'file';
@@ -86,6 +89,9 @@ export function pickFolder(receive: (reply: string) => void): void {
   input.addEventListener('change', async () => {
     if (!input.files || input.files.length === 0) return;
     receive(JSON.stringify(await readFiles(input.files, LIMITS)));
+  });
+  input.addEventListener('cancel', () => {
+    receive(JSON.stringify({ ok: false, cancelled: true, message: 'Folder selection cancelled' }));
   });
   input.click();
 }
@@ -142,10 +148,12 @@ export function watchDrop(selector: string, receive: (reply: string) => void): v
     if (!zone) return;
     event.preventDefault();
     zone.classList.remove('drop-active');
+    // The workspace that showed the drop zone, so the folder goes to it even if another opens while it is read.
+    const workspace = zone.closest<HTMLElement>('[data-workspace]')?.dataset.workspace ?? '';
     try {
-      receive(JSON.stringify(await readDropped(event.dataTransfer?.items ?? [], LIMITS)));
+      receive(JSON.stringify({ ...await readDropped(event.dataTransfer?.items ?? [], LIMITS), workspace }));
     } catch (error) {
-      receive(JSON.stringify({ ok: false, message: `The dropped folder could not be read: ${message(error, 'error')}` }));
+      receive(JSON.stringify({ ok: false, workspace, message: `The dropped folder could not be read: ${message(error, 'error')}` }));
     }
   });
 }
@@ -160,5 +168,16 @@ export const storage = {
   },
   remove(key: string): boolean {
     try { globalThis.localStorage.removeItem(key); return true; } catch { return false; }
+  },
+  /** The stored keys that start with `prefix`; none when storage is unavailable. */
+  keys(prefix: string): string[] {
+    try {
+      const found: string[] = [];
+      for (let i = 0; i < globalThis.localStorage.length; i++) {
+        const key = globalThis.localStorage.key(i);
+        if (key?.startsWith(prefix)) found.push(key);
+      }
+      return found;
+    } catch { return []; }
   },
 };

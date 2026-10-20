@@ -22,11 +22,14 @@ import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflo
 import { explorerWorkflow } from './explorer-workflow.ts';
 import { detailsWorkflow } from './details-workflow.ts';
 import { unzipSync, strFromU8 } from 'fflate';
-import { openSample } from './workbench-steps.ts';
+import { openSample, createWorkspace, showSource, showModel, showCompile, build, buildAction, buildMenuEntries, setExplorer, setRightSidebar, showGeneratedFiles, gettingStarted, exploreModel } from './workbench-steps.ts';
 import { capabilityWorkflow } from './capability-workflow.ts';
 import { connectedCapabilityWorkflow } from './connected-capability-workflow.ts';
 import { fallbackWorkerWorkflow } from './desktop-fallback-workflow.ts';
 import { modelDocumentWorkflow } from './model-document-workflow.ts';
+import { workspaceWorkflow } from './workspace-workflow.ts';
+
+function innerWidthOf(page: Page): number { return page.viewportSize()!.width; }
 
 // Opt-in acceptance uses a real Rust binary and an isolated provider/workspace.
 // Keep the ordinary fixture workflow independent of Rust tooling.
@@ -122,7 +125,7 @@ async function liveHostWorkflow(binary: string) {
     assert.equal(new URL(page!.url()).search, '?mode=connected');
     assert.ok((await context!.cookies()).some(cookie => cookie.httpOnly), 'Launch exchanged into an HttpOnly cookie');
     assert.equal((await context!.request.get(origin+'/api/session')).status(), 200);
-    assert.equal(await page!.getByRole('button',{name:'Compile & run',exact:true}).isEnabled(), false);
+    assert.ok(!(await buildMenuEntries(page!)).includes('Compile & run'), 'A connected host does not run compiled Scheme');
     assert.equal((await context!.request.get(origin+launch.pathname+launch.search)).status(), 401, 'Launch token is single-use');
     await page!.getByRole('combobox',{name:'Language',exact:true}).selectOption('gleam');
     const targets = await page!.getByRole('combobox',{name:'Target',exact:true}).locator('option').evaluateAll(items => items.map(item => (item as CodeEditor).value).filter(Boolean));
@@ -137,10 +140,10 @@ async function liveHostWorkflow(binary: string) {
     assert.ok(compilation?.result!.success);
     const generation = replies.find(message => Array.isArray(message.result?.artifacts));
     assert.ok(generation?.result!.success && generation.result.artifacts!.length > 0, 'Rust backend generated real artifacts');
-    await page!.getByRole('button',{name:'Generated',exact:true}).click();
+    await page!.locator('.output-panel .tabs').getByRole('button',{name:'Generated',exact:true}).click();
     assert.match(await page!.locator('#output').evaluate(editor => (editor as CodeEditor).value), /Currency|currency/);
     await writeFile(join(workspace, 'morphir-ir.json'), JSON.stringify(compilation.result.ir));
-    await page!.getByRole('button',{name:'Model Explorer',exact:true}).click();
+    await showModel(page!);
     const workspaceReply = replies.find(message => Array.isArray(message.result?.snapshot?.projects));
     assert.ok(workspaceReply?.result!.snapshot!.projects.length, 'Real host discovers the temporary workspace project');
     await page!.getByRole('button',{name:workspaceReply.result.snapshot.projects[0]!.name,exact:true}).click();
@@ -201,26 +204,30 @@ try {
   const url = String(output).match(/http:\/\/127\.0\.0\.1:\d+/)![0];
   browser = await chromium.launch({ headless: true });
   await modelDocumentWorkflow(browser, url);
+  await workspaceWorkflow(browser, url);
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(url);
+  await createWorkspace(page);
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   const back = page.getByRole('button', { name: 'Back', exact: true });
+  const outputTab = (name: string) => page.locator('.output-panel .tabs').getByRole('button', { name, exact: true });
   assert.equal(await back.isEnabled(), false, 'Fresh session has no navigation history');
-  assert.equal(await page.locator('.breadcrumb a, a.brand').count(), 0, 'Without a site home the workbench has no home links');
+  assert.equal(await page.locator('a.brand').count(), 0, 'Without a site home the workbench has no home links');
   assert.equal(await page.locator('#tool-panel-body').isVisible(), false, 'The tool panel starts collapsed');
   assert.equal(await page.getByRole('tab', { name: 'Logs', exact: true }).getAttribute('aria-selected'), 'true');
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  assert.equal(await back.isEnabled(), false, 'Active experience does not create history');
+  await showSource(page);
+  assert.equal(await back.isEnabled(), false, 'Active document does not create history');
   await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value.includes('(square 7)'));
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(+ 8 9)');
   await back.focus();
   await page.keyboard.press('Enter');
-  await page.getByRole('button', { name: 'Compile & run', exact: true }).waitFor();
+  await buildAction(page, 'Compile').waitFor();
   assert.equal(await back.isEnabled(), false, 'Back consumes history without recording itself');
-  assert.deepEqual(await page.locator('.toolbar-actions .primary:visible').allTextContents(), ['Compile & run'], 'One primary action leads the toolbar');
+  assert.equal(await page.locator('.document-tabs .primary:visible').count(), 1, 'One primary action leads the document');
+  assert.deepEqual(await buildMenuEntries(page), ['Compile & run'], 'Running a local Scheme build is the other build action');
   await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value === '(+ 8 9)');
   assert.equal(await page.locator('#source').evaluate(editor => (editor as CodeEditor).value), '(+ 8 9)', 'Back retains source edits');
@@ -235,25 +242,25 @@ try {
   assert.ok(syntaxColors.includes('rgb(123, 63, 176)'), 'Scheme numbers are highlighted');
   assert.ok(syntaxColors.includes('rgb(0, 114, 158)'), 'Scheme builtins are highlighted');
   assert.ok(await page.locator('#source .cm-line span').evaluateAll(tokens => tokens.some(token => getComputedStyle(token).fontStyle === 'italic')), 'Scheme comments are highlighted');
-  await page.getByRole('button', { name: 'Compile & run', exact: true }).click();
+  await build(page, 'Compile & run');
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   assert.equal(await page.locator('.run-value strong').textContent(), '41');
   assert.match(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value), /formatVersion/);
   assert.equal(await page.getByRole('textbox', { name: 'Morphir IR', exact: true }).getAttribute('aria-readonly'), 'true');
   assert.ok(await page.locator('#output .cm-line span').count() > 0, 'JSON output is highlighted');
   const compiledIr = JSON.parse(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value));
-  // Code panes take the height between the controls and the status bar at any window height.
+  // Code panes take the height between the document tabs and the tool panel at any window height.
   const splitGeometry = () => page.evaluate(() => {
     const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
     const scroller = document.querySelector<CodeEditor>('#output')!.shadowRoot.querySelector<HTMLElement>('.cm-scroller');
     return { page: document.documentElement.scrollHeight, viewport: innerHeight, source: box('#source').height,
-      output: box('#output').height, gap: box('.statusbar').top - box('.footnote').bottom,
-      run: box('.toolbar-actions .primary').bottom + scrollY, status: box('.statusbar').bottom + scrollY,
+      output: box('#output').height, gap: box('.tool-panel').top - box('.source-document .editor-grid').bottom,
+      run: box('.build-actions .primary').bottom + scrollY, status: box('.statusbar').bottom + scrollY,
       outputScrolls: scroller!.scrollHeight > scroller!.clientHeight };
   });
   const fitted = await splitGeometry();
-  assert.ok(fitted.page <= fitted.viewport + 1, 'Try Morphir fits a 1000px window without page scrolling');
-  assert.ok(fitted.gap >= 0 && fitted.gap < 32, `No unused band above the status bar (${fitted.gap}px)`);
+  assert.ok(fitted.page <= fitted.viewport + 1, 'The workspace fits a 1000px window without page scrolling');
+  assert.ok(fitted.gap >= 0 && fitted.gap < 32, `No unused band above the tool panel (${fitted.gap}px)`);
   assert.ok(fitted.source >= fitted.viewport * 0.55, `Source editor uses most of the window (${fitted.source}px)`);
   assert.ok(fitted.outputScrolls, 'Long output scrolls inside its editor');
   await page.setViewportSize({ width: 1440, height: 1400 });
@@ -263,40 +270,40 @@ try {
   await page.setViewportSize({ width: 1440, height: 640 });
   const short = await splitGeometry();
   assert.ok(short.source >= 280 && short.output >= 200, 'A short window keeps usable code panes');
-  assert.ok(short.run < short.status && short.page - short.viewport < 120, 'A short window keeps actions, footnote and status reachable');
+  assert.ok(short.run < short.status && short.page - short.viewport < 120, 'A short window keeps actions and status reachable');
   await page.setViewportSize({ width: 1440, height: 1000 });
 
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await showModel(page);
   await page.locator('.tree-item').filter({ hasText: 'total' }).click();
   assert.match((await page.locator('.type-signature').textContent()!)!, /total/);
   await page.getByRole('button', { name: 'IR JSON', exact: true }).click();
   assert.match(await page.locator('#model-detail').evaluate(editor => (editor as CodeEditor).value), /Apply/);
   await page.getByRole('button', { name: 'Details', exact: true }).click();
-  await page.getByRole('button', { name: 'Toggle sidebar' }).click();
-  await page.locator('#context-navigation').waitFor({ state: 'hidden' });
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  await page.locator('#context-navigation').waitFor({ state: 'visible' });
-  await page.getByRole('button', { name: 'Toggle sidebar' }).click();
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
-  await page.locator('#context-navigation').waitFor({ state: 'hidden' });
+  // The left sidebar belongs to the workspace: switching documents keeps it as it is.
+  await setExplorer(page, false);
+  await showSource(page);
+  assert.equal(await page.locator('#sidebar-primary').isVisible(), false, 'Switching documents keeps the left sidebar closed');
+  await setExplorer(page, true);
+  await showModel(page);
+  assert.equal(await page.locator('#sidebar-primary').isVisible(), true, 'Switching documents keeps the left sidebar open');
   assert.match((await page.locator('.type-signature').textContent()!)!, /total/);
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+  await showSource(page);
 
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(+ 20 22)');
   await page.getByText('Source changed · rerun').waitFor();
   await page.getByRole('textbox', { name: 'Source editor' }).press('End');
   await page.keyboard.insertText(' ');
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+  await showModel(page);
+  await showSource(page);
   await page.getByRole('textbox', { name: 'Source editor' }).press('ControlOrMeta+z');
   // CodeMirror may group nearby edits; verify undo/redo without depending on timing.
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')!.value !== '(+ 20 22) ');
   await page.getByRole('textbox', { name: 'Source editor' }).press('ControlOrMeta+Shift+z');
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')!.value === '(+ 20 22) ');
-  await page.getByRole('button', { name: 'Compile & run', exact: true }).click();
+  await build(page, 'Compile & run');
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await page.waitForFunction(() => document.querySelector<HTMLElement>('.run-value strong')?.textContent === '42');
-  await page.getByRole('button', { name: 'Generated', exact: true }).click();
+  await outputTab('Generated').click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.value.includes('morphir'));
   await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
@@ -311,7 +318,7 @@ try {
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(let ((x 1))');
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
   await page.waitForFunction(() => /[Uu]nterminated|[Uu]nexpected|[Ll]ist|[Ee]nd/.test(document.querySelector<HTMLElement>('.statusbar')!.textContent));
-  assert.match((await page.getByRole('status').textContent()!)!, /[Uu]nterminated|[Uu]nexpected|[Ll]ist|[Ee]nd/);
+  assert.match((await page.locator('.statusbar').textContent()!)!, /[Uu]nterminated|[Uu]nexpected|[Ll]ist|[Ee]nd/);
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(let loop ((x 0)) (loop (+ x 1)))');
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -321,14 +328,14 @@ try {
   await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
   assert.deepEqual(await page.locator('.worksheet-result .value').allTextContents(), ['4']);
 
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await showModel(page);
   const chooserPromise = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
   await (await chooserPromise).setFiles(fileURLToPath(new URL('../../../pkgs/morphir-ir/conformance/fixtures/v3-greeting.json', import.meta.url)));
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await back.click();
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await showModel(page);
   await page.locator('.model-metrics strong').first().waitFor();
   assert.equal(await page.locator('.model-metrics strong').count(), 3, 'Replacement model removes old declaration destinations');
   assert.equal(await page.getByRole('heading', { name: 'total', exact: true }).count(), 0);
@@ -338,7 +345,7 @@ try {
   await page.getByRole('button', { name: 'Details', exact: true }).click();
   await page.locator('.model-metrics strong').first().waitFor();
   assert.deepEqual(await page.locator('.model-metrics strong').allTextContents(), ['2', '8', '7']);
-  if (!await page.locator('#context-navigation').isVisible()) await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+  await setExplorer(page, true);
   await page.getByRole('button', { name: 'Collapse main', exact: true }).click();
   await page.getByRole('button', { name: 'T Product', exact: true }).waitFor({ state: 'hidden' });
   await page.getByRole('textbox', { name: 'Find a declaration' }).fill('Product');
@@ -350,11 +357,11 @@ try {
   await page.getByRole('heading', { name: 'ProductId', exact: true }).waitFor();
   await page.getByRole('heading', { name: 'Used by', exact: true }).waitFor();
   await page.getByRole('textbox', { name: 'Find a declaration' }).fill('ProductId');
-  await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
+  await setExplorer(page, false);
   await back.click();
   await page.getByRole('heading', { name: 'Product', exact: true }).waitFor();
-  assert.equal(await page.locator('#context-navigation').isVisible(), false, 'Back works with the sidebar collapsed');
-  await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
+  assert.equal(await page.locator('#sidebar-primary').isVisible(), false, 'Back works with the sidebar collapsed');
+  await setExplorer(page, true);
   assert.equal(await page.getByRole('textbox', { name: 'Find a declaration' }).inputValue(), 'Product', 'Back restores search context');
   await page.getByRole('button', { name: 'T Product', exact: true }).click();
   await back.click();
@@ -540,8 +547,8 @@ try {
   assert.ok((await page.locator('.constructor-list strong').allTextContents()).includes('Pending'));
   await page.getByRole('textbox', { name: 'Find a declaration' }).fill('does-not-exist');
   await page.getByText('No declarations match this search.', { exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await showSource(page);
+  await showModel(page);
   assert.equal(await page.getByRole('textbox', { name: 'Find a declaration' }).inputValue(), 'does-not-exist');
   await page.getByRole('textbox', { name: 'Find a declaration' }).fill('');
   const downloadPromise = page.waitForEvent('download');
@@ -550,16 +557,18 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+  // A narrow sidebar covers the documents beside the rail; close it to reach the document tabs.
+  await setExplorer(page, false);
+  await showSource(page);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  for (let state = 0; state < 2; state++) {
-    // The sidebar becomes a band above the page, so neither state narrows the content.
-    assert.ok(await page.locator('main').evaluate(main => main.getBoundingClientRect().width) >= 380, 'Narrow screens keep the full content width');
-    assert.ok(await page.locator('#source').evaluate(editor => editor.getBoundingClientRect().height) >= 280, 'Stacked source pane keeps a usable height');
-    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+  for (const open of [true, false]) {
+    await setExplorer(page, open);
+    // Neither sidebar state narrows the content.
+    assert.ok(await page.locator('.document-area').evaluate(main => main.getBoundingClientRect().width) >= innerWidthOf(page) - 49, 'Narrow screens keep the full content width beside the rail');
+    assert.ok(await page.locator('#source').evaluate(editor => editor.getBoundingClientRect().height) >= 260, 'Stacked source pane keeps a usable height');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   }
-  await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+  await setExplorer(page, true);
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await capabilityWorkflow(browser, url);
@@ -614,12 +623,12 @@ try {
   await page.getByRole('status').filter({ hasText: 'Connected · ready' }).waitFor();
   assert.equal(await back.isEnabled(), false, 'Connected session starts with empty history');
   const callsBeforeNavigation = rpcCalls.length;
-  await page.getByRole('button', {name:'Model Explorer',exact:true}).click();
+  await showModel(page);
   await back.click();
   await page.getByRole('button', {name:'Compile',exact:true}).waitFor();
   assert.equal(rpcCalls.length, callsBeforeNavigation, 'Back is local UI navigation and adds no RPC');
   assert.equal(await page.getByRole('button', { name: 'Worksheet', exact: true }).isEnabled(), true);
-  assert.equal(await page.getByRole('button', { name: 'Compile & run', exact: true }).isEnabled(), false);
+  assert.deepEqual(await buildMenuEntries(page), ['Evaluate in Explorer'], 'Connected v1 cannot run compiled Scheme');
   const callsBeforeWorksheet = rpcCalls.length;
   await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(+ 20 22)');
@@ -627,8 +636,11 @@ try {
   await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
   assert.deepEqual(await page.locator('.worksheet-result .value').allTextContents(), ['42']);
   assert.equal(rpcCalls.length, callsBeforeWorksheet, 'Connected worksheets use the real local worker without new RPC');
-  await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
+  await showCompile(page);
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(total 3)');
+  // The editor keeps a draft the page has not rendered yet; let each edit render before the document changes.
+  const painted = () => page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await painted();
   assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).count(),0,'Connected v1 does not expose unnegotiated source profiles');
   const connectedLanguage = page.getByRole('combobox', {name:'Language',exact:true});
   assert.deepEqual(await connectedLanguage.locator('option').evaluateAll(options=>options.map(option=>(option as CodeEditor).value)),['scheme','gleam'],'Connected choices come only from the host catalog');
@@ -639,6 +651,7 @@ try {
     throw error;
   });
   await page.getByRole('textbox',{name:'Source editor',exact:true}).fill('// retained host-language draft');
+  await painted();
   await connectedLanguage.selectOption('scheme');
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '(total 3)');
   await connectedLanguage.selectOption('gleam');
@@ -649,7 +662,7 @@ try {
   await page.getByRole('combobox', { name: 'Target' }).selectOption('scala');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
-  await page.getByRole('button', { name: 'Generated', exact: true }).click();
+  await outputTab('Generated').click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.value.includes('val answer = 41'));
   assert.deepEqual(rpcCalls.map(call => call.method), ['morphir.session.initialize', 'morphir.playground.catalog', 'morphir.playground.compile', 'morphir.playground.generate']);
   assert.deepEqual(rpcCalls[2]!.params.package, { name: 'user' });
@@ -660,13 +673,14 @@ try {
   assert.equal(await generated.getAttribute('aria-readonly'), 'true');
   assert.ok(await page.locator('#output .cm-line span').count() > 0, 'Host Scala output is highlighted');
   assert.equal(rpcCalls[2]!.params.irVersion, '4.0.0');
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await showModel(page);
   await page.locator('.tree-item[title="user:main#main"]').click();
   await page.getByText('Evaluation is unavailable in connected protocol v1.', { exact: false }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Evaluate', exact: true }).count(), 0);
   assert.equal(rpcCalls.length, 4);
-  await page.getByRole('button', {name:'Try Morphir',exact:true}).click();
-  const fileNavigation = page.getByRole('navigation', {name:'Generated files',exact:true});
+  await showSource(page);
+  await showGeneratedFiles(page);
+  const fileNavigation = page.locator('#sidebar-secondary').getByRole('navigation', {name:'Generated files',exact:true});
   await fileNavigation.waitFor();
   assert.equal(await fileNavigation.locator('.artifact-file').count(),7);
   await fileNavigation.getByRole('button', {name:'src/Other/Main.scala',exact:true}).click();
@@ -703,11 +717,13 @@ try {
   assert.equal(await page.getByRole('button', {name:'Download project',exact:true}).isEnabled(),false);
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Focused multi-file output fits mobile width');
-  await page.getByRole('button', {name:'Hide generated files',exact:true}).click();
-  await page.getByRole('button', {name:'Show generated files',exact:true}).waitFor();
+  await setRightSidebar(page, false);
   assert.equal(await fileNavigation.isVisible(),false);
-  await page.getByRole('button', {name:'Show generated files',exact:true}).click();
+  assert.equal(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value),'Binary artifact: text preview unavailable','Closing the file list keeps the preview');
+  await setRightSidebar(page, true);
   await fileNavigation.waitFor();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'The right sidebar fits mobile width');
+  await setRightSidebar(page, false);
   await page.getByRole('button', {name:'Restore split view',exact:true}).click();
   await page.setViewportSize({ width: 1440, height: 1000 });
   // A connected compile failure keeps the host's structured v1 diagnostics.
@@ -728,10 +744,7 @@ try {
   // cannot pass through ordinary JavaScript numbers or Unicode scalar strings.
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(url);
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
-  const typedChooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
-  await (await typedChooser).setFiles(fileURLToPath(new URL('../fixtures/typed-pricing.json', import.meta.url)));
+  await exploreModel(page, fileURLToPath(new URL('../fixtures/typed-pricing.json', import.meta.url)));
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await page.locator('.tree-item[title="pricing:quotes#total"]').click();
   await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
@@ -926,7 +939,7 @@ try {
   await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
   await page.getByRole('button', { name: 'Input fields', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+  await setExplorer(page, false);
   await page.getByText('Input and output types', { exact: true }).click();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 
@@ -934,7 +947,8 @@ try {
   const componentPage = await browser.newPage();
   componentPage.on('pageerror', error => errors.push(error.message));
   await componentPage.goto(url);
-  await componentPage.locator('#source .cm-editor').waitFor();
+  await gettingStarted(componentPage);
+  await componentPage.waitForFunction(() => customElements.get('morphir-code-editor') !== undefined);
   await componentPage.evaluate(() => {
     const editor = document.createElement('morphir-code-editor');
     editor.id = 'component-fixture';
@@ -995,7 +1009,7 @@ try {
     const nativePage = await nativeFallback.newPage();
     nativePage.on('pageerror', error => errors.push(error.message));
     await nativePage.goto('https://proton.localhost/');
-    try { await nativePage.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor(); }
+    try { await gettingStarted(nativePage); }
     catch (error) { throw new Error(`Empty native fixture did not initialize: ${JSON.stringify({ errors, body: (await nativePage.locator('body').innerText()).slice(0, 4096) })}`, { cause: error }); }
     assert.equal(await nativePage.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Desktop local');
     assert.equal(await fallbackWorkerWorkflow(nativePage, 'native-fallback'), 'native-fallback:compile-fields-json-ion-unsupported-boundary');
@@ -1004,11 +1018,11 @@ try {
   try {
     fallbackPage.on('pageerror', error => errors.push(error.message));
     await fallbackPage.goto(new URL('?mode=standalone', url).href);
-    await fallbackPage.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+    await gettingStarted(fallbackPage);
     assert.equal(await fallbackWorkerWorkflow(fallbackPage, 'standalone'), 'standalone:compile-fields-json-ion-unsupported-boundary');
   } finally { await fallbackPage.close(); }
   assert.deepEqual(errors, []);
-  console.log('Browser workflow passed: local compile/run, explorer, back navigation, context retention, typed evaluation, Ion conversion/highlighting/invalid drafts and controls (exact Decimal/Int, Float64 bits, UTF-16, Maybe/Result, constructors, records/lists/tuples), structured/JSON/printed results, stale replies, worksheet, cancellation, import/export, mobile, connection failure and connected-v1 compile/generate fixture.');
+  console.log('Browser workflow passed: local compile/run, explorer, back navigation, context retention, typed evaluation, Ion conversion/highlighting/invalid drafts and controls (exact Decimal/Int, Float64 bits, UTF-16, Maybe/Result, constructors, records/lists/tuples), structured/JSON/printed results, stale replies, worksheet, cancellation, import/export, mobile, connection failure, connected-v1 compile/generate fixture and workspaces.');
 
 } finally {
   await browser?.close();

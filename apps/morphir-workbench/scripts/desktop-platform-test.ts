@@ -12,6 +12,7 @@ import { chromium, type Browser, type Page } from 'playwright';
 import { supervised } from '../../morphir/build-provider/supervision.mjs';
 import type { CoreReply, NativeDescriptor, NativeReply } from '../browser/contracts.ts';
 import { fallbackWorkerWorkflow } from './desktop-fallback-workflow.ts';
+import { gettingStarted } from './workbench-steps.ts';
 import { NormalPackageExit, TemporaryProfileOwner, type ProfileCleanup } from './desktop-profile-owner.ts';
 
 // This application acceptance owns its real package fixture through the same
@@ -158,7 +159,7 @@ try {
   const resources: string[] = [];
   page.on('request', request => resources.push(request.url()));
   page.on('worker', worker => { workersStarted++; worker.once('close', () => { workersClosed++; }); });
-  await page.reload(); await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  await page.reload(); await gettingStarted(page);
   const original = page.url();
   profiles = await profileOwner.observe();
   const opened = value(await native<EmptyDescriptor>(page, 'session.open')); empty(opened);
@@ -172,7 +173,7 @@ try {
   checks.push('empty-descriptor-and-unavailable-native-effects');
   checks.push(await fallbackWorkerWorkflow(page, 'native-fallback'));
   assert.ok(resources.every(url => { const value = new URL(url); return ['blob:', 'data:'].includes(value.protocol) || value.hostname === 'proton.localhost'; }), 'Bundled workflows must not depend on a development or external asset origin');
-  await page.reload(); await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  await page.reload(); await gettingStarted(page);
   const replacement = value(await native<EmptyDescriptor>(page, 'session.open')); empty(replacement);
   assert.notEqual(replacement.sessionId, opened.sessionId);
   denied(await native(page, 'session.check', opened.sessionId), 'unauthorized');
@@ -192,7 +193,7 @@ try {
   } finally { hostile.closeAllConnections(); await new Promise<void>(resolve => hostile.close(() => resolve())); }
   checks.push('hostile-origin-denied');
   const standalone = new URL(original); standalone.search = '?mode=standalone';
-  await page.goto(standalone.href); await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  await page.goto(standalone.href); await gettingStarted(page);
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Browser local');
   checks.push(await fallbackWorkerWorkflow(page, 'standalone'));
   stage = 'worker-exit';

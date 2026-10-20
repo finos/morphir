@@ -34,11 +34,20 @@ pub(all) struct State {
   /// The row with the keyboard focus, if the person moved it.
   focused : Item?
   menu : Menu?
+  /// Text that a file path must contain to be shown; empty shows every file.
+  filter : String
 } derive(Eq, Debug)
 
 ///|
 pub fn State::new() -> State {
-  { edit: Idle, error: "", collapsed: [], focused: None, menu: None, }
+  {
+    edit: Idle,
+    error: "",
+    collapsed: [],
+    focused: None,
+    menu: None,
+    filter: "",
+  }
 }
 
 ///|
@@ -137,6 +146,8 @@ pub(all) enum Action {
   /// Shows a file that another part of the workbench opened.
   Reveal(@ids.SourcePath)
   Import
+  /// Shows only files whose path contains this text, ignoring case.
+  Filter(String)
 }
 
 ///|
@@ -148,8 +159,47 @@ fn Env::tree(self : Env) -> Array[Node] {
 }
 
 ///|
+/// True when `path` contains `filter`, ignoring case. An empty filter matches every path.
+pub fn matches_filter(path : @ids.SourcePath, filter : String) -> Bool {
+  filter == "" ||
+  path.to_string().to_lower().contains(filter.trim().to_owned().to_lower())
+}
+
+///|
+/// The tree the explorer shows: every file, or the files that match the filter with their folders open.
+pub fn State::tree(self : State, env : Env) -> Array[Node] {
+  if self.filter.trim() == "" {
+    env.tree()
+  } else {
+    build_tree(
+      env.project.files
+      .filter(f => matches_filter(f.path, self.filter))
+      .map(f => f.path),
+    )
+  }
+}
+
+///|
+/// The rows the explorer shows, in display order. A filter shows its matches inside open folders.
+pub fn State::rows(
+  self : State,
+  env : Env,
+  counts : Map[String, Int32],
+) -> Array[Row] {
+  rows(
+    self.tree(env),
+    if self.filter.trim() == "" {
+      self.collapsed
+    } else {
+      []
+    },
+    counts,
+  )
+}
+
+///|
 fn State::visible(self : State, env : Env) -> Array[Row] {
-  rows(env.tree(), self.collapsed, Map([]))
+  self.rows(env, Map([]))
 }
 
 ///|
@@ -817,6 +867,8 @@ pub fn apply(
       (Reveal(path), _) =>
         ({ ..state.show(path), focused: Some(File(path)), }, project, [])
       (Import, _) => (state, project, [ImportFolder])
+      (Filter(text), _) =>
+        ({ ..state, filter: text, focused: None, }, project, [])
       // A draft, commit or answer with no inline edit open, such as a double click: nothing to do.
       _ => (state, project, [])
     }

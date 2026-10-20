@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { isRecord } from '../../../types/data.ts';
 import { executionWorkflow } from './execution-workflow.ts';
+import { showCompile, showModel } from './workbench-steps.ts';
 
 type Selection = { profile: string; contractVersion: string; policy: string };
 interface PolicySubmission { contractVersion: string; model: string; entry: string; runtime: string; providerId: string; inputs: { format: string; source: string }; admission?: Selection }
@@ -53,7 +54,7 @@ export async function connectedCapabilityWorkflow(page: Page, { screenshot }: { 
   const fixture = (await readFile(fileURLToPath(new URL('../fixtures/capability-execution.json', import.meta.url)), 'utf8'))
     .replace('"inputTypes": {}', '"inputTypes": {"unused": "morphir/SDK:basics#int"}');
   const importModel = async (model = fixture) => {
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     const before = (await state()).completed.inspect ?? 0;
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
@@ -141,8 +142,8 @@ export async function connectedCapabilityWorkflow(page: Page, { screenshot }: { 
     await retained(captured, 'permissive');
     assert.equal(await policy.inputValue(), 'strict');
     assert.equal(await page.locator('#evaluation-input').evaluate(e => (e as CodeEditor).value), '[99]');
-    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showCompile(page);
+    await showModel(page);
     await retained(captured, 'permissive');
     assert.equal(await policy.inputValue(), 'strict');
     if (screenshot) {

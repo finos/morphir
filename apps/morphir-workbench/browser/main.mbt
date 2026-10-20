@@ -230,7 +230,7 @@ let worksheet_example : String =
 
 ///|
 struct Location {
-  explorer : Bool
+  doc : @workspace.Document
   worksheet : Bool
   selected : String
   query : String
@@ -254,10 +254,32 @@ enum CapabilityRuntime {
 
 ///|
 struct Model {
+  /// Getting started, or the active workspace.
+  screen : Screen
+  /// The workspace whose state the fields after `parked` hold; `None` before any workspace opens.
+  active : @workspace.WorkspaceId?
+  registry : @workspace.Registry
+  /// The state of the other workspaces opened in this page.
+  parked : Map[@workspace.WorkspaceId, Slice]
+  /// A workspace waiting for its folder, model or grant; it is removed if that does not arrive.
+  acquiring : Acquisition?
+  /// Workspaces removed in this page; a list another page saved does not bring them back.
+  removed : Array[@workspace.WorkspaceId]
+  start : Start
+  /// The workspace picker in the header is open.
+  picker : Bool
+  /// The source header's build menu is open.
+  build_menu : Bool
+  /// The window was narrow when the page started, so new workspaces start with closed sidebars.
+  narrow : Bool
+  // The active workspace's state follows; `Slice` lists the same fields.
   history : Array[Location]
-  explorer : Bool
-  explorer_collapsed : Bool
-  try_collapsed : Bool
+  doc : @workspace.Document
+  layout : @shell.Layout
+  intent : String
+  concept : String
+  draft_revision : Int32
+  notice : Notice?
   worksheet : Bool
   language_projects : Map[String, @project.Project]
   worksheet_source : String
@@ -333,9 +355,33 @@ struct Model {
 
 ///|
 enum Msg {
-  Navigate(Bool)
+  /// A message from work that a workspace started; it applies to that workspace even when another is active.
+  Routed(@workspace.WorkspaceId, Msg)
+  ShowStart
+  StartPanel(StartPanel)
+  StartName(String)
+  StartPreset(@workspace.Preset)
+  CreateWorkspace
+  TryIdea(@workspace.Content)
+  OpenExample(String)
+  OpenFolder
+  OpenHostFolder
+  ExploreModel(Bool)
+  OpenWorkspace(@workspace.WorkspaceId)
+  AskRemove(@workspace.WorkspaceId?)
+  RemoveWorkspace(@workspace.WorkspaceId)
+  AddContent(@workspace.Content)
+  Picker(Bool)
+  ShowDocument(@workspace.Document)
+  IntentText(String)
+  ConceptText(String)
+  SaveDrafts(Int32)
+  Shell(@shell.Action)
+  ShowGenerated
+  DismissNotice
+  BuildMenu(Bool)
+  StopAcquiring
   Back
-  Collapse
   Layout(Bool)
   Source(String)
   Files(@project_files.Action)
@@ -403,6 +449,11 @@ extern "js" fn local_runtime_label() -> String = "() => globalThis.morphirWorkbe
 /// The site that hosts this copy of the workbench, from `<meta name="morphir-site-home">`; empty when there is none.
 extern "js" fn site_home_href() -> String =
   #|() => document.querySelector('meta[name="morphir-site-home"]')?.getAttribute("content") ?? ""
+
+///|
+/// True when the window is too narrow for sidebars beside the documents.
+extern "js" fn narrow_window() -> Bool =
+  #|() => { try { return innerWidth <= 900; } catch { return false; } }
 
 ///|
 extern "js" fn clock() -> String = "() => new Date().toTimeString().slice(0, 8)"
@@ -479,11 +530,32 @@ extern "js" fn copy_text(text : String, done : (Bool) -> Unit) =
 
 ///|
 fn initial() -> Model {
-  {
+  let narrow = narrow_window()
+  let model : Model = {
+    screen: GettingStarted,
+    active: None,
+    registry: @workspace.Registry::new(),
+    parked: Map([]),
+    acquiring: None,
+    removed: [],
+    start: {
+      panel: Closed,
+      name: "",
+      preset: Empty,
+      name_error: "",
+      removing: None,
+      message: "",
+    },
+    picker: false,
+    build_menu: false,
+    narrow,
     history: [],
-    explorer: false,
-    explorer_collapsed: false,
-    try_collapsed: false,
+    doc: Source,
+    layout: @shell.Layout::default(narrow~),
+    intent: "",
+    concept: "",
+    draft_revision: 0,
+    notice: None,
     worksheet: false,
     language_projects: Map([]),
     worksheet_source: worksheet_example,
@@ -565,6 +637,8 @@ fn initial() -> Model {
       href => Some(href)
     },
   }
+  // The saved workspaces are read at once, so nothing created before the worker starts overwrites them.
+  read_registry(model, storage_load, stored_keys)
 }
 
 // Tool panel records: what the application did, what hosts reported and what
@@ -1029,11 +1103,6 @@ fn with_defaults(model : Model, project : @project.Project) -> @project.Project 
 }
 
 ///|
-fn storage_key(language : String) -> String {
-  "morphir-workbench.project." + language + ".v1"
-}
-
-///|
 /// Puts the stored project of `language` into the model. Nothing stored changes nothing; text that is not a valid
 /// project of this language keeps the default and gives the note to show.
 fn restored(model : Model, language : String, text : String) -> (Model, String) {
@@ -1077,7 +1146,7 @@ fn restore_all_with(model : Model, load : (String) -> String) -> Model {
     let (next, message) = restored(
       restored_model,
       language,
-      load(storage_key(language)),
+      load(storage_key(restored_model, language)),
     )
     restored_model = if message != "" {
       note(next, "Restore", @bottom_panel.Warning, message)
@@ -1423,7 +1492,7 @@ fn request_cmd(
 ///|
 fn location(model : Model) -> Location {
   {
-    explorer: model.explorer,
+    doc: model.doc,
     worksheet: model.worksheet,
     selected: model.selected,
     query: model.query,
@@ -1528,7 +1597,36 @@ fn replacement_history(model : Model) -> Array[Location] {
 
 ///|
 fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) {
+  match msg {
+    Routed(id, inner) => in_workspace(model, id, inner, emit)
+    _ => update_here(model, msg, emit)
+  }
+}
+
+///|
+/// Applies a message to the active workspace. Work it starts reports back routed to it; a provisional workspace
+/// settles when its folder or model arrives or fails; the registry follows the workspace's layout and contents.
+fn update_here(
+  model : Model,
+  msg : Msg,
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
+  let (next, cmd) = update_saving(model, msg, routed(model, emit))
+  (sync_registry(model, msg, settle(model, msg, next)), cmd)
+}
+
+///|
+/// Schedules saves of the source projects that changed. Opening another workspace saves nothing: each workspace
+/// saves its own projects under its own keys.
+fn update_saving(
+  model : Model,
+  msg : Msg,
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
   let (next, cmd) = update_core(model, msg, emit)
+  if next.active != model.active {
+    return (next, cmd)
+  }
   let cmd = if next.connected && next.revision != model.revision {
     @cmd.batch([@cmd.custom_cmd(_ => invalidate_artifacts()), cmd])
   } else {
@@ -1575,7 +1673,31 @@ fn update_core(
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
   match msg {
-    Navigate(explorer) => (remember(model, { ..model, explorer, }), @cmd.none)
+    Routed(id, inner) => in_workspace(model, id, inner, emit)
+    ShowStart
+    | StartPanel(_)
+    | StartName(_)
+    | StartPreset(_)
+    | CreateWorkspace
+    | TryIdea(_)
+    | OpenExample(_)
+    | OpenFolder
+    | OpenHostFolder
+    | ExploreModel(_)
+    | OpenWorkspace(_)
+    | AskRemove(_)
+    | RemoveWorkspace(_)
+    | AddContent(_)
+    | Picker(_)
+    | ShowDocument(_)
+    | IntentText(_)
+    | ConceptText(_)
+    | SaveDrafts(_)
+    | Shell(_)
+    | ShowGenerated
+    | DismissNotice
+    | BuildMenu(_)
+    | StopAcquiring => update_workspaces(model, msg, emit)
     Back => {
       let history = model.history.copy()
       match history.pop() {
@@ -1586,7 +1708,7 @@ fn update_core(
             {
               ..restored,
               history,
-              explorer: previous.explorer,
+              doc: previous.doc,
               worksheet: previous.worksheet,
               query: previous.query,
               explorer_raw: previous.explorer_raw,
@@ -1596,31 +1718,28 @@ fn update_core(
         }
       }
     }
-    Collapse =>
-      (
-        if model.explorer {
-          { ..model, explorer_collapsed: !model.explorer_collapsed, }
-        } else {
-          { ..model, try_collapsed: !model.try_collapsed, }
-        },
-        @cmd.none,
-      )
     Layout(worksheet) => (remember(model, { ..model, worksheet, }), @cmd.none)
     Source(source) =>
-      (
-        if model.worksheet {
+      if model.worksheet {
+        // The worksheet is a workspace draft: it is saved with the intent and conceptual model.
+        let draft_revision = model.draft_revision + 1
+        (
           {
             ..model,
             worksheet_source: source,
             worksheet_revision: model.worksheet_revision + 1,
             worksheet_reveal: "",
-          }
-        } else {
-          let project = active_project(model)
-          with_project(model, project.set_content(project.active, source))
-        },
-        @cmd.none,
-      )
+            draft_revision,
+          },
+          @cmd.delay(emit(SaveDrafts(draft_revision)), 400),
+        )
+      } else {
+        let project = active_project(model)
+        (
+          with_project(model, project.set_content(project.active, source)),
+          @cmd.none,
+        )
+      }
     Files(action) => {
       let before = active_project(model)
       let (files_edit, project, effects) = @project_files.apply(
@@ -1684,6 +1803,12 @@ fn update_core(
           let (chosen, cmd) = match command {
             SwitchLanguage => update_core(model, Language(value), emit)
             SetTarget => update_core(model, Target(value), emit)
+            SelectProfile => update_core(model, SourceProfile(value), emit)
+            SwitchWorkspace =>
+              match @workspace.WorkspaceId::parse(value) {
+                Some(id) => update_core(model, OpenWorkspace(id), emit)
+                None => (model, @cmd.none)
+              }
             _ => (model, @cmd.none)
           }
           (chosen, @cmd.batch([@cmd.custom_cmd(_ => restore_focus()), cmd]))
@@ -1730,7 +1855,8 @@ fn update_core(
       ({ ..model, collapsed_modules, }, @cmd.none)
     }
     Query(query) => ({ ..model, query, }, @cmd.none)
-    Select(selected) => (remember(model, select(model, selected)), @cmd.none)
+    Select(selected) =>
+      (remember(model, { ..select(model, selected), doc: Model, }), @cmd.none)
     EvaluationRuntime(evaluation_runtime) => {
       if model.connected ||
         host_execution_pending(model) ||
@@ -2020,7 +2146,19 @@ fn update_core(
         @generated.artifacts(model.output),
         action,
       )
-      generated_effects({ ..model, generated_state, }, effects, emit)
+      // Choosing a generated file shows it in the editor area, wherever the Generated explorer is.
+      let shown = if action is Select(_) {
+        {
+          ..model,
+          generated_state,
+          doc: Source,
+          worksheet: false,
+          generated: true,
+        }
+      } else {
+        { ..model, generated_state, }
+      }
+      generated_effects(shown, effects, emit)
     }
     DownloadGenerated(project) =>
       start_download(
@@ -2055,16 +2193,15 @@ fn update_core(
     FolderPicked(reply) => {
       let picked = @json.parse(reply) catch { _ => Json::null() }
       if field(picked, "ok") != Json::boolean(true) {
+        let message = match text(picked, "message") {
+          "" => "The folder could not be read"
+          message => message
+        }
         return (
-          note(
-            model,
-            "Import folder",
-            @bottom_panel.Warning,
-            match text(picked, "message") {
-              "" => "The folder could not be read"
-              message => message
-            },
-          ),
+          {
+            ..note(model, "Import folder", @bottom_panel.Warning, message),
+            status: message,
+          },
           @cmd.none,
         )
       }
@@ -2160,9 +2297,9 @@ fn update_core(
         for dirty_language in model.dirty {
           match model.language_projects.get(dirty_language) {
             Some(project) => {
-              attempts.push(storage_key(dirty_language))
+              attempts.push(storage_key(model, dirty_language))
               if !storage_save(
-                  storage_key(dirty_language),
+                  storage_key(model, dirty_language),
                   project.to_json().stringify(),
                 ) {
                 still_dirty.push(dirty_language)
@@ -2184,12 +2321,12 @@ fn update_core(
     CancelReset => ({ ..model, reset_asking: false, }, @cmd.none)
     ConfirmReset => {
       let fresh = replace_project(model, default_project(model, model.language))
-      let removed = storage_remove(storage_key(model.language))
+      let removed = storage_remove(storage_key(model, model.language))
       (
         {
           ..fresh,
           reset_asking: false,
-          removed_key: storage_key(model.language),
+          removed_key: storage_key(model, model.language),
           dirty: fresh.dirty.filter(l => l != model.language),
           storage_ok: removed && fresh.storage_ok,
         },
@@ -3019,8 +3156,17 @@ fn update_core(
           [text(result, "message")],
           failure?,
         )
+        let failed = { ..model, busy: false, status: text(result, "message"), }
         return (
-          { ..model, busy: false, status: text(result, "message"), },
+          // A connected host's page opens its one workspace even when the host cannot start, so the status bar
+          // says why and the source stays where the person expects it.
+          if operation == "initialize" &&
+            model.connected &&
+            model.active is None {
+            start_session(failed)
+          } else {
+            failed
+          },
           @cmd.none,
         )
       }
@@ -3104,7 +3250,7 @@ fn update_core(
           projects: items(field(result, "projects")),
           status: text(result, "message"),
         }
-        return (restore_all(initialized), @cmd.none)
+        return (start_session(initialized), @cmd.none)
       }
       let compiled = field(result, "ir") != Json::null()
       let document = if compiled {
@@ -3271,6 +3417,15 @@ fn update_core(
             model.generated_state.reset()
           } else {
             model.generated_state
+          },
+          // Generation keeps the layout as it is; a notification offers the files instead.
+          notice: if (operation == "compile" || operation == "run") &&
+            !artifacts.is_empty() {
+            Some({ files: artifacts.length(), target: model.target, })
+          } else if operation == "compile" || operation == "run" {
+            None
+          } else {
+            model.notice
           },
           status: if revision == model.revision {
             if text(result, "generationMessage") != "" {
@@ -3501,7 +3656,7 @@ fn update_core(
       (
         remember(model, {
           ..model,
-          explorer: true,
+          doc: Model,
           request_id,
           busy: true,
           started: now_ms(),
@@ -3679,139 +3834,20 @@ fn action_icon(name : String) -> @html.Html {
 }
 
 ///|
-fn nav_button(
-  emit : @cmd.Emit[Msg],
-  active : Bool,
-  icon : String,
-  label : String,
-  msg : Msg,
-) -> @html.Html {
-  @html.button(
-    class=if active { "nav-item active" } else { "nav-item" },
-    title=label,
-    attrs=@html.Attrs::build()
-      .aria_label(label)
-      .aria_pressed(active.to_string()),
-    on_click=emit(msg),
-    [
-      @html.span(
-        class="nav-icon " + icon,
-        attrs=@html.Attrs::build().aria_hidden("true"),
-        "",
-      ),
-      @html.span(class="nav-label", label),
-    ],
-  )
-}
-
-///|
-fn sidebar(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
-  let context : Array[@html.Html] = []
-  if model.explorer {
-    context.push(@html.p(class="eyebrow", "DECLARATIONS"))
-    context.push(
-      @html.input(
-        placeholder="Find a declaration…",
-        value=model.query,
-        attrs=@html.Attrs::build().aria_label("Find a declaration"),
-        on_input=emit.map(value => Query(value)),
-      ),
-    )
-    context.push(
-      @explorer.navigation(
-        explorer_props(model),
-        emit.map(id => Select(id)),
-        emit.map(id => ToggleModule(id)),
-      ),
-    )
-    if !model.projects.is_empty() {
-      context.push(@html.p(class="eyebrow", "WORKSPACE PROJECTS"))
-    }
-    for project in model.projects {
-      context.push(
-        @html.button(
-          class="tree-item",
-          disabled=model.busy ||
-            field(project, "available") == Json::boolean(false),
-          title=text(project, "message"),
-          on_click=emit(Project(text(project, "id"))),
-          text(project, "name"),
-        ),
-      )
-    }
-  } else {
-    if !model.worksheet && !model.connected {
-      context.push(
-        @project_files.view(
-          {
-            env: explorer_env(model),
-            state: model.files_edit,
-            language: language_name(model, model.language),
-            mac: model.mac,
-          },
-          emit.map(action => Files(action)),
-          extra=[project_storage(model, emit)],
-        ),
-      )
-    }
-    context.push(
-      @html.p(
-        class="muted small context-note",
-        if model.connected {
-          "Languages and targets come from your connected host."
-        } else {
-          "Scheme and the supported MoonBit library profile compile locally. Your source stays in this browser."
-        },
+fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+  let output = model.output
+  let targets = [
+    @html.option(value="", selected=model.target == "", "No generation"),
+  ]
+  for target in items(field(model.catalog, "targets")) {
+    targets.push(
+      @html.option(
+        value=text(target, "target"),
+        selected=text(target, "target") == model.target,
+        text(target, "displayName"),
       ),
     )
   }
-  @html.aside(id="sidebar", [
-    brand(model.site_home),
-    @html.nav(attrs=@html.Attrs::build().aria_label("Experiences"), [
-      nav_button(
-        emit,
-        model.explorer,
-        "icon-model",
-        "Model Explorer",
-        Navigate(true),
-      ),
-      nav_button(
-        emit,
-        !model.explorer,
-        "icon-code",
-        "Try Morphir",
-        Navigate(false),
-      ),
-    ]),
-    @html.div(id="context-navigation", class="context", context),
-    @html.div(class="sidebar-bottom", [
-      @html.button(
-        class="collapse",
-        title="Toggle sidebar",
-        attrs=@html.Attrs::build()
-          .aria_label("Toggle sidebar")
-          .aria_controls("context-navigation")
-          .aria_expanded(
-            (!(if model.explorer {
-              model.explorer_collapsed
-            } else {
-              model.try_collapsed
-            })).to_string(),
-          ),
-        on_click=emit(Collapse),
-        @html.span(
-          class="nav-icon icon-sidebar",
-          attrs=@html.Attrs::build().aria_hidden("true"),
-          "",
-        ),
-      ),
-    ]),
-  ])
-}
-
-///|
-fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
-  let output = model.output
   let body : Array[@html.Html] = []
   if !model.worksheet && text(output, "value") != "" {
     body.push(
@@ -3840,7 +3876,7 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
     }
   } else if model.generated {
     body.push(
-      @generated.view(
+      @generated.preview(
         {
           output,
           state: model.generated_state,
@@ -3897,6 +3933,17 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         ),
       ]),
       @html.div(class="panel-actions", [
+        @html.label(class="compact-select", hidden=model.worksheet, [
+          @html.span(class="small muted", "Target"),
+          @html.select(
+            disabled=model.busy,
+            on_change=emit.map(value => Target(value)),
+            attrs=@html.Attrs::build()
+              .aria_label("Target")
+              .value_prop(model.target),
+            targets,
+          ),
+        ]),
         @html.span(
           class="stale-badge",
           hidden=!stale,
@@ -3922,419 +3969,6 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       ]),
     ]),
     @html.div(class="output-body", body),
-  ])
-}
-
-///|
-fn playground(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
-  let languages = items(field(model.catalog, "frontends")).map(frontend => {
-    @html.option(
-      value=text(frontend, "languageId"),
-      selected=text(frontend, "languageId") ==
-        (if model.worksheet { "scheme" } else { model.language }),
-      text(frontend, "displayName"),
-    )
-  })
-  let targets = [
-    @html.option(value="", selected=model.target == "", "No generation"),
-  ]
-  for target in items(field(model.catalog, "targets")) {
-    targets.push(
-      @html.option(
-        value=text(target, "target"),
-        selected=text(target, "target") == model.target,
-        text(target, "displayName"),
-      ),
-    )
-  }
-  // One action leads the toolbar: run when this layout can run, else compile.
-  let runnable = model.worksheet ||
-    (!model.connected && model.language == "scheme")
-  @html.div(class="experience playground", [
-    @html.div(class="experience-heading", [
-      @html.div([
-        @html.h1("Try Morphir"),
-        @html.p(
-          class="muted",
-          if model.worksheet {
-            "Each expression gets a result. Definitions are shared within one run."
-          } else {
-            "Turn source into a portable model. Inspect the IR and generated output."
-          },
-        ),
-      ]),
-      @html.div(class="mode-switch", [
-        @html.button(
-          class=if !model.worksheet { "selected" } else { "" },
-          attrs=@html.Attrs::build().aria_pressed(
-            (!model.worksheet).to_string(),
-          ),
-          on_click=emit(Layout(false)),
-          "Compile & inspect",
-        ),
-        @html.button(
-          class=if model.worksheet { "selected" } else { "" },
-          title="Run Scheme expressions locally",
-          attrs=@html.Attrs::build().aria_pressed(model.worksheet.to_string()),
-          on_click=emit(Layout(true)),
-          "Worksheet",
-        ),
-      ]),
-    ]),
-    @html.div(class="toolbar", [
-      @html.label([
-        @html.span(class="small muted", "Language"),
-        @html.select(
-          disabled=model.busy || model.worksheet,
-          on_change=emit.map(value => Language(value)),
-          attrs=@html.Attrs::build()
-            .aria_label("Language")
-            .value_prop(if model.worksheet { "scheme" } else { model.language }),
-          languages,
-        ),
-      ]),
-      @html.div(hidden=model.connected || model.worksheet, [
-        @source_selection.view(
-          {
-            frontend: frontend(model, model.language),
-            profile: model.source_profile,
-            busy: model.busy,
-          },
-          on_change=emit.map(value => SourceProfile(value)),
-        ),
-      ]),
-      @html.label(hidden=model.worksheet, [
-        @html.span(class="small muted", "Target"),
-        @html.select(
-          disabled=model.busy,
-          on_change=emit.map(value => Target(value)),
-          attrs=@html.Attrs::build()
-            .aria_label("Target")
-            .value_prop(model.target),
-          targets,
-        ),
-      ]),
-      @html.div(class="toolbar-actions", [
-        @html.button(
-          class="secondary",
-          hidden=!model.busy || model.request_id == 0,
-          on_click=emit(Cancel),
-          if host_execution_pending(model) {
-            "Cancel"
-          } else if model.connected && !model.worksheet {
-            "Discard"
-          } else {
-            "Cancel"
-          },
-        ),
-        @html.button(
-          class=if runnable { "secondary" } else { "primary" },
-          disabled=model.busy || model.worksheet || !model.available,
-          hidden=model.worksheet,
-          on_click=emit(Request("compile")),
-          "Compile",
-        ),
-        @html.button(
-          class=if runnable { "primary" } else { "secondary" },
-          disabled=model.busy ||
-            (model.connected && !model.worksheet) ||
-            (!model.worksheet && !model.available) ||
-            (!model.worksheet && model.language != "scheme"),
-          title=if model.connected && !model.worksheet {
-            "This host does not advertise an evaluation method"
-          } else if !model.worksheet && model.language != "scheme" {
-            "Compile, then select a public function in Model Explorer to enter inputs and evaluate"
-          } else if model.target != "scheme" {
-            "Generate source and evaluate the model with the local Scheme runtime"
-          } else {
-            ""
-          },
-          on_click=emit(
-            Request(if model.worksheet { "worksheet" } else { "run" }),
-          ),
-          if model.worksheet {
-            "Run worksheet"
-          } else if !model.connected && model.language != "scheme" {
-            "Evaluate in Explorer"
-          } else if !model.connected && model.target != "scheme" {
-            "Compile & run (Scheme)"
-          } else {
-            "Compile & run"
-          },
-        ),
-      ]),
-    ]),
-    @html.div(hidden=model.connected || model.worksheet, [
-      @source_selection.capabilities({
-        frontend: frontend(model, model.language),
-        profile: model.source_profile,
-        busy: model.busy,
-      }),
-    ]),
-    @html.div(
-      class=if model.generated &&
-        !model.worksheet &&
-        model.generated_state.expanded {
-        "editor-grid output-expanded"
-      } else {
-        "editor-grid"
-      },
-      [
-        @html.section(class="panel source-panel", [
-          @html.div(class="panel-heading", [
-            @html.span(class="file-name", [
-              action_icon("document"),
-              @html.span(
-                if model.worksheet {
-                  "worksheet.scm"
-                } else {
-                  source_name(model)
-                },
-              ),
-            ]),
-          ]),
-          @html.div(class="source-body", [
-            @editor.view(
-              {
-                id: "source",
-                document_key: if model.worksheet {
-                  "worksheet-source"
-                } else {
-                  "compile-source|" + model.language + "|" + source_name(model)
-                },
-                value: if model.worksheet {
-                  model.worksheet_source
-                } else {
-                  active_text(model)
-                },
-                language: if model.worksheet {
-                  "scheme"
-                } else {
-                  editor_language(model)
-                },
-                label: "Source editor",
-                read_only: false,
-                marks: if model.worksheet {
-                  if model.worksheet_report is Some(report) &&
-                    worksheet_matches(model, report.source()) {
-                    @worksheet_view.marks(report)
-                  } else {
-                    ""
-                  }
-                } else {
-                  model.problem_marks.get(source_name(model)).unwrap_or("")
-                },
-                reveal: if model.worksheet {
-                  model.worksheet_reveal
-                } else {
-                  model.reveal
-                },
-              },
-              on_change=emit.map(value => Source(value)),
-            ),
-          ]),
-        ]),
-        output_panel(model, emit),
-      ],
-    ),
-    @html.p(
-      class="muted small footnote",
-      if model.worksheet {
-        "Worksheets run locally. Typed details describe returned values; they are not inferred source types."
-      } else if model.connected {
-        "Compile and generate use the connected Morphir v1 protocol."
-      } else if model.language == "moonbit" {
-        "Compile the selected MoonBit profile, then select a public function in Model Explorer to enter inputs and evaluate."
-      } else if model.language != "scheme" {
-        "Compile the Elm module, then select a public function in Model Explorer to enter inputs and evaluate."
-      } else if model.target == "elm" {
-        "For an Elm library, use named definitions. Scheme does not infer types."
-      } else {
-        "The Scheme frontend lowers a functional subset to IR. It does not perform type inference."
-      },
-    ),
-  ])
-}
-
-///|
-fn explorer(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
-  @html.div(class="experience", [
-    @html.div(class="experience-heading", [
-      @html.div([
-        @html.h1("Model Explorer"),
-        @html.p(
-          class="muted",
-          "Packages, modules, types and values — in one place.",
-        ),
-      ]),
-      @html.div(class="toolbar-actions", [
-        @html.button(
-          class="secondary",
-          hidden=!model.busy,
-          on_click=emit(Cancel),
-          if host_execution_pending(model) {
-            "Cancel"
-          } else if model.connected {
-            "Discard"
-          } else {
-            "Cancel"
-          },
-        ),
-        @html.button(
-          class="secondary",
-          hidden=!model.workspace_available,
-          disabled=model.busy || host_execution_blocks_replacement(model),
-          on_click=emit(Request("workspace")),
-          [action_icon("folder"), @html.span("Open workspace")],
-        ),
-        @html.label([
-          @html.span(class="small muted", "Model format"),
-          @html.select(
-            disabled=model.busy,
-            attrs=@html.Attrs::build()
-              .aria_label("Model format")
-              .value_prop(
-                model.model_format.map(f => f.codec_id()).unwrap_or(""),
-              ),
-            on_change=emit.map(value => ImportFormat(value)),
-            [
-              ("", "Automatic"),
-              ("morphir-json", "JSON"),
-              ("morphir-yaml", "YAML"),
-              ("ion-text", "Ion text"),
-              ("ion-binary", "Ion binary"),
-            ].map(option => {
-              @html.option(
-                value=option.0,
-                selected=model.model_format.map(f => f.codec_id()).unwrap_or("") ==
-                  option.0,
-                option.1,
-              )
-            }),
-          ),
-        ]),
-        @html.button(
-          class="secondary",
-          disabled=model.busy,
-          on_click=emit(Import),
-          "Import model",
-        ),
-        @html.button(
-          class="secondary",
-          disabled=model.busy,
-          title="Import captured files from a YAML tree; browser pickers do not report empty directories",
-          on_click=emit(ImportTree),
-          "Import YAML tree",
-        ),
-        @html.button(
-          class="ghost",
-          disabled=field(model.document.inspection(), "ir") == Json::null(),
-          on_click=emit(Export),
-          [action_icon("download"), @html.span("Export IR")],
-        ),
-        match (model.document.current_revision(), model.document.original()) {
-          (Some(revision), Some(file)) =>
-            @html.button(
-              class="ghost",
-              attrs=@html.Attrs::build().aria_label("Download original file"),
-              title="Download " +
-                file.filename.to_string() +
-                " · original IR " +
-                file.format_version.to_release_string(),
-              on_click=emit(DownloadOriginal(revision)),
-              [action_icon("download"), @html.span("Original file")],
-            )
-          _ => @html.span(hidden=true, "")
-        },
-        match
-          (model.document.current_revision(), model.document.original_tree()) {
-          (Some(revision), Some(_)) =>
-            @html.button(
-              class="ghost",
-              attrs=@html.Attrs::build().aria_label(
-                "Download captured original files",
-              ),
-              title="Download captured original files as ZIP; empty directories absent from the picker are not included",
-              on_click=emit(DownloadOriginal(revision)),
-              "Original files",
-            )
-          _ => @html.nothing
-        },
-        @html.button(
-          class="ghost artifact-icon-button close-model-button",
-          hidden=model.document.document() == None &&
-            model.document.opening() == None,
-          disabled=host_execution_blocks_replacement(model) ||
-            (model.busy && model.document.opening() == None),
-          title="Close model",
-          attrs=@html.Attrs::build().aria_label("Close model"),
-          on_click=emit(CloseModel),
-          [action_icon("close")],
-        ),
-      ]),
-    ]),
-    @html.div(
-      hidden=model.host_execution == Json::null(),
-      class="evaluation-actions small",
-      [
-        @html.span(host_execution_status(model.host_execution)),
-        @html.button(
-          class="secondary",
-          hidden=field(model.host_execution, "connected") !=
-            Json::boolean(false),
-          disabled=model.busy,
-          on_click=emit(ResumeExecution),
-          "Reconnect / resume",
-        ),
-      ],
-    ),
-    @explorer.details(
-      explorer_props(model),
-      emit.map(id => Select(id)),
-      emit.map(raw => ExplorerRaw(raw)),
-      @evaluation.view(
-        {
-          runtime: model.evaluation_runtime,
-          policy: model.evaluation_policy,
-          policy_available: checking_available(model),
-          input_mode: model.evaluation_mode,
-          result_mode: model.result_mode,
-          profile: evaluation_profile(
-            model.document.inspection(),
-            model.selected,
-            model.evaluation_runtime.is_typed(),
-            capabilities=capability_descriptions(model),
-          ),
-          document_key: "evaluation-" +
-          model.model_revision.to_string() +
-          "-" +
-          model.selected +
-          "-" +
-          model.evaluation_runtime.is_typed().to_string(),
-          arguments: model.evaluation_arguments,
-          result: if model.evaluation_entry == model.selected {
-            model.evaluation_result
-          } else {
-            Json::null()
-          },
-          terminal: model.evaluation_terminal,
-          stale: model.evaluation_result_revision != model.evaluation_revision,
-          busy: model.busy,
-          connected: model.connected,
-          executions_available: model.executions_available,
-          execution_pending: host_execution_pending(model) ||
-          host_execution_disconnected(model) ||
-          model.submission_unknown,
-        },
-        emit.map(value => EvaluationArguments(value)),
-        emit(Evaluate),
-        emit.map(value => EvaluationMode(value)),
-        emit.map(edit => EvaluationEdit(edit)),
-        emit.map(mode => ResultMode(mode)),
-        emit.map(mode => EvaluationRuntime(mode)),
-        emit.map(policy => EvaluationPolicy(policy)),
-      ),
-    ),
   ])
 }
 
@@ -4393,127 +4027,17 @@ fn brand(site_home : String?) -> @html.Html {
 }
 
 ///|
-/// The breadcrumb starts with a link to the hosting site when there is one.
-fn breadcrumb(model : Model) -> @html.Html {
-  let trail = if model.explorer {
-    "Workbench / Model Explorer"
-  } else {
-    "Workbench / Try Morphir"
+/// The workspace whose drop zone received a dropped folder, from the reply's `workspace` member.
+fn drop_origin(reply : String) -> @workspace.WorkspaceId? {
+  let parsed = @json.parse(reply) catch { _ => return None }
+  match parsed {
+    Object(fields) =>
+      match fields.get("workspace") {
+        Some(String(id)) => @workspace.WorkspaceId::parse(id)
+        _ => None
+      }
+    _ => None
   }
-  match model.site_home {
-    Some(href) =>
-      @html.span(class="breadcrumb", [
-        @html.a(class="breadcrumb-home", href~, "Morphir", escape=true),
-        @html.text(" / \{trail}"),
-      ])
-    None => @html.span(class="breadcrumb", trail)
-  }
-}
-
-///|
-fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
-  let collapsed = if model.explorer {
-    model.explorer_collapsed
-  } else {
-    model.try_collapsed
-  }
-  @html.div(
-    class="workbench" +
-      (if collapsed { " collapsed" } else { "" }) +
-      (if model.panel.size == @bottom_panel.Collapsed {
-        ""
-      } else {
-        " tool-open"
-      }),
-    [
-      sidebar(model, emit),
-      @html.main_([
-        @html.header(class="topbar", [
-          @html.div(class="navigation-history", [
-            @html.button(
-              class="back-button",
-              title="Back",
-              attrs=@html.Attrs::build().aria_label("Back"),
-              disabled=model.history.is_empty(),
-              on_click=emit(Back),
-              @html.span(
-                class="nav-icon icon-back",
-                attrs=@html.Attrs::build().aria_hidden("true"),
-                "",
-              ),
-            ),
-            breadcrumb(model),
-          ]),
-          command_center(model, emit),
-          @html.div(class="connection", [
-            @html.span(
-              class="connection-dot",
-              attrs=@html.Attrs::build().aria_hidden("true"),
-              "",
-            ),
-            @html.span(
-              if model.connected {
-                "Connected host"
-              } else {
-                local_runtime_label()
-              },
-            ),
-            @html.a(
-              href=if model.connected {
-                "?mode=local"
-              } else {
-                "?mode=connected"
-              },
-              class="small",
-              if model.connected {
-                "Use local"
-              } else {
-                "Connect"
-              },
-              escape=true,
-            ),
-          ]),
-        ]),
-        if model.explorer {
-          explorer(model, emit)
-        } else {
-          playground(model, emit)
-        },
-        @bottom_panel.view(
-          {
-            state: model.panel,
-            status: model.status,
-            busy: model.busy,
-            revisions: Map([
-              ("source", model.revision),
-              ("worksheet", model.worksheet_revision),
-              ("inputs", model.evaluation_revision),
-              ("model", model.model_revision),
-              ("decode", model.output_revision),
-            ]),
-          },
-          emit.map(action => Panel(action)),
-        ),
-      ]),
-      @palette.view(
-        {
-          state: model.palette,
-          entries: if model.palette.open {
-            palette_entries(model)
-          } else {
-            []
-          },
-          mac: model.mac,
-          no_files: if model.connected {
-            "This host edits one source, so there are no project files. Type > to search commands."
-          } else {
-            "The project has no files."
-          },
-        },
-        emit.map(action => Palette(action)),
-      ),
-    ],
-  )
 }
 
 ///|
@@ -4532,7 +4056,15 @@ fn main {
             ),
             @cmd.custom_cmd(scheduler => {
               watch_drop("[data-drop=\"project\"]", reply => {
-                scheduler.add(emit(FolderPicked(reply)))
+                // A dropped folder belongs to the workspace that showed the drop zone.
+                scheduler.add(
+                  emit(
+                    match drop_origin(reply) {
+                      Some(id) => Routed(id, FolderPicked(reply))
+                      None => FolderPicked(reply)
+                    },
+                  ),
+                )
               })
             }),
             @cmd.custom_cmd(scheduler => {
@@ -4961,9 +4493,9 @@ fn in_project_view(
 ) -> (Model, @cmd.Cmd) {
   let shown = remember(model, {
     ..model,
-    explorer: false,
+    doc: Source,
     worksheet: false,
-    try_collapsed: false,
+    layout: model.layout.apply(Reveal(Files)),
   })
   let shown = match action {
     Open(path) => {
@@ -4975,6 +4507,16 @@ fn in_project_view(
       { ..shown, files_edit, }
     }
     _ => shown
+  }
+  // A filter that hides the target row would hide its inline rename, delete or new-file input.
+  let target = match action {
+    Open(path) => path
+    _ => active_project(shown).active
+  }
+  let shown = if @project_files.matches_filter(target, shown.files_edit.filter) {
+    shown
+  } else {
+    { ..shown, files_edit: { ..shown.files_edit, filter: "", }, }
   }
   update_core(shown, Files(action), emit)
 }
@@ -5009,7 +4551,119 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
   }
 
   let busy = if model.busy { busy_reason } else { "" }
-  let projects = !model.connected
+  let in_workspace = model.screen is Workspace && model.active is Some(_)
+  let local_reason = if model.connected {
+    "A connected host provides one workspace; use Browser local for more"
+  } else {
+    ""
+  }
+  // Workspace entry points, from anywhere.
+  add(ShowGettingStarted, "Show getting started", "Workspace", "")
+  if model.registry.entries
+    .iter()
+    .any(e => {
+      (e.saved || model.parked.contains(e.id)) && Some(e.id) != model.active
+    }) ||
+    (model.active is Some(_) && !in_workspace) {
+    add(SwitchWorkspace, "Switch workspace…", "Workspace", "")
+  }
+  add(TryIdea, "Try an idea…", "Workspace", local_reason)
+  add(OpenWorkspace, "Open a workspace…", "Workspace", local_reason)
+  add(CreateWorkspace, "Create a workspace…", "Workspace", local_reason)
+  add(
+    ExploreModel,
+    "Explore a model…",
+    "Workspace",
+    if local_reason == "" {
+      busy
+    } else {
+      local_reason
+    },
+  )
+  if !in_workspace {
+    add(TogglePanel, "Toggle panel", "View", "")
+    return commands
+  }
+  // Content of the active workspace.
+  if !model.connected {
+    if !holds(model, Intent) {
+      add(AddIntent, "Add modeling intent", "Workspace", "")
+    }
+    if !holds(model, ConceptualModel) {
+      add(AddConceptualModel, "Add a conceptual model", "Workspace", "")
+    }
+    if !holds(model, SourceProject) {
+      add(AddSourceProject, "Add a source project", "Workspace", "")
+    }
+    if !holds(model, ModelDocument) && !holds(model, SourceProject) {
+      add(
+        ImportModel,
+        "Import a model into this workspace…",
+        "Workspace",
+        busy,
+      )
+    }
+  }
+  let docs = documents_of(model)
+  for
+    entry in [
+      (@workspace.Document::Source, @keys.CommandId::ShowSource, "Show source"),
+      (Model, ShowModel, "Show model"),
+      (IntentDraft, ShowIntent, "Show modeling intent"),
+      (ConceptDraft, ShowConcept, "Show conceptual model"),
+    ] {
+    if docs.contains(entry.0) && model.doc != entry.0 {
+      add(entry.1, entry.2, "View", "")
+    }
+  }
+  add(
+    TogglePrimarySidebar,
+    if model.layout.is_open(Primary) {
+      "Hide left sidebar"
+    } else {
+      "Show left sidebar"
+    },
+    "View",
+    "",
+  )
+  add(
+    ToggleSecondarySidebar,
+    if model.layout.is_open(Secondary) {
+      "Hide right sidebar"
+    } else {
+      "Show right sidebar"
+    },
+    "View",
+    "",
+  )
+  let views = views_of(model)
+  for
+    entry in [
+      (@shell.View::Files, @keys.CommandId::MoveFiles),
+      (Models, MoveModels),
+      (Generated, MoveGenerated),
+      (Ideas, MoveIdeas),
+    ] {
+    if views.contains(entry.0) {
+      add(
+        entry.1,
+        "Move " +
+        entry.0.title() +
+        " to " +
+        model.layout.side_of(entry.0).other().destination(),
+        "View",
+        "",
+      )
+    }
+  }
+  if views.contains(Generated) {
+    add(ShowGeneratedFiles, "Show generated files", "View", "")
+  }
+  guard docs.contains(Source) else {
+    add(TogglePanel, "Toggle panel", "View", "")
+    return commands
+  }
+  let projects = !model.connected && holds(model, SourceProject)
   let rules = file_rules(model, model.language)
   add(
     Compile,
@@ -5038,6 +4692,11 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
   if !model.worksheet {
     add(SetTarget, "Set generation target…", "Build", busy)
     add(SwitchLanguage, "Switch language…", "Project", busy)
+    if !model.connected &&
+      !items(field(frontend(model, model.language), "profiles")).is_empty() {
+      add(SelectProfile, "Select source profile…", "Project", busy)
+      add(ShowProfileDetails, "Show source profile details", "Project", "")
+    }
   }
   if projects {
     add(GoToFile, "Go to file…", "Go", "")
@@ -5089,16 +4748,6 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
     )
   }
   add(TogglePanel, "Toggle panel", "View", "")
-  add(
-    SwitchExperience,
-    if model.explorer {
-      "Open Try Morphir"
-    } else {
-      "Open Model Explorer"
-    },
-    "View",
-    "",
-  )
   commands
 }
 
@@ -5118,6 +4767,28 @@ fn palette_choices(model : Model) -> Array[@palette.Choice] {
         value: text(item, "languageId"),
         label: text(item, "displayName"),
         detail: current(text(item, "languageId"), model.language),
+      })
+    Some((SwitchWorkspace, _)) =>
+      model.registry.entries
+      .filter(e => {
+        e.saved || model.parked.contains(e.id) || Some(e.id) == model.active
+      })
+      .map(e => @palette.Choice::{
+        value: e.id.to_string(),
+        label: e.name.to_string(),
+        detail: if Some(e.id) == model.active {
+          "current"
+        } else if model.parked.contains(e.id) {
+          "open"
+        } else {
+          e.preset.label()
+        },
+      })
+    Some((SelectProfile, _)) =>
+      items(field(frontend(model, model.language), "profiles")).map(item => @palette.Choice::{
+        value: text(item, "id"),
+        label: text(item, "displayName"),
+        detail: current(text(item, "id"), model.source_profile),
       })
     Some((SetTarget, _)) =>
       [
@@ -5216,7 +4887,7 @@ fn run_command(
       match selected_binary_ion(model) {
         Some(path) => {
           let (shown, cmd) = start_decode(
-            { ..model, explorer: false, worksheet: false, generated: true, },
+            { ..model, doc: Source, worksheet: false, generated: true, },
             path,
             emit,
           )
@@ -5265,7 +4936,45 @@ fn run_command(
         emit,
       )
     SwitchLayout => update_core(model, Layout(!model.worksheet), emit)
-    SwitchExperience => update_core(model, Navigate(!model.explorer), emit)
+    ShowSource => update_core(model, ShowDocument(Source), emit)
+    ShowModel => update_core(model, ShowDocument(Model), emit)
+    ShowIntent => update_core(model, ShowDocument(IntentDraft), emit)
+    ShowConcept => update_core(model, ShowDocument(ConceptDraft), emit)
+    ShowGettingStarted => update_core(model, ShowStart, emit)
+    SwitchWorkspace =>
+      open_palette(
+        model,
+        Ask(SwitchWorkspace, "Switch workspace"),
+        emit,
+        remember=!from_palette,
+      )
+    CreateWorkspace => start_with(model, CreateChoices, emit)
+    TryIdea => start_with(model, Idea, emit)
+    OpenWorkspace => start_with(model, OpenChoices, emit)
+    ExploreModel => start_with(model, ExploreChoices, emit)
+    AddIntent => update_core(model, AddContent(Intent), emit)
+    AddConceptualModel => update_core(model, AddContent(ConceptualModel), emit)
+    AddSourceProject => update_core(model, AddContent(SourceProject), emit)
+    ImportModel => update_core(model, AddContent(ModelDocument), emit)
+    TogglePrimarySidebar => update_core(model, Shell(Toggle(Primary)), emit)
+    ToggleSecondarySidebar => update_core(model, Shell(Toggle(Secondary)), emit)
+    MoveFiles => move_view(model, Files, emit)
+    MoveModels => move_view(model, Models, emit)
+    MoveGenerated => move_view(model, Generated, emit)
+    MoveIdeas => move_view(model, Ideas, emit)
+    ShowGeneratedFiles => update_core(model, ShowGenerated, emit)
+    SelectProfile =>
+      open_palette(
+        model,
+        Ask(SelectProfile, "Select source profile"),
+        emit,
+        remember=!from_palette,
+      )
+    ShowProfileDetails =>
+      (
+        { ..model, doc: Source, worksheet: false, },
+        @cmd.custom_cmd(_ => open_profile_details(), kind=@cmd.after_render),
+      )
     ShowExplorer => {
       let (shown, cmd) = in_project_view(model, Focus(File(active)), emit)
       let row = match shown.files_edit.current(explorer_env(shown)) {
@@ -5277,6 +4986,39 @@ fn run_command(
     ContextMenu => (model, @cmd.none)
   }
 }
+
+///|
+/// Shows getting started with one of its choices open.
+fn start_with(
+  model : Model,
+  panel : StartPanel,
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
+  let (shown, focus) = update_core(model, ShowStart, emit)
+  let (opened, cmd) = update_core(
+    { ..shown, start: { ..shown.start, panel: Closed, }, },
+    StartPanel(panel),
+    emit,
+  )
+  (opened, @cmd.batch([focus, cmd]))
+}
+
+///|
+/// Moves a view to the other sidebar and opens it there, so the moved view is in sight.
+fn move_view(
+  model : Model,
+  view : @shell.View,
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
+  let side = model.layout.side_of(view).other()
+  let (moved, cmd) = update_core(model, Shell(Move(view, side)), emit)
+  ({ ..moved, layout: moved.layout.apply(Reveal(view)), }, cmd)
+}
+
+///|
+/// Opens the source profile details and moves the focus to them.
+extern "js" fn open_profile_details() =
+  #|() => { const d = document.querySelector('.profile-details details'); if (d) { d.open = true; d.querySelector('summary')?.focus(); } }
 
 // Failure details for the tool panel.
 

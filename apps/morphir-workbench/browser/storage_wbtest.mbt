@@ -124,7 +124,7 @@ test "a language switch inside the debounce window still saves the earlier edit"
     .to_equal([])
     s
     .expect(second.save_attempts, label="current save writes both")
-    .to_equal([storage_key("scheme"), storage_key("moonbit")])
+    .to_equal([legacy_key("scheme"), legacy_key("moonbit")])
     s
     .expect(second.dirty, label="failed writes stay dirty")
     .to_equal(["scheme", "moonbit"])
@@ -159,7 +159,7 @@ test "a save scheduled for an unedited language still writes the dirty one" {
   @expect.expect_all(s => {
     s
     .expect(saved.save_attempts, label="scheme attempted")
-    .to_equal([storage_key("scheme")])
+    .to_equal([legacy_key("scheme")])
   })
 }
 
@@ -204,7 +204,7 @@ test "a restored profile survives the first visit to its language and is saved" 
   }
   let stored = stored_moonbit_library(model)
   let loaded = restore_all_with(model, key => {
-    if key == storage_key("moonbit") {
+    if key == legacy_key("moonbit") {
       stored
     } else {
       ""
@@ -241,7 +241,7 @@ test "a restored profile the catalog does not list is dropped with a note" {
     new="gone-profile-v1",
   )
   let loaded = restore_all_with(model, key => {
-    if key == storage_key("moonbit") {
+    if key == legacy_key("moonbit") {
       stored
     } else {
       ""
@@ -279,7 +279,7 @@ test "restore_all skips connected sessions and invalid languages" {
   )
   let invalid = restore_all_with(
     { ..scope_model(), catalog: hostile_catalog(), },
-    key => if key == storage_key("Bad Language") { stored } else { "" },
+    key => if key == legacy_key("Bad Language") { stored } else { "" },
   )
   @expect.expect_all(s => {
     s
@@ -302,7 +302,7 @@ test "reset removes the stored key of its language" {
   let (asked, _) = update(model, RunCommand(ResetProject), emit)
   let (done, _) = update(asked, ConfirmReset, emit)
   @expect.expect(done.removed_key, label="removed").to_equal(
-    storage_key("scheme"),
+    legacy_key("scheme"),
   )
 }
 
@@ -359,8 +359,9 @@ test "a reset inside another language's debounce still schedules that language's
   sent.clear()
   let (reset, _) = update(asked, ConfirmReset, record)
   let scheduled = sent.filter_map(msg => {
+    // Work that a workspace schedules comes back routed to that workspace.
     match msg {
-      SaveProject(revision) => Some(revision)
+      SaveProject(revision) | Routed(_, SaveProject(revision)) => Some(revision)
       _ => None
     }
   })
@@ -372,9 +373,15 @@ test "a reset inside another language's debounce still schedules that language's
     .to_equal([reset.revision])
     s
     .expect(saved.save_attempts, label="scheme written")
-    .to_contain_element(storage_key("scheme"))
+    .to_contain_element(legacy_key("scheme"))
     s
     .expect(saved.save_attempts, label="reset language not written back")
-    .to_contain_none_of([storage_key("elm")])
+    .to_contain_none_of([legacy_key("elm")])
   })
+}
+
+///|
+/// The key a source project of `language` had before workspaces; the test workspace keeps it.
+fn legacy_key(language : String) -> String {
+  "morphir-workbench.project." + language + ".v1"
 }

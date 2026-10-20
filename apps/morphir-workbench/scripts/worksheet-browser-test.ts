@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, type Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import { createWorkbenchServer } from './server.ts';
+import { gettingStarted } from './workbench-steps.ts';
 
 interface WorksheetReport {
   source: { id: string; revision: number; text: string };
@@ -15,7 +16,12 @@ interface WorksheetReport {
 }
 
 export async function worksheetWorkflow(page: Page) {
+  // A scratch worksheet is an idea of its own: getting started opens it in a new workspace.
+  await gettingStarted(page);
+  await page.getByRole('button', { name: 'Try an idea', exact: true }).click();
+  await page.getByRole('button', { name: 'Scratch worksheet', exact: true }).click();
   await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Worksheet', exact: true }).getAttribute('aria-pressed'), 'true');
   // Observe the real bridge callback without replacing the worker or its result.
   await page.evaluate(() => {
     const original = globalThis.morphirWorkbench.request;
@@ -118,7 +124,7 @@ if (import.meta.main) {
     page.on('pageerror', error => errors.push(error.message));
     if (cdp) await page.reload();
     else await page.goto(`http://127.0.0.1:${(server!.address() as AddressInfo).port}`);
-    await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+    await gettingStarted(page);
     let workersClosed = 0;
     const closed: Promise<void>[] = [];
     page.on('worker', worker => closed.push(new Promise(resolve => worker.once('close', () => {

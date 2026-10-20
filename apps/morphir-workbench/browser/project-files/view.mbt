@@ -403,7 +403,7 @@ fn creating_row(
 
 ///|
 fn tree_view(props : Props, emit : @cmd.Emit[Action]) -> @html.Html {
-  let visible = rows(props.env.tree(), props.state.collapsed, props.env.counts)
+  let visible = props.state.rows(props.env, props.env.counts)
   let tab_stop = props.state.current(props.env)
   let items : Array[@html.Html] = visible.map(row => {
     row_view(props, emit, row, tab_stop)
@@ -577,11 +577,26 @@ pub fn view(
   emit : @cmd.Emit[Action],
   extra~ : Array[@html.Html] = [],
 ) -> @html.Html {
-  let children : Array[@html.Html] = [header(props, emit)]
+  let children : Array[@html.Html] = [
+    @html.input(
+      class="explorer-filter",
+      placeholder="Filter files…",
+      value=props.state.filter,
+      attrs=@html.Attrs::build().aria_label("Filter files"),
+      on_input=emit.map(text => Filter(text)),
+    ),
+    header(props, emit),
+  ]
   if props.state.edit is Naming(_) && props.state.error != "" {
     children.push(error_note(props.state.error))
   }
   children.push(tree_view(props, emit))
+  if props.state.filter.trim() != "" &&
+    props.state.rows(props.env, Map([])).is_empty() {
+    children.push(
+      @html.p(class="small muted explorer-empty", "No files match the filter."),
+    )
+  }
   let inline_error = props.state.edit
     is (Creating(_, _) | Renaming(_, _) | Naming(_))
   if props.state.error != "" && !inline_error {

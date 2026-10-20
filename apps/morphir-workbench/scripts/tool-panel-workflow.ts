@@ -2,7 +2,7 @@ import type { Outcome, Failure } from './execution-contracts.ts';
 import type { Page, Locator, Request, Response, WebSocket, Browser, BrowserContext } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
-import { openSample } from './workbench-steps.ts';
+import { openSample, setExplorer, setRightSidebar, showCompile, showGeneratedFiles, showModel } from './workbench-steps.ts';
 
 // Shared by the browser and packaged Proton workflows. Content comes from real
 // operations in this session: compiles, a frontend refusal and an evaluation.
@@ -13,13 +13,15 @@ async function geometry(page: Page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   return page.evaluate(() => {
     const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect();
-    const experience = document.querySelector<HTMLElement>('main > .experience');
+    // The documents area holds the active document above the tool panel; the document scrolls inside it.
+    const documents = document.querySelector<HTMLElement>('.documents');
+    const scroller = document.querySelector<HTMLElement>('.documents > .document');
     return {
       viewport: innerHeight, width: innerWidth, page: document.documentElement.scrollHeight,
       pageWidth: document.documentElement.scrollWidth, source: box('#source')?.height ?? 0,
       panelTop: box('.tool-panel')!.top, panelBottom: box('.tool-panel')!.bottom, body: box('#tool-panel-body')?.height ?? 0,
-      workspaceTop: box('main > .experience')!.top, workspaceBottom: box('main > .experience')!.bottom,
-      workspaceScroll: experience!.scrollTop, documentScroll: document.scrollingElement!.scrollTop,
+      workspaceTop: documents!.getBoundingClientRect().top, workspaceBottom: documents!.getBoundingClientRect().bottom,
+      workspaceScroll: documents!.scrollTop + (scroller?.scrollTop ?? 0), documentScroll: document.scrollingElement!.scrollTop,
     };
   });
 }
@@ -35,8 +37,9 @@ async function assertReachable(page: Page, locator: Locator, message: string) {
 export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   const tab = (name: string) => page.getByRole('tab', { name: new RegExp(`^${name}`) });
   const body = page.locator('#tool-panel-body');
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
+  await showCompile(page);
+  // A narrow window covers the documents with an open right sidebar; this workflow measures the documents.
+  await setRightSidebar(page, false);
   if (await body.isVisible()) await page.getByRole('button', { name: 'Collapse panel', exact: true }).click();
   await openSample(page, 'MoonBit Boolean library');
   const source = page.getByRole('textbox', { name: 'Source editor', exact: true });
@@ -121,13 +124,12 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await body.waitFor({ timeout: 2000 });
   assert.equal(await tab('Output').getAttribute('aria-selected'), 'true');
 
-  // Output keeps results; the panel state survives experience navigation.
+  // Output keeps results; the panel state survives switching documents.
   await body.locator('.tool-outcome').filter({ hasText: 'recursive_call' }).first().waitFor();
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
-  await page.getByRole('heading', { name: 'Model Explorer', exact: true }).waitFor();
-  assert.equal(await body.isVisible(), true, 'The open Output tab is retained in Model Explorer');
-  await page.getByRole('heading', { name: 'Model Explorer', exact: true }).waitFor();
-  if (!await page.locator('#context-navigation').isVisible()) await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
+  await showModel(page);
+  assert.equal(await page.locator('[data-document="model"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await body.isVisible(), true, 'The open Output tab is retained in the model document');
+  await setExplorer(page, true);
   await page.locator('.model-tree .tree-item').filter({ hasText: 'eligible' }).click();
   await page.getByRole('button', { name: 'Input fields', exact: true }).click();
   await page.getByRole('combobox', { name: 'activeUser', exact: true }).selectOption('true');
@@ -150,7 +152,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await inputReport.locator('.tool-badge', { hasText: 'Current' }).waitFor();
   assert.equal(await tab('Diagnostics').locator('.tool-count').textContent(), '1');
   assert.equal(await inputReport.locator('.tool-location').textContent(), 'eligible');
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+  await showCompile(page);
   await compile.click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   assert.equal(await inputReport.locator('.tool-badge').textContent(), 'Previous', 'A replaced model makes its input diagnostics previous');
@@ -202,6 +204,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   assert.match((await recovered.locator('.tool-fix').textContent()!)!, /Rename is_ready/);
   assert.match((await related.first().locator('span').last().getAttribute('title')!)!, /moonbit-parser-position-v1 2:7/);
   await page.getByRole('button', { name: 'Generated', exact: true }).click();
+  await showGeneratedFiles(page);
   await page.getByRole('navigation', { name: 'Generated files', exact: true }).getByRole('button', { name: 'library.mbt', exact: true }).click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.dataset.document === 'generated|library.mbt');
   const generated = await page.locator('#output').evaluate(editor => (editor as CodeEditor).value);
@@ -214,7 +217,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   assert.equal(await tab('Diagnostics').locator('.tool-count').isVisible(), false);
   await page.getByRole('button', { name: 'Collapse panel', exact: true }).click();
-  console.log(JSON.stringify({ toolPanel: true, namingWarnings: true, collapsedDefault: true, realLogs: true, scopedDiagnostics: true, output: true, keyboardTabs: true, preventsScroll: true, retainedAcrossExperiences: true, undoPreserved: true, resized: sizes.length > 0 }));
+  console.log(JSON.stringify({ toolPanel: true, namingWarnings: true, collapsedDefault: true, realLogs: true, scopedDiagnostics: true, output: true, keyboardTabs: true, preventsScroll: true, retainedAcrossDocuments: true, undoPreserved: true, resized: sizes.length > 0 }));
 }
 
 // The local producer genuinely returns a value. Cleanup/failure/cancellation
@@ -227,13 +230,13 @@ export async function terminalOutcomeWorkflow(page: Page, { resize = true, scree
     if (!await body.isVisible() || await tab.getAttribute('aria-selected') !== 'true') await tab.click();
     await body.waitFor();
   };
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  await page.getByRole('heading', {name:'Try Morphir',exact:true}).waitFor();
+  await showCompile(page);
   await openSample(page, 'MoonBit Boolean library');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await page.waitForFunction(() => ![...document.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent.trim() === 'Compile')?.disabled && document.querySelector<HTMLElement>('.statusbar')?.textContent === 'Model ready');
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector<HTMLButtonElement>('.build-actions > button.primary')?.disabled === false && document.querySelector<HTMLElement>('.statusbar')?.textContent === 'Model ready');
+  await showModel(page);
+  await setExplorer(page, true);
   await page.locator('.model-tree .tree-item').filter({ hasText: 'eligible' }).click();
   await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
   await page.getByRole('button', { name: 'Input fields', exact: true }).click();

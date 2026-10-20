@@ -1,0 +1,13 @@
+supported_targets = "js"
+
+import {
+  "moonbit-community/rabbita/html",
+  "moonbit-community/rabbita/cmd",
+  "moonbit-community/rabbita/dom",
+  "moonbitlang/core/debug",
+}
+
+import {
+  "finos/morphir-workbench/browser/shell",
+  "moonrockz/expect",
+} for "test"

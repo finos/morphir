@@ -5,15 +5,40 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
-import { openSample } from './workbench-steps.ts';
+import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, createWorkspace } from './workbench-steps.ts';
+
+/** The Generated tab of the source document's output panel; the right sidebar's Generated section has its own name. */
+const generatedTab = (page: Page) => page.locator('.output-panel .tabs').getByRole('button', { name: 'Generated', exact: true });
+
+/** Shows the generated preview in the output panel and the generated file tree in the right sidebar. */
+async function showGenerated(page: Page) {
+  await generatedTab(page).click();
+  await showGeneratedFiles(page);
+}
+
+/** The source document's tab, which names the file in the editor. */
+const sourceFile = (page: Page, path: string) => page.locator('[data-document="source"] .document-tab-label').getByText(path, { exact: true });
+
+/** The name of the active workspace, as its picker says it. */
+async function workspaceName(page: Page) {
+  return (await page.locator('#workspace-picker').getAttribute('aria-label'))!.replace(/^Workspace: /, '');
+}
+
+/** Reloads the page and opens the same saved workspace again from Recent workspaces. */
+async function reloadWorkspace(page: Page) {
+  const name = await workspaceName(page);
+  await page.reload();
+  await gettingStarted(page);
+  await reopenWorkspace(page, name);
+  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+}
 
 // The same generated-file component and worker run in Chromium and packaged CEF.
 export async function elmWorkflow(page: Page, {
   nativeDownloads = true,
   selectFolder = (chooser: FileChooser, directory: string) => chooser.setFiles(directory),
 } = {}) {
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
+  await showCompile(page);
   await openSample(page, 'Elm constant');
   await page.waitForFunction(() => document.querySelector<HTMLSelectElement>('select[aria-label="Target"]')?.value === 'elm');
   const target = page.getByRole('combobox', { name: 'Target', exact: true });
@@ -21,7 +46,7 @@ export async function elmWorkflow(page: Page, {
   const inputs = await page.getByRole('combobox', { name: 'Language', exact: true }).locator('option').evaluateAll(items => items.map(item => (item as HTMLOptionElement).value));
   assert.ok(inputs.includes('elm'), 'The catalog offers the Elm frontend');
   await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('42');
-  await page.getByRole('button', { name: 'Compile & run (Scheme)', exact: true }).click();
+  await build(page, 'Compile & run (Scheme)');
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await page.getByText('Source changed · rerun', {exact:true}).waitFor({state:'hidden'});
   assert.equal(await page.locator('.run-value strong').textContent(), '42');
@@ -34,7 +59,7 @@ export async function elmWorkflow(page: Page, {
   await page.getByRole('textbox', { name: 'Morphir IR', exact: true }).waitFor();
   const ir = JSON.parse(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value));
   assert.ok(ir.distribution);
-  await page.getByRole('button', { name: 'Generated', exact: true }).click();
+  await showGenerated(page);
   const selector = page.getByRole('navigation', { name: 'Generated files', exact: true });
   await selector.waitFor();
   const paths = await selector.locator('.artifact-file').evaluateAll(items => items.map(item => item.getAttribute('aria-label')!));
@@ -109,7 +134,7 @@ export async function elmWorkflow(page: Page, {
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await page.getByText('Source changed · rerun', {exact:true}).waitFor({state:'hidden'});
-  await page.getByRole('button', { name: 'Generated', exact: true }).click();
+  await showGenerated(page);
   await selector.waitFor();
   assert.equal(await selector.locator('.artifact-file').count(), 3, 'Generation recovers after refusal');
   await selector.getByRole('button', { name: 'Collapse src/User/', exact: true }).click();
@@ -123,24 +148,24 @@ export async function elmWorkflow(page: Page, {
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.dataset.document === 'generated|elm.json');
   assert.equal(await selector.getByRole('button', { name: 'elm.json', exact: true }).getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('.artifact-breadcrumb').textContent(), 'elm.json');
-  await page.getByRole('button', { name: 'Hide generated files', exact: true }).click();
-  await page.getByRole('button', { name: 'Show generated files', exact: true }).waitFor();
+  // Closing the right sidebar hides the file tree; the preview and the selection stay.
+  await setRightSidebar(page, false);
   assert.equal(await selector.isVisible(), false);
+  assert.equal(await page.locator('#output').getAttribute('data-document'), 'generated|elm.json', 'Hiding the files keeps the preview');
   await page.getByRole('button', { name: 'Morphir IR', exact: true }).click();
   await page.getByRole('textbox', { name: 'Morphir IR', exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Generated', exact: true }).click();
-  await page.getByRole('button', { name: 'Show generated files', exact: true }).click();
+  await showGenerated(page);
   await selector.waitFor();
   assert.equal(await selector.getByRole('button', { name: 'elm.json', exact: true }).getAttribute('aria-pressed'), 'true', 'IR navigation retains the selected file');
-  const wasCollapsed = await page.locator('.workbench').evaluate(element => element.classList.contains('collapsed'));
-  const controlIcon = page.locator('.artifact-toolbar-title .artifact-icon');
+  // The left sidebar opens and closes on its own: the right sidebar and its controls stay as they are.
+  const leftOpen = await page.locator('#sidebar-primary').isVisible();
+  const controlIcon = page.locator('#sidebar-secondary [data-view="generated"] .section-move .nav-icon');
   const iconTransform = await controlIcon.evaluate(element => getComputedStyle(element).transform);
-  await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
-  await page.waitForFunction(previous => document.querySelector<HTMLElement>('.workbench')!.classList.contains('collapsed') !== previous, wasCollapsed);
-  assert.equal(await controlIcon.evaluate(element => getComputedStyle(element).transform), iconTransform, 'Global sidebar changes do not reverse the generated-file control');
-  assert.equal(await page.getByRole('button', { name: 'Hide generated files', exact: true }).getAttribute('aria-expanded'), 'true');
-  await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
-  await page.waitForFunction(previous => document.querySelector<HTMLElement>('.workbench')!.classList.contains('collapsed') === previous, wasCollapsed);
+  await setExplorer(page, !leftOpen);
+  assert.equal(await controlIcon.evaluate(element => getComputedStyle(element).transform), iconTransform, 'Left sidebar changes do not reverse the Generated section controls');
+  assert.equal(await page.getByRole('button', { name: 'Toggle right sidebar', exact: true }).getAttribute('aria-expanded'), 'true');
+  assert.equal(await selector.isVisible(), true, 'The generated files stay in view');
+  await setExplorer(page, leftOpen);
   const source = await page.locator('#source').evaluate(editor => (editor as CodeEditor).value);
   await page.getByRole('button', { name: 'Expand generated files', exact: true }).click();
   await page.locator('.editor-grid.output-expanded').waitFor();
@@ -155,14 +180,17 @@ export async function elmWorkflow(page: Page, {
   if (process.env.MORPHIR_WORKBENCH_ELM_SCREENSHOT) await page.screenshot({ path: process.env.MORPHIR_WORKBENCH_ELM_SCREENSHOT, fullPage: true });
   const viewport = page.viewportSize();
   if (viewport) {
+    const leftOpen = await page.locator('#sidebar-primary').isVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Generated files fit mobile width');
-    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+    // On a narrow screen a sidebar covers the documents; close the left one so the right one is the only cover.
+    await setExplorer(page, false);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await selector.getByRole('button', { name: 'elm.json', exact: true }).click();
     await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.dataset.document === 'generated|elm.json');
     assert.equal(JSON.parse(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value)).type, 'package');
     await page.setViewportSize(viewport);
+    await setExplorer(page, leftOpen);
   }
   await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value.includes('module Workbench.Main'));
@@ -175,7 +203,7 @@ export async function elmWorkflow(page: Page, {
   const elmIr = JSON.parse(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value));
   assert.ok(elmIr.distribution, 'The Elm module compiles to IR in the browser');
   // Project editing: add a file with an error, see its problem count, delete it inline.
-  if (!await page.locator('#context-navigation').isVisible()) await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
+  await setExplorer(page, true);
   const files = page.getByRole('tree', { name: 'Project files', exact: true });
   const row = (path: string) => files.locator(`[role="treeitem"][data-path="${path}"]`);
   const broken = 'src/Workbench/Broken.elm';
@@ -194,11 +222,11 @@ export async function elmWorkflow(page: Page, {
   await page.locator('#source .cm-morphir-problem').first().waitFor();
   assert.ok(await page.locator('#source .cm-morphir-problem').count() > 0, 'The problem is marked in the editor');
   await row('src/Workbench/Main.elm').click();
-  await page.locator('.file-name').getByText('src/Workbench/Main.elm', { exact: true }).waitFor();
+  await sourceFile(page, 'src/Workbench/Main.elm').waitFor();
   assert.equal(await page.locator('#source .cm-morphir-problem').count(), 0, 'Another file shows none of those marks');
   await page.getByRole('tab', { name: /^Diagnostics/ }).click();
   await page.locator('.tool-reveal').filter({ hasText: broken }).first().click();
-  await page.locator('.file-name').getByText(broken, { exact: true }).waitFor();
+  await sourceFile(page, broken).waitFor();
   await page.locator('#source .cm-morphir-problem').first().waitFor();
   const markedLine = await page.locator('#source').evaluate(el => (JSON.parse((el as HTMLElement).dataset.marks ?? '[]') as { line: number }[])[0]?.line ?? 0);
   assert.ok(markedLine > 1, 'The problem is not on the first line');
@@ -234,7 +262,7 @@ export async function elmWorkflow(page: Page, {
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await page.getByText('Source changed · rerun', { exact: true }).waitFor({ state: 'hidden' });
-  await page.getByRole('button', { name: 'Generated', exact: true }).click();
+  await showGenerated(page);
   const sampleFiles = page.getByRole('navigation', { name: 'Generated files', exact: true });
   await sampleFiles.getByRole('button', { name: 'elm.json', exact: true }).waitFor();
   // Storage: the project survives a reload, "Reset project" restores the default, a failing store shows "Not saved".
@@ -246,9 +274,8 @@ export async function elmWorkflow(page: Page, {
   await row(kept).waitFor();
   await page.waitForTimeout(1000);
   async function reopenElm() {
-    await page.reload();
-    await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
-    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+    await reloadWorkspace(page);
+    await showCompile(page);
     await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
   }
   await reopenElm();
@@ -270,11 +297,15 @@ export async function elmWorkflow(page: Page, {
     await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('(+ 8 9)');
     await page.getByText('Not saved', { exact: true }).waitFor();
   } finally {
-    await page.reload();
-    await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+    await reloadWorkspace(page);
   }
+  // A clean browser: no saved projects and no saved workspaces, so the same workspace is created again.
+  const name = await workspaceName(page);
   await page.evaluate(() => localStorage.clear());
-  await reopenElm();
+  await page.reload();
+  await createWorkspace(page, { name });
+  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
   // Records has an extensible record, which typed evaluation cannot take: it still compiles for every target.
   await openSample(page, 'Records (parity corpus)');
   await files.locator('[data-path="src/Parity/Records/Points.elm"]').waitFor();
@@ -301,9 +332,8 @@ export async function elmWorkflow(page: Page, {
 
 // Exercise the same language/draft/evaluation boundary in browser and packaged CEF.
 export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {}) {
-  await page.getByRole('button', {name:'Try Morphir',exact:true}).click();
-  await page.getByRole('button', {name:'Compile & inspect',exact:true}).click();
-  if (!await page.locator('#context-navigation').isVisible()) await page.getByRole('button',{name:'Toggle sidebar',exact:true}).click();
+  await showCompile(page);
+  await setExplorer(page, true);
   const language = page.getByRole('combobox', {name:'Language',exact:true});
   const target = page.getByRole('combobox', {name:'Target',exact:true});
   const sourceEditor = page.getByRole('textbox', {name:'Source editor',exact:true});
@@ -314,7 +344,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await openSample(page, 'MoonBit Boolean');
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value.includes('pub fn eligible'));
   assert.equal(await page.locator('#source').getAttribute('data-language'),'moonbit');
-  await page.locator('.file-name').getByText('src/main.mbt', {exact:true}).waitFor();
+  await sourceFile(page, 'src/main.mbt').waitFor();
   const addFile = page.getByRole('region', {name:'Project explorer', exact:true}).getByRole('button', {name:'New file', exact:true});
   assert.equal(await addFile.isDisabled(), true, 'A one-file language cannot add files');
   assert.match(await addFile.getAttribute('title') ?? '', /morphir-ukvn\.5\.22\.14/, 'The reason names the planned work');
@@ -332,12 +362,17 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await page.waitForFunction(() => !document.querySelector<CodeEditor>('#source')?.value.includes('retained edit'));
   assert.ok(await page.locator('#source .cm-line span').count() > 0,'MoonBit input has highlighting');
   await target.selectOption('moonbit');
-  assert.equal(await page.getByRole('button',{name:'Evaluate in Explorer',exact:true}).isEnabled(),false);
-  assert.deepEqual(await page.locator('.toolbar-actions .primary:visible').allTextContents(),['Compile'],'Compile leads when the layout cannot run');
+  // Before a compile, Evaluate in Explorer says what it needs; it only shows the model document.
+  const evaluateEntry = await buildMenuItem(page,'Evaluate in Explorer');
+  assert.match(await evaluateEntry.getAttribute('title') ?? '',/^Compile, then select a public function/);
+  await closeBuildMenu(page);
+  assert.equal(await buildAction(page,'Compile').count(),1,'Compile leads when the layout cannot run');
+  assert.equal(await page.locator('.build-actions > .primary').count(),1,'One primary action leads the source header');
+  assert.deepEqual(await buildMenuEntries(page),['Evaluate in Explorer'],'A layout that cannot run offers no run action');
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
   await page.getByText('Source changed · rerun', {exact:true}).waitFor({state:'hidden'});
-  await page.getByRole('button',{name:'Generated',exact:true}).click();
+  await showGenerated(page);
   const navigator = page.getByRole('navigation',{name:'Generated files',exact:true});
   await navigator.locator('.artifact-file').first().waitFor();
   const paths = await navigator.locator('.artifact-file').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')!));
@@ -401,7 +436,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
     for(const path of paths)await writeFile(join(directory,path),archive[path]!);
     await writeFile(join(directory,'main.ion'),unit);
   }
-  await page.getByRole('button',{name:'Model Explorer',exact:true}).click();
+  await showModel(page);
   await page.locator('.model-tree .tree-item').filter({hasText:'eligible'}).click();
   await page.getByRole('heading',{name:'eligible',exact:true}).waitFor();
   await page.getByRole('button',{name:'Input fields',exact:true}).click();
@@ -418,7 +453,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
   await page.waitForFunction(()=>JSON.parse(document.querySelector<CodeEditor>('#evaluation-output')?.value ?? '{}').value === false);
   assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(editor=>(editor as CodeEditor).value)),{type:'bool',value:false});
-  await page.getByRole('button',{name:'Try Morphir',exact:true}).click();
+  await showSource(page);
   await sourceEditor.fill('pub fn answer(x : Int) -> Int { x }');
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'moonbit_frontend.unsupported_type'}).waitFor();
@@ -430,7 +465,9 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   const moonbitDraft=await page.locator('#source').evaluate(editor=>(editor as CodeEditor).value);
   await page.getByRole('button',{name:'Worksheet',exact:true}).click();
   await page.getByRole('button',{name:'Run worksheet',exact:true}).waitFor();
-  assert.equal(await language.inputValue(),'scheme','Worksheet explicitly belongs to Scheme');
+  // The worksheet header names its language instead of offering the Language choice.
+  assert.equal(await page.locator('.source-header').getByText('Scheme worksheet',{exact:true}).isVisible(),true,'Worksheet explicitly belongs to Scheme');
+  assert.equal(await language.isVisible(),false,'A worksheet has no language choice');
   await sourceEditor.fill('(+ 20 22)');
   await page.getByRole('button',{name:'Run worksheet',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Worksheet finished'}).waitFor();
@@ -459,7 +496,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await page.getByRole('button',{name:'Morphir IR',exact:true}).click();
   await page.getByRole('textbox',{name:'Morphir IR',exact:true}).waitFor();
   const schemeIr=await page.locator('#output').evaluate(editor=>(editor as CodeEditor).value);
-  await page.getByRole('button',{name:'Model Explorer',exact:true}).click();
+  await showModel(page);
   await page.locator('.model-tree .tree-item[title="user:main#main"]').click();
   assert.equal(await page.getByRole('button',{name:'Local Scheme',exact:true}).getAttribute('aria-pressed'),'true');
   await page.getByRole('button',{name:'Evaluate',exact:true}).click();
@@ -475,14 +512,13 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await page.waitForFunction(()=>document.querySelectorAll<HTMLElement>('.model-tree .tree-item[aria-pressed="true"]').length===0);
   await page.locator('.model-tree .tree-item[title="user:main#main"]').click();
   assert.equal(await page.getByRole('button',{name:'Local Scheme',exact:true}).getAttribute('aria-pressed'),'true');
-  await page.getByRole('button',{name:'Try Morphir',exact:true}).click();
+  await showSource(page);
   console.log(JSON.stringify({moonbitInput:'moonbit-model-bool-v1',moonbitGeneration:true,languageDraftsAndUndo:true,worksheetIndependent:true,typedPublicEvaluation:true,richIonUnit:true,exactTextAndBinaryExports:true,replacementModelResetsRuntime:true,nativeDownloads}));
 }
 
 export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {}) {
-  await page.getByRole('button', {name:'Try Morphir',exact:true}).click();
-  await page.getByRole('button', {name:'Compile & inspect',exact:true}).click();
-  if (!await page.locator('#context-navigation').isVisible()) await page.getByRole('button',{name:'Toggle sidebar',exact:true}).click();
+  await showCompile(page);
+  await setExplorer(page, true);
   const language=page.getByRole('combobox',{name:'Language',exact:true});
   const profile=page.getByRole('combobox',{name:'Source profile',exact:true});
   const source=page.getByRole('textbox',{name:'Source editor',exact:true});
@@ -513,7 +549,7 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
   await page.getByText('Source changed · rerun',{exact:true}).waitFor({state:'hidden'});
-  await page.getByRole('button',{name:'Model Explorer',exact:true}).click();
+  await showModel(page);
   const tree=page.locator('.model-tree .tree-item');
   await tree.filter({hasText:'eligible'}).click();
   assert.equal(await page.getByRole('button',{name:'Typed invocation',exact:true}).getAttribute('aria-pressed'),'true');
@@ -541,7 +577,7 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   await page.getByRole('button',{name:'Local Scheme',exact:true}).click();
   await page.getByRole('button',{name:'Evaluate',exact:true}).waitFor({state:'hidden'});
   await page.getByText('Only public functions can be evaluated.',{exact:true}).waitFor();
-  await page.getByRole('button',{name:'Try Morphir',exact:true}).click();
+  await showSource(page);
   const rejected='pub fn recur(x : Bool) -> Bool { recur(x) }';
   await source.fill(rejected);
   await page.getByRole('button',{name:'Compile',exact:true}).click();
@@ -552,7 +588,7 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
   await page.getByText('Source changed · rerun',{exact:true}).waitFor({state:'hidden'});
-  await page.getByRole('button',{name:'Generated',exact:true}).click();
+  await showGenerated(page);
   const navigator=page.getByRole('navigation',{name:'Generated files',exact:true});
   await navigator.waitFor();
   const paths=await navigator.locator('.artifact-file').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')!));
@@ -580,20 +616,24 @@ export async function libraryWorkflow(page: Page, {nativeDownloads = true} = {})
   }
   await navigator.getByRole('button',{name:'library.mbt',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.dataset.document==='generated|library.mbt');
-  const files=await navigator.boundingBox(), preview=await page.locator('.artifact-preview').boundingBox();
-  assert.ok(preview!.width>=2.75*files!.width,`Generated code gets most of the output width (${files!.width}px list, ${preview!.width}px code)`);
+  // The file list is in the right sidebar, so the generated code takes the whole output panel.
+  const output=await page.locator('.output-panel').boundingBox(), preview=await page.locator('.artifact-preview').boundingBox();
+  assert.equal(await page.locator('.output-panel .artifact-files').count(),0,'The output panel holds no file list');
+  assert.ok(preview!.width>=output!.width-2,`Generated code gets the whole output width (${output!.width}px panel, ${preview!.width}px code)`);
   if(process.env.MORPHIR_WORKBENCH_LIBRARY_SCREENSHOT)await page.screenshot({path:process.env.MORPHIR_WORKBENCH_LIBRARY_SCREENSHOT,fullPage:true});
   if(nativeDownloads) {
     const viewport=page.viewportSize();
+    const leftOpen=await page.locator('#sidebar-primary').isVisible(), rightOpen=await page.locator('#sidebar-secondary').isVisible();
     await page.setViewportSize({width:390,height:844});
-    await page.getByRole('button',{name:'Toggle sidebar',exact:true}).click();
-    await page.locator('.workbench.collapsed').waitFor();
+    // Narrow sidebars cover the documents: close both to reach the source header.
+    await setExplorer(page,false);
+    await setRightSidebar(page,false);
     await page.locator('.source-capabilities summary').click();
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Profile controls fit a narrow screen');
     if(process.env.MORPHIR_WORKBENCH_LIBRARY_SCREENSHOT)await page.screenshot({path:process.env.MORPHIR_WORKBENCH_LIBRARY_SCREENSHOT.replace('.png','-mobile.png'),fullPage:true});
     await page.setViewportSize(viewport!);
-    await page.getByRole('button',{name:'Toggle sidebar',exact:true}).click();
-    await page.locator('.workbench:not(.collapsed)').waitFor();
+    await setExplorer(page,leftOpen);
+    await setRightSidebar(page,rightOpen);
   }
   await openSample(page, 'MoonBit Boolean');
   await page.waitForFunction(()=>document.querySelector<HTMLSelectElement>('select[aria-label="Source profile"]')?.value==='moonbit-model-bool-v1');
@@ -624,14 +664,13 @@ async function downloadArtifact(page: Page, button: string, name: string, native
   }
 
 export async function stringWorkflow(page: Page) {
-  await page.getByRole('button', {name:'Try Morphir',exact:true}).click();
-  await page.getByRole('button', {name:'Compile & inspect',exact:true}).click();
+  await showCompile(page);
   await openSample(page, 'MoonBit String library');
   assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).inputValue(),'moonbit-model-library-2026-10-17');
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value.includes('pub fn greet(name : String)'));
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
-  await page.getByRole('button',{name:'Model Explorer',exact:true}).click();
+  await showModel(page);
   const tree=page.locator('.model-tree .tree-item');
   await tree.filter({hasText:'welcome'}).click();
   await page.getByRole('button',{name:'Typed invocation',exact:true}).click();
@@ -653,8 +692,8 @@ export async function stringWorkflow(page: Page) {
   await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
   await page.getByRole('button',{name:'Result JSON',exact:true}).click();
   await page.waitForFunction(()=>JSON.parse(document.querySelector<CodeEditor>('#evaluation-output')?.value ?? '{}').value===true);
-  await page.getByRole('button',{name:'Try Morphir',exact:true}).click();
-  await page.getByRole('button',{name:'Generated',exact:true}).click();
+  await showSource(page);
+  await showGenerated(page);
   const navigator=page.getByRole('navigation',{name:'Generated files',exact:true});
   await navigator.getByRole('button',{name:'library.mbt',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value.includes('@source_string.require_valid'));
@@ -662,14 +701,13 @@ export async function stringWorkflow(page: Page) {
 }
 
 export async function supportedWorkflow(page: Page) {
-  await page.getByRole('button',{name:'Try Morphir',exact:true}).click();
-  await page.getByRole('button',{name:'Compile & inspect',exact:true}).click();
+  await showCompile(page);
   await openSample(page,'MoonBit library');
   assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).inputValue(),'moonbit-model-library-2026-10-17');
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value.includes('choose_for'));
   await page.getByRole('button',{name:'Compile',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
-  await page.getByRole('button',{name:'Model Explorer',exact:true}).click();
+  await showModel(page);
   await page.locator('.model-tree .tree-item').filter({hasText:'choose_for'}).click();
   await page.getByRole('button',{name:'Typed invocation',exact:true}).click();
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
@@ -718,8 +756,8 @@ export async function supportedWorkflow(page: Page) {
   for(const [a,b,expected] of [['b','aa','-2147483648'],['aa','b','2147483647'],['b','b','-2147483648']] as const)
     await invoke('choose_earlier',[text(a),text(b),bounded('-2147483648'),bounded('2147483647')],bounded(expected));
   await invoke('unicode_sample',[],text('😀é'));
-  await page.getByRole('button',{name:'Try Morphir',exact:true}).click();
-  await page.getByRole('button',{name:'Generated',exact:true}).click();
+  await showSource(page);
+  await showGenerated(page);
   const navigator=page.getByRole('navigation',{name:'Generated files',exact:true});
   await navigator.getByRole('button',{name:'library.mbt',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value.includes('/// Build a greeting while preserving the supplied name.'));

@@ -1,6 +1,7 @@
 import type { Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
+import { showCompile, setExplorer } from './workbench-steps.ts';
 
 // The project explorer, its context menu, its shortcuts and the command palette, driven from the mouse and the
 // keyboard as a person would. Starts from any state of the local workbench and leaves the Elm project reset.
@@ -28,21 +29,21 @@ export async function explorerWorkflow(page: Page) {
         const shown = await page.evaluate(() => ({
           query: document.querySelector<HTMLInputElement>('#palette-input')?.value,
           options: [...document.querySelectorAll('#palette-list [role="option"]')].map(o => `${o.getAttribute('aria-label')}${o.getAttribute('aria-selected') === 'true' ? ' (selected)' : ''}`),
-          status: document.querySelector('[role="status"]')?.textContent,
+          status: document.querySelector('.statusbar')?.textContent,
         }));
         throw new Error(`The palette did not select ${name}: ${JSON.stringify(shown)}`, { cause: error });
       });
     await paletteInput.press('Enter');
   };
 
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
-  if (!await page.locator('#context-navigation').isVisible()) await page.getByRole('button', { name: 'Toggle sidebar', exact: true }).click();
+  const fileName = page.locator('[data-document="source"] .document-tab-label');
+  await showCompile(page);
+  await setExplorer(page, true);
   await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
   await row('src/Workbench/Main.elm').waitFor();
 
   // Samples live in the palette and the project menu, not in the sidebar.
-  assert.equal(await page.locator('#context-navigation').getByText('EXAMPLES', { exact: true }).count(), 0, 'The sidebar has no examples list');
+  assert.equal(await page.locator('#sidebar-primary').getByText('EXAMPLES', { exact: true }).count(), 0, 'The sidebar has no examples list');
   await page.getByRole('button', { name: 'More actions', exact: true }).click();
   const projectMenu = page.getByRole('menu', { name: 'Project actions', exact: true });
   await projectMenu.locator('.context-menu-heading').getByText('New from sample', { exact: true }).waitFor();
@@ -67,7 +68,7 @@ export async function explorerWorkflow(page: Page) {
   await palette.waitFor({ state: 'detached' });
   await page.waitForFunction(() => document.querySelectorAll('[role="tree"] .explorer-row.is-file').length === 6);
   assert.equal(await row(app).getAttribute('aria-expanded'), 'true', 'Single folders compact into one open row');
-  assert.equal(await page.locator('#context-navigation').evaluate(context => context.scrollWidth <= context.clientWidth), true, 'The sidebar never scrolls sideways');
+  assert.equal(await page.locator('#sidebar-primary .sidebar-sections').evaluate(sections => sections.scrollWidth <= sections.clientWidth), true, 'The sidebar never scrolls sideways');
 
   // Tree keys: roving focus and the WAI-ARIA tree pattern.
   const tabStops = await tree.locator('[role="treeitem"][tabindex="0"]').count();
@@ -92,7 +93,7 @@ export async function explorerWorkflow(page: Page) {
   await page.keyboard.press('f');
   await waitFocus(app + '/Forecast.elm');
   await page.keyboard.press('Enter');
-  await page.locator('.file-name').getByText(app + '/Forecast.elm', { exact: true }).waitFor();
+  await fileName.getByText(app + '/Forecast.elm', { exact: true }).waitFor();
   await page.waitForFunction(() => document.activeElement?.id === 'source', null, { timeout: 5000 });
 
   // New file in a folder from its context menu; a name with a slash makes a subfolder.
@@ -209,7 +210,7 @@ export async function explorerWorkflow(page: Page) {
   assert.deepEqual(await option.locator('.palette-match').allTextContents(), ['B', 'Terms']);
   await paletteInput.press('Enter');
   await palette.waitFor({ state: 'detached' });
-  await page.locator('.file-name').getByText(app + '/BusinessTerms.elm', { exact: true }).waitFor();
+  await fileName.getByText(app + '/BusinessTerms.elm', { exact: true }).waitFor();
   assert.equal(await row(app + '/BusinessTerms.elm').getAttribute('aria-selected'), 'true');
   await page.waitForFunction(() => document.activeElement?.id === 'source', null, { timeout: 5000 });
   // Escape closes the palette and returns the focus where it was.
@@ -266,7 +267,7 @@ export async function explorerWorkflow(page: Page) {
   await more.click();
   await menu.waitFor();
   assert.equal(await menu.getAttribute('aria-label'), 'Actions for App.elm');
-  assert.equal(await page.locator('.file-name').textContent(), app + '/Breeze.elm', 'The ⋯ button does not open the file');
+  assert.equal(await fileName.textContent(), app + '/Breeze.elm', 'The ⋯ button does not open the file');
   await page.keyboard.press('Escape');
   await menu.waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Command palette', exact: true }).click();

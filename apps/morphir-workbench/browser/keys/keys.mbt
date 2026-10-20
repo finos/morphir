@@ -22,9 +22,35 @@ pub(all) enum CommandId {
   ResetProject
   TogglePanel
   SwitchLayout
-  SwitchExperience
   ShowExplorer
   ContextMenu
+  /// Shows the source editor, the model inspector or a draft of the active workspace.
+  ShowSource
+  ShowModel
+  ShowIntent
+  ShowConcept
+  ShowGettingStarted
+  /// Chooses another open or saved workspace.
+  SwitchWorkspace
+  CreateWorkspace
+  TryIdea
+  OpenWorkspace
+  ExploreModel
+  AddIntent
+  AddConceptualModel
+  AddSourceProject
+  ImportModel
+  TogglePrimarySidebar
+  ToggleSecondarySidebar
+  /// Moves an explorer view to the other sidebar.
+  MoveFiles
+  MoveModels
+  MoveGenerated
+  MoveIdeas
+  ShowGeneratedFiles
+  /// Chooses the source profile of the active language.
+  SelectProfile
+  ShowProfileDetails
 } derive(Eq, Debug)
 
 ///|
@@ -222,6 +248,7 @@ pub fn keymap() -> Array[Binding] {
     bind("P", ShowCommands, primary=true, shift=true),
     bind("F1", ShowCommands),
     bind("Enter", Compile, primary=true),
+    bind("B", TogglePrimarySidebar, primary=true),
     bind("F2", RenameFile, scope=Tree),
     bind("Delete", DeleteFile, scope=Tree, shown=OffMac),
     bind("Backspace", DeleteFile, primary=true, scope=Tree, shown=OnMac),

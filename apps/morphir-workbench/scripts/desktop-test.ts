@@ -12,6 +12,7 @@ import { basename, join, relative, sep } from 'node:path';
 import { elmWorkflow, moonbitWorkflow, libraryWorkflow, stringWorkflow, supportedWorkflow } from './elm-workflow.ts';
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.ts';
 import { desktopCapabilityWorkflow } from './capability-workflow.ts';
+import { build, createWorkspace, gettingStarted, showModel, showSource } from './workbench-steps.ts';
 
 // CEF cancels CDP directory enumeration even though ordinary file uploads work.
 // Replay the selected files at the DOM input boundary; production readFiles,
@@ -87,7 +88,8 @@ try {
     await page.reload();
     console.log('Real picker continuation passed: Ion text/binary and legacy JSON inspect, byte-exact original downloads, page reload.');
   }
-  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  // A local page starts on getting started; a workspace opens only when the person chooses one.
+  await gettingStarted(page);
   const originalUrl = page.url();
   const native = async <T = NativeDescriptor,>(operation: string, fields: Record<string,string> = {}): Promise<NativeReply<T>> => {
     const raw = await page.evaluate(async ([operation, fields]) => {
@@ -134,13 +136,13 @@ try {
     });
     assert.ok(['absent', 'rejected'].includes(access), 'An unrelated origin cannot negotiate a native session: ' + access);
     await page.goto(originalUrl);
-    await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+    await gettingStarted(page);
   } finally {
     hostile.closeAllConnections();
     await new Promise(resolve => hostile.close(resolve));
   }
   await page.reload();
-  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  await gettingStarted(page);
   const freshSession = value(await native('open'));
   assert.notEqual(freshSession.sessionId, firstSession.sessionId);
   denied(await native('check', { sessionId: firstSession.sessionId }), 'unauthorized');
@@ -149,9 +151,10 @@ try {
     { operation: 'compile', source: '(+ 1 2)', languageId: 'scheme', target: 'scheme' }, text => resolve(JSON.parse(text)))));
   assert.equal(revoked.success, false); assert.match(revoked.message!, /session|authorized/);
   await page.goto(originalUrl + '?mode=standalone');
-  await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+  await gettingStarted(page);
   assert.equal(await page.evaluate(() => globalThis.morphirWorkbench.runtimeLabel), 'Browser local');
   await page.goto(originalUrl);
+  await createWorkspace(page);
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   await page.evaluate(() => {
     const invoke = window.__MoonBit__!.core!.invokeOp!.bind(window.__MoonBit__!.core);
@@ -170,9 +173,9 @@ try {
   await page.locator('#source .cm-editor').waitFor();
   assert.ok(await page.locator('#source .cm-line span').count() > 0, 'Packaged source has syntax highlighting');
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(+ 20 22)');
-  await page.getByRole('button', { name: 'Compile & run', exact: true }).click();
+  await build(page, 'Compile & run');
   await page.waitForFunction(() => document.querySelector<HTMLElement>('.run-value strong')?.textContent === '42');
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await showModel(page);
   await page.locator('.tree-item').filter({ hasText: 'main' }).click();
   await page.getByRole('heading', { name: 'Returns', exact: true }).waitFor();
   assert.match((await page.locator('.type-signature').textContent()!)!, /main/);
@@ -191,7 +194,7 @@ try {
   await back.click();
   await page.getByRole('heading', { name: 'Product', exact: true }).waitFor();
   if (process.env.MORPHIR_WORKBENCH_DESKTOP_SCREENSHOT) await page.screenshot({path:process.env.MORPHIR_WORKBENCH_DESKTOP_SCREENSHOT,fullPage:false});
-  await page.getByRole('button', {name:'Try Morphir',exact:true}).click();
+  await showSource(page);
   await back.click();
   await page.getByRole('heading', { name: 'Product', exact: true }).waitFor();
   await page.locator('.reference-link').filter({hasText:'Main.ProductId'}).click();
@@ -259,7 +262,7 @@ try {
   await supportedWorkflow(page);
   await toolPanelWorkflow(page, { resize: false });
   // Native execution availability must not apply host retention rules to Local Scheme.
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await showModel(page);
   const localModel = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
   await (await localModel).setFiles(fileURLToPath(new URL('../../../pkgs/morphir-ir/conformance/fixtures/v3-greeting.json', import.meta.url)));
@@ -298,6 +301,7 @@ try {
   } finally { await page.evaluate(() => globalThis.restoreLocalScopeRequests!()); }
   // Presentation fixtures model standalone callbacks without host receipts.
   await page.goto(originalUrl + '?mode=standalone');
+  await createWorkspace(page);
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   await terminalOutcomeWorkflow(page, { resize: false, screenshot: process.env.MORPHIR_WORKBENCH_OUTCOME_SCREENSHOT });
   assert.deepEqual(errors, []);

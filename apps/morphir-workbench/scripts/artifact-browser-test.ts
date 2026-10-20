@@ -12,6 +12,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { unzipSync } from 'fflate';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import { createWorkbenchServer } from './server.ts';
+import { showGeneratedFiles } from './workbench-steps.ts';
 
 const binary = process.env.MORPHIR_WORKBENCH_ARTIFACT_FIXTURE_BIN;
 if (!binary) throw new Error('Set MORPHIR_WORKBENCH_ARTIFACT_FIXTURE_BIN to the qualified installed-process host fixture.');
@@ -150,7 +151,9 @@ try {
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor({ timeout: 120000 });
   await page.getByRole('button', { name: 'Generated', exact: true }).click();
-  const navigation = page.getByRole('navigation', { name: 'Generated files', exact: true });
+  // The generated files are listed in the right sidebar; the selected file previews in the output panel.
+  await showGeneratedFiles(page);
+  const navigation = page.locator('#sidebar-secondary').getByRole('navigation', { name: 'Generated files', exact: true });
   const expected = mode === 'download' ? {
     'indexed.bin': Uint8Array.from({ length: 1048833 }, (_, index) => (index % 256) ^ ((Math.floor(index / 65536)) % 256)),
     'original.txt': new TextEncoder().encode('\ufeffOriginal\r\nline two\r\n'),

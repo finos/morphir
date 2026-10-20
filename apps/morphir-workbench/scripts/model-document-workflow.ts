@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import type { Browser, Download, FileChooser, Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
+import { gettingStarted, openLocal, showModel, showSource } from './workbench-steps.ts';
 
 async function contents(download: Download): Promise<Buffer> {
   const stream = await download.createReadStream();
@@ -22,10 +23,9 @@ export async function modelDocumentWorkflow(browser: Browser, url: string): Prom
   const page = await context.newPage(), errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   try {
-    await page.goto(url);
-    await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
+    await openLocal(page, url);
     const source = await page.locator('#source').evaluate(editor => (editor as CodeEditor).value);
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     const input = await readFile(new URL('../../../pkgs/morphir-ir/conformance/fixtures/v1-rentals.json', import.meta.url), 'utf8');
     const original = Buffer.from('\ufeff' + input.replace(/\r?\n/g, '\r\n'));
     await (await choose(page)).setFiles({ name: 'rentals-original.json', mimeType: 'application/json', buffer: original });
@@ -65,12 +65,18 @@ export async function modelDocumentWorkflow(browser: Browser, url: string): Prom
     assert.equal(await originalButton.count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Close model', exact: true }).count(), 0);
     assert.equal(await page.locator('.tree-item').count(), 0);
-    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+    // The model work leaves the same workspace's source as it was.
+    await showSource(page);
     assert.equal(await page.locator('#source').evaluate(editor => (editor as CodeEditor).value), source);
     assert.equal(await page.getByRole('button', { name: 'Source unit', exact: true }).count(), 0);
-    // Imported semantic inspection still supports exact UTF-16 evaluation.
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
-    await (await choose(page)).setFiles(new URL('../fixtures/typed-pricing.json', import.meta.url).pathname);
+    // Imported semantic inspection still supports exact UTF-16 evaluation, in a model workspace of its own.
+    await page.getByRole('button', { name: 'Getting started', exact: true }).click();
+    await gettingStarted(page);
+    await page.getByRole('button', { name: 'Explore a model', exact: true }).click();
+    const explore = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Import a model file…', exact: true }).click();
+    await (await explore).setFiles(new URL('../fixtures/typed-pricing.json', import.meta.url).pathname);
+    await page.getByRole('button', { name: 'Workspace: typed-pricing.json', exact: true }).waitFor();
     await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
     await page.locator('.tree-item[title="pricing:boundaries#text"]').click();
     await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
@@ -82,6 +88,6 @@ export async function modelDocumentWorkflow(browser: Browser, url: string): Prom
     await page.getByRole('textbox', { name: 'Result JSON', exact: true }).waitFor();
     assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(editor => (editor as CodeEditor).value)), { type: 'text', units: [55296, 0] });
     assert.deepEqual(errors, []);
-    console.log('Model document workflow passed: migrated v1 BOM/CRLF original saved byte-for-byte, failed replacement retained it, close retired a pending real File read and preserved editor input.');
+    console.log('Model document workflow passed: migrated v1 BOM/CRLF original saved byte-for-byte, failed replacement retained it, close retired a pending real File read and preserved the workspace source, and a model workspace from getting started evaluated exact UTF-16.');
   } finally { await context.close(); }
 }

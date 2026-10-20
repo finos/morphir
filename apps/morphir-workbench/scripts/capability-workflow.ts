@@ -3,7 +3,7 @@ import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { openSample } from './workbench-steps.ts';
+import { createWorkspace, openLocal, openSample, showCompile, showModel } from './workbench-steps.ts';
 import { isRecord } from '../../../types/data.ts';
 
 type ControlledWindow = Window & { capabilityTest: { hold: boolean; release: (() => void) | null; completed: Record<string, number> } };
@@ -44,9 +44,8 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     await page.waitForFunction(() => ![...document.querySelectorAll<HTMLButtonElement>('button')].find(e => e.textContent === 'Evaluate')?.disabled);
   };
   const readInputs = () => page.locator('#evaluation-input').evaluate(e => (e as CodeEditor).value);
-  const ready = () => page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   const importModel = async (path: string, content?: string) => {
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     const before = await completed('inspect');
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
@@ -72,7 +71,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
         }
       };
     });
-    await page.goto(url); await ready();
+    await openLocal(page, url);
     await page.evaluate(() => {
       const request = globalThis.morphirWorkbench.request.bind(globalThis.morphirWorkbench);
       globalThis.morphirWorkbench.request = (data, receive) => request(data, reply => {
@@ -151,8 +150,8 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     assert.equal(await policy.locator('option[value="permissive"]').evaluate(e => (e as HTMLOptionElement).disabled), true);
     await choosePolicy('strict');
 
-    // Current dated source profile stays separate from checking policy in Try Morphir.
-    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+    // Current dated source profile stays separate from checking policy in the source document.
+    await showCompile(page);
     await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
     await paint();
     await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.dataset.language === 'elm');
@@ -162,27 +161,27 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
       'module Workbench.Main exposing (answer, readX)\n\nanswer : Int\nanswer = 42\n\nreadX : { a | x : Int } -> Int\nreadX r = r.x\n');
     await paint();
     await compile('MoonBit generation failed');
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     await page.locator('.tree-item[title="workbench:main#answer"]').click();
     await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
     await choosePolicy('permissive'); await evaluate();
     await page.getByRole('tab', { name: /^Diagnostics/ }).click();
     await page.locator('#tool-panel-body').getByText('Open records require specialization', { exact: false }).first().waitFor();
     await page.getByRole('button', { name: 'Collapse panel', exact: true }).click();
-    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+    await showCompile(page);
     await openSample(page, 'MoonBit library');
     await compile();
     const sourceProfile = page.getByRole('combobox', { name: 'Source profile', exact: true });
     assert.equal(await sourceProfile.inputValue(), 'moonbit-model-library-2026-10-17');
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     await page.locator('.tree-item[title="user:main#welcome"]').click();
     await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
     await inputMode('JSON');
     const args = '[{"type":"text","units":[55357,56832]},{"type":"bool","value":true}]';
     await inputs.fill(args); await choosePolicy('permissive');
-    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+    await showCompile(page);
     assert.equal(await sourceProfile.inputValue(), 'moonbit-model-library-2026-10-17');
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     assert.equal(await readInputs(), args);
     await evaluate();
     await page.locator('.captured-policy').filter({ hasText: 'As code executes' }).waitFor();
@@ -212,11 +211,11 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
       ['MoonBit Boolean library', 'moonbit-model-bool-library-v1'],
       ['MoonBit Boolean', 'moonbit-model-bool-v1'],
     ]) {
-      await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+      await showCompile(page);
       await openSample(page, sample!);
       assert.equal(await sourceProfile.inputValue(), profile);
       await compile();
-      await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+      await showModel(page);
       await page.locator('.tree-item[title="user:main#eligible"]').click();
       await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
       await inputMode('JSON');
@@ -227,9 +226,9 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
       }
       await inputMode('Ion'); await evaluate();
       assert.deepEqual(JSON.parse(await page.locator('#evaluation-output').evaluate(e => (e as CodeEditor).value)), { type: 'bool', value: true });
-      await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+      await showCompile(page);
       assert.equal(await sourceProfile.inputValue(), profile, 'Checking policy never upgrades a pinned source profile');
-      await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+      await showModel(page);
     }
     await policy.focus(); assert.equal(await policy.evaluate(e => document.activeElement === e), true);
     for (const width of [390, 768, 1440]) {
@@ -293,7 +292,7 @@ export async function desktopCapabilityWorkflow(page: import('playwright').Page)
   const uiFixture = (await readFile(fixture, 'utf8')).replace('\"inputTypes\": {}', '\"inputTypes\": {\"unused\": \"morphir/SDK:basics#int\"}');
   const selection = { profile: 'morphir/workbench/admission', contractVersion: '0.1.0-draft.1', policy: 'permissive' };
   const importModel = async (content?: string) => {
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showModel(page);
     const before = (await state()).completed.inspect ?? 0;
     const chooser = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
@@ -399,8 +398,8 @@ export async function desktopCapabilityWorkflow(page: import('playwright').Page)
     }
     await policy.selectOption('strict'); await paint();
     await page.locator('.evaluation-result.stale .captured-policy').filter({ hasText: 'As code executes' }).waitFor();
-    await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-    await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+    await showCompile(page);
+    await showModel(page);
     assert.equal(await policy.inputValue(), 'strict');
     await page.locator('.captured-policy').filter({ hasText: 'As code executes' }).waitFor();
 
@@ -434,7 +433,9 @@ export async function desktopCapabilityWorkflow(page: import('playwright').Page)
   } finally {
     await page.evaluate(() => { const state = (window as unknown as DesktopPolicyWindow).desktopPolicyTest; state.release?.(); state.restore(); });
   }
+  // A reloaded local page shows getting started; a new workspace holds the fresh page's model.
   await page.reload();
+  await createWorkspace(page);
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   await controls();
   try {

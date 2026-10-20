@@ -14,8 +14,19 @@ extern "js" fn scope_test_environment() -> () -> Unit =
 fn scope_model() -> Model {
   let restore = scope_test_environment()
   defer restore()
+  let base = initial()
+  // The tests act in a source workspace that keeps the earlier storage keys.
+  let (registry, entry) = base.registry.create(
+    SourceProject,
+    contents=[SourceProject],
+    storage=Legacy,
+    saved=false,
+  )
   {
-    ..initial(),
+    ..base,
+    registry,
+    active: Some(entry.id),
+    screen: Workspace,
     busy: false,
     executions_available: true,
     selected: "value|original",

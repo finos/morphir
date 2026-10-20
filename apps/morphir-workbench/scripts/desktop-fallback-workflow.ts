@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import type { Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
+import { build, createWorkspace, showCompile, showModel } from './workbench-steps.ts';
 
 type ProbeWindow = Window & { platformProbe: { completed: Record<string, number>; native: string[] } };
 const paint = (page: Page) => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -29,20 +30,22 @@ async function complete(page: Page, operation: string, action: () => Promise<unk
     await page.waitForFunction(({ operation, before }) => ((window as unknown as ProbeWindow).platformProbe.completed[operation] ?? 0) > before, { operation, before });
   } catch (error) {
     const observed = await page.evaluate(() => ({ completed: (window as unknown as ProbeWindow).platformProbe.completed,
-      status: document.querySelector('[role="status"]')?.textContent }));
+      status: document.querySelector('.statusbar')?.textContent }));
     throw new Error(`No ${operation} completion: ${JSON.stringify(observed)}`, { cause: error });
   }
   await paint(page);
 }
 export async function fallbackWorkerWorkflow(page: Page, mode: 'native-fallback' | 'standalone') {
   await probe(page);
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click(); await paint(page);
+  // A page that just loaded shows getting started; the workflow compiles in a source workspace of its own.
+  if (await page.locator('.getting-started').count()) await createWorkspace(page);
+  await showCompile(page); await paint(page);
   const source = page.getByRole('textbox', { name: 'Source editor', exact: true });
   await source.fill('(+ 20 22)'); await paint(page);
   assert.equal(await page.locator('#source').evaluate(e => (e as CodeEditor).value), '(+ 20 22)');
-  await complete(page, 'run', () => page.getByRole('button', { name: 'Compile & run', exact: true }).click());
+  await complete(page, 'run', () => build(page, 'Compile & run'));
   await page.waitForFunction(() => document.querySelector('.run-value strong')?.textContent === '42');
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click(); await paint(page);
+  await showModel(page); await paint(page);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
   await complete(page, 'inspect', async () => (await chooser).setFiles(fileURLToPath(new URL('../fixtures/typed-pricing.json', import.meta.url))));

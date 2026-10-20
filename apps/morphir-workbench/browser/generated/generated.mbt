@@ -51,7 +51,8 @@ pub extend Menu with @debug.Debug::{to_repr}
 pub(all) struct State {
   selected : String
   collapsed : Array[String]
-  files_visible : Bool
+  /// Text a file path must contain to be listed; empty lists every file.
+  filter : String
   expanded : Bool
   preview : Preview
   menu : Menu?
@@ -79,7 +80,7 @@ pub extend FileCommand with @debug.Debug::{to_repr}
 pub(all) enum Action {
   Select(String)
   ToggleFolder(String)
-  ToggleFiles
+  Filter(String)
   ToggleExpanded
   /// File, point and viewport size, in CSS pixels.
   OpenMenu(String, Int32, Int32, Int32, Int32)
@@ -116,7 +117,7 @@ pub fn State::new() -> State {
   {
     selected: "",
     collapsed: [],
-    files_visible: true,
+    filter: "",
     expanded: false,
     preview: Summary,
     menu: None,
@@ -154,7 +155,7 @@ pub fn State::apply(
       }
       ({ ..self, collapsed, }, [])
     }
-    ToggleFiles => ({ ..self, files_visible: !self.files_visible, }, [])
+    Filter(filter) => ({ ..self, filter, }, [])
     ToggleExpanded => ({ ..self, expanded: !self.expanded, }, [])
     OpenMenu(path, x, y, width, height) => {
       let items = menu_items(file_of(files, path)).map(entry => entry.1)
@@ -518,6 +519,7 @@ fn icon(name : String) -> @html.Html {
 fn file_button(
   file : Json,
   label : String,
+  depth : Int32,
   state : State,
   selected_path : String,
   mac : Bool,
@@ -543,6 +545,8 @@ fn file_button(
           .aria_label(path)
           .aria_pressed((path == selected_path).to_string())
           .aria_haspopup("menu")
+          .data_set("tree-row", "file")
+          .data_set("level", depth.to_string())
           .on_contextmenu(event => {
             event.prevent_default()
             event.stop_propagation()
@@ -655,7 +659,9 @@ fn file_tree(
                 "Expand " + path
               },
             )
-            .aria_expanded(open.to_string()),
+            .aria_expanded(open.to_string())
+            .data_set("tree-row", "folder")
+            .data_set("level", depth.to_string()),
           on_click=emit(ToggleFolder(path)),
           [
             @html.span(
@@ -677,7 +683,7 @@ fn file_tree(
     )
   }
   for (file, label) in leaves {
-    rows.push(file_button(file, label, state, selected_path, mac, emit))
+    rows.push(file_button(file, label, depth, state, selected_path, mac, emit))
   }
   @html.ul(class="artifact-tree", rows)
 }
@@ -705,8 +711,129 @@ fn breadcrumb(path : String) -> @html.Html {
 }
 
 ///|
-/// Generated source remains a set of files; the editor is a read-only projection.
-pub fn view(
+/// True when `path` contains `filter`, ignoring case. An empty filter matches every path.
+pub fn matches_filter(path : String, filter : String) -> Bool {
+  let wanted = filter.trim().to_owned().to_lower()
+  wanted == "" || path.to_lower().contains(wanted)
+}
+
+///|
+/// What the Generated explorer says when there are no files: the generation's own message, or the next step.
+fn empty_note(output : Json) -> String {
+  let message = text(output, "generationMessage")
+  if message != "" {
+    message
+  } else if field(output, "ir") == Json::null() {
+    "Choose a target and compile to generate files."
+  } else {
+    "No files were generated. Choose a target and compile again."
+  }
+}
+
+///|
+/// The Generated explorer for a sidebar: a filter, the file tree with each file's menu, and the project download.
+/// Selecting a file shows it in the editor area; the explorer keeps no copy of the files.
+pub fn explorer(
+  props : Props,
+  emit : @cmd.Emit[Action],
+  on_download : @cmd.Emit[Bool],
+) -> @html.Html {
+  let files = artifacts(props.output)
+  let shown = files.filter(f => {
+    matches_filter(text(f, "path"), props.state.filter)
+  })
+  let path = text(selected(props.output, props.state.selected), "path")
+  let body : Array[@html.Html] = []
+  if files.is_empty() {
+    body.push(
+      @html.p(class="small muted artifact-empty", empty_note(props.output)),
+    )
+  } else {
+    body.push(
+      @html.input(
+        class="explorer-filter",
+        placeholder="Filter files…",
+        value=props.state.filter,
+        attrs=@html.Attrs::build().aria_label("Filter generated files"),
+        on_input=emit.map(value => Filter(value)),
+      ),
+    )
+    body.push(
+      @html.div(class="artifact-toolbar", [
+        @html.div(class="artifact-toolbar-title", [
+          @html.span(class="artifact-title", "Generated files"),
+          @html.span(class="artifact-count", files.length().to_string()),
+        ]),
+        @html.button(
+          class="ghost small",
+          disabled=files.any(f => !downloadable(f)),
+          on_click=on_download(true),
+          [icon("download"), @html.span("Download project")],
+        ),
+      ]),
+    )
+    if files.any(f => !downloadable(f)) {
+      body.push(
+        @html.p(
+          class="small muted",
+          "Binary files remain opaque; this host does not declare their download encoding.",
+        ),
+      )
+    }
+    if shown.is_empty() {
+      body.push(
+        @html.p(
+          class="small muted artifact-empty",
+          "No files match the filter.",
+        ),
+      )
+    } else {
+      body.push(
+        @html.nav(
+          class="artifact-files",
+          attrs=@html.Attrs::build()
+            .aria_label("Generated files")
+            .data_set("tree", "generated")
+            .on_keydown(@shell.on_tree_key),
+          [file_tree(shown, "", 0, props.state, path, props.mac, emit)],
+        ),
+      )
+    }
+  }
+  match props.state.menu {
+    Some(menu) => {
+      let entries = menu_items(file_of(files, menu.path))
+      body.push(
+        @context_menu.view(
+          {
+            items: entries.map(entry => entry.1),
+            left: menu.left,
+            top: menu.top,
+            index: menu.index,
+            label: "Actions for " + menu.path,
+            id_prefix: menu_id_prefix,
+            mac: props.mac,
+          },
+          on_choose=index => {
+            match entries.get(index) {
+              Some(entry) => emit(Choose(entry.0))
+              None => @cmd.none
+            }
+          },
+          on_key=chord => emit(MenuKey(chord)),
+          on_close=emit(CloseMenu),
+        ),
+      )
+    }
+    None => ()
+  }
+  @html.div(class="generated-explorer", body)
+}
+
+///|
+/// The selected generated file in the editor area: its path, a read-only projection of its content, its binary
+/// views and its download. Generated source remains a set of files; the editor shows one of them.
+pub fn preview(
   props : Props,
   emit : @cmd.Emit[Action],
   on_download : @cmd.Emit[Bool],
@@ -719,26 +846,6 @@ pub fn view(
   body.push(
     @html.div(class="artifact-toolbar", [
       @html.div(class="artifact-toolbar-title", [
-        @html.button(
-          class="artifact-icon-button",
-          disabled=files.is_empty(),
-          title=if props.state.files_visible {
-            "Hide generated files"
-          } else {
-            "Show generated files"
-          },
-          attrs=@html.Attrs::build()
-            .aria_label(
-              if props.state.files_visible {
-                "Hide generated files"
-              } else {
-                "Show generated files"
-              },
-            )
-            .aria_expanded(props.state.files_visible.to_string()),
-          on_click=emit(ToggleFiles),
-          icon("files"),
-        ),
         @html.span(
           class="artifact-title",
           if files.is_empty() {
@@ -750,13 +857,6 @@ pub fn view(
         @html.span(class="artifact-count", files.length().to_string()),
       ]),
       @html.div(class="artifact-toolbar-actions", [
-        @html.button(
-          class="ghost",
-          hidden=files.is_empty(),
-          disabled=files.any(f => !downloadable(f)),
-          on_click=on_download(true),
-          [icon("download"), @html.span("Download project")],
-        ),
         @html.button(
           class="artifact-icon-button",
           title=if props.state.expanded {
@@ -779,16 +879,6 @@ pub fn view(
       ]),
     ]),
   )
-  if !files.is_empty() {
-    if files.any(f => !downloadable(f)) {
-      body.push(
-        @html.p(
-          class="small muted",
-          "Binary files remain opaque; this host does not declare their download encoding.",
-        ),
-      )
-    }
-  }
   let message = text(props.output, "generationMessage")
   if message != "" {
     body.push(@html.p(class="generation-message", message))
@@ -828,6 +918,7 @@ pub fn view(
             None => if hex { "Raw bytes (hex)" } else { "Binary" }
           },
         ),
+        @html.span(class="artifact-readonly", hidden=binary, "Read-only"),
         if decoded is Some(_) || hex {
           @html.button(
             class="ghost artifact-back",
@@ -906,51 +997,7 @@ pub fn view(
       },
     }),
   )
-  body.push(
-    @html.div(
-      class=if files.is_empty() || !props.state.files_visible {
-        "artifact-workspace files-hidden"
-      } else {
-        "artifact-workspace"
-      },
-      [
-        @html.nav(
-          class="artifact-files",
-          hidden=files.is_empty() || !props.state.files_visible,
-          attrs=@html.Attrs::build().aria_label("Generated files"),
-          [file_tree(files, "", 0, props.state, path, props.mac, emit)],
-        ),
-        @html.div(class="artifact-preview", preview),
-      ],
-    ),
-  )
-  match props.state.menu {
-    Some(menu) => {
-      let entries = menu_items(file_of(files, menu.path))
-      body.push(
-        @context_menu.view(
-          {
-            items: entries.map(entry => entry.1),
-            left: menu.left,
-            top: menu.top,
-            index: menu.index,
-            label: "Actions for " + menu.path,
-            id_prefix: menu_id_prefix,
-            mac: props.mac,
-          },
-          on_choose=index => {
-            match entries.get(index) {
-              Some(entry) => emit(Choose(entry.0))
-              None => @cmd.none
-            }
-          },
-          on_key=chord => emit(MenuKey(chord)),
-          on_close=emit(CloseMenu),
-        ),
-      )
-    }
-    None => ()
-  }
+  body.push(@html.div(class="artifact-preview", preview))
   @html.div(class="generated-output", body)
 }
 

@@ -1,7 +1,7 @@
 import type { Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
-import { openSample } from './workbench-steps.ts';
+import { openSample, showCompile, showSource, showModel, setExplorer } from './workbench-steps.ts';
 
 // Real failures can be read in the tool panel: each failed execution and each diagnostic opens its details (code, stage,
 // location, message, execution context), copies a plain-text report and shows the reply without source or models.
@@ -17,14 +17,14 @@ export async function detailsWorkflow(page: Page) {
     return clipboard();
   };
 
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
-  await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
+  await showCompile(page);
+  await setExplorer(page, true);
   await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
-  await page.locator('.file-name').getByText('src/Workbench/Main.elm', { exact: true }).waitFor();
+  await page.locator('[data-document="source"] .document-tab-label').getByText('src/Workbench/Main.elm', { exact: true }).waitFor();
   // A real Elm syntax error.
   await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('module Workbench.Main exposing (..)\n\nbroken =');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('[role="status"]')?.textContent?.includes('elm.'));
+  await page.waitForFunction(() => document.querySelector('.statusbar')?.textContent?.includes('elm.'));
 
   // Diagnostics: the row opens its code, severity, stage, location, message and execution; the location opens the file.
   await tab('Diagnostics').click();
@@ -93,7 +93,7 @@ export async function detailsWorkflow(page: Page) {
   }
 
   // A model that is not valid fails with a stable code and the codec's detail, never a bare key name.
-  await page.getByRole('button', { name: 'Model Explorer', exact: true }).click();
+  await showModel(page);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
   await (await chooser).setFiles({ name: 'empty.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
@@ -106,7 +106,7 @@ export async function detailsWorkflow(page: Page) {
 
   // A reply that carries source: the MoonBit refusal of Records holds the IR and the source unit, which both quote
   // the module's doc comment. The raw reply keeps their names and sizes and never the text.
-  await page.getByRole('button', { name: 'Try Morphir', exact: true }).click();
+  await showSource(page);
   const targetBox = page.getByRole('combobox', { name: 'Target', exact: true });
   const previousTarget = await targetBox.inputValue();
   await openSample(page, 'Records (parity corpus)');

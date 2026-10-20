@@ -1,11 +1,12 @@
 # Morphir Workbench
 
-A shared MoonBit/Rabbita frontend for Model Explorer and Try Morphir. It runs as
+A shared MoonBit/Rabbita frontend for Morphir workspaces: intent, conceptual models,
+source projects, models and generated code side by side. It runs as
 a standalone browser app and inside the [Proton desktop host](../morphir-workbench-desktop/README.md).
 The browser adapter can also use Morphir's existing connected protocol v1 when
 these assets are served by an authenticated Morphir host on the same origin.
 
-Model Explorer imports JSON, YAML, Ion text and Ion binary through shared portable
+The model document imports JSON, YAML, Ion text and Ion binary through shared portable
 codecs. The Model format control can select a codec explicitly; `.yaml` and `.yml`
 are recognized automatically. Original YAML has a read-only YAML editor preview,
 and original downloads retain its BOM, line endings, comments and numeric text.
@@ -25,6 +26,60 @@ workers. The explorer also offers read-only workspace grants. Explicit connected
 uses the same decoder, cursor, cancellation and release logic. Native desktop
 transport supplies raw business frames to that same client after page-bound
 session checks. See the desktop README for budgets and platform qualification.
+
+## Workspaces
+
+The Workbench is organized around **workspaces**. A workspace holds any mix of
+modeling intent, a conceptual model, source projects, a model, generated files and
+a worksheet. Source project, model exploration and sandbox are starting presets,
+not kinds: a sandbox can gain source, and a model workspace can gain intent later.
+Selecting a file, a declaration or a draft changes the document, never the workspace.
+
+With no workspace open, **Getting started** offers four ways in:
+
+- **Try an idea**: Capture intent, Sketch a conceptual model or a Scratch worksheet.
+  An idea does not need source code or an imported model.
+- **Open a workspace**: import a source folder (copied into the browser; nothing is
+  written back) or, on desktop builds with folder grants, open a folder read-only.
+  Saved workspaces are listed under **Recent workspaces**.
+- **Create a workspace**: a name and a starting point (empty, source project or
+  sandbox). The location is this browser.
+- **Explore a model**: import a model file or YAML tree without its source.
+
+Open, Explore and the desktop folder flow create a provisional workspace. It is kept
+only when the folder, model or grant arrives. A cancellation or failure removes it,
+returns to the workspace that was open and says why; **Stop waiting** does the same
+when a browser does not report a cancelled picker. Examples open in their own
+workspaces and stay separate from Recent workspaces.
+
+The header's workspace picker switches workspaces. Each open workspace keeps its
+drafts, selection, filters, sections, layout, revisions and tool panel. Switching
+never cancels or releases work: a reply for a workspace that is not active changes
+that workspace only. The compiler worker is shared, so one operation runs at a time.
+
+The left rail keeps **Getting started** and **Explorer** visible. Explorer, the
+sidebar's own button and Ctrl/⌘+B toggle the left sidebar; the header's right
+button toggles the right sidebar. Each sidebar resizes by pointer or by keyboard on
+its edge (arrows move 16 px, Home and End jump to 200 and 560 px). Files, Models,
+Ideas and Generated are stacked sections that open and close on their own; each
+section's move button, or the command palette, moves it to the other sidebar with
+its state. Files, Models and Ideas start on the left and Generated on the right; the
+right sidebar starts closed. At 900 px and narrower, sidebars cover the documents
+and start closed.
+
+A successful generation keeps the layout as it is and shows a **Generation
+complete** notification. **Show generated files** opens the Generated section where
+it is; dismissing it changes nothing. Selecting a generated file shows it read-only
+in the editor area.
+
+Storage is browser-local. The workspace list (`morphir-workbench.workspaces.v1`),
+source projects, the worksheet and the drafts are saved per workspace as you work.
+Projects saved before workspaces existed keep their keys and appear as **My
+project**. Models, generated files and execution state stay in the page; a reopened
+workspace asks for its model again. A page load shows Getting started rather than
+reopening a workspace. Two tabs that edit one workspace overwrite each other's saves;
+there is no cross-tab synchronization. A connected host provides one workspace,
+**Connected host**, and nothing is stored locally for it.
 
 ## Runtime capabilities
 
@@ -121,11 +176,10 @@ Choose **MoonBit** in Language, or open the **MoonBit Boolean** sample.
 The `moonbit-model-bool-v1` profile accepts one function with explicit `Bool`
 parameters and return type. Boolean literals, operators and `if`/`else` are
 supported; other types, calls, loops and bindings produce profile diagnostics.
-Use **Compile**, then select a public function in **Model Explorer** to enter
+Use **Compile**, then select a public function in the **Models** view to enter
 Boolean inputs and evaluate through typed validation. **Evaluate in Explorer**
-is disabled in the compile toolbar because the frontend does not create an
-implicit Scheme `main` entry, so **Compile** becomes the toolbar's primary
-action. Private functions remain inspectable.
+in the build menu opens the model document, because the frontend does not create an
+implicit Scheme `main` entry. Private functions remain inspectable.
 
 The **Source profile** selector uses the local provider's capability descriptions.
 Fresh local MoonBit projects select **Supported MoonBit library 2026-10-17**,
@@ -183,10 +237,8 @@ run generated code in the browser. **Download source unit** exports the rich Ion
 source unit with original metadata, annotations and provenance. Semantic JSON
 export remains separate and does not carry that metadata.
 
-The global navigation retains its collapse choice per experience. Model Explorer
-shows the model tree in its contextual sidebar; Try Morphir shows the project explorer, and
-its page heading describes the active layout. Source, results and the selected declaration survive navigation.
-The top bar's rounded arrow button, with a **Back** tooltip, retraces experience, worksheet and declaration
+Source, results and the selected declaration survive navigation between documents and workspaces.
+The **Back** button at the start of the document tabs retraces document, worksheet and declaration
 navigation, including references and Used by links. It restores the search and
 detail view recorded at that destination and works with the sidebar collapsed.
 Editing source does not add history entries or undo source changes. Selecting a
@@ -194,7 +246,7 @@ different function resets its local evaluation inputs and result. The latest con
 host evaluation keeps its own draft and full result when navigating away and back.
 History keeps the
 latest 100 destinations in memory; replacing a model clears declaration and
-search destinations while retaining experience navigation. Back is disabled
+search destinations while retaining document navigation. Back is disabled
 when no earlier destination is available.
 Imported JSON versions 1–4 are decoded and migrated explicitly to the current
 semantic model. Local export writes normalized v4 JSON. Source and model state
@@ -212,7 +264,7 @@ Moving the worker onto the engine and adding the Elm provider changed `dist/work
 20,113,918 bytes (+2,470,878 bytes, +14.0%). There is no size budget. `execute` builds a fresh engine for each
 request.
 
-## Model Explorer
+## Model document
 
 Import `pkgs/morphir-ir/conformance/fixtures/v3-greeting.json` for an example with
 records, custom types, documentation and functions. The overview shows the loaded
@@ -362,17 +414,17 @@ The portable `inspector.mbt` builds this projection from semantic IR. Its select
 keys include declaration kind because a type and value can share a qualified name.
 `browser/model-explorer` owns the UI component; it does not decode legacy wire shapes
 or introduce RPC methods. Both standalone and connected models use the projection.
-Search, selected declaration and module collapse state survive experience navigation.
+Search, selected declaration and module collapse state survive document navigation.
 Loading a replacement model clears search, selection and module collapse choices.
 
 ## Tool panel
 
-A bottom tool panel in both experiences hosts **Logs**, **Diagnostics** and
+A bottom tool panel in each workspace hosts **Logs**, **Diagnostics** and
 **Output**, as in an IDE. It starts collapsed as a compact bar with the tabs,
 the current operation status and an icon to open it. Select a tab to open it;
 select the open tab again, or use the collapse icon, to close it. Maximize
 makes the panel taller and Restore returns it to its normal height. The open
-tab and size are kept when you move between Try Morphir and Model Explorer.
+tab and size are kept when you move between documents.
 The tabs follow the ARIA tabs pattern: Arrow keys, Home and End move focus and
 selection without scrolling the page.
 
@@ -434,25 +486,25 @@ The workbench follows [Morphir's site](https://morphir.finos.org/): blue
 selected labels and focus outlines use the site's darker blue `#00729e`.
 Primary actions pair orange with dark `#1c1e21` text.
 
-A page that hosts the workbench can add `<meta name="morphir-site-home" content="<url>">`. The breadcrumb then
-starts with a **Morphir** link to that URL, and the logo links there too. The project site does this at `/try/`;
+A page that hosts the workbench can add `<meta name="morphir-site-home" content="<url>">`. The logo then links
+to that URL. The project site does this at `/try/`;
 the desktop host and the development server do not.
 
-Each screen has one primary action. Try Morphir promotes the run action when
-the layout can run and **Compile** otherwise; Cancel appears only while an operation
-runs. Secondary actions, such as source-unit, project and IR downloads, use
+The source document keeps its controls on the tab row: Language, Source profile,
+**Profile details** on demand, and **Compile** (or **Run worksheet**) as the primary
+action. **More build actions** lists Compile & run or Evaluate in Explorer with the
+command palette's availability and reasons. The segmented **Compile & inspect** |
+**Worksheet** picker sits in the header beside the connection while the source
+document is open. Cancel appears only while an operation runs. Secondary actions, such as source-unit, project and IR downloads, use
 quiet icon buttons. Input and result views are tabs, and the evaluation runtime
 is the only segmented switch inside an evaluation card. Profile details and
 input and output types stay behind disclosures until needed. Stale and failed results keep an orange or red accent and label.
-Try Morphir's source and output panes fill the window height between the
-controls and the tool panel and scroll inside their editors, with a 320 px
-minimum for short windows. The generated-file list takes only its content
-width, up to 200 px, so code gets the rest of the output pane. On
-screens up to 650 px wide, the sidebar becomes a band above the page with
-icon-only navigation, so the content keeps the full width.
+The source and output panes fill the documents area between the tabs and the tool
+panel and scroll inside their editors; below 1050 px they stack. Up to 650 px wide,
+the header wraps to two rows and getting started uses one column.
 
 The original Morphir vector logo and a cropped compact mark ship in `assets/`.
-The cube, code and sidebar navigation icons are workbench drawings. Assets load
+The cube, code, sidebar, home, idea, plus, explorer, move and concept icons are workbench drawings. Assets load
 locally in both browser and Proton builds; no icon font or CDN is required.
 See [asset provenance](assets/README.md) for sources and modifications.
 
@@ -714,7 +766,7 @@ The editor holds one project for each language. The pure model is the package
 
 ### Project explorer
 
-In Try Morphir the project is a tree in the sidebar, as in a code editor (package
+In a workspace with a source project, the Files section shows the project as a tree, as in a code editor (package
 `finos/morphir-workbench/browser/project-files`). Folders come from the paths and sort before files, by code unit;
 a chain of single folders shares one row (`src/Workbench`). Rows show an icon for the file type, the problems of the
 last compile (folders show the sum) and, for Elm, an arrow on exposed modules. The header holds the package name

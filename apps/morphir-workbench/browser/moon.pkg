@@ -19,6 +19,8 @@ import {
   "finos/morphir-workbench/browser/command-palette" @palette,
   "finos/morphir-workbench/browser/keys",
   "finos/morphir-workbench/browser/context-menu" @context_menu,
+  "finos/morphir-workbench/browser/shell",
+  "finos/morphir-workbench/browser/workspace",
   "finos/morphir-workbench/project",
   "finos/morphir-workbench/model-document" @document,
   "finos/morphir-engine/ids",
