@@ -23,7 +23,7 @@ use super::{
         PlaygroundGenerateParams, ProjectModelOpenParams, RequestLedger, WorkbenchSourceRef,
         WorkspaceSnapshot,
     },
-    server::{UiHostState, authenticated, unauthorized},
+    server::{HostObservationBinding, UiHostState, authenticated, unauthorized},
 };
 
 const MAX_INBOUND_MESSAGE_BYTES: usize = 1024 * 1024;
@@ -407,13 +407,10 @@ impl Default for ConnectionState {
 
 async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
     let mut state = ConnectionState {
-        originals: match &host.source_observation {
-            Some(source) => model_originals::OriginalSession::new_source_observed(
-                host.original_capacity.clone(),
-                source,
-            ),
-            None => model_originals::OriginalSession::new(host.original_capacity.clone()),
-        },
+        originals: model_originals::OriginalSession::from_host_observation(
+            host.original_capacity.clone(),
+            &host.observation,
+        ),
         ..Default::default()
     };
     let refresh_interval = host
@@ -479,6 +476,9 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                 // lock. Observed disconnect must cancel its owner immediately;
                 // the worker itself retains its credit through actual exit.
                 let response = if request.method.is_model_originals() {
+                    // Issued by the SAME actual connection before dispatch borrows
+                    // it. This does not manufacture a pending handle or grant.
+                    let disconnect = state.originals.disconnect_control();
                     let pending = dispatch(&host, &mut state, &request);
                     tokio::pin!(pending);
                     loop {
@@ -486,15 +486,16 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                             response = &mut pending => break Some(response),
                             message = socket.recv() => match message {
                                 Some(Ok(Message::Ping(bytes))) => {
-                                    if !matches!(tokio::time::timeout(std::time::Duration::from_secs(30), socket.send(Message::Pong(bytes))).await, Ok(Ok(()))) { break None; }
+                                    if !matches!(tokio::time::timeout(std::time::Duration::from_secs(30), socket.send(Message::Pong(bytes))).await, Ok(Ok(()))) { disconnect.handoff(); break None; }
                                 },
                                 Some(Ok(Message::Pong(_))) => {},
                                 Some(Ok(Message::Text(text))) if queued.is_none() && text.len() <= MAX_INBOUND_MESSAGE_BYTES => queued = Some(Message::Text(text)),
                                 Some(Ok(Message::Text(_))) => {
                                     let _ = send_profile_value(&mut socket, model_originals::invalid_frame(Value::Null)).await;
+                                    disconnect.handoff();
                                     break None;
                                 },
-                                _ => break None,
+                                _ => { disconnect.handoff(); break None; },
                             },
                         }
                     }
@@ -1014,7 +1015,7 @@ mod tests {
             authority: "127.0.0.1:0".into(),
             artifact_capacity: super::super::artifacts::HostArtifactCapacity::default(),
             original_capacity: Default::default(),
-            source_observation: None,
+            observation: HostObservationBinding::Disabled,
         }
     }
 

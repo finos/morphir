@@ -41,8 +41,12 @@ impl ModelCaptureConnection {
         let runtime =
             tokio::runtime::Handle::try_current().map_err(|_| CaptureError::CaptureFailed)?;
         control.check()?;
+        self.records.validate(&offer)?;
         let mut state = self.state.lock().expect("model capture connection");
-        match &*state {
+        if state.cleanup.as_ref().is_some_and(|slot| slot.pending()) {
+            return Err(CaptureError::ActiveCapture);
+        }
+        match &state.state {
             ConnectionState::Capturing { .. }
             | ConnectionState::Prepared(_)
             | ConnectionState::Ready(_) => return Err(CaptureError::ActiveCapture),
@@ -53,7 +57,23 @@ impl ModelCaptureConnection {
         // installed activation/discovery and source capture effects.
         let (mut reservation, permit) = self.capacity.reserve()?;
         let attempt = AttemptKey(uuid::Uuid::new_v4());
-        *state = ConnectionState::Capturing {
+        self.records
+            .prepare(&mut reservation, &permit, attempt, &mut state)?;
+        let cleanup = if self.records.enabled() {
+            let slot = CleanupSlot::prepare(
+                &mut reservation,
+                &self.state,
+                attempt,
+                &control,
+                self.cleanup_registry.as_ref(),
+            )?;
+            state.cleanup = Some(slot.clone());
+            Some(slot)
+        } else {
+            None
+        };
+        let _prearmed_cleanup = cleanup::PrearmedCleanup::new(cleanup.clone());
+        state.state = ConnectionState::Capturing {
             attempt,
             control: control.clone(),
         };
@@ -180,6 +200,14 @@ impl ModelCaptureConnection {
             drop(spawn_hooks);
         }
         let result = TrackedJoin::new(result, worker_observation);
+        let result = match cleanup {
+            Some(slot) => {
+                let observation = result.observation();
+                slot.install(result);
+                ProviderJoin::Owned { slot, observation }
+            }
+            None => ProviderJoin::Direct(result),
+        };
         Ok(PendingProviderCapture {
             owner,
             attempt,
@@ -245,8 +273,9 @@ impl PreparedModelCapture {
             let prior = {
                 let mut state = owner.lock().expect("model capture connection");
                 state
+                    .state
                     .matches(self.attempt)
-                    .then(|| std::mem::replace(&mut *state, ConnectionState::Empty))
+                    .then(|| std::mem::replace(&mut state.state, ConnectionState::Empty))
             };
             drop(prior);
         }
@@ -256,10 +285,10 @@ impl PreparedModelCapture {
 /// A waiter may be dropped while actual provider work continues. Its Drop only
 /// cancels this attempt; the genuine worker retains its reserved work credit.
 pub struct PendingProviderCapture {
-    owner: Weak<Mutex<ConnectionState>>,
+    owner: Weak<Mutex<ConnectionOwner>>,
     attempt: AttemptKey,
     control: CaptureControl,
-    result: TrackedJoin<Result<ModelCaptureCompletion, ProviderCaptureError>>,
+    result: ProviderJoin,
     armed: bool,
 }
 impl PendingProviderCapture {
@@ -276,13 +305,19 @@ impl PendingProviderCapture {
         let deadline = tokio::time::Instant::from_std(self.control.deadline());
         let result = tokio::select! {
             result = &mut self.result => result.map_err(|_| CaptureError::CaptureFailed)?,
-            () = self.control.cancelled() => return Err(CaptureError::Timeout.into()),
-            () = tokio::time::sleep_until(deadline) => return Err(CaptureError::Timeout.into()),
+            () = self.control.cancelled() => {
+                self.result.handoff();
+                return Err(CaptureError::Timeout.into());
+            },
+            () = tokio::time::sleep_until(deadline) => {
+                self.result.handoff();
+                return Err(CaptureError::Timeout.into());
+            },
         }?;
         self.control.check()?;
         if let ModelCaptureCompletion::Ready(id) = &result {
             let owner = self.owner.upgrade().ok_or(CaptureError::Timeout)?;
-            if !matches!(&*owner.lock().expect("model capture connection"),
+            if !matches!(&owner.lock().expect("model capture connection").state,
                 ConnectionState::Ready(capture) if capture.attempt == self.attempt && &capture.id == id)
             {
                 return Err(CaptureError::Timeout.into());

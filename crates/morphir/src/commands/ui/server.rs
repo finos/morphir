@@ -13,7 +13,25 @@ use axum::{
 use serde::Deserialize;
 use tokio::net::TcpListener;
 
+pub(in crate::commands::ui) use super::model_originals::HostPrivateRecordObserver;
+use super::model_originals::{CleanupRegistry, HostCaptureCleanupOwner, PrivateRecordRegistry};
 use crate::error::CliError;
+
+enum RecordObservationBinding {
+    #[cfg(test)]
+    Disabled,
+    Observed,
+}
+#[derive(Clone)]
+pub(in crate::commands::ui) enum HostObservationBinding {
+    Disabled,
+    Source(super::model_originals::observation::HostSourceLease),
+    Record {
+        source: super::model_originals::observation::HostSourceLease,
+        registry: PrivateRecordRegistry,
+        cleanup: CleanupRegistry,
+    },
+}
 
 use super::{
     assets,
@@ -33,7 +51,7 @@ pub(crate) struct UiHostState {
     pub(crate) artifact_capacity: super::artifacts::HostArtifactCapacity,
     pub(crate) original_capacity: super::model_originals::HostModelCaptureCapacity,
     pub(crate) current: super::provider::current::CurrentSessionCapabilities,
-    pub(crate) source_observation: Option<super::model_originals::observation::HostSourceLease>,
+    pub(in crate::commands::ui) observation: HostObservationBinding,
 }
 
 pub struct BoundUiHost {
@@ -45,6 +63,8 @@ pub struct BoundUiHost {
     artifact_observer: super::artifacts::ArtifactUsageObserver,
     original_capacity: super::model_originals::HostModelCaptureCapacity,
     workspace_control: super::provider::WorkspaceSessionControl,
+    record_observer: Option<HostPrivateRecordObserver>,
+    capture_cleanup: Option<HostCaptureCleanupOwner>,
 }
 
 impl BoundUiHost {
@@ -60,14 +80,57 @@ impl BoundUiHost {
         capabilities: SessionCapabilities,
         originals: Option<super::provider::originals::OriginalsProvider>,
     ) -> Result<Self, CliError> {
-        Self::bind_configured(session_id, capabilities, originals, None).await
+        Self::bind_configured(
+            session_id,
+            capabilities,
+            originals,
+            HostObservationBinding::Disabled,
+        )
+        .await
     }
 
+    #[cfg(test)]
     pub(in crate::commands::ui) async fn bind_source_observed(
         session_id: String,
         capabilities: SessionCapabilities,
         originals: Option<super::provider::originals::OriginalsProvider>,
         scope: &super::model_originals::observation::HostSourceObservationScope,
+    ) -> Result<Self, CliError> {
+        Self::bind_observed(
+            session_id,
+            capabilities,
+            originals,
+            scope,
+            RecordObservationBinding::Disabled,
+        )
+        .await
+    }
+    pub(in crate::commands::ui) async fn bind_record_observed(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
+        scope: &super::model_originals::observation::HostSourceObservationScope,
+    ) -> Result<(Self, HostPrivateRecordObserver), CliError> {
+        let host = Self::bind_observed(
+            session_id,
+            capabilities,
+            originals,
+            scope,
+            RecordObservationBinding::Observed,
+        )
+        .await?;
+        let observer = host
+            .record_observer
+            .clone()
+            .expect("observed binding issues observer");
+        Ok((host, observer))
+    }
+    async fn bind_observed(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
+        scope: &super::model_originals::observation::HostSourceObservationScope,
+        records: RecordObservationBinding,
     ) -> Result<Self, CliError> {
         let source = scope.lease();
         let expected = source.identity();
@@ -105,8 +168,16 @@ impl BoundUiHost {
                 Some(_) => {}
             }
         }
-        let host = Self::bind_configured(session_id, capabilities, originals, Some(source.clone()))
-            .await?;
+        let observation = match records {
+            #[cfg(test)]
+            RecordObservationBinding::Disabled => HostObservationBinding::Source(source.clone()),
+            RecordObservationBinding::Observed => HostObservationBinding::Record {
+                source: source.clone(),
+                registry: PrivateRecordRegistry::new(),
+                cleanup: CleanupRegistry::new(),
+            },
+        };
+        let host = Self::bind_configured(session_id, capabilities, originals, observation).await?;
         source.bound();
         Ok(host)
     }
@@ -115,7 +186,7 @@ impl BoundUiHost {
         session_id: String,
         capabilities: SessionCapabilities,
         originals: Option<super::provider::originals::OriginalsProvider>,
-        source_observation: Option<super::model_originals::observation::HostSourceLease>,
+        observation: HostObservationBinding,
     ) -> Result<Self, CliError> {
         let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
             .await
@@ -172,6 +243,14 @@ impl BoundUiHost {
         let artifact_capacity = super::artifacts::HostArtifactCapacity::default();
         let artifact_observer = artifact_capacity.observer();
         let original_capacity = super::model_originals::HostModelCaptureCapacity::default();
+        let record_observer = match &observation {
+            HostObservationBinding::Record { registry, .. } => Some(registry.observer()),
+            HostObservationBinding::Disabled | HostObservationBinding::Source(_) => None,
+        };
+        let capture_cleanup = match &observation {
+            HostObservationBinding::Record { cleanup, .. } => Some(cleanup.control()),
+            HostObservationBinding::Disabled | HostObservationBinding::Source(_) => None,
+        };
         let workspace_control = current.workspace_control();
         let state = UiHostState {
             auth: Arc::new(auth),
@@ -182,7 +261,7 @@ impl BoundUiHost {
             artifact_capacity,
             original_capacity: original_capacity.clone(),
             current,
-            source_observation,
+            observation,
         };
         let router = Router::new()
             .route("/launch", get(exchange_launch_token))
@@ -200,11 +279,22 @@ impl BoundUiHost {
             artifact_observer,
             original_capacity,
             workspace_control,
+            record_observer,
+            capture_cleanup,
         })
     }
 
     pub fn address(&self) -> SocketAddr {
         self.address
+    }
+    /// The actual host owner takes this once before consuming the host in serve.
+    /// Dropping the listener is not a proof of upgraded-socket task completion.
+    pub(in crate::commands::ui) fn take_capture_cleanup(
+        &mut self,
+    ) -> Result<HostCaptureCleanupOwner, super::model_originals::CaptureError> {
+        self.capture_cleanup
+            .take()
+            .ok_or(super::model_originals::CaptureError::UnknownHandle)
     }
 
     pub fn manifest(&self) -> &SessionManifest {

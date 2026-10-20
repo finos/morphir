@@ -101,6 +101,10 @@ impl CaptureControl {
 pub(super) trait CaptureAccounting {
     fn source(&mut self, bytes: usize) -> Result<(), CaptureError>;
     fn metadata(&mut self, bytes: usize) -> Result<(), CaptureError>;
+    fn record(&mut self, raw: Vec<u8>) -> Result<(), CaptureError> {
+        drop(raw);
+        Ok(())
+    }
 }
 struct PerCaptureOnly;
 impl CaptureAccounting for PerCaptureOnly {
@@ -250,7 +254,7 @@ fn capture_with_reads(
         control,
         |_| Ok(()),
     )?;
-    let (record, declaration) = record::decode(raw, module, scope)?;
+    let (record, declaration) = record::decode(&raw, module, scope)?;
     let primary = record.descriptor.primary()?;
     let companions = match (scope, declaration) {
         (CaptureScope::Primary, _) => vec![],
@@ -289,6 +293,9 @@ fn capture_with_reads(
         .sort_by(|left, right| left.path.cmp(&right.path));
     let inventory_digest = inventory_digest(&builder.entries);
     control.check()?;
+    // Historical callers discard the temporary record. The private observed
+    // caller moves this SAME worker allocation into its actual credited slot.
+    builder.accounting.record(raw)?;
     Ok(CaptureResult::Ready(Box::new(CapturedSources {
         record,
         primary,
@@ -573,3 +580,6 @@ mod cancellation_tests;
 
 #[cfg(test)]
 mod output_route_tests;
+
+#[cfg(test)]
+mod private_record_tests;

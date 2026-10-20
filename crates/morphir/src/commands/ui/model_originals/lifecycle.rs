@@ -2,6 +2,18 @@
 //! connection-scoped storage leases, not authenticated provider authority.
 mod provider;
 pub use provider::{PendingProviderCapture, ProviderCaptureError};
+mod cleanup;
+mod private_record;
+pub(in crate::commands::ui) use cleanup::{
+    CaptureDisconnect, CleanupRegistry, HostCaptureCleanupOwner, PendingCaptureCleanup,
+};
+use cleanup::{CleanupSlot, ProviderJoin};
+#[cfg(test)]
+pub(in crate::commands::ui) use private_record::PrivateRecordObservationError;
+pub(in crate::commands::ui) use private_record::{
+    HostPrivateRecordObserver, PrivateRecordObserver, PrivateRecordRegistry,
+};
+use private_record::{RecordConnection, RecordSlot};
 
 use super::observation::{
     self, TrackedJoin, WorkerAttemptObservation, WorkerConnectionObservation,
@@ -146,6 +158,8 @@ impl HostModelCaptureCapacity {
                 host: self.clone(),
                 source_bytes: 0,
                 metadata_bytes: 0,
+                record: None,
+                slot: None,
             },
             WorkPermit {
                 _reservation: Arc::new(WorkReservation(self.clone())),
@@ -181,13 +195,25 @@ impl Drop for RetainedEvidenceCredit {
             .metadata_bytes -= self.bytes;
     }
 }
-#[derive(Debug)]
 struct Reservation {
     host: HostModelCaptureCapacity,
     source_bytes: usize,
     metadata_bytes: usize,
+    record: Option<Arc<RecordSlot>>,
+    // Shared only by the opt-in owned cleanup path. This is the SAME capture
+    // reservation, never a newly issued slot or active-work credit.
+    slot: Option<Arc<CaptureSlotCredit>>,
 }
 impl CaptureAccounting for Reservation {
+    fn record(&mut self, raw: Vec<u8>) -> Result<(), CaptureError> {
+        match &self.record {
+            Some(slot) => slot.store(raw),
+            None => {
+                drop(raw);
+                Ok(())
+            }
+        }
+    }
     fn source(&mut self, bytes: usize) -> Result<(), CaptureError> {
         let mut state = self.host.0.lock().expect("model capture capacity");
         let total = state
@@ -218,7 +244,20 @@ impl Drop for Reservation {
         let mut state = self.host.0.lock().expect("model capture capacity");
         state.usage.source_bytes -= self.source_bytes;
         state.usage.metadata_bytes -= self.metadata_bytes;
-        state.usage.captures -= 1;
+        if self.slot.is_none() {
+            state.usage.captures -= 1;
+        }
+    }
+}
+struct CaptureSlotCredit(HostModelCaptureCapacity);
+impl Drop for CaptureSlotCredit {
+    fn drop(&mut self) {
+        self.0
+            .0
+            .lock()
+            .expect("model capture capacity")
+            .usage
+            .captures -= 1;
     }
 }
 // Clones retain the same single credit, never reserve another. Both the actual
@@ -308,6 +347,12 @@ enum ConnectionState {
     Released(CaptureId),
     Closed,
 }
+struct ConnectionOwner {
+    state: ConnectionState,
+    // Observation is weak. Actual reservation/lease ownership retains bytes.
+    record: Weak<RecordSlot>,
+    cleanup: Option<Arc<CleanupSlot>>,
+}
 impl ConnectionState {
     fn matches(&self, key: AttemptKey) -> bool {
         match self {
@@ -324,15 +369,23 @@ impl ConnectionState {
 /// the eventual real provider caller; public labels cannot construct authority.
 pub struct ModelCaptureConnection {
     capacity: HostModelCaptureCapacity,
-    state: Arc<Mutex<ConnectionState>>,
+    state: Arc<Mutex<ConnectionOwner>>,
     observation: WorkerConnectionObservation,
+    records: RecordConnection,
+    cleanup_registry: Option<CleanupRegistry>,
 }
 impl ModelCaptureConnection {
     pub fn new(capacity: HostModelCaptureCapacity) -> Self {
         Self {
             capacity,
-            state: Arc::new(Mutex::new(ConnectionState::Empty)),
+            state: Arc::new(Mutex::new(ConnectionOwner {
+                state: ConnectionState::Empty,
+                record: Weak::new(),
+                cleanup: None,
+            })),
             observation: WorkerConnectionObservation::unobserved(),
+            records: RecordConnection::Disabled,
+            cleanup_registry: None,
         }
     }
     /// Bind read-only worker evidence to this actual connection. The scope
@@ -347,6 +400,41 @@ impl ModelCaptureConnection {
     }
     pub fn worker_observation(&self) -> WorkerConnectionObservation {
         self.observation.clone()
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn new_record_observed(
+        capacity: HostModelCaptureCapacity,
+        source: &observation::HostSourceObservationScope,
+    ) -> (Self, PrivateRecordObserver) {
+        Self::record_observed(capacity, &source.lease(), None)
+    }
+    pub(in crate::commands::ui) fn record_observed(
+        capacity: HostModelCaptureCapacity,
+        source: &observation::HostSourceLease,
+        registry: Option<PrivateRecordRegistry>,
+    ) -> (Self, PrivateRecordObserver) {
+        let mut connection = Self::new_observed(capacity, source.worker_scope());
+        connection.records = RecordConnection::observed(source.identity(), registry);
+        let observer = PrivateRecordObserver::issued(&connection.state);
+        (connection, observer)
+    }
+    pub(in crate::commands::ui) fn attach_cleanup_registry(&mut self, registry: &CleanupRegistry) {
+        self.cleanup_registry = Some(registry.clone());
+    }
+    pub(in crate::commands::ui) fn disconnect_control(&self) -> CaptureDisconnect {
+        CaptureDisconnect::issued(&self.state)
+    }
+    pub(in crate::commands::ui) async fn drain_cleanup(
+        &self,
+        deadline: tokio::time::Instant,
+    ) -> Result<(), PendingCaptureCleanup> {
+        let slot = self
+            .state
+            .lock()
+            .expect("model capture connection")
+            .cleanup
+            .clone();
+        PendingCaptureCleanup::single(slot).drain(deadline).await
     }
     /// Must be called inside a Tokio runtime. All owned work is moved into the
     /// blocking worker; dropping the waiter never drops that worker's permit.
@@ -375,8 +463,12 @@ impl ModelCaptureConnection {
         let runtime =
             tokio::runtime::Handle::try_current().map_err(|_| CaptureError::CaptureFailed)?;
         control.check()?;
+        // Private record observation requires the genuine source/provider path.
+        if self.records.enabled() {
+            return Err(CaptureError::CaptureFailed);
+        }
         let mut state = self.state.lock().expect("model capture connection");
-        match &*state {
+        match &state.state {
             ConnectionState::Capturing { .. }
             | ConnectionState::Prepared(_)
             | ConnectionState::Ready(_) => {
@@ -389,7 +481,7 @@ impl ModelCaptureConnection {
         // storage or publishing Capturing. A refusal preserves the old tombstone.
         let (mut reservation, permit) = self.capacity.reserve()?;
         let attempt = AttemptKey(uuid::Uuid::new_v4());
-        *state = ConnectionState::Capturing {
+        state.state = ConnectionState::Capturing {
             attempt,
             control: control.clone(),
         };
@@ -444,7 +536,7 @@ impl ModelCaptureConnection {
     }
     pub fn inspect(&self, id: &CaptureId) -> Result<CaptureInfo, CaptureError> {
         let state = self.state.lock().expect("model capture connection");
-        match &*state {
+        match &state.state {
             ConnectionState::Ready(capture) if &capture.id == id => Ok(capture.info()),
             _ => Err(CaptureError::UnknownHandle),
         }
@@ -458,7 +550,7 @@ impl ModelCaptureConnection {
         inspect: impl FnOnce(&CapturedSources) -> T,
     ) -> Result<T, CaptureError> {
         let state = self.state.lock().expect("model capture connection");
-        match &*state {
+        match &state.state {
             ConnectionState::Ready(capture) if &capture.id == id => Ok(inspect(&capture.sources)),
             _ => Err(CaptureError::UnknownHandle),
         }
@@ -466,22 +558,26 @@ impl ModelCaptureConnection {
     pub fn release(&self, id: &CaptureId) -> Result<(), CaptureError> {
         let prior = {
             let mut state = self.state.lock().expect("model capture connection");
-            match &*state {
+            match &state.state {
                 ConnectionState::Ready(capture) if &capture.id == id => {
-                    std::mem::replace(&mut *state, ConnectionState::Released(id.clone()))
+                    std::mem::replace(&mut state.state, ConnectionState::Released(id.clone()))
                 }
                 ConnectionState::Released(prior) if prior == id => return Ok(()),
                 _ => return Err(CaptureError::UnknownHandle),
             }
         };
+        self.records.remove(id, &self.state);
         drop(prior);
         Ok(())
     }
     pub fn close(&self) {
         let prior = std::mem::replace(
-            &mut *self.state.lock().expect("model capture connection"),
+            &mut self.state.lock().expect("model capture connection").state,
             ConnectionState::Closed,
         );
+        if let ConnectionState::Ready(capture) = &prior {
+            self.records.remove(&capture.id, &self.state);
+        }
         match &prior {
             ConnectionState::Capturing { control, .. } => control.cancel(),
             ConnectionState::Prepared(prepared) => prepared.control.cancel(),
@@ -522,7 +618,7 @@ impl ModelCaptureCompletion {
 }
 
 pub struct PendingModelCapture {
-    owner: Weak<Mutex<ConnectionState>>,
+    owner: Weak<Mutex<ConnectionOwner>>,
     attempt: AttemptKey,
     control: CaptureControl,
     result: TrackedJoin<Result<WorkerCompletion, CaptureError>>,
@@ -561,7 +657,7 @@ impl PendingModelCapture {
             WorkerCompletion::Prepared => {
                 let owner = self.owner.upgrade().ok_or(CaptureError::Timeout)?;
                 let state = owner.lock().expect("model capture connection");
-                if !matches!(&*state, ConnectionState::Prepared(prepared)
+                if !matches!(&state.state, ConnectionState::Prepared(prepared)
                     if prepared.capture.attempt == self.attempt)
                 {
                     return Err(CaptureError::Timeout);
@@ -583,7 +679,7 @@ impl PendingModelCapture {
 // Possession alone is not authority: a real provider caller must perform its
 // current-source/project revalidation before calling publish.
 pub(super) struct PreparedModelCapture {
-    owner: Weak<Mutex<ConnectionState>>,
+    owner: Weak<Mutex<ConnectionOwner>>,
     attempt: AttemptKey,
     control: CaptureControl,
     armed: bool,
@@ -607,13 +703,13 @@ impl PreparedModelCapture {
         let owner = self.owner.upgrade().ok_or(CaptureError::Timeout)?;
         let mut state = owner.lock().expect("model capture connection");
         self.control.check()?;
-        if !matches!(&*state, ConnectionState::Prepared(prepared)
+        if !matches!(&state.state, ConnectionState::Prepared(prepared)
             if prepared.capture.attempt == self.attempt)
         {
             return Err(CaptureError::Timeout);
         }
         let ConnectionState::Prepared(prepared) =
-            std::mem::replace(&mut *state, ConnectionState::Empty)
+            std::mem::replace(&mut state.state, ConnectionState::Empty)
         else {
             unreachable!()
         };
@@ -623,7 +719,10 @@ impl PreparedModelCapture {
             control: _,
         } = *prepared;
         let id = capture.id.clone();
-        *state = ConnectionState::Ready(capture);
+        if let Some(slot) = &capture.reservation.record {
+            slot.register(&id, &owner)?;
+        }
+        state.state = ConnectionState::Ready(capture);
         self.armed = false;
         drop(state);
         drop(work);
@@ -633,7 +732,7 @@ impl PreparedModelCapture {
     pub(super) fn id_for_test(&self) -> CaptureId {
         let owner = self.owner.upgrade().unwrap();
         let state = owner.lock().unwrap();
-        match &*state {
+        match &state.state {
             ConnectionState::Prepared(prepared) if prepared.capture.attempt == self.attempt => {
                 prepared.capture.id.clone()
             }
@@ -656,14 +755,15 @@ impl Drop for PendingModelCapture {
         }
     }
 }
-fn abandon(owner: &Weak<Mutex<ConnectionState>>, attempt: AttemptKey, control: &CaptureControl) {
+fn abandon(owner: &Weak<Mutex<ConnectionOwner>>, attempt: AttemptKey, control: &CaptureControl) {
     control.cancel();
     if let Some(owner) = owner.upgrade() {
         let prior = {
             let mut state = owner.lock().expect("model capture connection");
             state
+                .state
                 .matches(attempt)
-                .then(|| std::mem::replace(&mut *state, ConnectionState::Empty))
+                .then(|| std::mem::replace(&mut state.state, ConnectionState::Empty))
         };
         drop(prior);
     }
@@ -673,7 +773,7 @@ enum WorkerCompletion {
     Unavailable(CaptureUnavailable),
 }
 fn finish(
-    owner: &Weak<Mutex<ConnectionState>>,
+    owner: &Weak<Mutex<ConnectionOwner>>,
     attempt: AttemptKey,
     control: &CaptureControl,
     result: Result<CaptureResult, CaptureError>,
@@ -703,16 +803,16 @@ fn finish(
     };
     let owner = owner.upgrade().ok_or(CaptureError::Timeout)?;
     let mut state = owner.lock().expect("model capture connection");
-    if !state.matches(attempt) {
+    if !state.state.matches(attempt) {
         return Err(CaptureError::Timeout);
     }
     if control.check().is_err() {
-        *state = ConnectionState::Empty;
+        state.state = ConnectionState::Empty;
         return Err(CaptureError::Timeout);
     }
     match prepared {
         Prepared::Ready(capture) => {
-            *state = ConnectionState::Prepared(Box::new(PreparedOwner {
+            state.state = ConnectionState::Prepared(Box::new(PreparedOwner {
                 capture,
                 _work: work,
                 control: control.clone(),
@@ -720,11 +820,11 @@ fn finish(
             Ok(WorkerCompletion::Prepared)
         }
         Prepared::Unavailable(reason) => {
-            *state = ConnectionState::Empty;
+            state.state = ConnectionState::Empty;
             Ok(WorkerCompletion::Unavailable(reason))
         }
         Prepared::Failed(error) => {
-            *state = ConnectionState::Empty;
+            state.state = ConnectionState::Empty;
             Err(error)
         }
     }

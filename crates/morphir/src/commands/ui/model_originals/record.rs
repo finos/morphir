@@ -37,12 +37,12 @@ impl<'de> Deserialize<'de> for RawRecord<'de> {
 }
 
 pub(super) fn decode(
-    raw: Vec<u8>,
+    raw: &[u8],
     module: &SelectedModule,
     scope: CaptureScope,
 ) -> Result<(CapturedRecord, Declaration), CaptureError> {
     let fields: RawRecord<'_> =
-        serde_json::from_slice(&raw).map_err(|_| CaptureError::InvalidRecord)?;
+        serde_json::from_slice(raw).map_err(|_| CaptureError::InvalidRecord)?;
     fn get<'a, T: Deserialize<'a>>(
         fields: &BTreeMap<String, &'a RawValue>,
         key: &str,
@@ -95,7 +95,7 @@ pub(super) fn decode(
     };
     Ok((
         CapturedRecord {
-            digest: Sha256Digest::of_bytes(&raw),
+            digest: Sha256Digest::of_bytes(raw),
             byte_length: raw.len(),
             module: module.clone(),
             descriptor,

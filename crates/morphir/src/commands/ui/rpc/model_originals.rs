@@ -25,18 +25,41 @@ impl OriginalSession {
             binding: None,
         }
     }
-    pub(super) fn new_source_observed(
+    pub(super) fn from_host_observation(
         capacity: HostModelCaptureCapacity,
-        source: &crate::commands::ui::model_originals::observation::HostSourceLease,
+        observation: &HostObservationBinding,
     ) -> Self {
+        let connection = match observation {
+            HostObservationBinding::Disabled => ModelCaptureConnection::new(capacity),
+            HostObservationBinding::Source(source) => {
+                ModelCaptureConnection::new_observed(capacity, source.worker_scope())
+            }
+            HostObservationBinding::Record {
+                source,
+                registry,
+                cleanup,
+            } => {
+                let mut connection = ModelCaptureConnection::record_observed(
+                    capacity,
+                    source,
+                    Some(registry.clone()),
+                )
+                .0;
+                connection.attach_cleanup_registry(cleanup);
+                connection
+            }
+        };
         Self {
-            connection: ModelCaptureConnection::new_observed(capacity, source.worker_scope()),
+            connection,
             binding: None,
         }
     }
     pub(super) fn close(&mut self) {
         self.connection.close();
         self.binding = None;
+    }
+    pub(super) fn disconnect_control(&self) -> CaptureDisconnect {
+        self.connection.disconnect_control()
     }
 }
 
