@@ -64,10 +64,22 @@ struct HostState {
     fault: Option<HostObservationError>,
 }
 struct HostShared {
+    invocation: morphir_mck::workbench::model_originals::installed::InvocationGate,
+    installed: crate::commands::ui::installed_observation::InstalledSlot,
     source: SourceReadScope,
     workers: WorkerObservationScope,
     limits: HostObservationLimits,
     state: Mutex<HostState>,
+}
+impl morphir_mck::workbench::model_originals::installed::InvocationGateSource for HostShared {
+    fn invocation_gate(
+        &self,
+    ) -> &morphir_mck::workbench::model_originals::installed::InvocationGate {
+        &self.invocation
+    }
+    fn wake_observers(&self) {
+        self.installed.wake();
+    }
 }
 impl HostShared {
     fn state(&self) -> MutexGuard<'_, HostState> {
@@ -111,6 +123,9 @@ impl HostSourceObservationScope {
             .map_err(|_| HostObservationError::RootIdentity)?;
         Ok(Self {
             shared: Arc::new(HostShared {
+                invocation:
+                    morphir_mck::workbench::model_originals::installed::InvocationGate::dormant(),
+                installed: crate::commands::ui::installed_observation::InstalledSlot::dormant(),
                 source,
                 workers,
                 limits: host,
@@ -126,6 +141,11 @@ impl HostSourceObservationScope {
     }
     pub fn source_scope(&self) -> &SourceReadScope {
         &self.shared.source
+    }
+    pub(in crate::commands::ui) fn invocation_projection(
+        &self,
+    ) -> Weak<dyn morphir_mck::workbench::model_originals::installed::InvocationGateSource> {
+        self.lease().invocation_projection()
     }
     pub fn snapshot(&self) -> HostSourceSnapshot {
         let state = self.shared.state();
@@ -221,6 +241,24 @@ impl HostSourceSnapshot {
     }
 }
 impl HostSourceLease {
+    pub(in crate::commands::ui) fn invocation_projection(
+        &self,
+    ) -> Weak<dyn morphir_mck::workbench::model_originals::installed::InvocationGateSource> {
+        let same: Arc<
+            dyn morphir_mck::workbench::model_originals::installed::InvocationGateSource,
+        > = self.shared.clone();
+        Arc::downgrade(&same)
+    }
+    pub(in crate::commands::ui) fn invocation_gate(
+        &self,
+    ) -> &morphir_mck::workbench::model_originals::installed::InvocationGate {
+        &self.shared.invocation
+    }
+    pub(in crate::commands::ui) fn installed_slot(
+        &self,
+    ) -> &crate::commands::ui::installed_observation::InstalledSlot {
+        &self.shared.installed
+    }
     pub(in crate::commands::ui) fn identity(&self) -> HostSourceIdentity {
         HostSourceIdentity {
             owner: Arc::downgrade(&self.shared),

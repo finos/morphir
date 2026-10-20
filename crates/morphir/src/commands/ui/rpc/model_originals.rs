@@ -40,6 +40,13 @@ impl OriginalSession {
                 cleanup,
                 #[cfg(test)]
                 capture_hook,
+            }
+            | HostObservationBinding::Installed {
+                source,
+                registry,
+                cleanup,
+                #[cfg(test)]
+                capture_hook,
             } => {
                 let mut connection = ModelCaptureConnection::record_observed(
                     capacity,
@@ -166,6 +173,25 @@ pub(super) async fn dispatch_originals(
             };
             let result = match pending.wait().await {
                 Ok(ModelCaptureCompletion::Ready(id)) => {
+                    let id = if let Some(socket) = &state.installed {
+                        let HostObservationBinding::Installed { registry, .. } = &host.observation
+                        else {
+                            unreachable!("actual selected socket host")
+                        };
+                        let observer = match registry.observer().for_capture(&id) {
+                            Ok(observer) => observer,
+                            Err(_) => return error(request.id, WireError::Unavailable),
+                        };
+                        match socket.ready(id, observer).await {
+                            Ok(id) => id,
+                            Err(_) => {
+                                state.originals.close();
+                                return error(request.id, WireError::Unavailable);
+                            }
+                        }
+                    } else {
+                        id
+                    };
                     let result = state
                         .originals
                         .connection

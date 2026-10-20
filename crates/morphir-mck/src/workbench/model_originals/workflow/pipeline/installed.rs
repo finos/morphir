@@ -283,14 +283,20 @@ pub(in crate::workbench) fn execute_installed(
                             .current()
                             .filter(|current| current.installed().is_some())
                             .ok_or(RunFault::UnsupportedRole)?;
+                        let mut revoker = adapter::InvocationRevoker::default();
                         let result = adapter.observe(adapter::InstalledClientRun::from_prepared(
                             inventory.invocation(),
                             limits,
                             &mut owners.comparison,
                             &mut record_owner,
-                            &mut receiving,
                             &mut attempt,
+                            adapter::HostObservationOwners {
+                                receiving: &mut receiving,
+                                revoker: &mut revoker,
+                                capture: &mut owners.capture,
+                            },
                         ));
+                        drop(revoker);
                         owners.comparison.ready().map_err(|error| {
                             RunFault::Record(WorkflowRecordError::Observation(error))
                         })?;

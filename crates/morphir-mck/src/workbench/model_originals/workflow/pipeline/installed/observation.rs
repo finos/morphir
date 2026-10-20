@@ -30,7 +30,7 @@ pub enum InstalledObservationFault {
     PriorFault,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::workbench::model_originals::workflow::pipeline) enum ObservationBufferRole {
+pub enum ObservationBufferRole {
     RpcRequest,
     RpcReply,
     StdoutPrefix,
@@ -40,7 +40,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline) enum ObservationBu
     CensusMetadata,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::workbench::model_originals::workflow::pipeline) enum ObservationRecordRole {
+pub enum ObservationRecordRole {
     Mailbox,
     Invocation,
     Process,
@@ -138,7 +138,7 @@ impl InstalledObservationOwner {
     ) -> InstalledObservationUsage {
         self.usage
     }
-    fn fail(&mut self, fault: InstalledObservationFault) -> &InstalledObservationFault {
+    pub(super) fn fail(&mut self, fault: InstalledObservationFault) -> &InstalledObservationFault {
         self.fault.get_or_insert(fault)
     }
     pub(super) fn refuse_prior_fault(&mut self) -> &InstalledObservationFault {
@@ -294,22 +294,44 @@ impl Drop for RecordIssuePermission<'_> {
     }
 }
 
+enum CopySource<'source> {
+    Bytes(&'source [u8]),
+    Text(&'source str),
+}
+impl CopySource<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::Bytes(bytes) => bytes.len(),
+            Self::Text(text) => text.len(),
+        }
+    }
+}
 struct CopyReservation<'owner, 'bytes> {
     owner: &'owner mut InstalledObservationOwner,
     comparison: &'owner mut CompareOwner,
-    source: &'bytes [u8],
+    source: CopySource<'bytes>,
     role: ObservationBufferRole,
 }
 pub(in crate::workbench::model_originals::workflow::pipeline) struct ObservationCopy<'owner, 'bytes>
 {
     pending: Option<CopyReservation<'owner, 'bytes>>,
 }
-pub(in crate::workbench::model_originals::workflow::pipeline) struct RetainedObservationBytes {
+pub struct RetainedObservationBytes {
     bytes: Vec<u8>,
     role: ObservationBufferRole,
 }
+/// A receiver-budgeted copy of already valid text. Borrowing its text performs
+/// no decoding and grants no source or host authority.
+pub struct RetainedObservationText {
+    text: String,
+}
+impl RetainedObservationText {
+    pub fn as_str(&self) -> &str {
+        &self.text
+    }
+}
 impl RetainedObservationBytes {
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
     }
     pub(in crate::workbench::model_originals::workflow::pipeline) fn capacity(&self) -> usize {
@@ -325,6 +347,25 @@ pub(in crate::workbench::model_originals::workflow::pipeline) fn prepare_copy<'o
     role: ObservationBufferRole,
     source: &'bytes [u8],
 ) -> Result<ObservationCopy<'owner, 'bytes>, &'owner InstalledObservationFault> {
+    prepare_source(owner, comparison, role, CopySource::Bytes(source))
+}
+pub(in crate::workbench::model_originals::workflow::pipeline) fn prepare_text_copy<
+    'owner,
+    'text,
+>(
+    owner: &'owner mut InstalledObservationOwner,
+    comparison: &'owner mut CompareOwner,
+    role: ObservationBufferRole,
+    source: &'text str,
+) -> Result<ObservationCopy<'owner, 'text>, &'owner InstalledObservationFault> {
+    prepare_source(owner, comparison, role, CopySource::Text(source))
+}
+fn prepare_source<'owner, 'source>(
+    owner: &'owner mut InstalledObservationOwner,
+    comparison: &'owner mut CompareOwner,
+    role: ObservationBufferRole,
+    source: CopySource<'source>,
+) -> Result<ObservationCopy<'owner, 'source>, &'owner InstalledObservationFault> {
     if let Some(fault) = owner.fault {
         return Err(owner.fail(fault));
     }
@@ -366,16 +407,14 @@ impl<'owner> ObservationCopy<'owner, '_> {
         if comparison.ready().is_err() {
             return Err(owner.fail(InstalledObservationFault::PriorFault));
         }
+        let CopySource::Bytes(source) = source else {
+            return Err(owner.fail(InstalledObservationFault::LayoutMismatch));
+        };
         let mut bytes = Vec::new();
         if bytes.try_reserve_exact(source.len()).is_err() {
             return Err(owner.fail(InstalledObservationFault::Allocation));
         }
-        let capacity = bytes.capacity();
-        let Some(excess) = capacity.checked_sub(source.len()) else {
-            return Err(owner.fail(InstalledObservationFault::LayoutMismatch));
-        };
-        if let Err(fault) = owner.reserve_span(InstalledObservationResource::RetainedBytes, excess)
-        {
+        if let Err(fault) = charge_copy_capacity(owner, source.len(), bytes.capacity()) {
             // bytes is still empty. Drop it without performing the copy.
             return Err(owner.fail(fault));
         }
@@ -383,6 +422,46 @@ impl<'owner> ObservationCopy<'owner, '_> {
         bytes.extend_from_slice(source);
         Ok(RetainedObservationBytes { bytes, role })
     }
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn retain_text(
+        mut self,
+    ) -> Result<RetainedObservationText, &'owner InstalledObservationFault> {
+        let CopyReservation {
+            owner,
+            comparison,
+            source,
+            ..
+        } = self.pending.take().expect("single-use copy permission");
+        if let Some(fault) = owner.fault {
+            return Err(owner.fail(fault));
+        }
+        if comparison.ready().is_err() {
+            return Err(owner.fail(InstalledObservationFault::PriorFault));
+        }
+        let CopySource::Text(source) = source else {
+            return Err(owner.fail(InstalledObservationFault::LayoutMismatch));
+        };
+        let mut text = String::new();
+        if text.try_reserve_exact(source.len()).is_err() {
+            return Err(owner.fail(InstalledObservationFault::Allocation));
+        }
+        if let Err(fault) = charge_copy_capacity(owner, source.len(), text.capacity()) {
+            return Err(owner.fail(fault));
+        }
+        // The same copy span and actual capacity are precharged. push_str
+        // copies this genuine &str without rescanning UTF8 validity.
+        text.push_str(source);
+        Ok(RetainedObservationText { text })
+    }
+}
+fn charge_copy_capacity(
+    owner: &mut InstalledObservationOwner,
+    requested: usize,
+    capacity: usize,
+) -> Result<(), InstalledObservationFault> {
+    let Some(excess) = capacity.checked_sub(requested) else {
+        return Err(*owner.fail(InstalledObservationFault::LayoutMismatch));
+    };
+    owner.reserve_span(InstalledObservationResource::RetainedBytes, excess)
 }
 impl Drop for ObservationCopy<'_, '_> {
     fn drop(&mut self) {

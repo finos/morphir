@@ -21,6 +21,11 @@ enum RecordObservationBinding {
     #[cfg(test)]
     Disabled,
     Observed,
+    Installed {
+        token: morphir_mck::workbench::model_originals::installed::InvocationObservation,
+        #[cfg(test)]
+        capture_hook: Option<super::model_originals::CaptureWorkerTestHook>,
+    },
     #[cfg(test)]
     ObservedWithCaptureHook(super::model_originals::CaptureWorkerTestHook),
 }
@@ -29,6 +34,13 @@ pub(in crate::commands::ui) enum HostObservationBinding {
     Disabled,
     Source(super::model_originals::observation::HostSourceLease),
     Record {
+        source: super::model_originals::observation::HostSourceLease,
+        registry: PrivateRecordRegistry,
+        cleanup: CleanupRegistry,
+        #[cfg(test)]
+        capture_hook: Option<super::model_originals::CaptureWorkerTestHook>,
+    },
+    Installed {
         source: super::model_originals::observation::HostSourceLease,
         registry: PrivateRecordRegistry,
         cleanup: CleanupRegistry,
@@ -72,6 +84,67 @@ pub struct BoundUiHost {
 }
 
 impl BoundUiHost {
+    pub(in crate::commands::ui) async fn bind_installed_observed(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
+        scope: &super::model_originals::observation::HostSourceObservationScope,
+        token: morphir_mck::workbench::model_originals::installed::InvocationObservation,
+    ) -> Result<(Self, super::installed_observation::InstalledHostObservation), CliError> {
+        let host = Self::bind_observed(
+            session_id,
+            capabilities,
+            originals,
+            scope,
+            RecordObservationBinding::Installed {
+                token,
+                #[cfg(test)]
+                capture_hook: None,
+            },
+        )
+        .await?;
+        Ok((
+            host,
+            super::installed_observation::InstalledHostObservation::new(scope.lease()),
+        ))
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) async fn bind_installed_observed_with_capture_hook(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
+        scope: &super::model_originals::observation::HostSourceObservationScope,
+        token: morphir_mck::workbench::model_originals::installed::InvocationObservation,
+        hook: super::model_originals::CaptureWorkerTestHook,
+    ) -> Result<(Self, super::installed_observation::InstalledHostObservation), CliError> {
+        let host = Self::bind_observed(
+            session_id,
+            capabilities,
+            originals,
+            scope,
+            RecordObservationBinding::Installed {
+                token,
+                capture_hook: Some(hook),
+            },
+        )
+        .await?;
+        Ok((
+            host,
+            super::installed_observation::InstalledHostObservation::new(scope.lease()),
+        ))
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) async fn bind_installed_observed_with_socket_entry_hook(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
+        scope: &super::model_originals::observation::HostSourceObservationScope,
+        token: morphir_mck::workbench::model_originals::installed::InvocationObservation,
+        hook: super::installed_observation::InstalledSocketEntryTestHook,
+    ) -> Result<(Self, super::installed_observation::InstalledHostObservation), CliError> {
+        scope.lease().installed_slot().set_entry_hook(hook);
+        Self::bind_installed_observed(session_id, capabilities, originals, scope, token).await
+    }
     pub async fn bind(
         session_id: String,
         capabilities: SessionCapabilities,
@@ -196,6 +269,26 @@ impl BoundUiHost {
             }
         }
         let observation = match records {
+            RecordObservationBinding::Installed {
+                token,
+                #[cfg(test)]
+                capture_hook,
+            } => {
+                token
+                    .check_source(&source.invocation_projection())
+                    .map_err(|_| {
+                        super::protocol::protocol_error(
+                            "installed invocation does not match active source owner",
+                        )
+                    })?;
+                HostObservationBinding::Installed {
+                    source: source.clone(),
+                    registry: PrivateRecordRegistry::new(),
+                    cleanup: CleanupRegistry::new(),
+                    #[cfg(test)]
+                    capture_hook,
+                }
+            }
             #[cfg(test)]
             RecordObservationBinding::Disabled => HostObservationBinding::Source(source.clone()),
             RecordObservationBinding::Observed => HostObservationBinding::Record {
@@ -235,7 +328,15 @@ impl BoundUiHost {
                 message: format!("UI host refused non-loopback bind address {address}"),
             });
         }
-        let (auth, launch_token) = SessionAuth::generate(&session_id)?;
+        let (auth, launch_token) = match &observation {
+            HostObservationBinding::Installed { source, .. } => source
+                .invocation_gate()
+                .while_open(|| SessionAuth::generate(&session_id))
+                .map_err(|_| {
+                    super::protocol::protocol_error("installed invocation was revoked")
+                })??,
+            _ => SessionAuth::generate(&session_id)?,
+        };
         let mut providers = Vec::new();
         let mut initial_sources = Vec::new();
         if let Some(workspace) = &capabilities.workspace {
@@ -282,11 +383,13 @@ impl BoundUiHost {
         let artifact_observer = artifact_capacity.observer();
         let original_capacity = super::model_originals::HostModelCaptureCapacity::default();
         let record_observer = match &observation {
-            HostObservationBinding::Record { registry, .. } => Some(registry.observer()),
+            HostObservationBinding::Record { registry, .. }
+            | HostObservationBinding::Installed { registry, .. } => Some(registry.observer()),
             HostObservationBinding::Disabled | HostObservationBinding::Source(_) => None,
         };
         let capture_cleanup = match &observation {
-            HostObservationBinding::Record { cleanup, .. } => Some(cleanup.control()),
+            HostObservationBinding::Record { cleanup, .. }
+            | HostObservationBinding::Installed { cleanup, .. } => Some(cleanup.control()),
             HostObservationBinding::Disabled | HostObservationBinding::Source(_) => None,
         };
         let workspace_control = current.workspace_control();

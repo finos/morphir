@@ -76,7 +76,14 @@ mod profile_selection_tests {
     }
 }
 
-async fn send_profile_value(socket: &mut WebSocket, value: Value) -> Result<(), ()> {
+async fn send_profile_value(
+    socket: &mut WebSocket,
+    value: Value,
+    observation: Option<&super::installed_observation::InstalledSocket>,
+) -> Result<(), ()> {
+    if observation.is_some() {
+        return send_observed_value(socket, value, observation).await;
+    }
     tokio::time::timeout(
         std::time::Duration::from_secs(30),
         send_value(socket, value),
@@ -340,10 +347,15 @@ pub(crate) async fn upgrade(
     if !valid_origin_and_host(&state, &headers) {
         return StatusCode::FORBIDDEN.into_response();
     }
+    if let HostObservationBinding::Installed { source, .. } = &state.observation
+        && source.invocation_gate().while_open(|| ()).is_err()
+    {
+        return unauthorized();
+    }
     upgrade
         .max_message_size(MAX_INBOUND_MESSAGE_BYTES)
         .max_frame_size(MAX_INBOUND_MESSAGE_BYTES)
-        .on_upgrade(move |socket| serve_socket(socket, state))
+        .on_upgrade(move |socket| observed_socket_entry(socket, state))
         .into_response()
 }
 
@@ -378,6 +390,7 @@ struct UnwatchParams {
 }
 
 struct ConnectionState {
+    installed: Option<super::installed_observation::InstalledSocket>,
     initialized: bool,
     ledger: RequestLedger,
     next_subscription: u64,
@@ -395,6 +408,7 @@ struct WatchSubscription {
 impl Default for ConnectionState {
     fn default() -> Self {
         Self {
+            installed: None,
             initialized: false,
             ledger: RequestLedger::default(),
             next_subscription: 1,
@@ -405,8 +419,44 @@ impl Default for ConnectionState {
     }
 }
 
-async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
+async fn observed_socket_entry(mut socket: WebSocket, host: UiHostState) {
+    #[cfg(test)]
+    let returned = if let HostObservationBinding::Installed { source, .. } = &host.observation {
+        match source.installed_slot().take_entry_hook() {
+            Some(hook) => Some(hook.pause().await),
+            None => None,
+        }
+    } else {
+        None
+    };
+    let observation = if let HostObservationBinding::Installed { source, .. } = &host.observation {
+        match super::installed_observation::InstalledSocket::authenticate(source.clone()).await {
+            Ok(observation) => Some(observation),
+            Err(_) => {
+                let _ = socket.send(Message::Close(None)).await;
+                #[cfg(test)]
+                if let Some(returned) = returned {
+                    let _ = returned.send(());
+                }
+                return;
+            }
+        }
+    } else {
+        None
+    };
+    serve_socket_observed(socket, host, observation).await;
+    #[cfg(test)]
+    if let Some(returned) = returned {
+        let _ = returned.send(());
+    }
+}
+async fn serve_socket_observed(
+    mut socket: WebSocket,
+    host: UiHostState,
+    observation: Option<super::installed_observation::InstalledSocket>,
+) {
     let mut state = ConnectionState {
+        installed: observation,
         originals: model_originals::OriginalSession::from_host_observation(
             host.original_capacity.clone(),
             &host.observation,
@@ -427,7 +477,9 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
     let mut queued = None;
     loop {
         tokio::select! {
-            message = async { match queued.take() { Some(message) => Some(Ok(message)), None => socket.recv().await } } => {
+            message = async { match queued.take() { Some(message) => Some(Ok(message)), None => match socket.recv().await {
+                Some(Ok(Message::Text(raw))) => match &state.installed {Some(observation)=>observation.received(raw).await.ok().map(|raw|Ok(Message::Text(raw))),None=>Some(Ok(Message::Text(raw)))}, other=>other,
+            } } } => {
                 let Some(message) = message else {
                     break;
                 };
@@ -448,7 +500,7 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                     let failure = if selects_originals(&text) {
                         model_originals::invalid_frame(Value::Null)
                     } else { rpc_error(Value::Null, -32600, "Invalid Request") };
-                    if send_profile_value(&mut socket, failure)
+                    if send_profile_value(&mut socket, failure,state.installed.as_ref())
                     .await
                     .is_err()
                     {
@@ -458,7 +510,7 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                 };
                 if let Err(error) = state.ledger.register(request.id) {
                     let failure = if request.method.is_model_originals() { model_originals::invalid_frame(json!(request.id)) } else { rpc_error(json!(request.id), -32600, &error.to_string()) };
-                    let _ = send_profile_value(&mut socket, failure)
+                    let _ = send_profile_value(&mut socket, failure,state.installed.as_ref())
                     .await;
                     break;
                 }
@@ -468,7 +520,7 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                             -32001,
                             "morphir.session.initialize must be the first call",
                         ) };
-                    let _ = send_profile_value(&mut socket, failure)
+                    let _ = send_profile_value(&mut socket, failure,state.installed.as_ref())
                     .await;
                     break;
                 }
@@ -479,6 +531,7 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                     // Issued by the SAME actual connection before dispatch borrows
                     // it. This does not manufacture a pending handle or grant.
                     let disconnect = state.originals.disconnect_control();
+                    let observation=state.installed.clone();
                     let pending = dispatch(&host, &mut state, &request);
                     tokio::pin!(pending);
                     loop {
@@ -489,11 +542,12 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                                     if !matches!(tokio::time::timeout(std::time::Duration::from_secs(30), socket.send(Message::Pong(bytes))).await, Ok(Ok(()))) { disconnect.handoff(); break None; }
                                 },
                                 Some(Ok(Message::Pong(_))) => {},
-                                Some(Ok(Message::Text(text))) if queued.is_none() && text.len() <= MAX_INBOUND_MESSAGE_BYTES => queued = Some(Message::Text(text)),
-                                Some(Ok(Message::Text(_))) => {
-                                    let _ = send_profile_value(&mut socket, model_originals::invalid_frame(Value::Null)).await;
-                                    disconnect.handoff();
-                                    break None;
+                                Some(Ok(Message::Text(text))) => {
+                                    let text=match &observation{Some(observation)=>match observation.received(text).await{Ok(text)=>text,Err(_)=>{disconnect.handoff();break None;}},None=>text};
+                                    if queued.is_none() && text.len()<=MAX_INBOUND_MESSAGE_BYTES {queued = Some(Message::Text(text));}else{
+                                        let _ = send_profile_value(&mut socket, model_originals::invalid_frame(Value::Null),observation.as_ref()).await;
+                                        disconnect.handoff();break None;
+                                    }
                                 },
                                 _ => { disconnect.handoff(); break None; },
                             },
@@ -503,13 +557,13 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                 let Some(response) = response else { break; };
                 let watch_snapshot = response.watch_snapshot.clone();
                 let subscription_id = response.subscription_id.clone();
-                let sent = if request.method.is_model_originals() { send_profile_value(&mut socket, response.envelope).await } else { send_value(&mut socket, response.envelope).await };
+                let sent = if request.method.is_model_originals() { send_profile_value(&mut socket, response.envelope,state.installed.as_ref()).await } else { send_observed_value(&mut socket, response.envelope,state.installed.as_ref()).await };
                 if sent.is_err() {
                     break;
                 }
                 if let (Some(snapshot), Some(subscription_id)) =
                     (watch_snapshot, subscription_id)
-                    && send_workspace_event(&mut socket, &subscription_id, snapshot)
+                    && send_workspace_event(&mut socket, &subscription_id, snapshot,state.installed.as_ref())
                         .await
                         .is_err()
                 {
@@ -552,6 +606,7 @@ async fn refresh_subscriptions(
                     &subscription_id,
                     &source.provider_id,
                     "Workspace capability was revoked",
+                    state.installed.as_ref(),
                 )
                 .await?;
                 if let Some(subscription) = state.subscriptions.get_mut(&subscription_id) {
@@ -572,7 +627,13 @@ async fn refresh_subscriptions(
                 if !should_emit {
                     continue;
                 }
-                send_workspace_event(socket, &subscription_id, snapshot.clone()).await?;
+                send_workspace_event(
+                    socket,
+                    &subscription_id,
+                    snapshot.clone(),
+                    state.installed.as_ref(),
+                )
+                .await?;
                 if let Some(subscription) = state.subscriptions.get_mut(&subscription_id) {
                     subscription.last_snapshot = snapshot;
                     subscription.refresh_failed = false;
@@ -591,6 +652,7 @@ async fn refresh_subscriptions(
                     &subscription_id,
                     &source.provider_id,
                     &error.to_string(),
+                    state.installed.as_ref(),
                 )
                 .await?;
                 if let Some(subscription) = state.subscriptions.get_mut(&subscription_id) {
@@ -606,8 +668,9 @@ async fn send_workspace_event(
     socket: &mut WebSocket,
     subscription_id: &str,
     snapshot: WorkspaceSnapshot,
+    observation: Option<&super::installed_observation::InstalledSocket>,
 ) -> Result<(), ()> {
-    send_value(
+    send_observed_value(
         socket,
         json!({
             "jsonrpc": "2.0",
@@ -617,6 +680,7 @@ async fn send_workspace_event(
                 "event": {"tag": "snapshot", "snapshot": snapshot}
             }
         }),
+        observation,
     )
     .await
 }
@@ -626,8 +690,9 @@ async fn send_provider_disconnected_event(
     subscription_id: &str,
     provider_id: &str,
     message: &str,
+    observation: Option<&super::installed_observation::InstalledSocket>,
 ) -> Result<(), ()> {
-    send_value(
+    send_observed_value(
         socket,
         json!({
             "jsonrpc": "2.0",
@@ -641,6 +706,7 @@ async fn send_provider_disconnected_event(
                 }
             }
         }),
+        observation,
     )
     .await
 }
@@ -948,7 +1014,32 @@ fn rpc_error(id: Value, code: i64, message: &str) -> Value {
 }
 
 async fn send_value(socket: &mut WebSocket, value: Value) -> Result<(), ()> {
+    send_observed_value(socket, value, None).await
+}
+async fn send_observed_value(
+    socket: &mut WebSocket,
+    value: Value,
+    observation: Option<&super::installed_observation::InstalledSocket>,
+) -> Result<(), ()> {
     let encoded = serde_json::to_string(&value).map_err(|_| ())?;
+    if let Some(observation) = observation {
+        let (key, encoded) = observation.prepared(encoded).await.map_err(|_| ())?;
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            socket.send(Message::Text(encoded.into())),
+        )
+        .await;
+        let outcome = match &result {
+            Ok(Ok(())) => super::installed_observation::SendOutcome::Completed,
+            Ok(Err(_)) => super::installed_observation::SendOutcome::Failed,
+            Err(_) => super::installed_observation::SendOutcome::TimedOut,
+        };
+        observation.outcome(key, outcome).await.map_err(|_| ())?;
+        return match result {
+            Ok(Ok(())) => Ok(()),
+            _ => Err(()),
+        };
+    }
     socket
         .send(Message::Text(encoded.into()))
         .await

@@ -583,3 +583,6 @@ mod output_route_tests;
 
 #[cfg(test)]
 mod private_record_tests;
+
+#[cfg(test)]
+mod installed_host_tests;

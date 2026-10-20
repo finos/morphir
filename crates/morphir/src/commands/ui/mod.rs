@@ -14,6 +14,7 @@ use server::BoundUiHost;
 pub mod artifacts;
 pub mod assets;
 pub mod auth;
+pub(in crate::commands::ui) mod installed_observation;
 pub mod model_originals;
 pub(in crate::commands) mod native_mck;
 mod native_startup;

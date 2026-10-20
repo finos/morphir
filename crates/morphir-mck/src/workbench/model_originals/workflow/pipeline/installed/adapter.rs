@@ -6,13 +6,22 @@ use super::super::super::{
 };
 use super::super::{Attempt, RunFault, WorkflowRecordError};
 use super::observation::InstalledObservationOwner;
+mod invocation;
 pub use super::observation::{
     InstalledObservationFault as InstalledObservationError, InstalledObservationResource,
-    InstalledObservationUsage, ProcessPrefixReservation, SnapshotReadPermission,
+    InstalledObservationUsage, ObservationBufferRole, ObservationRecordRole,
+    ProcessPrefixReservation, RetainedObservationBytes, RetainedObservationText,
+    SnapshotReadPermission,
 };
 use crate::workbench::configuration::NativeObservationLimits;
 pub use crate::workbench::model_originals::workflow::installed_measurements::InstalledClientMeasurements;
 use crate::workbench::model_originals::workflow::native::{self, record_retention};
+pub(super) use invocation::InvocationRevoker;
+pub use invocation::{
+    InvocationGate, InvocationGateSource, InvocationObservation, InvocationObservationError,
+};
+#[cfg(test)]
+use invocation::{InvocationObservationState, InvocationObservationView};
 use native::data::{Bytes, SourcePath, Text};
 use native::{FixtureAlias, PrivateRecordAdoption, PrivateRecordError, RecordRetentionUsage};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +44,13 @@ pub struct InstalledClientRun<'a> {
     records: &'a mut record_retention::RecordRetentionOwner,
     receiving: &'a mut InstalledObservationOwner,
     attempt: &'a mut Attempt,
+    revoker: &'a mut InvocationRevoker,
+    capture: &'a mut super::super::policy::CaptureBudget,
+}
+pub(super) struct HostObservationOwners<'a> {
+    pub(super) receiving: &'a mut InstalledObservationOwner,
+    pub(super) revoker: &'a mut InvocationRevoker,
+    pub(super) capture: &'a mut super::super::policy::CaptureBudget,
 }
 impl<'a> InstalledClientRun<'a> {
     pub(super) fn from_prepared(
@@ -42,9 +58,14 @@ impl<'a> InstalledClientRun<'a> {
         limits: &'a NativeObservationLimits,
         comparison: &'a mut observation_check::CompareOwner,
         records: &'a mut record_retention::RecordRetentionOwner,
-        receiving: &'a mut InstalledObservationOwner,
         attempt: &'a mut Attempt,
+        host: HostObservationOwners<'a>,
     ) -> Self {
+        let HostObservationOwners {
+            receiving,
+            revoker,
+            capture,
+        } = host;
         Self {
             source,
             limits,
@@ -52,6 +73,8 @@ impl<'a> InstalledClientRun<'a> {
             records,
             receiving,
             attempt,
+            revoker,
+            capture,
         }
     }
     pub fn source(&self) -> InstalledClientSource<'_> {
@@ -65,6 +88,116 @@ impl<'a> InstalledClientRun<'a> {
     }
     pub fn observation_limits(&self) -> &NativeObservationLimits {
         self.limits
+    }
+    pub fn issue_host_observation(
+        &mut self,
+        source: std::sync::Weak<dyn InvocationGateSource>,
+    ) -> Result<InvocationObservation, &InstalledObservationError> {
+        if self.work_ready().is_err() {
+            return Err(self.receiving.refuse_prior_fault());
+        }
+        for role in [
+            ObservationRecordRole::Invocation,
+            ObservationRecordRole::Mailbox,
+        ] {
+            if let Err(error) = self
+                .receiving
+                .prepare_record(role)
+                .map(|ticket| {
+                    ticket.issue();
+                })
+                .map_err(|error| *error)
+            {
+                self.attempt.fail(RunFault::InstalledObservation(error));
+                return Err(self.receiving.fail(error));
+            }
+        }
+        match self.revoker.issue(source) {
+            Ok(token) => Ok(token),
+            Err(_) => Err(self.receiving.refuse_prior_fault()),
+        }
+    }
+    pub fn host_invocation_matches(
+        &self,
+        source: &std::sync::Weak<dyn InvocationGateSource>,
+    ) -> bool {
+        self.revoker.matches(source)
+    }
+    pub fn retain_host_record(
+        &mut self,
+        source: &std::sync::Weak<dyn InvocationGateSource>,
+        role: ObservationRecordRole,
+    ) -> Result<(), InstalledAdapterError> {
+        self.work_ready()?;
+        if !self.revoker.matches(source) {
+            self.receiving.refuse_prior_fault();
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        }
+        match self.receiving.prepare_record(role).map(|ticket| {
+            ticket.issue();
+        }) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                self.attempt.fail(RunFault::InstalledObservation(*error));
+                Err(InstalledAdapterError::ObservationIncomplete)
+            }
+        }
+    }
+    pub fn retain_host_payload(
+        &mut self,
+        source: &std::sync::Weak<dyn InvocationGateSource>,
+        role: ObservationBufferRole,
+        raw: &[u8],
+    ) -> Result<RetainedObservationBytes, InstalledAdapterError> {
+        self.prepare_host_payload(source, role, raw.len())?;
+        match super::observation::prepare_copy(self.receiving, self.comparison, role, raw)
+            .and_then(|ticket| ticket.retain())
+        {
+            Ok(bytes) => Ok(bytes),
+            Err(error) => {
+                self.attempt.fail(RunFault::InstalledObservation(*error));
+                Err(InstalledAdapterError::ObservationIncomplete)
+            }
+        }
+    }
+    pub fn retain_host_text(
+        &mut self,
+        source: &std::sync::Weak<dyn InvocationGateSource>,
+        role: ObservationBufferRole,
+        raw: &str,
+    ) -> Result<RetainedObservationText, InstalledAdapterError> {
+        self.prepare_host_payload(source, role, raw.len())?;
+        match super::observation::prepare_text_copy(self.receiving, self.comparison, role, raw)
+            .and_then(|ticket| ticket.retain_text())
+        {
+            Ok(text) => Ok(text),
+            Err(error) => {
+                self.attempt.fail(RunFault::InstalledObservation(*error));
+                Err(InstalledAdapterError::ObservationIncomplete)
+            }
+        }
+    }
+    fn prepare_host_payload(
+        &mut self,
+        source: &std::sync::Weak<dyn InvocationGateSource>,
+        role: ObservationBufferRole,
+        length: usize,
+    ) -> Result<(), InstalledAdapterError> {
+        self.work_ready()?;
+        if !self.revoker.matches(source) {
+            self.receiving.refuse_prior_fault();
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        }
+        let capture = match role {
+            ObservationBufferRole::RpcRequest => self.capture.retain(length, 0),
+            ObservationBufferRole::RpcReply => self.capture.retain(0, length),
+            _ => Ok(()),
+        };
+        if let Err(error) = capture {
+            self.attempt.fail(RunFault::Capture(error));
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        }
+        Ok(())
     }
     fn work_ready(&mut self) -> Result<(), InstalledAdapterError> {
         if let Err(error) = self.comparison.ready() {
@@ -240,3 +373,6 @@ fn action(value: &installed_client::Action) -> InstalledClientAction<'_> {
         installed_client::Action::Stop {} => InstalledClientAction::StopAndJoin,
     }
 }
+
+#[cfg(test)]
+mod lifetime_tests;
