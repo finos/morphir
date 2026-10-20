@@ -21,6 +21,8 @@ enum RecordObservationBinding {
     #[cfg(test)]
     Disabled,
     Observed,
+    #[cfg(test)]
+    ObservedWithCaptureHook(super::model_originals::CaptureWorkerTestHook),
 }
 #[derive(Clone)]
 pub(in crate::commands::ui) enum HostObservationBinding {
@@ -30,6 +32,8 @@ pub(in crate::commands::ui) enum HostObservationBinding {
         source: super::model_originals::observation::HostSourceLease,
         registry: PrivateRecordRegistry,
         cleanup: CleanupRegistry,
+        #[cfg(test)]
+        capture_hook: Option<super::model_originals::CaptureWorkerTestHook>,
     },
 }
 
@@ -125,6 +129,22 @@ impl BoundUiHost {
             .expect("observed binding issues observer");
         Ok((host, observer))
     }
+    #[cfg(test)]
+    pub(in crate::commands::ui) async fn bind_record_observed_with_capture_hook(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
+        scope: &super::model_originals::observation::HostSourceObservationScope,
+        hook: super::model_originals::CaptureWorkerTestHook,
+    ) -> Result<(Self, HostPrivateRecordObserver), CliError> {
+        let host = Self::bind_observed(
+            session_id, capabilities, originals, scope,
+            RecordObservationBinding::ObservedWithCaptureHook(hook),
+        ).await?;
+        let observer = host.record_observer.clone().expect("observed binding issues observer");
+        Ok((host, observer))
+    }
+
     async fn bind_observed(
         session_id: String,
         capabilities: SessionCapabilities,
@@ -175,6 +195,15 @@ impl BoundUiHost {
                 source: source.clone(),
                 registry: PrivateRecordRegistry::new(),
                 cleanup: CleanupRegistry::new(),
+                #[cfg(test)]
+                capture_hook: None,
+            },
+            #[cfg(test)]
+            RecordObservationBinding::ObservedWithCaptureHook(hook) => HostObservationBinding::Record {
+                source: source.clone(),
+                registry: PrivateRecordRegistry::new(),
+                cleanup: CleanupRegistry::new(),
+                capture_hook: Some(hook),
             },
         };
         let host = Self::bind_configured(session_id, capabilities, originals, observation).await?;

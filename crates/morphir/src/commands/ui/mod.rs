@@ -15,6 +15,7 @@ pub mod artifacts;
 pub mod assets;
 pub mod auth;
 pub mod model_originals;
+pub(in crate::commands) mod native_mck;
 mod native_startup;
 pub mod protocol;
 pub mod provider;

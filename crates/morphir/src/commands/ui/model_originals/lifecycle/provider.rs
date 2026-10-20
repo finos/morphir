@@ -29,6 +29,10 @@ impl ModelCaptureConnection {
         offer: SelectedOriginalsOffer,
         scope: CaptureScope,
     ) -> Result<PendingProviderCapture, CaptureError> {
+        #[cfg(test)]
+        if let Some(hook) = &self.capture_test_hook {
+            return self.start_offered_provider_with(offer, scope, CaptureControl::new(), hook.0.clone());
+        }
         self.start_offered_provider_with(offer, scope, CaptureControl::new(), Arc::new(NoopHooks))
     }
     pub(in crate::commands::ui::model_originals) fn start_offered_provider_with(

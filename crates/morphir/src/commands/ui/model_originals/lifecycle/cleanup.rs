@@ -324,11 +324,12 @@ impl HostCaptureCleanupOwner {
         self,
         deadline: tokio::time::Instant,
     ) -> Result<(), PendingCaptureCleanup> {
+        self.into_pending().drain(deadline).await
+    }
+    pub(in crate::commands::ui) fn into_pending(self) -> PendingCaptureCleanup {
         PendingCaptureCleanup {
             owner: CleanupOwner::Host(self.0),
         }
-        .drain(deadline)
-        .await
     }
 }
 #[must_use = "A pending cleanup token still owns real unjoined workers"]
@@ -365,6 +366,17 @@ impl PendingCaptureCleanup {
         mut self,
         deadline: tokio::time::Instant,
     ) -> Result<(), Self> {
+        match self.drain_retained(deadline).await {
+            Ok(()) => Ok(()),
+            Err(_) => Err(self),
+        }
+    }
+    /// Borrow the same owner so dropping a caller future cannot drop its token.
+    /// DrainGuard returns an interrupted actual join to this owner's slot.
+    pub(in crate::commands::ui) async fn drain_retained(
+        &mut self,
+        deadline: tokio::time::Instant,
+    ) -> Result<(), CaptureError> {
         // The Host variant retains the SAME fixed table, not a separately
         // allocated snapshot or new task. Caller must quiesce new dispatch.
         for index in 0..MAX_HOST_CAPTURES {
@@ -377,7 +389,7 @@ impl PendingCaptureCleanup {
             };
             if let Some(slot) = slot {
                 if !slot.drain(deadline).await {
-                    return Err(self);
+                    return Err(CaptureError::Timeout);
                 }
                 if let CleanupOwner::Single(entry) = &mut self.owner {
                     *entry = None;

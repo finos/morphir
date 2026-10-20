@@ -38,6 +38,8 @@ impl OriginalSession {
                 source,
                 registry,
                 cleanup,
+                #[cfg(test)]
+                capture_hook,
             } => {
                 let mut connection = ModelCaptureConnection::record_observed(
                     capacity,
@@ -46,6 +48,10 @@ impl OriginalSession {
                 )
                 .0;
                 connection.attach_cleanup_registry(cleanup);
+                #[cfg(test)]
+                if let Some(hook) = capture_hook {
+                    connection.attach_capture_test_hook(hook);
+                }
                 connection
             }
         };

@@ -373,6 +373,8 @@ pub struct ModelCaptureConnection {
     observation: WorkerConnectionObservation,
     records: RecordConnection,
     cleanup_registry: Option<CleanupRegistry>,
+    #[cfg(test)]
+    capture_test_hook: Option<CaptureWorkerTestHook>,
 }
 impl ModelCaptureConnection {
     pub fn new(capacity: HostModelCaptureCapacity) -> Self {
@@ -386,6 +388,8 @@ impl ModelCaptureConnection {
             observation: WorkerConnectionObservation::unobserved(),
             records: RecordConnection::Disabled,
             cleanup_registry: None,
+            #[cfg(test)]
+            capture_test_hook: None,
         }
     }
     /// Bind read-only worker evidence to this actual connection. The scope
@@ -397,6 +401,10 @@ impl ModelCaptureConnection {
         let mut connection = Self::new(capacity);
         connection.observation = WorkerConnectionObservation::bind(scope);
         connection
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn attach_capture_test_hook(&mut self, hook: &CaptureWorkerTestHook) {
+        self.capture_test_hook = Some(hook.clone());
     }
     pub fn worker_observation(&self) -> WorkerConnectionObservation {
         self.observation.clone()
@@ -600,6 +608,24 @@ pub(super) trait WorkerHooks: Send + Sync {
     #[cfg(test)]
     fn after_spawn_before_tracking(&self) {}
 }
+#[cfg(test)]
+#[derive(Clone)]
+pub(in crate::commands::ui) struct CaptureWorkerTestHook(Arc<dyn WorkerHooks>);
+#[cfg(test)]
+impl CaptureWorkerTestHook {
+    pub(in crate::commands::ui) fn new(callback: Arc<dyn Fn() + Send + Sync>) -> Self {
+        Self(Arc::new(BeforeCaptureTestHook(callback)))
+    }
+}
+#[cfg(test)]
+struct BeforeCaptureTestHook(Arc<dyn Fn() + Send + Sync>);
+#[cfg(test)]
+impl WorkerHooks for BeforeCaptureTestHook {
+    fn before_capture(&self) {
+        (self.0)();
+    }
+}
+
 struct NoopHooks;
 impl WorkerHooks for NoopHooks {}
 

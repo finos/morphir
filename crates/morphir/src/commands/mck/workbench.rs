@@ -1,5 +1,9 @@
 //! CLI boundaries for parent-owned Workbench codec qualification.
 
+mod adapter_selection;
+
+use adapter_selection::{AdapterSelectionError, WorkbenchAdapter};
+
 use std::ffi::OsString;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -13,7 +17,7 @@ use clap::Args;
 use morphir_mck::transport::{Limits, Session};
 use morphir_mck::workbench::{
     AdapterProtocol, MAX_REPORT_BYTES, Report, RunConfiguration, check_report_configured,
-    run_configured_with_session_factory,
+    run_configured_with_native_adapter, run_configured_with_session_factory,
 };
 use starbase::AppResult;
 
@@ -24,7 +28,7 @@ pub struct RunArgs {
     /// Workbench corpus directory containing cases.json; no embedded IR kit is used
     #[arg(long, value_name = "DIR")]
     pub kit: PathBuf,
-    /// Adapter executable, launched directly without a shell
+    /// Adapter executable or builtin:morphir-workbench; external programs use no shell
     #[arg(long, value_name = "PROGRAM")]
     pub adapter: OsString,
     /// An argument for the adapter; repeat for more
@@ -61,10 +65,31 @@ fn configuration(path: Option<&Path>) -> Result<RunConfiguration, String> {
 }
 
 pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
+    let adapter = match WorkbenchAdapter::parse(&args.adapter, &args.adapter_args) {
+        Ok(adapter) => adapter,
+        Err(AdapterSelectionError::BuiltinArguments) => {
+            return finish(Outcome::Usage(
+                "builtin:morphir-workbench does not accept --adapter-arg".into(),
+            ));
+        }
+    };
     let configuration = match configuration(args.checker_policy.as_deref()) {
         Ok(configuration) => configuration,
         Err(error) => return finish(Outcome::Error(error)),
     };
+    match (&adapter, configuration.native_observation_limits()) {
+        (WorkbenchAdapter::BuiltinNativeWorkbench, None) => {
+            return finish(Outcome::Usage(
+                "builtin:morphir-workbench requires an explicit native checker policy".into(),
+            ));
+        }
+        (WorkbenchAdapter::External { .. }, Some(_)) => {
+            return finish(Outcome::Usage(
+                "a native checker policy requires --adapter builtin:morphir-workbench".into(),
+            ));
+        }
+        _ => {}
+    }
     let source = args.kit.join("cases.json");
     let same_source = if args.report.exists() {
         match same_file::is_same_file(&source, &args.report) {
@@ -90,38 +115,54 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
     };
     let mut interrupt = None;
     let interrupted = Arc::new(AtomicBool::new(false));
-    let report = tokio::task::block_in_place(|| {
-        run_configured_with_session_factory(&args.kit, &configuration, || {
-            // The shared runner finishes source preparation BEFORE invoking
-            // this real process factory. No expected data/context crosses it.
-            let session = match configuration.adapter_protocol() {
-                AdapterProtocol::HistoricalNewline => {
-                    Session::spawn(&args.adapter, &args.adapter_args, limits)
-                }
-                AdapterProtocol::ContentLength => {
-                    Session::spawn_mep(&args.adapter, &args.adapter_args, limits)
-                }
-            }?;
-            let terminator = session.terminator();
-            let interrupted = Arc::clone(&interrupted);
+    let report = tokio::task::block_in_place(|| match adapter {
+        WorkbenchAdapter::BuiltinNativeWorkbench => {
+            let cancellation = Arc::clone(&interrupted);
             interrupt = Some(tokio::spawn(async move {
                 if tokio::signal::ctrl_c().await.is_ok() {
-                    interrupted.store(true, Ordering::SeqCst);
-                    terminator.kill();
+                    cancellation.store(true, Ordering::SeqCst);
                 }
             }));
-            Ok(session)
-        })
+            // Construction stores bounds and cancellation only. The shared
+            // engine validates the source before issuing the actual invocation.
+            let mut adapter = crate::commands::ui::native_mck::NativeWorkbenchAdapter::new(
+                limits,
+                Arc::clone(&interrupted),
+            );
+            run_configured_with_native_adapter(&args.kit, &configuration, &mut adapter)
+        }
+        WorkbenchAdapter::External { program, arguments } => {
+            run_configured_with_session_factory(&args.kit, &configuration, || {
+                // The shared runner finishes source preparation BEFORE invoking
+                // this real process factory. No expected data/context crosses it.
+                let session = match configuration.adapter_protocol() {
+                    AdapterProtocol::HistoricalNewline => {
+                        Session::spawn(&args.adapter, arguments, limits)
+                    }
+                    AdapterProtocol::ContentLength => {
+                        Session::spawn_mep(program, arguments, limits)
+                    }
+                }?;
+                let terminator = session.terminator();
+                let interrupted = Arc::clone(&interrupted);
+                interrupt = Some(tokio::spawn(async move {
+                    if tokio::signal::ctrl_c().await.is_ok() {
+                        interrupted.store(true, Ordering::SeqCst);
+                        terminator.kill();
+                    }
+                }));
+                Ok(session)
+            })
+        }
     });
     if let Some(interrupt) = interrupt {
         interrupt.abort();
         let _ = interrupt.await;
     }
     if interrupted.load(Ordering::SeqCst) {
-        // The shared runner has returned through Session::close, which kills
-        // the owned tree and waits for the adapter child. Exit after that owner
-        // has completed cleanup, without publishing an interrupted report.
-        eprintln!("error: interrupted; the adapter was terminated");
+        // External sessions return through close/kill/wait. The builtin owns
+        // its host cleanup before returning. Neither publishes a cancelled run.
+        eprintln!("error: interrupted; adapter run stopped");
         std::process::exit(130);
     }
     let report = match report {
