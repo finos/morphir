@@ -1,6 +1,7 @@
 import { basicSetup } from 'codemirror';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { DocumentText } from './document-text.ts';
 import { markSet, position } from './marks.ts';
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language';
 import { yaml } from '@codemirror/legacy-modes/mode/yaml';
@@ -66,9 +67,8 @@ function languageSupport(id: string) {
 export class CodeEditor extends HTMLElement {
   declare readonly shadowRoot: ShadowRoot;
   configuration: Compartment;
-  pendingValue: string;
+  text: DocumentText;
   view: EditorView | null;
-  documentKey: string | null;
   readOnly: boolean;
   queued: boolean;
   static observedAttributes = ['data-document', 'data-language', 'data-readonly', 'data-marks', 'data-reveal', 'aria-label'];
@@ -81,16 +81,15 @@ export class CodeEditor extends HTMLElement {
     // Only the component's normalized input event crosses into Rabbita.
     this.shadowRoot.addEventListener('input', event => event.stopPropagation());
     this.configuration = configuration;
-    this.pendingValue = '';
+    this.text = new DocumentText();
     this.view = null;
-    this.documentKey = null;
     this.readOnly = true;
     this.queued = false;
   }
   /** The line of the caret, one-based; read by tests. */
   get caretLine() { return this.view ? this.view.state.doc.lineAt(this.view.state.selection.main.head).number : 0; }
-  get value() { return this.view?.state.doc.toString() ?? this.pendingValue; }
-  set value(value: string) { this.pendingValue = String(value ?? ''); this.schedule(); }
+  get value() { return this.view?.state.doc.toString() ?? this.text.current; }
+  set value(value: string) { this.text.render(String(value ?? '')); this.schedule(); }
   connectedCallback() { this.schedule(); }
   disconnectedCallback() {
     this.remember();
@@ -107,9 +106,10 @@ export class CodeEditor extends HTMLElement {
     });
   }
   remember() {
-    if (!this.view || this.readOnly || !this.documentKey) return;
-    sessions.delete(this.documentKey);
-    sessions.set(this.documentKey, this.view.state);
+    const key = this.text.key;
+    if (!this.view || this.readOnly || !key) return;
+    sessions.delete(key);
+    sessions.set(key, this.view.state);
     if (sessions.size > 20) sessions.delete(sessions.keys().next().value!);
   }
   extensions() {
@@ -124,13 +124,13 @@ export class CodeEditor extends HTMLElement {
     ];
   }
   newState() {
-    return EditorState.create({ doc: this.pendingValue, extensions: [
+    return EditorState.create({ doc: this.text.current, extensions: [
       basicSetup, theme, syntaxHighlighting(highlighting),
       this.configuration.of(this.extensions()),
       EditorView.updateListener.of(update => {
         const component = (update.view.dom.getRootNode() as ShadowRoot).host as CodeEditor;
         if (!update.docChanged || component.readOnly) return;
-        component.pendingValue = update.state.doc.toString();
+        component.text.edit(update.state.doc.toString());
         component.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertText' }));
       }),
     ] });
@@ -138,22 +138,23 @@ export class CodeEditor extends HTMLElement {
   reconcile() {
     const key = this.dataset.document ?? '';
     const readOnly = this.dataset.readonly === 'true';
-    if (!this.view || key !== this.documentKey || readOnly !== this.readOnly) {
+    if (!this.view || key !== this.text.key || readOnly !== this.readOnly) {
       this.remember();
-      this.documentKey = key;
+      // A new key opens at its rendered value; an edit not yet rendered stays in the session of its own document.
+      const text = this.text.open(key);
       this.readOnly = readOnly;
       const cached = !readOnly && sessions.get(key);
-      const state = cached && cached.doc.toString() === this.pendingValue ? cached : this.newState();
+      const state = cached && cached.doc.toString() === text ? cached : this.newState();
       if (this.view) this.view.setState(state);
       else this.view = new EditorView({ state, parent: this.shadowRoot, root: this.shadowRoot });
-    } else if (this.view.state.doc.toString() !== this.pendingValue) {
+    } else if (this.view.state.doc.toString() !== this.text.current) {
       // External replacement (an example or host result) starts a new history.
       this.view.setState(this.newState());
     }
     this.view.dispatch({ effects: this.configuration.reconfigure(this.extensions()) });
     const reveal = this.dataset.reveal ?? '';
     // A reveal waits until the view holds the current document for the current key; it is recorded only once moved.
-    if (reveal && reveal !== lastReveal && this.documentKey === key && this.view.state.doc.toString() === this.pendingValue) {
+    if (reveal && reveal !== lastReveal && this.text.key === key && this.view.state.doc.toString() === this.text.current) {
       const [line = NaN, column = NaN, , endLine, endColumn] = reveal.split(':').map(Number);
       if (Number.isFinite(line) && Number.isFinite(column)) {
         const anchor = position(this.view.state.doc, line, column);

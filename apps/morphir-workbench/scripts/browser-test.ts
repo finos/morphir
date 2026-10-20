@@ -637,22 +637,30 @@ try {
   assert.deepEqual(await page.locator('.worksheet-result .value').allTextContents(), ['42']);
   assert.equal(rpcCalls.length, callsBeforeWorksheet, 'Connected worksheets use the real local worker without new RPC');
   await showCompile(page);
-  await page.getByRole('textbox', { name: 'Source editor' }).fill('(total 3)');
-  // The editor keeps a draft the page has not rendered yet; let each edit render before the document changes.
-  const painted = () => page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  await painted();
+  // An edit and a language switch in one render, before the page renders the edit: the edit stays with its document.
+  const editThenSwitch = (text: string, language: string) => page.evaluate(({ text, language }) => {
+    const view = document.querySelector<CodeEditor>('#source')!.view!;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, userEvent: 'input.type' });
+    const select = document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!;
+    select.value = language;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }, { text, language });
   assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).count(),0,'Connected v1 does not expose unnegotiated source profiles');
   const connectedLanguage = page.getByRole('combobox', {name:'Language',exact:true});
   assert.deepEqual(await connectedLanguage.locator('option').evaluateAll(options=>options.map(option=>(option as CodeEditor).value)),['scheme','gleam'],'Connected choices come only from the host catalog');
-  await connectedLanguage.selectOption('gleam');
+  await editThenSwitch('(total 3)', 'gleam');
   await page.getByText('src/main.gleam',{exact:true}).waitFor();
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '').catch(async error => {
     console.error('Connected source draft state', await page.locator('#source').evaluate(e => ({value:(e as CodeEditor).value, language:e.dataset.language, document:e.dataset.document})), await connectedLanguage.inputValue());
     throw error;
   });
-  await page.getByRole('textbox',{name:'Source editor',exact:true}).fill('// retained host-language draft');
-  await painted();
-  await connectedLanguage.selectOption('scheme');
+  await editThenSwitch('// retained host-language draft', 'scheme');
+  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '(total 3)');
+  // The Scheme document kept the history of its edit across both switches.
+  await page.locator('#source .cm-content').focus();
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '');
+  await page.keyboard.press('ControlOrMeta+Shift+z');
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '(total 3)');
   await connectedLanguage.selectOption('gleam');
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '// retained host-language draft');
