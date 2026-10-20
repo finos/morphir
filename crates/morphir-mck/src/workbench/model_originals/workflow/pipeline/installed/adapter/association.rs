@@ -1,7 +1,7 @@
 //! Typed factual builders for the real adapter. Values never issue authority.
 use super::*;
 use crate::workbench::model_originals::workflow::{
-    ContentSha256, DecodeError, Items, Natural, installed_measurements as model,
+    ContentSha256, Items, Natural, installed_measurements as model,
 };
 use model::implementation::*;
 use sha2::{Digest, Sha256};
@@ -89,11 +89,18 @@ impl InstalledClientRun<'_> {
     }
     fn descriptor_digest<'a>(
         &mut self,
-        entries: impl Iterator<Item = (u8, u8, &'a str, u64, &'a [u8; 32])>,
+        entries: impl Iterator<Item = Descriptor<'a>>,
     ) -> Result<ContentSha256, InstalledAdapterError> {
         self.work_ready()?;
         let mut hash = Sha256::new();
-        for (kind, mode, path, length, digest) in entries {
+        for Descriptor {
+            kind,
+            mode,
+            path,
+            length,
+            digest,
+        } in entries
+        {
             self.visit_observation_bytes(
                 path.len()
                     .checked_add(50)
@@ -111,46 +118,13 @@ impl InstalledClientRun<'_> {
         &mut self,
         entries: &[PackageFile],
     ) -> Result<ContentSha256, InstalledAdapterError> {
-        self.descriptor_digest(entries.iter().map(|e| {
-            (
-                0,
-                match e.mode {
-                    FileMode::Regular => 0,
-                    FileMode::Executable => 1,
-                },
-                e.path.as_str(),
-                e.byte_length.0,
-                &e.sha256.0,
-            )
-        }))
+        self.descriptor_digest(entries.iter().map(PackageFile::descriptor))
     }
     pub fn source_census_digest(
         &mut self,
         entries: &[SourceEntry],
     ) -> Result<ContentSha256, InstalledAdapterError> {
-        self.descriptor_digest(entries.iter().map(|e| match e {
-            SourceEntry::File {
-                path,
-                mode,
-                byte_length,
-                sha256,
-            } => (
-                0,
-                match mode {
-                    FileMode::Regular => 0,
-                    FileMode::Executable => 1,
-                },
-                path.as_str(),
-                byte_length.0,
-                &sha256.0,
-            ),
-            SourceEntry::SymlinkLiteral {
-                path,
-                byte_length,
-                sha256,
-                ..
-            } => (1, 0, path.as_str(), byte_length.0, &sha256.0),
-        }))
+        self.descriptor_digest(entries.iter().map(SourceEntry::descriptor))
     }
     pub fn sort_package_entries(
         &mut self,

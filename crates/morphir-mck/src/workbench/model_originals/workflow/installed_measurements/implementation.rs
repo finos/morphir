@@ -27,19 +27,21 @@ record! {pub ToolProcess {
     process_ordinal:Natural<0,{u64::MAX}> =>"processOrdinal",tool:GitTool=>"tool",query:GitQuery=>"query",program:OsOperand=>"program",directory:OsOperand=>"directory",arguments:Items<OsOperand,0,{usize::MAX}> =>"arguments",
     completion:DirectProcessCompletion=>"completion",stdout:ObservedBytes=>"stdout",stderr:ObservedBytes=>"stderr",stderr_truncated:MeasuredBool=>"stderrTruncated",descendants:DescendantCoverage=>"descendants",
 }}
-tagged! { pub ImplementationObservation("kind") {
+tagged! {
+#[expect(clippy::large_enum_variant, reason = "Fixed inline typed association payload avoids a new unbudgeted allocation; variable storage is separately accounted")]
+pub ImplementationObservation("kind") {
     Unobserved=>"unobserved"{},
     Observed=>"observed"{before_action:Natural<0,{u64::MAX}> =>"beforeAction",launch:LaunchObservation=>"launch",runtime:RuntimeObservation=>"runtime",command_paths:CommandPaths=>"commandPaths",package:PackageCensus=>"package",source:SourceAssociation=>"source",metadata_tools:Items<ToolProcess,0,{usize::MAX}> =>"metadataTools"},
 } }
-pub(super) struct Descriptor<'a> {
-    pub(super) path: &'a str,
-    pub(super) kind: u8,
-    pub(super) mode: u8,
-    pub(super) length: u64,
-    pub(super) digest: &'a [u8; 32],
+pub(in crate::workbench::model_originals::workflow) struct Descriptor<'a> {
+    pub(in crate::workbench::model_originals::workflow) path: &'a str,
+    pub(in crate::workbench::model_originals::workflow) kind: u8,
+    pub(in crate::workbench::model_originals::workflow) mode: u8,
+    pub(in crate::workbench::model_originals::workflow) length: u64,
+    pub(in crate::workbench::model_originals::workflow) digest: &'a [u8; 32],
 }
 impl PackageFile {
-    pub(super) fn descriptor(&self) -> Descriptor<'_> {
+    pub(in crate::workbench::model_originals::workflow) fn descriptor(&self) -> Descriptor<'_> {
         Descriptor {
             path: self.path.as_str(),
             kind: 0,
@@ -53,7 +55,7 @@ impl PackageFile {
     }
 }
 impl SourceEntry {
-    pub(super) fn descriptor(&self) -> Descriptor<'_> {
+    pub(in crate::workbench::model_originals::workflow) fn descriptor(&self) -> Descriptor<'_> {
         match self {
             Self::File {
                 path,

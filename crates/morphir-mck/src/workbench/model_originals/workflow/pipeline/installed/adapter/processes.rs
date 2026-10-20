@@ -48,6 +48,10 @@ pub struct FinishedInstalledProcess {
     pub(super) description: ProcessDescription,
     pub(super) outcome: ProcessOutcome,
 }
+pub enum InstalledProcessFinish {
+    Pending(RunningInstalledProcess),
+    Finished(FinishedInstalledProcess),
+}
 impl PreparedInstalledProcess {
     fn spawn(self) -> Result<RunningInstalledProcess, ProcessError> {
         OneShotProcess::spawn(self.spec, self.limits).map(|process| RunningInstalledProcess {
@@ -66,13 +70,15 @@ impl RunningInstalledProcess {
     pub fn reap_retained(&mut self) -> Result<ReapProgress, ReapError> {
         self.process.reap_retained()
     }
-    pub fn try_finish(self) -> Result<FinishedInstalledProcess, Self> {
+    pub fn try_finish(self) -> InstalledProcessFinish {
         match self.process.into_finished() {
-            ProcessFinish::Finished(outcome) => Ok(FinishedInstalledProcess {
-                description: self.description,
-                outcome,
-            }),
-            ProcessFinish::Pending(process) => Err(Self {
+            ProcessFinish::Finished(outcome) => {
+                InstalledProcessFinish::Finished(FinishedInstalledProcess {
+                    description: self.description,
+                    outcome,
+                })
+            }
+            ProcessFinish::Pending(process) => InstalledProcessFinish::Pending(Self {
                 description: self.description,
                 process,
             }),
@@ -222,11 +228,9 @@ impl InstalledClientRun<'_> {
             action_index,
             command,
         } = purpose
+            && !matches!(self.actions().nth(action_index),Some(InstalledClientAction::Run{command:actual,..}) if actual==command)
         {
-            if !matches!(self.actions().nth(action_index),Some(InstalledClientAction::Run{command:actual,..}) if actual==command)
-            {
-                return Err(InstalledAdapterError::ObservationIncomplete);
-            }
+            return Err(InstalledAdapterError::ObservationIncomplete);
         }
         self.reserve_process_prefixes(&limits)
             .map_err(|_| InstalledAdapterError::ObservationIncomplete)?
@@ -281,3 +285,7 @@ impl InstalledClientRun<'_> {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "processes_finish_test.rs"]
+mod finish_state_tests;

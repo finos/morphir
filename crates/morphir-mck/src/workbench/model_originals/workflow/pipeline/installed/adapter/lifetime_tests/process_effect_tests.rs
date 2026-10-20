@@ -46,8 +46,8 @@ fn actual_finish(mut process: RunningInstalledProcess) -> FinishedInstalledProce
         std::thread::sleep(Duration::from_millis(1));
     }
     match process.try_finish() {
-        Ok(finished) => finished,
-        Err(_same_process) => {
+        InstalledProcessFinish::Finished(finished) => finished,
+        InstalledProcessFinish::Pending(_same_process) => {
             panic!("Finished progress must transfer actual status and reader joins")
         }
     }
@@ -142,11 +142,10 @@ impl InstalledClientAdapter for EffectProbe {
                     !self.marker.exists(),
                     "same actual peer entry marker must remain absent"
                 );
-                let fault = *run
-                    .receiving
-                    .ready()
-                    .err()
-                    .expect("real receiving owner keeps first failure");
+                let fault = match run.receiving.ready() {
+                    Err(fault) => *fault,
+                    Ok(_) => panic!("real receiving owner keeps first failure"),
+                };
                 let expected = match self.effect {
                     Effect::Refuse(kind) => kind,
                     Effect::PriorFault => InstalledObservationResource::SnapshotReadBytes,

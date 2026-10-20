@@ -46,8 +46,10 @@ fn finish_faulted(mut process: RunningInstalledProcess) -> FinishedInstalledProc
         std::thread::sleep(Duration::from_millis(1));
     }
     match process.try_finish() {
-        Ok(finished) => finished,
-        Err(_same_process) => panic!("actual Finished must carry waited status and joined readers"),
+        InstalledProcessFinish::Finished(finished) => finished,
+        InstalledProcessFinish::Pending(_same_process) => {
+            panic!("actual Finished must carry waited status and joined readers")
+        }
     }
 }
 impl InstalledClientAdapter for FaultProbe {
@@ -108,12 +110,10 @@ impl InstalledClientAdapter for FaultProbe {
             Err(InstalledAdapterError::ObservationIncomplete),
             "real transport fault must not become an ordinary Finished record"
         );
-        let first = run
-            .attempt
-            .ready()
-            .err()
-            .expect("actual producer fault must latch before ordinary record")
-            .summary();
+        let first = match run.attempt.ready() {
+            Err(fault) => fault.summary(),
+            Ok(_) => panic!("actual producer fault must latch before ordinary record"),
+        };
         assert_eq!(
             (first.phase, first.code),
             ("installed-process", "stdout-limit")

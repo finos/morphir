@@ -2,31 +2,8 @@
 use super::*;
 use crate::json::strict::Document;
 use crate::workbench::model_originals::workflow::{
-    DecodeError, Items, Natural, SourcePath, installed_measurements as data,
+    DecodeError, Items, Natural, installed_measurements as data,
 };
-
-#[cfg(test)]
-mod growth_tests {
-    use super::*;
-    #[test]
-    fn finite_metadata_growth_preserves_explicit_retention_budget() {
-        let raw = r#"{"rpcFrames":"checker-capture","retainedBytes":67108864,"stdoutPrefixBytes":0,"stderrPrefixBytes":0,"snapshotReadBytes":0,"byteVisits":67108864,"records":0}"#;
-        let limits = crate::workbench::configuration::InstalledObservationLimits::from_document(
-            &Document::parse_unsigned_counts(raw.as_bytes()).unwrap(),
-        )
-        .unwrap();
-        let mut receiver = InstalledObservationOwner::new(&limits);
-        let mut metadata = Vec::<[u8; 256]>::new();
-        // Explicit unit DATA: a finite 512KiB metadata sequence must not
-        // accumulate quadratic allocation/copy work under a 64MiB policy.
-        for _ in 0..2048 {
-            grow(&mut receiver, &mut metadata, 1).expect("bounded metadata capacity growth");
-            metadata.push([0; 256]);
-        }
-        assert_eq!(metadata.len(), 2048);
-        assert!(receiver.ready().is_ok());
-    }
-}
 
 pub struct InstalledSourceSelection<'a> {
     session: &'a str,
@@ -428,5 +405,28 @@ impl InstalledClientRun<'_> {
             self.attempt.fail(RunFault::Decode(error));
             InstalledAdapterError::ObservationIncomplete
         })
+    }
+}
+
+#[cfg(test)]
+mod growth_tests {
+    use super::*;
+    #[test]
+    fn finite_metadata_growth_preserves_explicit_retention_budget() {
+        let raw = r#"{"rpcFrames":"checker-capture","retainedBytes":67108864,"stdoutPrefixBytes":0,"stderrPrefixBytes":0,"snapshotReadBytes":0,"byteVisits":67108864,"records":0}"#;
+        let limits = crate::workbench::configuration::InstalledObservationLimits::from_document(
+            &Document::parse_unsigned_counts(raw.as_bytes()).unwrap(),
+        )
+        .unwrap();
+        let mut receiver = InstalledObservationOwner::new(&limits);
+        let mut metadata = Vec::<[u8; 256]>::new();
+        // Explicit unit DATA: a finite 512KiB metadata sequence must not
+        // accumulate quadratic allocation/copy work under a 64MiB policy.
+        for _ in 0..2048 {
+            grow(&mut receiver, &mut metadata, 1).expect("bounded metadata capacity growth");
+            metadata.push([0; 256]);
+        }
+        assert_eq!(metadata.len(), 2048);
+        assert!(receiver.ready().is_ok());
     }
 }

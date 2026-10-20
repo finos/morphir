@@ -4,7 +4,7 @@ use morphir_mck::{
     transport::process::ProcessProgress,
     workbench::model_originals::installed::{
         FinishedInstalledProcess, InstalledAdapterError, InstalledClientRun,
-        RunningInstalledProcess,
+        InstalledProcessFinish, RunningInstalledProcess,
     },
 };
 use std::sync::atomic::AtomicBool;
@@ -37,8 +37,8 @@ pub(super) async fn execute(
             .take()
             .ok_or(InstalledAdapterError::ObservationIncomplete)?;
         match process.try_finish() {
-            Ok(finished) => return Ok(finished),
-            Err(process) => *pending = Some(process),
+            InstalledProcessFinish::Finished(finished) => return Ok(finished),
+            InstalledProcessFinish::Pending(process) => *pending = Some(process),
         }
         // No source, slot, connection or capacity lock survives this await.
         // collect admits the actual retained payload/cache BEFORE ACK.
@@ -78,8 +78,8 @@ pub(super) async fn terminate(
             .take()
             .ok_or(InstalledAdapterError::ObservationIncomplete)?;
         match process.try_finish() {
-            Ok(_) => return Ok(()),
-            Err(process) => *pending = Some(process),
+            InstalledProcessFinish::Finished(_) => return Ok(()),
+            InstalledProcessFinish::Pending(process) => *pending = Some(process),
         }
         if Instant::now() >= end {
             return Err(InstalledAdapterError::ObservationIncomplete);

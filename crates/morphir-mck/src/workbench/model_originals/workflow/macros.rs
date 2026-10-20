@@ -149,8 +149,8 @@ macro_rules! literal {
     };
 }
 macro_rules! tagged {
-    (pub $name:ident ($tag:literal) { $($variant:ident => $wire:literal { $($field:ident : $ty:ty => $key:literal),* $(,)? } $(optional { $($optional:ident : $optional_ty:ty => $optional_key:literal),* $(,)? })?),* $(,)? }) => {
-        tagged! {@visible(pub) $name($tag){$($variant=>$wire{$($field:$ty=>$key),*} $(optional {$($optional:$optional_ty=>$optional_key),*})?),*}}
+    ($(#[$meta:meta])* pub $name:ident ($tag:literal) { $($variant:ident => $wire:literal { $($field:ident : $ty:ty => $key:literal),* $(,)? } $(optional { $($optional:ident : $optional_ty:ty => $optional_key:literal),* $(,)? })?),* $(,)? }) => {
+        tagged! {@visible(pub) $(#[$meta])* $name($tag){$($variant=>$wire{$($field:$ty=>$key),*} $(optional {$($optional:$optional_ty=>$optional_key),*})?),*}}
         impl serde::Serialize for $name {
             fn serialize<S:serde::Serializer>(&self,s:S)->Result<S::Ok,S::Error> {
                 use serde::ser::SerializeMap as _;
@@ -166,7 +166,8 @@ macro_rules! tagged {
     ($name:ident ($tag:literal) { $($variant:ident => $wire:literal { $($field:ident : $ty:ty => $key:literal),* $(,)? } $(optional { $($optional:ident : $optional_ty:ty => $optional_key:literal),* $(,)? })?),* $(,)? } $(delegates { $($delegate:ident => $delegate_wire:literal : $delegate_ty:ty),* $(,)? })?) => {
         tagged! {@visible(pub(super)) $name($tag){$($variant=>$wire{$($field:$ty=>$key),*} $(optional {$($optional:$optional_ty=>$optional_key),*})?),*} $(delegates{$($delegate=>$delegate_wire:$delegate_ty),*})?}
     };
-    (@visible($vis:vis) $name:ident ($tag:literal) { $($variant:ident => $wire:literal { $($field:ident : $ty:ty => $key:literal),* $(,)? } $(optional { $($optional:ident : $optional_ty:ty => $optional_key:literal),* $(,)? })?),* $(,)? } $(delegates { $($delegate:ident => $delegate_wire:literal : $delegate_ty:ty),* $(,)? })?) => {
+    (@visible($vis:vis) $(#[$meta:meta])* $name:ident ($tag:literal) { $($variant:ident => $wire:literal { $($field:ident : $ty:ty => $key:literal),* $(,)? } $(optional { $($optional:ident : $optional_ty:ty => $optional_key:literal),* $(,)? })?),* $(,)? } $(delegates { $($delegate:ident => $delegate_wire:literal : $delegate_ty:ty),* $(,)? })?) => {
+        $(#[$meta])*
         #[derive(Debug)]
         $vis enum $name { $($variant { $($field: $ty,)* $($( $optional: Presence<$optional_ty>, )*)? },)* $($($delegate($delegate_ty),)*)? }
         impl Decode for $name {

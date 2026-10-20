@@ -44,8 +44,8 @@ use invocation::{InvocationObservationState, InvocationObservationView};
 use native::data::{Bytes, SourcePath, Text};
 use native::{FixtureAlias, PrivateRecordAdoption, PrivateRecordError, RecordRetentionUsage};
 pub use processes::{
-    FinishedInstalledProcess, InstalledMetadataQuery, InstalledProcessPurpose,
-    RunningInstalledProcess,
+    FinishedInstalledProcess, InstalledMetadataQuery, InstalledProcessFinish,
+    InstalledProcessPurpose, RunningInstalledProcess,
 };
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstalledAdapterError {

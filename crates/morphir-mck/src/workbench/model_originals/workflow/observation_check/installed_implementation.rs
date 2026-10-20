@@ -216,12 +216,19 @@ fn completion(value: &DirectProcessCompletion) -> bool {
     matches!(value,DirectProcessCompletion::Finished{exit:ProcessExit::Code{value}} if value.0==0)
 }
 fn census<'a>(
-    entries: impl Iterator<Item = (u8, u8, &'a str, u64, &'a [u8; 32])>,
+    entries: impl Iterator<Item = Descriptor<'a>>,
     owner: &mut CompareOwner,
 ) -> Result<[u8; 32]> {
     let mut hash = Sha256::new();
     let mut previous = None;
-    for (kind, mode, path, length, digest) in entries {
+    for Descriptor {
+        kind,
+        mode,
+        path,
+        length,
+        digest,
+    } in entries
+    {
         owner.visit()?;
         if let Some(prior) = previous {
             bytes(owner, path.len().saturating_add(str::len(prior)))?;
@@ -240,28 +247,6 @@ fn census<'a>(
         hash.update(digest);
     }
     Ok(hash.finalize().into())
-}
-fn mode(mode: &FileMode) -> u8 {
-    match mode {
-        FileMode::Regular => 0,
-        FileMode::Executable => 1,
-    }
-}
-fn source_descriptor(value: &SourceEntry) -> (u8, u8, &str, u64, &[u8; 32]) {
-    match value {
-        SourceEntry::File {
-            path,
-            mode: m,
-            byte_length,
-            sha256,
-        } => (0, mode(m), path.as_str(), byte_length.0, &sha256.0),
-        SourceEntry::SymlinkLiteral {
-            path,
-            byte_length,
-            sha256,
-            ..
-        } => (1, 0, path.as_str(), byte_length.0, &sha256.0),
-    }
 }
 fn package_has(package: &PackageCensus, path: &str, owner: &mut CompareOwner) -> Result<bool> {
     for entry in &package.entries.0 {
@@ -316,24 +301,13 @@ pub(super) fn check(
     }
     let relative = confined(&paths.destination, owner)?;
     need(owner, relative, Fault::ImplementationProcess)?;
-    let package_digest = census(
-        package.entries.0.iter().map(|e| {
-            (
-                0,
-                mode(&e.mode),
-                e.path.as_str(),
-                e.byte_length.0,
-                &e.sha256.0,
-            )
-        }),
-        owner,
-    )?;
+    let package_digest = census(package.entries.0.iter().map(PackageFile::descriptor), owner)?;
     need(
         owner,
         package_digest == package.sha256.0,
         Fault::ImplementationDigest,
     )?;
-    let source_digest = census(source.entries.0.iter().map(source_descriptor), owner)?;
+    let source_digest = census(source.entries.0.iter().map(SourceEntry::descriptor), owner)?;
     need(
         owner,
         source_digest == source.sha256.0,
@@ -573,7 +547,12 @@ pub(super) fn check(
         let recorded_mode = fields.next();
         let blob = fields.next();
         let stage = fields.next();
-        let (kind, m, wanted_path, _, _) = source_descriptor(entry);
+        let Descriptor {
+            kind,
+            mode: m,
+            path: wanted_path,
+            ..
+        } = entry.descriptor();
         let wanted_mode = if kind == 1 {
             "120000"
         } else if m == 1 {
