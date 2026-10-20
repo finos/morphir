@@ -4,54 +4,9 @@
 // `unbounded` / usize::MAX preserves absent schema maximum; actual cumulative budgets still apply.
 // Source/receipt and every generated schema node are bound in translation.json.
 
-text! { AtomicBytesHexHex { min: 0, max: 1048576, pattern: "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$" } }
-
-tagged! { AtomicBytes("kind") {
-    Hex => "hex" {
-        hex: AtomicBytesHexHex => "hex",
-    },
-    Utf8 => "utf8" {
-        text: Text<0, 1048576> => "text",
-    },
-    RepeatU8 => "repeat-u8" {
-        byte: U8 => "byte",
-        length: Natural<0, 268435456> => "length",
-    },
-    CycleU8 => "cycle-u8" {
-        length: Natural<0, 268435456> => "length",
-        seed: U8 => "seed",
-    },
-    ChunkIndexedU8 => "chunk-indexed-u8" {
-        length: Natural<0, 268435456> => "length",
-        seed: U8 => "seed",
-    },
-} }
-
-text! { BytesHexHex { min: 0, max: 1048576, pattern: "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$" } }
-
-tagged! { Bytes("kind") {
-    Hex => "hex" {
-        hex: BytesHexHex => "hex",
-    },
-    Utf8 => "utf8" {
-        text: Text<0, 1048576> => "text",
-    },
-    RepeatU8 => "repeat-u8" {
-        byte: U8 => "byte",
-        length: Natural<0, 268435456> => "length",
-    },
-    CycleU8 => "cycle-u8" {
-        length: Natural<0, 268435456> => "length",
-        seed: U8 => "seed",
-    },
-    ChunkIndexedU8 => "chunk-indexed-u8" {
-        length: Natural<0, 268435456> => "length",
-        seed: U8 => "seed",
-    },
-    Concat => "concat" {
-        parts: Items<AtomicBytes, 1, 4096> => "parts",
-    },
-} }
+// Bytes, AtomicBytes and literal leaves reuse the existing input descriptor
+// and its single WalkAliases implementations. Expected semantic records below
+// remain distinct; frozen generated descriptors/receipts are historical.
 
 words! { CancellationCause {
     CancelOpening => "cancel-opening",

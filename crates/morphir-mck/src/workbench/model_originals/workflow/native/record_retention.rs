@@ -78,10 +78,15 @@ impl RecordRetentionOwner {
     ) -> Result<(), &PrivateRecordError> {
         self.fault.as_ref().map_or(Ok(()), Err)
     }
-    pub(super) fn usage(&self) -> RecordRetentionUsage {
+    pub(in crate::workbench::model_originals::workflow) fn usage(&self) -> RecordRetentionUsage {
         RecordRetentionUsage {
             reserved_bytes: self.reserved,
         }
+    }
+    pub(in crate::workbench::model_originals::workflow) fn refuse_prior_work(
+        &mut self,
+    ) -> &PrivateRecordError {
+        self.fail(PrivateRecordError::PriorWorkFault)
     }
     fn fail(&mut self, error: PrivateRecordError) -> &PrivateRecordError {
         self.fault.get_or_insert(error)
@@ -135,7 +140,7 @@ pub struct PrivateRecordAdoption<'owner> {
     pending: Option<Reservation<'owner>>,
 }
 
-pub(super) fn prepare<'owner>(
+pub(in crate::workbench::model_originals::workflow) fn prepare<'owner>(
     owner: &'owner mut RecordRetentionOwner,
     comparison: &'owner mut CompareOwner,
     actual: &Vec<u8>,

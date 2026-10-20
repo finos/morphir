@@ -170,7 +170,26 @@ impl<const MIN: u64, const MAX: u64> WalkAliases for super::Natural<MIN, MAX> {
     }
 }
 
+// Only the shared recipe ADTs inherit the source operand from their genuine
+// enclosing descriptor. Their byte grammar is shared; the diagnostic role is
+// still the actual input/expected container, never a serialized label.
+fn recipe_operand(mut trail: &Trail<'_>) -> Operand {
+    loop {
+        if let Segment::Field(site) = trail.segment {
+            return site.parts().0;
+        }
+        match trail.parent {
+            Some(parent) => trail = parent,
+            None => return Operand::Input,
+        }
+    }
+}
 macro_rules! field {
+    ($value:expr, $trail:ident, $sink:ident, Bytes, $variant:expr, $wire:literal) => { field!(@recipe $value,$trail,$sink,"Bytes",$variant,$wire) };
+    ($value:expr, $trail:ident, $sink:ident, AtomicBytes, $variant:expr, $wire:literal) => { field!(@recipe $value,$trail,$sink,"AtomicBytes",$variant,$wire) };
+    (@recipe $value:expr,$trail:ident,$sink:ident,$name:literal,$variant:expr,$wire:literal) => {{
+        $value.walk(&Trail{parent:Some($trail),segment:Segment::Field(Site::descriptor(recipe_operand($trail),$name,$variant,$wire))},$sink)?;
+    }};
     ($value:expr, $trail:ident, $sink:ident, $name:ident, $variant:expr, $wire:literal) => {{
         $value.walk(
             &Trail {
@@ -324,3 +343,6 @@ mod native;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod shared_byte_context_tests;

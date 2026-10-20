@@ -43,7 +43,8 @@ pub use report::{
 };
 pub use report_facade::{Report, check_report};
 pub use run::{
-    RunOptions, check_report_configured, run, run_configured, run_configured_with_native_adapter,
+    RunOptions, check_report_configured, run, run_configured,
+    run_configured_with_installed_client_adapter, run_configured_with_native_adapter,
     run_configured_with_session_factory, run_with_session, run_with_session_configured,
 };
 
@@ -108,3 +109,6 @@ mod native_typed_fault_tests;
 
 #[cfg(test)]
 mod native_record_receiver_tests;
+
+#[cfg(test)]
+mod installed_borrowed_tests;

@@ -7,6 +7,7 @@ use super::super::{
 };
 use super::*;
 
+pub mod adapter;
 pub(super) mod observation;
 
 pub(super) struct PreparedInstalledClientInventory<'inventory, 'case, 'sources, 'raw, 'supplied> {
@@ -112,7 +113,7 @@ pub(super) fn prepared_installed_client<R>(
 
 /// Saved DATA undergoes the same source preparation and factual checker. It
 /// cannot recreate a live invocation, host credential or qualified result.
-pub(super) fn replay_installed(
+pub(in crate::workbench) fn replay_installed(
     source: &Source,
     policy: &Policy,
     report: &StoredReport,
@@ -170,6 +171,27 @@ pub(super) fn replay_installed(
                 let Some(case) = case.current() else {
                     return Err("installed evidence source kind differs".into());
                 };
+                if let Evidence::AttemptFailed { failure_index: 0 } = row.evidence {
+                    if case.installed().is_none() {
+                        return Err("installed failure/source kind differs".into());
+                    }
+                    let category = [
+                        adapter::InstalledAdapterError::Cancelled,
+                        adapter::InstalledAdapterError::ObservationIncomplete,
+                    ]
+                    .into_iter()
+                    .find(|error| {
+                        saved
+                            .errors
+                            .first()
+                            .is_some_and(|row| row.matches(RunFault::Installed(*error).summary()))
+                    })
+                    .ok_or("unverified incomplete installed attempt category")?;
+                    // Closed failure DATA only. No replay callback, live owner,
+                    // source grant or qualification is reconstructed.
+                    attempt.fail(RunFault::Installed(category));
+                    continue;
+                }
                 let Evidence::ClientProcessMeasured {
                     measurement,
                     verdict,
@@ -205,6 +227,135 @@ pub(super) fn replay_installed(
                 return Err("forged qualified claim for partial/unproven source set".into());
             }
             Ok(())
+        },
+    )
+}
+
+/// Same canonical inventory gate and report/checker, with explicitly selected
+/// installed effects. All owners live outside every case/command callback.
+pub(in crate::workbench) fn execute_installed(
+    source: &Source,
+    policy: &Policy,
+    limits: &crate::workbench::configuration::NativeObservationLimits,
+    record_limits: &crate::workbench::configuration::RecordRetentionLimits,
+    receiving_limits: &crate::workbench::configuration::InstalledObservationLimits,
+    adapter: &mut dyn adapter::InstalledClientAdapter,
+) -> Result<StoredReport, String> {
+    let mut record_owner =
+        super::super::native::record_retention::RecordRetentionOwner::new(record_limits);
+    let mut receiving = observation::InstalledObservationOwner::new(receiving_limits);
+    prepared_installed_client(
+        source,
+        policy,
+        ReviewedSources::installed_client_selected(),
+        |inventory, owners| {
+            owners
+                .decode
+                .slots(inventory.len())
+                .map_err(|_| "inventory work refused")?;
+            let mut records = Vec::new();
+            records
+                .try_reserve_exact(inventory.len())
+                .map_err(|_| "inventory allocation refused")?;
+            owners
+                .decode
+                .slots(1)
+                .map_err(|_| "failure inventory work refused")?;
+            let mut errors = Vec::new();
+            errors
+                .try_reserve_exact(1)
+                .map_err(|_| "failure inventory allocation refused")?;
+            let mut attempt = Attempt { fault: None };
+            for case in inventory.cases() {
+                let evidence = if attempt.ready().is_err() {
+                    Evidence::NotAttempted {
+                        prior_failure_index: 0,
+                    }
+                } else {
+                    let result = ready(owners).and_then(|()| {
+                        record_owner
+                            .ready()
+                            .map_err(|error| RunFault::RecordRetention(*error))?;
+                        receiving
+                            .ready()
+                            .map_err(|error| RunFault::InstalledObservation(*error))?;
+                        let current = case
+                            .current()
+                            .filter(|current| current.installed().is_some())
+                            .ok_or(RunFault::UnsupportedRole)?;
+                        let result = adapter.observe(adapter::InstalledClientRun::from_prepared(
+                            inventory.invocation(),
+                            limits,
+                            &mut owners.comparison,
+                            &mut record_owner,
+                            &mut receiving,
+                            &mut attempt,
+                        ));
+                        owners.comparison.ready().map_err(|error| {
+                            RunFault::Record(WorkflowRecordError::Observation(error))
+                        })?;
+                        record_owner
+                            .ready()
+                            .map_err(|error| RunFault::RecordRetention(*error))?;
+                        receiving
+                            .ready()
+                            .map_err(|error| RunFault::InstalledObservation(*error))?;
+                        let actual = result.map_err(RunFault::Installed)?;
+                        let size =
+                            crate::workbench::contract::encoded_size(&actual, MAX_REPORT_BYTES)
+                                .map_err(|_| RunFault::Capture(CaptureFault::Reply))?;
+                        owners.capture.retain(0, size).map_err(RunFault::Capture)?;
+                        let measurement =
+                            wire::ClientProcessMeasurement::retain(actual, &mut owners.decode)
+                                .map_err(RunFault::Decode)?;
+                        let verdict = match current
+                            .report_context()
+                            .check_installed_process(measurement.value(), &mut owners.comparison)
+                        {
+                            Ok(()) => Verdict::Checked,
+                            Err(error) => {
+                                attempt.fail(RunFault::Record(WorkflowRecordError::Observation(
+                                    error,
+                                )));
+                                Verdict::Failed { failure_index: 0 }
+                            }
+                        };
+                        Ok(Evidence::ClientProcessMeasured {
+                            measurement,
+                            verdict,
+                        })
+                    });
+                    match result {
+                        Ok(evidence) => evidence,
+                        Err(error) => {
+                            attempt.fail(error);
+                            Evidence::AttemptFailed { failure_index: 0 }
+                        }
+                    }
+                };
+                records.push(RuntimeRecord {
+                    case_id: case.case().id(),
+                    execution: ExecutionRef::from_compiled(case),
+                    evidence,
+                });
+            }
+            if let Some(fault) = &attempt.fault {
+                errors.push(fault.summary())
+            }
+            render(PreparedExecution {
+                report: RuntimeReport {
+                    format_version: VERSION,
+                    suite: "workbench",
+                    corpus_hash: source.digest(),
+                    capabilities: None,
+                    negotiation: None,
+                    records,
+                    errors,
+                    qualified: false,
+                },
+                attempt,
+                shutdown: None,
+            })
         },
     )
 }

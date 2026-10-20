@@ -73,7 +73,7 @@ pub fn run_configured(
         Configuration::ModelOriginals(_) => {
             Session::spawn_mep(&options.adapter, &options.adapter_args, options.limits)
         }
-        Configuration::NativeOriginals { .. } => {
+        Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. } => {
             unreachable!("external dispatch rejects native configuration before factory")
         }
     })
@@ -88,7 +88,10 @@ pub fn run_configured_with_session_factory<F>(
 where
     F: FnOnce() -> Result<Session, crate::transport::TransportError>,
 {
-    if matches!(configuration.mode, Configuration::NativeOriginals { .. }) {
+    if matches!(
+        configuration.mode,
+        Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. }
+    ) {
         return Err("native configuration requires explicit native adapter".into());
     }
     let corpus = load(root)?;
@@ -119,7 +122,7 @@ where
         (CorpusStorage::Historical(_), Configuration::ModelOriginals(_)) => {
             Err("historical corpus requires historical checker policy".into())
         }
-        (_, Configuration::NativeOriginals { .. }) => {
+        (_, Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. }) => {
             Err("native configuration requires explicit native adapter".into())
         }
     }
@@ -141,7 +144,7 @@ pub fn run_with_session_configured(
     configuration: &RunConfiguration,
 ) -> Result<Report, String> {
     let mismatch = match (&corpus.storage, &configuration.mode) {
-        (_, Configuration::NativeOriginals { .. }) => {
+        (_, Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. }) => {
             Some("native configuration requires explicit native adapter")
         }
         (CorpusStorage::ModelOriginals(_), Configuration::Historical) => {
@@ -204,6 +207,21 @@ pub fn check_report_configured(
         (ReportStorage::Historical(_), Configuration::NativeOriginals { .. }) => {
             Err("historical report requires historical checker policy".into())
         }
+        (
+            ReportStorage::ModelOriginals(report),
+            Configuration::InstalledOriginals { checker, .. },
+        ) => {
+            let corpus = load(root)?;
+            match &corpus.storage {
+                CorpusStorage::ModelOriginals(source) => {
+                    pipeline::replay_installed(source, checker, report)
+                }
+                CorpusStorage::Historical(_) => Err("corpus/report family differs".into()),
+            }
+        }
+        (ReportStorage::Historical(_), Configuration::InstalledOriginals { .. }) => {
+            Err("historical report requires historical checker policy".into())
+        }
     }
 }
 pub fn run_configured_with_native_adapter(
@@ -225,6 +243,36 @@ pub fn run_configured_with_native_adapter(
             pipeline::execute_native(source, checker, observation, private_record, adapter)
                 .map(Report::selected)
         }
+        CorpusStorage::Historical(_) => {
+            Err("historical corpus requires historical checker policy".into())
+        }
+    }
+}
+pub fn run_configured_with_installed_client_adapter(
+    root: &Path,
+    configuration: &RunConfiguration,
+    adapter: &mut dyn super::model_originals::installed::InstalledClientAdapter,
+) -> Result<Report, String> {
+    let Configuration::InstalledOriginals {
+        checker,
+        observation,
+        private_record,
+        installed_observation,
+    } = &configuration.mode
+    else {
+        return Err("installed adapter requires explicit installed configuration".into());
+    };
+    let corpus = load(root)?;
+    match &corpus.storage {
+        CorpusStorage::ModelOriginals(source) => pipeline::execute_installed(
+            source,
+            checker,
+            observation,
+            private_record,
+            installed_observation,
+            adapter,
+        )
+        .map(Report::selected),
         CorpusStorage::Historical(_) => {
             Err("historical corpus requires historical checker policy".into())
         }

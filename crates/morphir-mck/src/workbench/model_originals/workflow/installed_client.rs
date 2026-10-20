@@ -344,8 +344,14 @@ impl<'a> InstalledClientPlan<'a> {
             file_sources,
         })
     }
-    pub(super) fn actions(&self) -> impl Iterator<Item = &Action> {
+    pub(super) fn actions(&self) -> impl ExactSizeIterator<Item = &Action> {
         self.reviewed.payload().draft.actions.0.iter()
+    }
+    pub(super) fn fixture(&self) -> &Fixture {
+        &self.reviewed.payload().draft.fixture
+    }
+    pub(super) fn fixture_sources(&self) -> impl Iterator<Item = &domain::ExpectedByteSource> {
+        self.byte_sources.iter().skip(3).copied()
     }
     pub(super) fn files(&self) -> impl ExactSizeIterator<Item = (&SourcePath, &domain::Bytes)> {
         self.reviewed

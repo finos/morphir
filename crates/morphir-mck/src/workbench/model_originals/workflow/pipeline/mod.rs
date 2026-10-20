@@ -1,6 +1,6 @@
 //! One selected branch of the existing Workbench pipeline. The fixed reviewed
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
-mod installed;
+pub(super) mod installed;
 pub(in crate::workbench) mod policy;
 mod raw;
 mod wire;
@@ -17,7 +17,8 @@ use crate::transport::{Session, TransportError};
 use crate::workbench::corpus::CorpusSource;
 use crate::workbench::report::{MAX_REPORT_BYTES, WorkflowExchangeRecord};
 #[cfg(test)]
-use installed::{prepared_installed_client, replay_installed};
+use installed::prepared_installed_client;
+pub(in crate::workbench) use installed::{execute_installed, replay_installed};
 pub(in crate::workbench) use policy::Policy;
 use policy::{CaptureFault, Owners};
 use raw::VERSION;
@@ -114,10 +115,27 @@ enum RunFault {
     Record(WorkflowRecordError),
     Native(super::native::NativeAdapterError),
     RecordRetention(super::native::PrivateRecordError),
+    Installed(installed::adapter::InstalledAdapterError),
+    InstalledObservation(installed::observation::InstalledObservationFault),
 }
 impl RunFault {
     fn summary(&self) -> FailureSummary {
         let (phase, code, message) = match self {
+            Self::Installed(installed::adapter::InstalledAdapterError::Cancelled) => (
+                "installed-cancelled",
+                "installed-cancelled",
+                "installed execution was cancelled",
+            ),
+            Self::Installed(installed::adapter::InstalledAdapterError::ObservationIncomplete) => (
+                "installed-observation",
+                "installed-observation-incomplete",
+                "installed observation coverage is incomplete",
+            ),
+            Self::InstalledObservation(_) => (
+                "installed-observation",
+                "installed-observation-refused",
+                "installed observation receiving permission refused",
+            ),
             Self::RecordRetention(error) => match error {
                 super::native::PrivateRecordError::Capacity { .. } => (
                     "native-record-retention",

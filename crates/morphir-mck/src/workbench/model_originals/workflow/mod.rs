@@ -12,6 +12,7 @@ mod installed_client;
 mod installed_measurements;
 mod meaning;
 pub mod native;
+pub use pipeline::installed::adapter as installed;
 mod native_original;
 mod pairing;
 mod scope;

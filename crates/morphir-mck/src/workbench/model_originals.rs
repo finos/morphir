@@ -47,6 +47,7 @@ pub use transcript::{
     CaptureCompletion, CheckedCaptureTranscript, ConnectedCaptureExpectation,
     ExpectedProjectionState, Transcript, TranscriptError, TranscriptLimits,
 };
+pub use workflow::installed;
 pub use workflow::native;
 
 /// Inclusive bound on the complete JSON-RPC request, before parsing.

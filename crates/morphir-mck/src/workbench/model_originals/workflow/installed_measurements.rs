@@ -203,7 +203,7 @@ pub(super) struct ProtocolFacts {
     pub(super) streams: Vec<StreamBytes>,
     pub(super) request: protocol::Request,
 }
-pub(super) struct InstalledClientMeasurements {
+pub struct InstalledClientMeasurements {
     pub(super) wire: WireMeasurements,
     pub(super) frames: Vec<ParsedFrame>,
     pub(super) claims: Vec<Option<Document>>,

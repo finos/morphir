@@ -21,6 +21,12 @@ pub(super) enum Configuration {
         observation: NativeObservationLimits,
         private_record: RecordRetentionLimits,
     },
+    InstalledOriginals {
+        checker: Box<Policy>,
+        observation: NativeObservationLimits,
+        private_record: RecordRetentionLimits,
+        installed_observation: InstalledObservationLimits,
+    },
 }
 /// Explicit cumulative native-record Vec capacity, separate from all existing
 /// source/work/serialized-capture policies. Zero installs no positive credit.
@@ -194,15 +200,26 @@ impl NativeObservationLimits {
     }
 }
 impl RunConfiguration {
+    pub fn installed_observation_limits(&self) -> Option<&InstalledObservationLimits> {
+        match &self.mode {
+            Configuration::InstalledOriginals {
+                installed_observation,
+                ..
+            } => Some(installed_observation),
+            _ => None,
+        }
+    }
     pub fn private_record_limits(&self) -> Option<&RecordRetentionLimits> {
         match &self.mode {
-            Configuration::NativeOriginals { private_record, .. } => Some(private_record),
+            Configuration::NativeOriginals { private_record, .. }
+            | Configuration::InstalledOriginals { private_record, .. } => Some(private_record),
             _ => None,
         }
     }
     pub fn native_observation_limits(&self) -> Option<&NativeObservationLimits> {
         match &self.mode {
-            Configuration::NativeOriginals { observation, .. } => Some(observation),
+            Configuration::NativeOriginals { observation, .. }
+            | Configuration::InstalledOriginals { observation, .. } => Some(observation),
             _ => None,
         }
     }
@@ -210,7 +227,9 @@ impl RunConfiguration {
         match self.mode {
             Configuration::Historical => AdapterProtocol::HistoricalNewline,
             Configuration::ModelOriginals(_) => AdapterProtocol::ContentLength,
-            Configuration::NativeOriginals { .. } => AdapterProtocol::ContentLength,
+            Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. } => {
+                AdapterProtocol::ContentLength
+            }
         }
     }
     pub fn from_json(raw: &str) -> Result<Self, String> {
@@ -260,6 +279,44 @@ impl RunConfiguration {
                     checker: Box::new(Policy::from_document(get(fields, "checker")?)?),
                     observation: NativeObservationLimits::from_document(&observation)?,
                     private_record: RecordRetentionLimits::from_document(&private_record)?,
+                }
+            }
+            Some(Document::String(kind)) if kind == "model-originals-installed-client" => {
+                use super::model_originals::workflow::pipeline::policy::{closed, get};
+                let fields = closed(
+                    &document,
+                    &[
+                        "kind",
+                        "checker",
+                        "observation",
+                        "privateRecord",
+                        "installedObservation",
+                    ],
+                )?;
+                #[derive(serde::Deserialize)]
+                struct RawInstalled<'a> {
+                    #[serde(borrow)]
+                    observation: &'a serde_json::value::RawValue,
+                    #[serde(borrow, rename = "privateRecord")]
+                    private_record: &'a serde_json::value::RawValue,
+                    #[serde(borrow, rename = "installedObservation")]
+                    installed_observation: &'a serde_json::value::RawValue,
+                }
+                let raw: RawInstalled<'_> = serde_json::from_str(raw)
+                    .map_err(|_| "installed observation policy is not JSON")?;
+                Configuration::InstalledOriginals {
+                    checker: Box::new(Policy::from_document(get(fields, "checker")?)?),
+                    observation: NativeObservationLimits::from_document(
+                        &Document::parse_unsigned_counts(raw.observation.get().as_bytes())?,
+                    )?,
+                    private_record: RecordRetentionLimits::from_document(
+                        &Document::parse_unsigned_counts(raw.private_record.get().as_bytes())?,
+                    )?,
+                    installed_observation: InstalledObservationLimits::from_document(
+                        &Document::parse_unsigned_counts(
+                            raw.installed_observation.get().as_bytes(),
+                        )?,
+                    )?,
                 }
             }
             _ => return Err("policy has unknown kind or fields".into()),

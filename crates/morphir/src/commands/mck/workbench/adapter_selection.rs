@@ -122,3 +122,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod installed_controls;

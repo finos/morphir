@@ -7,7 +7,7 @@ use crate::workbench::configuration::InstalledObservationLimits;
 use crate::workbench::model_originals::workflow::observation_check::CompareOwner;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::workbench::model_originals::workflow::pipeline) enum InstalledObservationResource {
+pub enum InstalledObservationResource {
     RetainedBytes,
     StdoutPrefixBytes,
     StderrPrefixBytes,
@@ -16,7 +16,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline) enum InstalledObse
     Records,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(in crate::workbench::model_originals::workflow::pipeline) enum InstalledObservationFault {
+pub enum InstalledObservationFault {
     Resource {
         kind: InstalledObservationResource,
         limit: u64,
@@ -55,7 +55,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline) enum ObservationRe
 /// Monotone permissions, including abandoned/failed attempts. These values
 /// are not currently resident storage or a count of actual business effects.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub(in crate::workbench::model_originals::workflow::pipeline) struct InstalledObservationUsage {
+pub struct InstalledObservationUsage {
     retained_bytes: u64,
     stdout_prefix_bytes: u64,
     stderr_prefix_bytes: u64,
@@ -64,28 +64,22 @@ pub(in crate::workbench::model_originals::workflow::pipeline) struct InstalledOb
     records: u64,
 }
 impl InstalledObservationUsage {
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn retained_bytes(self) -> u64 {
+    pub fn retained_bytes(self) -> u64 {
         self.retained_bytes
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn stdout_prefix_bytes(
-        self,
-    ) -> u64 {
+    pub fn stdout_prefix_bytes(self) -> u64 {
         self.stdout_prefix_bytes
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn stderr_prefix_bytes(
-        self,
-    ) -> u64 {
+    pub fn stderr_prefix_bytes(self) -> u64 {
         self.stderr_prefix_bytes
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn snapshot_read_bytes(
-        self,
-    ) -> u64 {
+    pub fn snapshot_read_bytes(self) -> u64 {
         self.snapshot_read_bytes
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn byte_visits(self) -> u64 {
+    pub fn byte_visits(self) -> u64 {
         self.byte_visits
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn records(self) -> u64 {
+    pub fn records(self) -> u64 {
         self.records
     }
     fn amount(&self, resource: InstalledObservationResource) -> u64 {
@@ -146,6 +140,9 @@ impl InstalledObservationOwner {
     }
     fn fail(&mut self, fault: InstalledObservationFault) -> &InstalledObservationFault {
         self.fault.get_or_insert(fault)
+    }
+    pub(super) fn refuse_prior_fault(&mut self) -> &InstalledObservationFault {
+        self.fail(InstalledObservationFault::PriorFault)
     }
     fn reserve(
         &mut self,
@@ -235,11 +232,11 @@ impl InstalledObservationOwner {
 
 /// This is permission to request the already-reserved prefixes, not evidence
 /// of a spawn or any output. The actual process binding remains pending.
-pub(in crate::workbench::model_originals::workflow::pipeline) struct ProcessPrefixReservation<'a> {
+pub struct ProcessPrefixReservation<'a> {
     owner: Option<&'a mut InstalledObservationOwner>,
 }
 impl ProcessPrefixReservation<'_> {
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn commit(mut self) {
+    pub fn commit(mut self) {
         self.owner.take();
     }
 }
@@ -250,15 +247,12 @@ impl Drop for ProcessPrefixReservation<'_> {
         }
     }
 }
-pub(in crate::workbench::model_originals::workflow::pipeline) struct SnapshotReadPermission<'a> {
+pub struct SnapshotReadPermission<'a> {
     owner: Option<&'a mut InstalledObservationOwner>,
     requested: usize,
 }
 impl<'a> SnapshotReadPermission<'a> {
-    pub(in crate::workbench::model_originals::workflow::pipeline) fn finish(
-        mut self,
-        actual_returned: usize,
-    ) -> Result<(), &'a InstalledObservationFault> {
+    pub fn finish(mut self, actual_returned: usize) -> Result<(), &'a InstalledObservationFault> {
         let owner = self.owner.take().expect("single-use read permission");
         if let Some(fault) = owner.fault {
             return Err(owner.fail(fault));
