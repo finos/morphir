@@ -72,6 +72,25 @@ fn workspace_picker(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           [icon_of("plus"), @html.span("Create a workspace…")],
         ),
       )
+      match (model.screen, active_entry(model)) {
+        (Workspace, Some(entry)) if Some(entry.id) != waiting =>
+          rows.push(
+            @html.button(
+              id="picker-close",
+              class="picker-item",
+              title=closing_blocked(model, entry.id).unwrap_or(
+                "Save this workspace and close it; it stays under Recent workspaces",
+              ),
+              attrs=@html.Attrs::build()
+                .role("menuitem")
+                .data_set("tree-row", "item")
+                .aria_label("Close workspace " + entry.name.to_string()),
+              on_click=emit(CloseWorkspace(entry.id)),
+              [icon_of("close"), @html.span("Close workspace")],
+            ),
+          )
+        _ => ()
+      }
     }
     @html.div(
       class="picker-menu",
@@ -1196,10 +1215,12 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       if in_workspace {
         @html.div(
           class="workspace-area",
-          attrs=@html.Attrs::build().data_set(
-            "workspace",
-            model.active.map(id => id.to_string()).unwrap_or(""),
-          ),
+          attrs=@html.Attrs::build()
+            .data_set(
+              "workspace",
+              model.active.map(id => id.to_string()).unwrap_or(""),
+            )
+            .data_set("opening", model.opening.to_string()),
           [
             sidebar_for(model, Primary, emit),
             @html.main_(class="document-area", [
@@ -1585,6 +1606,22 @@ fn getting_started(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
               ),
             ],
           )
+        } else if model.parked.contains(entry.id) ||
+          model.active == Some(entry.id) {
+          // A workspace open in this page closes before it can be removed.
+          @html.button(
+            id="recent-close-" + entry.id.to_string(),
+            class="secondary small recent-close",
+            title=closing_blocked(model, entry.id).unwrap_or(
+              "Save this workspace and close it in this page",
+            ),
+            attrs=@html.Attrs::build().aria_label(
+              "Close " + entry.name.to_string(),
+            ),
+            hidden=model.connected,
+            on_click=emit(CloseWorkspace(entry.id)),
+            "Close",
+          )
         } else {
           @html.button(
             class="sidebar-icon-button recent-remove",
@@ -1592,10 +1629,7 @@ fn getting_started(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
             attrs=@html.Attrs::build().aria_label(
               "Remove " + entry.name.to_string() + " from this browser",
             ),
-            // A workspace open in this page stays until the page reloads, so it cannot be removed here.
-            hidden=model.connected ||
-              model.parked.contains(entry.id) ||
-              model.active == Some(entry.id),
+            hidden=model.connected,
             on_click=emit(AskRemove(Some(entry.id))),
             icon_of("close"),
           )

@@ -57,6 +57,17 @@ drafts, selection, filters, sections, layout, revisions and tool panel. Switchin
 never cancels or releases work: a reply for a workspace that is not active changes
 that workspace only. The compiler worker is shared, so one operation runs at a time.
 
+**Close workspace**, in the picker, the command palette and on an open workspace's
+row under Recent workspaces, saves the workspace's source projects and drafts in
+this browser and then drops it from the page. It stays under Recent workspaces and
+reopens from browser storage; once closed, **Remove from this browser** deletes it.
+Closing the active workspace opens the most recently used workspace that is still
+open, or getting started when there is none. A workspace does not close while an
+operation it started runs, while the host keeps an execution it started, or when
+browser storage refuses the save; the reason is shown. A reply for a closed
+workspace is ignored, also after it opens again. A connected host's workspace does
+not close, and a provisional workspace closes like Stop waiting.
+
 The left rail keeps **Getting started** and **Explorer** visible. Explorer, the
 sidebar's own button and Ctrl/⌘+B toggle the left sidebar; the header's right
 button toggles the right sidebar. Each sidebar resizes by pointer or by keyboard on

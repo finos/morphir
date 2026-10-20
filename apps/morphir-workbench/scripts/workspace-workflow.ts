@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import type { Browser, Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import { fileURLToPath } from 'node:url';
-import { gettingStarted, createWorkspace, reopenWorkspace, exploreModel, showSource, setExplorer, setRightSidebar, build } from './workbench-steps.ts';
+import { gettingStarted, createWorkspace, reopenWorkspace, exploreModel, showSource, setExplorer, setRightSidebar, build, runCommand } from './workbench-steps.ts';
 
 const entries = ['Try an idea', 'Open a workspace', 'Create a workspace', 'Explore a model'];
 
@@ -273,6 +273,46 @@ export async function workspaceWorkflow(browser: Browser, url: string): Promise<
     assert.equal(await page.locator('[data-document="model"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.getByRole('button', { name: 'Compile & inspect', exact: true }).count(), 0, 'The mode picker belongs to the source document');
 
+    // Close: the picker, the command palette and Recent workspaces save a workspace and close it. It reopens from
+    // browser storage, and once closed it can be removed.
+    const closingDraft = () => page.evaluate(() => Object.keys(localStorage).some(key => /^morphir-workbench\.workspace\.w\d+\.intent\.v1$/.test(key) && localStorage.getItem(key) === 'Saved when it closes.'));
+    await page.getByRole('button', { name: 'Getting started', exact: true }).click();
+    await createWorkspace(page, { name: 'Closing', preset: 'Sandbox' });
+    await page.getByRole('button', { name: 'Workspace: Closing', exact: true }).waitFor();
+    await page.locator('[data-document="intent"]').click();
+    await page.locator('#intent-text').fill('Saved when it closes.');
+    await page.locator('#workspace-picker').click();
+    await page.getByRole('menuitem', { name: 'Close workspace Closing', exact: true }).click();
+    // Closing the active workspace opens the most recently used open workspace and moves the focus to the picker.
+    await page.getByRole('button', { name: 'Workspace: v3-greeting.json', exact: true }).waitFor();
+    await page.waitForFunction(() => document.activeElement?.id === 'workspace-picker');
+    assert.ok(await closingDraft(), 'Closing saves the draft first');
+    await page.locator('#workspace-picker').click();
+    // A closed workspace stays saved and is no longer open: the picker shows its kind, not "open".
+    await menu.getByRole('menuitemradio', { name: 'Closing Sandbox', exact: true }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Getting started', exact: true }).click();
+    await reopenWorkspace(page, 'Closing');
+    await page.locator('[data-document="intent"]').click();
+    assert.equal(await page.locator('#intent-text').inputValue(), 'Saved when it closes.', 'A closed workspace reopens from browser storage');
+    await runCommand(page, 'Close workspace');
+    await page.getByRole('button', { name: 'Workspace: v3-greeting.json', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Getting started', exact: true }).click();
+    await gettingStarted(page);
+    assert.equal(await page.getByRole('button', { name: 'Close Closing', exact: true }).count(), 0, 'A closed row has no Close');
+    await reopenWorkspace(page, 'Closing');
+    await page.getByRole('button', { name: 'Getting started', exact: true }).click();
+    await gettingStarted(page);
+    assert.equal(await page.getByRole('button', { name: 'Remove Closing from this browser', exact: true }).count(), 0, 'An open workspace closes before it is removed');
+    await page.getByRole('button', { name: 'Close Closing', exact: true }).click();
+    await message.filter({ hasText: 'Closed Closing' }).waitFor();
+    await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Open Closing');
+    await page.getByRole('button', { name: 'Remove Closing from this browser', exact: true }).click();
+    await page.locator('#recent-remove-confirm').click();
+    await message.filter({ hasText: 'Removed Closing from this browser' }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Open Closing', exact: true }).count(), 0, 'A removed workspace leaves Recent workspaces');
+    assert.ok(!await closingDraft(), 'Removing deletes the saved draft');
+
     // Narrow windows: nothing overflows and the four entries stay reachable.
     await page.getByRole('button', { name: 'Getting started', exact: true }).click();
     for (const width of [768, 390]) {
@@ -292,6 +332,6 @@ export async function workspaceWorkflow(browser: Browser, url: string): Promise<
     }
     await page.setViewportSize({ width: 1440, height: 1000 });
     assert.deepEqual(errors, []);
-    console.log('Workspace workflow passed: getting started entries, intent draft across reload, names, cancelled and failed models, cancelled folder, stopped wait, switching, sidebars, Ctrl+B, moves, resizing, generation notification, model-only workspace and narrow windows.');
+    console.log('Workspace workflow passed: getting started entries, intent draft across reload, names, cancelled and failed models, cancelled folder, stopped wait, switching, sidebars, Ctrl+B, moves, resizing, generation notification, model-only workspace, close, reopen and remove, and narrow windows.');
   } finally { await context.close(); }
 }

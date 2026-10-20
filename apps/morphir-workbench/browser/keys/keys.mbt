@@ -32,6 +32,8 @@ pub(all) enum CommandId {
   ShowGettingStarted
   /// Chooses another open or saved workspace.
   SwitchWorkspace
+  /// Saves the active workspace and closes it.
+  CloseWorkspace
   CreateWorkspace
   TryIdea
   OpenWorkspace

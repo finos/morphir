@@ -63,7 +63,10 @@ test "a late reply changes the workspace that asked for it, not the active one" 
   }
   let (after, _) = update(
     idea,
-    Routed(origin, Receive(7, source.revision, "compile", reply.stringify())),
+    Routed(
+      open_visit(source, origin).unwrap(),
+      Receive(7, source.revision, "compile", reply.stringify()),
+    ),
     quiet(),
   )
   let parked = after.parked.get(origin).unwrap()
@@ -117,7 +120,7 @@ test "a cancelled model import removes its provisional workspace" {
   let attempt = started.document.opening().unwrap()
   let cancelled = run_all(started, [
     Routed(
-      provisional,
+      open_visit(started, provisional).unwrap(),
       Imported(attempt, ({ "kind": "cancelled" } : Json).stringify()),
     ),
   ])
@@ -149,7 +152,7 @@ test "a failed acquisition returns to the workspace that was open" {
   let provisional = started.active.unwrap()
   let refused = run_all(started, [
     Routed(
-      provisional,
+      open_visit(started, provisional).unwrap(),
       FolderPicked(
         ({ "ok": false, "message": "No morphir.json" } : Json).stringify(),
       ),
@@ -174,9 +177,10 @@ test "an imported folder keeps its workspace, named after the project" {
   let started = run_all(starting_model(), [OpenFolder])
   let provisional = started.active.unwrap()
   let picked = ({ "ok": true, "files": [], "skipped": 0 } : Json).stringify()
-  let busy = run_all(started, [Routed(provisional, FolderPicked(picked))])
+  let visit = open_visit(started, provisional).unwrap()
+  let busy = run_all(started, [Routed(visit, FolderPicked(picked))])
   let done = run_all(busy, [
-    Routed(provisional, FolderImported(busy.request_id, 0, imported_folder())),
+    Routed(visit, FolderImported(busy.request_id, 0, imported_folder())),
   ])
   let entry = done.registry.get(provisional).unwrap()
   @expect.expect_all(s => {

@@ -148,12 +148,15 @@ export function watchDrop(selector: string, receive: (reply: string) => void): v
     if (!zone) return;
     event.preventDefault();
     zone.classList.remove('drop-active');
-    // The workspace that showed the drop zone, so the folder goes to it even if another opens while it is read.
-    const workspace = zone.closest<HTMLElement>('[data-workspace]')?.dataset.workspace ?? '';
+    // The workspace opening that showed the drop zone, so the folder goes to it even if another opens while it is
+    // read, and not to a later opening after it closes.
+    const area = zone.closest<HTMLElement>('[data-workspace]');
+    const workspace = area?.dataset.workspace ?? '';
+    const opening = Number(area?.dataset.opening ?? '');
     try {
-      receive(JSON.stringify({ ...await readDropped(event.dataTransfer?.items ?? [], LIMITS), workspace }));
+      receive(JSON.stringify({ ...await readDropped(event.dataTransfer?.items ?? [], LIMITS), workspace, opening }));
     } catch (error) {
-      receive(JSON.stringify({ ok: false, workspace, message: `The dropped folder could not be read: ${message(error, 'error')}` }));
+      receive(JSON.stringify({ ok: false, workspace, opening, message: `The dropped folder could not be read: ${message(error, 'error')}` }));
     }
   });
 }

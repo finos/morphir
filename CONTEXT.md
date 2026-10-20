@@ -113,6 +113,10 @@ A navigable presentation of one aspect of a workbench workspace's contents, such
 **Provisional workspace**:
 A workbench workspace that waits for its folder, model or folder grant. It becomes a saved workspace only when that arrives; a cancellation or failure removes it.
 
+**Open workspace**:
+A workbench workspace whose state is held in the page, active or parked. Closing it saves its contents in the browser and drops that state; the workspace stays saved and can open again. Each opening is distinct: a reply for a closed opening is ignored.
+_Avoid_: Loaded workspace
+
 ## Workbench execution
 
 **Operation**:

@@ -6,7 +6,11 @@ import type { Locator, Page } from 'playwright';
  * running) before it chooses it.
  */
 export async function openSample(page: Page, label: string): Promise<void> {
-  const name = 'Open sample: ' + label;
+  await runCommand(page, 'Open sample: ' + label);
+}
+
+/** Runs a command from the command palette through the top-bar button, once the command can run. */
+export async function runCommand(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: 'Command palette', exact: true }).click();
   const palette = page.getByRole('dialog', { name: 'Command palette', exact: true });
   const input = palette.getByRole('combobox');

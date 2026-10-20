@@ -1,6 +1,7 @@
 // Workbench workspaces in the page: the active workspace's state lives in the Model, the others' in `parked`.
 // Opening, creating and switching park one slice and restore another; nothing is cancelled or discarded. Work that a
-// workspace starts reports back through `Routed`, so a late reply changes the workspace that asked for it.
+// workspace starts reports back through `Routed`, so a late reply changes the workspace that asked for it. Closing
+// saves a workspace and drops its state from the page; a reply for the closed opening is ignored.
 
 ///|
 enum Screen {
@@ -57,8 +58,17 @@ struct Notice {
 } derive(Eq)
 
 ///|
+/// One opening of a workspace in this page. Work started in it reports back to this opening; after the workspace
+/// closes, a reply for it is ignored, also when the workspace opens again.
+struct Visit {
+  workspace : @workspace.WorkspaceId
+  opening : Int32
+} derive(Eq, Debug)
+
+///|
 /// One workspace's state while another is active: the same fields as the workspace part of `Model`.
 struct Slice {
+  opening : Int32
   history : Array[Location]
   doc : @workspace.Document
   layout : @shell.Layout
@@ -124,6 +134,7 @@ struct Slice {
 ///|
 fn park(m : Model) -> Slice {
   {
+    opening: m.opening,
     history: m.history,
     doc: m.doc,
     layout: m.layout,
@@ -191,6 +202,7 @@ fn park(m : Model) -> Slice {
 fn unpark(m : Model, s : Slice) -> Model {
   {
     ..m,
+    opening: s.opening,
     history: s.history,
     doc: s.doc,
     layout: s.layout,
@@ -269,11 +281,13 @@ fn default_language(catalog : Json) -> String {
 
 ///|
 /// The state of a new workspace: the catalog's defaults, no projects yet, the default layout and an empty tool panel.
+/// It takes the page's next opening number.
 fn fresh(
   m : Model,
   panel~ : @bottom_panel.State = @bottom_panel.State::new(),
 ) -> Slice {
   {
+    opening: m.openings + 1,
     history: [],
     doc: Source,
     layout: @shell.Layout::default(narrow=m.narrow),
@@ -510,12 +524,6 @@ fn adopt_legacy_projects(model : Model, load : (String) -> String) -> Model {
 }
 
 ///|
-/// `read_registry` and `adopt_legacy_projects` with one storage reader, as tests use them.
-fn load_registry(model : Model, load : (String) -> String) -> Model {
-  adopt_legacy_projects(read_registry(model, load, _ => []), load)
-}
-
-///|
 /// The document a workspace shows first: its source, else its model, else its first draft.
 fn first_document(model : Model) -> @workspace.Document {
   match documents_of(model) {
@@ -557,7 +565,7 @@ fn activate(model : Model, id : @workspace.WorkspaceId) -> Model {
     Some(slice) => unpark(base, slice)
     None => {
       let entry = base.registry.get(id)
-      let opened = unpark(base, {
+      let opened = unpark({ ..base, openings: base.openings + 1, }, {
         ..fresh(base),
         layout: entry
         .map(e => e.layout)
@@ -633,6 +641,7 @@ fn create(
       ..model,
       registry,
       parked,
+      openings: model.openings + 1,
       active: Some(entry.id),
       screen: Workspace,
       picker: false,
@@ -780,19 +789,22 @@ fn settle(before : Model, msg : Msg, after : Model) -> Model {
 
 ///|
 /// Removes a provisional workspace, returns to the workspace that was active before it and says why on getting
-/// started. Nothing the earlier workspace held changes.
+/// started. Nothing the earlier workspace held changes. When that workspace closed meanwhile, the most recently used
+/// open workspace returns instead.
 fn abandon(after : Model, acquisition : Acquisition, message : String) -> Model {
   let registry = after.registry.remove(acquisition.workspace)
   let parked = after.parked.copy()
-  let back = match acquisition.previous {
-    Some(previous) =>
-      match parked.get(previous) {
-        Some(slice) => {
-          parked.remove(previous)
-          unpark({ ..after, registry, parked, active: Some(previous), }, slice)
-        }
-        None => { ..after, registry, parked, active: None, }
-      }
+  let previous = match acquisition.previous {
+    Some(previous) if parked.contains(previous) => Some(previous)
+    Some(_) => most_recent_open(after).map(e => e.id)
+    None => None
+  }
+  let back = match
+    previous.bind(id => parked.get(id).map(slice => (id, slice))) {
+    Some((id, slice)) => {
+      parked.remove(id)
+      unpark({ ..after, registry, parked, active: Some(id), }, slice)
+    }
     None => { ..after, registry, parked, active: None, }
   }
   {
@@ -828,15 +840,38 @@ fn stop_acquiring(model : Model, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) {
 ///|
 /// The emitter for work that the active workspace starts: its messages come back routed to it.
 fn routed(model : Model, emit : @cmd.Emit[Msg]) -> @cmd.Emit[Msg] {
-  match model.active {
-    Some(id) =>
+  match visit_of(model) {
+    Some(visit) =>
       emit.map(msg => {
         match msg {
           Routed(_, _) => msg
-          _ => Routed(id, msg)
+          _ => Routed(visit, msg)
         }
       })
     None => emit
+  }
+}
+
+///|
+/// The active workspace's opening.
+fn visit_of(model : Model) -> Visit? {
+  model.active.map(workspace => { workspace, opening: model.opening, })
+}
+
+///|
+/// Remembers which opening made the shared runtime busy: the one a routed message came back to, else the workspace
+/// active after the message. Freeing the runtime forgets it.
+fn track_busy_origin(before : Model, msg : Msg, after : Model) -> Model {
+  if !after.busy {
+    { ..after, busy_origin: None, }
+  } else if before.busy {
+    after
+  } else {
+    let origin = match msg {
+      Routed(visit, _) => Some(visit)
+      _ => visit_of(after)
+    }
+    { ..after, busy_origin: origin, }
   }
 }
 
@@ -845,15 +880,20 @@ fn routed(model : Model, emit : @cmd.Emit[Msg]) -> @cmd.Emit[Msg] {
 /// message and parked again, so the active workspace and the screen stay as they are.
 fn in_workspace(
   model : Model,
-  id : @workspace.WorkspaceId,
+  visit : Visit,
   msg : Msg,
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
-  if model.active == Some(id) {
+  let id = visit.workspace
+  if visit_of(model) == Some(visit) {
     return update_here(model, msg, emit)
   }
-  guard model.parked.get(id) is Some(slice) else {
-    // The workspace was removed or never kept: its late reply only frees the shared runtime.
+  guard model.parked.get(id) is Some(slice) && slice.opening == visit.opening else {
+    // A save that the closed opening scheduled has nothing left to write: closing wrote it.
+    if msg is (SaveProject(_) | SaveDrafts(_)) {
+      return (model, @cmd.none)
+    }
+    // The workspace was removed, closed or never kept: its late reply only frees the shared runtime.
     return (
       {
         ..note(
@@ -925,6 +965,229 @@ fn sync_registry(before : Model, msg : Msg, after : Model) -> Model {
     persist_registry({ ..after, registry, })
   } else {
     { ..after, registry, }
+  }
+}
+
+///|
+/// Writes every source project changed since its last successful save, not only the one that scheduled the save.
+/// Languages that were not written stay dirty.
+fn write_projects(model : Model) -> Model {
+  let attempts : Array[String] = []
+  let still_dirty : Array[String] = []
+  for dirty_language in model.dirty {
+    match model.language_projects.get(dirty_language) {
+      Some(project) => {
+        attempts.push(storage_key(model, dirty_language))
+        if !storage_save(
+            storage_key(model, dirty_language),
+            project.to_json().stringify(),
+          ) {
+          still_dirty.push(dirty_language)
+        }
+      }
+      None => ()
+    }
+  }
+  {
+    ..model,
+    dirty: still_dirty,
+    save_attempts: attempts,
+    storage_ok: still_dirty.is_empty(),
+  }
+}
+
+///|
+/// Writes the drafts the workspace holds: its intent, conceptual model and worksheet. False when one was not written.
+fn write_drafts(model : Model, entry : @workspace.Entry) -> Bool {
+  [
+    (entry.draft_key(Intent), model.intent, entry.holds(Intent)),
+    (
+      entry.draft_key(ConceptualModel),
+      model.concept,
+      entry.holds(ConceptualModel),
+    ),
+    (entry.draft_key(Worksheet), model.worksheet_source, entry.holds(Worksheet)),
+  ]
+  .iter()
+  .all(draft => !draft.2 || storage_save(draft.0, draft.1))
+}
+
+///|
+/// Why the open workspace that `view` shows as active cannot close now, or `None` when it can: an operation it
+/// started still runs, or the host keeps an execution it started.
+fn close_refusal(model : Model, view : Model) -> String? {
+  guard view.active is Some(id) && view.registry.get(id) is Some(entry) else {
+    return Some("The workspace is not open")
+  }
+  if model.connected {
+    return Some("A connected host provides this workspace; it cannot be closed")
+  }
+  if model.busy && model.busy_origin == visit_of(view) {
+    return Some(
+      "Wait for the running operation in " +
+      entry.name.to_string() +
+      " to finish before closing it",
+    )
+  }
+  if host_execution_blocks_replacement(view) {
+    return Some(
+      "Resume or finish the retained host execution before closing " +
+      entry.name.to_string(),
+    )
+  }
+  if !entry.saved {
+    return Some(
+      "This workspace is not saved in this browser, so it cannot close",
+    )
+  }
+  None
+}
+
+///|
+/// `id` shown as the active workspace: the page as it is when `id` is active, else with `id`'s parked state.
+fn viewing(model : Model, id : @workspace.WorkspaceId) -> Model? {
+  if model.active == Some(id) {
+    Some(model)
+  } else {
+    model.parked
+    .get(id)
+    .map(slice => unpark({ ..model, active: Some(id), }, slice))
+  }
+}
+
+///|
+/// Why `id` cannot close now, or `None` when it can. A provisional workspace that still waits can always close.
+fn closing_blocked(model : Model, id : @workspace.WorkspaceId) -> String? {
+  if model.acquiring.map(a => a.workspace) == Some(id) {
+    return None
+  }
+  match viewing(model, id) {
+    Some(view) => close_refusal(model, view)
+    None => Some("The workspace is not open")
+  }
+}
+
+///|
+/// Shows why a workspace did not close: on getting started, or in the status line and the tool panel.
+/// The picker closes, so the focus returns to its button.
+fn close_refused(model : Model, reason : String) -> (Model, @cmd.Cmd) {
+  let noted = note(model, "Workspaces", @bottom_panel.Warning, reason)
+  if model.screen is GettingStarted {
+    (
+      { ..noted, picker: false, start: { ..noted.start, message: reason, }, },
+      @cmd.none,
+    )
+  } else {
+    (
+      { ..noted, picker: false, status: reason, },
+      @cmd.custom_cmd(
+        _ => focus_if_lost("workspace-picker"),
+        kind=@cmd.after_render,
+      ),
+    )
+  }
+}
+
+///|
+/// The parked workspace used most recently: the highest registry opening order.
+fn most_recent_open(model : Model) -> @workspace.Entry? {
+  model.parked
+  .keys()
+  .filter_map(other => model.registry.get(other))
+  .fold(init=None, (best : @workspace.Entry?, e) => {
+    match best {
+      Some(b) if b.opened >= e.opened => best
+      _ => Some(e)
+    }
+  })
+}
+
+///|
+/// Saves an open workspace's source projects and drafts, then drops its state from the page. It stays saved and
+/// listed under Recent workspaces. Closing the active workspace opens the most recently used workspace still open
+/// in the page, else getting started. A provisional workspace that still waits closes like Stop waiting.
+fn close_workspace(
+  model : Model,
+  id : @workspace.WorkspaceId,
+  emit : @cmd.Emit[Msg],
+) -> (Model, @cmd.Cmd) {
+  if model.acquiring.map(a => a.workspace) == Some(id) && !model.connected {
+    return stop_acquiring({ ..model, picker: false, }, emit)
+  }
+  guard viewing(model, id) is Some(view) else { return (model, @cmd.none) }
+  if close_refusal(model, view) is Some(reason) {
+    return close_refused(model, reason)
+  }
+  let entry = view.registry.get(id).unwrap()
+  let written = write_projects(view)
+  let drafts = write_drafts(view, entry)
+  // The workspace list must keep the entry too, or the closed workspace could not reopen after a reload.
+  let listed = refreshed(model)
+  let registry_saved = storage_save(
+    @workspace.registry_key,
+    listed.to_json().stringify(),
+  )
+  if !written.dirty.is_empty() || !drafts || !registry_saved {
+    return close_refused(
+      model,
+      "This browser did not save " +
+      entry.name.to_string() +
+      ", so it stays open",
+    )
+  }
+  let name = entry.name.to_string()
+  let parked = model.parked.copy()
+  parked.remove(id)
+  let closed = {
+    ..model,
+    parked,
+    picker: false,
+    build_menu: false,
+    start: { ..model.start, removing: None, message: "Closed " + name, },
+  }
+  if model.active != Some(id) {
+    // A parked workspace closes in place; the focus stays on its row under Recent workspaces.
+    return (
+      persist_registry(closed),
+      if model.screen is GettingStarted {
+        focus_after_render("recent-open-" + id.to_string())
+      } else {
+        @cmd.custom_cmd(
+          _ => focus_if_lost("workspace-picker"),
+          kind=@cmd.after_render,
+        )
+      },
+    )
+  }
+  let next = most_recent_open(closed)
+  // The closed workspace's state goes; a new opening of it starts from browser storage.
+  let cleared = unpark({ ..closed, active: None, }, {
+    ..fresh(closed),
+    opening: 0,
+  })
+  match next {
+    // Closed from getting started, the page stays there and the focus on the closed workspace's row.
+    Some(other) if model.screen is GettingStarted => {
+      let opened = { ..activate(cleared, other.id), screen: GettingStarted, }
+      (
+        persist_registry(opened),
+        focus_after_render("recent-open-" + id.to_string()),
+      )
+    }
+    Some(other) => {
+      let opened = activate(cleared, other.id)
+      (persist_registry(opened), focus_after_render("workspace-picker"))
+    }
+    None if model.screen is GettingStarted =>
+      (
+        persist_registry({ ..cleared, screen: GettingStarted, }),
+        focus_after_render("recent-open-" + id.to_string()),
+      )
+    None =>
+      (
+        persist_registry({ ..cleared, screen: GettingStarted, }),
+        focus_after_render("start-heading"),
+      )
   }
 }
 
@@ -1159,7 +1422,7 @@ fn update_workspaces(
             start: {
               ..model.start,
               removing: None,
-              message: "Open workspaces stay in this page; reload the page to remove one",
+              message: "Close the workspace before you remove it from this browser",
             },
           },
           @cmd.none,
@@ -1266,25 +1529,12 @@ fn update_workspaces(
         Some(entry) if revision == model.draft_revision &&
           entry.saved &&
           !model.connected => {
-          let ok = [
-              (entry.draft_key(Intent), model.intent, entry.holds(Intent)),
-              (
-                entry.draft_key(ConceptualModel),
-                model.concept,
-                entry.holds(ConceptualModel),
-              ),
-              (
-                entry.draft_key(Worksheet),
-                model.worksheet_source,
-                entry.holds(Worksheet),
-              ),
-            ]
-            .iter()
-            .all(draft => !draft.2 || storage_save(draft.0, draft.1))
+          let ok = write_drafts(model, entry)
           ({ ..model, storage_ok: ok && model.dirty.is_empty(), }, @cmd.none)
         }
         _ => (model, @cmd.none)
       }
+    CloseWorkspace(id) => close_workspace(model, id, emit)
     Shell(action) => {
       let layout = model.layout.apply(action)
       let focus = match action {
