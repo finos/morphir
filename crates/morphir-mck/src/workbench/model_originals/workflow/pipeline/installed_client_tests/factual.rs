@@ -514,3 +514,15 @@ fn f12_saved_data_cannot_decode_live_authority_or_build_attestation_claims() {
     // authenticated. This test claims only closed decode/source consistency,
     // never live provenance, socket PID attestation or whole qualification.
 }
+
+#[cfg(test)]
+#[path = "association.rs"]
+mod association;
+
+#[cfg(test)]
+#[path = "destination.rs"]
+mod destination;
+
+#[cfg(test)]
+#[path = "sequence_origin.rs"]
+mod sequence_origin;

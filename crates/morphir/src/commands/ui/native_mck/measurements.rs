@@ -9,7 +9,7 @@ use super::super::model_originals::{
 };
 
 #[derive(Clone, Copy)]
-pub(super) enum SnapshotPhase {
+pub(in crate::commands::ui) enum SnapshotPhase {
     Open,
     Sealed,
 }
@@ -121,14 +121,14 @@ fn read_counts(value: morphir_common::config::observation::ReadCounts) -> data::
         returned_bytes: data::ObservedCount(value.returned_bytes()),
     }
 }
-pub(super) fn prefix(value: &ReadSnapshot) -> data::ReadPrefix {
+pub(in crate::commands::ui) fn prefix(value: &ReadSnapshot) -> data::ReadPrefix {
     data::ReadPrefix {
         total: read_counts(value.total_counts()),
         workspace: read_counts(value.counts(ReadClass::WorkspaceContent)),
         ambient: read_counts(value.counts(ReadClass::AmbientContent)),
     }
 }
-pub(super) fn workers(
+pub(in crate::commands::ui) fn workers(
     value: WorkerSnapshot,
     phase: SnapshotPhase,
 ) -> Result<data::WorkerMeasurements, NativeAdapterError> {

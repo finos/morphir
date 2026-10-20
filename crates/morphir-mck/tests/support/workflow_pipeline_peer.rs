@@ -21,6 +21,22 @@ fn receive(input: &mut impl BufRead) -> Option<Vec<u8>> {
 }
 
 pub(super) fn adapter(mode: &str) -> bool {
+    // Test-only ordinary process entry, no MEP request/expected DATA.
+    if mode == "installed-process-effect-marker" {
+        let marker = std::path::PathBuf::from(std::env::args_os().nth(3).unwrap());
+        assert!(marker.is_absolute());
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(marker)
+            .unwrap();
+        file.write_all(b"installed-process-effect-entry-v1\n")
+            .unwrap();
+        file.flush().unwrap();
+        std::io::stdout().write_all(b"entered\n").unwrap();
+        std::io::stdout().flush().unwrap();
+        return true;
+    }
     #[cfg(unix)]
     if interrupt_tree_adapter(mode) {
         return true;

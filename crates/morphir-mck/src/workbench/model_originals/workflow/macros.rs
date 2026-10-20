@@ -73,10 +73,14 @@ macro_rules! text {
         text! { @visible(pub) $name {min:$min,max:$max,pattern:$pattern} }
         impl $name {
             pub fn new(text:&str)->Result<Self,super::DataValueError> {
+                Self::validate_text(text)?;
+                Ok(Self(text.to_owned()))
+            }
+            fn validate_text(text:&str)->Result<(),super::DataValueError> {
                 if !($min..=$max).contains(&text.chars().count()) {return Err(super::DataValueError::Length)}
                 let pattern=regex::Regex::new($pattern).map_err(|_|super::DataValueError::Pattern)?;
                 if !pattern.is_match(text) {return Err(super::DataValueError::Pattern)}
-                Ok(Self(text.to_owned()))
+                Ok(())
             }
         }
         impl serde::Serialize for $name {

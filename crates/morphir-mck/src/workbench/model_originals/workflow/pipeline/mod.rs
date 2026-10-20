@@ -117,10 +117,28 @@ enum RunFault {
     RecordRetention(super::native::PrivateRecordError),
     Installed(installed::adapter::InstalledAdapterError),
     InstalledObservation(installed::observation::InstalledObservationFault),
+    InstalledProcessFault(crate::transport::process::ProcessFault),
 }
 impl RunFault {
     fn summary(&self) -> FailureSummary {
         let (phase, code, message) = match self {
+            Self::InstalledProcessFault(error) => {
+                use crate::transport::process::ProcessFault;
+                let code = match error {
+                    ProcessFault::StdoutLimit => "stdout-limit",
+                    ProcessFault::OutputAllocation(_) => "output-allocation",
+                    ProcessFault::PipeRead(..) => "pipe-read",
+                    ProcessFault::PipeThreadStart(..) => "pipe-thread-start",
+                    ProcessFault::ReaderPanicked(_) => "reader-panicked",
+                    ProcessFault::Containment => "containment",
+                    ProcessFault::ChildWait(_) => "child-wait",
+                };
+                (
+                    "installed-process",
+                    code,
+                    "actual installed process owner reported a fault",
+                )
+            }
             Self::Installed(installed::adapter::InstalledAdapterError::Cancelled) => (
                 "installed-cancelled",
                 "installed-cancelled",
@@ -245,6 +263,18 @@ impl RunFault {
             ))) => (
                 "observation",
                 match fault {
+                    super::observation_check::InstalledClientFault::ImplementationMissing => {
+                        "implementation-missing"
+                    }
+                    super::observation_check::InstalledClientFault::ImplementationBinding => {
+                        "implementation-binding"
+                    }
+                    super::observation_check::InstalledClientFault::ImplementationDigest => {
+                        "implementation-digest"
+                    }
+                    super::observation_check::InstalledClientFault::ImplementationProcess => {
+                        "implementation-process"
+                    }
                     super::observation_check::InstalledClientFault::SourceBinding => {
                         "installed-source-binding"
                     }

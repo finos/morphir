@@ -86,6 +86,14 @@ pub(in crate::workbench::model_originals::workflow::pipeline::installed) struct 
     source: Option<Weak<dyn InvocationGateSource>>,
 }
 impl InvocationRevoker {
+    pub(super) fn active(&self) -> bool {
+        self.source
+            .as_ref()
+            .is_some_and(|source| self.matches(source))
+    }
+    pub(super) fn projection(&self) -> Option<Weak<dyn InvocationGateSource>> {
+        self.source.clone()
+    }
     pub(super) fn issue(
         &mut self,
         source: Weak<dyn InvocationGateSource>,

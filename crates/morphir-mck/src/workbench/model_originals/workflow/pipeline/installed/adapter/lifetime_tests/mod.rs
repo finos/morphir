@@ -134,3 +134,8 @@ fn engine_guard_revokes_on_real_adapter_unwind() {
 mod foreign_gate_tests;
 
 mod text_retention_tests;
+
+mod process_effect_tests;
+
+mod process_fault_test;
+mod snapshot_record_tests;

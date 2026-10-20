@@ -442,9 +442,29 @@ impl PendingHostEvent {
         Ok(())
     }
     pub(in crate::commands::ui) fn retain(
-        mut self,
+        self,
         run: &mut InstalledClientRun<'_>,
     ) -> Result<RetainedHostEvent, HostEventRefusal> {
+        self.retain_with(run, |event, _| Ok(event))
+    }
+    pub(in crate::commands::ui) fn collect(
+        self,
+        run: &mut InstalledClientRun<'_>,
+    ) -> Result<(), HostEventRefusal> {
+        if self.kind() == HostEventKind::ReadyOpportunity {
+            self.adopt_ready_with(run, |event, run| event.collect(run))
+        } else {
+            self.retain_with(run, |event, run| event.collect(run))
+        }
+    }
+    fn retain_with<T>(
+        mut self,
+        run: &mut InstalledClientRun<'_>,
+        finish: impl FnOnce(
+            RetainedHostEvent,
+            &mut InstalledClientRun<'_>,
+        ) -> Result<T, HostEventRefusal>,
+    ) -> Result<T, HostEventRefusal> {
         let projection = self.source.invocation_projection();
         if !run.host_invocation_matches(&projection) {
             return Err(HostEventRefusal::ForeignInvocation);
@@ -482,17 +502,31 @@ impl PendingHostEvent {
                 _ => Err(HostEventRefusal::Record),
             }
         })(checked_out.event())?;
+        let result = finish(
+            RetainedHostEvent {
+                key: self.key,
+                payload,
+            },
+            run,
+        )?;
         checked_out.restore()?;
         self.accept()?;
-        Ok(RetainedHostEvent {
-            key: self.key,
-            payload,
-        })
+        Ok(result)
     }
     pub(in crate::commands::ui) fn adopt_ready(
-        mut self,
+        self,
         run: &mut InstalledClientRun<'_>,
     ) -> Result<RetainedHostEvent, HostEventRefusal> {
+        self.adopt_ready_with(run, |event, _| Ok(event))
+    }
+    fn adopt_ready_with<T>(
+        mut self,
+        run: &mut InstalledClientRun<'_>,
+        finish: impl FnOnce(
+            RetainedHostEvent,
+            &mut InstalledClientRun<'_>,
+        ) -> Result<T, HostEventRefusal>,
+    ) -> Result<T, HostEventRefusal> {
         let projection = self.source.invocation_projection();
         if !run.host_invocation_matches(&projection) {
             return Err(HostEventRefusal::ForeignInvocation);
@@ -530,12 +564,16 @@ impl PendingHostEvent {
                 record,
             })
         })(checked_out.event())?;
+        let result = finish(
+            RetainedHostEvent {
+                key: self.key,
+                payload,
+            },
+            run,
+        )?;
         checked_out.restore()?;
         self.accept()?;
-        Ok(RetainedHostEvent {
-            key: self.key,
-            payload,
-        })
+        Ok(result)
     }
 }
 impl Drop for PendingHostEvent {
@@ -569,6 +607,34 @@ pub(in crate::commands::ui) struct RetainedHostEvent {
     payload: RetainedPayload,
 }
 impl RetainedHostEvent {
+    fn collect(self, run: &mut InstalledClientRun<'_>) -> Result<(), HostEventRefusal> {
+        use morphir_mck::workbench::model_originals::installed::InstalledSendCompletion;
+        let EventKey {
+            sequence,
+            connection,
+        } = self.key;
+        let result = match self.payload {
+            RetainedPayload::Authenticated => {
+                run.record_authenticated_connection(sequence, connection)
+            }
+            RetainedPayload::Received(text) => run.record_received_text(sequence, connection, text),
+            RetainedPayload::Prepared(text) => run.record_prepared_send(sequence, connection, text),
+            RetainedPayload::Outcome { prepared, outcome } => run.record_send_outcome(
+                sequence,
+                connection,
+                prepared.sequence,
+                match outcome {
+                    SendOutcome::Completed => InstalledSendCompletion::Completed,
+                    SendOutcome::Failed => InstalledSendCompletion::Failed,
+                    SendOutcome::TimedOut => InstalledSendCompletion::TimedOut,
+                },
+            ),
+            RetainedPayload::Ready { id: _, record } => {
+                run.record_adopted_ready(sequence, connection, record)
+            }
+        };
+        result.map_err(|_| HostEventRefusal::Receiving)
+    }
     pub(in crate::commands::ui) fn key(&self) -> EventKey {
         self.key
     }

@@ -6,7 +6,25 @@ use super::super::super::{
 };
 use super::super::{Attempt, RunFault, WorkflowRecordError};
 use super::observation::InstalledObservationOwner;
+mod association;
+mod collection;
 mod invocation;
+mod selections;
+mod snapshots;
+pub use collection::{InstalledProjectSelection, InstalledSourceSelection};
+pub use snapshots::InstalledSnapshot;
+pub mod data {
+    pub use crate::workbench::model_originals::workflow::installed_measurements::ObservedBytes;
+    pub use crate::workbench::model_originals::workflow::installed_measurements::implementation::{
+        CommandPaths, FileMode, GitQuery, GitTool, ImplementationObservation, LaunchObservation,
+        ObjectFormat, OsOperand, PackageCensus, PackageFile, RuntimeObservation, SourceAssociation,
+        SourceEntry, ToolProcess, TrackedStatus, VersionObservation,
+    };
+    pub use crate::workbench::model_originals::workflow::native::data::{
+        ContentSha256, Items, Natural, SourceMeasurements, SourcePath, Text, WorkerMeasurements,
+    };
+}
+pub(in crate::workbench::model_originals::workflow) mod processes;
 pub use super::observation::{
     InstalledObservationFault as InstalledObservationError, InstalledObservationResource,
     InstalledObservationUsage, ObservationBufferRole, ObservationRecordRole,
@@ -15,6 +33,7 @@ pub use super::observation::{
 };
 use crate::workbench::configuration::NativeObservationLimits;
 pub use crate::workbench::model_originals::workflow::installed_measurements::InstalledClientMeasurements;
+pub use crate::workbench::model_originals::workflow::installed_measurements::SendCompletion as InstalledSendCompletion;
 use crate::workbench::model_originals::workflow::native::{self, record_retention};
 pub(super) use invocation::InvocationRevoker;
 pub use invocation::{
@@ -24,6 +43,10 @@ pub use invocation::{
 use invocation::{InvocationObservationState, InvocationObservationView};
 use native::data::{Bytes, SourcePath, Text};
 use native::{FixtureAlias, PrivateRecordAdoption, PrivateRecordError, RecordRetentionUsage};
+pub use processes::{
+    FinishedInstalledProcess, InstalledMetadataQuery, InstalledProcessPurpose,
+    RunningInstalledProcess,
+};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstalledAdapterError {
     Cancelled,
@@ -46,11 +69,22 @@ pub struct InstalledClientRun<'a> {
     attempt: &'a mut Attempt,
     revoker: &'a mut InvocationRevoker,
     capture: &'a mut super::super::policy::CaptureBudget,
+    decode: &'a mut crate::workbench::model_originals::workflow::Decoder,
+    collected:
+        crate::workbench::model_originals::workflow::installed_measurements::LiveMeasurements,
+    next_process: u64,
+    destination: Option<
+        crate::workbench::model_originals::workflow::installed_measurements::PostExitSnapshot,
+    >,
+    scratch: Option<
+        crate::workbench::model_originals::workflow::installed_measurements::PostExitSnapshot,
+    >,
 }
 pub(super) struct HostObservationOwners<'a> {
     pub(super) receiving: &'a mut InstalledObservationOwner,
     pub(super) revoker: &'a mut InvocationRevoker,
     pub(super) capture: &'a mut super::super::policy::CaptureBudget,
+    pub(super) decode: &'a mut crate::workbench::model_originals::workflow::Decoder,
 }
 impl<'a> InstalledClientRun<'a> {
     pub(super) fn from_prepared(
@@ -65,6 +99,7 @@ impl<'a> InstalledClientRun<'a> {
             receiving,
             revoker,
             capture,
+            decode,
         } = host;
         Self {
             source,
@@ -75,6 +110,11 @@ impl<'a> InstalledClientRun<'a> {
             attempt,
             revoker,
             capture,
+            decode,
+            collected: crate::workbench::model_originals::workflow::installed_measurements::LiveMeasurements::new(),
+            next_process: 0,
+            destination:None,
+            scratch:None,
         }
     }
     pub fn source(&self) -> InstalledClientSource<'_> {
@@ -200,6 +240,9 @@ impl<'a> InstalledClientRun<'a> {
         Ok(())
     }
     fn work_ready(&mut self) -> Result<(), InstalledAdapterError> {
+        if let Err(error) = self.decode.ready() {
+            self.attempt.fail(RunFault::Decode(error));
+        }
         if let Err(error) = self.comparison.ready() {
             self.attempt
                 .fail(RunFault::Record(WorkflowRecordError::Observation(error)))

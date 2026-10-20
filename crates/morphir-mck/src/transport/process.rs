@@ -31,6 +31,15 @@ pub enum CommandSpecError {
     DuplicateEnvironmentKey,
 }
 impl CommandSpec {
+    pub(crate) fn program(&self) -> &std::path::Path {
+        &self.program
+    }
+    pub(crate) fn arguments(&self) -> &[OsString] {
+        &self.arguments
+    }
+    pub(crate) fn directory(&self) -> &std::path::Path {
+        &self.directory
+    }
     pub fn new(
         program: PathBuf,
         arguments: Vec<OsString>,

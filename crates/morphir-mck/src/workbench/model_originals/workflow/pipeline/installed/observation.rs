@@ -38,6 +38,9 @@ pub enum ObservationBufferRole {
     DestinationContent,
     ScratchContent,
     CensusMetadata,
+    CommandMetadata,
+    ImplementationMetadata,
+    AssociationContent,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObservationRecordRole {
@@ -169,7 +172,7 @@ impl InstalledObservationOwner {
         *self.usage.amount_mut(kind) = next;
         Ok(())
     }
-    fn reserve_span(
+    pub(super) fn reserve_span(
         &mut self,
         kind: InstalledObservationResource,
         requested: usize,
@@ -329,10 +332,19 @@ impl RetainedObservationText {
     pub fn as_str(&self) -> &str {
         &self.text
     }
+    pub(in crate::workbench::model_originals::workflow) fn into_string(self) -> String {
+        self.text
+    }
+    pub(in crate::workbench::model_originals::workflow) fn from_owned(text: String) -> Self {
+        Self { text }
+    }
 }
 impl RetainedObservationBytes {
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
+    }
+    pub(in crate::workbench::model_originals::workflow) fn into_vec(self) -> Vec<u8> {
+        self.bytes
     }
     pub(in crate::workbench::model_originals::workflow::pipeline) fn capacity(&self) -> usize {
         self.bytes.capacity()

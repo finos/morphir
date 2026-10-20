@@ -2,7 +2,7 @@
 mod client;
 mod completion;
 mod fixture;
-mod measurements;
+pub(in crate::commands::ui) mod measurements;
 mod product;
 
 use std::{

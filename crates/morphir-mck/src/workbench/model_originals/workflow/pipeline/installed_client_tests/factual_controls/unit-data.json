@@ -1,6 +1,11 @@
 {
+  "implementation": {"kind":"observed","beforeAction":2,"launch":{"kind":"node-package","entry":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-package/bin/morphir.js"}}},"runtime":{"program":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-runtime/node"}},"byteLength":4,"sha256":"545ea538461003efdc8c81c244531b003f6f26cfccf6c0073b3239fdedf49446","version":{"kind":"unobserved"}},"commandPaths":{"launchFile":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/launch.json"}},"connectionFile":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/connection.json"}},"sourceSelectionFile":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/source.json"}},"projectSelectionFile":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/project.json"}},"destination":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"unit-output"}}},"package":{"root":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-package"}},"entries":[{"path":"bin/morphir.js","mode":"regular","byteLength":5,"sha256":"923fe53966c6cd9343e11af776cd4b05be315ea4b200b02e4d5dfb0f929b73bf"},{"path":"build-provider/connected.mjs","mode":"regular","byteLength":9,"sha256":"12a7bd86e0a430327620a0e2274d0f6f091c783b21c169636ef8997f9f1da76a"},{"path":"build-provider/originals.mjs","mode":"regular","byteLength":9,"sha256":"0f359e10a88054c3c91155025bf2d8c5b88ca23a5bdbaf100442ab3c27a9a7d7"},{"path":"package.json","mode":"regular","byteLength":2,"sha256":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"}],"sha256":"22b741e71bde7863f33ce68eb4163c319164e7078dc95a3eb19b4cf231e508b4"},"source":{"root":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-source"}},"head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","objectFormat":"sha1","trackedStatus":"unchanged","entries":[{"kind":"symlink-literal","path":"link","targetBytes":{"kind":"utf8","text":"model.mbt"},"byteLength":9,"sha256":"7c9ddb64786d014d6595b46c98d9b62d8b562f088b4fb4e94d8dff71e372482b"},{"kind":"file","path":"model.mbt","mode":"regular","byteLength":5,"sha256":"9372c470eeadd5ecd9c3c74c2b3cb633f8e2f2fad799250a0f70d652b6b825e4"}],"sha256":"3270a3ab82b102b1b460e20de2e1f0542b8c1cf7251d1d23dfaa702affb8e819"},"metadataTools":[{"processOrdinal":0,"tool":"git","query":"revision","program":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-tools/git"}},"directory":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-source"}},"arguments":[{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"rev-parse"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--path-format=absolute"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--show-toplevel"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--show-object-format"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"HEAD"}}],"completion":{"kind":"finished","exit":{"kind":"code","value":0}},"stdout":{"kind":"utf8","text":"/unit-source\nsha1\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"},"stderr":{"kind":"hex","hex":""},"stderrTruncated":false,"descendants":"unobserved"},{"processOrdinal":1,"tool":"git","query":"tracked-inventory","program":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-tools/git"}},"directory":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-source"}},"arguments":[{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"ls-files"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--stage"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"-z"}}],"completion":{"kind":"finished","exit":{"kind":"code","value":0}},"stdout":{"kind":"utf8","text":"120000 2222222222222222222222222222222222222222 0\tlink\u0000100644 1111111111111111111111111111111111111111 0\tmodel.mbt\u0000"},"stderr":{"kind":"hex","hex":""},"stderrTruncated":false,"descendants":"unobserved"},{"processOrdinal":2,"tool":"git","query":"tracked-status","program":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-tools/git"}},"directory":{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-source"}},"arguments":[{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--no-optional-locks"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"-c"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"core.fsmonitor=false"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"status"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--porcelain=v1"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"-z"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--untracked-files=no"}}],"completion":{"kind":"finished","exit":{"kind":"code","value":0}},"stdout":{"kind":"utf8","text":""},"stderr":{"kind":"hex","hex":""},"stderrTruncated":false,"descendants":"unobserved"}]},
   "processes": [
     {
+      "processOrdinal": 3,
+      "directory": {"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/"}},
+      "program": {"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-runtime/node"}},
+      "arguments": [{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-package/bin/morphir.js"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"connected"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"connect"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/launch.json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--connection"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/connection.json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--connection-scope"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"models"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--provider"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"workbench-http"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--node"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-runtime/node"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--connected-helper"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-package/build-provider/connected.mjs"}}],
       "actionIndex": 2,
       "command": "connect",
       "completion": {
@@ -22,6 +27,10 @@
       "descendants": "unobserved"
     },
     {
+      "processOrdinal": 4,
+      "directory": {"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/"}},
+      "program": {"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-runtime/node"}},
+      "arguments": [{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-package/bin/morphir.js"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"connected"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"originals"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/source.json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--list"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--connection"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/connection.json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--provider"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"workbench-http"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--node"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-runtime/node"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--originals-helper"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-package/build-provider/originals.mjs"}}],
       "actionIndex": 5,
       "command": "list",
       "completion": {
@@ -43,6 +52,10 @@
       "descendants": "unobserved"
     },
     {
+      "processOrdinal": 5,
+      "directory": {"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/"}},
+      "program": {"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-runtime/node"}},
+      "arguments": [{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-package/bin/morphir.js"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"connected"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"originals"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/project.json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--connection"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-fixture/connection.json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--output"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"unit-output"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--provider"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"workbench-http"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--json"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--node"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-runtime/node"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"--originals-helper"}},{"kind":"unix-bytes","bytes":{"kind":"utf8","text":"/unit-package/build-provider/originals.mjs"}}],
       "actionIndex": 8,
       "command": "publish",
       "completion": {
@@ -76,39 +89,39 @@
     },
     "events": [
       {
-        "sequence": 0,
-        "connection": 0,
-        "event": {
-          "kind": "authenticated-connection"
-        }
-      },
-      {
         "sequence": 1,
         "connection": 0,
         "event": {
-          "kind": "received-text",
-          "payload": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"morphir.session.initialize\",\"params\":{\"protocolVersion\":1,\"sessionId\":\"unit-session\"}}"
+          "kind": "authenticated-connection"
         }
       },
       {
         "sequence": 2,
         "connection": 0,
         "event": {
-          "kind": "prepared-send",
-          "payload": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":1}}"
+          "kind": "received-text",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"morphir.session.initialize\",\"params\":{\"protocolVersion\":1,\"sessionId\":\"unit-session\"}}"
         }
       },
       {
         "sequence": 3,
         "connection": 0,
         "event": {
-          "kind": "send-outcome",
-          "preparedSequence": 2,
-          "outcome": "completed"
+          "kind": "prepared-send",
+          "payload": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":1}}"
         }
       },
       {
         "sequence": 4,
+        "connection": 0,
+        "event": {
+          "kind": "send-outcome",
+          "preparedSequence": 3,
+          "outcome": "completed"
+        }
+      },
+      {
+        "sequence": 5,
         "connection": 0,
         "event": {
           "kind": "received-text",
@@ -116,7 +129,7 @@
         }
       },
       {
-        "sequence": 5,
+        "sequence": 6,
         "connection": 0,
         "event": {
           "kind": "prepared-send",
@@ -124,23 +137,23 @@
         }
       },
       {
-        "sequence": 6,
+        "sequence": 7,
         "connection": 0,
         "event": {
           "kind": "send-outcome",
-          "preparedSequence": 5,
+          "preparedSequence": 6,
           "outcome": "completed"
         }
       },
       {
-        "sequence": 7,
+        "sequence": 8,
         "connection": 1,
         "event": {
           "kind": "authenticated-connection"
         }
       },
       {
-        "sequence": 8,
+        "sequence": 9,
         "connection": 1,
         "event": {
           "kind": "received-text",
@@ -148,7 +161,7 @@
         }
       },
       {
-        "sequence": 9,
+        "sequence": 10,
         "connection": 1,
         "event": {
           "kind": "prepared-send",
@@ -156,16 +169,16 @@
         }
       },
       {
-        "sequence": 10,
+        "sequence": 11,
         "connection": 1,
         "event": {
           "kind": "send-outcome",
-          "preparedSequence": 9,
+          "preparedSequence": 10,
           "outcome": "completed"
         }
       },
       {
-        "sequence": 11,
+        "sequence": 12,
         "connection": 1,
         "event": {
           "kind": "received-text",
@@ -173,7 +186,7 @@
         }
       },
       {
-        "sequence": 12,
+        "sequence": 13,
         "connection": 1,
         "event": {
           "kind": "prepared-send",
@@ -181,16 +194,16 @@
         }
       },
       {
-        "sequence": 13,
+        "sequence": 14,
         "connection": 1,
         "event": {
           "kind": "send-outcome",
-          "preparedSequence": 12,
+          "preparedSequence": 13,
           "outcome": "completed"
         }
       },
       {
-        "sequence": 14,
+        "sequence": 15,
         "connection": 1,
         "event": {
           "kind": "received-text",
@@ -198,7 +211,7 @@
         }
       },
       {
-        "sequence": 15,
+        "sequence": 16,
         "connection": 1,
         "event": {
           "kind": "ready-record-adopted",
@@ -209,7 +222,7 @@
         }
       },
       {
-        "sequence": 16,
+        "sequence": 17,
         "connection": 1,
         "event": {
           "kind": "prepared-send",
@@ -217,16 +230,16 @@
         }
       },
       {
-        "sequence": 17,
+        "sequence": 18,
         "connection": 1,
         "event": {
           "kind": "send-outcome",
-          "preparedSequence": 16,
+          "preparedSequence": 17,
           "outcome": "completed"
         }
       },
       {
-        "sequence": 18,
+        "sequence": 19,
         "connection": 1,
         "event": {
           "kind": "received-text",
@@ -234,7 +247,7 @@
         }
       },
       {
-        "sequence": 19,
+        "sequence": 20,
         "connection": 1,
         "event": {
           "kind": "prepared-send",
@@ -242,16 +255,16 @@
         }
       },
       {
-        "sequence": 20,
+        "sequence": 21,
         "connection": 1,
         "event": {
           "kind": "send-outcome",
-          "preparedSequence": 19,
+          "preparedSequence": 20,
           "outcome": "completed"
         }
       },
       {
-        "sequence": 21,
+        "sequence": 22,
         "connection": 1,
         "event": {
           "kind": "received-text",
@@ -259,7 +272,7 @@
         }
       },
       {
-        "sequence": 22,
+        "sequence": 23,
         "connection": 1,
         "event": {
           "kind": "prepared-send",
@@ -267,16 +280,16 @@
         }
       },
       {
-        "sequence": 23,
+        "sequence": 24,
         "connection": 1,
         "event": {
           "kind": "send-outcome",
-          "preparedSequence": 22,
+          "preparedSequence": 23,
           "outcome": "completed"
         }
       },
       {
-        "sequence": 24,
+        "sequence": 25,
         "connection": 1,
         "event": {
           "kind": "received-text",
@@ -284,7 +297,7 @@
         }
       },
       {
-        "sequence": 25,
+        "sequence": 26,
         "connection": 1,
         "event": {
           "kind": "prepared-send",
@@ -292,16 +305,16 @@
         }
       },
       {
-        "sequence": 26,
+        "sequence": 27,
         "connection": 1,
         "event": {
           "kind": "send-outcome",
-          "preparedSequence": 25,
+          "preparedSequence": 26,
           "outcome": "completed"
         }
       },
       {
-        "sequence": 27,
+        "sequence": 28,
         "connection": 1,
         "event": {
           "kind": "received-text",
@@ -309,7 +322,7 @@
         }
       },
       {
-        "sequence": 28,
+        "sequence": 29,
         "connection": 1,
         "event": {
           "kind": "prepared-send",
@@ -317,11 +330,11 @@
         }
       },
       {
-        "sequence": 29,
+        "sequence": 30,
         "connection": 1,
         "event": {
           "kind": "send-outcome",
-          "preparedSequence": 28,
+          "preparedSequence": 29,
           "outcome": "completed"
         }
       }

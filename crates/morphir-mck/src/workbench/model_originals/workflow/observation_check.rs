@@ -94,6 +94,10 @@ pub(super) enum ObservationError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum InstalledClientFault {
+    ImplementationMissing,
+    ImplementationBinding,
+    ImplementationDigest,
+    ImplementationProcess,
     SourceBinding,
     ProcessOrder,
     ProcessOutcome,

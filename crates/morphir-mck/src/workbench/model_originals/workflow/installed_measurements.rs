@@ -1,8 +1,13 @@
 //! Private factual DATA. Derived caches never serialize or issue live grants.
+#[cfg(test)]
+#[path = "installed_measurements_live_tests.rs"]
+mod live_tests;
 use super::observation_check::InstalledClientFault as Fault;
 use super::*;
 use crate::json::strict::Document;
 use crate::workbench::model_originals as protocol;
+pub(super) mod implementation;
+use implementation::{ImplementationObservation, OsOperand};
 
 #[derive(Debug)]
 pub struct ObservedBytes {
@@ -13,6 +18,27 @@ impl ObservedBytes {
     pub(super) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+    fn utf8<'a>(&'a self, owner: &mut Decoder) -> Result<Option<&'a str>, DecodeError> {
+        match &self.wire {
+            input::Bytes::Utf8 { text } => Ok(Some(text.as_str())),
+            _ => {
+                owner.bytes(self.bytes.len())?;
+                Ok(std::str::from_utf8(&self.bytes).ok())
+            }
+        }
+    }
+}
+pub(super) enum ByteCacheError<E> {
+    Decode(DecodeError),
+    Storage(E),
+}
+impl<E> From<DecodeError> for ByteCacheError<E> {
+    fn from(error: DecodeError) -> Self {
+        Self::Decode(error)
+    }
 }
 impl serde::Serialize for ObservedBytes {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -22,27 +48,61 @@ impl serde::Serialize for ObservedBytes {
 impl Decode for ObservedBytes {
     fn decode(doc: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         let wire = input::Bytes::decode(doc, owner)?;
+        Self::from_wire(wire, owner)
+    }
+}
+impl ObservedBytes {
+    pub(super) fn from_wire(wire: input::Bytes, owner: &mut Decoder) -> Result<Self, DecodeError> {
+        match Self::from_wire_with_storage::<std::convert::Infallible>(wire, owner, |_, _| Ok(())) {
+            Ok(value) => Ok(value),
+            Err(ByteCacheError::Decode(error)) => Err(error),
+            Err(ByteCacheError::Storage(never)) => match never {},
+        }
+    }
+    /// Saved decoding uses its existing Decoder logical destinations. Live
+    /// receiving additionally funds requested storage and actual spare capacity
+    /// before the SAME copy. The hook creates no owner or positive policy.
+    pub(super) fn from_wire_with_storage<E>(
+        wire: input::Bytes,
+        owner: &mut Decoder,
+        mut storage: impl FnMut(usize, usize) -> Result<(), E>,
+    ) -> Result<Self, ByteCacheError<E>> {
         let length = match &wire {
             input::Bytes::Utf8 { text } => text.as_str().len(),
-            input::Bytes::Hex { hex } => protocol::fixture_bytes::hex_byte_length(hex.as_str())
-                .map_err(|_| DecodeError::Shape("literal hex"))?,
+            input::Bytes::Hex { hex } => {
+                owner.bytes(hex.as_str().len())?;
+                protocol::fixture_bytes::hex_byte_length(hex.as_str())
+                    .map_err(|_| DecodeError::Shape("literal hex"))?
+            }
             _ => {
-                return Err(DecodeError::Shape(
-                    "observed bytes require retained literal",
-                ));
+                return Err(DecodeError::Shape("observed bytes require retained literal").into());
             }
         };
         // Actual retained byte elements and copy/conversion visits, not RSS.
         owner.slots(length)?;
         owner.bytes(length)?;
+        storage(length, length).map_err(ByteCacheError::Storage)?;
         let mut bytes = Vec::new();
         bytes
             .try_reserve_exact(length)
             .map_err(|_| DecodeError::Allocation)?;
+        storage(
+            0,
+            bytes
+                .capacity()
+                .checked_sub(length)
+                .ok_or(DecodeError::Limits)?,
+        )
+        .map_err(ByteCacheError::Storage)?;
         match &wire {
             input::Bytes::Utf8 { text } => bytes.extend_from_slice(text.as_str().as_bytes()),
             input::Bytes::Hex { hex } => {
-                owner.bytes(hex.as_str().len())?;
+                owner.bytes(
+                    hex.as_str()
+                        .len()
+                        .checked_mul(2)
+                        .ok_or(DecodeError::Limits)?,
+                )?;
                 for pair in hex.as_str().as_bytes().as_chunks::<2>().0 {
                     let text =
                         std::str::from_utf8(pair).map_err(|_| DecodeError::Shape("literal hex"))?;
@@ -52,7 +112,7 @@ impl Decode for ObservedBytes {
                     );
                 }
             }
-            _ => return Err(DecodeError::Shape("observed literal")),
+            _ => return Err(DecodeError::Shape("observed literal").into()),
         }
         Ok(Self { wire, bytes })
     }
@@ -80,11 +140,24 @@ macro_rules! ordinal {
 }
 ordinal!(EventSequence);
 ordinal!(PreparedEventSequence);
+impl PreparedEventSequence {
+    pub(super) fn live(value: u64) -> Self {
+        Self(value)
+    }
+}
 ordinal!(ConnectionOrdinal);
 words! { pub ProcessCommand { Connect => "connect", List => "list", Publish => "publish" } }
 words! { pub DescendantCoverage { Unobserved => "unobserved", TerminationRequestedUnverified => "termination-requested-unverified" } }
 #[derive(Debug)]
 pub struct MeasuredBool(bool);
+impl MeasuredBool {
+    pub(super) fn live(value: bool) -> Self {
+        Self(value)
+    }
+    pub(super) fn observed(&self) -> bool {
+        self.0
+    }
+}
 impl Decode for MeasuredBool {
     fn decode(doc: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         JsonBool::decode(doc, owner).map(|v| Self(v.0))
@@ -105,6 +178,10 @@ tagged! { pub DirectProcessCompletion("kind") {
     Incomplete => "incomplete" {},
 } }
 record! { pub ProcessMeasurement {
+    directory:OsOperand=>"directory",
+    process_ordinal: Natural<0,{u64::MAX}> => "processOrdinal",
+    program: OsOperand => "program",
+    arguments: Items<OsOperand,0,{usize::MAX}> => "arguments",
     action_index: Natural<0, {u64::MAX}> => "actionIndex",
     command: ProcessCommand => "command",
     completion: DirectProcessCompletion => "completion",
@@ -185,6 +262,7 @@ record! { pub PostExitSnapshot {
 } }
 literal! { pub Unobserved => "unobserved" }
 record! { pub WireMeasurements {
+    implementation: ImplementationObservation => "implementation",
     processes:Items<ProcessMeasurement,0,{usize::MAX}> =>"processes",host:HostMeasurement=>"host",
     destination:PostExitSnapshot=>"destination",published_relative_root:SourcePath=>"publishedRelativeRoot",scratch:PostExitSnapshot=>"scratch",
     dynamic_commit:Unobserved=>"dynamicCommit",dynamic_scratch_cleanup:Unobserved=>"dynamicScratchCleanup",client_release_acceptance:Unobserved=>"clientReleaseAcceptance",
@@ -208,6 +286,154 @@ pub struct InstalledClientMeasurements {
     pub(super) frames: Vec<ParsedFrame>,
     pub(super) claims: Vec<Option<Document>>,
     pub(super) protocol: Result<ProtocolFacts, Fault>,
+}
+pub(super) enum LiveFrame {
+    Received(String),
+    Prepared(String),
+}
+/// Partial factual collection. The SAME helpers and caller Decoder also build
+/// saved caches; malformed literals remain DATA, never invented successes.
+pub(super) struct LiveMeasurements {
+    pub(super) events: Vec<SequencedSocketEvent>,
+    pub(super) frames: Vec<ParsedFrame>,
+    pub(super) processes: Vec<ProcessMeasurement>,
+    pub(super) claims: Vec<Option<Document>>,
+    pub(super) descriptions:
+        Vec<super::pipeline::installed::adapter::processes::ProcessDescription>,
+    pub(super) tools: Vec<super::pipeline::installed::adapter::FinishedInstalledProcess>,
+}
+impl LiveMeasurements {
+    pub(super) fn new() -> Self {
+        Self {
+            events: Vec::new(),
+            frames: Vec::new(),
+            processes: Vec::new(),
+            claims: Vec::new(),
+            descriptions: Vec::new(),
+            tools: Vec::new(),
+        }
+    }
+    pub(super) fn push_text(
+        &mut self,
+        sequence: u64,
+        connection: u64,
+        text: LiveFrame,
+        owner: &mut Decoder,
+    ) -> Result<(), DecodeError> {
+        let event = match text {
+            LiveFrame::Received(raw) if raw.len() <= protocol::MAX_REQUEST_BYTES => {
+                SocketEvent::ReceivedText {
+                    payload: ReceivedPayload(raw),
+                }
+            }
+            LiveFrame::Prepared(raw) if raw.len() <= protocol::transcript::MAX_REPLY_BYTES => {
+                SocketEvent::PreparedSend {
+                    payload: PreparedPayload(raw),
+                }
+            }
+            _ => return Err(DecodeError::Shape("profile frame byte limit")),
+        };
+        self.push_event(sequence, connection, event, owner)
+    }
+    pub(super) fn push_event(
+        &mut self,
+        sequence: u64,
+        connection: u64,
+        event: SocketEvent,
+        owner: &mut Decoder,
+    ) -> Result<(), DecodeError> {
+        owner.ready()?;
+        owner.slots(1)?;
+        self.events
+            .try_reserve_exact(1)
+            .map_err(|_| DecodeError::Allocation)?;
+        let raw = match &event {
+            SocketEvent::ReceivedText { payload } => Some(payload.text()),
+            SocketEvent::PreparedSend { payload } => Some(payload.text()),
+            _ => None,
+        };
+        let parsed = if let Some(raw) = raw {
+            owner.slots(1)?;
+            self.frames
+                .try_reserve_exact(1)
+                .map_err(|_| DecodeError::Allocation)?;
+            Some(literal(raw, owner)?)
+        } else {
+            None
+        };
+        if let Some(document) = parsed {
+            self.frames.push(ParsedFrame {
+                event: self.events.len(),
+                document,
+            });
+        }
+        self.events.push(SequencedSocketEvent {
+            sequence: EventSequence(sequence),
+            connection: ConnectionOrdinal(connection),
+            event,
+        });
+        Ok(())
+    }
+    pub(super) fn push_process(
+        &mut self,
+        process: ProcessMeasurement,
+        owner: &mut Decoder,
+    ) -> Result<(), DecodeError> {
+        owner.ready()?;
+        owner.slots(2)?;
+        self.processes
+            .try_reserve_exact(1)
+            .map_err(|_| DecodeError::Allocation)?;
+        self.claims
+            .try_reserve_exact(1)
+            .map_err(|_| DecodeError::Allocation)?;
+        let claim = match process.stdout.utf8(owner)? {
+            Some(raw) => literal(raw, owner)?,
+            None => None,
+        };
+        self.processes.push(process);
+        self.claims.push(claim);
+        Ok(())
+    }
+    pub(super) fn claim<'a>(
+        &'a self,
+        index: usize,
+        keys: &[&str],
+        owner: &mut Decoder,
+    ) -> Result<Option<&'a Document>, DecodeError> {
+        match self.claims.get(index).and_then(Option::as_ref) {
+            Some(doc) => path(doc, keys, owner),
+            None => Ok(None),
+        }
+    }
+    pub(super) fn finish(
+        self,
+        implementation: ImplementationObservation,
+        host: HostMeasurement,
+        destination: PostExitSnapshot,
+        published_relative_root: SourcePath,
+        scratch: PostExitSnapshot,
+        owner: &mut Decoder,
+    ) -> Result<InstalledClientMeasurements, DecodeError> {
+        let wire = WireMeasurements {
+            implementation,
+            processes: Items(self.processes),
+            host,
+            destination,
+            published_relative_root,
+            scratch,
+            dynamic_commit: Unobserved,
+            dynamic_scratch_cleanup: Unobserved,
+            client_release_acceptance: Unobserved,
+        };
+        let protocol = prepare_protocol(&wire, &self.frames, owner)?;
+        Ok(InstalledClientMeasurements {
+            wire,
+            frames: self.frames,
+            claims: self.claims,
+            protocol,
+        })
+    }
 }
 impl serde::Serialize for InstalledClientMeasurements {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -249,7 +475,7 @@ fn literal(raw: &str, owner: &mut Decoder) -> Result<Option<Document>, DecodeErr
         }
     }
 }
-fn member<'a>(
+pub(super) fn member<'a>(
     doc: &'a Document,
     name: &str,
     owner: &mut Decoder,
@@ -340,9 +566,9 @@ impl Decode for InstalledClientMeasurements {
             .try_reserve_exact(wire.processes.0.len())
             .map_err(|_| DecodeError::Allocation)?;
         for process in &wire.processes.0 {
-            claims.push(match std::str::from_utf8(process.stdout.bytes()) {
-                Ok(raw) => literal(raw, owner)?,
-                Err(_) => None,
+            claims.push(match process.stdout.utf8(owner)? {
+                Some(raw) => literal(raw, owner)?,
+                None => None,
             })
         }
         let protocol = prepare_protocol(&wire, &frames, owner)?;

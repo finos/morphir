@@ -1,4 +1,6 @@
 //! Source-bound factual consistency only. No serialized claim issues live authority.
+#[path = "installed_implementation.rs"]
+mod implementation;
 use super::super::{
     domain,
     installed_client::{Action, Command, InstalledClientPlan},
@@ -179,7 +181,10 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
         owner.visit()?;
         require!(
             owner,
-            event.sequence.get() == index as u64,
+            u64::try_from(index)
+                .ok()
+                .and_then(|value| value.checked_add(1))
+                == Some(event.sequence.get()),
             Fault::SocketOrder
         )?;
         if let SocketEvent::AuthenticatedConnection {} = event.event {
@@ -332,7 +337,7 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                         };
                         require!(
                             owner,
-                            prepared_sequence.get() == prepared as u64,
+                            prepared_sequence.get() == events[prepared].sequence.get(),
                             Fault::SocketOrder
                         )?;
                         require!(
@@ -616,26 +621,11 @@ fn claims(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                 let Some(Document::Array(paths)) = field(doc, "published", owner)? else {
                     return require!(owner, false, Fault::ProcessClaims);
                 };
-                let expected_root = actual.wire.destination.root.as_str();
-                let expected_relative = actual.wire.published_relative_root.as_str();
                 let Some(path) = paths.first().and_then(text) else {
                     return require!(owner, false, Fault::ProcessClaims);
                 };
-                owner.charge(
-                    CompareResource::ComparisonBytes,
-                    path.len()
-                        .saturating_add(expected_root.len())
-                        .saturating_add(expected_relative.len()),
-                )?;
-                require!(
-                    owner,
-                    paths.len() == 1
-                        && path
-                            .strip_prefix(expected_root)
-                            .and_then(|v| v.strip_prefix('/'))
-                            == Some(expected_relative),
-                    Fault::ProcessClaims
-                )?;
+                let matches = implementation::published_matches(actual, path, owner)?;
+                require!(owner, paths.len() == 1 && matches, Fault::ProcessClaims)?;
             }
         }
     }
@@ -876,6 +866,7 @@ pub(in crate::workbench::model_originals::workflow) fn check(
     snapshot(plan, actual, publish, owner)?;
     claims(actual, owner)?;
     corroborate(plan, actual, owner)?;
+    implementation::check(plan, actual, owner)?;
     if matches!(
         paired.expected(),
         domain::ExpectedWorkflow::ModelOriginalsClient {

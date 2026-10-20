@@ -294,6 +294,7 @@ pub(in crate::workbench) fn execute_installed(
                                 receiving: &mut receiving,
                                 revoker: &mut revoker,
                                 capture: &mut owners.capture,
+                                decode: &mut owners.decode,
                             },
                         ));
                         drop(revoker);

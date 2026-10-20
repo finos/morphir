@@ -1,7 +1,7 @@
 //! CLI boundaries for parent-owned Workbench codec qualification.
 
 mod adapter_selection;
-mod installed_launch;
+pub(in crate::commands) mod installed_launch;
 
 use adapter_selection::{AdapterSelectionError, WorkbenchAdapter};
 use installed_launch::{InstalledTarget, WorkbenchLaunch};
@@ -19,7 +19,8 @@ use clap::Args;
 use morphir_mck::transport::{Limits, Session};
 use morphir_mck::workbench::{
     AdapterProtocol, MAX_REPORT_BYTES, Report, RunConfiguration, check_report_configured,
-    run_configured_with_native_adapter, run_configured_with_session_factory,
+    run_configured_with_installed_client_adapter, run_configured_with_native_adapter,
+    run_configured_with_session_factory,
 };
 use starbase::AppResult;
 
@@ -95,16 +96,7 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
         Err(error) => return finish(Outcome::Error(error)),
     };
     let adapter = match WorkbenchLaunch::select(&args, configuration.execution_mode()) {
-        Ok(WorkbenchLaunch::NativeHost) => WorkbenchAdapter::BuiltinNativeWorkbench,
-        Ok(WorkbenchLaunch::External { program, arguments }) => {
-            WorkbenchAdapter::External { program, arguments }
-        }
-        Ok(WorkbenchLaunch::InstalledClient(_)) => {
-            return finish(Outcome::Usage(
-                "installed client process execution is not implemented; no report was produced"
-                    .into(),
-            ));
-        }
+        Ok(selected) => selected,
         Err(error) => return finish(Outcome::Usage(error.to_string())),
     };
     let source = args.kit.join("cases.json");
@@ -133,7 +125,21 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
     let mut interrupt = None;
     let interrupted = Arc::new(AtomicBool::new(false));
     let report = tokio::task::block_in_place(|| match adapter {
-        WorkbenchAdapter::BuiltinNativeWorkbench => {
+        WorkbenchLaunch::InstalledClient(launch) => {
+            let cancellation = Arc::clone(&interrupted);
+            interrupt = Some(tokio::spawn(async move {
+                if tokio::signal::ctrl_c().await.is_ok() {
+                    cancellation.store(true, Ordering::SeqCst);
+                }
+            }));
+            let mut adapter = crate::commands::ui::installed_mck::InstalledWorkbenchAdapter::new(
+                launch,
+                limits,
+                Arc::clone(&interrupted),
+            );
+            run_configured_with_installed_client_adapter(&args.kit, &configuration, &mut adapter)
+        }
+        WorkbenchLaunch::NativeHost => {
             let cancellation = Arc::clone(&interrupted);
             interrupt = Some(tokio::spawn(async move {
                 if tokio::signal::ctrl_c().await.is_ok() {
@@ -148,7 +154,7 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
             );
             run_configured_with_native_adapter(&args.kit, &configuration, &mut adapter)
         }
-        WorkbenchAdapter::External { program, arguments } => {
+        WorkbenchLaunch::External { program, arguments } => {
             run_configured_with_session_factory(&args.kit, &configuration, || {
                 // The shared runner finishes source preparation BEFORE invoking
                 // this real process factory. No expected data/context crosses it.

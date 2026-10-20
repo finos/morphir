@@ -30,6 +30,14 @@ tagged! { pub AtomicBytes("kind") {
 } }
 
 text! { pub BytesHexHex { min: 0, max: 1048576, pattern: "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$" } }
+impl BytesHexHex {
+    pub(in crate::workbench::model_originals::workflow) fn from_owned(
+        text: String,
+    ) -> Result<Self, super::DataValueError> {
+        Self::validate_text(&text)?;
+        Ok(Self(text))
+    }
+}
 
 tagged! { pub Bytes("kind") {
     Hex => "hex" {
