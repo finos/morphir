@@ -4,6 +4,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rm
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { headlessEnvironment } from './headless-environment.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const target = process.argv[2] ?? 'js';
@@ -13,6 +14,7 @@ const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
 const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
 const runner = join(repo, 'pkgs/morphir-host/runners/wasm.mjs');
 const root = mkdtempSync(join(tmpdir(), 'morphir-model-inventory-'));
+const env = headlessEnvironment(join(root, 'cli-environment'), target === 'native' ? {PATH: ''} : {});
 const fixture = join(repo, 'apps/morphir-workbench/fixtures/headless-parity/v1/yaml/literal42-tree');
 const expected = JSON.parse(readFileSync(join(fixture, 'expectation.json'), 'utf8'));
 const node = process.versions.bun ? 'node' : process.execPath;
@@ -28,7 +30,7 @@ function invoke(path: string, ok = false, extra: string[] = [], trace: boolean |
   const args = ['model', extra.length ? 'export-original' : 'inspect', path, '--json', ...extra];
   const prefix = target === 'native' ? [] : target === 'js' ? [binary] : [runner, binary];
   const result = spawnSync(target === 'native' ? binary : node, [...prefix, ...args], {
-    cwd: root, env: {...process.env, ...(target === 'native' ? {PATH: ''} : {}), HOME: root, USERPROFILE: root, DISPLAY: '', WAYLAND_DISPLAY: '',
+    cwd: root, env: {...env,
       ...(trace ? {NODE_OPTIONS: `--import=${pathToFileURL(join(root, 'trace.mjs')).href}`} : {})},
     encoding: 'utf8', timeout: 30000, maxBuffer: 4 * 1024 * 1024,
   });

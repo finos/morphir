@@ -7,6 +7,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { headlessEnvironment } from './headless-environment.ts';
 
 const version = '0.1.0-draft.12';
 const limit = 2 * 1024 * 1024;
@@ -66,7 +67,7 @@ function evaluate(input: unknown) {
     writeFileSync(suite, '{"profile":"morphir-invocations-v1","calls":[' + calls.join(',') + ']}');
     const args = ['eval', model, '--model-format', 'json', '--suite', suite, '--checking-policy', policy, '--json'];
     const child = spawnSync(target === 'js' ? process.execPath : executable, target === 'js' ? [executable, ...args] : args, {
-      cwd: root, env: { ...process.env, HOME: root, USERPROFILE: root, DISPLAY: '', WAYLAND_DISPLAY: '' },
+      cwd: root, env: headlessEnvironment(root),
       encoding: 'utf8', timeout: 30_000, maxBuffer: limit, windowsHide: true,
     });
     if (child.error || child.signal || ![0, 1, 130].includes(child.status ?? -1))

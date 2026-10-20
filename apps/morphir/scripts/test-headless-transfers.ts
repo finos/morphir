@@ -8,6 +8,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
+import {headlessEnvironment} from './headless-environment.ts';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const build=resolve(process.env.MORPHIR_HEADLESS_BUILD??join(repo,'_build'));
 const target=process.argv[2]??process.env.MORPHIR_HEADLESS_TARGET??'js';
@@ -15,6 +16,7 @@ const profile=process.env.MORPHIR_HEADLESS_PROFILE??'debug';
 const binary=resolve(process.env.MORPHIR_HEADLESS_BINARY??join(build,target,profile,'build/morphir/morphir',target==='native'?'morphir.exe':target==='js'?'morphir.js':'morphir.wasm'));
 const launcher=resolve(process.env.MORPHIR_HEADLESS_LAUNCHER??join(repo,'apps/morphir/bin/morphir.js'));
 const helper=resolve(process.env.MORPHIR_TRANSFER_HELPER??join(repo,'apps/morphir/build-provider/transfers.mjs'));
+const connectedHelper=resolve(process.env.MORPHIR_CONNECTED_HELPER??join(repo,'apps/morphir/build-provider/connected.mjs'));
 const fixture=process.env.MORPHIR_WORKBENCH_ARTIFACT_HOST;
 const portable=target==='wasm'||target==='wasm-gc';
 const node=process.execPath;
@@ -27,7 +29,9 @@ const root=mkdtempSync(join(tmpdir(),'morphir-connected-transfers-'));
 mkdirSync(join(root,'tmp'));
 let host:ChildProcess|undefined;
 function launch(args:string[],input?:string,selectedHelper=helper){
- const child=spawn(executable,[...prefix,...args,'--provider','workbench-http','--json'],{cwd:root,env:{...process.env,MORPHIR_HEADLESS_BINARY:binary,MORPHIR_TRANSFER_HELPER:selectedHelper,TMPDIR:join(root,'tmp')},stdio:['pipe','pipe','pipe']});
+ const child=spawn(executable,[...prefix,...args,'--provider','workbench-http','--json'],{cwd:root,
+  env:headlessEnvironment(join(root,'cli-environment'),{MORPHIR_HEADLESS_BINARY:binary,MORPHIR_TRANSFER_HELPER:selectedHelper,MORPHIR_CONNECTED_HELPER:connectedHelper,
+   TMPDIR:join(root,'tmp'),TMP:join(root,'tmp'),TEMP:join(root,'tmp')}),stdio:['pipe','pipe','pipe']});
  let stdout='',stderr='';child.stdout.on('data',d=>stdout+=d);child.stderr.on('data',d=>stderr+=d);
  const done=new Promise<{code:number|null,signal:NodeJS.Signals|null,stdout:string,stderr:string}>(r=>child.once('close',(code,signal)=>r({code,signal,stdout,stderr})));
  child.once('error',()=>{});if(input!==undefined)child.stdin.end(input);else child.stdin.end();return{child,done};
@@ -38,7 +42,10 @@ try{
   // remote dispatch cannot contaminate the next fixture's producer capacity.
   for(const name of scenarios){
    const child=spawn(process.execPath,[fileURLToPath(import.meta.url),target],{
-    env:{...process.env,MORPHIR_TRANSFER_SCENARIO:name},stdio:'inherit',
+    env:headlessEnvironment(join(root,'scenario-environment'),{
+     MORPHIR_TRANSFER_SCENARIO:name,MORPHIR_HEADLESS_BINARY:binary,MORPHIR_HEADLESS_LAUNCHER:launcher,
+     MORPHIR_HEADLESS_WASM_RUNNER:runner,MORPHIR_TRANSFER_HELPER:helper,MORPHIR_CONNECTED_HELPER:connectedHelper,MORPHIR_WORKBENCH_ARTIFACT_HOST:fixture,
+    }),stdio:'inherit',
    });
    const [code,signal]=await once(child,'exit');
    assert.equal(signal,null);assert.equal(code,0,`${name} isolated actual-host fixture`);
@@ -54,7 +61,8 @@ try{
  }
  else{
   assert.ok(fixture,'Select exact real ui_artifact_process binary with MORPHIR_WORKBENCH_ARTIFACT_HOST');
-  host=spawn(fixture,['--artifact-process-host',join(root,'host'),'download'],{stdio:['ignore','pipe','pipe']});
+  host=spawn(fixture,['--artifact-process-host',join(root,'host'),'download'],{
+   cwd:root,env:headlessEnvironment(join(root,'host-environment')),stdio:['ignore','pipe','pipe']});
   let diagnostic='';host.stderr!.on('data',d=>diagnostic=(diagnostic+d).slice(-16384));
   const startup=await new Promise<Record<string,unknown>>((resolve,reject)=>{let text='';const deadline=setTimeout(()=>reject(new Error('Actual artifact host startup deadline')),20000);host!.once('error',reject);host!.once('exit',()=>reject(new Error('Actual artifact host failed: '+diagnostic)));host!.stdout!.on('data',d=>{text+=d;const end=text.indexOf('\n');if(end>=0){clearTimeout(deadline);resolve(JSON.parse(text.slice(0,end)));}});});
   const launchFile=join(root,'launch.txt'),connection=join(root,'connection.json');writeFileSync(launchFile,String(startup.launchUrl),{mode:0o600});

@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { once } from 'node:events';
 import { runInNewContext } from 'node:vm';
 import { includeDependencyPath } from '../build-provider/paths.mts';
+import { headlessEnvironment } from './headless-environment.ts';
 
 interface Report {
   operation: string; successful: boolean; unitId: string; committed: string[];
@@ -30,7 +31,9 @@ const launcherDigest = createHash('sha256').update(readFileSync(runner)).digest(
 const fixtures = join(repo, 'apps/morphir/fixtures/generation/v1');
 const expected = JSON.parse(readFileSync(join(fixtures, 'expected.json'), 'utf8')) as { moduleName: string; expectedResult: string; checkpointUnitId: string; mepUnitId: string };
 const root = mkdtempSync(join(tmpdir(), 'morphir-generation-'));
-const env = { ...process.env, HOME: root, USERPROFILE: root, DISPLAY: '', WAYLAND_DISPLAY: '' };
+// The maintained process provider verifies this workspace's corrected compiler
+// core. It is an explicit toolchain fixture, separate from CLI configuration.
+const env = headlessEnvironment(root, { MOON_CORE_OVERRIDE: process.env.MOON_CORE_OVERRIDE });
 if (target === 'wasm' || target === 'wasm-gc') {
   try {
     const run = (args: string[], status: number) => {
@@ -292,7 +295,7 @@ try {
   writeFileSync(join(consumer, 'moon.pkg'), `pkgtype(kind: "executable")\nimport { "${expected.moduleName}" @model, "finos/morphir-sdk/integer" }\n`);
   writeFileSync(join(consumer, 'main.mbt'), 'fn main raise { println(@integer.to_string(@model.answer())) }\n');
   const invoked = spawnSync(join(home, 'bin', process.platform === 'win32' ? 'moon.exe' : 'moon'), ['run', 'consumer', '--target', target], {
-    cwd: root, env: { ...process.env, MOON_HOME: home }, encoding: 'utf8', timeout: 120_000, maxBuffer: 8 * 1024 * 1024,
+    cwd: root, env: { ...env, MOON_HOME: home }, encoding: 'utf8', timeout: 120_000, maxBuffer: 8 * 1024 * 1024,
   });
   assert.equal(invoked.error, undefined); assert.equal(invoked.status, 0, invoked.stderr);
   assert.equal(invoked.stdout.trim(), expected.expectedResult);

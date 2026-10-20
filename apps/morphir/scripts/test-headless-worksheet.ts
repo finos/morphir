@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { headlessEnvironment } from './headless-environment.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const target = process.argv[2] ?? 'js';
@@ -17,7 +18,7 @@ const program = target === 'native' ? binary : process.execPath;
 const prefix = target === 'native' ? [] : target === 'js' ? [launcher] : [runner, binary];
 const root = mkdtempSync(join(tmpdir(), 'morphir-headless-worksheet-'));
 const file = join(root, 'source.scm');
-const env = { ...process.env, HOME: root, USERPROFILE: root, DISPLAY: '', WAYLAND_DISPLAY: '' };
+const env = headlessEnvironment(root);
 const corpus = JSON.parse(readFileSync(join(repo, 'apps/morphir-workbench/fixtures/headless-parity/v1/draft.27/cases.json'), 'utf8'));
 function invoke(args: string[], status: number, input?: string | Buffer) {
   const result = spawnSync(program, [...prefix, ...args], { cwd: root, env, encoding: 'utf8', input, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });

@@ -3,24 +3,31 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { headlessEnvironment } from './headless-environment.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const target = process.argv[2] ?? 'js';
-assert.ok(['js', 'native'].includes(target));
+assert.ok(['js', 'native', 'wasm', 'wasm-gc'].includes(target));
 const build = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? '.dev/build-model-cli');
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : 'morphir.js');
+const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
 const launcher = process.env.MORPHIR_HEADLESS_LAUNCHER ?? binary;
+const runner = process.env.MORPHIR_HEADLESS_WASM_RUNNER ?? join(repo, 'pkgs/morphir-host/runners/wasm.mjs');
+const prefix = target === 'native' ? [] : target === 'js' ? [launcher] : [runner, binary];
 const root = mkdtempSync(join(tmpdir(), 'morphir-headless-models-'));
+const env = headlessEnvironment(join(root, 'cli-environment'));
 const fixtureRoot = join(repo, 'apps/morphir-workbench/fixtures/headless-parity/v1');
 const corpus = JSON.parse(readFileSync(join(fixtureRoot, 'draft.29/cases.json'), 'utf8'));
 const suffixes: Record<string, string> = { json: 'json', yaml: 'yaml', 'ion-text': 'ion', 'ion-binary': 'ionb' };
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 function invoke(args: string[], status: number, input?: Uint8Array) {
-  const result = spawnSync(target === 'native' ? binary : process.execPath, target === 'native' ? args : [launcher, ...args], {
-    cwd: root, env: { ...process.env, HOME: root, USERPROFILE: root, DISPLAY: '', WAYLAND_DISPLAY: '' },
+  // WASI Preview 1 exposes only this fixture's preopened working directory.
+  // The other runners also accept absolute paths; keep that coverage there.
+  const selected = target === 'wasm' ? args.map(arg => isAbsolute(arg) ? relative(root, arg) : arg) : args;
+  const result = spawnSync(target === 'native' ? binary : process.execPath, [...prefix, ...selected], {
+    cwd: root, env,
     input, encoding: 'utf8', timeout: 30_000, maxBuffer: 4 * 1024 * 1024,
   });
   assert.equal(result.error, undefined);
@@ -108,8 +115,9 @@ try {
     assert.equal(hash(readFileSync(join(root, 'sidecar-save/originals', file.path))), file.sha256);
   }
   writeFileSync(join(root, 'calls.json'), JSON.stringify({ profile: 'morphir-invocations-v1', calls: [{ id: 'answer', entry: expected.entry, arguments: [] }] }));
-  const evaluated = invoke(['eval', tree, '--suite', join(root, 'calls.json'), '--json'], 0);
-  assert.deepEqual(evaluated.terminalOutcomes.calls[0].outcome, expected.expectedOutcome);
+  const evaluated = invoke(['eval', tree, '--suite', join(root, 'calls.json'), '--json'], target === 'wasm' ? 2 : 0);
+  if (target === 'wasm') assert.equal(evaluated.error, 'eval.interruption_unavailable');
+  else assert.deepEqual(evaluated.terminalOutcomes.calls[0].outcome, expected.expectedOutcome);
   const yaml = readFileSync(join(fixtureRoot, 'originals/model.yaml'));
   invoke(['model', 'export-original', '-', '--model-format', 'yaml', '--filename', 'stdin.yaml', '--output', 'stdin-save', '--json'], 0, yaml);
   assert.deepEqual(readFileSync(join(root, 'stdin-save/originals/stdin.yaml')), yaml);

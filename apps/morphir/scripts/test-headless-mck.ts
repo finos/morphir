@@ -7,6 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sourceSnapshot } from './headless-source-snapshot.ts';
+import { headlessEnvironment } from './headless-environment.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const runner = process.env.MORPHIR_MCK_BIN;
@@ -41,12 +42,14 @@ for (const target of ['js', 'native']) {
   for (const [producer, artifact] of [['primary-cli', cli], ['workbench-shared-policy', workbench]] as const) {
     const artifactHash = hash(artifact);
     const report = join(evidence, `${producer}-${target}-draft12.json`);
-    const env = { ...process.env, MORPHIR_HEADLESS_TARGET: target, MORPHIR_HEADLESS_CLI: cli, MORPHIR_WORKBENCH_MCK_JSON: framing };
+    const env = headlessEnvironment(join(evidence, `${producer}-${target}-environment`), {
+      MORPHIR_HEADLESS_TARGET: target, MORPHIR_HEADLESS_CLI: cli, MORPHIR_WORKBENCH_MCK_JSON: framing,
+    });
     const command = producer === 'primary-cli' ? [process.execPath, adapter] : target === 'js' ? [process.execPath, artifact] : [artifact];
     checked(runner, ['--no-banner', 'mck', 'workbench', 'run', '--kit', kit, '--report', report,
       '--adapter', command[0]!, ...command.slice(1).flatMap(arg => ['--adapter-arg', arg]),
       '--timeout', '35000', '--session-timeout', '180000'], env);
-    checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', kit, '--report', report]);
+    checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', kit, '--report', report], env);
     assert.equal(hash(artifact), artifactHash, 'Producer changed during qualification');
     lanes.push({ producer, target, artifact, artifactSha256: artifactHash, report, reportSha256: hash(report) });
   }

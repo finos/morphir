@@ -7,6 +7,7 @@ import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { headlessEnvironment } from './headless-environment.ts';
 
 const version = '0.1.0-draft.29';
 // One MiB of hex source plus the closed JSON envelope must fit in a frame.
@@ -56,7 +57,7 @@ function observe(operation: string, input: unknown): Record<string, unknown> {
     const args = ['model', operation === 'inspect-model' ? 'inspect' : 'export-original', filename,
       '--model-format', input.format, '--json', ...(operation === 'export-model-original' ? ['--output', 'saved'] : [])];
     const child = spawnSync(target === 'native' ? binary : process.execPath, target === 'native' ? args : [launcher, ...args], {
-      cwd: root, env: { ...process.env, HOME: root, USERPROFILE: root, DISPLAY: '', WAYLAND_DISPLAY: '' },
+      cwd: root, env: headlessEnvironment(root),
       encoding: 'utf8', timeout: 30_000, maxBuffer: limit, windowsHide: true,
     });
     if (child.error || child.signal || ![0, 2].includes(child.status ?? -1))

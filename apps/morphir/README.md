@@ -527,10 +527,10 @@ successful evaluation exits 0. Model errors remain typed outcomes, separate
 from infrastructure failures and ordinary returned `Result.Err` values.
 
 The installed Node launcher handles SIGINT while evaluation runs in an owned
-worker. Native execution uses the host interruption adapter. Portable Wasm
-retains help and pure codec/processor support; its command refuses unavailable
-interruption effects explicitly. A qualified Wasm GC host uses its explicit
-host bridge. See the target acceptance tests for the exercised host bindings.
+worker. Native execution uses the host interruption adapter. The supplied
+Wasm GC runner also supports evaluation and worksheets through its explicit
+host bridge. WASI retains help and refuses evaluation and worksheet execution
+with an explicit unavailable-interruption error before reading their input.
 
 Evaluation and worksheets produce reports. Use `generate` to generate from an
 existing model, or `run` to compile project sources and publish their outputs.
@@ -549,8 +549,11 @@ Inspection reports normalized IR separately from the captured source format
 version and labels it `normalized-ir`. Single files retain their basename and
 exact bytes, including BOM, CRLF, comments and binary Ion. YAML directory inputs
 retain their relative file paths, opaque sidecars and explicit empty directories.
-Stdin requires `--filename` for a portable captured name. Input capture enforces
-finite byte, entry, depth and path limits and refuses symbolic links.
+Stdin requires `--filename` for a portable captured name. Inspection and exact
+original export support JSON, YAML, Ion text and Ion binary on native, Node and
+the supplied WASI/Wasm GC runners. WASI file and directory paths are relative
+to its preopened current directory. Input capture enforces finite byte, entry,
+depth and path limits and refuses symbolic links.
 Native Windows directory enumeration also follows the host's
 [Win32 path-length limit](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilew).
 A deep input can therefore report `directory.open_failed` before reaching the

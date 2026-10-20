@@ -1,27 +1,31 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { headlessEnvironment } from './headless-environment.ts';
 
 // Expected values were frozen from the published producer-independent draft12
 // before the CLI adapter ran. This suite invokes the actual built CLI, without
 // browser bundles, a display or a Workbench server.
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const target = process.argv[2] ?? 'js';
-assert.ok(['js', 'native'].includes(target), 'This acceptance exercises desktop host effects');
+assert.ok(['js', 'native', 'wasm', 'wasm-gc'].includes(target));
 const build = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? '.dev/build-headless');
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'js' ? 'morphir.js' : 'morphir.exe');
+const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
 const launcher = process.env.MORPHIR_HEADLESS_LAUNCHER ?? binary;
+const runner = process.env.MORPHIR_HEADLESS_WASM_RUNNER ?? join(repo, 'pkgs/morphir-host/runners/wasm.mjs');
+const program = target === 'native' ? binary : process.execPath;
+const prefix = target === 'native' ? [] : target === 'js' ? [launcher] : [runner, binary];
 const root = mkdtempSync(join(tmpdir(), 'morphir-headless-evaluation-'));
 const model = join(root, 'model.json');
 const suite = join(root, 'calls.json');
-const env = { ...process.env, HOME: root, USERPROFILE: root, DISPLAY: '', WAYLAND_DISPLAY: '' };
+const env = headlessEnvironment(join(root, 'cli-environment'));
 const corpus = JSON.parse(readFileSync(join(repo, 'apps/morphir-workbench/fixtures/headless-parity/v1/draft.12/cases.json'), 'utf8'));
-function invoke(args: string[], status: number, input?: string) {
-  const result = spawnSync(target === 'js' ? process.execPath : binary, target === 'js' ? [launcher, ...args] : args, {
+function invoke(args: string[], status: number, input?: string | Uint8Array) {
+  const result = spawnSync(program, [...prefix, ...args], {
     cwd: root, env, encoding: 'utf8', input, timeout: 30_000, maxBuffer: 4 * 1024 * 1024,
   });
   assert.equal(result.error, undefined);
@@ -29,7 +33,11 @@ function invoke(args: string[], status: number, input?: string) {
   assert.equal(result.status, status, `${args.join(' ')}\n${result.stderr}\n${result.stdout}`);
   return result;
 }
-try {
+function evaluateCodecs() {
+  const codecProject = join(root, 'codecs');
+  mkdirSync(join(codecProject, 'src'), { recursive: true });
+  writeFileSync(join(codecProject, 'morphir.toml'), '[project]\nname="FixedPolicies"\n[frontend]\nlanguage="ir-json"\n[pipeline]\nbackend="checkpoint"\n');
+  let codecCases = 0;
   for (const test of corpus.cases) {
     assert.equal(test.operation, 'run-capability-policy');
     assert.equal(test.format, 'json');
@@ -43,20 +51,44 @@ try {
     }));
     const expected = test.expected.value;
     const failed = expected.failure !== null || expected.outcomes.calls.some((call: { outcome: { status: string } }) => call.outcome.status !== 'returned');
-    const args = ['eval', model, '--suite', suite, '--checking-policy', test.input.admission.policy];
-    const result = JSON.parse(invoke([...args, '--json'], failed ? 1 : 0).stdout);
-    if (expected.failure) {
-      assert.equal(result.successful, false);
-      assert.ok(result.error.includes(expected.failure.code), `${test.id}: ${result.error}`);
-      assert.deepEqual(result.failure, expected.failure);
-    } else {
-      assert.deepEqual(result.terminalOutcomes, expected.outcomes, test.id);
-      assert.equal(result.provider, 'scheme-portable-v1/shared-sdk/bounded');
+    const document = JSON.parse(test.input.model);
+    const yamlPath = join(root, 'policy.yaml');
+    // Fixed model JSON uses only small integer literals. Typed invocation
+    // numbers stay tagged strings, including 2^53+1, -0 bits and decimal scale.
+    writeFileSync(yamlPath, `\ufeff# Fixed draft12 policy model\r\nformatVersion: ${document.formatVersion}\r\ndistribution: ${JSON.stringify(document.distribution)}\r\n`);
+    writeFileSync(join(codecProject, 'src/Model.json'), test.input.model);
+    const sources: [string, string][] = [['json', model], ['yaml', yamlPath]];
+    // Use the maintained registered checkpoint encoders. They prepare physical
+    // Ion inputs only; expected values/failures remain the independent draft12
+    // records and are never derived from either converted model or CLI output.
+    for (const [format, suffix] of [['ion-text', 'ion'], ['ion-binary', 'ionb']] as const) {
+      invoke(['run', 'codecs', '--checkpoint-format', format, '--json'], 0);
+      const source = join(root, `policy.${suffix}`);
+      const bytes = readFileSync(join(codecProject, '.morphir/out/compile.dest', `Model.${suffix}`));
+      if (format === 'ion-binary') assert.deepEqual([...bytes.subarray(0, 4)], [0xe0, 0x01, 0x00, 0xea]);
+      writeFileSync(source, bytes);
+      sources.push([format, source]);
+    }
+    for (const [format, source] of sources) {
+      const args = ['eval', source, '--model-format', format, '--suite', suite, '--checking-policy', test.input.admission.policy];
+      const result = JSON.parse(invoke([...args, '--json'], failed ? 1 : 0).stdout);
       const records = invoke([...args, '--json-lines'], failed ? 1 : 0).stdout.trim().split(/\r?\n/).map(line => JSON.parse(line));
-      assert.deepEqual(records.filter(record => record.type === 'call').map(record => record.data), expected.outcomes.calls);
       assert.deepEqual(records.at(-1).data, result);
+      if (expected.failure) {
+        assert.equal(result.successful, false);
+        assert.ok(result.error.includes(expected.failure.code), `${test.id}/${format}: ${result.error}`);
+        assert.deepEqual(result.failure, expected.failure);
+        assert.equal(result.terminalOutcomes, null);
+        assert.deepEqual(records.filter(record => record.type === 'call'), []);
+      } else {
+        assert.deepEqual(result.terminalOutcomes, expected.outcomes, `${test.id}/${format}`);
+        assert.equal(result.provider, 'scheme-portable-v1/shared-sdk/bounded');
+        assert.deepEqual(records.filter(record => record.type === 'call').map(record => record.data), expected.outcomes.calls);
+      }
+      codecCases++;
     }
   }
+  assert.equal(codecCases, 36);
   // Explicit stdin retains the same model codec and outcome. Both stdin inputs
   // are refused before consuming either stream.
   const first = corpus.cases[0];
@@ -97,7 +129,16 @@ try {
   writeFileSync(model, JSON.stringify(domainError));
   const error = JSON.parse(invoke(['eval', model, '--suite', suite, '--checking-policy', 'permissive', '--json'], 1).stdout);
   assert.deepEqual(error.terminalOutcomes.calls[0].outcome, { status: 'model-error', code: 'sdk.division_by_zero' });
-  console.log(`Headless ${target}: nine frozen policy/value cases, domain error, JSON-lines, bounded stdin, invalid selection and cancellation passed.`);
+  console.log(`Headless ${target}: ${codecCases} frozen policy/value cases across JSON, YAML, Ion text and Ion binary, domain error, JSON-lines, bounded stdin, invalid selection and cancellation passed.`);
+}
+try {
+  assert.match(JSON.parse(invoke(['eval', '--help', '--json'], 0).stdout).usage, /eval/);
+  if (target === 'wasm') {
+    // WASI Preview 1 has no interrupt handler. Refuse before opening even a
+    // missing input; codec support does not grant this unavailable host effect.
+    assert.equal(JSON.parse(invoke(['eval', 'missing.json', '--suite', 'missing-calls.json', '--json'], 2).stdout).error, 'eval.interruption_unavailable');
+    console.log('WASI evaluation: portable help and explicit unavailable interruption refusal passed.');
+  } else evaluateCodecs();
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

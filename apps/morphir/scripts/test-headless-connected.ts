@@ -11,6 +11,7 @@ import type { AddressInfo } from 'node:net';
 import { createWorkbenchServer } from '../../morphir-workbench/scripts/server.ts';
 import { createExecutionProvider } from '../../morphir-workbench/scripts/execution-provider.ts';
 import type { ExecutionGateway, ExecutionProvider, Identity, ProviderWorker } from '../../morphir-workbench/scripts/execution-contracts.ts';
+import { headlessEnvironment } from './headless-environment.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const target = process.argv[2] ?? 'js';
@@ -40,7 +41,9 @@ type Scenario = 'normal' | 'lost-submit' | 'lost-query' | 'lost-release' | 'canc
 
 function launch(args: string[], cwd: string, input?: string, selectedHelper = helper) {
   const child = spawn(program, [...prefix, ...args, '--provider', 'workbench-http', '--connected-helper', selectedHelper, '--json'], {
-    cwd, env: { ...process.env, TMPDIR: cwd, DISPLAY: '', WAYLAND_DISPLAY: '', MORPHIR_CONNECTED_HELPER: helper }, stdio: ['pipe', 'pipe', 'pipe'],
+    cwd, env: headlessEnvironment(join(cwd, 'cli-environment'), {
+      TMPDIR: cwd, TMP: cwd, TEMP: cwd, MORPHIR_CONNECTED_HELPER: helper,
+    }), stdio: ['pipe', 'pipe', 'pipe'],
   });
   let stdout = '', stderr = '';
   child.stdout.setEncoding('utf8').on('data', value => { stdout += value; });
@@ -54,8 +57,8 @@ function launch(args: string[], cwd: string, input?: string, selectedHelper = he
   });
   return { child, done };
 }
-function delayedWorker(): ProviderWorker {
-  const worker = new Worker(new URL('../../morphir-workbench/scripts/execution-worker.ts', import.meta.url), { workerData: { module: workerModule.href } });
+function delayedWorker(env: NodeJS.ProcessEnv): ProviderWorker {
+  const worker = new Worker(new URL('../../morphir-workbench/scripts/execution-worker.ts', import.meta.url), { workerData: { module: workerModule.href }, env });
   let timer: ReturnType<typeof setTimeout> | undefined;
   worker.once('exit', () => { if (timer) clearTimeout(timer); });
   return {
@@ -65,8 +68,8 @@ function delayedWorker(): ProviderWorker {
 }
 async function scenario(name: Scenario) {
   const root = mkdtempSync(join(tmpdir(), 'morphir-connected-cli-'));
-  const workspace = join(root, 'workspace'), home = join(root, 'home');
-  mkdirSync(workspace); mkdirSync(home);
+  const workspace = join(root, 'workspace');
+  mkdirSync(workspace);
   writeFileSync(join(workspace, 'morphir.toml'), '[project]\nname="connected/test"\nversion="1.0.0"\nsource_directory="src"\n');
   let host: ChildProcess | undefined;
   let server: ReturnType<typeof createWorkbenchServer> | undefined;
@@ -85,7 +88,10 @@ async function scenario(name: Scenario) {
   let launches = 0;
   const counts = { submit: 0, query: 0, cancel: 0, release: 0, session: 0 };
   try {
-    host = spawn(rust!, ['ui', workspace, '--no-open', '--no-banner'], { env: { ...process.env, MORPHIR_HOME: home, RUST_LOG: 'warn' }, stdio: ['ignore', 'ignore', 'pipe'] });
+    host = spawn(rust!, ['ui', workspace, '--no-open', '--no-banner'], {
+      cwd: workspace, env: headlessEnvironment(join(root, 'host-environment'), {RUST_LOG: 'warn'}),
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
     const launchURL = await new Promise<URL>((resolve, reject) => {
       let buffer = '';
       const timer = setTimeout(() => reject(new Error('Qualified Rust host startup deadline')), 15000);
@@ -97,8 +103,14 @@ async function scenario(name: Scenario) {
         if (value) { clearTimeout(timer); resolve(new URL(value)); }
       });
     });
+    const workerEnvironment = headlessEnvironment(join(root, 'worker-environment'));
     provider = await createExecutionProvider({ mapping: 'capability-checks', bridgeUrl: bridge, workerUrl: workerModule,
-      ...(['cancel', 'cancel-unknown', 'timeout'].includes(name) ? { workerFactory: delayedWorker } : {}) });
+      workerFactory: ['cancel', 'cancel-unknown', 'timeout'].includes(name)
+        ? () => delayedWorker(workerEnvironment)
+        : () => new Worker(new URL('../../morphir-workbench/scripts/execution-worker.ts', import.meta.url), {
+          workerData: {module: workerModule.href}, env: workerEnvironment, resourceLimits: {maxOldGenerationSizeMb: 128},
+        }),
+    });
     const real = provider;
     const gateway: ExecutionGateway = {
       decode: real.decode.bind(real),

@@ -7,6 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sourceSnapshot } from './headless-source-snapshot.ts';
+import { headlessEnvironment } from './headless-environment.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const target = process.argv[2] ?? 'js'; assert.ok(['js', 'native'].includes(target));
@@ -47,11 +48,13 @@ const before = [...new Set(sources)].map(path => ({ path, sha256: hash(path) }))
 const started = new Date().toISOString();
 const report = join(evidence, `primary-cli-${target}-draft29.json`);
 const raw = join(evidence, `primary-cli-${target}-raw.jsonl`); writeFileSync(raw, '');
-const env = { ...process.env, MORPHIR_HEADLESS_TARGET: target, MORPHIR_HEADLESS_BINARY: binary,
-  MORPHIR_HEADLESS_LAUNCHER: launcher, MORPHIR_WORKBENCH_MCK_JSON: framing, MORPHIR_MODEL_MCK_RAW: raw };
+const env = headlessEnvironment(join(evidence, `${target}-environment`), {
+  MORPHIR_HEADLESS_TARGET: target, MORPHIR_HEADLESS_BINARY: binary,
+  MORPHIR_HEADLESS_LAUNCHER: launcher, MORPHIR_WORKBENCH_MCK_JSON: framing, MORPHIR_MODEL_MCK_RAW: raw,
+});
 const run = checked(runner, ['--no-banner', 'mck', 'workbench', 'run', '--kit', kit, '--report', report,
   '--adapter', process.execPath, '--adapter-arg', adapter, '--timeout', '35000', '--session-timeout', '180000'], env);
-const accepted = checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', kit, '--report', report]);
+const accepted = checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', kit, '--report', report], env);
 interface RecordEvidence {
   caseId: string; observed?: { status: string; value?: Record<string, unknown> };
 }
@@ -72,7 +75,7 @@ const mutations: [string, (value: SavedReport) => void][] = [
 for (const [name, mutate] of mutations) {
   const altered = structuredClone(original); mutate(altered);
   const path = join(evidence, `${target}-${name}.json`); writeFileSync(path, JSON.stringify(altered) + '\n');
-  refusals.push({ name, ...checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', kit, '--report', path], process.env, false) });
+  refusals.push({ name, ...checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', kit, '--report', path], env, false) });
 }
 // Author a source-bound positive boundary before observing the adapter. The
 // existing JSON model plus trailing spaces is still the same valid model.
@@ -94,7 +97,7 @@ writeFileSync(join(boundaryKit, 'cases.json'), JSON.stringify(boundaryCorpus) + 
 const boundaryReport = join(evidence, `${target}-source-boundary.json`);
 checked(runner, ['--no-banner', 'mck', 'workbench', 'run', '--kit', boundaryKit, '--report', boundaryReport,
   '--adapter', process.execPath, '--adapter-arg', adapter, '--timeout', '35000', '--session-timeout', '180000'], env);
-checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', boundaryKit, '--report', boundaryReport]);
+checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', boundaryKit, '--report', boundaryReport], env);
 const overflow = spawnSync(process.execPath, [adapter], { cwd: repo, env, encoding: 'utf8',
   input: ' '.repeat(3 * 1024 * 1024 + 1) + '\n', timeout: 30_000, maxBuffer: 4 * 1024 * 1024 });
 assert.equal(overflow.error, undefined); assert.equal(overflow.signal, null); assert.equal(overflow.status, 1);

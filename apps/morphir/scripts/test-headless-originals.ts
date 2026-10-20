@@ -6,6 +6,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve,relative} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
+import {headlessEnvironment} from './headless-environment.ts';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const target=process.argv[2]??'js';
 const hostBinary=process.env.MORPHIR_MODEL_ORIGINALS_HOST;
@@ -18,8 +19,8 @@ const prefix=target==='native'?[]:portable?[join(repo,'pkgs/morphir-host/runners
 let host:ChildProcess|undefined;
 function digest(bytes:Uint8Array){return createHash('sha256').update(bytes).digest('hex');}
 async function cli(cwd:string,args:string[],helper?:string,interruptOnWrite=false){
- const child=spawn(executable,[...prefix,...args,'--provider','workbench-http','--json'],{cwd,env:{...process.env,
-  MORPHIR_CONNECTED_HELPER:process.env.MORPHIR_CONNECTED_HELPER??join(repo,'apps/morphir/build-provider/connected.mjs'),MORPHIR_ORIGINALS_HELPER:helper??process.env.MORPHIR_ORIGINALS_HELPER??join(repo,'apps/morphir/build-provider/originals.mjs'),TMPDIR:join(root,'tmp')},stdio:['ignore','pipe','pipe']});
+ const child=spawn(executable,[...prefix,...args,'--provider','workbench-http','--json'],{cwd,env:headlessEnvironment(join(cwd,'cli-environment'),{
+  MORPHIR_CONNECTED_HELPER:process.env.MORPHIR_CONNECTED_HELPER??join(repo,'apps/morphir/build-provider/connected.mjs'),MORPHIR_ORIGINALS_HELPER:helper??process.env.MORPHIR_ORIGINALS_HELPER??join(repo,'apps/morphir/build-provider/originals.mjs'),TMPDIR:join(root,'tmp'),TMP:join(root,'tmp'),TEMP:join(root,'tmp')}),stdio:['ignore','pipe','pipe']});
  let stdout='',stderr='';child.stdout.on('data',bytes=>stdout+=bytes);child.stderr.on('data',bytes=>stderr+=bytes);
  let timer:ReturnType<typeof setInterval>|undefined;
  if(interruptOnWrite)timer=setInterval(()=>{
@@ -56,7 +57,8 @@ try{
   const cwd=join(root,layout+'-'+representation);mkdirSync(join(cwd,'models'),{recursive:true});
   writeFileSync(join(cwd,'models/api.gleam'),'pub type Answer { Answer }\n');
   writeFileSync(join(cwd,'morphir.toml'),`[project]\nname='acme/originals'\nversion='1.0.0'\nsource_directory='models'\nexposed_modules=['api']\n[frontend]\nlanguage='gleam'\n[ir]\nlayout='${layout}'\nformat='${format}'\n`);
-  const compile:SpawnSyncReturns<string>=spawnSync(hostBinary,['compile','--json'],{cwd,encoding:'utf8',timeout:60000});
+  const hostEnvironment=headlessEnvironment(join(cwd,'host-environment'));
+  const compile:SpawnSyncReturns<string>=spawnSync(hostBinary,['compile','--json'],{cwd,env:hostEnvironment,encoding:'utf8',timeout:60000});
   assert.equal(compile.status,0,compile.stdout+compile.stderr);
   const record=JSON.parse(readFileSync(join(cwd,'.morphir/out/compile.json'),'utf8'));
   assert.deepEqual(record.morphirModelOriginals,{contractVersion:'0.1.0-draft.1',companions:[]});
@@ -81,7 +83,7 @@ try{
   // Only the actual declared primary is an original. Compiler parse outputs
   // elsewhere in compile.dest are private bookkeeping, not implicit companions.
   const expected=inventory(destination).filter(item=>item.path===record.ir.path||item.path.startsWith(record.ir.path+'/'));
-  let diagnostic='';host=spawn(hostBinary,['ui','--no-open','--preview-model-originals',cwd],{cwd,stdio:['ignore','pipe','pipe']});
+  let diagnostic='';host=spawn(hostBinary,['ui','--no-open','--preview-model-originals',cwd],{cwd,env:hostEnvironment,stdio:['ignore','pipe','pipe']});
   const launch=await new Promise<string>((resolve,reject)=>{
    const timeout=setTimeout(()=>reject(new Error('Actual host startup timeout')),20000);
    const read=(bytes:Buffer)=>{diagnostic+=bytes;const found=/http:\/\/127\.0\.0\.1:\d+\/launch\?token=[A-Za-z0-9_-]{43}/.exec(diagnostic);if(found){clearTimeout(timeout);resolve(found[0]);}};

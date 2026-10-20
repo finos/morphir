@@ -44,7 +44,8 @@ function headlessAcceptance(target: string, binary: string, launcher?: string, i
     } : {}),
   };
   for (const script of [
-    ...(target === 'js' || target === 'native' ? ['test-headless-evaluation.ts', 'test-headless-models.ts'] : []),
+    'test-headless-evaluation.ts',
+    'test-headless-models.ts',
     'test-headless-worksheet.ts',
     'test-model-inventory.ts',
     'test-generation.ts',
