@@ -57,6 +57,7 @@ jobs:
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             rust:
+              - 'third_party/axum/**'
               - 'third_party/rust-tuf/**'
               # itest runs the same categorized projects readers use
               - 'examples/**'
@@ -139,6 +140,7 @@ jobs:
               - '.config/mise/**'
               - '.github/workflows/ci.yml'
             mck:
+              - 'third_party/axum/**'
               - 'third_party/rust-tuf/**'
               # The native runner, report reader and renderer now drive this job.
               - 'crates/morphir-mck/**'
@@ -171,6 +173,7 @@ jobs:
               - '.config/mise/config.toml'
               - '.github/workflows/ci.yml'
             package-mck:
+              - 'third_party/axum/**'
               - 'third_party/rust-tuf/**'
               - 'spec/mck/baseline/package-cases.json'
               - 'crates/morphir-mck/**'

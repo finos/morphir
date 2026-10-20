@@ -94,6 +94,7 @@ struct RunningHost {
     launch_url: String,
     listener: Option<tokio::task::JoinHandle<Result<(), crate::error::CliError>>>,
     cleanup: PendingCaptureCleanup,
+    socket_cleanup: super::socket_tasks::SocketCleanup,
 }
 impl RunningHost {
     async fn start(
@@ -155,6 +156,9 @@ impl RunningHost {
             .take_capture_cleanup()
             .map_err(incomplete)?
             .into_pending();
+        let socket_cleanup = host
+            .take_socket_cleanup()
+            .ok_or(InstalledAdapterError::ObservationIncomplete)?;
         let launch_url = host.launch_url();
         Ok(Self {
             scope,
@@ -163,9 +167,11 @@ impl RunningHost {
             launch_url,
             listener: Some(tokio::spawn(host.serve())),
             cleanup,
+            socket_cleanup: super::socket_tasks::SocketCleanup::Pending(socket_cleanup),
         })
     }
     async fn stop(&mut self, end: Instant) -> Result<(), InstalledAdapterError> {
+        self.socket_cleanup.stop_accepting_upgrades();
         self.events.close();
         let listener_result = if let Some(listener) = self.listener.as_mut() {
             listener.abort();
@@ -184,13 +190,18 @@ impl RunningHost {
         } else {
             Ok(())
         };
-        // Attempt genuine capture drain even after listener error/deadline.
+        let socket_result = match self.socket_cleanup.drain(end).await {
+            super::socket_tasks::SocketDrainOutcome::Joined => Ok(()),
+            _ => Err(InstalledAdapterError::ObservationIncomplete),
+        };
+        // Attempt genuine capture drain even after listener/socket error/deadline.
         let capture_result = self.cleanup.drain_retained(end).await.map_err(incomplete);
-        listener_result.and(capture_result)
+        listener_result.and(socket_result).and(capture_result)
     }
 }
 impl Drop for RunningHost {
     fn drop(&mut self) {
+        self.socket_cleanup.stop_accepting_upgrades();
         self.events.close();
         if let Some(listener) = self.listener.as_ref() {
             listener.abort();

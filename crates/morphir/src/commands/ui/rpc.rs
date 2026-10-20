@@ -352,11 +352,15 @@ pub(crate) async fn upgrade(
     {
         return unauthorized();
     }
-    upgrade
+    let tasks = state.socket_tasks.clone();
+    let (response, actual) = upgrade
         .max_message_size(MAX_INBOUND_MESSAGE_BYTES)
         .max_frame_size(MAX_INBOUND_MESSAGE_BYTES)
-        .on_upgrade(move |socket| observed_socket_entry(socket, state))
-        .into_response()
+        .into_upgrade_future(move |socket| observed_socket_entry(socket, state));
+    match tasks.spawn_upgrade(actual) {
+        Ok(()) => response,
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
 }
 
 fn valid_origin_and_host(state: &UiHostState, headers: &HeaderMap) -> bool {
@@ -450,6 +454,26 @@ async fn observed_socket_entry(mut socket: WebSocket, host: UiHostState) {
         let _ = returned.send(());
     }
 }
+// Declared AFTER the actual pinned dispatch storage. This guard's destructor
+// transfers its exact capture handle before that storage can destroy a waiter.
+struct CaptureDispatch<'a, F> {
+    actual: std::pin::Pin<&'a mut F>,
+    disconnect: super::model_originals::CaptureDisconnect,
+}
+impl<F: std::future::Future> std::future::Future for CaptureDispatch<'_, F> {
+    type Output = F::Output;
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        self.get_mut().actual.as_mut().poll(cx)
+    }
+}
+impl<F> Drop for CaptureDispatch<'_, F> {
+    fn drop(&mut self) {
+        self.disconnect.handoff_on_drop();
+    }
+}
 async fn serve_socket_observed(
     mut socket: WebSocket,
     host: UiHostState,
@@ -534,22 +558,23 @@ async fn serve_socket_observed(
                     let observation=state.installed.clone();
                     let pending = dispatch(&host, &mut state, &request);
                     tokio::pin!(pending);
+                    let mut pending = CaptureDispatch { actual: pending.as_mut(), disconnect };
                     loop {
                         tokio::select! {
                             response = &mut pending => break Some(response),
                             message = socket.recv() => match message {
                                 Some(Ok(Message::Ping(bytes))) => {
-                                    if !matches!(tokio::time::timeout(std::time::Duration::from_secs(30), socket.send(Message::Pong(bytes))).await, Ok(Ok(()))) { disconnect.handoff(); break None; }
+                                    if !matches!(tokio::time::timeout(std::time::Duration::from_secs(30), socket.send(Message::Pong(bytes))).await, Ok(Ok(()))) { break None; }
                                 },
                                 Some(Ok(Message::Pong(_))) => {},
                                 Some(Ok(Message::Text(text))) => {
-                                    let text=match &observation{Some(observation)=>match observation.received(text).await{Ok(text)=>text,Err(_)=>{disconnect.handoff();break None;}},None=>text};
+                                    let text=match &observation{Some(observation)=>match observation.received(text).await{Ok(text)=>text,Err(_)=>{break None;}},None=>text};
                                     if queued.is_none() && text.len()<=MAX_INBOUND_MESSAGE_BYTES {queued = Some(Message::Text(text));}else{
                                         let _ = send_profile_value(&mut socket, model_originals::invalid_frame(Value::Null),observation.as_ref()).await;
-                                        disconnect.handoff();break None;
+                                        break None;
                                     }
                                 },
-                                _ => { disconnect.handoff(); break None; },
+                                _ => { break None; },
                             },
                         }
                     }
@@ -1077,7 +1102,17 @@ mod tests {
     /// listener. Dispatch only reads `capabilities` (and `manifest` for
     /// `Initialize`), so this is enough for exercising method dispatch
     /// without the socket harness the connection-level tests use.
-    fn host_state(capabilities: SessionCapabilities) -> UiHostState {
+    struct DispatchHost {
+        state: UiHostState,
+        _socket_owner: super::super::socket_tasks::HostSocketCleanupOwner,
+    }
+    impl std::ops::Deref for DispatchHost {
+        type Target = UiHostState;
+        fn deref(&self) -> &Self::Target {
+            &self.state
+        }
+    }
+    fn host_state(capabilities: SessionCapabilities) -> DispatchHost {
         let (auth, _launch_token) = SessionAuth::generate("session-1").unwrap();
         let mut providers = Vec::new();
         if let Some(workspace) = &capabilities.workspace {
@@ -1095,22 +1130,29 @@ mod tests {
         }
         .validate()
         .unwrap();
-        UiHostState {
-            auth: std::sync::Arc::new(auth),
-            manifest,
-            current: super::super::provider::current::CurrentSessionCapabilities::new(
-                capabilities.clone(),
-            ),
-            capabilities,
-            initial_view: None,
-            authority: "127.0.0.1:0".into(),
-            artifact_capacity: super::super::artifacts::HostArtifactCapacity::default(),
-            original_capacity: Default::default(),
-            observation: HostObservationBinding::Disabled,
+        let original_capacity = super::super::model_originals::HostModelCaptureCapacity::default();
+        let (socket_tasks, socket_owner) =
+            super::super::socket_tasks::SocketTaskRegistry::new(&original_capacity).unwrap();
+        DispatchHost {
+            state: UiHostState {
+                auth: std::sync::Arc::new(auth),
+                manifest,
+                current: super::super::provider::current::CurrentSessionCapabilities::new(
+                    capabilities.clone(),
+                ),
+                capabilities,
+                initial_view: None,
+                authority: "127.0.0.1:0".into(),
+                artifact_capacity: super::super::artifacts::HostArtifactCapacity::default(),
+                original_capacity,
+                socket_tasks,
+                observation: HostObservationBinding::Disabled,
+            },
+            _socket_owner: socket_owner,
         }
     }
 
-    fn state_with_playground() -> UiHostState {
+    fn state_with_playground() -> DispatchHost {
         host_state(SessionCapabilities {
             playground: Some(std::sync::Arc::new(StubPlayground)),
             ..Default::default()
@@ -1178,7 +1220,7 @@ mod tests {
         assert_eq!(host.artifact_capacity.reserved_generations(), 0);
     }
 
-    fn state_with_workspace_only() -> UiHostState {
+    fn state_with_workspace_only() -> DispatchHost {
         let provider = std::sync::Arc::new(
             NativeWorkspaceProvider::discover(&fixture(), "session-1").unwrap(),
         );
@@ -1359,7 +1401,7 @@ mod tests {
         }
     }
 
-    fn state_with_failing_playground(playground: FailingPlayground) -> UiHostState {
+    fn state_with_failing_playground(playground: FailingPlayground) -> DispatchHost {
         host_state(SessionCapabilities {
             playground: Some(std::sync::Arc::new(playground)),
             ..Default::default()
@@ -1543,8 +1585,11 @@ mod tests {
         .unwrap();
         let launch_url = host.launch_url();
         let base_url = host.base_url();
-        let (listener, router) = host.into_parts();
-        let task = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let (listener, router, owner) = host.into_parts();
+        let task = tokio::spawn(async move {
+            let _owner = owner;
+            axum::serve(listener, router).await.unwrap()
+        });
         let response = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()

@@ -23,6 +23,7 @@ pub mod protocol;
 pub mod provider;
 pub mod rpc;
 pub mod server;
+pub(in crate::commands::ui) mod socket_tasks;
 pub(in crate::commands::ui) use native_startup::prepare_native_ui_observed;
 
 #[derive(Clone, Debug, Args)]

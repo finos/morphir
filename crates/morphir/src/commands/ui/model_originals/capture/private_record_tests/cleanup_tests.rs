@@ -2,6 +2,7 @@
 //! No producer DATA, fake task, injected Reader, counter event or reaper task.
 use super::*;
 use crate::commands::ui::server::BoundUiHost;
+use futures_util::FutureExt as _;
 use futures_util::{SinkExt as _, StreamExt as _};
 use serde_json::{Value, json};
 use tokio_tungstenite::{
@@ -55,6 +56,76 @@ fn offer(actual: &Actual) -> crate::commands::ui::provider::originals::SelectedO
         .current
         .select_originals(OriginalsSelection::parse(&source, &project_key(&source, ".")).unwrap())
         .unwrap()
+}
+
+async fn socket_poison_tail(join_poison: bool) {
+    let fixture = Fixture::new(RECORD);
+    let mut actual = Actual::new(&fixture);
+    let registry = super::super::super::lifecycle::CleanupRegistry::new();
+    actual.connection.attach_cleanup_registry(&registry);
+    let mut cleanup = registry.control().into_pending();
+    let mut gate = Gate::new();
+    let pending = actual.start(CaptureControl::new(), gate.hook.clone());
+    let attempt = pending.worker_observation();
+    let disconnect = actual.connection.disconnect_control();
+    gate.entered().await;
+    if join_poison {
+        actual.connection.poison_cleanup_join_for_test();
+    } else {
+        actual.connection.poison_owner_for_test();
+    }
+    disconnect.handoff_on_drop();
+    let waiter_drop = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| drop(pending)));
+    let before = attempt.snapshot();
+    // Catching is TEST observation only; any panic remains a failed oracle.
+    let cancelled = tokio::time::timeout(
+        Duration::from_millis(20),
+        std::panic::AssertUnwindSafe(cleanup.drain_retained(tokio::time::Instant::now() + WAIT))
+            .catch_unwind(),
+    )
+    .await;
+    gate.release();
+    let drained =
+        std::panic::AssertUnwindSafe(cleanup.drain_retained(tokio::time::Instant::now() + WAIT))
+            .catch_unwind()
+            .await;
+    let after = attempt.snapshot();
+    let connection_drop =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| drop(actual.connection)));
+    drop(cleanup);
+    drop(registry);
+    let usage = actual.capacity.usage();
+    assert!(waiter_drop.is_ok());
+    assert_eq!(before.owned_handles(), 1);
+    assert_eq!(before.dropped_unjoined(), 0);
+    assert!(before.require_joined_cleanup().is_err());
+    assert!(
+        cancelled.is_err(),
+        "borrowed deadline must retain, not panic or claim completion"
+    );
+    assert!(
+        matches!(drained, Ok(Ok(()))),
+        "real join must resolve without a poisoned-lock panic"
+    );
+    assert!(connection_drop.is_ok());
+    assert_eq!(after.joined_ok(), 1);
+    assert_eq!(after.owned_handles(), 0);
+    assert_eq!(after.dropped_unjoined(), 0);
+    assert!(
+        after.require_joined_cleanup().is_err(),
+        "poison remains incomplete after genuine joins"
+    );
+    assert_eq!(usage, ModelCaptureUsage::default());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn socket_join_poison_retains_through_cancelled_cleanup_and_real_join() {
+    socket_poison_tail(true).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn socket_owner_poison_retains_through_cancelled_cleanup_and_real_join() {
+    socket_poison_tail(false).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

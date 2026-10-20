@@ -177,6 +177,7 @@ struct LiveHost {
     project: String,
     events: InstalledHostObservation,
     cleanup: Option<HostCaptureCleanupOwner>,
+    socket_cleanup: crate::commands::ui::socket_tasks::SocketCleanup,
     usage: super::super::ModelCaptureUsageObserver,
     listener: Option<tokio::task::JoinHandle<Result<(), crate::error::CliError>>>,
 }
@@ -286,6 +287,9 @@ impl LiveHost {
         let launch = host.launch_url();
         let usage = host.model_originals_observer();
         let cleanup = host.take_capture_cleanup().unwrap();
+        let socket_cleanup = crate::commands::ui::socket_tasks::SocketCleanup::Pending(
+            host.take_socket_cleanup().unwrap(),
+        );
         let listener = tokio::spawn(host.serve());
         let response = tokio::time::timeout(
             WAIT,
@@ -319,6 +323,7 @@ impl LiveHost {
             project,
             events,
             cleanup: Some(cleanup),
+            socket_cleanup,
             usage,
             listener: Some(listener),
         }
@@ -349,7 +354,17 @@ impl LiveHost {
             .map(|(socket, _)| socket)
     }
     async fn stop(&mut self) {
+        self.socket_cleanup.stop_accepting_upgrades();
         self.events.close();
+        let listener = self.listener.take().unwrap();
+        listener.abort();
+        assert!(listener.await.unwrap_err().is_cancelled());
+        assert_eq!(
+            self.socket_cleanup
+                .drain(tokio::time::Instant::now() + WAIT)
+                .await,
+            crate::commands::ui::socket_tasks::SocketDrainOutcome::Joined,
+        );
         self.cleanup
             .take()
             .unwrap()
@@ -363,13 +378,10 @@ impl LiveHost {
         })
         .await
         .unwrap();
-        let listener = self.listener.take().unwrap();
-        listener.abort();
-        assert!(listener.await.unwrap_err().is_cancelled());
         assert_eq!(self.usage.usage(), ModelCaptureUsage::default());
         assert!(
             self.scope.snapshot().require_source_complete().is_err(),
-            "unsealed host and unjoined upgraded tasks may never claim Complete"
+            "retained startup writers and unjoined HTTP drivers may never claim Complete"
         );
     }
 }

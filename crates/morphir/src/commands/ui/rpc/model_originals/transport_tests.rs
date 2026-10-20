@@ -30,7 +30,8 @@ type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 struct Fixture {
     _directory: tempfile::TempDir,
-    worker: tokio::task::JoinHandle<Result<(), crate::error::CliError>>,
+    worker: Option<tokio::task::JoinHandle<Result<(), crate::error::CliError>>>,
+    socket_cleanup: crate::commands::ui::socket_tasks::SocketCleanup,
     observer: ModelCaptureUsageObserver,
     workspace: WorkspaceSessionControl,
     lock: fs::File,
@@ -41,6 +42,29 @@ struct Fixture {
     send_buffer: Option<usize>,
 }
 impl Fixture {
+    fn released(&self, usage: ModelCaptureUsage) -> bool {
+        usage.source_bytes() == 0
+            && usage.captures() == 0
+            && usage.active_workers() == 0
+            && usage.metadata_bytes() == self.socket_cleanup.retained_metadata_bytes()
+    }
+    async fn stop(mut self) {
+        self.socket_cleanup.stop_accepting_upgrades();
+        let worker = self.worker.take().unwrap();
+        worker.abort();
+        assert!(worker.await.unwrap_err().is_cancelled());
+        assert_eq!(
+            self.socket_cleanup
+                .drain(tokio::time::Instant::now() + WAIT)
+                .await,
+            crate::commands::ui::socket_tasks::SocketDrainOutcome::Joined
+        );
+        usage_is(&self.observer, |usage| {
+            usage == ModelCaptureUsage::default()
+        })
+        .await;
+        assert_eq!(self.observer.usage(), ModelCaptureUsage::default());
+    }
     async fn connect(&self) -> Socket {
         let mut request = format!("{}/rpc", self.base.replace("http://", "ws://"))
             .into_client_request()
@@ -143,7 +167,9 @@ impl Fixture {
 impl Drop for Fixture {
     fn drop(&mut self) {
         // Test listener teardown is separate from release/cancellation assertions.
-        self.worker.abort();
+        if let Some(worker) = &self.worker {
+            worker.abort();
+        }
         let _ = fs2::FileExt::unlock(&self.lock);
     }
 }
@@ -256,13 +282,21 @@ async fn fixture_with(primary: &[u8], buffers: SocketBuffers) -> (Fixture, Socke
     let launch = host.launch_url();
     let observer = host.model_originals_observer();
     let workspace = host.workspace_control();
+    let (listener, router, owner) = host.into_parts();
+    let socket_cleanup = crate::commands::ui::socket_tasks::SocketCleanup::Pending(owner);
     let (worker, send_buffer) = match buffers {
-        SocketBuffers::Ordinary => (tokio::spawn(host.serve()), None),
+        SocketBuffers::Ordinary => (
+            tokio::spawn(async move {
+                axum::serve(listener, router)
+                    .await
+                    .map_err(crate::error::CliError::from)
+            }),
+            None,
+        ),
         SocketBuffers::SmallSend => {
             use axum::serve::ListenerExt as _;
             // Configure the actual bound listener before accept, retaining the
             // same production Router, authentication and connection owners.
-            let (listener, router) = host.into_parts();
             let socket = socket2::SockRef::from(&listener);
             socket.set_send_buffer_size(1024).unwrap();
             let actual = socket.send_buffer_size().unwrap();
@@ -347,7 +381,8 @@ async fn fixture_with(primary: &[u8], buffers: SocketBuffers) -> (Fixture, Socke
     (
         Fixture {
             _directory: directory,
-            worker,
+            worker: Some(worker),
+            socket_cleanup,
             observer,
             workspace,
             lock,
@@ -432,11 +467,9 @@ async fn ping_and_one_pipelined_request_preserve_actual_blocked_capture() {
     )
     .await;
     assert_eq!(reply(&mut socket, 5).await["result"]["status"], "released");
-    usage_is(&fixture.observer, |usage| {
-        usage == ModelCaptureUsage::default()
-    })
-    .await;
+    usage_is(&fixture.observer, |usage| fixture.released(usage)).await;
     socket.close(None).await.unwrap();
+    fixture.stop().await;
 }
 
 #[tokio::test]
@@ -447,12 +480,10 @@ async fn disconnect_cancels_actual_lock_wait_and_returns_credits_after_worker_ex
     drop(socket);
     // The compile lock remains exclusively held. Cancellation must let the
     // real polling worker exit; a waiter drop cannot manufacture a refund.
-    usage_is(&fixture.observer, |usage| {
-        usage == ModelCaptureUsage::default()
-    })
-    .await;
+    usage_is(&fixture.observer, |usage| fixture.released(usage)).await;
     assert!(fixture.lock.metadata().unwrap().is_file());
     fs2::FileExt::unlock(&fixture.lock).unwrap();
+    fixture.stop().await;
 }
 
 #[tokio::test]
@@ -472,10 +503,7 @@ async fn actual_workspace_revocation_refuses_blocked_capture_and_later_v1_open()
         refused["error"]["data"]["code"],
         "model_originals.unavailable"
     );
-    usage_is(&fixture.observer, |usage| {
-        usage == ModelCaptureUsage::default()
-    })
-    .await;
+    usage_is(&fixture.observer, |usage| fixture.released(usage)).await;
 
     // Legacy opening and originals publication must consult the same current
     // host registration. Retaining an old source label cannot reopen it.
@@ -492,8 +520,9 @@ async fn actual_workspace_revocation_refuses_blocked_capture_and_later_v1_open()
         "revoked v1 owner must not open: {legacy}"
     );
     assert!(legacy.get("error").is_some(), "{legacy}");
-    assert_eq!(fixture.observer.usage(), ModelCaptureUsage::default());
+    assert!(fixture.released(fixture.observer.usage()));
     socket.close(None).await.unwrap();
+    fixture.stop().await;
 }
 
 fn profile_failure(value: &Value, id: Value, code: &str) {
@@ -555,12 +584,10 @@ async fn second_queued_text_refuses_and_closes_without_publishing_blocked_captur
     .await
     .expect("bounded overflow refusal and actual socket termination");
     drop(socket);
-    usage_is(&fixture.observer, |usage| {
-        usage == ModelCaptureUsage::default()
-    })
-    .await;
+    usage_is(&fixture.observer, |usage| fixture.released(usage)).await;
     // Unlock only after the actual cancelled worker has returned its permit.
     fs2::FileExt::unlock(&fixture.lock).unwrap();
+    fixture.stop().await;
 }
 
 #[tokio::test]
@@ -614,6 +641,10 @@ async fn host_slots_span_authenticated_sockets_and_release_allows_real_reuse() {
     assert!(full.metadata_bytes() > 0);
 
     let mut extra = fixture.connect().await;
+    let before_refusal = fixture.observer.usage();
+    assert_eq!(before_refusal.source_bytes(), full.source_bytes());
+    assert_eq!(before_refusal.captures(), full.captures());
+    assert_eq!(before_refusal.active_workers(), full.active_workers());
     send(
         &mut extra,
         3,
@@ -628,7 +659,7 @@ async fn host_slots_span_authenticated_sockets_and_release_allows_real_reuse() {
     );
     assert_eq!(
         fixture.observer.usage(),
-        full,
+        before_refusal,
         "refusal retains all prior owners and refunds temporary binding credit"
     );
 
@@ -675,10 +706,8 @@ async fn host_slots_span_authenticated_sockets_and_release_allows_real_reuse() {
         assert_eq!(reply(&mut socket, 4).await["result"]["status"], "released");
         socket.close(None).await.unwrap();
     }
-    usage_is(&fixture.observer, |usage| {
-        usage == ModelCaptureUsage::default()
-    })
-    .await;
+    usage_is(&fixture.observer, |usage| fixture.released(usage)).await;
+    fixture.stop().await;
 }
 
 #[tokio::test]
@@ -745,7 +774,7 @@ async fn actual_stalled_reader_expires_profile_send_after_thirty_wall_clock_seco
     // is issued only after the prior complete frame and exact ID are witnessed.
     tokio::time::timeout(Duration::from_secs(60), async {
         loop {
-            if fixture.observer.usage() == ModelCaptureUsage::default() {
+            if fixture.released(fixture.observer.usage()) {
                 assert!(complete < sent && incomplete_observed, "owner ended without an observed incomplete current frame");
                 break;
             }
@@ -788,9 +817,10 @@ async fn actual_stalled_reader_expires_profile_send_after_thirty_wall_clock_seco
         "actual stalled-reader measurement: listener SO_SNDBUF={}, client SO_RCVBUF={receive_buffer}, sent={sent}, complete={complete}, max peek={largest_peek}, incomplete current frame={incomplete_observed}, owner retirement={elapsed:?}",
         fixture.send_buffer.unwrap()
     );
-    assert_eq!(fixture.observer.usage(), ModelCaptureUsage::default());
+    assert!(fixture.released(fixture.observer.usage()));
     // Dispose only after the genuine server timeout and zero-credit observation.
     drop(socket);
+    fixture.stop().await;
 }
 
 fn peek_read_replies(bytes: &[u8], capture: &str, entry: &Value, content: &str) -> (usize, usize) {

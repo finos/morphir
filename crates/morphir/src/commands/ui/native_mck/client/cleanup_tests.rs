@@ -31,6 +31,9 @@ const CONFIG: &[u8] =
     include_bytes!("../../model_originals/capture/private_record_fixtures/project.toml");
 const WAIT: Duration = Duration::from_secs(5);
 
+#[cfg(test)]
+mod socket_task_tests;
+
 struct Fixture {
     _temporary: tempfile::TempDir,
     root: std::path::PathBuf,

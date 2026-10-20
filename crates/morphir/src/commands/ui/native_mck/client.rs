@@ -75,6 +75,7 @@ pub(super) struct RunningHost {
     server: Option<JoinHandle<Result<(), crate::error::CliError>>>,
     socket: Option<Socket>,
     capture_cleanup: CaptureCleanup,
+    socket_cleanup: super::super::socket_tasks::SocketCleanup,
     base: String,
     launch: String,
 }
@@ -90,12 +91,16 @@ impl RunningHost {
             .take_capture_cleanup()
             .map_err(|_| NativeAdapterError::Startup)?
             .into_pending();
+        let socket_cleanup = host
+            .take_socket_cleanup()
+            .ok_or(NativeAdapterError::Startup)?;
         let base = host.base_url();
         let launch = host.launch_url();
         Ok(Self {
             server: Some(tokio::spawn(host.serve())),
             socket: None,
             capture_cleanup: CaptureCleanup::Pending(capture_cleanup),
+            socket_cleanup: super::super::socket_tasks::SocketCleanup::Pending(socket_cleanup),
             base,
             launch,
         })
@@ -220,6 +225,7 @@ impl RunningHost {
         }
     }
     pub async fn stop(&mut self, end: Instant) -> Result<(), NativeAdapterError> {
+        self.socket_cleanup.stop_accepting_upgrades();
         let close = self.disconnect(end).await;
         let listener = if let Some(server) = self.server.as_mut() {
             server.abort();
@@ -243,6 +249,10 @@ impl RunningHost {
         } else {
             Ok(())
         };
+        let sockets = match self.socket_cleanup.drain(end).await {
+            super::super::socket_tasks::SocketDrainOutcome::Joined => Ok(()),
+            _ => Err(NativeAdapterError::Cleanup),
+        };
         let captures = match &mut self.capture_cleanup {
             CaptureCleanup::Pending(owner) => owner
                 .drain_retained(end)
@@ -255,11 +265,15 @@ impl RunningHost {
         }
         // Listener completion is not a join of framework-upgraded tasks.
         // The caller still requires real source sealing and worker cleanup.
-        reconcile_completion(reconcile_completion(close, listener), captures)
+        reconcile_completion(
+            reconcile_completion(reconcile_completion(close, listener), sockets),
+            captures,
+        )
     }
 }
 impl Drop for RunningHost {
     fn drop(&mut self) {
+        self.socket_cleanup.stop_accepting_upgrades();
         if let Some(server) = &self.server {
             server.abort();
         }

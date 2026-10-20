@@ -45,7 +45,9 @@ async-trait = "0.1"
 futures-util = "0.3"
 tokio-tungstenite = "0.30"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time"] }
-axum = { version = "0.8", features = ["ws"] }
+# Whole-upgrade task ownership requires the reviewed local API factor.
+# See third_party/axum/MORPHIR-VENDOR.md at the workspace root.
+axum = { version = "=0.8.9", features = ["ws"] }
 morphir-core = { path = "../../ecosystem/morphir-rust/crates/morphir-core" }
 morphir-decoration = { path = "../morphir-decoration" }
 morphir-evaluator = { path = "../morphir-evaluator" }
@@ -122,6 +124,9 @@ rustix = { workspace = true, features = ["process"] }
 windows-sys = { workspace = true, features = ["Wdk_Storage_FileSystem", "Win32_System_IO", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp"] }
 
 [dev-dependencies]
+# Real HTTP-driver cancellation exercises the whole owned WebSocket upgrade.
+hyper = { version = "=1.11.0", features = ["server", "http1"] }
+hyper-util = { version = "=0.1.20", features = ["tokio"] }
 socket2 = "0.6.5"
 morphir-runtime = { path = "../../ecosystem/morphir-rust/crates/morphir-runtime" }
 jsonschema.workspace = true

@@ -57,7 +57,7 @@ pub(super) async fn component(actual: &Actual, run: &mut NativeOriginalRun<'_>) 
         .unwrap();
     let source_json = serde_json::to_value(&source).unwrap();
     let project = project_key(&source, ".");
-    let (host, records) = BoundUiHost::bind_record_observed(
+    let (mut host, records) = BoundUiHost::bind_record_observed(
         "same-spelling-session".into(),
         actual._startup.capabilities(),
         Some(actual._startup.originals_provider()),
@@ -66,6 +66,9 @@ pub(super) async fn component(actual: &Actual, run: &mut NativeOriginalRun<'_>) 
     .await
     .unwrap();
     let usage = host.model_originals_observer();
+    let mut socket_cleanup = crate::commands::ui::socket_tasks::SocketCleanup::Pending(
+        host.take_socket_cleanup().unwrap(),
+    );
     let base = host.base_url();
     let launch = host.launch_url();
     let mut listener = Listener(Some(tokio::spawn(host.serve())));
@@ -120,6 +123,14 @@ pub(super) async fn component(actual: &Actual, run: &mut NativeOriginalRun<'_>) 
             .unwrap()
             .iter()
             .any(|item| item["id"] == project)
+    );
+    let baseline = usage.usage();
+    assert_eq!(baseline.source_bytes(), 0);
+    assert_eq!(baseline.captures(), 0);
+    assert_eq!(baseline.active_workers(), 0);
+    assert_eq!(
+        baseline.metadata_bytes(),
+        socket_cleanup.retained_metadata_bytes()
     );
     let ready = exchange(&mut socket, 3, "morphir.model-originals.capture", json!({
         "contractVersion":"0.1.0-draft.1", "source":{"providerId":source_json["providerId"],"locator":source_json["locator"]},
@@ -193,10 +204,23 @@ pub(super) async fn component(actual: &Actual, run: &mut NativeOriginalRun<'_>) 
         "retired association is removed, never a live tombstone"
     );
     assert!(observer.with_ready_record(&id, |_| ()).is_err());
-    assert_eq!(usage.usage(), ModelCaptureUsage::default());
+    assert_eq!(usage.usage(), baseline);
     drop(data);
     socket.close(None).await.unwrap();
     drop(socket);
+    socket_cleanup.stop_accepting_upgrades();
+    let task = listener.0.take().unwrap();
+    task.abort();
+    assert!(
+        task.await.unwrap_err().is_cancelled(),
+        "actual listener task joined after socket shutdown"
+    );
+    assert_eq!(
+        socket_cleanup
+            .drain(tokio::time::Instant::now() + WAIT)
+            .await,
+        crate::commands::ui::socket_tasks::SocketDrainOutcome::Joined,
+    );
     tokio::time::timeout(WAIT, async {
         while usage.usage() != ModelCaptureUsage::default() {
             tokio::task::yield_now().await;
@@ -204,12 +228,6 @@ pub(super) async fn component(actual: &Actual, run: &mut NativeOriginalRun<'_>) 
     })
     .await
     .unwrap();
-    let task = listener.0.take().unwrap();
-    task.abort();
-    assert!(
-        task.await.unwrap_err().is_cancelled(),
-        "actual listener task joined after socket shutdown"
-    );
     assert_eq!(usage.usage(), ModelCaptureUsage::default());
     // Full final host seal belongs to the actual CLI workflow; these component
     // fixtures intentionally still retain their genuine provider writer leases.

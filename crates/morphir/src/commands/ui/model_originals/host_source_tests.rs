@@ -117,6 +117,7 @@ struct RunningHost {
     source: Value,
     project: String,
     usage: ModelCaptureUsageObserver,
+    socket_cleanup: crate::commands::ui::socket_tasks::SocketCleanup,
 }
 impl Drop for RunningHost {
     fn drop(&mut self) {
@@ -126,10 +127,13 @@ impl Drop for RunningHost {
     }
 }
 impl RunningHost {
-    async fn from_host(host: BoundUiHost, source: Value, project: String) -> Self {
+    async fn from_host(mut host: BoundUiHost, source: Value, project: String) -> Self {
         let base = host.base_url();
         let launch = host.launch_url();
         let usage = host.model_originals_observer();
+        let socket_cleanup = crate::commands::ui::socket_tasks::SocketCleanup::Pending(
+            host.take_socket_cleanup().unwrap(),
+        );
         let worker = tokio::spawn(host.serve());
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -151,6 +155,7 @@ impl RunningHost {
             source,
             project,
             usage,
+            socket_cleanup,
         }
     }
     async fn connect(&self) -> Socket {
@@ -189,13 +194,39 @@ impl RunningHost {
         );
         socket
     }
+    fn product_baseline(&self) -> ModelCaptureUsage {
+        let actual = self.usage.usage();
+        assert_eq!(actual.source_bytes(), 0);
+        assert_eq!(actual.captures(), 0);
+        assert_eq!(actual.active_workers(), 0);
+        assert_eq!(
+            actual.metadata_bytes(),
+            self.socket_cleanup.retained_metadata_bytes()
+        );
+        actual
+    }
     async fn stop(mut self) {
+        self.socket_cleanup.stop_accepting_upgrades();
         let worker = self.worker.take().unwrap();
         worker.abort();
         assert!(
             worker.await.unwrap_err().is_cancelled(),
             "actual listener task join, not a scope-counter inference"
         );
+        assert_eq!(
+            self.socket_cleanup
+                .drain(tokio::time::Instant::now() + WAIT)
+                .await,
+            crate::commands::ui::socket_tasks::SocketDrainOutcome::Joined,
+        );
+        tokio::time::timeout(WAIT, async {
+            while self.usage.usage() != ModelCaptureUsage::default() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(self.usage.usage(), ModelCaptureUsage::default());
     }
 }
 async fn send(socket: &mut Socket, id: u64, method: &str, params: Value) {
@@ -322,7 +353,7 @@ async fn actual_native_startup_open_capture_revalidation_and_seal_share_one_sour
     let mut socket = host.connect().await;
     let _capture = released_capture(&host, &mut socket).await;
     // Product release checkpoint occurs BEFORE harness/listener teardown.
-    assert_eq!(host.usage.usage(), ModelCaptureUsage::default());
+    host.product_baseline();
     let product = scope.snapshot();
     assert!(
         product.require_source_complete().is_err(),
@@ -649,7 +680,7 @@ async fn actual_capture_of_independently_declared_sentinel_calibrates_nonzero_co
     )
     .await;
     assert_eq!(reply(&mut socket, 4).await["result"]["status"], "released");
-    assert_eq!(host.usage.usage(), ModelCaptureUsage::default());
+    host.product_baseline();
     socket.close(None).await.unwrap();
     drop(socket);
     host.stop().await;
@@ -721,7 +752,7 @@ async fn host_observer_event_limit_does_not_become_a_source_or_startup_business_
     let host = running(&fixture, &scope).await;
     let mut socket = host.connect().await;
     released_capture(&host, &mut socket).await;
-    assert_eq!(host.usage.usage(), ModelCaptureUsage::default());
+    host.product_baseline();
     socket.close(None).await.unwrap();
     drop(socket);
     host.stop().await;
@@ -790,7 +821,13 @@ async fn genuine_blocked_capture_disconnect_does_not_read_record_or_primary_or_p
     tokio::time::timeout(WAIT, async {
         loop {
             let worker = scope.snapshot().workers();
-            if worker.returned_error() == 1 && host.usage.usage() == ModelCaptureUsage::default() {
+            let usage = host.usage.usage();
+            if worker.returned_error() == 1
+                && usage.source_bytes() == 0
+                && usage.captures() == 0
+                && usage.active_workers() == 0
+                && usage.metadata_bytes() == host.socket_cleanup.retained_metadata_bytes()
+            {
                 break;
             }
             tokio::task::yield_now().await;

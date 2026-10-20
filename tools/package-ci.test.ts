@@ -40,6 +40,14 @@ test("vendored fixture verifier changes select every Rust and MCK test gate", ()
 	}
 });
 
+test("vendored WebSocket host changes select every Rust and MCK test gate", () => {
+	const filters = workflow.jobs.changes?.steps.find(step => step.with?.filters)?.with?.filters ?? "";
+	const paths = Bun.YAML.parse(filters) as Record<string, string[]>;
+	for (const gate of ["rust", "mck", "package-mck"]) {
+		expect(paths[gate]).toContain("third_party/axum/**");
+	}
+});
+
 for (const [task, binding, contract] of [
 	["package:check", "typescript", "0.1.0-draft.1"],
 	["package:check:rust", "rust", "0.1.0-draft.1"],

@@ -9,6 +9,32 @@ use std::{
 
 type ActualProviderJoin = TrackedJoin<Result<ModelCaptureCompletion, ProviderCaptureError>>;
 
+#[cfg(test)]
+impl ModelCaptureConnection {
+    pub(in crate::commands::ui::model_originals) fn poison_cleanup_join_for_test(&self) {
+        let slot = self.state.lock().unwrap().cleanup.clone().unwrap();
+        assert!(
+            std::thread::spawn(move || {
+                let _held = slot.join.lock().unwrap();
+                panic!("actual cleanup join poison control");
+            })
+            .join()
+            .is_err()
+        );
+    }
+    pub(in crate::commands::ui::model_originals) fn poison_owner_for_test(&self) {
+        let owner = self.state.clone();
+        assert!(
+            std::thread::spawn(move || {
+                let _held = owner.lock().unwrap();
+                panic!("actual capture owner poison control");
+            })
+            .join()
+            .is_err()
+        );
+    }
+}
+
 enum JoinState {
     Prearmed,
     Awaited(ActualProviderJoin),
@@ -19,6 +45,7 @@ enum JoinState {
 }
 pub(super) struct CleanupSlot {
     join: Mutex<JoinState>,
+    observation: std::sync::OnceLock<WorkerAttemptObservation>,
     owner: Weak<Mutex<ConnectionOwner>>,
     registry: Option<Weak<Mutex<CleanupEntries>>>,
     control: CaptureControl,
@@ -48,6 +75,7 @@ impl CleanupSlot {
         reservation.slot = Some(held_slot.clone());
         let slot = Arc::new(Self {
             join: Mutex::new(JoinState::Prearmed),
+            observation: std::sync::OnceLock::new(),
             owner: Arc::downgrade(owner),
             registry: registry.map(|r| Arc::downgrade(&r.0)),
             control: control.clone(),
@@ -61,6 +89,7 @@ impl CleanupSlot {
         Ok(slot)
     }
     pub(super) fn install(&self, actual: ActualProviderJoin) {
+        let _ = self.observation.set(actual.observation());
         let mut state = self.join.lock().expect("capture cleanup");
         assert!(matches!(*state, JoinState::Prearmed));
         *state = JoinState::Awaited(actual);
@@ -75,16 +104,77 @@ impl CleanupSlot {
         )
     }
     fn retained(&self) -> bool {
-        matches!(
-            *self.join.lock().expect("capture cleanup"),
-            JoinState::Retained(_) | JoinState::Draining
-        )
+        self.retained_for_drop()
+    }
+    fn mark_incomplete(&self) {
+        if let Some(actual) = self.observation.get() {
+            actual.mark_incomplete();
+        }
+    }
+    // Only disposal/draining of this exact retained handle may recover poison.
+    // Business polling/start/publication keeps its ordinary refusal boundary.
+    fn cleanup_join<T>(&self, action: impl FnOnce(&mut JoinState) -> T) -> T {
+        let (result, poisoned) = {
+            let (mut state, poisoned) = match self.join.lock() {
+                Ok(state) => (state, false),
+                Err(poison) => (poison.into_inner(), true),
+            };
+            (action(&mut state), poisoned)
+        };
+        if poisoned {
+            self.mark_incomplete();
+        }
+        result
+    }
+    fn retained_for_drop(&self) -> bool {
+        let (retained, poisoned) = {
+            let (state, poisoned) = match self.join.lock() {
+                Ok(state) => (state, false),
+                Err(poison) => (poison.into_inner(), true),
+            };
+            (
+                matches!(*state, JoinState::Retained(_) | JoinState::Draining),
+                poisoned,
+            )
+        };
+        if poisoned {
+            self.mark_incomplete();
+        }
+        retained
+    }
+    fn handoff_on_drop(&self, owner_poisoned: bool) {
+        let (retained, join_poisoned) = {
+            let (mut state, poisoned) = match self.join.lock() {
+                Ok(state) => (state, false),
+                Err(poison) => (poison.into_inner(), true),
+            };
+            if matches!(*state, JoinState::Awaited(_)) {
+                let prior = std::mem::replace(&mut *state, JoinState::Prearmed);
+                if let JoinState::Awaited(actual) = prior {
+                    *state = JoinState::Retained(actual);
+                }
+            }
+            (
+                matches!(*state, JoinState::Retained(_) | JoinState::Draining),
+                poisoned,
+            )
+        };
+        if owner_poisoned || join_poisoned {
+            self.mark_incomplete();
+        }
+        // Cancellation cannot destroy business payloads or relock a poisoned
+        // connection during unwind. The genuine worker still holds its permit.
+        if retained {
+            self.control.cancel();
+        }
     }
     fn owns_handle(&self) -> bool {
-        matches!(
-            *self.join.lock().expect("capture cleanup"),
-            JoinState::Awaited(_) | JoinState::Retained(_) | JoinState::Draining
-        )
+        self.cleanup_join(|state| {
+            matches!(
+                state,
+                JoinState::Awaited(_) | JoinState::Retained(_) | JoinState::Draining
+            )
+        })
     }
     fn is_finished(&self) -> bool {
         match &*self.join.lock().expect("capture cleanup") {
@@ -94,6 +184,10 @@ impl CleanupSlot {
         }
     }
     pub(super) fn retain(&self) {
+        if self.retained_for_drop() {
+            self.control.cancel();
+            return;
+        }
         {
             let mut state = self.join.lock().expect("capture cleanup");
             let prior = std::mem::replace(&mut *state, JoinState::Prearmed);
@@ -107,13 +201,20 @@ impl CleanupSlot {
     }
     fn retire(&self) {
         if let Some(owner) = self.owner.upgrade() {
-            let mut owner = owner.lock().expect("model capture connection");
+            let (mut owner, poisoned) = match owner.lock() {
+                Ok(owner) => (owner, false),
+                Err(poison) => (poison.into_inner(), true),
+            };
             if owner
                 .cleanup
                 .as_ref()
                 .is_some_and(|slot| std::ptr::eq(slot.as_ref(), self))
             {
                 owner.cleanup = None;
+            }
+            drop(owner);
+            if poisoned {
+                self.mark_incomplete();
             }
         }
         if let Some(registry) = self.registry.as_ref().and_then(Weak::upgrade) {
@@ -129,8 +230,14 @@ impl CleanupSlot {
         }
     }
     pub(super) fn abandon_waiter(&self) {
+        if self.retained_for_drop() {
+            return;
+        }
         let prior = {
-            let mut state = self.join.lock().expect("capture cleanup");
+            let mut state = self
+                .join
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
             if !matches!(*state, JoinState::Awaited(_)) {
                 return;
             }
@@ -168,16 +275,20 @@ impl CleanupSlot {
     }
     async fn drain(self: &Arc<Self>, deadline: tokio::time::Instant) -> bool {
         self.retain();
-        let actual = {
-            let mut state = self.join.lock().expect("capture cleanup");
-            match std::mem::replace(&mut *state, JoinState::Draining) {
-                JoinState::Retained(join) => join,
-                prior => {
-                    let done = matches!(prior, JoinState::Joined | JoinState::Abandoned);
-                    *state = prior;
-                    return done;
-                }
-            }
+        let actual =
+            self.cleanup_join(
+                |state| match std::mem::replace(state, JoinState::Draining) {
+                    JoinState::Retained(join) => Ok(join),
+                    prior => {
+                        let done = matches!(prior, JoinState::Joined | JoinState::Abandoned);
+                        *state = prior;
+                        Err(done)
+                    }
+                },
+            );
+        let actual = match actual {
+            Ok(actual) => actual,
+            Err(done) => return done,
         };
         let mut guard = DrainGuard {
             slot: self.clone(),
@@ -192,7 +303,7 @@ impl CleanupSlot {
         }
         // Both Ok(body result) and Err(real JoinError) are resolved joins.
         guard.actual = None;
-        *self.join.lock().expect("capture cleanup") = JoinState::Joined;
+        self.cleanup_join(|state| *state = JoinState::Joined);
         self.retire();
         true
     }
@@ -204,9 +315,18 @@ struct DrainGuard {
 impl Drop for DrainGuard {
     fn drop(&mut self) {
         if let Some(actual) = self.actual.take() {
-            let mut state = self.slot.join.lock().expect("capture cleanup");
-            assert!(matches!(*state, JoinState::Draining));
-            *state = JoinState::Retained(actual);
+            let unexpected = self.slot.cleanup_join(|state| {
+                if matches!(state, JoinState::Draining) {
+                    *state = JoinState::Retained(actual);
+                    None
+                } else {
+                    Some(actual)
+                }
+            });
+            if let Some(actual) = unexpected {
+                self.slot.mark_incomplete();
+                drop(actual); // Explicit abandonment, never a joined outcome.
+            }
         }
     }
 }
@@ -246,6 +366,12 @@ pub(super) enum ProviderJoin {
     },
 }
 impl ProviderJoin {
+    pub(super) fn retained_for_drop(&self) -> bool {
+        match self {
+            Self::Owned { slot, .. } => slot.retained_for_drop(),
+            Self::Direct(_) => false,
+        }
+    }
     pub(super) fn observation(&self) -> WorkerAttemptObservation {
         match self {
             Self::Direct(join) => join.observation(),
@@ -399,21 +525,47 @@ impl PendingCaptureCleanup {
         Ok(())
     }
 }
-pub(in crate::commands::ui) struct CaptureDisconnect(Weak<Mutex<ConnectionOwner>>);
+pub(in crate::commands::ui) struct CaptureDisconnect {
+    owner: Weak<Mutex<ConnectionOwner>>,
+    observation: WorkerConnectionObservation,
+}
 impl CaptureDisconnect {
-    pub(super) fn issued(owner: &Arc<Mutex<ConnectionOwner>>) -> Self {
-        Self(Arc::downgrade(owner))
+    fn slot_for_drop(&self) -> (Option<Arc<CleanupSlot>>, bool) {
+        let Some(owner) = self.owner.upgrade() else {
+            return (None, false);
+        };
+        let (slot, poisoned) = {
+            let (state, poisoned) = match owner.lock() {
+                Ok(state) => (state, false),
+                Err(poison) => (poison.into_inner(), true),
+            };
+            (state.cleanup.clone(), poisoned)
+        };
+        if poisoned {
+            self.observation.mark_incomplete();
+        }
+        (slot, poisoned)
     }
-    pub(in crate::commands::ui) fn handoff(&self) {
-        let slot = self.0.upgrade().and_then(|owner| {
-            owner
-                .lock()
-                .expect("model capture connection")
-                .cleanup
-                .clone()
-        });
+    pub(super) fn should_close_on_drop(&self) -> bool {
+        let (slot, poisoned) = self.slot_for_drop();
+        if poisoned {
+            return false;
+        }
+        !slot.is_some_and(|slot| slot.retained_for_drop())
+    }
+    pub(in crate::commands::ui) fn handoff_on_drop(&self) {
+        let (slot, poisoned) = self.slot_for_drop();
         if let Some(slot) = slot {
-            slot.retain();
+            slot.handoff_on_drop(poisoned);
+        }
+    }
+    pub(super) fn issued(
+        owner: &Arc<Mutex<ConnectionOwner>>,
+        observation: &WorkerConnectionObservation,
+    ) -> Self {
+        Self {
+            owner: Arc::downgrade(owner),
+            observation: observation.clone(),
         }
     }
 }

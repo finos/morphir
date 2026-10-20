@@ -339,7 +339,11 @@ impl PendingProviderCapture {
 impl Drop for PendingProviderCapture {
     fn drop(&mut self) {
         if self.armed {
-            self.cancel();
+            if self.result.retained_for_drop() {
+                self.control.cancel();
+            } else {
+                self.cancel();
+            }
         }
     }
 }

@@ -66,6 +66,7 @@ pub(crate) struct UiHostState {
     pub(crate) authority: String,
     pub(crate) artifact_capacity: super::artifacts::HostArtifactCapacity,
     pub(crate) original_capacity: super::model_originals::HostModelCaptureCapacity,
+    pub(in crate::commands::ui) socket_tasks: super::socket_tasks::SocketTaskRegistry,
     pub(crate) current: super::provider::current::CurrentSessionCapabilities,
     pub(in crate::commands::ui) observation: HostObservationBinding,
 }
@@ -81,6 +82,7 @@ pub struct BoundUiHost {
     workspace_control: super::provider::WorkspaceSessionControl,
     record_observer: Option<HostPrivateRecordObserver>,
     capture_cleanup: Option<HostCaptureCleanupOwner>,
+    socket_cleanup: Option<super::socket_tasks::HostSocketCleanupOwner>,
 }
 
 impl BoundUiHost {
@@ -382,6 +384,10 @@ impl BoundUiHost {
         let artifact_capacity = super::artifacts::HostArtifactCapacity::default();
         let artifact_observer = artifact_capacity.observer();
         let original_capacity = super::model_originals::HostModelCaptureCapacity::default();
+        let (socket_tasks, socket_cleanup) =
+            super::socket_tasks::SocketTaskRegistry::new(&original_capacity).map_err(|_| {
+                super::protocol::protocol_error("socket task metadata capacity exceeded")
+            })?;
         let record_observer = match &observation {
             HostObservationBinding::Record { registry, .. }
             | HostObservationBinding::Installed { registry, .. } => Some(registry.observer()),
@@ -401,6 +407,7 @@ impl BoundUiHost {
             authority: address.to_string(),
             artifact_capacity,
             original_capacity: original_capacity.clone(),
+            socket_tasks,
             current,
             observation,
         };
@@ -422,6 +429,7 @@ impl BoundUiHost {
             workspace_control,
             record_observer,
             capture_cleanup,
+            socket_cleanup: Some(socket_cleanup),
         })
     }
 
@@ -436,6 +444,12 @@ impl BoundUiHost {
         self.capture_cleanup
             .take()
             .ok_or(super::model_originals::CaptureError::UnknownHandle)
+    }
+
+    pub(in crate::commands::ui) fn take_socket_cleanup(
+        &mut self,
+    ) -> Option<super::socket_tasks::HostSocketCleanupOwner> {
+        self.socket_cleanup.take()
     }
 
     pub fn manifest(&self) -> &SessionManifest {
@@ -472,14 +486,25 @@ impl BoundUiHost {
     }
 
     pub async fn serve(self) -> Result<(), CliError> {
+        let _ordinary_socket_owner = self.socket_cleanup;
         axum::serve(self.listener, self.router)
             .await
             .map_err(CliError::from)
     }
 
     #[cfg(test)]
-    pub(crate) fn into_parts(self) -> (TcpListener, Router) {
-        (self.listener, self.router)
+    pub(in crate::commands::ui) fn into_parts(
+        mut self,
+    ) -> (
+        TcpListener,
+        Router,
+        super::socket_tasks::HostSocketCleanupOwner,
+    ) {
+        let owner = self
+            .socket_cleanup
+            .take()
+            .expect("test fixture takes ordinary socket owner once");
+        (self.listener, self.router, owner)
     }
 }
 
@@ -755,8 +780,11 @@ pub(crate) mod tests {
         .await
         .unwrap();
         let launch_url = host.launch_url();
-        let (listener, router) = host.into_parts();
-        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let (listener, router, owner) = host.into_parts();
+        let server = tokio::spawn(async move {
+            let _owner = owner;
+            axum::serve(listener, router).await.unwrap()
+        });
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
@@ -783,8 +811,11 @@ pub(crate) mod tests {
         .await
         .unwrap();
         let launch_url = host.launch_url();
-        let (listener, router) = host.into_parts();
-        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let (listener, router, owner) = host.into_parts();
+        let server = tokio::spawn(async move {
+            let _owner = owner;
+            axum::serve(listener, router).await.unwrap()
+        });
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
@@ -816,8 +847,11 @@ pub(crate) mod tests {
         assert_eq!(host.address().ip(), std::net::Ipv4Addr::LOCALHOST);
         let launch_url = host.launch_url();
         let base_url = host.base_url();
-        let (listener, router) = host.into_parts();
-        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let (listener, router, owner) = host.into_parts();
+        let server = tokio::spawn(async move {
+            let _owner = owner;
+            axum::serve(listener, router).await.unwrap()
+        });
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
@@ -894,12 +928,16 @@ pub(crate) mod tests {
         .unwrap();
         let launches = [first.launch_url(), second.launch_url()];
         let bases = [first.base_url(), second.base_url()];
-        let (first_listener, first_router) = first.into_parts();
-        let (second_listener, second_router) = second.into_parts();
-        let first_task =
-            tokio::spawn(async move { axum::serve(first_listener, first_router).await.unwrap() });
-        let second_task =
-            tokio::spawn(async move { axum::serve(second_listener, second_router).await.unwrap() });
+        let (first_listener, first_router, first_owner) = first.into_parts();
+        let (second_listener, second_router, second_owner) = second.into_parts();
+        let first_task = tokio::spawn(async move {
+            let _owner = first_owner;
+            axum::serve(first_listener, first_router).await.unwrap()
+        });
+        let second_task = tokio::spawn(async move {
+            let _owner = second_owner;
+            axum::serve(second_listener, second_router).await.unwrap()
+        });
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()

@@ -172,6 +172,10 @@ pub(in crate::commands::ui) struct RetainedEvidenceCredit {
     bytes: usize,
 }
 impl RetainedEvidenceCredit {
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn retained_bytes(&self) -> usize {
+        self.bytes
+    }
     pub(in crate::commands::ui) fn grow(&mut self, bytes: usize) -> Result<(), CaptureError> {
         let mut state = self.host.0.lock().expect("model capture capacity");
         let total = state
@@ -433,7 +437,7 @@ impl ModelCaptureConnection {
         self.cleanup_registry = Some(registry.clone());
     }
     pub(in crate::commands::ui) fn disconnect_control(&self) -> CaptureDisconnect {
-        CaptureDisconnect::issued(&self.state)
+        CaptureDisconnect::issued(&self.state, &self.observation)
     }
     pub(in crate::commands::ui) async fn drain_cleanup(
         &self,
@@ -599,6 +603,9 @@ impl ModelCaptureConnection {
 }
 impl Drop for ModelCaptureConnection {
     fn drop(&mut self) {
+        if !self.disconnect_control().should_close_on_drop() {
+            return;
+        }
         self.close();
     }
 }

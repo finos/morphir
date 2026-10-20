@@ -9,15 +9,18 @@ members = ["crates/*"]
 # Without it, `cargo clippy -p morphir -- -D warnings` fails on upstream lints
 # in vendored TUF code this repository does not own.
 exclude = [
+    "third_party/axum",
     "third_party/rust-tuf",
     "ecosystem/morphir-rust/third_party/morphir-package-tough",
 ]
 default-members = ["crates/morphir"]
 resolver = "3"
 
-# Test-only fixture verification needs the already-adopted TUF 1.0.36 wire profile.
-# Provenance and the single-version compatibility patch: third_party/rust-tuf/MORPHIR-VENDOR.md.
+# Production WebSocket upgrades need a caller-owned whole future, and test-only
+# fixture verification needs the TUF 1.0.36 wire profile. Provenance and patch
+# scope are recorded in each third_party directory's MORPHIR-VENDOR.md.
 [patch.crates-io]
+axum = { path = "third_party/axum" }
 tuf = { path = "third_party/rust-tuf" }
 
 [workspace.package]

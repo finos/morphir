@@ -1,0 +1,56 @@
+--- upstream/axum/src/extract/ws.rs	2026-10-20 13:48:25
++++ candidate/axum/src/extract/ws.rs	2026-10-20 13:51:20
+@@ -350,13 +350,34 @@
+         Fut: Future<Output = ()> + Send + 'static,
+         F: OnFailedUpgrade,
+     {
++        let (response, future) = self.into_upgrade_future(callback);
++        tokio::spawn(future);
++        response
++    }
++
++    /// Prepare the upgrade response and its complete connection future.
++    ///
++    /// The returned future waits for the HTTP upgrade, constructs the WebSocket,
++    /// and runs the callback. It must be polled or spawned by the caller, and the
++    /// response must be returned to complete the handshake. No task is spawned
++    /// by this method, so the caller can retain its own task join handle.
++    #[must_use = "return the response and drive the upgrade future"]
++    pub fn into_upgrade_future<C, Fut>(
++        self,
++        callback: C,
++    ) -> (Response, impl Future<Output = ()> + Send + 'static)
++    where
++        C: FnOnce(WebSocket) -> Fut + Send + 'static,
++        Fut: Future<Output = ()> + Send + 'static,
++        F: OnFailedUpgrade,
++    {
+         let on_upgrade = self.on_upgrade;
+         let config = self.config;
+         let on_failed_upgrade = self.on_failed_upgrade;
+ 
+         let protocol = self.protocol.clone();
+ 
+-        tokio::spawn(async move {
++        let future = async move {
+             let upgraded = match on_upgrade.await {
+                 Ok(upgraded) => upgraded,
+                 Err(err) => {
+@@ -374,7 +395,7 @@
+                 protocol,
+             };
+             callback(socket).await;
+-        });
++        };
+ 
+         let mut response = if let Some(sec_websocket_key) = &self.sec_websocket_key {
+             // If `sec_websocket_key` was `Some`, we are using HTTP/1.1.
+@@ -407,7 +428,7 @@
+                 .insert(header::SEC_WEBSOCKET_PROTOCOL, protocol);
+         }
+ 
+-        response
++        (response, future)
+     }
+ }
+ 

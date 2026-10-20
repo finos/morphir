@@ -210,6 +210,20 @@ pub struct WorkerConnectionObservation {
     connection: Option<Arc<Connection>>,
 }
 impl WorkerConnectionObservation {
+    pub(super) fn mark_incomplete(&self) {
+        let Some(connection) = &self.connection else {
+            return;
+        };
+        let mut scope = connection.scope.state();
+        let mut evidence = evidence(&connection.evidence);
+        scope
+            .evidence
+            .fault
+            .get_or_insert(WorkerObservationError::Incomplete);
+        evidence
+            .fault
+            .get_or_insert(WorkerObservationError::Incomplete);
+    }
     pub(super) fn unobserved() -> Self {
         Self { connection: None }
     }
@@ -358,6 +372,19 @@ pub struct WorkerAttemptObservation {
     record: Option<Arc<Attempt>>,
 }
 impl WorkerAttemptObservation {
+    pub(super) fn mark_incomplete(&self) {
+        let Some(record) = &self.record else {
+            return;
+        };
+        let mut scope = record.connection.scope.state();
+        let mut connection = evidence(&record.connection.evidence);
+        let mut attempt = evidence(&record.evidence);
+        for evidence in [&mut scope.evidence, &mut connection, &mut attempt] {
+            evidence
+                .fault
+                .get_or_insert(WorkerObservationError::Incomplete);
+        }
+    }
     fn unobserved() -> Self {
         Self { record: None }
     }
