@@ -403,7 +403,10 @@ impl ModelCaptureConnection {
         connection
     }
     #[cfg(test)]
-    pub(in crate::commands::ui) fn attach_capture_test_hook(&mut self, hook: &CaptureWorkerTestHook) {
+    pub(in crate::commands::ui) fn attach_capture_test_hook(
+        &mut self,
+        hook: &CaptureWorkerTestHook,
+    ) {
         self.capture_test_hook = Some(hook.clone());
     }
     pub fn worker_observation(&self) -> WorkerConnectionObservation {

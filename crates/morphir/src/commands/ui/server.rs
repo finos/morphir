@@ -138,10 +138,17 @@ impl BoundUiHost {
         hook: super::model_originals::CaptureWorkerTestHook,
     ) -> Result<(Self, HostPrivateRecordObserver), CliError> {
         let host = Self::bind_observed(
-            session_id, capabilities, originals, scope,
+            session_id,
+            capabilities,
+            originals,
+            scope,
             RecordObservationBinding::ObservedWithCaptureHook(hook),
-        ).await?;
-        let observer = host.record_observer.clone().expect("observed binding issues observer");
+        )
+        .await?;
+        let observer = host
+            .record_observer
+            .clone()
+            .expect("observed binding issues observer");
         Ok((host, observer))
     }
 
@@ -199,12 +206,14 @@ impl BoundUiHost {
                 capture_hook: None,
             },
             #[cfg(test)]
-            RecordObservationBinding::ObservedWithCaptureHook(hook) => HostObservationBinding::Record {
-                source: source.clone(),
-                registry: PrivateRecordRegistry::new(),
-                cleanup: CleanupRegistry::new(),
-                capture_hook: Some(hook),
-            },
+            RecordObservationBinding::ObservedWithCaptureHook(hook) => {
+                HostObservationBinding::Record {
+                    source: source.clone(),
+                    registry: PrivateRecordRegistry::new(),
+                    cleanup: CleanupRegistry::new(),
+                    capture_hook: Some(hook),
+                }
+            }
         };
         let host = Self::bind_configured(session_id, capabilities, originals, observation).await?;
         source.bound();

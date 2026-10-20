@@ -134,15 +134,27 @@ impl Actual {
         let project = project_key(&selected, ".");
         let source = serde_json::to_value(selected).unwrap();
         let (host, _records) = match hook {
-            None => BoundUiHost::bind_record_observed(
-                "running-host-cleanup".into(), prepared.capabilities(),
-                Some(prepared.originals_provider()), &scope,
-            ).await,
-            Some(hook) => BoundUiHost::bind_record_observed_with_capture_hook(
-                "running-host-cleanup".into(), prepared.capabilities(),
-                Some(prepared.originals_provider()), &scope, hook,
-            ).await,
-        }.unwrap();
+            None => {
+                BoundUiHost::bind_record_observed(
+                    "running-host-cleanup".into(),
+                    prepared.capabilities(),
+                    Some(prepared.originals_provider()),
+                    &scope,
+                )
+                .await
+            }
+            Some(hook) => {
+                BoundUiHost::bind_record_observed_with_capture_hook(
+                    "running-host-cleanup".into(),
+                    prepared.capabilities(),
+                    Some(prepared.originals_provider()),
+                    &scope,
+                    hook,
+                )
+                .await
+            }
+        }
+        .unwrap();
         let usage = host.model_originals_observer();
         let deadline = Deadline::new(
             Limits {
@@ -237,21 +249,31 @@ impl HeldCapture {
         let (release, receive) = std::sync::mpsc::channel();
         let send = std::sync::Mutex::new(Some(send));
         let receive = std::sync::Mutex::new(receive);
-        let hook = crate::commands::ui::model_originals::CaptureWorkerTestHook::new(Arc::new(move || {
-            send.lock().unwrap().take().unwrap().send(()).unwrap();
-            receive.lock().unwrap().recv_timeout(WAIT).unwrap();
-        }));
-        Self { hook, entered: Some(entered), release: Some(release) }
+        let hook =
+            crate::commands::ui::model_originals::CaptureWorkerTestHook::new(Arc::new(move || {
+                send.lock().unwrap().take().unwrap().send(()).unwrap();
+                receive.lock().unwrap().recv_timeout(WAIT).unwrap();
+            }));
+        Self {
+            hook,
+            entered: Some(entered),
+            release: Some(release),
+        }
     }
     async fn entered(&mut self, scope: &HostSourceObservationScope) {
-        tokio::time::timeout(WAIT, self.entered.take().unwrap()).await.unwrap().unwrap();
+        tokio::time::timeout(WAIT, self.entered.take().unwrap())
+            .await
+            .unwrap()
+            .unwrap();
         // Started can precede genuine TrackedJoin installation. Require the
         // actual owned-handle witness too before exercising stop or cancellation.
         tokio::time::timeout(WAIT, async {
             while scope.snapshot().workers().owned_handles() != 1 {
                 tokio::task::yield_now().await;
             }
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
     }
     fn release(&mut self) {
         self.release.take().unwrap().send(()).unwrap();
@@ -260,7 +282,9 @@ impl HeldCapture {
 impl Drop for HeldCapture {
     fn drop(&mut self) {
         // A failing assertion must release the genuine blocking body too.
-        if let Some(release) = self.release.take() { let _ = release.send(()); }
+        if let Some(release) = self.release.take() {
+            let _ = release.send(());
+        }
     }
 }
 
@@ -467,7 +491,10 @@ async fn cancelling_stop_future_keeps_same_actual_cleanup_owner_for_retry() {
         actual.host.stop(Instant::now() + WAIT),
     )
     .await;
-    assert!(cancelled.is_err(), "held actual drain must outlive the outer caller timeout, not return success: {cancelled:?}");
+    assert!(
+        cancelled.is_err(),
+        "held actual drain must outlive the outer caller timeout, not return success: {cancelled:?}"
+    );
     let held = actual.scope.snapshot().workers();
     assert_eq!(held.started(), 1);
     assert_eq!(held.owned_handles(), 1);
@@ -486,5 +513,14 @@ async fn cancelling_stop_future_keeps_same_actual_cleanup_owner_for_retry() {
     assert_eq!(joined.dropped_unjoined(), 0);
     joined.require_joined_cleanup().unwrap();
     assert_eq!(actual.usage.usage(), ModelCaptureUsage::default());
-    assert_eq!(actual.scope.snapshot().reads().counts_for(&actual.record).unwrap().content_attempts(), 0);
+    assert_eq!(
+        actual
+            .scope
+            .snapshot()
+            .reads()
+            .counts_for(&actual.record)
+            .unwrap()
+            .content_attempts(),
+        0
+    );
 }
