@@ -75,7 +75,7 @@ impl Report {
     }
     pub fn from_json(text: &str) -> Result<Self, String> {
         if text.len() > super::MAX_REPORT_BYTES {
-            return Err("Workbench report exceeds32MiB".into());
+            return Err("Workbench report exceeds 32 MiB".into());
         }
         if pipeline::recognizes(text)? {
             StoredReport::from_json(text).map(Self::selected)
