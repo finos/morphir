@@ -1,5 +1,7 @@
 //! Authenticated JSON-RPC v1-over-WebSocket handling.
 
+mod model_originals;
+
 use std::collections::BTreeMap;
 
 use axum::{
@@ -26,6 +28,63 @@ use super::{
 
 const MAX_INBOUND_MESSAGE_BYTES: usize = 1024 * 1024;
 
+fn selects_originals(raw: &str) -> bool {
+    struct MethodEvidence<'a>(&'a mut bool);
+    impl<'de> serde::de::Visitor<'de> for MethodEvidence<'_> {
+        type Value = ();
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("a request object")
+        }
+        fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<(), A::Error> {
+            while let Some(key) = map.next_key::<String>()? {
+                if key == "method" {
+                    let value = map.next_value::<Value>()?;
+                    *self.0 |= value
+                        .as_str()
+                        .is_some_and(|method| method.starts_with("morphir.model-originals."));
+                } else {
+                    map.next_value::<serde::de::IgnoredAny>()?;
+                }
+            }
+            Ok(())
+        }
+    }
+    // Retain an actually decoded root method even if a later member is malformed.
+    // This only classifies errors; the strict decoder still refuses the frame.
+    let mut selected = false;
+    let _ = serde::Deserializer::deserialize_map(
+        &mut serde_json::Deserializer::from_str(raw),
+        MethodEvidence(&mut selected),
+    );
+    selected
+}
+
+#[cfg(test)]
+mod profile_selection_tests {
+    use super::*;
+    #[test]
+    fn duplicate_originals_method_retains_profile_refusal_classification() {
+        let raw = r#"{"jsonrpc":"2.0","id":1,"method":"morphir.model-originals.read","method":"morphir.model-originals.read","params":{}}"#;
+        assert!(decode_rpc_request(raw).is_err());
+        assert!(selects_originals(raw));
+        let error = model_originals::invalid_frame(Value::Null);
+        assert_eq!(error["error"]["code"], INVALID_PARAMS);
+        assert_eq!(
+            error["error"]["data"]["code"],
+            "model_originals.invalid_request"
+        );
+    }
+}
+
+async fn send_profile_value(socket: &mut WebSocket, value: Value) -> Result<(), ()> {
+    tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        send_value(socket, value),
+    )
+    .await
+    .map_err(|_| ())?
+}
+
 /// Probe only the method with IgnoredAny for other fields. New profile frames
 /// are then validated literally before constructing maps or numeric values.
 /// Legacy requests keep their original decoder and wire behavior.
@@ -35,6 +94,44 @@ fn decode_rpc_request(raw: &str) -> Result<JsonRpcRequest, ()> {
         method: String,
     }
     let probe = serde_json::from_str::<MethodProbe>(raw).map_err(|_| ())?;
+    if probe.method.starts_with("morphir.model-originals.") {
+        if raw.len() > super::model_originals::wire::MAX_REQUEST_BYTES {
+            return Err(());
+        }
+        let value = morphir_mck::json::parse_exact_document(raw).map_err(|_| ())?;
+        let map = value.as_object().ok_or(())?;
+        if map.len() != 4
+            || !["jsonrpc", "id", "method", "params"]
+                .iter()
+                .all(|key| map.contains_key(*key))
+            || value["jsonrpc"] != "2.0"
+        {
+            return Err(());
+        }
+        #[derive(Deserialize)]
+        struct RawId<'a> {
+            #[serde(borrow)]
+            id: &'a serde_json::value::RawValue,
+        }
+        let raw_id: RawId<'_> = serde_json::from_str(raw).map_err(|_| ())?;
+        if raw_id.id.get().is_empty() || !raw_id.id.get().bytes().all(|b| b.is_ascii_digit()) {
+            return Err(());
+        }
+        let id = raw_id.id.get().parse::<u64>().map_err(|_| ())?;
+        let method = match probe.method.as_str() {
+            "morphir.model-originals.capture" => ConnectedMethod::ModelOriginalsCapture,
+            "morphir.model-originals.inventory" => ConnectedMethod::ModelOriginalsInventory,
+            "morphir.model-originals.read" => ConnectedMethod::ModelOriginalsRead,
+            "morphir.model-originals.release" => ConnectedMethod::ModelOriginalsRelease,
+            _ => return Err(()),
+        };
+        return Ok(JsonRpcRequest {
+            jsonrpc: super::protocol::JsonRpcVersion::V2,
+            id,
+            method,
+            params: value["params"].clone(),
+        });
+    }
     if matches!(
         probe.method.as_str(),
         "morphir.artifacts.generate" | "morphir.artifacts.read" | "morphir.artifacts.release"
@@ -81,7 +178,7 @@ fn artifact_rpc_error(id: u64, error: super::artifacts::ArtifactError) -> Dispat
 }
 
 fn artifact_profile_available(host: &UiHostState, provider_id: Option<&str>) -> bool {
-    let Some(provider) = host.capabilities.playground.as_ref() else {
+    let Some(provider) = host.current.playground() else {
         return false;
     };
     let current = provider.manifest();
@@ -138,11 +235,7 @@ async fn dispatch_artifacts(
             };
             let target = params.generation.target().clone();
             let ir_version = params.generation.ir_version().clone();
-            let provider = host
-                .capabilities
-                .playground
-                .as_ref()
-                .expect("offered playground");
+            let provider = host.current.playground().expect("offered playground");
             let generated = match provider.generate_artifacts(params.generation).await {
                 Ok(Some(generated)) => generated,
                 Ok(None) => {
@@ -290,6 +383,7 @@ struct ConnectionState {
     next_subscription: u64,
     subscriptions: BTreeMap<String, WatchSubscription>,
     artifacts: super::artifacts::ArtifactSession,
+    originals: model_originals::OriginalSession,
 }
 
 struct WatchSubscription {
@@ -306,12 +400,16 @@ impl Default for ConnectionState {
             next_subscription: 1,
             subscriptions: BTreeMap::new(),
             artifacts: super::artifacts::ArtifactSession::default(),
+            originals: model_originals::OriginalSession::new(Default::default()),
         }
     }
 }
 
 async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
-    let mut state = ConnectionState::default();
+    let mut state = ConnectionState {
+        originals: model_originals::OriginalSession::new(host.original_capacity.clone()),
+        ..Default::default()
+    };
     let refresh_interval = host
         .capabilities
         .workspace
@@ -321,28 +419,33 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
         });
     let mut watch_interval = tokio::time::interval(refresh_interval);
     watch_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    // One bounded request may wait behind an active operation. Continue reading
+    // control frames so a Ping or ordinary pipelined request is not a disconnect.
+    let mut queued = None;
     loop {
         tokio::select! {
-            message = socket.recv() => {
+            message = async { match queued.take() { Some(message) => Some(Ok(message)), None => socket.recv().await } } => {
                 let Some(message) = message else {
                     break;
                 };
                 let Ok(message) = message else {
                     break;
                 };
-                let Message::Text(text) = message else {
-                    let _ = socket.send(Message::Close(None)).await;
-                    break;
+                let text = match message {
+                    Message::Text(text) => text,
+                    Message::Ping(bytes) => { if socket.send(Message::Pong(bytes)).await.is_err() { break; } continue; },
+                    Message::Pong(_) => continue,
+                    _ => { let _ = socket.send(Message::Close(None)).await; break; },
                 };
                 if text.len() > MAX_INBOUND_MESSAGE_BYTES {
                     let _ = socket.send(Message::Close(None)).await;
                     break;
                 }
                 let Ok(request) = decode_rpc_request(&text) else {
-                    if send_value(
-                        &mut socket,
-                        rpc_error(Value::Null, -32600, "Invalid Request"),
-                    )
+                    let failure = if selects_originals(&text) {
+                        model_originals::invalid_frame(Value::Null)
+                    } else { rpc_error(Value::Null, -32600, "Invalid Request") };
+                    if send_profile_value(&mut socket, failure)
                     .await
                     .is_err()
                     {
@@ -351,29 +454,50 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
                     continue;
                 };
                 if let Err(error) = state.ledger.register(request.id) {
-                    let _ = send_value(
-                        &mut socket,
-                        rpc_error(json!(request.id), -32600, &error.to_string()),
-                    )
+                    let failure = if request.method.is_model_originals() { model_originals::invalid_frame(json!(request.id)) } else { rpc_error(json!(request.id), -32600, &error.to_string()) };
+                    let _ = send_profile_value(&mut socket, failure)
                     .await;
                     break;
                 }
                 if !state.initialized && request.method != ConnectedMethod::Initialize {
-                    let _ = send_value(
-                        &mut socket,
-                        rpc_error(
+                    let failure = if request.method.is_model_originals() { model_originals::invalid_frame(json!(request.id)) } else { rpc_error(
                             json!(request.id),
                             -32001,
                             "morphir.session.initialize must be the first call",
-                        ),
-                    )
+                        ) };
+                    let _ = send_profile_value(&mut socket, failure)
                     .await;
                     break;
                 }
-                let response = dispatch(&host, &mut state, &request).await;
+                // Keep receiving while a capture worker awaits the real compile
+                // lock. Observed disconnect must cancel its owner immediately;
+                // the worker itself retains its credit through actual exit.
+                let response = if request.method.is_model_originals() {
+                    let pending = dispatch(&host, &mut state, &request);
+                    tokio::pin!(pending);
+                    loop {
+                        tokio::select! {
+                            response = &mut pending => break Some(response),
+                            message = socket.recv() => match message {
+                                Some(Ok(Message::Ping(bytes))) => {
+                                    if !matches!(tokio::time::timeout(std::time::Duration::from_secs(30), socket.send(Message::Pong(bytes))).await, Ok(Ok(()))) { break None; }
+                                },
+                                Some(Ok(Message::Pong(_))) => {},
+                                Some(Ok(Message::Text(text))) if queued.is_none() && text.len() <= MAX_INBOUND_MESSAGE_BYTES => queued = Some(Message::Text(text)),
+                                Some(Ok(Message::Text(_))) => {
+                                    let _ = send_profile_value(&mut socket, model_originals::invalid_frame(Value::Null)).await;
+                                    break None;
+                                },
+                                _ => break None,
+                            },
+                        }
+                    }
+                } else { Some(dispatch(&host, &mut state, &request).await) };
+                let Some(response) = response else { break; };
                 let watch_snapshot = response.watch_snapshot.clone();
                 let subscription_id = response.subscription_id.clone();
-                if send_value(&mut socket, response.envelope).await.is_err() {
+                let sent = if request.method.is_model_originals() { send_profile_value(&mut socket, response.envelope).await } else { send_value(&mut socket, response.envelope).await };
+                if sent.is_err() {
                     break;
                 }
                 if let (Some(snapshot), Some(subscription_id)) =
@@ -392,6 +516,7 @@ async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
             }
         }
     }
+    state.originals.close();
 }
 
 async fn refresh_subscriptions(
@@ -402,15 +527,32 @@ async fn refresh_subscriptions(
     // Subscriptions are only ever created by the `morphir.workspace.watch`
     // arm, which itself requires a workspace capability, so an absent
     // workspace here means there is nothing pending to refresh.
-    let Some(workspace) = host.capabilities.workspace.as_ref() else {
-        return Ok(());
-    };
+    let workspace = host.current.workspace();
     let pending = state
         .subscriptions
         .iter()
         .map(|(id, subscription)| (id.clone(), subscription.source.clone()))
         .collect::<Vec<_>>();
     for (subscription_id, source) in pending {
+        let Some(workspace) = &workspace else {
+            if state
+                .subscriptions
+                .get(&subscription_id)
+                .is_some_and(|subscription| !subscription.refresh_failed)
+            {
+                send_provider_disconnected_event(
+                    socket,
+                    &subscription_id,
+                    &source.provider_id,
+                    "Workspace capability was revoked",
+                )
+                .await?;
+                if let Some(subscription) = state.subscriptions.get_mut(&subscription_id) {
+                    subscription.refresh_failed = true;
+                }
+            }
+            continue;
+        };
         match workspace.open(&source).await {
             Ok(snapshot) => {
                 let should_emit =
@@ -525,7 +667,14 @@ async fn dispatch(
     state: &mut ConnectionState,
     request: &JsonRpcRequest,
 ) -> DispatchResult {
+    if request.method.is_model_originals() {
+        return model_originals::dispatch_originals(host, state, request).await;
+    }
     match request.method {
+        ConnectedMethod::ModelOriginalsCapture
+        | ConnectedMethod::ModelOriginalsInventory
+        | ConnectedMethod::ModelOriginalsRead
+        | ConnectedMethod::ModelOriginalsRelease => unreachable!("dispatched model originals"),
         ConnectedMethod::Initialize => {
             if state.initialized {
                 return DispatchResult::error(request.id, -32600, "Session is already initialized");
@@ -561,7 +710,7 @@ async fn dispatch(
                     "Invalid source parameters",
                 );
             };
-            let Some(workspace) = &host.capabilities.workspace else {
+            let Some(workspace) = host.current.workspace() else {
                 return workspace_unavailable(request.id);
             };
             match workspace.inspect(&params.source).await {
@@ -586,7 +735,7 @@ async fn dispatch(
                     "Invalid project model parameters",
                 );
             };
-            let Some(workspace) = &host.capabilities.workspace else {
+            let Some(workspace) = host.current.workspace() else {
                 return workspace_unavailable(request.id);
             };
             match workspace
@@ -605,7 +754,7 @@ async fn dispatch(
                     "Invalid source parameters",
                 );
             };
-            let Some(workspace) = &host.capabilities.workspace else {
+            let Some(workspace) = host.current.workspace() else {
                 return workspace_unavailable(request.id);
             };
             match workspace.open(&params.source).await {
@@ -621,7 +770,7 @@ async fn dispatch(
                     "Invalid source parameters",
                 );
             };
-            let Some(workspace) = &host.capabilities.workspace else {
+            let Some(workspace) = host.current.workspace() else {
                 return workspace_unavailable(request.id);
             };
             match workspace.open(&params.source).await {
@@ -663,7 +812,7 @@ async fn dispatch(
             )
         }
         ConnectedMethod::PlaygroundCatalog => {
-            let Some(playground) = &host.capabilities.playground else {
+            let Some(playground) = host.current.playground() else {
                 return capability_unavailable(request.id, "playground");
             };
             match playground.catalog().await {
@@ -681,7 +830,7 @@ async fn dispatch(
                     "Invalid playground compile parameters",
                 );
             };
-            let Some(playground) = &host.capabilities.playground else {
+            let Some(playground) = host.current.playground() else {
                 return capability_unavailable(request.id, "playground");
             };
             match playground.compile(params).await {
@@ -699,7 +848,7 @@ async fn dispatch(
                     "Invalid playground generate parameters",
                 );
             };
-            let Some(playground) = &host.capabilities.playground else {
+            let Some(playground) = host.current.playground() else {
                 return capability_unavailable(request.id, "playground");
             };
             match playground.generate(params).await {
@@ -851,10 +1000,14 @@ mod tests {
         UiHostState {
             auth: std::sync::Arc::new(auth),
             manifest,
+            current: super::super::provider::current::CurrentSessionCapabilities::new(
+                capabilities.clone(),
+            ),
             capabilities,
             initial_view: None,
             authority: "127.0.0.1:0".into(),
             artifact_capacity: super::super::artifacts::HostArtifactCapacity::default(),
+            original_capacity: Default::default(),
         }
     }
 

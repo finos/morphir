@@ -46,7 +46,7 @@
 - [`morphir compile [FLAGS]`](compile.md)
 - [`morphir generate [FLAGS]`](generate.md)
 - [`morphir migrate [FLAGS] <INPUT>`](migrate.md)
-- [`morphir ui [--workspace-extension <ID>] [--no-open] [WORKSPACE]`](ui.md)
+- [`morphir ui [FLAGS] [WORKSPACE]`](ui.md)
 - [`morphir desktop [--wait] [--offline] [PATH]`](desktop.md)
 - [`morphir playground [--no-open]`](playground.md)
 - [`morphir config <SUBCOMMAND>`](config.md)

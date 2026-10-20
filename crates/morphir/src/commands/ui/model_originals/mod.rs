@@ -1,4 +1,4 @@
-//! Additive original-source capture. No connected method is advertised yet.
+//! Additive original-source capture for an authenticated workspace host.
 //!
 //! The caller supplies an already-authorized output-directory capability and
 //! selected module, never paths received from a model-originals request.
@@ -7,6 +7,11 @@ mod capture;
 mod domain;
 mod lifecycle;
 mod record;
+pub(super) mod source_header;
+pub(crate) mod wire;
+
+#[cfg(test)]
+mod provider_tests;
 
 pub use capture::{CaptureControl, capture_compiled};
 pub use domain::*;

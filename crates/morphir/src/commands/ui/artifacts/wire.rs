@@ -316,7 +316,7 @@ pub fn exact_bounded_integer(value: &Value, bound: usize) -> Option<usize> {
         .ok()?
         .checked_sub(fraction as i64)?
         .checked_add(zeros as i64)?;
-    if scale < 0 || integer.len() as i64 + scale > 20 {
+    if !(0..=20).contains(&scale) || (integer.len() as i64).checked_add(scale)? > 20 {
         return None;
     }
     let mut result = integer.parse::<u64>().ok()?;

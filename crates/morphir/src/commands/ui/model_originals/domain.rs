@@ -291,8 +291,19 @@ pub struct CapturedSources {
     pub(super) source_bytes: usize,
     pub(super) metadata_bytes: usize,
     pub(super) inventory_digest: Sha256Digest,
+    pub(super) source_version: SourceVersionEvidence,
+}
+/// Actual frozen-source release evidence, independent of typed IR support.
+/// The retained representation contains no allocated canonical-version string.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(in crate::commands::ui) enum SourceVersionEvidence {
+    Reported(morphir_core::format_version::ReleaseTriplet),
+    NotReported,
 }
 impl CapturedSources {
+    pub(in crate::commands::ui) fn source_version(&self) -> SourceVersionEvidence {
+        self.source_version
+    }
     pub fn record(&self) -> &CapturedRecord {
         &self.record
     }

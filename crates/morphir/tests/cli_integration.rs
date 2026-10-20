@@ -1898,6 +1898,13 @@ fn ui_help_documents_workspace_and_host_options() {
     assert!(help.contains(&format!("Usage: {executable} ui [OPTIONS] [WORKSPACE]")));
     assert!(help.contains("--workspace-extension <ID>"));
     assert!(help.contains("--no-open"));
+    assert!(help.contains("--preview-model-originals"));
+    assert!(
+        help.split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .contains("before full connected qualification")
+    );
 }
 
 #[test]

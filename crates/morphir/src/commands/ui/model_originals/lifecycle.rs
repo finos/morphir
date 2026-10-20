@@ -1,5 +1,8 @@
 //! Host resource ownership around the confined storage core. These handles are
 //! connection-scoped storage leases, not authenticated provider authority.
+mod provider;
+pub use provider::{PendingProviderCapture, ProviderCaptureError};
+
 use cap_std::fs::Dir;
 use morphir_distribution::Sha256Digest;
 use serde::Serialize;
@@ -80,12 +83,32 @@ struct Capacity {
 }
 #[derive(Debug, Clone)]
 pub struct HostModelCaptureCapacity(Arc<Mutex<Capacity>>);
+
+/// Read-only observation of the same host ledger. This grants no capture,
+/// directory, connection or release authority.
+#[derive(Debug, Clone)]
+pub struct ModelCaptureUsageObserver(HostModelCaptureCapacity);
+impl ModelCaptureUsageObserver {
+    pub fn usage(&self) -> ModelCaptureUsage {
+        self.0.usage()
+    }
+}
 impl Default for HostModelCaptureCapacity {
     fn default() -> Self {
         Self::with_limits(HostLimits::default())
     }
 }
 impl HostModelCaptureCapacity {
+    pub fn observer(&self) -> ModelCaptureUsageObserver {
+        ModelCaptureUsageObserver(self.clone())
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn with_metadata_limit(metadata: usize) -> Self {
+        Self::with_limits(HostLimits {
+            metadata,
+            ..Default::default()
+        })
+    }
     pub(super) fn with_limits(limits: HostLimits) -> Self {
         Self(Arc::new(Mutex::new(Capacity {
             limits,
@@ -94,6 +117,19 @@ impl HostModelCaptureCapacity {
     }
     pub fn usage(&self) -> ModelCaptureUsage {
         self.0.lock().expect("model capture capacity").usage
+    }
+    /// Compact provider witnesses share the inventory metadata ledger. This
+    /// lease is independent of the connection lock and makes no RSS claim.
+    pub(in crate::commands::ui) fn reserve_evidence(
+        &self,
+        bytes: usize,
+    ) -> Result<RetainedEvidenceCredit, CaptureError> {
+        let mut credit = RetainedEvidenceCredit {
+            host: self.clone(),
+            bytes: 0,
+        };
+        credit.grow(bytes)?;
+        Ok(credit)
     }
     fn reserve(&self) -> Result<(Reservation, WorkPermit), CaptureError> {
         let mut state = self.0.lock().expect("model capture capacity");
@@ -112,6 +148,34 @@ impl HostModelCaptureCapacity {
                 _reservation: Arc::new(WorkReservation(self.clone())),
             },
         ))
+    }
+}
+pub(in crate::commands::ui) struct RetainedEvidenceCredit {
+    host: HostModelCaptureCapacity,
+    bytes: usize,
+}
+impl RetainedEvidenceCredit {
+    pub(in crate::commands::ui) fn grow(&mut self, bytes: usize) -> Result<(), CaptureError> {
+        let mut state = self.host.0.lock().expect("model capture capacity");
+        let total = state
+            .usage
+            .metadata_bytes
+            .checked_add(bytes)
+            .filter(|total| *total <= state.limits.metadata)
+            .ok_or(CaptureError::Capacity)?;
+        state.usage.metadata_bytes = total;
+        self.bytes += bytes;
+        Ok(())
+    }
+}
+impl Drop for RetainedEvidenceCredit {
+    fn drop(&mut self) {
+        self.host
+            .0
+            .lock()
+            .expect("model capture capacity")
+            .usage
+            .metadata_bytes -= self.bytes;
     }
 }
 #[derive(Debug)]
@@ -355,6 +419,20 @@ impl ModelCaptureConnection {
             _ => Err(CaptureError::UnknownHandle),
         }
     }
+    /// Borrow the exact Ready capture while its connection ownership is locked.
+    /// The callback must remain synchronous and must not reenter this owner.
+    /// Its result cannot borrow the retained sources or extend their lifetime.
+    pub(crate) fn inspect_owned<T>(
+        &self,
+        id: &CaptureId,
+        inspect: impl FnOnce(&CapturedSources) -> T,
+    ) -> Result<T, CaptureError> {
+        let state = self.state.lock().expect("model capture connection");
+        match &*state {
+            ConnectionState::Ready(capture) if &capture.id == id => Ok(inspect(&capture.sources)),
+            _ => Err(CaptureError::UnknownHandle),
+        }
+    }
     pub fn release(&self, id: &CaptureId) -> Result<(), CaptureError> {
         let prior = {
             let mut state = self.state.lock().expect("model capture connection");
@@ -390,6 +468,7 @@ impl Drop for ModelCaptureConnection {
 
 pub(super) trait WorkerHooks: Send + Sync {
     fn before_capture(&self) {}
+    fn before_source_header(&self) {}
     fn after_capture(&self) {}
     fn before_worker_exit(&self) {}
 }

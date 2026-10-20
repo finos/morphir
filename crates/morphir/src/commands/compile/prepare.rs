@@ -617,6 +617,17 @@ pub async fn execute_compile(prepared: PreparedCompile) -> starbase::AppResult<m
     record.value = vec![descriptor.path.clone()];
     record.ir = Some(descriptor);
     record.installed = dest.previous_installed;
+    // This host writer owns only the descriptor primary. A document-tree
+    // primary includes all its descendants. Declare that positive policy
+    // while the SAME exclusive compile lock still protects output and record;
+    // neither record.value nor an ambient compile.dest scan proves it.
+    record.extra.insert(
+        "morphirModelOriginals".to_owned(),
+        serde_json::json!({
+            "contractVersion": "0.1.0-draft.1",
+            "companions": [],
+        }),
+    );
     if let Some(sources) = selection {
         record.extra.insert(
             COMPILE_SCOPE_KEY.to_owned(),

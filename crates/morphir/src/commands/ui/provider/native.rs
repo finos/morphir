@@ -31,6 +31,7 @@ pub struct NativeWorkspaceProvider {
     workspace_dir: Dir,
     out: crate::commands::out_context::OutOverrides,
     config_options: ConfigLoadOptions,
+    originals_lookup: super::originals::HostOutputLookup,
 }
 
 impl NativeWorkspaceProvider {
@@ -77,6 +78,7 @@ impl NativeWorkspaceProvider {
             workspace_dir,
             out: Default::default(),
             config_options,
+            originals_lookup: Default::default(),
         })
     }
 
@@ -91,7 +93,57 @@ impl NativeWorkspaceProvider {
 
     pub fn with_out_overrides(mut self, out: crate::commands::out_context::OutOverrides) -> Self {
         self.out = out;
+        self.originals_lookup = Default::default();
         self
+    }
+
+    pub(in crate::commands::ui) fn authorize_originals_lookup(
+        mut self,
+        ambient: cap_std::AmbientAuthority,
+    ) -> Result<Self, CliError> {
+        self.originals_lookup = super::originals::HostOutputLookup::issue(
+            &self.workspace_dir,
+            &self.workspace,
+            &self.config_options,
+            &self.out,
+            ambient,
+        )?;
+        Ok(self)
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn with_originals_lookup_hooks(
+        mut self,
+        hooks: std::sync::Arc<dyn super::originals::LookupHooks>,
+    ) -> Self {
+        self.originals_lookup.set_hooks(hooks);
+        self
+    }
+
+    pub(super) fn resolve_originals(
+        &self,
+        selection: &super::originals::OriginalsSelection,
+        credit: crate::commands::ui::model_originals::RetainedEvidenceCredit,
+    ) -> Result<
+        super::originals::SourceResolution,
+        crate::commands::ui::model_originals::ProviderCaptureError,
+    > {
+        selection.validate_stored_source(&self.source)?;
+        let grant = self.originals_lookup.granted()?;
+        let captured = grant.capture_discovery()?;
+        let request = captured.request().clone();
+        drop(captured);
+        let membership = portable::discover(request).into_result().map_err(|error| {
+            CliError::WorkspaceDiscovery {
+                error: error.into(),
+            }
+        })?;
+        super::originals::resolve_selected(grant, &self.source, selection, &membership, credit)
+    }
+    pub(super) fn validate_originals_selection(
+        &self,
+        selection: &super::originals::OriginalsSelection,
+    ) -> Result<(), CliError> {
+        selection.validate_stored_source(&self.source)
     }
 
     fn validate_source(&self, source: &WorkbenchSourceRef) -> Result<(), CliError> {

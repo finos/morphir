@@ -38,6 +38,7 @@ pub struct ExtensionWorkspaceProvider {
     workspace_dir: Dir,
     out: crate::commands::out_context::OutOverrides,
     config_options: ConfigLoadOptions,
+    originals_lookup: super::originals::HostOutputLookup,
     implementation: ExtensionImplementation,
 }
 
@@ -113,6 +114,7 @@ impl ExtensionWorkspaceProvider {
             workspace_dir,
             out: Default::default(),
             config_options: ConfigLoadOptions::default(),
+            originals_lookup: Default::default(),
             implementation: ExtensionImplementation::Installed(Box::new(InstalledSource::new(
                 home, snapshot,
             ))),
@@ -142,6 +144,7 @@ impl ExtensionWorkspaceProvider {
             workspace_dir: open_workspace(workspace).unwrap(),
             out: Default::default(),
             config_options,
+            originals_lookup: Default::default(),
             implementation: ExtensionImplementation::Fixture {
                 expected_request: Arc::new(expected_request),
                 response: Arc::new(response),
@@ -151,7 +154,62 @@ impl ExtensionWorkspaceProvider {
 
     pub fn with_out_overrides(mut self, out: crate::commands::out_context::OutOverrides) -> Self {
         self.out = out;
+        self.originals_lookup = Default::default();
         self
+    }
+
+    pub(in crate::commands::ui) fn authorize_originals_lookup(
+        mut self,
+        ambient: cap_std::AmbientAuthority,
+    ) -> Result<Self, CliError> {
+        let label = self.workspace.canonicalize()?;
+        self.originals_lookup = super::originals::HostOutputLookup::issue(
+            &self.workspace_dir,
+            &label,
+            &self.config_options,
+            &self.out,
+            ambient,
+        )?;
+        Ok(self)
+    }
+
+    pub(super) async fn resolve_originals(
+        &self,
+        selection: &super::originals::OriginalsSelection,
+        credit: crate::commands::ui::model_originals::RetainedEvidenceCredit,
+    ) -> Result<
+        super::originals::SourceResolution,
+        crate::commands::ui::model_originals::ProviderCaptureError,
+    > {
+        selection.validate_stored_source(&self.source)?;
+        let grant = self.originals_lookup.granted()?;
+        let captured = grant.capture_discovery()?;
+        let membership = match &self.implementation {
+            ExtensionImplementation::Installed(source) => {
+                invoke_installed(source, &self.workspace, captured.request().clone()).await?
+            }
+            #[cfg(test)]
+            ExtensionImplementation::Fixture {
+                expected_request,
+                response,
+            } => {
+                if captured.request() != expected_request.as_ref() {
+                    return Err(extension_error(
+                        "Fixture workspace request does not match the provider contract",
+                    )
+                    .into());
+                }
+                discovery_result(response.as_ref().clone())?
+            }
+        };
+        drop(captured);
+        super::originals::resolve_selected(grant, &self.source, selection, &membership, credit)
+    }
+    pub(super) fn validate_originals_selection(
+        &self,
+        selection: &super::originals::OriginalsSelection,
+    ) -> Result<(), CliError> {
+        selection.validate_stored_source(&self.source)
     }
 
     fn validate_source(&self, source: &WorkbenchSourceRef) -> Result<(), CliError> {
@@ -558,5 +616,169 @@ mod tests {
 
         assert_eq!(model.content, content);
         assert_eq!(model.descriptor.source.provider_id, "cli:session-1");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn actual_installed_provider_captures_only_its_guest_selected_project_originals() {
+        use crate::commands::ui::{
+            model_originals::*,
+            protocol::project_key,
+            provider::originals::{OriginalsProvider, OriginalsSelection},
+        };
+        let home_root = tempfile::tempdir().unwrap();
+        let workspace = tempfile::tempdir().unwrap();
+        std::fs::write(
+            workspace.path().join("morphir.toml"),
+            "[project]\nname='acme/installed'\nversion='1.0.0'\n",
+        )
+        .unwrap();
+        let output = workspace.path().join(".morphir/out");
+        std::fs::create_dir_all(output.join("compile.dest")).unwrap();
+        std::fs::write(
+            output.join("compile.dest/model.json"),
+            b"actual installed originals",
+        )
+        .unwrap();
+        std::fs::write(output.join("compile.json"), br#"{"schema":1,"task":"compile","module":"","completedAt":"now","ir":{"path":"model.json","layout":"single-file","format":"json","version":"v4"}}"#).unwrap();
+        let expected =
+            discover_workspace_detailed(workspace.path(), &ConfigLoadOptions::project_only())
+                .unwrap()
+                .snapshot;
+        let (home, _) = install_workspace_fixture(home_root.path(), &expected);
+        let mut provider =
+            ExtensionWorkspaceProvider::select(home, workspace.path(), "installed-originals", None)
+                .unwrap();
+        provider.config_options = ConfigLoadOptions::project_only();
+        let provider = provider
+            .authorize_originals_lookup(cap_std::ambient_authority())
+            .unwrap();
+        let source = provider.initial_sources().pop().unwrap();
+        let selection = OriginalsSelection::parse(&source, &project_key(&source, ".")).unwrap();
+        let host = HostModelCaptureCapacity::default();
+        let owner = ModelCaptureConnection::new(host.clone());
+        let id = owner
+            .start_provider(
+                OriginalsProvider::Installed(Arc::new(provider)),
+                selection,
+                CaptureScope::Primary,
+            )
+            .unwrap()
+            .wait()
+            .await
+            .unwrap()
+            .ready()
+            .unwrap();
+        assert_eq!(owner.inspect(&id).unwrap().source_byte_length(), 26);
+        assert_eq!(host.usage().active_workers(), 0);
+        owner.release(&id).unwrap();
+        assert_eq!(host.usage(), ModelCaptureUsage::default());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn local_config_sidecar_cannot_invent_members_absent_from_actual_installed_guest() {
+        use crate::commands::ui::{
+            model_originals::*,
+            protocol::project_key,
+            provider::originals::{OriginalsProvider, OriginalsSelection},
+        };
+        let home_root = tempfile::tempdir().unwrap();
+        let workspace = tempfile::tempdir().unwrap();
+        std::fs::write(
+            workspace.path().join("morphir.toml"),
+            "[project]\nname='acme/installed'\nversion='1.0.0'\n",
+        )
+        .unwrap();
+        let mut snapshot =
+            discover_workspace_detailed(workspace.path(), &ConfigLoadOptions::project_only())
+                .unwrap()
+                .snapshot;
+        assert_eq!(snapshot.projects.len(), 1);
+        snapshot.projects.clear(); // Actual installed guest has no selected member.
+        let (home, _) = install_workspace_fixture(home_root.path(), &snapshot);
+        let mut provider =
+            ExtensionWorkspaceProvider::select(home, workspace.path(), "installed-originals", None)
+                .unwrap();
+        provider.config_options = ConfigLoadOptions::project_only();
+        let provider = provider
+            .authorize_originals_lookup(cap_std::ambient_authority())
+            .unwrap();
+        let source = provider.initial_sources().pop().unwrap();
+        let selection = OriginalsSelection::parse(&source, &project_key(&source, ".")).unwrap();
+        let host = HostModelCaptureCapacity::default();
+        let owner = ModelCaptureConnection::new(host.clone());
+        let result = owner
+            .start_provider(
+                OriginalsProvider::Installed(Arc::new(provider)),
+                selection,
+                CaptureScope::Primary,
+            )
+            .unwrap()
+            .wait()
+            .await;
+        assert!(matches!(result, Err(ProviderCaptureError::Authority(_))));
+        assert!(!workspace.path().join(".morphir/out").exists());
+        assert_eq!(host.usage(), ModelCaptureUsage::default());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn installed_selected_project_without_primary_does_not_walk_ancestor_config() {
+        use crate::commands::ui::{
+            model_originals::*,
+            protocol::project_key,
+            provider::originals::{OriginalsProvider, OriginalsSelection},
+        };
+        let home_root = tempfile::tempdir().unwrap();
+        let root = tempfile::tempdir().unwrap();
+        let workspace = root.path().join("orders");
+        std::fs::create_dir(&workspace).unwrap();
+        std::fs::write(
+            workspace.join("morphir.toml"),
+            "[project]\nname='acme/orders'\nversion='1.0.0'\n",
+        )
+        .unwrap();
+        let snapshot = discover_workspace_detailed(&workspace, &ConfigLoadOptions::project_only())
+            .unwrap()
+            .snapshot;
+        assert_eq!(snapshot.projects.len(), 1);
+        let (home, _) = install_workspace_fixture(home_root.path(), &snapshot);
+        let mut provider =
+            ExtensionWorkspaceProvider::select(home, &workspace, "missing-primary", None).unwrap();
+        provider.config_options = ConfigLoadOptions::project_only();
+        let provider = provider
+            .authorize_originals_lookup(cap_std::ambient_authority())
+            .unwrap();
+        std::fs::remove_file(workspace.join("morphir.toml")).unwrap();
+        // This would fail if a missing selected primary caused ancestor search.
+        std::fs::write(root.path().join("morphir.toml"), "[malformed ancestor").unwrap();
+        let output = workspace.join(".morphir/out");
+        std::fs::create_dir_all(output.join("compile.dest")).unwrap();
+        std::fs::write(
+            output.join("compile.dest/model.json"),
+            b"no primary originals",
+        )
+        .unwrap();
+        std::fs::write(output.join("compile.json"), br#"{"schema":1,"task":"compile","module":"","completedAt":"now","ir":{"path":"model.json","layout":"single-file","format":"json","version":"v4"}}"#).unwrap();
+        let source = provider.initial_sources().pop().unwrap();
+        let selection = OriginalsSelection::parse(&source, &project_key(&source, ".")).unwrap();
+        let host = HostModelCaptureCapacity::default();
+        let owner = ModelCaptureConnection::new(host.clone());
+        let id = owner
+            .start_provider(
+                OriginalsProvider::Installed(Arc::new(provider)),
+                selection,
+                CaptureScope::Primary,
+            )
+            .unwrap()
+            .wait()
+            .await
+            .unwrap()
+            .ready()
+            .unwrap();
+        assert_eq!(owner.inspect(&id).unwrap().source_byte_length(), 20);
+        owner.release(&id).unwrap();
+        assert_eq!(host.usage(), ModelCaptureUsage::default());
     }
 }
