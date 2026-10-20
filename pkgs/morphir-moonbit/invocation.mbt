@@ -100,10 +100,24 @@ pub fn invocation_driver(
     #|    @sdk.OutOfRange(_) => @execution.ModelError("sdk.out_of_range")
     #|    @sdk.InvalidComparison(_) => @execution.ModelError("sdk.invalid_comparison")
     #|    @sdk.UnrepresentableText(_) => @execution.ModelError("sdk.unrepresentable_text")
-    #|    error => raise error
-    #|  }
-    #|}
-    #|
+  let decimal_errors = if output.project.dependencies.any(d => {
+      d.api_profile.contains("+decimal-checked-v1")
+    }) {
+    "\n    @decimal.DivisionByZero => @execution.ModelError(\"sdk.decimal.division_by_zero\")\n" +
+    "    @decimal.Underflow => @execution.ModelError(\"sdk.decimal.underflow\")\n" +
+    "    @decimal.PrecisionLoss => @execution.ModelError(\"sdk.decimal.precision_loss\")\n" +
+    "    @decimal.InvalidLiteral => @execution.ModelError(\"sdk.decimal.invalid_literal\")\n"
+  } else {
+    "\n"
+  }
+  let ending = ending +
+    decimal_errors +
+    (
+      #|    error => raise error
+      #|  }
+      #|}
+      #|
+    )
   let float_import = if output.invocation_codecs.contains("@source_float.") {
     "\"finos/morphir-sdk/source_float\" @source_float,\n"
   } else {

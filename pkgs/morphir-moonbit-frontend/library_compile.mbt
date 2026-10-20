@@ -29,14 +29,14 @@ fn library_compile_scoped(
   bindings~ : PinnedSourceBindings = PinnedSourceBindings::empty(),
 ) -> LibraryOutput raise {
   limits.validate()
-  if mode != NumericSdk && !bindings.types.is_empty() {
+  if mode != NumericSdk && mode != DecimalSdk && !bindings.types.is_empty() {
     library_error(
       "binding_identity",
       "SDK Integer bindings require the numeric SDK source profile",
       None,
     )
   }
-  if mode == NumericSdk &&
+  if (mode == NumericSdk || mode == DecimalSdk) &&
     (
       !bindings.types.contains(SourceSdkType::Integer) ||
       !bindings.types.contains(SourceSdkType::Error)
@@ -44,6 +44,13 @@ fn library_compile_scoped(
     library_error(
       "binding_identity",
       "The numeric SDK profile requires its audited Integer and SdkError type bindings",
+      None,
+    )
+  }
+  if (mode == DecimalSdk) != bindings.types.contains(SourceSdkType::Decimal) {
+    library_error(
+      "binding_identity",
+      "Decimal bindings require the checked Decimal profile",
       None,
     )
   }
@@ -469,6 +476,36 @@ pub fn compile_supported_library_2026_10_19(
         cancelled,
         scope,
         mode=SupportedLibrary20261019,
+        string_limit=max_string_code_units,
+      )
+      check_naming_warnings(output.warnings, strict_naming)
+      output
+    },
+    is_cancelled=frontend_cancelled,
+  )
+}
+
+///|
+/// Checked Decimal source library with pinned versioned failure contracts.
+pub fn compile_decimal_library(
+  input : Input,
+  bindings : PinnedSourceBindings,
+  limits~ : LibraryLimits = LibraryLimits::default(),
+  max_string_code_units~ : Int32 = 1048576,
+  strict_naming~ : Bool = false,
+  cancelled~ : () -> Bool = fn() { false },
+  scope~ : @observe.Scope = @observe.Observer::noop().scope(),
+) -> LibraryOutput raise {
+  scope.observe(
+    @observe.Frontend,
+    fn(scope) raise {
+      let output = library_compile_scoped(
+        input,
+        limits,
+        cancelled,
+        scope,
+        mode=DecimalSdk,
+        bindings~,
         string_limit=max_string_code_units,
       )
       check_naming_warnings(output.warnings, strict_naming)

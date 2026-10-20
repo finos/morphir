@@ -108,6 +108,46 @@ pub fn numeric_sdk_specification() -> @ir.PackageSpecification raise {
     doc: classic_int.doc,
     annotations: classic_int.annotations,
   }
+  let decimal = @ir.Type::Reference(
+    attrs,
+    @ir.FQName::parse("morphir/SDK:decimal#decimal"),
+    [],
+  )
+  let text = @ir.Type::Reference(
+    attrs,
+    @ir.FQName::parse("morphir/SDK:string#string"),
+    [],
+  )
+  let checked_values = Map([])
+  let checked_provenance = @ir.Annotation::Compact(
+    @ir.FQName::parse("morphir/moonbit-source:numeric#sdk-extension"),
+    Some("morphir-sdk-decimal-checked-v1"),
+  )
+  for
+    (name, inputs) in [
+      ("from-string-exact", [text]),
+      ("divide", [decimal, decimal]),
+      ("divide-with-default", [decimal, decimal, decimal]),
+    ] {
+    checked_values[@ir.Name::parse(name)] = @ir.Documented::{
+      doc: Some(
+        "Checked Decimal v1: exact construction; division truncates at -32 with distinct zero-divisor and underflow errors; fallback is opt-in",
+      ),
+      value: @ir.ValueSpecification::{
+        inputs: inputs.mapi((i, ty) => {
+          (@ir.Name::parse("arg-" + i.to_string()), ty)
+        }),
+        output: decimal,
+        annotations: [checked_provenance],
+      },
+    }
+  }
+  modules[@ir.Path::parse("decimal-checked-v1")] = @ir.ModuleSpecification::{
+    types: Map([]),
+    values: checked_values,
+    doc: None,
+    annotations: [checked_provenance],
+  }
   { modules, }
 }
 

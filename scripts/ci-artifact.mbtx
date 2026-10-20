@@ -131,6 +131,18 @@ fn cross_context(identity : Json, target~ : String? = None) -> Json raise {
 }
 
 ///|
+/// Released provider binaries have their own pinned build and attestation.
+/// The acquisition job's runner image remains provenance in the catalog; it is
+/// not a compatibility requirement for another same-run consumer of those bytes.
+fn released_provider_context(identity : Json) -> Json raise {
+  guard @json.parse(identity.stringify()) is Object(fields) else {
+    fail("Expected released provider identity")
+  }
+  fields.remove("imageVersion")
+  Json::object(fields)
+}
+
+///|
 async fn check_native_format(path : String, identity : Json) -> Unit {
   ignore(
     output("node", [
@@ -230,7 +242,16 @@ async fn admit(kind : String, directory : String, expected : Json) -> Json {
   } else {
     expected
   }
-  guard field(manifest, "context") == accepted else {
+  let catalog_context = field(manifest, "context")
+  let context_matches = if kind == "provider-tools" &&
+    field(metadata, "acquisition") == Json::string("released") &&
+    field(metadata, "buildMode") == Json::string("release") {
+    released_provider_context(catalog_context) ==
+    released_provider_context(accepted)
+  } else {
+    catalog_context == accepted
+  }
+  guard context_matches else {
     fail("Artifact source/run/platform/toolchain mismatch")
   }
   let expected_names = names(kind, metadata=field(manifest, "metadata"))
@@ -444,16 +465,70 @@ async fn self_test() -> Unit {
   }
   let provider = "provider-tools"
   let metadata : Json = { "acquisition": "released", "buildMode": "release" }
+  let provider_identity : Json = {
+    "repository": "fixture/repo",
+    "revision": "accepted",
+    "runId": "123",
+    "platform": "linux",
+    "arch": "x64",
+    "imageVersion": "20261018.339.1",
+  }
+  guard @json.parse(provider_identity.stringify()) is Object(consumer_fields) else {
+    fail("Expected released provider consumer identity")
+  }
+  consumer_fields.set("imageVersion", Json::string("20261012.334.1"))
+  let provider_consumer = Json::object(consumer_fields)
   for name in names(provider, metadata~) {
     @fs.write_file(root + "/" + name, "verified fixture bytes: " + name)
   }
-  ignore(write_catalog(provider, root, expected, metadata))
-  ignore(admit(provider, root, expected))
+  ignore(write_catalog(provider, root, provider_identity, metadata))
+  // Separate jobs in the same run can receive different images during a rollout.
+  // The released tools were qualified and attested independently of either image.
+  let accepted_provider = admit(provider, root, provider_consumer)
+  assert_eq(
+    field(field(accepted_provider, "manifest"), "context"),
+    provider_identity,
+  )
+  for
+    (key, value) in [
+      ("repository", "other/repo"),
+      ("revision", "stale"),
+      ("runId", "122"),
+      ("platform", "darwin"),
+      ("arch", "arm64"),
+    ] {
+    guard @json.parse(provider_consumer.stringify()) is Object(fields) else {
+      fail("Expected released provider context")
+    }
+    fields.set(key, Json::string(value))
+    try ignore(admit(provider, root, Json::object(fields))) catch {
+      _ => ()
+    } noraise {
+      _ => fail("Expected released provider context rejection: " + key)
+    }
+  }
   @fs.write_file(root + "/release-admission.ionb", "tampered release proof")
-  try ignore(admit(provider, root, expected)) catch {
+  try ignore(admit(provider, root, provider_consumer)) catch {
     _ => ()
   } noraise {
     _ => fail("Expected release proof integrity rejection")
+  }
+  // Source-built tools and native executables keep their strict image checks.
+  ignore(
+    write_catalog(provider, root, provider_identity, { "buildMode": "debug" }),
+  )
+  try ignore(admit(provider, root, provider_consumer)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected source-built provider image mismatch")
+  }
+  ignore(
+    write_catalog(kind, root, provider_identity, { "buildMode": "release" }),
+  )
+  try ignore(admit(kind, root, provider_consumer)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Expected native image mismatch")
   }
   let builder : Json = {
     "repository": "fixture/repo",

@@ -83,7 +83,7 @@ async fn main {
   let sdk_tree = command("git", ["rev-parse", "HEAD:pkgs/morphir-sdk"])
     .trim()
     .to_owned()
-  assert_eq(sdk_tree, "9c83a100383570236b3d781362524008f76dd56d")
+  assert_eq(sdk_tree, "642fd13ea74bc46c3f5344844c9cca4ffbae368a")
   assert_true(
     command("git", ["status", "--porcelain", "--", "pkgs/morphir-sdk"])
     .trim()
@@ -102,15 +102,22 @@ async fn main {
     repository + "/pkgs/morphir-execution",
     "./consumer",
   ]
-  let imports = ["\"finos/morphir-sdk@0.1.0\""]
+  let imports = [
+    "\"finos/morphir-sdk@0.1.0\"", "\"finos/morphir-execution@0.1.0\"",
+  ]
   let aliases = [
     "\"finos/morphir-sdk\" @sdk", "\"finos/morphir-sdk/int\" @int", "\"finos/morphir-sdk/integer\" @integer",
+    "\"finos/morphir-sdk/decimal\" @decimal", "\"finos/morphir-execution\" @execution",
   ]
   let tests = StringBuilder()
   let private_probes = []
   for model in array(field(output, "models")) {
     let id = string(field(model, "id"))
-    let stripped = id.strip_prefix("sdk").map(s => s.to_owned()).unwrap_or(id)
+    let snapshot_id = id.strip_prefix("r4").map(s => s.to_owned()).unwrap_or(id)
+    let stripped = snapshot_id
+      .strip_prefix("sdk")
+      .map(s => s.to_owned())
+      .unwrap_or(snapshot_id)
     let base_id = stripped
       .strip_prefix("snapshot")
       .map(s => s.to_owned())
@@ -133,7 +140,10 @@ async fn main {
       "name = \"acceptance/" +
       id +
       "\"\nversion = \"0.0.0\"\n" +
-      (if kind == "pinnedsdk" || kind == "math" || kind == "conversions" {
+      (if kind == "pinnedsdk" ||
+        kind == "math" ||
+        kind == "conversions" ||
+        kind == "decimal" {
         "import { \"finos/morphir-sdk@0.1.0\" }\n"
       } else {
         ""
@@ -141,7 +151,9 @@ async fn main {
     )
     @fs.write_file(
       original + "/moon.pkg",
-      if kind == "conversions" {
+      if kind == "decimal" {
+        "import { \"finos/morphir-sdk/decimal\" @decimal }\n"
+      } else if kind == "conversions" {
         "import {\n  \"finos/morphir-sdk\" @sdk,\n  \"finos/morphir-sdk/basics\" @basics,\n  \"finos/morphir-sdk/int\" @int,\n  \"finos/morphir-sdk/integer\" @integer,\n}\n"
       } else if kind == "pinnedsdk" || kind == "math" {
         "import { \"finos/morphir-sdk/basics\" @basics }\n"
@@ -174,10 +186,21 @@ async fn main {
       for artifact in driver_artifacts {
         @fs.write_file(
           driver + "/" + string(field(artifact, "path")),
-          string(field(artifact, "content")),
+          if id == "decimal" && string(field(artifact, "path")) == "moon.mod" {
+            string(field(artifact, "content")).replace(
+              old="morphir-generated/driver",
+              new="morphir-generated/driver-decimal",
+            )
+          } else {
+            string(field(artifact, "content"))
+          },
         )
       }
       members.push("./driver-" + id)
+      if id == "decimal" {
+        imports.push("\"morphir-generated/driver-decimal@0.0.0\"")
+        aliases.push("\"morphir-generated/driver-decimal\" @decimal_driver")
+      }
     }
     members.append(["./original-" + id, "./generated-" + id])
     let module_name = string(field(model, "module"))
@@ -219,6 +242,124 @@ async fn main {
         g("choose") +
         "(flag)(a)(b))), original.to_string())\n  }\n}\n",
       )
+    } else if kind == "decimal" {
+      for row in array(field(model, "decimalReferences")) {
+        let name = string(field(row, "name"))
+        let args = array(field(row, "args")).map(v => string(v).escape())
+        let original = "@odecimal." + name + "(" + args.join(", ") + ")"
+        let generated = g(name) +
+          (if args.is_empty() {
+            ""
+          } else {
+            "(" +
+            args.map(a => "@sdk.Text::from_string(" + a + ")").join(")(") +
+            ")"
+          })
+        let expected = string(field(row, "expected")).escape()
+        model_tests.write_string(
+          "test " +
+          ("checked Decimal " + model_tests.to_string().length().to_string()).escape() +
+          " { assert_eq(@decimal.to_string(" +
+          original +
+          "), " +
+          expected +
+          "); assert_eq(@decimal.to_string(" +
+          generated +
+          "), " +
+          expected +
+          ") }\n",
+        )
+      }
+      for row in array(field(model, "decimalComparisons")) {
+        let name = string(field(row, "name"))
+        let a = string(field(row, "a")).escape()
+        let b = string(field(row, "b")).escape()
+        let expected = field(row, "expected").stringify()
+        model_tests.write_string(
+          "test " +
+          ("checked Decimal " + model_tests.to_string().length().to_string()).escape() +
+          " { assert_eq(@odecimal." +
+          name +
+          "(" +
+          a +
+          ", " +
+          b +
+          "), " +
+          expected +
+          "); assert_eq(" +
+          g(name) +
+          "(@sdk.Text::from_string(" +
+          a +
+          "))(@sdk.Text::from_string(" +
+          b +
+          ")), " +
+          expected +
+          ") }\n",
+        )
+      }
+      for row in array(field(model, "decimalFailures")) {
+        let name = string(field(row, "name"))
+        let args = array(field(row, "args")).map(v => string(v).escape())
+        let error_case = match string(field(row, "code")) {
+          "division_by_zero" => "DivisionByZero"
+          "underflow" => "Underflow"
+          "precision_loss" => "PrecisionLoss"
+          _ => "InvalidLiteral"
+        }
+        for
+          call in [
+            "@odecimal." + name + "(" + args.join(", ") + ")",
+            g(name) +
+            "(" +
+            args.map(a => "@sdk.Text::from_string(" + a + ")").join(")(") +
+            ")",
+          ] {
+          model_tests.write_string(
+            "test " +
+            ("checked Decimal " + model_tests.to_string().length().to_string()).escape() +
+            " { try { ignore(" +
+            call +
+            "); fail(\"Expected Decimal failure\") } catch { @decimal." +
+            error_case +
+            " => (); error => raise error } }\n",
+          )
+        }
+      }
+      model_tests.write_string(
+        "test " +
+        ("checked Decimal " + model_tests.to_string().length().to_string()).escape() +
+        " { let value = @decimal.from_string_exact(\"12.3400\"); assert_eq(@decimal.to_string(@odecimal.identity(value)), \"12.34\"); assert_eq(@decimal.to_string(" +
+        g("identity") +
+        "(value)), \"12.34\") }\n",
+      )
+      for row in array(field(model, "decimalFailures")) {
+        let name = string(field(row, "name"))
+        let fqname = string(
+          field(
+            symbols.filter(s => {
+              string(field(s, "fqname")).has_suffix("#" + name)
+            })[0],
+            "fqname",
+          ),
+        )
+        let args = array(field(row, "args")).map(v => {
+          "@execution.Text(@sdk.Text::from_string(" +
+          string(v).escape() +
+          ").to_units().map(n => n.to_int()))"
+        })
+        model_tests.write_string(
+          "test " +
+          ("Decimal compiled model error " +
+          model_tests.to_string().length().to_string()).escape() +
+          " { let actual = @decimal_driver.invoke({ id: \"error\", entry: " +
+          fqname.escape() +
+          ", arguments: [" +
+          args.join(", ") +
+          "] }); @execution.validate_as(actual, @execution.Decimal, [], output=true); assert_eq(actual, @execution.ModelError(" +
+          ("sdk.decimal." + string(field(row, "code"))).escape() +
+          ")) }\n",
+        )
+      }
     } else if kind == "conversions" {
       for
         (name, expected) in [
@@ -628,7 +769,8 @@ async fn main {
         "profile": "moonbit-model-pinned-sdk-library-v1",
         "sourcePackage": "finos/morphir-sdk/basics",
         "sourceVersion": "0.1.0",
-        "sourceTree": sdk_tree,
+        "sourceTree": "9c83a100383570236b3d781362524008f76dd56d",
+        "qualifiedRuntimeTree": sdk_tree,
         "sourceAlias": "basics",
         "sourceName": "not_",
         "sourceSignature": "Bool -> Bool",
@@ -642,9 +784,9 @@ async fn main {
         "moonbit-model-library-v1", "moonbit-model-library-2026-10-17", "moonbit-model-int32-library-v1",
         "moonbit-model-library-2026-10-19", "moonbit-model-integer-library-v1", "moonbit-model-float-library-v1",
         "moonbit-model-pinned-sdk-library-v1", "moonbit-model-library-2026-10-19-r2",
-        "moonbit-model-library-2026-10-19-r3",
+        "moonbit-model-library-2026-10-19-r3", "moonbit-model-library-2026-10-19-r4",
       ],
-      "scope": "Local original source, Scheme, generated direct consumers, pinned math and Integer conversion SDK calls, and private access. Installed qualification remains a separate task.",
+      "scope": "Local original source, Scheme, generated direct consumers, pinned math, Integer conversion and checked Decimal SDK calls, and private access. Installed qualification remains a separate task.",
     } : Json)
   let ion = @ion_json.to_ion(receipt)
   let bytes = @binary.write_binary_value(ion)

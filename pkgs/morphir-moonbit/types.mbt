@@ -199,6 +199,7 @@ priv struct ConstructorEntry {
 
 ///|
 priv struct Lowering {
+  error_contract : ErrorContract
   types : Map[@ir.FQName, TypeEntry]
   constructors : Map[@ir.FQName, ConstructorEntry]
   values : Map[@ir.FQName, Declaration]

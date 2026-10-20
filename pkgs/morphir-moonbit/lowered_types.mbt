@@ -179,7 +179,9 @@ fn type_source(ctx : Lowering, tpe : Lowered) -> String {
       type_source(ctx, a) +
       ") -> " +
       type_source(ctx, b) +
-      " raise @sdk.SdkError)"
+      " raise " +
+      ctx.error_contract.source() +
+      ")"
     Sequence(a) => {
       ctx.imports["list"] = true
       "@list.List[" + type_source(ctx, a) + "]"
@@ -227,7 +229,9 @@ fn curry_source(
       type_source(ctx, inputs[i].1) +
       ") -> " +
       type_source(ctx, result) +
-      " raise @sdk.SdkError { " +
+      " raise " +
+      ctx.error_contract.source() +
+      " { " +
       source +
       " }"
     result = Arrow(inputs[i].1, result)

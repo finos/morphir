@@ -6,6 +6,37 @@ fn sdk_module(name : String) -> @ir.ModuleSpecification {
 }
 
 ///|
+test "checked Decimal is a versioned extension and classic Decimal remains identical" {
+  let classic = @sdk_spec.sdk_specification()
+  let extended = @sdk_spec.numeric_sdk_specification()
+  let path = @ir.Path::parse("decimal-checked-v1")
+  assert_false(classic.modules.contains(path))
+  let checked = extended.modules[path]
+  assert_eq(checked.values.length(), 3)
+  for
+    (name, arity) in [
+      ("from-string-exact", 1),
+      ("divide", 2),
+      ("divide-with-default", 3),
+    ] {
+    let spec = checked.values[@ir.Name::parse(name)].value
+    assert_eq(spec.inputs.length(), arity)
+    assert_true(
+      spec.annotations.contains(
+        @ir.Annotation::Compact(
+          @ir.FQName::parse("morphir/moonbit-source:numeric#sdk-extension"),
+          Some("morphir-sdk-decimal-checked-v1"),
+        ),
+      ),
+    )
+  }
+  assert_eq(
+    extended.modules[@ir.Path::parse("decimal")],
+    classic.modules[@ir.Path::parse("decimal")],
+  )
+}
+
+///|
 test "the SDK specification has the hand-written types" {
   let basics = sdk_module("basics")
   for t in ["int", "float", "bool", "never", "order"] {

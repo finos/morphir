@@ -175,10 +175,10 @@ fn library_check_body(
     }
     Call(index, arguments, source) => {
       let signature = functions[index].declaration
-      if signature.effect == SdkError && effect != SdkError {
+      if signature.effect != Pure && effect != signature.effect {
         library_error(
           "error_contract",
-          "A call that can raise SDK errors requires raise @sdk.SdkError",
+          "Call requires raise @" + signature.effect.identifier(),
           Some(source),
         )
       }
@@ -197,10 +197,10 @@ fn library_check_body(
     }
     SdkCall(index, arguments, source) => {
       let binding = bindings.entries[index]
-      if binding.effect == SdkError && effect != SdkError {
+      if binding.effect != Pure && effect != binding.effect {
         library_error(
           "error_contract",
-          "The pinned SDK call requires raise @sdk.SdkError",
+          "The pinned SDK call requires raise @" + binding.effect.identifier(),
           Some(source),
         )
       }

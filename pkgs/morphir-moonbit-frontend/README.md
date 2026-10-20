@@ -7,6 +7,7 @@ The source language is `moonbit`; profiles describe the supported subset.
 
 | API | Profile | Source contract | Entry contract |
 | --- | --- | --- | --- |
+| `compile_decimal_library` | `moonbit-model-library-2026-10-19-r4` | R3 plus concrete Decimal, exact construction, arithmetic/comparisons, half-even rounding and checked division | Explicit DecimalError, preserved literal scale |
 | `compile_numeric_sdk_library` | `moonbit-model-library-2026-10-19-r3` | R2 plus pinned SDK Integer, rounding, binary64 optional conversions and explicit `SdkError` declarations | Sorted public entries; Integer and optional Integer budgets |
 | `compile_math_library` | `moonbit-model-library-2026-10-19-r2` | Cumulative Bool/String, all qualified integer and floating forms, and six pinned SDK calls | Sorted public entries with scalar and String guards |
 | `compile_supported_library_2026_10_19` | `moonbit-model-library-2026-10-19` | Cumulative Bool/String/Int32, including signed arithmetic, UTF-16 length and owned slices | Sorted public entries with String guards and Int32 wrappers |
@@ -40,8 +41,8 @@ its typed owner is the canonical SDK type. A transport tag does not declare a ty
 
 ## Cumulative source conformance
 
-Use `compile_numeric_sdk_library` with adapter-supplied `PinnedSourceBindings::sdk_numeric_conversions`, or source profile
-`moonbit-model-library-2026-10-19-r3`,
+Use `compile_decimal_library` with adapter-supplied `PinnedSourceBindings::sdk_decimal`, or source profile
+`moonbit-model-library-2026-10-19-r4`,
 for all currently qualified source capabilities together. It combines Bool
 operators, bounded String literals/concatenation/equality/ordering, signed Int32
 literals/arithmetic/comparisons, UTF-16 code-unit `String.length()`, and
@@ -464,3 +465,66 @@ Receipts default to `.dev/frontend-acceptance/`; set `MORPHIR_FRONTEND_RECEIPTS`
 choose another directory. They retain model sources, typed JSON IR, generated
 sources, binary Ion symbol files, lane logs and source/dependency/toolchain
 identities. `MORPHIR_FRONTEND_SDK` can supply an explicit SDK source directory.
+
+## Checked Decimal source calls
+
+Revision 4 adds the SDK library type `@decimal.Decimal`. It is a concrete type,
+not a built-in MoonBit scalar. The finite binding factory requires package
+`finos/morphir-sdk/decimal`, version `0.1.0`, alias `decimal` and SDK tree
+`642fd13ea74bc46c3f5344844c9cca4ffbae368a`. Earlier profiles and bindings keep
+their resolved identities. This does not introduce an SDK flavor switch.
+
+```moonbit
+pub fn amount(text : String) -> @decimal.Decimal raise @decimal.DecimalError {
+  let value = @decimal.from_string_exact(text)
+  @decimal.divide(@decimal.mul(value, value), value)
+}
+```
+
+| Admitted call | Contract |
+| --- | --- |
+| `from_string_exact(String)` | Exact construction using the classic lexical grammar; `InvalidLiteral` for invalid syntax or construction budgets; `PrecisionLoss` if nonzero digits would be discarded below exponent -32 |
+| `add`, `sub`, `mul` | Classic exact coefficient arithmetic with normalization and truncation at exponent -32 |
+| `eq`, `neq`, `lt`, `lte`, `gt`, `gte` | Exact numerical comparison, independent of original scale |
+| `round` | Round to an integer, ties to even, including negative ties |
+| `divide` | Truncate toward zero at exponent -32; `DivisionByZero` for any zero divisor, including 0/0; `Underflow` for a nonzero quotient truncated to zero; 0/nonzero succeeds |
+| `divide_with_default(fallback, a, b)` | Explicit opt-in fallback for division failure; successful zero remains zero |
+
+Construction is bounded to 4096 source code units and scientific exponents
+-32 through 4096. Zero construction is canonical. Classic arithmetic is retained,
+including a zero produced by multiplication underflow whose internal exponent
+is -32, though its numerical text is `0`. Decimal-to-float conversion, general
+Maybe patterns, source error handlers and other Decimal calls are excluded.
+
+The three added calls have canonical identities under
+`morphir/SDK:decimal-checked-v1#`, classified as
+`morphir-sdk-decimal-checked-v1`. Classic `decimal#div` still returns Maybe and
+`decimal#div-with-default` keeps its existing fallback contract. The classic
+248-binding SDK inventory is unchanged. Checked source calls require
+`raise @decimal.DecimalError`; direct calls propagate that requirement.
+
+Type-use precision facts belong to Decimal type nodes. A literal construction's
+binding facts retain its original decoded text, source spelling and fractional
+scale on the call reference/application, separately from runtime normalization.
+Dynamic construction does not invent literal facts. Ion text/binary checkpoints
+and generated symbol receipts preserve those facts. Checked JSON export refuses
+this enrichment rather than dropping it.
+
+Generated functions in a library using checked Decimal calls declare `raise Error`
+because Decimal errors and existing SDK boundary errors can both escape. Callers
+can catch the concrete `@decimal.DecimalError` cases. Earlier libraries retain
+`raise @sdk.SdkError`; `symbols.10n` records the generated error type.
+
+[numeric-decimal-r4.json](conformance/numeric-decimal-r4.json) records the admitted
+calls and local qualification scope. `mise run test:typed-source` compares original
+source, Scheme and generated consumers against independent exact expectations
+on native, JavaScript, Wasm and Wasm GC in debug/release. Installed numeric
+qualification remains N6, `morphir-ukvn.1.10.12.1.6`.
+
+Generated invocation drivers map the four concrete Decimal errors to the same
+`sdk.decimal.*` model-error values as Scheme. Generated dependency contracts
+include `+decimal-checked-v1` when executable checked calls occur. The process
+build provider verifies fingerprints of the audited Decimal implementation and
+its required SDK files before compiling, so an old or modified SDK cannot pass
+that capability check using only the classic bindings manifest. Checkout line
+endings are normalized for this source evidence.

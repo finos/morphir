@@ -98,9 +98,10 @@ async fn main {
       for
         script in [
           "apps/morphir/build-provider/test-capability-pins.mts", "apps/morphir/build-provider/test-core-pin.mts",
-          "apps/morphir/build-provider/test-supervision.mts", "pkgs/morphir-moonbit/scripts/test-compiler.mts",
-          "apps/morphir/scripts/test-library-provider.ts", "apps/morphir/scripts/test-execution.ts",
-          "apps/morphir/scripts/test-execution-faults.ts", "apps/morphir/scripts/test-rich-execution.ts",
+          "apps/morphir/build-provider/test-checked-decimal.mts", "apps/morphir/build-provider/test-supervision.mts",
+          "pkgs/morphir-moonbit/scripts/test-compiler.mts", "apps/morphir/scripts/test-library-provider.ts",
+          "apps/morphir/scripts/test-execution.ts", "apps/morphir/scripts/test-execution-faults.ts",
+          "apps/morphir/scripts/test-rich-execution.ts",
         ] {
         let args = [script]
         if script.has_suffix("test-compiler.mts") {

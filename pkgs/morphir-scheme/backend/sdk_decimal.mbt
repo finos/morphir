@@ -120,3 +120,57 @@ fn sdk_decimal_dispatch(
     _ => raise @scheme.Unbound(name)
   }
 }
+
+///|
+fn checked_decimal_registry() -> Array[(String, Int32)] {
+  [
+    ("morphir/SDK:decimal-checked-v1#from-string-exact", 1),
+    ("morphir/SDK:decimal-checked-v1#divide", 2),
+    ("morphir/SDK:decimal-checked-v1#divide-with-default", 3),
+  ]
+}
+
+///|
+fn checked_decimal_arity(name : String) -> Int32? {
+  checked_decimal_registry()
+  .filter(row => row.0 == name)
+  .get(0)
+  .map(row => row.1)
+}
+
+///|
+fn checked_decimal_dispatch(
+  name : String,
+  args : Array[@scheme.Value],
+) -> @scheme.Value raise {
+  let result = try {
+    match name {
+      "morphir/SDK:decimal-checked-v1#from-string-exact" => {
+        let text = sdk_text(args[0]).to_string() catch {
+          _ => raise @scheme.Domain("sdk.decimal.invalid_literal", name)
+        }
+        @sdk_decimal.from_string_exact(text)
+      }
+      "morphir/SDK:decimal-checked-v1#divide" =>
+        @sdk_decimal.divide(sdk_decimal(args[0]), sdk_decimal(args[1]))
+      "morphir/SDK:decimal-checked-v1#divide-with-default" =>
+        @sdk_decimal.divide_with_default(
+          sdk_decimal(args[0]),
+          sdk_decimal(args[1]),
+          sdk_decimal(args[2]),
+        )
+      _ => raise @scheme.Unbound(name)
+    }
+  } catch {
+    @sdk_decimal.DivisionByZero =>
+      raise @scheme.Domain("sdk.decimal.division_by_zero", name)
+    @sdk_decimal.Underflow =>
+      raise @scheme.Domain("sdk.decimal.underflow", name)
+    @sdk_decimal.PrecisionLoss =>
+      raise @scheme.Domain("sdk.decimal.precision_loss", name)
+    @sdk_decimal.InvalidLiteral =>
+      raise @scheme.Domain("sdk.decimal.invalid_literal", name)
+    error => raise error
+  }
+  sdk_decimal_value(result)
+}

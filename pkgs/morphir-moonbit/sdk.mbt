@@ -32,6 +32,9 @@ fn sdk_reference(
   let binding_name = name.local_name.to_canonical()
   let arity = match (name.module_name.to_canonical(), binding_name) {
     ("decimal", "zero" | "one" | "minus-one") => 0
+    ("decimal-checked-v1", "from-string-exact") => 1
+    ("decimal-checked-v1", "divide") => 2
+    ("decimal-checked-v1", "divide-with-default") => 3
     ("list", "foldl" | "foldr") => 3
     ("string", _) => sdk_string_arity(binding_name, context)
     (
@@ -382,6 +385,25 @@ fn sdk_reference(
     ("char", "to-upper") => {
       require([Atom(Scalar::Character)], Atom(Scalar::Character))
       call = native("char", "to_upper")
+    }
+    ("decimal-checked-v1", "from-string-exact") => {
+      require([Atom(Scalar::Text)], Atom(Scalar::Decimal))
+      call = "@decimal.from_string_exact(a0.to_string() catch { _ => raise @decimal.InvalidLiteral })"
+      ctx.imports["decimal"] = true
+    }
+    ("decimal-checked-v1", "divide") => {
+      require(
+        [Atom(Scalar::Decimal), Atom(Scalar::Decimal)],
+        Atom(Scalar::Decimal),
+      )
+      call = native("decimal", "divide")
+    }
+    ("decimal-checked-v1", "divide-with-default") => {
+      require(
+        [Atom(Scalar::Decimal), Atom(Scalar::Decimal), Atom(Scalar::Decimal)],
+        Atom(Scalar::Decimal),
+      )
+      call = native("decimal", "divide_with_default")
     }
     ("decimal", "add" | "sub" | "mul") => {
       require([dec, dec], dec)

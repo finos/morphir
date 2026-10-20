@@ -184,13 +184,15 @@ priv enum LibraryMode {
   PinnedSdk
   NumericMath
   NumericSdk
+  DecimalSdk
 } derive(Eq)
 
 ///|
-/// Only the named SDK model error is admitted; this grants no host effects.
+/// Only the named SDK model errors are admitted; this grants no host effects.
 priv enum LibraryEffect {
   Pure
   SdkError
+  DecimalError
 } derive(Eq)
 
 ///|
@@ -198,6 +200,7 @@ fn LibraryEffect::identifier(self : LibraryEffect) -> String {
   match self {
     Pure => "pure"
     SdkError => "sdk.SdkError"
+    DecimalError => "decimal.DecimalError"
   }
 }
 
@@ -223,6 +226,7 @@ priv struct ResolvedSourceBinding {
 priv enum SourceBindingOrigin {
   Classic
   NumericExtension
+  DecimalExtension
 }
 
 ///|
@@ -230,12 +234,19 @@ fn SourceBindingOrigin::identifier(self : SourceBindingOrigin) -> String {
   match self {
     Classic => "classic"
     NumericExtension => "morphir-sdk-moonbit-numeric-v1"
+    DecimalExtension => "morphir-sdk-decimal-checked-v1"
   }
 }
 
 ///|
 priv enum SourceBindingContract {
   ExactBool
+  DecimalExactConstruction
+  DecimalArithmetic
+  DecimalHalfEven
+  DecimalComparison
+  DecimalDivision
+  DecimalFallback
   Binary64Sqrt
   Binary64Reference4Ulp
   ClassicFloatAbs
@@ -267,6 +278,13 @@ priv enum IntegerConversionPolicy {
 fn SourceBindingContract::identifier(self : SourceBindingContract) -> String {
   match self {
     ExactBool => "exact-bool"
+    DecimalExactConstruction =>
+      "decimal-exact-construction-min-exponent-minus32"
+    DecimalArithmetic => "decimal-normalized-truncate-min-exponent-minus32"
+    DecimalHalfEven => "decimal-half-even-integer"
+    DecimalComparison => "decimal-exact-comparison"
+    DecimalDivision => "decimal-divide-toward-zero-minus32-typed-failures-v1"
+    DecimalFallback => "decimal-divide-explicit-fallback-v1"
     Binary64Sqrt => "binary64-sqrt-exact-reference-bits"
     Binary64Reference4Ulp => "binary64-reference-4ulp"
     ClassicFloatAbs => "exact-classic-abs-signed-zero"
@@ -302,6 +320,7 @@ pub struct PinnedSourceBindings {
 priv enum SourceSdkType {
   Integer
   Error
+  Decimal
 } derive(Eq)
 
 ///|
@@ -526,6 +545,7 @@ priv enum LibraryScalar {
   UnsignedInt64
   UnboundedInteger
   SdkInteger
+  SdkDecimal
   OptionalSdkInteger
   OptionalDouble
   Floating32
@@ -546,6 +566,7 @@ fn LibraryScalar::source_name(self : LibraryScalar) -> String {
     UnsignedInt64 => "UInt64"
     UnboundedInteger => "BigInt"
     SdkInteger => "@integer.Integer"
+    SdkDecimal => "@decimal.Decimal"
     OptionalSdkInteger => "@integer.Integer?"
     OptionalDouble => "Double?"
     Floating32 => "Float"
@@ -653,6 +674,7 @@ fn LibraryTypeUse::to_ir(
               UnsignedInt64 => "unsigned-64"
               UnboundedInteger => "signed-arbitrary"
               SdkInteger => "sdk-integer"
+              SdkDecimal => "sdk-decimal-coefficient-exponent"
               OptionalSdkInteger => "optional-sdk-integer"
               OptionalDouble => "optional-ieee-binary64"
               Floating32 => "ieee-binary32"
@@ -663,7 +685,10 @@ fn LibraryTypeUse::to_ir(
         ),
       ]),
     )
-    if self.profile == NUMERIC_SDK_LIBRARY_PROFILE &&
+    if (
+        self.profile == NUMERIC_SDK_LIBRARY_PROFILE ||
+        self.profile == DECIMAL_LIBRARY_PROFILE
+      ) &&
       (self.scalar == SdkInteger || self.scalar == OptionalSdkInteger) {
       attrs.extensions["moonbit-source-sdk-type-v1"] = @ir.Data::Object(
         Map::from_array([
@@ -690,6 +715,7 @@ fn LibraryTypeUse::to_ir(
         self.profile == FLOAT_LIBRARY_PROFILE ||
         self.profile == MATH_LIBRARY_PROFILE ||
         self.profile == NUMERIC_SDK_LIBRARY_PROFILE ||
+        self.profile == DECIMAL_LIBRARY_PROFILE ||
         self.profile == LIBRARY_PROFILE_2026_10_19
       ) {
       let facts = Map::from_array([
@@ -735,6 +761,20 @@ fn LibraryTypeUse::to_ir(
       attrs.extensions["moonbit-source-number-v1"] = @ir.Data::Object(facts)
     }
   }
+  if self.scalar == SdkDecimal && metadata {
+    attrs.extensions["moonbit-source-decimal-v1"] = @ir.Data::Object(
+      Map::from_array([
+        ("canonical_type", @ir.Data::Text("@decimal.Decimal")),
+        ("source_package", @ir.Data::Text("finos/morphir-sdk/decimal")),
+        ("source_version", @ir.Data::Text("0.1.0")),
+        ("source_tree", @ir.Data::Text(DECIMAL_SDK_TREE)),
+        ("minimum_exponent", @ir.Data::Number("-32")),
+        ("coefficient", @ir.Data::Text("arbitrary-precision-integer")),
+        ("rounding", @ir.Data::Text("half-even-integer")),
+        ("profile", @ir.Data::Text(self.profile)),
+      ]),
+    )
+  }
   if self.scalar == OptionalSdkInteger || self.scalar == OptionalDouble {
     let item = LibraryTypeUse::{
       ..self,
@@ -767,6 +807,7 @@ fn LibraryTypeUse::to_ir(
         UnsignedInt16 => "morphir/SDK:int#uint-16"
         UnsignedInt32 => "morphir/SDK:int#uint-32"
         UnsignedInt64 => "morphir/SDK:int#uint-64"
+        SdkDecimal => "morphir/SDK:decimal#decimal"
         UnboundedInteger | SdkInteger => "morphir/SDK:basics#int"
         OptionalSdkInteger | OptionalDouble => abort("optional handled above")
         Floating32 => "morphir/moonbit-source:float32#float32"
@@ -784,7 +825,8 @@ fn library_type(
   loc : @location.Location,
   mode : LibraryMode,
 ) -> LibraryTypeUse raise {
-  if mode == NumericSdk && ty is Some(@ast.Option(ty=inner, ..)) {
+  if (mode == NumericSdk || mode == DecimalSdk) &&
+    ty is Some(@ast.Option(ty=inner, ..)) {
     let inner = library_type(Some(inner), inner.loc(), mode)
     let scalar = match inner.scalar {
       SdkInteger => LibraryScalar::OptionalSdkInteger
@@ -813,15 +855,19 @@ fn library_type(
   }
   let name = match constr_id.id {
     @ast.Ident(name~) => name
-    @ast.Dot(pkg="integer", id="Integer") if mode == NumericSdk =>
-      "@integer.Integer"
+    @ast.Dot(pkg="integer", id="Integer") if mode == NumericSdk ||
+      mode == DecimalSdk => "@integer.Integer"
+    @ast.Dot(pkg="decimal", id="Decimal") if mode == DecimalSdk =>
+      "@decimal.Decimal"
     _ => {
       reject("unsupported_type", "An audited source type is required", loc)
       abort("unreachable")
     }
   }
   let scalar = match name {
-    "@integer.Integer" if mode == NumericSdk => LibraryScalar::SdkInteger
+    "@integer.Integer" if mode == NumericSdk || mode == DecimalSdk =>
+      LibraryScalar::SdkInteger
+    "@decimal.Decimal" if mode == DecimalSdk => LibraryScalar::SdkDecimal
     "Bool" => LibraryScalar::Boolean
     "String" if mode.supports_strings() => LibraryScalar::Text
     "Int32" | "Int" if mode.supports_int32() => LibraryScalar::SignedInt32
@@ -859,7 +905,13 @@ pub const SUPPORTED_LIBRARY_PROFILE_V2 : String = "moonbit-model-library-v2"
 
 ///|
 /// Date identifies the current cumulative source qualification snapshot.
-pub const CURRENT_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r3"
+pub const CURRENT_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r4"
+
+///|
+pub const DECIMAL_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r4"
+
+///|
+pub const DECIMAL_SDK_TREE : String = "642fd13ea74bc46c3f5344844c9cca4ffbae368a"
 
 ///|
 pub const NUMERIC_SDK_LIBRARY_PROFILE : String = "moonbit-model-library-2026-10-19-r3"
@@ -880,6 +932,7 @@ pub const PINNED_SDK_LIBRARY_PROFILE : String = "moonbit-model-pinned-sdk-librar
 
 ///|
 fn LibraryMode::supports_strings(self : LibraryMode) -> Bool {
+  self == DecimalSdk ||
   self == NumericSdk ||
   self == NumericMath ||
   self == StringBasics ||
@@ -891,6 +944,7 @@ fn LibraryMode::supports_strings(self : LibraryMode) -> Bool {
 
 ///|
 fn LibraryMode::supports_int32(self : LibraryMode) -> Bool {
+  self == DecimalSdk ||
   self == NumericSdk ||
   self == NumericMath ||
   self == TypedFoundation ||
@@ -905,6 +959,7 @@ fn LibraryMode::supports_int32(self : LibraryMode) -> Bool {
 
 ///|
 fn LibraryMode::supports_numeric(self : LibraryMode) -> Bool {
+  self == DecimalSdk ||
   self == NumericSdk ||
   self == NumericMath ||
   self == NumericInt32 ||
@@ -915,16 +970,23 @@ fn LibraryMode::supports_numeric(self : LibraryMode) -> Bool {
 
 ///|
 fn LibraryMode::supports_float(self : LibraryMode) -> Bool {
-  self == NumericFloat || self == NumericMath || self == NumericSdk
+  self == NumericFloat ||
+  self == NumericMath ||
+  self == NumericSdk ||
+  self == DecimalSdk
 }
 
 ///|
 fn LibraryMode::supports_integer(self : LibraryMode) -> Bool {
-  self == NumericInteger || self == NumericMath || self == NumericSdk
+  self == NumericInteger ||
+  self == NumericMath ||
+  self == NumericSdk ||
+  self == DecimalSdk
 }
 
 ///|
 fn LibraryMode::supports_string_order(self : LibraryMode) -> Bool {
+  self == DecimalSdk ||
   self == NumericSdk ||
   self == NumericMath ||
   self == SupportedLibraryV2 ||
@@ -934,7 +996,10 @@ fn LibraryMode::supports_string_order(self : LibraryMode) -> Bool {
 
 ///|
 fn LibraryMode::supports_string_index(self : LibraryMode) -> Bool {
-  self == SupportedLibrary20261019 || self == NumericMath || self == NumericSdk
+  self == SupportedLibrary20261019 ||
+  self == NumericMath ||
+  self == NumericSdk ||
+  self == DecimalSdk
 }
 
 ///|
@@ -953,5 +1018,156 @@ fn LibraryMode::profile(self : LibraryMode) -> String {
     PinnedSdk => PINNED_SDK_LIBRARY_PROFILE
     NumericMath => MATH_LIBRARY_PROFILE
     NumericSdk => NUMERIC_SDK_LIBRARY_PROFILE
+    DecimalSdk => DECIMAL_LIBRARY_PROFILE
   }
+}
+
+///|
+pub fn PinnedSourceBindings::sdk_decimal(
+  source_package : String,
+  source_version : String,
+  source_tree : String,
+  source_alias : String,
+) -> PinnedSourceBindings raise FrontendError {
+  if source_package != "finos/morphir-sdk/decimal" ||
+    source_version != "0.1.0" ||
+    source_tree != DECIMAL_SDK_TREE ||
+    source_alias != "decimal" {
+    library_error(
+      "binding_identity",
+      "Expected the audited checked Decimal SDK identity",
+      None,
+    )
+  }
+  let bindings = PinnedSourceBindings::sdk_numeric_conversions(
+    "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
+    "basics",
+  )
+  bindings.types.push(SourceSdkType::Decimal)
+  for
+    (name, inputs, output, contract, effect, origin) in [
+      (
+        "from_string_exact",
+        [LibraryScalar::Text],
+        LibraryScalar::SdkDecimal,
+        SourceBindingContract::DecimalExactConstruction,
+        LibraryEffect::DecimalError,
+        SourceBindingOrigin::DecimalExtension,
+      ),
+      (
+        "divide",
+        [SdkDecimal, SdkDecimal],
+        SdkDecimal,
+        DecimalDivision,
+        DecimalError,
+        SourceBindingOrigin::DecimalExtension,
+      ),
+      (
+        "divide_with_default",
+        [SdkDecimal, SdkDecimal, SdkDecimal],
+        SdkDecimal,
+        DecimalFallback,
+        Pure,
+        SourceBindingOrigin::DecimalExtension,
+      ),
+      (
+        "add",
+        [SdkDecimal, SdkDecimal],
+        SdkDecimal,
+        DecimalArithmetic,
+        Pure,
+        Classic,
+      ),
+      (
+        "sub",
+        [SdkDecimal, SdkDecimal],
+        SdkDecimal,
+        DecimalArithmetic,
+        Pure,
+        Classic,
+      ),
+      (
+        "mul",
+        [SdkDecimal, SdkDecimal],
+        SdkDecimal,
+        DecimalArithmetic,
+        Pure,
+        Classic,
+      ),
+      ("round", [SdkDecimal], SdkDecimal, DecimalHalfEven, Pure, Classic),
+      (
+        "eq",
+        [SdkDecimal, SdkDecimal],
+        Boolean,
+        DecimalComparison,
+        Pure,
+        Classic,
+      ),
+      (
+        "neq",
+        [SdkDecimal, SdkDecimal],
+        Boolean,
+        DecimalComparison,
+        Pure,
+        Classic,
+      ),
+      (
+        "lt",
+        [SdkDecimal, SdkDecimal],
+        Boolean,
+        DecimalComparison,
+        Pure,
+        Classic,
+      ),
+      (
+        "lte",
+        [SdkDecimal, SdkDecimal],
+        Boolean,
+        DecimalComparison,
+        Pure,
+        Classic,
+      ),
+      (
+        "gt",
+        [SdkDecimal, SdkDecimal],
+        Boolean,
+        DecimalComparison,
+        Pure,
+        Classic,
+      ),
+      (
+        "gte",
+        [SdkDecimal, SdkDecimal],
+        Boolean,
+        DecimalComparison,
+        Pure,
+        Classic,
+      ),
+    ] {
+    bindings.entries.push({
+      source_alias,
+      source_name: name,
+      source_package,
+      source_version,
+      source_tree,
+      source_signature: "(" +
+      inputs.map(LibraryScalar::source_name).join(", ") +
+      ") -> " +
+      output.source_name() +
+      (if effect == DecimalError { " raise @decimal.DecimalError" } else { "" }),
+      canonical: "morphir/SDK:" +
+      (match origin {
+        DecimalExtension => "decimal-checked-v1#"
+        Classic => "decimal#"
+        NumericExtension => abort("not a Decimal contract")
+      }) +
+      name.split("_").join("-"),
+      inputs,
+      output,
+      contract,
+      effect,
+      origin,
+    })
+  }
+  bindings
 }

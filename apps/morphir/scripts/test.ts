@@ -278,7 +278,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.equal(modelPlan.frontends[0].provider,'finos/morphir-moonbit-frontend');
   assert.equal(modelPlan.frontends[0].defaultProfile,true);
   assert.equal(modelPlan.frontends[0].evidence,'local-acceptance');
-  assert.deepEqual(new Set(modelPlan.frontends[0].availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-integer-library-v1','moonbit-model-float-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19','moonbit-model-pinned-sdk-library-v1','moonbit-model-library-2026-10-19-r2','moonbit-model-library-2026-10-19-r3']));
+  assert.deepEqual(new Set(modelPlan.frontends[0].availableProfiles),new Set(['moonbit-model-bool-v1','moonbit-model-bool-library-v1','moonbit-model-typed-library-foundation-v1','moonbit-model-int32-library-v1','moonbit-model-integer-library-v1','moonbit-model-float-library-v1','moonbit-model-string-library-v1','moonbit-model-library-v1','moonbit-model-library-v2','moonbit-model-library-2026-10-17','moonbit-model-library-2026-10-19','moonbit-model-pinned-sdk-library-v1','moonbit-model-library-2026-10-19-r2','moonbit-model-library-2026-10-19-r3','moonbit-model-library-2026-10-19-r4']));
   assert.equal(modelPlan.frontends[0].capabilities.maxDocuments,1);
   assert.equal(modelPlan.frontends[0].capabilities.incremental,false);
   assert.equal(modelPlan.frontends[0].capabilities.limits.functions,1);
@@ -462,6 +462,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     ['indexed-library','moonbit-model-library-2026-10-19','pub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count(s : String) -> Int32 { s.length() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }','moonbit-source-string-index-v1'],
     ['math-library','moonbit-model-library-2026-10-19-r2','pub fn root(value : Double) -> Double { @basics.sqrt(value) }\npub fn wave(value : Double) -> Double { @basics.sin(value) + @basics.cos(value) }\npub fn power(value : Double) -> Double { @basics.power_float(value, 2.0) }','moonbit-source-binding-v1'],
     ['numeric-sdk-library','moonbit-model-library-2026-10-19-r3','pub fn rounded(value : Double) -> @integer.Integer raise @sdk.SdkError { @basics.round(value) }\npub fn exact(value : Double) -> @integer.Integer? { @int.from_float64_exact(value) }\npub fn single(value : Float) -> Float { value + 1.0F }','moonbit-source-binding-v1'],
+    ['decimal-library','moonbit-model-library-2026-10-19-r4','pub fn amount(value : String) -> @decimal.Decimal raise @decimal.DecimalError { let a = @decimal.from_string_exact(value); @decimal.divide(@decimal.mul(a, a), a) }\npub fn rounded(value : @decimal.Decimal) -> @decimal.Decimal { @decimal.round(value) }','moonbit-source-decimal-v1'],
   ] as const) {
     put(name+'/morphir.toml','[project]\nname="'+name+'"\n[frontend]\nlanguage="moonbit"\nprofile="'+profile+'"\n[pipeline]\nbackend="checkpoint"\n');
     put(name+'/src/Main.mbt',source);
@@ -484,6 +485,23 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     if(target!=='wasm') {
       const built=JSON.parse(run([...args,'--backend','moonbit','--validation','required','--build-provider','process','--build-helper',buildHelper,'--build-node',process.execPath,'--home',tooling.home,'--sdk',join(workspaceDirectory,'pkgs/morphir-sdk'),'--target','wasm','--json']).stdout);
       assert.equal(built.validated.length,1);
+      if(name==='decimal-library'&&target==='native') {
+        const sdk=join(workspaceDirectory,'pkgs/morphir-sdk');
+        const incompatible=join(directory,'sdk-without-checked-decimal');
+        cpSync(sdk,incompatible,{recursive:true,filter:path=>!['_build','.mooncakes','node_modules'].includes(path.split(/[\\/]/).at(-1)!)});
+        const checked=join(incompatible,'decimal/checked.mbt');
+        rmSync(checked);
+        const validate=()=>JSON.parse(run([...args,'--backend','moonbit','--validation','required','--build-provider','process','--build-helper',buildHelper,'--build-node',process.execPath,'--home',tooling.home,'--sdk',incompatible,'--target','wasm','--json'],1).stdout);
+        const missing=validate();
+        assert.equal(missing.successful,false);
+        assert.match(missing.publicationError,/build.missing_checked_decimal_extension/);
+        assert.deepEqual(missing.committed,[]);
+        writeFileSync(checked,readFileSync(join(sdk,'decimal/checked.mbt'),'utf8').replace('raise Underflow','raise DivisionByZero'));
+        const changed=validate();
+        assert.equal(changed.successful,false);
+        assert.match(changed.publicationError,/build.checked_decimal_source_identity/);
+        assert.deepEqual(changed.committed,[]);
+      }
     }
   }
   // An unchanged morphir-elm project compiles with the Elm provider that the CLI registers.

@@ -741,7 +741,7 @@ fn library_lower(
       data: ion_record(
         [
           ("declaration", library_origin(declaration.name, declaration.source)),
-          ..if mode == NumericSdk {
+          ..if mode == NumericSdk || mode == DecimalSdk {
             [
               (
                 "source_error_contract",
@@ -1130,11 +1130,26 @@ fn LibraryLowerer::sdk_call(
       ("sdk_classification", @ir.Data::Text(binding.origin.identifier())),
     ]),
   )
-  if self.profile == NUMERIC_SDK_LIBRARY_PROFILE &&
+  if (
+      self.profile == NUMERIC_SDK_LIBRARY_PROFILE ||
+      self.profile == DECIMAL_LIBRARY_PROFILE
+    ) &&
     facts is @ir.Data::Object(fields) {
     fields["source_error_contract"] = @ir.Data::Text(
       binding.effect.identifier(),
     )
+  }
+  if binding.contract is DecimalExactConstruction &&
+    facts is @ir.Data::Object(fields) {
+    if arguments[0] is Text(text, lexeme, _) {
+      fields["original_literal"] = @ir.Data::Text(text)
+      fields["original_source_spelling"] = @ir.Data::Text(lexeme)
+      let mantissa = text.split("e").to_array()[0]
+      let fraction = mantissa.split(".").to_array()
+      fields["literal_scale"] = @ir.Data::Number(
+        (if fraction.length() == 2 { fraction[1].length() } else { 0 }).to_string(),
+      )
+    }
   }
   let output_type = LibraryTypeUse::{
     scalar: binding.output,

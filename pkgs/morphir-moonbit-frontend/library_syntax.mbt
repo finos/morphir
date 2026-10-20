@@ -330,7 +330,8 @@ fn LibraryAdapter::expression(
         @ast.Ident(name~) => (name, None)
         @ast.Dot(pkg~, id~) if self.mode == PinnedSdk ||
           self.mode == NumericMath ||
-          self.mode == NumericSdk => ("@" + pkg + "." + id, Some((pkg, id)))
+          self.mode == NumericSdk ||
+          self.mode == DecimalSdk => ("@" + pkg + "." + id, Some((pkg, id)))
         _ => {
           reject(
             "qualified_reference",
@@ -421,7 +422,15 @@ fn library_adapt(
           tys~,
           ..
         )
-      ) if mode == NumericSdk && tys.is_empty() => SdkError
+      ) if (mode == NumericSdk || mode == DecimalSdk) && tys.is_empty() =>
+        SdkError
+      @ast.ErrorType(
+        ty=@ast.Name(
+          constr_id={ id: @ast.Dot(pkg="decimal", id="DecimalError"), .. },
+          tys~,
+          ..
+        )
+      ) if mode == DecimalSdk && tys.is_empty() => DecimalError
       _ => {
         reject(
           "unsupported_function",

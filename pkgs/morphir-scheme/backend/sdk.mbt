@@ -89,6 +89,9 @@ fn sdk_dispatch_inner(
   if name.has_prefix("morphir/SDK:int#") {
     return sdk_int_dispatch(name, args)
   }
+  if checked_decimal_arity(name) is Some(_) {
+    return checked_decimal_dispatch(name, args)
+  }
   if name.has_prefix("morphir/SDK:decimal#") {
     return sdk_decimal_dispatch(name, args)
   }
@@ -136,7 +139,11 @@ fn install_sdk(
                     None =>
                       match numeric_int_arity(name) {
                         Some(n) => Some(n)
-                        None => sdk_expected_arity(name)
+                        None =>
+                          match checked_decimal_arity(name) {
+                            Some(n) => Some(n)
+                            None => sdk_expected_arity(name)
+                          }
                       }
                   }
               }
@@ -165,6 +172,7 @@ fn install_sdk(
     source_integer_registry() +
     source_float_registry() +
     numeric_int_registry() +
+    checked_decimal_registry() +
     sdk_int_canonical_aliases() {
     runtime.register_native_binding("accelerator:" + name, arity, fn(
       rt,

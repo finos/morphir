@@ -22,6 +22,7 @@ fn symbol_metadata(
   symbols : Array[Symbol],
   owned : Map[String, Bool],
   names : TargetNames,
+  error_contract : ErrorContract,
 ) -> Bytes raise {
   let metadata = input.metadata.copy()
   metadata.sort_by(fn(a, b) { a.node_id.compare(b.node_id) })
@@ -38,6 +39,7 @@ fn symbol_metadata(
   }
   let value = record([
     ("profile", ion_text("morphir-moonbit-symbols-2026-10-17")),
+    ("generated_error_type", ion_text(error_contract.source())),
     (
       "naming_policy",
       ion_text(

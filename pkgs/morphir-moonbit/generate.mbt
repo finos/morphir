@@ -97,7 +97,19 @@ fn generate_library(
       }
     }
   }
+  let error_contract = if package_def.modules
+    .values()
+    .any(m => {
+      m.value.values
+      .values()
+      .any(v => checked_decimal_definition_errors(v.value.value))
+    }) {
+    ErrorContract::CheckedDecimal
+  } else {
+    ErrorContract::Sdk
+  }
   let lowering : Lowering = {
+    error_contract,
     names: TargetNames::new(input, naming, metadata_capabilities),
     locals: None,
     types: Map([]),
@@ -310,7 +322,9 @@ fn generate_library(
       identifier +
       "() -> " +
       output +
-      " raise @sdk.SdkError {\n  " +
+      " raise " +
+      lowering.error_contract.source() +
+      " {\n  " +
       body +
       "\n}\n",
     )
@@ -397,6 +411,7 @@ fn generate_library(
     symbols,
     owned,
     lowering.names,
+    lowering.error_contract,
   )
   let artifacts : Array[Artifact] = [
     { path: "moon.mod", role: ModuleManifest, content: Text(module_manifest), },
@@ -494,6 +509,10 @@ fn generate_library(
             "+moonbit-source-string-index-v1"
           } else {
             ""
+          }) +
+          (match lowering.error_contract {
+            CheckedDecimal => "+decimal-checked-v1"
+            Sdk => ""
           }),
           semantic_pin: "bc99af69a8b24d391311fae3822a87eafef3c334",
         },

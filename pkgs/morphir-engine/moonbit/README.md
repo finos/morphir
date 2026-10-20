@@ -10,11 +10,12 @@ let engine = @engine.Engine::new()
 
 Import `finos/morphir-engine/moonbit` as `moonbit_frontend`. The adapter registers
 provider `finos/morphir-moonbit-frontend`, exported as `PROVIDER`, for language
-`moonbit` and `.mbt` files. It offers nine profiles:
+`moonbit` and `.mbt` files. It offers versioned profiles:
 
 | Profile | Source behavior |
 | --- | --- |
-| `moonbit-model-library-2026-10-19-r3`, opt-in | Current cumulative snapshot: R2 plus SDK Integer, classic rounding/abs/to_float, binary64 optional conversions and explicit SdkError declarations |
+| `moonbit-model-library-2026-10-19-r4`, opt-in | Current cumulative snapshot: R3 plus concrete Decimal, exact construction, arithmetic/comparisons, half-even rounding, typed division failures and opt-in fallback |
+| `moonbit-model-library-2026-10-19-r3`, opt-in | Frozen cumulative snapshot: R2 plus SDK Integer, classic rounding/abs/to_float, binary64 optional conversions and explicit SdkError declarations |
 | `moonbit-model-library-2026-10-19-r2`, opt-in | Frozen cumulative snapshot: Bool/String, all qualified integer/float forms, and pinned Basics sqrt/sin/cos/power_float/abs_float/not_ calls |
 | `moonbit-model-library-2026-10-19`, opt-in | Frozen snapshot: Bool, bounded String operations and ordering, signed Int32 arithmetic, UTF-16 length, and owned slicing |
 | `moonbit-model-library-2026-10-17`, opt-in | Pinned earlier cumulative snapshot, including Bool, bounded String operations and ordering, and Int32 identity/selection/calls |
@@ -30,13 +31,13 @@ The workbench prefers **Supported MoonBit library 2026-10-17** for fresh local p
 and CLI callers select it explicitly with `frontend.profile = "moonbit-model-library-2026-10-17"`
 or `--frontend-profile moonbit-model-library-2026-10-17`. Existing saved profile choices and
 the engine/CLI Boolean default remain compatible. This cumulative version covers
-local source conformance. Select `moonbit-model-library-2026-10-19-r3` explicitly for
-the cumulative numeric SDK subset. Imports and full ecosystem
+local source conformance. Select `moonbit-model-library-2026-10-19-r4` explicitly for
+the cumulative numeric SDK and checked Decimal subset. Imports and full ecosystem
 qualification remain outside these profiles.
 
 All profiles process one document per unit and do not support incremental
 compilation or cross-file imports. The library excludes
-recursion, mutation, indirect and qualified calls. Profile names describe supported source
+recursion, mutation and indirect calls. Qualified calls are limited to each profile's audited SDK bindings. Profile names describe supported source
 forms; the source language remains `moonbit`.
 
 `provider()` exposes these same descriptors and callbacks to in-process clients.

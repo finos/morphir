@@ -1,0 +1,227 @@
+{
+  "profile": "moonbit-model-library-2026-10-19-r4",
+  "inherits": "moonbit-model-library-2026-10-19-r3",
+  "sourceLanguage": "moonbit",
+  "sourcePackage": "finos/morphir-sdk/decimal",
+  "sourceVersion": "0.1.0",
+  "sourceTree": "642fd13ea74bc46c3f5344844c9cca4ffbae368a",
+  "compiler": "0.10.15+943464bfa",
+  "types": [
+    "@decimal.Decimal"
+  ],
+  "classic": [
+    {
+      "source": "@decimal.add",
+      "canonical": "morphir/SDK:decimal#add",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "@decimal.Decimal",
+      "policy": "exact coefficient arithmetic, normalized and truncated below exponent -32"
+    },
+    {
+      "source": "@decimal.sub",
+      "canonical": "morphir/SDK:decimal#sub",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "@decimal.Decimal",
+      "policy": "exact coefficient arithmetic, normalized and truncated below exponent -32"
+    },
+    {
+      "source": "@decimal.mul",
+      "canonical": "morphir/SDK:decimal#mul",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "@decimal.Decimal",
+      "policy": "exact coefficient arithmetic, normalized and truncated below exponent -32"
+    },
+    {
+      "source": "@decimal.round",
+      "canonical": "morphir/SDK:decimal#round",
+      "inputs": [
+        "@decimal.Decimal"
+      ],
+      "output": "@decimal.Decimal",
+      "policy": "half-even integer"
+    },
+    {
+      "source": "@decimal.eq",
+      "canonical": "morphir/SDK:decimal#eq",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "Bool",
+      "policy": "exact numerical comparison"
+    },
+    {
+      "source": "@decimal.neq",
+      "canonical": "morphir/SDK:decimal#neq",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "Bool",
+      "policy": "exact numerical comparison"
+    },
+    {
+      "source": "@decimal.lt",
+      "canonical": "morphir/SDK:decimal#lt",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "Bool",
+      "policy": "exact numerical comparison"
+    },
+    {
+      "source": "@decimal.lte",
+      "canonical": "morphir/SDK:decimal#lte",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "Bool",
+      "policy": "exact numerical comparison"
+    },
+    {
+      "source": "@decimal.gt",
+      "canonical": "morphir/SDK:decimal#gt",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "Bool",
+      "policy": "exact numerical comparison"
+    },
+    {
+      "source": "@decimal.gte",
+      "canonical": "morphir/SDK:decimal#gte",
+      "inputs": [
+        "@decimal.Decimal",
+        "@decimal.Decimal"
+      ],
+      "output": "Bool",
+      "policy": "exact numerical comparison"
+    }
+  ],
+  "extension": {
+    "profile": "morphir-sdk-decimal-checked-v1",
+    "specificationApi": "finos/morphir-sdk-spec.numeric_sdk_specification",
+    "calls": [
+      {
+        "source": "@decimal.from_string_exact",
+        "canonical": "morphir/SDK:decimal-checked-v1#from-string-exact",
+        "inputs": [
+          "String"
+        ],
+        "output": "@decimal.Decimal",
+        "error": "raise @decimal.DecimalError",
+        "policy": "classic lexical grammar; exact or InvalidLiteral/PrecisionLoss"
+      },
+      {
+        "source": "@decimal.divide",
+        "canonical": "morphir/SDK:decimal-checked-v1#divide",
+        "inputs": [
+          "@decimal.Decimal",
+          "@decimal.Decimal"
+        ],
+        "output": "@decimal.Decimal",
+        "error": "raise @decimal.DecimalError",
+        "policy": "truncate toward zero at exponent -32; zero divisor DivisionByZero, nonzero result truncated to zero Underflow; zero/nonzero succeeds"
+      },
+      {
+        "source": "@decimal.divide_with_default",
+        "canonical": "morphir/SDK:decimal-checked-v1#divide-with-default",
+        "inputs": [
+          "@decimal.Decimal",
+          "@decimal.Decimal",
+          "@decimal.Decimal"
+        ],
+        "output": "@decimal.Decimal",
+        "error": "pure",
+        "policy": "explicit fallback on either division failure; exact zero succeeds"
+      }
+    ],
+    "runtimeEvidence": {
+      "apiCapability": "decimal-checked-v1",
+      "verifier": "apps/morphir/build-provider/checked-decimal.mts",
+      "auditedSourceTree": "642fd13ea74bc46c3f5344844c9cca4ffbae368a",
+      "verification": "SHA-256 of required implementation and package files before compiler build, with CRLF normalized to LF"
+    }
+  },
+  "precision": {
+    "coefficient": "arbitrary precision integer",
+    "minimumExponent": -32,
+    "constructionMaxCodeUnits": 4096,
+    "scientificExponentRange": [
+      -32,
+      4096
+    ],
+    "sourceScale": "descriptive, independently retained on literal construction call facts",
+    "normalization": "trailing zeroes removed; checked construction zero exponent 0; classic multiplication underflow zero may retain exponent -32"
+  },
+  "metadata": {
+    "typeOwner": "moonbit-source-decimal-v1 on concrete Decimal type uses",
+    "callOwner": "moonbit-source-binding-v1 on call references/applications",
+    "literalFacts": [
+      "original_literal",
+      "original_source_spelling",
+      "literal_scale"
+    ],
+    "ion": [
+      "text",
+      "binary"
+    ],
+    "checkedJson": "refuse data.lossy_conversion for enriched checkpoint"
+  },
+  "compatibility": {
+    "classicSdkBindingCount": 248,
+    "classicDecimalDiv": "Maybe, unchanged",
+    "classicDecimalDivWithDefault": "fallback, unchanged",
+    "historicalProfiles": "frozen",
+    "generatedAbi": "Error when executable checked Decimal references occur, carrying concrete DecimalError and existing SDK boundary errors; otherwise SdkError"
+  },
+  "support": {
+    "source": true,
+    "engine": true,
+    "cli": true,
+    "scheme": true,
+    "generatedDirectConsumer": true,
+    "targets": [
+      "native",
+      "js",
+      "wasm",
+      "wasm-gc"
+    ],
+    "modes": [
+      "debug",
+      "release"
+    ],
+    "installedNumericQualification": "separate N6 task morphir-ukvn.1.10.12.1.6"
+  },
+  "excluded": [
+    "general Maybe constructors and patterns",
+    "source error handlers and throw",
+    "Decimal-to-float conversion",
+    "other Decimal calls",
+    "SDK flavor modes",
+    "imports"
+  ],
+  "qualification": {
+    "command": "mise run test:typed-source",
+    "receipt": ".dev/typed-source-acceptance/receipt.ion",
+    "focusedTests": [
+      "decimal_test.mbt",
+      "../morphir-engine/moonbit/decimal_test.mbt",
+      "../morphir-sdk/decimal/checked_wbtest.mbt"
+    ],
+    "referencePolicy": "independent exact decimal expectations, including coefficient/exponent, ties and distinct failure causes",
+    "compiledDriverErrors": "same sdk.decimal.* model-error values as Scheme for all four DecimalError cases"
+  }
+}

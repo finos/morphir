@@ -683,6 +683,60 @@ pub fn provider(
       }
     }),
   }
+  let decimal_bindings = @frontend.PinnedSourceBindings::sdk_decimal(
+    "finos/morphir-sdk/decimal",
+    "0.1.0",
+    @frontend.DECIMAL_SDK_TREE,
+    "decimal",
+  ) catch {
+    @frontend.Invalid(d) => raise @engine.Rejected(d.code, d.detail, d.source)
+  }
+  let decimal_dependencies = conversion_dependencies.copy()
+  decimal_dependencies["finos/morphir-sdk/decimal"] = "0.1.0+tree:" +
+    @frontend.DECIMAL_SDK_TREE
+  let decimal_sdk : @engine.SourceProfile = {
+    ..numeric_sdk,
+    id: @ids.ProfileId::parse(@frontend.DECIMAL_LIBRARY_PROFILE),
+    dependencies: decimal_dependencies,
+    capabilities: {
+      ..numeric_sdk.capabilities,
+      summary: "Supported MoonBit library revision 4 with checked Decimal calculations",
+      supported: numeric_sdk.capabilities.supported +
+      [
+        "Pinned @decimal.Decimal and declared raise @decimal.DecimalError", "Exact construction, add/sub/mul, six comparisons, half-even rounding",
+        "Versioned checked divide with distinct failures and opt-in fallback",
+      ],
+      excluded: [
+        "General source effects, error handlers, Maybe patterns and constructors",
+        "Source numeric casts and Float32 SDK carrier conversions", "Other SDK calls, imports, recursion, mutation and indirect calls",
+      ],
+    },
+    compile: @engine.PerFile(fn(source, unit_id, cancelled) raise {
+      let output = @frontend.compile_decimal_library(
+        input(source, unit_id),
+        decimal_bindings,
+        limits=library_limits,
+        max_string_code_units~,
+        cancelled~,
+        scope=observer.scope(),
+      ) catch {
+        @frontend.Invalid(diagnostic) =>
+          raise @engine.Rejected(
+            diagnostic.code,
+            diagnostic.detail,
+            diagnostic.source,
+          )
+        error => raise error
+      }
+      @data.IRUnit::{
+        id: output.unit_id,
+        distribution: output.ir,
+        metadata: output.metadata.map(m => { node_id: m.node_id, data: m.data, }),
+        annotations: output.annotations.copy(),
+        provenance: output.provenance.copy(),
+      }
+    }),
+  }
   {
     id: @ids.ProviderId::parse(PROVIDER),
     languages: [
@@ -692,7 +746,7 @@ pub fn provider(
         default_profile: @ids.ProfileId::parse(@frontend.PROFILE),
         profiles: [
           seed, library, foundation, numeric, integers, floats, strings, supported,
-          supported_v2, current, indexed, pinned_sdk, math, numeric_sdk,
+          supported_v2, current, indexed, pinned_sdk, math, numeric_sdk, decimal_sdk,
         ],
       },
     ],

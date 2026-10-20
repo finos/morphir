@@ -108,7 +108,8 @@ pub fn decimal_source(
 fn valid_model_error(code : String) -> Bool {
   [
     "sdk.division_by_zero", "sdk.invalid_number", "sdk.out_of_range", "sdk.invalid_comparison",
-    "sdk.unrepresentable_text",
+    "sdk.unrepresentable_text", "sdk.decimal.division_by_zero", "sdk.decimal.underflow",
+    "sdk.decimal.precision_loss", "sdk.decimal.invalid_literal",
   ].contains(code)
 }
 

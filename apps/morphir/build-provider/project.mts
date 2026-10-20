@@ -10,6 +10,7 @@ import {includeDependencyPath} from './paths.mjs';
 import {treeIdentity} from './identity.mjs';
 import {assertRuntime,stableVersion} from './capabilities.mjs';
 import {checkedCore} from './core.mjs';
+import {verifyCheckedDecimalRuntime} from './checked-decimal.mjs';
 
 export async function buildLibrary(request: BuildRequest, requestPath: string, {driver=[], retain=false, capability=null}: { driver?: SourceMember[]; retain?: boolean; capability?: Capability | null } = {}): Promise<BuildEvidence> {
 const workspace=join(dirname(requestPath),'workspace');
@@ -85,8 +86,9 @@ try {
     const sourceInteger=sdkProfile.includes('+moonbit-source-integer-v1');
     const sourceFloat=sdkProfile.includes('+moonbit-source-float-v1');
     const sourceIndex=sdkProfile.includes('+moonbit-source-string-index-v1');
+    const checkedDecimal=sdkProfile.includes('+decimal-checked-v1');
     if(dependency.moduleName==='finos/morphir-sdk') {
-      expected[1]='morphir-sdk-concrete-v1'+(sourceStrings?'+moonbit-source-string-v1':'')+(sourceInt32?'+moonbit-source-int32-v1':'')+(sourceInteger?'+moonbit-source-integer-v1':'')+(sourceFloat?'+moonbit-source-float-v1':'')+(sourceIndex?'+moonbit-source-string-index-v1':'');
+      expected[1]='morphir-sdk-concrete-v1'+(sourceStrings?'+moonbit-source-string-v1':'')+(sourceInt32?'+moonbit-source-int32-v1':'')+(sourceInteger?'+moonbit-source-integer-v1':'')+(sourceFloat?'+moonbit-source-float-v1':'')+(sourceIndex?'+moonbit-source-string-index-v1':'')+(checkedDecimal?'+decimal-checked-v1':'');
       assert.ok(!sourceIndex||sourceStrings,'build.missing_source_string_index_extension');
     }
     assert.deepEqual([dependency.version,dependency.apiProfile,dependency.semanticPin],expected);
@@ -137,6 +139,7 @@ try {
       assert.equal(extension.splitSurrogateBoundary,'inward','build.missing_source_string_index_extension');
       assert.deepEqual(extension.bindings.map((binding: {fqName: string})=>binding.fqName),['morphir/moonbit-source:string#length-int32','morphir/moonbit-source:string#slice-owned']);
     }
+    if(checkedDecimal)verifyCheckedDecimalRuntime(root);
     const sourceIdentity=tree(root);const copied=join(workspace,'dependency'+i);
     cpSync(root,copied,{recursive:true,filter:path=>includeDependencyPath(root,path,excluded)});
     assert.equal(tree(copied),sourceIdentity,'Dependency copy differs');

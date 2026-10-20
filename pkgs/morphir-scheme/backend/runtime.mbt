@@ -211,6 +211,7 @@ pub fn install(
     source_integer_registry() +
     source_float_registry() +
     numeric_int_registry() +
+    checked_decimal_registry() +
     sdk_int_canonical_aliases() {
     let parameters : Array[String] = []
     for i = 0; i < count; i = i + 1 {

@@ -21,6 +21,10 @@ pub fn div(Decimal, Decimal) -> Decimal?
 
 pub fn div_with_default(Decimal, Decimal, Decimal) -> Decimal
 
+pub fn divide(Decimal, Decimal) -> Decimal raise DecimalError
+
+pub fn divide_with_default(Decimal, Decimal, Decimal) -> Decimal
+
 pub fn eq(Decimal, Decimal) -> Bool
 
 pub fn from_float(Double) -> Decimal raise @morphir-sdk.SdkError
@@ -30,6 +34,8 @@ pub fn from_int(@integer.Integer) -> Decimal
 pub fn from_integer(@integer.Integer) -> Decimal
 
 pub fn from_string(String) -> Decimal?
+
+pub fn from_string_exact(String) -> Decimal raise DecimalError
 
 pub fn gt(Decimal, Decimal) -> Bool
 
@@ -80,6 +86,15 @@ pub fn truncate(Decimal) -> Decimal
 pub fn zero() -> Decimal
 
 // Errors
+pub(all) suberror DecimalError {
+  DivisionByZero
+  Underflow
+  PrecisionLoss
+  InvalidLiteral
+} derive(Eq, @debug.Debug)
+pub fn DecimalError::equal(Self, Self) -> Bool
+pub fn DecimalError::not_equal(Self, Self) -> Bool
+pub fn DecimalError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub struct Decimal {

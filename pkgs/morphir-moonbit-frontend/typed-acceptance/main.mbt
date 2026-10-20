@@ -197,12 +197,20 @@ fn main raise {
       row.0 != "math"
     })
     .map(row => ("snapshot" + row.0, row.1)) +
-    r3_cases
+    r3_cases +
+    r3_cases.map(row => {
+      ("r4" + row.0.strip_prefix("sdk").unwrap().to_owned(), row.1)
+    }) +
+    [("decimal", decimal_source())]
   let models = []
   for (id, source) in cases {
     let source = "/// Qualification fixture documentation.\n///\n/// Preserve **Markdown** and λ😀.\n" +
       source
-    let stripped = id.strip_prefix("sdk").map(s => s.to_owned()).unwrap_or(id)
+    let snapshot_id = id.strip_prefix("r4").map(s => s.to_owned()).unwrap_or(id)
+    let stripped = snapshot_id
+      .strip_prefix("sdk")
+      .map(s => s.to_owned())
+      .unwrap_or(snapshot_id)
     let base_id = stripped
       .strip_prefix("snapshot")
       .map(s => s.to_owned())
@@ -221,7 +229,22 @@ fn main raise {
       module_name: "main",
       source,
     }
-    let output = if id.has_prefix("sdk") {
+    let output = if id == "decimal" || id.has_prefix("r4") {
+      @frontend.compile_decimal_library(
+        input,
+        @frontend.PinnedSourceBindings::sdk_decimal(
+          "finos/morphir-sdk/decimal",
+          "0.1.0",
+          @frontend.DECIMAL_SDK_TREE,
+          "decimal",
+        ),
+        max_string_code_units=if kind == "bounded" || kind == "orderedbounded" {
+          5
+        } else {
+          1048576
+        },
+      )
+    } else if id.has_prefix("sdk") {
       @frontend.compile_numeric_sdk_library(
         input,
         @frontend.PinnedSourceBindings::sdk_numeric_conversions(
@@ -424,6 +447,43 @@ fn main raise {
         ]).as_text(),
         "😀",
       )
+    } else if kind == "decimal" {
+      for (name, args, expected) in decimal_references() {
+        guard @backend.call_entry(
+            runtime,
+            entry(name),
+            args.map(text => @scheme.Value::Text(text)),
+          )
+          is Tagged("decimal", [Text(actual)]) else {
+          fail("Expected Decimal")
+        }
+        assert_eq(actual, expected, msg=name)
+      }
+      for (name, a, b, expected) in decimal_comparisons() {
+        guard @backend.call_entry(runtime, entry(name), [
+            @scheme.Text(a),
+            @scheme.Text(b),
+          ])
+          is Boolean(actual) else {
+          fail("Expected comparison")
+        }
+        assert_eq(actual, expected, msg=name)
+      }
+      for (name, args, code) in decimal_failures() {
+        try {
+          ignore(
+            @backend.call_entry(
+              runtime,
+              entry(name),
+              args.map(text => @scheme.Value::Text(text)),
+            ),
+          )
+          fail("Expected checked Decimal failure")
+        } catch {
+          @scheme.Domain(actual, _) => assert_eq(actual, "sdk.decimal." + code)
+          error => raise error
+        }
+      }
     } else if kind == "math" {
       fn observed(name : String) -> Double raise {
         guard @backend.call_entry(runtime, entry(name), [])
@@ -675,6 +735,29 @@ fn main raise {
       (
         {
           "id": id,
+          "decimalReferences": if kind == "decimal" {
+            decimal_references().map(row => {
+              ({ "name": row.0, "args": row.1, "expected": row.2 } : Json)
+            })
+          } else {
+            []
+          },
+          "decimalComparisons": if kind == "decimal" {
+            decimal_comparisons().map(row => {
+              (
+                { "name": row.0, "a": row.1, "b": row.2, "expected": row.3 } :
+                Json)
+            })
+          } else {
+            []
+          },
+          "decimalFailures": if kind == "decimal" {
+            decimal_failures().map(row => {
+              ({ "name": row.0, "args": row.1, "code": row.2 } : Json)
+            })
+          } else {
+            []
+          },
           "mathReferences": if kind == "math" {
             math_references().map(row => {
               ({ "name": row.0, "expected": row.1, "ulps": row.2 } : Json)
@@ -689,7 +772,9 @@ fn main raise {
           } else {
             []
           },
-          "profile": if id.has_prefix("sdk") {
+          "profile": if id == "decimal" || id.has_prefix("r4") {
+            @frontend.DECIMAL_LIBRARY_PROFILE
+          } else if id.has_prefix("sdk") {
             @frontend.NUMERIC_SDK_LIBRARY_PROFILE
           } else if id.has_prefix("snapshot") || id == "math" {
             @frontend.MATH_LIBRARY_PROFILE
@@ -737,10 +822,15 @@ fn main raise {
                 },
               } : Json)
           }),
-          "driverArtifacts": if id == "float" {
-            @generator.invocation_driver(generated, [
-              entry("identity").to_canonical(),
-            ]).map(a => {
+          "driverArtifacts": if id == "float" || id == "decimal" {
+            @generator.invocation_driver(
+              generated,
+              if id == "decimal" {
+                output.entries.map(@ir.FQName::to_canonical)
+              } else {
+                [entry("identity").to_canonical()]
+              },
+            ).map(a => {
               guard a.content is Text(text) else {
                 fail("Expected text invocation driver artifact")
               }

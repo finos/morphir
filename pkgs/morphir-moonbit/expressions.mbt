@@ -240,7 +240,9 @@ fn expression(
       type_source(ctx, a) +
       ") -> " +
       type_source(ctx, b) +
-      " raise @sdk.SdkError { let " +
+      " raise " +
+      ctx.error_contract.source() +
+      " { let " +
       pat +
       " = " +
       argument_name +
