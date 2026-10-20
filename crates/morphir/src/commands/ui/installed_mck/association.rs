@@ -4,7 +4,7 @@ use crate::commands::mck::workbench::installed_launch::{InstalledCommandPaths, I
 use cap_fs_ext::{DirExt as _, FollowSymlinks, OpenOptionsFollowExt as _, OpenOptionsSyncExt as _};
 use cap_std::fs::OpenOptions;
 use morphir_mck::workbench::model_originals::installed::{
-    InstalledMetadataQuery, InstalledProcessPurpose, ObservationBufferRole,
+    InstalledMetadataQuery, InstalledProcessPurpose,
 };
 use sha2::{Digest, Sha256};
 use std::{

@@ -111,16 +111,17 @@ fn installed_record_zero_exact_and_one_over_are_real_issuance_permissions() {
     assert!(zero.prepare_record(ObservationRecordRole::Mailbox).is_err());
     assert_eq!(zero.usage().records(), 0);
     let mut owner = owner(POLICY);
-    let mailbox = owner
-        .prepare_record(ObservationRecordRole::Mailbox)
-        .unwrap()
-        .issue();
-    let process = owner
-        .prepare_record(ObservationRecordRole::Process)
-        .unwrap()
-        .issue();
-    assert_eq!(owner.usage().records(), 2);
-    drop((mailbox, process));
+    {
+        let _mailbox = owner
+            .prepare_record(ObservationRecordRole::Mailbox)
+            .unwrap()
+            .issue();
+        let _process = owner
+            .prepare_record(ObservationRecordRole::Process)
+            .unwrap()
+            .issue();
+        assert_eq!(owner.usage().records(), 2);
+    }
     assert!(
         owner
             .prepare_record(ObservationRecordRole::Process)

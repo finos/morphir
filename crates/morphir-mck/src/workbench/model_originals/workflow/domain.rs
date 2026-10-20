@@ -9,7 +9,9 @@ use super::*;
 // Expected byte-source containers retain their own meaning. Their recipe
 // grammar is identical to input Bytes/AtomicBytes and reuses those validated
 // ADTs; original schemas, fixtures and historical translation receipts stay fixed.
-pub(super) use super::input::{AtomicBytes, AtomicBytesHexHex, Bytes, BytesHexHex};
+pub(super) use super::input::{AtomicBytes, Bytes};
+#[cfg(test)]
+pub(super) use super::input::{AtomicBytesHexHex, BytesHexHex};
 
 words! { CancellationCause {
     CancelOpening => "cancel-opening",
