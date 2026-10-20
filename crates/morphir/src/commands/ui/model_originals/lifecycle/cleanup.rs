@@ -218,6 +218,9 @@ impl CleanupSlot {
         abandon(&self.owner, self.attempt, &self.control);
     }
     fn retire(&self) {
+        self.retire_checked().expect("host capture cleanup");
+    }
+    fn retire_checked(&self) -> Result<(), CaptureError> {
         if let Some(owner) = self.owner.upgrade() {
             let (mut owner, poisoned) = match owner.lock() {
                 Ok(owner) => (owner, false),
@@ -236,7 +239,7 @@ impl CleanupSlot {
             }
         }
         if let Some(registry) = self.registry.as_ref().and_then(Weak::upgrade) {
-            let mut entries = registry.lock().expect("host capture cleanup");
+            let mut entries = registry.lock().map_err(|_| CaptureError::CaptureFailed)?;
             for entry in &mut entries.entries {
                 if entry
                     .as_ref()
@@ -246,6 +249,45 @@ impl CleanupSlot {
                 }
             }
         }
+        Ok(())
+    }
+    fn reclaim_finished_retained(self: &Arc<Self>) -> Result<(), CaptureError> {
+        let actual = {
+            let mut state = match self.join.lock() {
+                Ok(state) => state,
+                Err(poison) => {
+                    drop(poison);
+                    self.mark_incomplete();
+                    return Err(CaptureError::CaptureFailed);
+                }
+            };
+            if !matches!(&*state, JoinState::Retained(actual) if actual.is_finished()) {
+                return Ok(());
+            }
+            match std::mem::replace(&mut *state, JoinState::Draining) {
+                JoinState::Retained(actual) => actual,
+                _ => unreachable!("retained join checked under the same lock"),
+            }
+        };
+        let mut guard = DrainGuard {
+            slot: self.clone(),
+            actual: Some(actual),
+        };
+        // A finished hint permits only this one actual poll. The same guard
+        // restores the exact handle if that poll still returns Pending.
+        let mut context = Context::from_waker(std::task::Waker::noop());
+        let outcome =
+            Pin::new(guard.actual.as_mut().expect("actual owned join")).poll(&mut context);
+        if let Poll::Ready(outcome) = outcome {
+            let actual = guard.actual.take().expect("actual consumed join");
+            // Draining remains unavailable until BOTH the business result and
+            // consumed wrapper have been destroyed outside every owner lock.
+            drop(outcome);
+            drop(actual);
+            self.cleanup_join(|state| *state = JoinState::Joined);
+            self.retire_checked()?;
+        }
+        Ok(())
     }
     pub(super) fn abandon_waiter(&self) {
         if self.retained_for_drop() {
@@ -483,8 +525,37 @@ impl CleanupRegistry {
         *entry = Some(slot.clone());
         Ok(())
     }
+    fn reclaim_finished_retained(&self) -> Result<(), CaptureError> {
+        for index in 0..MAX_HOST_CAPTURES {
+            let slot = {
+                let entries = self.0.lock().map_err(|_| CaptureError::CaptureFailed)?;
+                entries.entries[index].clone()
+            };
+            if let Some(slot) = slot {
+                slot.reclaim_finished_retained()?;
+            }
+        }
+        Ok(())
+    }
     pub(in crate::commands::ui) fn control(&self) -> HostCaptureCleanupOwner {
         HostCaptureCleanupOwner(self.clone())
+    }
+}
+impl ModelCaptureConnection {
+    pub(super) fn reclaim_finished_provider_captures(&self) -> Result<(), CaptureError> {
+        if let Some(registry) = &self.cleanup_registry {
+            registry.reclaim_finished_retained()?;
+        }
+        // Standalone record-observed connections own a slot without a host
+        // registry. Never keep this connection lock while polling or disposing.
+        let slot = {
+            let state = self.state.lock().map_err(|_| CaptureError::CaptureFailed)?;
+            state.cleanup.clone()
+        };
+        if let Some(slot) = slot {
+            slot.reclaim_finished_retained()?;
+        }
+        Ok(())
     }
 }
 pub(in crate::commands::ui) struct HostCaptureCleanupOwner(CleanupRegistry);

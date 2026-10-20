@@ -51,7 +51,8 @@ impl ModelCaptureConnection {
             tokio::runtime::Handle::try_current().map_err(|_| CaptureError::CaptureFailed)?;
         control.check()?;
         self.records.validate(&offer)?;
-        let mut state = self.state.lock().expect("model capture connection");
+        self.reclaim_finished_provider_captures()?;
+        let mut state = self.state.lock().map_err(|_| CaptureError::CaptureFailed)?;
         if state.cleanup.as_ref().is_some_and(|slot| slot.pending()) {
             return Err(CaptureError::ActiveCapture);
         }

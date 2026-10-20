@@ -188,7 +188,7 @@ async fn awaited_cancel_returns_promptly_then_same_pending_owner_drains_after_re
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn completed_cleanup_handle_stays_owned_and_blocks_same_connection_reuse_until_drain() {
+async fn completed_cleanup_stays_owned_until_later_start_consumes_actual_join() {
     let fixture = Fixture::new(RECORD);
     let actual = Actual::new(&fixture);
     let mut gate = Gate::new();
@@ -215,12 +215,32 @@ async fn completed_cleanup_handle_stays_owned_and_blocks_same_connection_reuse_u
         1,
         "the SAME captured slot bounds the still-owned cleanup attempt"
     );
-    assert!(matches!(
-        actual
-            .connection
-            .start_offered_provider(offer(&actual), CaptureScope::Complete),
-        Err(CaptureError::ActiveCapture)
-    ));
+    // Body return above still does not imply joining. A subsequent start may
+    // now consume an actually Ready retained join, dispose its business result,
+    // retire the old slot, then reserve new work. Pending hints may still refuse.
+    let retried = tokio::time::timeout(WAIT, async {
+        loop {
+            match actual
+                .connection
+                .start_offered_provider(offer(&actual), CaptureScope::Complete)
+            {
+                Err(CaptureError::ActiveCapture) => tokio::task::yield_now().await,
+                result => break result,
+            }
+        }
+    })
+    .await;
+    let accepted = matches!(&retried, Ok(Ok(_)));
+    let after_start = attempt.snapshot();
+    let mut completed = None;
+    if let Ok(Ok(pending)) = retried {
+        completed = Some(pending.wait().await);
+        if let Some(Ok(crate::commands::ui::model_originals::ModelCaptureCompletion::Ready(id))) =
+            &completed
+        {
+            actual.connection.release(id).unwrap();
+        }
+    }
     assert!(
         actual
             .connection
@@ -230,6 +250,21 @@ async fn completed_cleanup_handle_stays_owned_and_blocks_same_connection_reuse_u
     );
     assert_joined_error(&attempt);
     actual.assert_zero();
+    // Cleanup precedes this intended old-behavior RED. Old start never consumes
+    // the completed retained join and times out; that is not a worker timeout.
+    assert!(
+        accepted,
+        "same-connection start must progress after actual join readiness"
+    );
+    assert_eq!(after_start.joined_ok(), 1);
+    assert_eq!(after_start.owned_handles(), 0);
+    assert_eq!(after_start.dropped_unjoined(), 0);
+    assert!(matches!(
+        completed,
+        Some(Ok(
+            crate::commands::ui::model_originals::ModelCaptureCompletion::Ready(_)
+        ))
+    ));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -524,3 +559,5 @@ async fn real_authenticated_socket_disconnect_hands_off_actual_dispatch_before_f
 }
 
 mod unbounded_join_tests;
+
+mod live_reclamation_tests;
