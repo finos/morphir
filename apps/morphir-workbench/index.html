@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
   <title>Morphir Workbench</title>
+  <!-- Applies a saved Light or Dark theme before the first paint; browser/settings decodes the same key. -->
+  <script>try{var s=JSON.parse(localStorage.getItem('morphir-workbench.settings.v1')),t=s&&s.theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" type="image/svg+xml" href="./morphir-mark.svg">
   <link rel="stylesheet" href="./workbench.css">
   <link rel="stylesheet" href="./model-explorer.css">

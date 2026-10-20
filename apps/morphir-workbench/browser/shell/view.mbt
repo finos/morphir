@@ -86,18 +86,21 @@ pub fn on_tree_key(event : @dom.KeyboardEvent) -> @cmd.Cmd {
 }
 
 ///|
-/// A button of the left rail. `pressed` is its state when it toggles something, such as the explorer.
+/// A button of the left rail. `pressed` is its state when it toggles something, such as the explorer. `current`
+/// marks the button of the page that shows.
 pub fn rail_button(
   id~ : String,
   label~ : String,
   icon_name~ : String,
   active~ : Bool,
+  current~ : Bool = false,
   controls? : String,
   on_click~ : @cmd.Cmd,
 ) -> @html.Html {
   let attrs = @html.Attrs::build()
     .aria_label(label)
     .aria_pressed(active.to_string())
+  let attrs = if current { attrs.aria_current("page") } else { attrs }
   @html.button(
     id~,
     class=if active { "rail-button active" } else { "rail-button" },

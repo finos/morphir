@@ -23,28 +23,37 @@ const sessions = new Map<string, EditorState>();
 let lastReveal = '';
 // Compartments belong to each EditorState; this identity also works on a cached state.
 const configuration = new Compartment();
+// Colors are appearance tokens from workbench.css; custom properties inherit into the editor's shadow root.
 const highlighting = HighlightStyle.define([
-  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword], color: '#005878', fontWeight: '600' },
-  { tag: [tags.name, tags.variableName], color: '#1c1e21' },
-  { tag: [tags.function(tags.variableName), tags.standard(tags.name), tags.standard(tags.variableName)], color: '#00729e' },
-  { tag: [tags.string, tags.character], color: '#a34400' },
-  { tag: [tags.number, tags.bool, tags.atom], color: '#7b3fb0' },
-  { tag: tags.comment, color: '#606770', fontStyle: 'italic' },
-  { tag: [tags.operator, tags.punctuation], color: '#606770' },
-  { tag: tags.propertyName, color: '#005878' },
+  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword], color: 'var(--code-keyword)', fontWeight: '600' },
+  { tag: [tags.name, tags.variableName], color: 'var(--ink)' },
+  { tag: [tags.function(tags.variableName), tags.standard(tags.name), tags.standard(tags.variableName)], color: 'var(--code-function)' },
+  { tag: [tags.string, tags.character], color: 'var(--code-string)' },
+  { tag: [tags.number, tags.bool, tags.atom], color: 'var(--code-number)' },
+  { tag: tags.comment, color: 'var(--code-comment)', fontStyle: 'italic' },
+  { tag: [tags.operator, tags.punctuation], color: 'var(--code-punctuation)' },
+  { tag: tags.propertyName, color: 'var(--code-property)' },
 ]);
 const theme = EditorView.theme({
-  '&': { height: '100%', color: 'var(--ink, #1c1e21)', backgroundColor: '#fff', fontSize: '13px' },
-  '&.cm-focused': { outline: '2px solid var(--link, #00729e)', outlineOffset: '-2px' },
+  '&': { height: '100%', color: 'var(--ink)', backgroundColor: 'var(--surface)', fontSize: '13px' },
+  '&.cm-focused': { outline: '2px solid var(--focus-ring)', outlineOffset: '-2px' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', lineHeight: '1.85' },
   '.cm-content': { padding: '16px 0' },
   '.cm-line': { padding: '0 16px' },
-  '.cm-gutters': { backgroundColor: '#fafbfc', color: '#606770', borderRight: '1px solid #e4e6e8' },
-  '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: '#e5f5fc' },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: '#ccecfb' },
-  '.cm-cursor': { borderLeftColor: '#00729e' },
-  '.cm-morphir-problem': { textDecoration: 'underline wavy #b42318' },
-  '.cm-foldPlaceholder': { backgroundColor: '#e5f5fc', borderColor: '#dadde1', color: '#005878' },
+  '.cm-gutters': { backgroundColor: 'var(--surface-alt)', color: 'var(--muted)', borderRight: '1px solid var(--line)' },
+  '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--selection)' },
+  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: 'var(--code-selection)' },
+  '.cm-cursor': { borderLeftColor: 'var(--link)' },
+  '.cm-morphir-problem': { textDecoration: 'underline wavy var(--danger-ink)' },
+  '.cm-foldPlaceholder': { backgroundColor: 'var(--selection)', borderColor: 'var(--line-strong)', color: 'var(--link-strong)' },
+  // The search panel and completion tooltips replace CodeMirror's light-only defaults.
+  '.cm-panels': { backgroundColor: 'var(--paper)', color: 'var(--ink)' },
+  '.cm-panels-top': { borderBottom: '1px solid var(--line)' },
+  '.cm-panels-bottom': { borderTop: '1px solid var(--line)' },
+  '.cm-textfield': { backgroundColor: 'var(--surface)', border: '1px solid var(--line-strong)' },
+  '.cm-button': { backgroundImage: 'none', backgroundColor: 'var(--surface)', border: '1px solid var(--line-strong)' },
+  '.cm-tooltip': { backgroundColor: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--line-strong)' },
+  '.cm-tooltip-section:not(:first-child)': { borderTop: '1px solid var(--line)' },
 });
 
 function languageSupport(id: string) {

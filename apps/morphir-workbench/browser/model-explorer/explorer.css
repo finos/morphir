@@ -31,12 +31,12 @@ code.panel-context { font:12px/1.5 ui-monospace,monospace; }
 .reference-list { display:flex; flex-wrap:wrap; gap:6px; }
 .reference-link,.reference-external { border:1px solid transparent; border-radius:999px; padding:4px 12px; font-size:12px; }
 .reference-link { color:var(--link-strong); background:var(--selection); }
-.reference-link:hover:not(:disabled) { border-color:#9fd8ef; }
+.reference-link:hover:not(:disabled) { border-color:var(--selection-line); }
 .reference-external { display:flex; align-items:center; gap:6px; color:var(--muted); background:var(--surface-alt); border-color:var(--line); }
 .reference-external small { font-size:10px; color:var(--subtle); }
 .declaration-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); gap:10px; }
 .declaration-card { text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px; min-width:0; }
-.declaration-card:hover:not(:disabled) { background:var(--surface-alt); border-color:#9fd8ef; }
+.declaration-card:hover:not(:disabled) { background:var(--surface-alt); border-color:var(--selection-line); }
 .declaration-card-title { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; overflow-wrap:anywhere; }
 .declaration-card p { margin:0; overflow-wrap:anywhere; }
 .declaration-card .kind-badge { font-weight:500; }
@@ -98,6 +98,6 @@ code.panel-context { font:12px/1.5 ui-monospace,monospace; }
 .argument-list-item { display:grid; gap:8px; border-bottom:1px solid var(--line); padding-bottom:12px; }
 .argument-remove { justify-self:end; font-size:11px; }
 .argument-unit { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; }
-.argument-shape-error { border:1px solid #f5c9a3; background:var(--warn-bg); padding:14px 16px; margin-bottom:20px; border-radius:var(--radius); }
+.argument-shape-error { border:1px solid var(--warn-line); background:var(--warn-bg); padding:14px 16px; margin-bottom:20px; border-radius:var(--radius); }
 
 .argument-field textarea { resize:vertical; min-height:36px; border:1px solid var(--line-strong); border-radius:6px; padding:6px 8px; }

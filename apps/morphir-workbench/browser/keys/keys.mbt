@@ -53,6 +53,13 @@ pub(all) enum CommandId {
   /// Chooses the source profile of the active language.
   SelectProfile
   ShowProfileDetails
+  /// Shows the settings page. It has no shortcut: browsers keep Command or Control and comma for their own settings.
+  OpenSettings
+  UseSystemTheme
+  UseLightTheme
+  UseDarkTheme
+  /// Moves to the next theme: System, Light, Dark, then System again.
+  ToggleTheme
 } derive(Eq, Debug)
 
 ///|

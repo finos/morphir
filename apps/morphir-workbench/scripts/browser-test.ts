@@ -28,6 +28,7 @@ import { connectedCapabilityWorkflow } from './connected-capability-workflow.ts'
 import { fallbackWorkerWorkflow } from './desktop-fallback-workflow.ts';
 import { modelDocumentWorkflow } from './model-document-workflow.ts';
 import { workspaceWorkflow } from './workspace-workflow.ts';
+import { settingsWorkflow } from './settings-workflow.ts';
 
 function innerWidthOf(page: Page): number { return page.viewportSize()!.width; }
 
@@ -205,6 +206,7 @@ try {
   browser = await chromium.launch({ headless: true });
   await modelDocumentWorkflow(browser, url);
   await workspaceWorkflow(browser, url);
+  await settingsWorkflow(browser, url);
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));

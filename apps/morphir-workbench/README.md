@@ -496,6 +496,27 @@ The workbench follows [Morphir's site](https://morphir.finos.org/): blue
 selected labels and focus outlines use the site's darker blue `#00729e`.
 Primary actions pair orange with dark `#1c1e21` text.
 
+### Settings and theme
+
+The gear at the bottom of the left rail, or **Open settings** in the command palette, shows the settings page over
+the current screen. Close settings, Escape or the gear returns to the same screen, workspace, document and layout.
+Opening settings saves, parks and cancels nothing. Navigation from the rail, the header or the palette leaves settings
+for its own target. There is no keyboard shortcut: browsers keep Command or Control and comma for their own settings.
+
+The theme is **System** (the default), **Light** or **Dark**. System follows the operating system or browser
+appearance as it changes. Choose it under Appearance on the settings page, with the toggle above the gear (it cycles
+System, Light, Dark, like the site's toggle) or with the palette's Theme commands. The choice belongs to the whole
+Workbench, not to a workspace, and is saved in browser storage under `morphir-workbench.settings.v1`, for example
+`{"theme":"dark"}`. A small script in the head of `index.html` applies a saved Light or Dark theme before the first
+paint; `scripts/theme-head.test.ts` checks that it agrees with the decoder in `browser/settings`. Light and Dark set
+`data-theme` on the root element; System removes it, so the stylesheet's `prefers-color-scheme` query decides. The
+`/try/` copy on the site keeps this key apart from the site's own `site-theme`.
+
+The desktop app runs the same code with the same key. Its System theme follows what CEF reports for the operating
+system appearance. Proton 0.3.4 gives CEF a temporary profile and removes it when the app exits, so in the packaged
+app the theme, like the workspace list, lasts until the app quits. Beads `morphir-ukvn.5.72` tracks keeping that
+storage across relaunches. `scripts/desktop-test.ts` runs the settings smoke in the packaged app.
+
 A page that hosts the workbench can add `<meta name="morphir-site-home" content="<url>">`. The logo then links
 to that URL. The project site does this at `/try/`;
 the desktop host and the development server do not.

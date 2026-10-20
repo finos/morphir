@@ -207,7 +207,9 @@ fn connection(model : Model) -> @html.Html {
 
 ///|
 fn topbar(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
-  let in_workspace = model.screen is Workspace && model.active is Some(_)
+  let in_workspace = model.screen is Workspace &&
+    model.active is Some(_) &&
+    model.page is Current
   let secondary = model.layout.is_open(Secondary)
   @html.header(class="topbar", [
     @html.div(class="topbar-start", [
@@ -243,15 +245,17 @@ fn topbar(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 }
 
 ///|
-/// The left rail stays visible when the sidebars close. Its explorer button toggles the left sidebar.
+/// The left rail stays visible when the sidebars close. Its explorer button toggles the left sidebar. The theme
+/// toggle and the settings button sit at its end.
 fn rail(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+  let settings = model.page is Settings(_)
   let in_workspace = model.screen is Workspace && model.active is Some(_)
   @html.nav(class="rail", attrs=@html.Attrs::build().aria_label("Workbench"), [
     @shell.rail_button(
       id="rail-start",
       label="Getting started",
       icon_name="home",
-      active=model.screen is GettingStarted,
+      active=model.screen is GettingStarted && !settings,
       on_click=emit(ShowStart),
     ),
     if model.active is Some(_) && model.acquiring is None {
@@ -259,9 +263,11 @@ fn rail(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         id="rail-explorer",
         label="Explorer",
         icon_name="explorer",
-        active=in_workspace && model.layout.is_open(Primary),
+        active=in_workspace && model.layout.is_open(Primary) && !settings,
         controls=@shell.sidebar_id(Primary),
-        on_click=if in_workspace {
+        on_click=if in_workspace && settings {
+          @cmd.batch([emit(CloseSettings), emit(Shell(SetOpen(Primary, true)))])
+        } else if in_workspace {
           emit(Shell(Toggle(Primary)))
         } else {
           match model.active {
@@ -273,6 +279,10 @@ fn rail(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
     } else {
       @html.nothing
     },
+    @html.div(class="rail-end", [
+      theme_toggle(model, emit),
+      settings_button(model, emit),
+    ]),
   ])
 }
 
@@ -1186,6 +1196,7 @@ fn notification(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 ///|
 fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   let in_workspace = model.screen is Workspace && model.active is Some(_)
+  let settings = model.page is Settings(_)
   let layout = model.layout
   let style = "--primary-width:" +
     (if in_workspace && layout.is_open(Primary) {
@@ -1215,6 +1226,7 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       if in_workspace {
         @html.div(
           class="workspace-area",
+          hidden=settings,
           attrs=@html.Attrs::build()
             .data_set(
               "workspace",
@@ -1245,7 +1257,14 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           ],
         )
       } else {
-        @html.main_(class="start-area", [getting_started(model, emit)])
+        @html.main_(class="start-area", hidden=settings, [
+          getting_started(model, emit),
+        ])
+      },
+      if settings {
+        settings_page(model, emit)
+      } else {
+        @html.nothing
       },
       notification(model, emit),
       @palette.view(

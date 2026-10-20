@@ -21,6 +21,7 @@ import {
   "finos/morphir-workbench/browser/context-menu" @context_menu,
   "finos/morphir-workbench/browser/shell",
   "finos/morphir-workbench/browser/workspace",
+  "finos/morphir-workbench/browser/settings",
   "finos/morphir-workbench/project",
   "finos/morphir-workbench/model-document" @document,
   "finos/morphir-engine/ids",

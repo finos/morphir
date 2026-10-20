@@ -22,6 +22,10 @@ The project explorer and command palette icons are original workbench drawings u
 square), `icon-lang-moonbit.svg` (a crescent), `icon-lang-scheme.svg` (a lambda) and `icon-lang-json.svg` (braces)
 are simple line drawings, not the languages' official logos.
 
+The rail's settings and theme icons are original drawings under the same terms: `icon-settings.svg` (a gear) and
+`icon-theme-system.svg` (a monitor), `icon-theme-light.svg` (a sun) and `icon-theme-dark.svg` (a moon), which repeat
+the shapes of the Morphir site's theme toggle.
+
 UI colors follow the computed theme of [morphir.finos.org](https://morphir.finos.org/),
 checked on 01 October 2026. Its final CSS override specifies primary `#00a3e2`,
 primary darkest `#00729e`, secondary `#ff6a00` and secondary dark `#e65f00`.

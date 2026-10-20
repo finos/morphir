@@ -343,6 +343,12 @@ struct Model {
   panel : @bottom_panel.State
   started : Double
   site_home : String?
+  /// The person's settings for the whole Workbench, saved under `@settings.storage_key`.
+  settings : @settings.Settings
+  /// What the system shows now; the System theme follows it.
+  system_appearance : @settings.Appearance
+  /// The settings page, when it shows over the current screen.
+  page : Page
 } derive(Eq)
 
 ///|
@@ -431,6 +437,14 @@ enum Msg {
   Export
   Project(String)
   Panel(@bottom_panel.Action)
+  /// Shows the settings page over the current screen. The id names the control that opened it, which takes the
+  /// focus back when the page closes.
+  OpenSettings(String?)
+  CloseSettings
+  /// An Escape that no control handled; it closes settings when nothing else is open.
+  EscapeSettings
+  Theme(@settings.ThemePreference)
+  SystemAppearance(@settings.Appearance)
 }
 
 ///|
@@ -633,6 +647,9 @@ fn initial() -> Model {
       "" => None
       href => Some(href)
     },
+    settings: @settings.Settings::decode(storage_load(@settings.storage_key)),
+    system_appearance: system_appearance(),
+    page: Current,
   }
   // The saved workspaces are read at once, so nothing created before the worker starts overwrites them.
   read_registry(model, storage_load, stored_keys)
@@ -1568,6 +1585,7 @@ fn replacement_history(model : Model) -> Array[Location] {
 
 ///|
 fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) {
+  let model = if leaves_settings(msg) { leave_settings(model) } else { model }
   let (next, cmd) = match msg {
     Routed(visit, inner) => in_workspace(model, visit, inner, emit)
     _ => update_here(model, msg, emit)
@@ -1765,7 +1783,11 @@ fn update_core(
         }
         Closed => (model, @cmd.custom_cmd(_ => restore_focus()))
         Opened(path) => {
-          let (opened, cmd) = in_project_view(model, Open(path), emit)
+          let (opened, cmd) = in_project_view(
+            leave_settings(model),
+            Open(path),
+            emit,
+          )
           (opened, @cmd.batch([cmd, @cmd.custom_cmd(_ => focus_editor())]))
         }
         Run(command) => {
@@ -1773,6 +1795,7 @@ fn update_core(
           (ran, @cmd.batch([@cmd.custom_cmd(_ => restore_focus()), cmd]))
         }
         Chose(command, value) => {
+          let model = leave_settings(model)
           let (chosen, cmd) = match command {
             SwitchLanguage => update_core(model, Language(value), emit)
             SetTarget => update_core(model, Target(value), emit)
@@ -3704,6 +3727,11 @@ fn update_core(
         @cmd.none,
       )
     }
+    OpenSettings(_)
+    | CloseSettings
+    | EscapeSettings
+    | Theme(_)
+    | SystemAppearance(_) => update_settings(model, msg)
     Panel(action) => {
       let (panel, focus) = model.panel.update(action)
       (
@@ -3998,9 +4026,11 @@ fn main {
   @rabbita.new(() => {
     let (model, emit) = @rabbita.create_state_with_init(
       init=emit => {
+        let model = initial()
         (
-          initial(),
+          model,
           @cmd.batch([
+            watch_theme(model.settings, emit),
             request_cmd(
               emit,
               0,
@@ -4541,6 +4571,12 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
       local_reason
     },
   )
+  // Settings, from anywhere.
+  add(OpenSettings, "Open settings", "Settings", "")
+  add(UseSystemTheme, "Theme: Use system setting", "Settings", "")
+  add(UseLightTheme, "Theme: Light", "Settings", "")
+  add(UseDarkTheme, "Theme: Dark", "Settings", "")
+  add(ToggleTheme, "Toggle theme", "Settings", "")
   if !in_workspace {
     add(TogglePanel, "Toggle panel", "View", "")
     return commands
@@ -4818,6 +4854,11 @@ fn run_command(
     None => command is (ShowCommands | GoToFile | ContextMenu)
   }
   guard runs else { return (model, @cmd.none) }
+  let model = if keeps_settings(command) {
+    model
+  } else {
+    leave_settings(model)
+  }
   let active = active_project(model).active
   match command {
     Compile => update_core(model, Request("compile"), emit)
@@ -4950,6 +4991,11 @@ fn run_command(
       (shown, @cmd.batch([cmd, row]))
     }
     ContextMenu => (model, @cmd.none)
+    OpenSettings => update_settings(model, OpenSettings(None))
+    UseSystemTheme => update_settings(model, Theme(System))
+    UseLightTheme => update_settings(model, Theme(Light))
+    UseDarkTheme => update_settings(model, Theme(Dark))
+    ToggleTheme => update_settings(model, Theme(model.settings.theme.next()))
   }
 }
 

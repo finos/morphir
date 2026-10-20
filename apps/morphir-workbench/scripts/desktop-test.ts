@@ -13,6 +13,7 @@ import { elmWorkflow, moonbitWorkflow, libraryWorkflow, stringWorkflow, supporte
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.ts';
 import { desktopCapabilityWorkflow } from './capability-workflow.ts';
 import { build, createWorkspace, gettingStarted, showModel, showSource } from './workbench-steps.ts';
+import { settingsSmoke } from './settings-workflow.ts';
 
 // CEF cancels CDP directory enumeration even though ordinary file uploads work.
 // Replay the selected files at the DOM input boundary; production readFiles,
@@ -91,6 +92,7 @@ try {
   // A local page starts on getting started; a workspace opens only when the person chooses one.
   await gettingStarted(page);
   const originalUrl = page.url();
+  const systemAppearance = await settingsSmoke(page);
   const native = async <T = NativeDescriptor,>(operation: string, fields: Record<string,string> = {}): Promise<NativeReply<T>> => {
     const raw = await page.evaluate(async ([operation, fields]) => {
     const frame = { profile: 'morphir/workbench/native', contractVersion: '0.2.0-draft.2', operation: `session.${operation}`, ...fields };
@@ -305,5 +307,5 @@ try {
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
   await terminalOutcomeWorkflow(page, { resize: false, screenshot: process.env.MORPHIR_WORKBENCH_OUTCOME_SCREENSHOT });
   assert.deepEqual(errors, []);
-  console.log('Packaged Proton smoke passed: page-bound native session, hostile-origin rejection, reload/revocation, explicit standalone, shared UI, worker compile/run, model import/reference/back navigation, typed fields/Ion evaluation and result views.');
+  console.log(`Packaged Proton smoke passed: settings and themes (System is ${systemAppearance} here), page-bound native session, hostile-origin rejection, reload/revocation, explicit standalone, shared UI, worker compile/run, model import/reference/back navigation, typed fields/Ion evaluation and result views.`);
 } finally { await browser.close(); }
