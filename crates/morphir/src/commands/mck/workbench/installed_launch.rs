@@ -160,6 +160,25 @@ fn required(
 ) -> Result<AbsoluteLaunchPath, LaunchSelectionError> {
     AbsoluteLaunchPath::parse(path.ok_or(missing)?.clone())
 }
+/// Caller-selected process settings, borrowed until the SAME funded spec is built.
+pub(in crate::commands) struct InstalledInvocationSettings<'a> {
+    directory: &'a Path,
+    environment: &'a [(OsString, OsString)],
+    limits: morphir_mck::transport::Limits,
+}
+impl<'a> InstalledInvocationSettings<'a> {
+    pub(in crate::commands) fn new(
+        directory: &'a Path,
+        environment: &'a [(OsString, OsString)],
+        limits: morphir_mck::transport::Limits,
+    ) -> Self {
+        Self {
+            directory,
+            environment,
+            limits,
+        }
+    }
+}
 pub(in crate::commands) struct InstalledCommandPaths {
     launch: AbsoluteLaunchPath,
     connection: AbsoluteLaunchPath,
@@ -318,9 +337,7 @@ impl InstalledLaunch {
         action: InstalledClientAction<'_>,
         paths: &InstalledCommandPaths,
         run: &mut morphir_mck::workbench::model_originals::installed::InstalledClientRun<'_>,
-        directory: &Path,
-        environment: &[(OsString, OsString)],
-        limits: morphir_mck::transport::Limits,
+        invocation: InstalledInvocationSettings<'_>,
     ) -> Result<
         morphir_mck::workbench::model_originals::installed::RunningInstalledProcess,
         morphir_mck::workbench::model_originals::installed::InstalledAdapterError,
@@ -328,6 +345,11 @@ impl InstalledLaunch {
         use morphir_mck::workbench::model_originals::installed::{
             InstalledAdapterError, InstalledProcessPurpose,
         };
+        let InstalledInvocationSettings {
+            directory,
+            environment,
+            limits,
+        } = invocation;
         let Destination::Confined {
             directory: expected,
             ..

@@ -6,7 +6,7 @@ use crate::commands::mck::workbench::RunArgs;
 use clap::Parser;
 use morphir_mck::workbench::model_originals::installed::{
     InstalledAdapterError, InstalledClientAction, InstalledClientAdapter,
-    InstalledClientMeasurements, InstalledClientRun,
+    InstalledClientMeasurements, InstalledClientRun, InstalledCommand,
 };
 use morphir_mck::workbench::{
     RunConfiguration, WorkbenchExecutionMode, run_configured_with_installed_client_adapter,
@@ -371,4 +371,79 @@ fn launch_l08_wrong_or_malformed_whole_source_prevents_command_callback() {
         );
         assert_eq!((adapter.callbacks, adapter.commands), (0, 0));
     }
+}
+
+struct WrongDirectoryProbe {
+    callbacks: usize,
+}
+impl InstalledClientAdapter for WrongDirectoryProbe {
+    fn observe(
+        &mut self,
+        mut run: InstalledClientRun<'_>,
+    ) -> Result<InstalledClientMeasurements, InstalledAdapterError> {
+        self.callbacks += 1;
+        let launch = installed(&options("node"));
+        let directory = absolute("invocation");
+        let paths = InstalledCommandPaths::new_confined(
+            directory.join("launch.json"),
+            directory.join("connection.json"),
+            directory.join("source.json"),
+            directory.join("project.json"),
+            directory.clone(),
+            "destination".into(),
+            directory.join("destination"),
+        )
+        .unwrap();
+        let action = run.actions().nth(2).unwrap();
+        assert!(matches!(
+            action,
+            InstalledClientAction::Run {
+                command: InstalledCommand::Connect,
+                ..
+            }
+        ));
+        let wrong_directory = absolute("wrong-directory");
+        let before = run.installed_observation_usage();
+        let result = launch.spawn(
+            2,
+            action,
+            &paths,
+            &mut run,
+            InstalledInvocationSettings::new(
+                &wrong_directory,
+                &[],
+                morphir_mck::transport::Limits::DEFAULT,
+            ),
+        );
+        assert!(matches!(
+            result,
+            Err(InstalledAdapterError::ObservationIncomplete)
+        ));
+        let after = run.installed_observation_usage();
+        assert_eq!(after.retained_bytes(), before.retained_bytes());
+        assert_eq!(after.stdout_prefix_bytes(), before.stdout_prefix_bytes());
+        assert_eq!(after.stderr_prefix_bytes(), before.stderr_prefix_bytes());
+        assert_eq!(after.snapshot_read_bytes(), before.snapshot_read_bytes());
+        assert_eq!(after.records(), before.records());
+        assert_eq!(
+            after.byte_visits(),
+            before.byte_visits()
+                + (wrong_directory.as_os_str().len() + directory.as_os_str().len()) as u64
+        );
+        Err(InstalledAdapterError::ObservationIncomplete)
+    }
+}
+
+#[test]
+fn installed_spawn_rejects_wrong_directory_before_spec_allocation() {
+    let mut adapter = WrongDirectoryProbe { callbacks: 0 };
+    let root = kit(CASES);
+    let report = run_configured_with_installed_client_adapter(
+        root.path(),
+        &RunConfiguration::from_json(INSTALLED).unwrap(),
+        &mut adapter,
+    )
+    .unwrap();
+    assert_eq!(adapter.callbacks, 1);
+    assert!(!report.qualified());
 }

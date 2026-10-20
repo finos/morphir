@@ -16,7 +16,8 @@ use super::{
     server::BoundUiHost,
 };
 use crate::commands::{
-    mck::workbench::installed_launch::InstalledLaunch, out_context::OutOverrides,
+    mck::workbench::installed_launch::{InstalledInvocationSettings, InstalledLaunch},
+    out_context::OutOverrides,
 };
 use cap_std::fs::Dir;
 use morphir_common::config::observation::ReadLimits;
@@ -382,9 +383,7 @@ async fn observe(
                         action,
                         &fixture.paths,
                         &mut run,
-                        &fixture.base,
-                        &environment,
-                        limits,
+                        InstalledInvocationSettings::new(&fixture.base, &environment, limits),
                     )?);
                     let finished = processes::execute(
                         &mut run,
