@@ -1,10 +1,14 @@
 //! Capability providers available to the loopback UI host.
 
+pub(crate) mod current;
 pub mod extension;
 pub mod native;
+pub mod originals;
 pub mod playground;
 mod pool;
 mod project_model;
+
+pub use current::WorkspaceSessionControl;
 
 #[cfg(test)]
 mod conformance;

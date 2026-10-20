@@ -6,8 +6,8 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use clap::Args;
 
 use provider::{
-    SessionCapabilities, WorkspaceCapability, extension::ExtensionWorkspaceProvider,
-    native::NativeWorkspaceProvider, playground::NativePlaygroundProvider,
+    SessionCapabilities, extension::ExtensionWorkspaceProvider, native::NativeWorkspaceProvider,
+    playground::NativePlaygroundProvider,
 };
 use server::BoundUiHost;
 
@@ -50,13 +50,16 @@ pub async fn run_ui(
             workspace.display()
         ));
     }
+    let workspace = workspace
+        .canonicalize()
+        .map_err(|error| miette::miette!("Unable to resolve Morphir UI workspace: {error}"))?;
     let session_id = generate_session_id()?;
     // Resolved up front: both the workspace-extension branch and the
     // playground read extensions out of the same Morphir Home.
     let home = crate::home::MorphirHome::resolve()
         .map_err(|error| miette::miette!("Unable to resolve Morphir Home: {error}"))?;
-    let provider: Arc<dyn WorkspaceCapability> = match args.workspace_extension.as_deref() {
-        Some(extension_id) => Arc::new(
+    let provider = match args.workspace_extension.as_deref() {
+        Some(extension_id) => provider::originals::OriginalsProvider::Installed(Arc::new(
             ExtensionWorkspaceProvider::select(
                 home.clone(),
                 &workspace,
@@ -64,18 +67,22 @@ pub async fn run_ui(
                 Some(extension_id),
             )
             .map_err(miette::Report::new)?
-            .with_out_overrides(out.clone()),
-        ),
-        None => Arc::new(
+            .with_out_overrides(out.clone())
+            .authorize_originals_lookup(cap_std::ambient_authority())
+            .map_err(miette::Report::new)?,
+        )),
+        None => provider::originals::OriginalsProvider::Native(Arc::new(
             NativeWorkspaceProvider::discover(&workspace, &session_id)
                 .map_err(miette::Report::new)?
-                .with_out_overrides(out),
-        ),
+                .with_out_overrides(out)
+                .authorize_originals_lookup(cap_std::ambient_authority())
+                .map_err(miette::Report::new)?,
+        )),
     };
-    let host = BoundUiHost::bind(
+    let host = BoundUiHost::bind_with_originals(
         session_id,
         SessionCapabilities {
-            workspace: Some(provider),
+            workspace: Some(provider.workspace()),
             // The playground reads the same workspace the UI was pointed at,
             // so a project that configures its frontend provider gets it in
             // the browser too.
@@ -84,6 +91,7 @@ pub async fn run_ui(
             ))),
             ..Default::default()
         },
+        Some(provider),
     )
     .await
     .map_err(miette::Report::new)?;

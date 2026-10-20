@@ -49,9 +49,27 @@ pub enum ConnectedMethod {
     ArtifactsRead,
     #[serde(rename = "morphir.artifacts.release")]
     ArtifactsRelease,
+    #[serde(rename = "morphir.model-originals.capture")]
+    ModelOriginalsCapture,
+    #[serde(rename = "morphir.model-originals.inventory")]
+    ModelOriginalsInventory,
+    #[serde(rename = "morphir.model-originals.read")]
+    ModelOriginalsRead,
+    #[serde(rename = "morphir.model-originals.release")]
+    ModelOriginalsRelease,
 }
 
 impl ConnectedMethod {
+    pub fn is_model_originals(self) -> bool {
+        matches!(
+            self,
+            Self::ModelOriginalsCapture
+                | Self::ModelOriginalsInventory
+                | Self::ModelOriginalsRead
+                | Self::ModelOriginalsRelease
+        )
+    }
+
     pub fn is_artifact_transfer(self) -> bool {
         matches!(
             self,

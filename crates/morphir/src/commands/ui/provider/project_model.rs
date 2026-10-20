@@ -199,7 +199,10 @@ pub(super) fn open_workspace(workspace: &Path) -> Result<Dir, CliError> {
     Dir::open_ambient_dir(workspace, cap_std::ambient_authority()).map_err(CliError::from)
 }
 
-fn open_project_directory(workspace: &Dir, relative_path: &str) -> Result<Dir, CliError> {
+pub(super) fn open_project_directory(
+    workspace: &Dir,
+    relative_path: &str,
+) -> Result<Dir, CliError> {
     let mut directory = workspace.try_clone().map_err(CliError::from)?;
     if relative_path != "." {
         let components = Path::new(relative_path).components().collect::<Vec<_>>();
