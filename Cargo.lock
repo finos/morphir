@@ -4918,6 +4918,7 @@ dependencies = [
  "granit-parser",
  "indexmap",
  "lasso",
+ "morphir-json",
  "num-bigint 0.5.1",
  "rstest",
  "schemars",
@@ -5045,6 +5046,7 @@ dependencies = [
  "base64 0.22.1",
  "extism-pdk",
  "ion-rs",
+ "morphir-json",
  "morphir-workspace",
  "percent-encoding",
  "semver",
@@ -5140,6 +5142,14 @@ dependencies = [
  "unicode-casefold",
  "unicode-normalization",
  "wat",
+]
+
+[[package]]
+name = "morphir-json"
+version = "0.2.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
