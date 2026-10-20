@@ -13,8 +13,12 @@ use crate::commands::ui::{
 use futures_util::{SinkExt as _, StreamExt as _};
 use morphir_devkit::ConfigLoadOptions;
 use serde_json::{Value, json};
-use std::{fs, sync::Arc, time::Duration};
-use tokio::net::TcpStream;
+use std::{
+    fs,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+use tokio::net::{TcpSocket, TcpStream};
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async,
     tungstenite::{Message, client::IntoClientRequest as _},
@@ -34,6 +38,7 @@ struct Fixture {
     project: String,
     base: String,
     cookie: String,
+    send_buffer: Option<usize>,
 }
 impl Fixture {
     async fn connect(&self) -> Socket {
@@ -74,6 +79,65 @@ impl Fixture {
     }
     fn capture_params(&self) -> Value {
         json!({"contractVersion":VERSION,"source":{"providerId":self.source["providerId"],"locator":self.source["locator"]},"projectId":self.project,"scope":"complete","semantic":"none"})
+    }
+}
+impl Fixture {
+    async fn connect_small_receive_buffer(&self) -> (Socket, usize) {
+        let tcp = TcpSocket::new_v4().unwrap();
+        tcp.set_recv_buffer_size(1024).unwrap();
+        let before_connect = tcp.recv_buffer_size().unwrap();
+        let address = self.base.strip_prefix("http://").unwrap().parse().unwrap();
+        let stream = tcp.connect(address).await.unwrap();
+        let connected = socket2::SockRef::from(&stream);
+        let after_connect = connected.recv_buffer_size().unwrap();
+        // The current native OS can retune the buffer during TCP connect.
+        // Set and verify the actual connected socket before the WS handshake.
+        connected.set_recv_buffer_size(1024).unwrap();
+        let receive_buffer = connected.recv_buffer_size().unwrap();
+        eprintln!(
+            "actual client SO_RCVBUF: before TCP connect={before_connect}, after TCP connect={after_connect}, before WS handshake={receive_buffer}"
+        );
+        assert!(
+            receive_buffer < 65536,
+            "OS receive buffer cannot force the selected read to stall: {receive_buffer}"
+        );
+        let mut request = format!("{}/rpc", self.base.replace("http://", "ws://"))
+            .into_client_request()
+            .unwrap();
+        request
+            .headers_mut()
+            .insert("origin", self.base.parse().unwrap());
+        request
+            .headers_mut()
+            .insert("cookie", self.cookie.parse().unwrap());
+        let (mut socket, _) =
+            tokio_tungstenite::client_async(request, MaybeTlsStream::Plain(stream))
+                .await
+                .unwrap();
+        send(
+            &mut socket,
+            1,
+            "morphir.session.initialize",
+            json!({"protocolVersion":1,"sessionId":"socket-originals-session"}),
+        )
+        .await;
+        assert_eq!(reply(&mut socket, 1).await["result"]["protocolVersion"], 1);
+        send(
+            &mut socket,
+            2,
+            "morphir.workspace.open",
+            json!({"source":self.source}),
+        )
+        .await;
+        let opened = reply(&mut socket, 2).await;
+        assert!(
+            opened["result"]["snapshot"]["projects"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|project| project["id"] == self.project)
+        );
+        (socket, receive_buffer)
     }
 }
 impl Drop for Fixture {
@@ -135,7 +199,20 @@ async fn usage_is(
     .expect("bounded actual shared resource transition");
 }
 
+enum SocketBuffers {
+    Ordinary,
+    SmallSend,
+}
+
 async fn fixture() -> (Fixture, Socket) {
+    fixture_with(
+        br#"{"formatVersion":4,"opaque":"socket fixture"}"#,
+        SocketBuffers::Ordinary,
+    )
+    .await
+}
+
+async fn fixture_with(primary: &[u8], buffers: SocketBuffers) -> (Fixture, Socket) {
     let directory = tempfile::tempdir().unwrap();
     fs::write(
         directory.path().join("morphir.toml"),
@@ -144,11 +221,7 @@ async fn fixture() -> (Fixture, Socket) {
     .unwrap();
     let output = directory.path().join(".morphir/out");
     fs::create_dir_all(output.join("compile.dest")).unwrap();
-    fs::write(
-        output.join("compile.dest/model.json"),
-        br#"{"formatVersion":4,"opaque":"socket fixture"}"#,
-    )
-    .unwrap();
+    fs::write(output.join("compile.dest/model.json"), primary).unwrap();
     fs::write(output.join("compile.json"), br#"{"schema":1,"task":"compile","module":"","completedAt":"now","ir":{"path":"model.json","layout":"single-file","format":"json","version":"v4"},"morphirModelOriginals":{"contractVersion":"0.1.0-draft.1","companions":[]}}"#).unwrap();
     let lock = fs::OpenOptions::new()
         .create(true)
@@ -183,7 +256,41 @@ async fn fixture() -> (Fixture, Socket) {
     let launch = host.launch_url();
     let observer = host.model_originals_observer();
     let workspace = host.workspace_control();
-    let worker = tokio::spawn(host.serve());
+    let (worker, send_buffer) = match buffers {
+        SocketBuffers::Ordinary => (tokio::spawn(host.serve()), None),
+        SocketBuffers::SmallSend => {
+            use axum::serve::ListenerExt as _;
+            // Configure the actual bound listener before accept, retaining the
+            // same production Router, authentication and connection owners.
+            let (listener, router) = host.into_parts();
+            let socket = socket2::SockRef::from(&listener);
+            socket.set_send_buffer_size(1024).unwrap();
+            let actual = socket.send_buffer_size().unwrap();
+            assert!(
+                actual < 65536,
+                "OS send buffer cannot force the selected read to stall"
+            );
+            let listener = listener.tap_io(|stream| {
+                let socket = socket2::SockRef::from(&*stream);
+                let inherited = socket.send_buffer_size().unwrap();
+                socket.set_send_buffer_size(1024).unwrap();
+                let actual = socket.send_buffer_size().unwrap();
+                eprintln!(
+                    "actual accepted TCP SO_SNDBUF: inherited={inherited}, before HTTP/WS={actual}"
+                );
+                assert!(
+                    actual < 65536,
+                    "actual accepted send buffer is too large: {actual}"
+                );
+            });
+            let worker = tokio::spawn(async move {
+                axum::serve(listener, router)
+                    .await
+                    .map_err(crate::error::CliError::from)
+            });
+            (worker, Some(actual))
+        }
+    };
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(WAIT)
@@ -248,6 +355,7 @@ async fn fixture() -> (Fixture, Socket) {
             project,
             base,
             cookie,
+            send_buffer,
         },
         socket,
     )
@@ -571,4 +679,148 @@ async fn host_slots_span_authenticated_sockets_and_release_allows_real_reuse() {
         usage == ModelCaptureUsage::default()
     })
     .await;
+}
+
+#[tokio::test]
+async fn actual_stalled_reader_expires_profile_send_after_thirty_wall_clock_seconds() {
+    // Independent large primary, within the real source/decode bounds. The
+    // ordinary maximum read becomes an approximately87KiB base64 frame.
+    let mut primary = br#"{"formatVersion":4,"opaque":""#.to_vec();
+    primary.extend(std::iter::repeat_n(b'x', 131072));
+    primary.extend_from_slice(br#""}"#);
+    let (fixture, mut initial) = fixture_with(&primary, SocketBuffers::SmallSend).await;
+    initial.close(None).await.unwrap();
+    drop(initial);
+    fs2::FileExt::unlock(&fixture.lock).unwrap();
+    let (mut socket, receive_buffer) = fixture.connect_small_receive_buffer().await;
+    send(
+        &mut socket,
+        3,
+        "morphir.model-originals.capture",
+        fixture.capture_params(),
+    )
+    .await;
+    let captured = reply(&mut socket, 3).await;
+    assert_eq!(captured["result"]["status"], "ready", "{captured}");
+    let capture = captured["result"]["captureId"].as_str().unwrap();
+    send(
+        &mut socket,
+        4,
+        "morphir.model-originals.inventory",
+        json!({"contractVersion":VERSION,"captureId":capture,"startIndex":0,"maxEntries":1}),
+    )
+    .await;
+    let inventory = reply(&mut socket, 4).await;
+    let entry = &inventory["result"]["entries"][0];
+    assert_eq!(entry["path"], "model.json");
+    assert_eq!(entry["kind"], "file");
+    assert_eq!(entry["byteLength"], primary.len());
+    assert_eq!(fixture.observer.usage().source_bytes(), primary.len());
+    assert_eq!(fixture.observer.usage().captures(), 1);
+    assert_eq!(fixture.observer.usage().active_workers(), 0);
+
+    let MaybeTlsStream::Plain(stream) = socket.get_ref() else {
+        panic!("loopback fixture is plain TCP")
+    };
+    let connected = socket2::SockRef::from(stream);
+    let before_read = connected.recv_buffer_size().unwrap();
+    connected.set_recv_buffer_size(1024).unwrap();
+    let at_read = connected.recv_buffer_size().unwrap();
+    eprintln!("actual client SO_RCVBUF: after WS setup={before_read}, at selected read={at_read}");
+    assert!(at_read < 65536);
+    use base64::Engine as _;
+    // These are finite test-observer bounds, not host policy or fake IO counts.
+    const MAX_READS: usize = 32;
+    const MAX_PEEK: usize = 4 * 1024 * 1024;
+    let expected_content = base64::engine::general_purpose::STANDARD.encode(&primary[..65536]);
+    let mut peek = vec![0; MAX_PEEK];
+    let mut sent = 1;
+    let mut complete = 0;
+    let mut previous_size = 0;
+    let mut largest_peek = 0;
+    let mut incomplete_observed = false;
+    let mut started = Instant::now();
+    send(&mut socket, 5, "morphir.model-originals.read", json!({"contractVersion":VERSION,"captureId":capture,"target":{"kind":"original","entryId":entry["entryId"]},"offset":0,"maxBytes":65536})).await;
+    // No WebSocket reads or consuming TCP reads occur below. Another real read
+    // is issued only after the prior complete frame and exact ID are witnessed.
+    tokio::time::timeout(Duration::from_secs(60), async {
+        loop {
+            if fixture.observer.usage() == ModelCaptureUsage::default() {
+                assert!(complete < sent && incomplete_observed, "owner ended without an observed incomplete current frame");
+                break;
+            }
+            let MaybeTlsStream::Plain(stream) = socket.get_ref() else { panic!("plain TCP") };
+            let size = tokio::time::timeout(WAIT, stream.peek(&mut peek)).await
+                .expect("real response data").unwrap();
+            assert!(size > 0 && size < MAX_PEEK, "inconclusive: observer buffer exhausted or peer closed before a partial frame");
+            largest_peek = largest_peek.max(size);
+            if size > previous_size {
+                let (observed, full_bytes) = peek_read_replies(&peek[..size], capture, &entry["entryId"], &expected_content);
+                assert!(observed <= sent, "unsolicited read response");
+                complete = complete.max(observed);
+                if complete < sent && size > full_bytes {
+                    incomplete_observed = true;
+                }
+                previous_size = size;
+            }
+            if complete == sent {
+                assert!(sent < MAX_READS, "inconclusive: all32 bounded reads fit the actual OS buffers");
+                eprintln!("actual complete held TCP frames={complete}, peek bytes={size}; issuing exactly one next read");
+                sent += 1;
+                incomplete_observed = false;
+                started = Instant::now();
+                send(&mut socket, 4 + sent as u64, "morphir.model-originals.read", json!({"contractVersion":VERSION,"captureId":capture,"target":{"kind":"original","entryId":entry["entryId"]},"offset":0,"maxBytes":65536})).await;
+            }
+            assert!(started.elapsed() < Duration::from_secs(45), "inconclusive: current held frame did not force send retirement within45s");
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }).await.expect("finite real TCP-window probe");
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed >= Duration::from_secs(30),
+        "retired before the real30second send deadline: {elapsed:?}"
+    );
+    assert!(
+        elapsed < Duration::from_secs(45),
+        "actual timeout exceeded bounded measurement: {elapsed:?}"
+    );
+    eprintln!(
+        "actual stalled-reader measurement: listener SO_SNDBUF={}, client SO_RCVBUF={receive_buffer}, sent={sent}, complete={complete}, max peek={largest_peek}, incomplete current frame={incomplete_observed}, owner retirement={elapsed:?}",
+        fixture.send_buffer.unwrap()
+    );
+    assert_eq!(fixture.observer.usage(), ModelCaptureUsage::default());
+    // Dispose only after the genuine server timeout and zero-credit observation.
+    drop(socket);
+}
+
+fn peek_read_replies(bytes: &[u8], capture: &str, entry: &Value, content: &str) -> (usize, usize) {
+    use tokio_tungstenite::tungstenite::protocol::frame::{
+        FrameSocket,
+        coding::{Data, OpCode},
+    };
+    // Reuse the maintained WebSocket frame reader over the nonconsuming peek.
+    // None is its genuine incomplete-frame result; no handwritten wire parser.
+    let mut reader = FrameSocket::new(std::io::Cursor::new(bytes));
+    let mut count = 0;
+    let mut full_bytes = 0;
+    while let Some(frame) = reader.read(Some(128 * 1024)).unwrap() {
+        assert!(frame.header().is_final && frame.header().mask.is_none());
+        assert_eq!(frame.header().opcode, OpCode::Data(Data::Text));
+        full_bytes += frame.len();
+        let text = frame.into_text().unwrap();
+        let value = morphir_mck::json::parse_exact_document(text.as_str()).unwrap();
+        assert_eq!(value["jsonrpc"], "2.0");
+        assert_eq!(value["id"], 5 + count as u64);
+        assert!(value.get("error").is_none(), "{value}");
+        assert_eq!(value["result"]["captureId"], capture);
+        assert_eq!(
+            value["result"]["target"],
+            json!({"kind":"original","entryId":entry})
+        );
+        assert_eq!(value["result"]["offset"], 0);
+        assert_eq!(value["result"]["nextOffset"], 65536);
+        assert_eq!(value["result"]["content"], content);
+        count += 1;
+    }
+    (count, full_bytes)
 }

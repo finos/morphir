@@ -16,6 +16,7 @@ spec/mck/baseline-ion-2026-09-26/** -text
 # Model originals include intentional BOM and CRLF bytes with fixed digests.
 spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/** -text
 spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/v4-bom-crlf.json whitespace=-blank-at-eol,cr-at-eol
+crates/morphir/tests/support/model_originals_host/model-primary.ionb -text
 
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads

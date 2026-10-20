@@ -4803,6 +4803,7 @@ dependencies = [
  "serde_json",
  "sha2 0.11.0",
  "shell-words",
+ "socket2",
  "starbase",
  "subtle",
  "syntect",

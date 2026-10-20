@@ -160,6 +160,26 @@ impl Fixture {
         fs2::FileExt::unlock(&lock).unwrap();
         self.expected_version = expected;
     }
+    /// A real oversized primary under the same cooperating-writer lock. No
+    /// in-memory64MiB buffer or expected snapshot is manufactured for refusal.
+    pub fn resize_primary_for_refusal(&self, length: u64) {
+        let dest = self.root().join(".morphir/out/compile.dest");
+        assert!(dest.join(&self.primary).is_file());
+        let lock = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(self.root().join(".morphir/out/compile.lock"))
+            .unwrap();
+        fs2::FileExt::lock_exclusive(&lock).unwrap();
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(dest.join(&self.primary))
+            .unwrap();
+        file.set_len(length).unwrap();
+        assert_eq!(file.metadata().unwrap().len(), length);
+        fs2::FileExt::unlock(&lock).unwrap();
+    }
     pub fn root(&self) -> &Path {
         self.temp.path()
     }
