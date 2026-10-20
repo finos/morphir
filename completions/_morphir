@@ -576,6 +576,7 @@ cmd ui display_order=14 args_override_self=#false help="Open the Morphir develop
         arg <ID>
     }
     flag --no-open help="Print the one-time launch URL instead of opening a browser"
+    flag --preview-model-originals help="Enable the model-originals preview before full connected qualification"
     arg "[WORKSPACE]" help="Morphir development workspace to open. Defaults to the current directory" required=#false
     complete workspace type=path
 }

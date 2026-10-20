@@ -31,6 +31,8 @@ pub(crate) struct UiHostState {
     pub(crate) initial_view: Option<InitialView>,
     pub(crate) authority: String,
     pub(crate) artifact_capacity: super::artifacts::HostArtifactCapacity,
+    pub(crate) original_capacity: super::model_originals::HostModelCaptureCapacity,
+    pub(crate) current: super::provider::current::CurrentSessionCapabilities,
 }
 
 pub struct BoundUiHost {
@@ -40,12 +42,22 @@ pub struct BoundUiHost {
     launch_token: String,
     manifest: SessionManifest,
     artifact_observer: super::artifacts::ArtifactUsageObserver,
+    original_capacity: super::model_originals::HostModelCaptureCapacity,
+    workspace_control: super::provider::WorkspaceSessionControl,
 }
 
 impl BoundUiHost {
     pub async fn bind(
         session_id: String,
         capabilities: SessionCapabilities,
+    ) -> Result<Self, CliError> {
+        Self::bind_with_originals(session_id, capabilities, None).await
+    }
+
+    pub(crate) async fn bind_with_originals(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
     ) -> Result<Self, CliError> {
         let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
             .await
@@ -71,6 +83,24 @@ impl BoundUiHost {
                 message: "A Morphir UI session requires at least one capability".into(),
             });
         }
+        let current =
+            super::provider::current::CurrentSessionCapabilities::new(capabilities.clone());
+        if let Some(provider) = originals {
+            let id = provider.workspace().manifest().id;
+            current.register_originals(provider)?;
+            let offered = providers
+                .iter_mut()
+                .find(|provider| provider.id == id)
+                .ok_or_else(|| {
+                    super::protocol::protocol_error("Original-source provider was not offered")
+                })?;
+            offered
+                .capabilities
+                .push(super::protocol::WorkbenchCapability {
+                    name: super::model_originals::wire::PROFILE.into(),
+                    version: super::model_originals::CONTRACT_VERSION.into(),
+                });
+        }
         let manifest = SessionManifest {
             protocol_version: CONNECTED_PROTOCOL_VERSION,
             web_socket_path: "/rpc".into(),
@@ -83,6 +113,8 @@ impl BoundUiHost {
         let manifest_copy = manifest.clone();
         let artifact_capacity = super::artifacts::HostArtifactCapacity::default();
         let artifact_observer = artifact_capacity.observer();
+        let original_capacity = super::model_originals::HostModelCaptureCapacity::default();
+        let workspace_control = current.workspace_control();
         let state = UiHostState {
             auth: Arc::new(auth),
             manifest,
@@ -90,6 +122,8 @@ impl BoundUiHost {
             initial_view,
             authority: address.to_string(),
             artifact_capacity,
+            original_capacity: original_capacity.clone(),
+            current,
         };
         let router = Router::new()
             .route("/launch", get(exchange_launch_token))
@@ -105,6 +139,8 @@ impl BoundUiHost {
             launch_token,
             manifest: manifest_copy,
             artifact_observer,
+            original_capacity,
+            workspace_control,
         })
     }
 
@@ -116,10 +152,25 @@ impl BoundUiHost {
         &self.manifest
     }
 
+    /// Issue a control for the same live workspace registration before serving
+    /// consumes this host. Requests cannot construct or obtain this handle.
+    pub fn workspace_control(&self) -> super::provider::WorkspaceSessionControl {
+        self.workspace_control.clone()
+    }
+
     /// Read-only measurements for local host owners and qualification adapters.
     /// This observer grants neither handles nor generation/publication authority.
     pub fn artifact_observer(&self) -> super::artifacts::ArtifactUsageObserver {
         self.artifact_observer.clone()
+    }
+
+    /// Shared resource measurements. This grants no capture or provider authority.
+    pub fn model_originals_usage(&self) -> super::model_originals::ModelCaptureUsage {
+        self.original_capacity.usage()
+    }
+
+    pub fn model_originals_observer(&self) -> super::model_originals::ModelCaptureUsageObserver {
+        self.original_capacity.observer()
     }
 
     pub fn base_url(&self) -> String {

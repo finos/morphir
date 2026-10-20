@@ -11,6 +11,44 @@ fn fixture(bytes: &[u8]) -> (tempfile::TempDir, Dir) {
 }
 
 #[tokio::test]
+async fn transfer_inspection_borrows_only_the_live_connection_owned_original() {
+    let (_temp, dir) = fixture(b"original\r\n\0");
+    let capacity = HostModelCaptureCapacity::default();
+    let owner = ModelCaptureConnection::new(capacity.clone());
+    let other = ModelCaptureConnection::new(capacity.clone());
+    let id = run(&owner, dir).await.unwrap();
+    let digest = owner
+        .inspect_owned(&id, |sources| {
+            assert_eq!(
+                sources.file_bytes(sources.primary().path()).unwrap(),
+                b"original\r\n\0"
+            );
+            sources.inventory_sha256().clone()
+        })
+        .unwrap();
+    assert_eq!(owner.inspect(&id).unwrap().inventory_sha256(), &digest);
+    assert!(matches!(
+        other.inspect_owned(&id, |_| panic!(
+            "foreign owner must not read retained sources"
+        )),
+        Err(CaptureError::UnknownHandle)
+    ));
+    let forged = CaptureId::parse("not-this-capture").unwrap();
+    assert!(matches!(
+        owner.inspect_owned(&forged, |_| panic!(
+            "forged capture must not read retained sources"
+        )),
+        Err(CaptureError::UnknownHandle)
+    ));
+    owner.release(&id).unwrap();
+    assert!(matches!(
+        owner.inspect_owned(&id, |_| panic!("release ended source ownership")),
+        Err(CaptureError::UnknownHandle)
+    ));
+    assert_eq!(capacity.usage(), ModelCaptureUsage::default());
+}
+
+#[tokio::test]
 async fn actual_capture_is_owner_scoped_until_release_or_disconnect() {
     let (_temp, dir) = fixture(b"original\r\n");
     let capacity = HostModelCaptureCapacity::default();

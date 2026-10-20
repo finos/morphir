@@ -219,6 +219,7 @@ pub(super) fn capture_accounted(
         source_bytes: limits.source - builder.source_left,
         metadata_bytes: limits.metadata - builder.metadata_left,
         inventory_digest,
+        source_version: SourceVersionEvidence::NotReported,
     })))
 }
 fn io_error(_: std::io::Error) -> CaptureError {
