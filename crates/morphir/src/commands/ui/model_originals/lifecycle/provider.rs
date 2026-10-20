@@ -1,5 +1,6 @@
 //! One actual worker owns provider resolution, capture and revalidation effects.
 use super::*;
+use crate::commands::ui::model_originals::capture::capture_resolved_accounted;
 use crate::{
     commands::ui::provider::originals::{SelectedOriginalsOffer, SourceResolution},
     error::CliError,
@@ -95,9 +96,8 @@ impl ModelCaptureConnection {
                         }
                     };
                 worker_control.check()?;
-                let captured = capture_accounted(
-                    resolved.output(),
-                    resolved.module(),
+                let captured = capture_resolved_accounted(
+                    &resolved,
                     scope,
                     &worker_control,
                     Limits::default(),
@@ -118,6 +118,9 @@ impl ModelCaptureConnection {
                         sources.metadata_bytes = metadata;
                         hooks.before_source_header();
                         worker_control.check()?;
+                        let _header_observation = resolved
+                            .source_observation()
+                            .map(|source| source.enter(observation::HostCall::FrozenHeaderProbe));
                         sources.source_version = frozen_source_version(sources);
                         worker_control.check()?;
                     }

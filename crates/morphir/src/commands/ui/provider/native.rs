@@ -10,6 +10,9 @@ use morphir_devkit::{
 };
 use morphir_workspace as portable;
 
+use crate::commands::ui::model_originals::observation::{
+    HostCall, HostSourceIdentity, HostSourceLease, HostSourceObservationScope,
+};
 use crate::error::CliError;
 
 use super::{
@@ -32,6 +35,7 @@ pub struct NativeWorkspaceProvider {
     out: crate::commands::out_context::OutOverrides,
     config_options: ConfigLoadOptions,
     originals_lookup: super::originals::HostOutputLookup,
+    observation: Option<HostSourceLease>,
 }
 
 impl NativeWorkspaceProvider {
@@ -46,6 +50,50 @@ impl NativeWorkspaceProvider {
     ) -> Result<Self, CliError> {
         let discovery =
             discover_workspace_detailed_typed(root, &config_options).map_err(discovery_error)?;
+        let workspace_dir = open_workspace(&discovery.canonical_root)?;
+        Self::from_discovery(discovery, workspace_dir, session_id, config_options, None)
+    }
+
+    pub(in crate::commands::ui) fn discover_observed(
+        held: Dir,
+        root: &Path,
+        session_id: &str,
+        config_options: ConfigLoadOptions,
+        scope: &HostSourceObservationScope,
+    ) -> Result<Self, CliError> {
+        let observation = scope.lease();
+        let _route = observation.enter(HostCall::InitialDiscovery);
+        let discovery = Self::observed_discovery(&held, root, &config_options, &observation)?;
+        Self::from_discovery(
+            discovery,
+            held,
+            session_id,
+            config_options,
+            Some(observation),
+        )
+    }
+
+    fn observed_discovery(
+        held: &Dir,
+        root: &Path,
+        options: &ConfigLoadOptions,
+        observation: &HostSourceLease,
+    ) -> Result<morphir_devkit::NativeWorkspaceDiscovery, CliError> {
+        morphir_devkit::WorkspaceDiscoveryRoot::from_directory(held.try_clone()?, root)
+            .map_err(CliError::from)?
+            .capture_observed(options, observation.source_scope())
+            .map_err(CliError::from)?
+            .into_typed_details()
+            .map_err(discovery_error)
+    }
+
+    fn from_discovery(
+        discovery: morphir_devkit::NativeWorkspaceDiscovery,
+        workspace_dir: Dir,
+        session_id: &str,
+        config_options: ConfigLoadOptions,
+        observation: Option<HostSourceLease>,
+    ) -> Result<Self, CliError> {
         let workspace = discovery.canonical_root;
         let provider_id = format!("cli:{session_id}");
         let display_name = workspace
@@ -58,7 +106,6 @@ impl NativeWorkspaceProvider {
             display_name,
             persistence: None,
         };
-        let workspace_dir = open_workspace(&workspace)?;
         Ok(Self {
             manifest: ProviderManifest {
                 id: provider_id,
@@ -79,6 +126,7 @@ impl NativeWorkspaceProvider {
             out: Default::default(),
             config_options,
             originals_lookup: Default::default(),
+            observation,
         })
     }
 
@@ -108,6 +156,7 @@ impl NativeWorkspaceProvider {
             &self.out,
             ambient,
         )?;
+        self.originals_lookup.observe(self.observation.clone());
         Ok(self)
     }
     #[cfg(test)]
@@ -127,6 +176,10 @@ impl NativeWorkspaceProvider {
         super::originals::SourceResolution,
         crate::commands::ui::model_originals::ProviderCaptureError,
     > {
+        let _route = self
+            .observation
+            .as_ref()
+            .map(|source| source.enter(HostCall::OriginalsResolution));
         selection.validate_stored_source(&self.source)?;
         let grant = self.originals_lookup.granted()?;
         let captured = grant.capture_discovery()?;
@@ -165,6 +218,9 @@ impl NativeWorkspaceProvider {
 
 #[async_trait]
 impl WorkspaceCapability for NativeWorkspaceProvider {
+    fn source_observation_identity(&self) -> Option<HostSourceIdentity> {
+        self.observation.as_ref().map(HostSourceLease::identity)
+    }
     fn manifest(&self) -> ProviderManifest {
         self.manifest.clone()
     }
@@ -190,9 +246,21 @@ impl WorkspaceCapability for NativeWorkspaceProvider {
     }
 
     async fn open(&self, source: &WorkbenchSourceRef) -> Result<WorkspaceSnapshot, CliError> {
+        let _route = self
+            .observation
+            .as_ref()
+            .map(|source| source.enter(HostCall::WorkspaceOpen));
         self.validate_source(source)?;
-        let discovery = discover_workspace_detailed_typed(&self.workspace, &self.config_options)
-            .map_err(discovery_error)?;
+        let discovery = match &self.observation {
+            Some(source) => Self::observed_discovery(
+                &self.workspace_dir,
+                &self.workspace,
+                &self.config_options,
+                source,
+            )?,
+            None => discover_workspace_detailed_typed(&self.workspace, &self.config_options)
+                .map_err(discovery_error)?,
+        };
         Ok(qualify_snapshot(&self.source, discovery.snapshot))
     }
 
@@ -201,6 +269,10 @@ impl WorkspaceCapability for NativeWorkspaceProvider {
         source: &WorkbenchSourceRef,
         project_id: &str,
     ) -> Result<ProjectModelOpenResult, CliError> {
+        let _route = self.observation.as_ref().map(|source| {
+            source.mark_incomplete(); // This optional legacy decoder's lower reads are not hooked.
+            source.enter(HostCall::LegacyModelOpen)
+        });
         self.validate_source(source)?;
         let snapshot = self.open(source).await?;
         load_project_model(

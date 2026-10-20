@@ -6,12 +6,13 @@ use std::{
 };
 
 pub use super::current::SelectedOriginalsOffer;
+use crate::commands::ui::model_originals::observation::HostSourceLease;
 use cap_fs_ext::DirExt;
 use cap_std::fs::Dir;
+use morphir_common::file_identity::FileIdentity;
 use morphir_devkit::config::ProjectSelection;
 use morphir_devkit::{ConfigLoadOptions, discover_config_at, load_config_context_with};
 use morphir_workspace as portable;
-use same_file::Handle;
 
 use super::{extension::ExtensionWorkspaceProvider, native::NativeWorkspaceProvider};
 use crate::{
@@ -40,11 +41,12 @@ pub(super) enum HostOutputLookup {
 pub(super) struct TrustedHostOutputLookup {
     directory: Dir,
     label: PathBuf,
-    identity: Handle,
+    identity: FileIdentity,
     options: ConfigLoadOptions,
     overrides: OutOverrides,
     offer: StartupOffer,
     ambient: cap_std::AmbientAuthority,
+    observation: Option<HostSourceLease>,
     #[cfg(test)]
     hooks: Option<Arc<dyn LookupHooks>>,
 }
@@ -69,9 +71,9 @@ impl HostOutputLookup {
                 "Original-source startup root must be absolute",
             ));
         }
-        let identity = Handle::from_file(directory.try_clone()?.into_std_file())?;
+        let identity = FileIdentity::from_file(directory.try_clone()?.into_std_file())?;
         let current = Dir::open_ambient_dir(label, ambient)?;
-        if Handle::from_file(current.into_std_file())? != identity {
+        if FileIdentity::from_file(current.into_std_file())? != identity {
             return Err(protocol_error(
                 "Original-source startup root identity does not match its held directory",
             ));
@@ -84,6 +86,7 @@ impl HostOutputLookup {
             overrides: overrides.clone(),
             offer: StartupOffer(uuid::Uuid::new_v4()),
             ambient,
+            observation: None,
             #[cfg(test)]
             hooks: None,
         })))
@@ -106,11 +109,16 @@ impl HostOutputLookup {
             )),
         }
     }
+    pub(super) fn observe(&mut self, observation: Option<HostSourceLease>) {
+        if let Self::Issued(grant) = self {
+            grant.observation = observation;
+        }
+    }
 }
 impl TrustedHostOutputLookup {
     pub(super) fn verify_root(&self) -> Result<(), CliError> {
         let actual = Dir::open_ambient_dir(&self.label, self.ambient)?;
-        if Handle::from_file(actual.into_std_file())? != self.identity {
+        if FileIdentity::from_file(actual.into_std_file())? != self.identity {
             return Err(protocol_error("Original-source workspace root changed"));
         }
         Ok(())
@@ -119,12 +127,15 @@ impl TrustedHostOutputLookup {
         &self,
     ) -> Result<morphir_devkit::CapturedWorkspaceDiscovery, CliError> {
         self.verify_root()?;
-        morphir_devkit::WorkspaceDiscoveryRoot::from_directory(
+        let root = morphir_devkit::WorkspaceDiscoveryRoot::from_directory(
             self.directory.try_clone()?,
             &self.label,
         )
-        .map_err(CliError::from)?
-        .capture(&self.options)
+        .map_err(CliError::from)?;
+        match &self.observation {
+            Some(source) => root.capture_observed(&self.options, source.source_scope()),
+            None => root.capture(&self.options),
+        }
         .map_err(CliError::from)
     }
 }
@@ -225,13 +236,21 @@ pub(in crate::commands::ui) enum SourceResolution {
 pub(in crate::commands::ui) struct ResolvedProjectSource {
     output: Dir,
     module: SelectedModule,
-    project: Handle,
-    output_identity: Handle,
+    project: FileIdentity,
+    output_identity: FileIdentity,
     offer: StartupOffer,
+    content_binding: OutputContentBinding,
+    observation: Option<HostSourceLease>,
     // All payloads and handles above are dropped before this returns credit.
     _credit: RetainedEvidenceCredit,
 }
 impl ResolvedProjectSource {
+    pub(in crate::commands::ui) fn content_binding(&self) -> &OutputContentBinding {
+        &self.content_binding
+    }
+    pub(in crate::commands::ui) fn source_observation(&self) -> Option<&HostSourceLease> {
+        self.observation.as_ref()
+    }
     pub(in crate::commands::ui) fn output(&self) -> &Dir {
         &self.output
     }
@@ -243,6 +262,28 @@ impl ResolvedProjectSource {
             && self.output_identity == current.output_identity
             && self.module == current.module
             && self.offer == current.offer
+    }
+}
+
+/// Retained only from the actual trusted output resolver, never wire labels.
+pub(in crate::commands::ui) enum WorkspaceOutputRoute {
+    SelectedRoot,
+    Descendant(PathBuf),
+}
+pub(in crate::commands::ui) enum OutputLocation {
+    Workspace(WorkspaceOutputRoute),
+    Ambient,
+}
+pub(in crate::commands::ui) struct OutputContentBinding {
+    location: OutputLocation,
+    label: PathBuf,
+}
+impl OutputContentBinding {
+    pub(in crate::commands::ui) fn label(&self) -> &Path {
+        &self.label
+    }
+    pub(in crate::commands::ui) fn location(&self) -> &OutputLocation {
+        &self.location
     }
 }
 
@@ -273,7 +314,7 @@ pub(super) fn resolve_selected(
     let workspace_root = &grant.label;
     let project =
         super::project_model::open_project_directory(workspace, selected.relative_path.as_str())?;
-    let project_identity = Handle::from_file(project.try_clone()?.into_std_file())?;
+    let project_identity = FileIdentity::from_file(project.try_clone()?.into_std_file())?;
     let project_root = workspace_root.join(selected.relative_path.as_str());
     verify_project_label(grant, &project_root, &project_identity)?;
     #[cfg(test)]
@@ -290,7 +331,14 @@ pub(super) fn resolve_selected(
         .map(|path| {
             let mut options = grant.options.clone();
             options.project = ProjectSelection::Current;
-            load_config_context_with(&path, &options)
+            match &grant.observation {
+                Some(source) => morphir_devkit::load_config_context_observed(
+                    &path,
+                    &options,
+                    source.source_scope(),
+                ),
+                None => load_config_context_with(&path, &options),
+            }
         })
         .transpose()
         .map_err(CliError::from)?;
@@ -357,24 +405,65 @@ pub(super) fn resolve_selected(
         }
         Err(error) => return Err(error.into()),
     };
-    let project = Handle::from_file(project.into_std_file())?;
-    let output_identity = Handle::from_file(output.try_clone()?.into_std_file())?;
+    let project = FileIdentity::from_file(project.into_std_file())?;
+    let output_identity = FileIdentity::from_file(output.try_clone()?.into_std_file())?;
+    // The absolute business output already exists. Charge its retained payload
+    // and any separate root-relative path BEFORE copying or moving it into the
+    // escaping authority record. A path label itself grants no directory access.
+    let relative = output_path.strip_prefix(workspace_root).ok();
+    let relative_bytes = relative.map_or(0, |path| path.as_os_str().as_encoded_bytes().len());
+    credit.grow(
+        output_path
+            .as_os_str()
+            .as_encoded_bytes()
+            .len()
+            .checked_add(relative_bytes)
+            .ok_or(CaptureError::Capacity)?,
+    )?;
+    let location = match relative {
+        Some(path) if path.as_os_str().is_empty() => {
+            OutputLocation::Workspace(WorkspaceOutputRoute::SelectedRoot)
+        }
+        Some(path)
+            if path
+                .components()
+                .all(|part| matches!(part, std::path::Component::Normal(_))) =>
+        {
+            // The already-opened business output keeps its exact spelling.
+            // Its internal rooted route follows the same validated Normal
+            // components as traversal, excluding redundant separators/dots.
+            let mut route = PathBuf::new();
+            route
+                .try_reserve(relative_bytes)
+                .map_err(|_| CaptureError::Capacity)?;
+            for part in path.components() {
+                route.push(part.as_os_str());
+            }
+            OutputLocation::Workspace(WorkspaceOutputRoute::Descendant(route))
+        }
+        _ => OutputLocation::Ambient,
+    };
     Ok(SourceResolution::Compiled(ResolvedProjectSource {
         output,
         module,
         project,
         output_identity,
         offer: grant.offer,
+        content_binding: OutputContentBinding {
+            location,
+            label: output_path,
+        },
+        observation: grant.observation.clone(),
         _credit: credit,
     }))
 }
 fn verify_project_label(
     grant: &TrustedHostOutputLookup,
     label: &Path,
-    identity: &Handle,
+    identity: &FileIdentity,
 ) -> Result<(), CliError> {
     let actual = Dir::open_ambient_dir(label, grant.ambient)?;
-    if Handle::from_file(actual.into_std_file())? != *identity {
+    if FileIdentity::from_file(actual.into_std_file())? != *identity {
         return Err(protocol_error("Original-source selected project changed"));
     }
     Ok(())

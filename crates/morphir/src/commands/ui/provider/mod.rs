@@ -29,6 +29,11 @@ use super::protocol::{
 
 #[async_trait]
 pub trait WorkspaceCapability: Send + Sync {
+    fn source_observation_identity(
+        &self,
+    ) -> Option<super::model_originals::observation::HostSourceIdentity> {
+        None
+    }
     fn watch_refresh_interval(&self) -> Duration {
         Duration::from_millis(500)
     }
@@ -48,6 +53,11 @@ pub trait WorkspaceCapability: Send + Sync {
 /// open workspace.
 #[async_trait]
 pub trait PlaygroundCapability: Send + Sync {
+    fn source_observation_identity(
+        &self,
+    ) -> Option<super::model_originals::observation::HostSourceIdentity> {
+        None
+    }
     fn manifest(&self) -> ProviderManifest;
     async fn catalog(&self) -> Result<PlaygroundCatalog, CliError>;
     async fn compile(

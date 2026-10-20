@@ -25,6 +25,15 @@ impl OriginalSession {
             binding: None,
         }
     }
+    pub(super) fn new_source_observed(
+        capacity: HostModelCaptureCapacity,
+        source: &crate::commands::ui::model_originals::observation::HostSourceLease,
+    ) -> Self {
+        Self {
+            connection: ModelCaptureConnection::new_observed(capacity, source.worker_scope()),
+            binding: None,
+        }
+    }
     pub(super) fn close(&mut self) {
         self.connection.close();
         self.binding = None;

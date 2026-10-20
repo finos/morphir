@@ -29,3 +29,6 @@ mod worker_observation_tests;
 
 #[cfg(test)]
 mod worker_boundary_tests;
+
+#[cfg(test)]
+mod host_source_tests;

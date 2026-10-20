@@ -407,7 +407,13 @@ impl Default for ConnectionState {
 
 async fn serve_socket(mut socket: WebSocket, host: UiHostState) {
     let mut state = ConnectionState {
-        originals: model_originals::OriginalSession::new(host.original_capacity.clone()),
+        originals: match &host.source_observation {
+            Some(source) => model_originals::OriginalSession::new_source_observed(
+                host.original_capacity.clone(),
+                source,
+            ),
+            None => model_originals::OriginalSession::new(host.original_capacity.clone()),
+        },
         ..Default::default()
     };
     let refresh_interval = host
@@ -1008,6 +1014,7 @@ mod tests {
             authority: "127.0.0.1:0".into(),
             artifact_capacity: super::super::artifacts::HostArtifactCapacity::default(),
             original_capacity: Default::default(),
+            source_observation: None,
         }
     }
 

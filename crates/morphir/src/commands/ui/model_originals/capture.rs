@@ -1,14 +1,18 @@
 use super::{domain::*, record};
+mod reads;
 use crate::commands::ui::artifacts::portable_path_key;
 use cap_fs_ext::{DirExt, FollowSymlinks, OpenOptionsFollowExt, OpenOptionsSyncExt};
 use cap_std::fs::{Dir, OpenOptions};
 use morphir_distribution::Sha256Digest;
+use reads::{
+    CaptureArea, CaptureFile, CaptureFileOpenError, CaptureReads, open_directory, open_file,
+};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::{Read, Write},
-    path::{Component, Path},
+    path::Path,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -23,6 +27,14 @@ pub struct CaptureControl {
     cancelled: Arc<AtomicBool>,
     notification: Arc<tokio::sync::Notify>,
     deadline: Instant,
+    #[cfg(test)]
+    read_boundary_hook: Option<Arc<dyn Fn(CaptureReadBoundary) + Send + Sync>>,
+}
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CaptureReadBoundary {
+    AfterMetadataBeforeData,
+    AfterDataBeforeRead,
 }
 impl Default for CaptureControl {
     fn default() -> Self {
@@ -35,11 +47,27 @@ impl CaptureControl {
             cancelled: Arc::new(AtomicBool::new(false)),
             notification: Arc::new(tokio::sync::Notify::new()),
             deadline: Instant::now() + Duration::from_secs(30),
+            #[cfg(test)]
+            read_boundary_hook: None,
         }
     }
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Relaxed);
         self.notification.notify_waiters();
+    }
+    #[cfg(test)]
+    fn with_read_boundary_hook(
+        mut self,
+        hook: Arc<dyn Fn(CaptureReadBoundary) + Send + Sync>,
+    ) -> Self {
+        self.read_boundary_hook = Some(hook);
+        self
+    }
+    #[cfg(test)]
+    fn read_boundary(&self, boundary: CaptureReadBoundary) {
+        if let Some(hook) = &self.read_boundary_hook {
+            hook(boundary);
+        }
     }
     #[cfg(test)]
     pub(super) fn with_timeout(timeout: Duration) -> Self {
@@ -126,6 +154,50 @@ pub(super) fn capture_accounted(
     limits: Limits,
     accounting: &mut dyn CaptureAccounting,
 ) -> Result<CaptureResult, CaptureError> {
+    capture_with_reads(
+        output,
+        module,
+        scope,
+        control,
+        limits,
+        accounting,
+        CaptureReads::Historical,
+    )
+}
+pub(super) fn capture_resolved_accounted(
+    resolved: &crate::commands::ui::provider::originals::ResolvedProjectSource,
+    scope: CaptureScope,
+    control: &CaptureControl,
+    limits: Limits,
+    accounting: &mut dyn CaptureAccounting,
+) -> Result<CaptureResult, CaptureError> {
+    let reads = match resolved.source_observation() {
+        Some(source) => CaptureReads::Observed {
+            source,
+            binding: resolved.content_binding(),
+            module: resolved.module(),
+        },
+        None => CaptureReads::Historical,
+    };
+    capture_with_reads(
+        resolved.output(),
+        resolved.module(),
+        scope,
+        control,
+        limits,
+        accounting,
+        reads,
+    )
+}
+fn capture_with_reads(
+    output: &Dir,
+    module: &SelectedModule,
+    scope: CaptureScope,
+    control: &CaptureControl,
+    limits: Limits,
+    accounting: &mut dyn CaptureAccounting,
+    reads: CaptureReads<'_>,
+) -> Result<CaptureResult, CaptureError> {
     control.check()?;
     let directory = match open_directory(output, Path::new(module.as_str())) {
         Ok(dir) => dir,
@@ -158,12 +230,18 @@ pub(super) fn capture_accounted(
             Err(_) => return Err(CaptureError::CaptureFailed),
         }
     }
-    let raw_file = match open_file(&directory, Path::new("compile.json")) {
+    let raw_file = match open_file(
+        &directory,
+        Path::new("compile.json"),
+        reads,
+        CaptureArea::Module,
+        control,
+    ) {
         Ok(file) => file,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+        Err(error) if error.is_not_found() => {
             return Ok(CaptureResult::Unavailable(CaptureUnavailable::NotCompiled));
         }
-        Err(_) => return Err(CaptureError::CaptureFailed),
+        Err(error) => return Err(error.into_capture_error()),
     };
     let raw = read_bounded(
         raw_file,
@@ -197,6 +275,7 @@ pub(super) fn capture_accounted(
         paths: PathSet::default(),
         control,
         accounting,
+        reads,
     };
     for root in roots {
         builder.metadata(root)?;
@@ -225,28 +304,8 @@ pub(super) fn capture_accounted(
 fn io_error(_: std::io::Error) -> CaptureError {
     CaptureError::CaptureFailed
 }
-fn open_directory(root: &Dir, path: &Path) -> std::io::Result<Dir> {
-    let mut directory = root.try_clone()?;
-    for component in path.components() {
-        let Component::Normal(name) = component else {
-            return Err(std::io::Error::other("unconfined path"));
-        };
-        directory = directory.open_dir_nofollow(name)?;
-    }
-    Ok(directory)
-}
-fn open_file(root: &Dir, path: &Path) -> std::io::Result<cap_std::fs::File> {
-    let parent = open_directory(root, path.parent().unwrap_or(Path::new("")))?;
-    let mut options = OpenOptions::new();
-    options.read(true).follow(FollowSymlinks::No).nonblock(true);
-    parent.open_with(
-        path.file_name()
-            .ok_or_else(|| std::io::Error::other("missing name"))?,
-        &options,
-    )
-}
 fn read_bounded(
-    mut file: cap_std::fs::File,
+    mut file: CaptureFile<'_>,
     limit: usize,
     excess: CaptureError,
     control: &CaptureControl,
@@ -357,6 +416,7 @@ impl PathSet {
 }
 
 struct Builder<'a> {
+    reads: CaptureReads<'a>,
     entries: Vec<SourceEntry>,
     source_left: usize,
     metadata_left: usize,
@@ -402,7 +462,14 @@ impl Builder<'_> {
         let content = match kind {
             SourceKind::File => {
                 let bytes = read_bounded(
-                    open_file(dest, Path::new(path.as_str())).map_err(io_error)?,
+                    open_file(
+                        dest,
+                        Path::new(path.as_str()),
+                        self.reads,
+                        CaptureArea::Destination,
+                        self.control,
+                    )
+                    .map_err(CaptureFileOpenError::into_capture_error)?,
                     self.source_left,
                     CaptureError::SourceLimit,
                     self.control,
@@ -500,3 +567,9 @@ fn inventory_digest(entries: &[SourceEntry]) -> Sha256Digest {
     }
     Sha256Digest::from_bytes(hash.finalize().into())
 }
+
+#[cfg(test)]
+mod cancellation_tests;
+
+#[cfg(test)]
+mod output_route_tests;

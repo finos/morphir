@@ -134,6 +134,7 @@ enum Invocation<R> {
 }
 
 pub struct NativePlaygroundProvider {
+    observation: Option<crate::commands::ui::model_originals::observation::HostSourceLease>,
     registry: RegistrySource,
     /// The workspace's `[frontend]` section, when one was found and loaded, so
     /// a compile can read the provider the project asked for. `None` when the
@@ -163,17 +164,40 @@ impl NativePlaygroundProvider {
 
     /// As [`new`](Self::new), for a session that knows its workspace.
     pub fn in_workspace(home: MorphirHome, workspace: &Path) -> Self {
+        Self::in_workspace_with_observation(home, workspace, None)
+    }
+
+    pub(in crate::commands::ui) fn in_workspace_observed(
+        home: MorphirHome,
+        workspace: &Path,
+        scope: &crate::commands::ui::model_originals::observation::HostSourceObservationScope,
+    ) -> Self {
+        Self::in_workspace_with_observation(home, workspace, Some(scope.lease()))
+    }
+
+    fn in_workspace_with_observation(
+        home: MorphirHome,
+        workspace: &Path,
+        observation: Option<crate::commands::ui::model_originals::observation::HostSourceLease>,
+    ) -> Self {
+        let _route = observation.as_ref().map(|source| {
+            source.enter(
+                crate::commands::ui::model_originals::observation::HostCall::PlaygroundStartup,
+            )
+        });
         let working_directory = extension_working_directory(&home);
-        Self::with_parts(
+        let mut provider = Self::with_parts(
             Arc::new(move |only| installed_registry(&home, only)),
-            workspace_frontend(workspace),
+            workspace_frontend_with_observation(workspace, observation.as_ref()),
             // Pooled on purpose: a provider with a guest pays activation and
             // the MEP handshake once per guest instead of once per click. See
             // the pool module for the reuse and eviction rules.
             Arc::new(PooledInvoker::new(crate::commands::extension::host_config())),
             working_directory,
             INVOCATION_TIMEOUT,
-        )
+        );
+        provider.observation = observation;
+        provider
     }
 
     /// Host an explicitly supplied SDK registry, using the same production
@@ -197,6 +221,7 @@ impl NativePlaygroundProvider {
         timeout: Duration,
     ) -> Self {
         Self {
+            observation: None,
             registry,
             frontend,
             invoker,
@@ -208,6 +233,11 @@ impl NativePlaygroundProvider {
 
 #[async_trait]
 impl PlaygroundCapability for NativePlaygroundProvider {
+    fn source_observation_identity(
+        &self,
+    ) -> Option<crate::commands::ui::model_originals::observation::HostSourceIdentity> {
+        self.observation.as_ref().map(|source| source.identity())
+    }
     fn manifest(&self) -> ProviderManifest {
         ProviderManifest {
             id: "playground".into(),
@@ -232,6 +262,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
     /// what exists: applying the Elm entry here would drop every other
     /// language's provider from the picker.
     async fn catalog(&self) -> Result<PlaygroundCatalog, CliError> {
+        if let Some(source) = &self.observation {
+            source.mark_incomplete();
+        }
         Ok(project_catalog(&(self.registry)(None)?))
     }
 
@@ -239,6 +272,10 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         &self,
         params: PlaygroundCompileParams,
     ) -> Result<PlaygroundCompileResult, CliError> {
+        let _route = self.observation.as_ref().map(|source| {
+            source.mark_incomplete(); // Actual extension/config routes below are not observed yet.
+            source.enter(crate::commands::ui::model_originals::observation::HostCall::Compile)
+        });
         // The project's choice of provider for this language, read exactly as
         // `morphir compile` reads it. There is no flag to override it here.
         let configured =
@@ -307,6 +344,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         &self,
         params: PlaygroundGenerateParams,
     ) -> Result<PlaygroundGenerateResult, CliError> {
+        if let Some(source) = &self.observation {
+            source.mark_incomplete();
+        }
         let generated = self
             .invoke_generation(params, GenerationInvocation::Legacy)
             .await?;
@@ -331,6 +371,9 @@ impl PlaygroundCapability for NativePlaygroundProvider {
         &self,
         params: crate::commands::ui::artifacts::ArtifactGenerationInput,
     ) -> Result<Option<SdkGeneration>, CliError> {
+        if let Some(source) = &self.observation {
+            source.mark_incomplete();
+        }
         self.invoke_generation(params.into_playground(), GenerationInvocation::Artifacts)
             .await
             .map(Some)
@@ -446,7 +489,10 @@ fn installed_registry(home: &MorphirHome, only: Option<&str>) -> Result<Registry
 /// session carries on with no configured provider. A
 /// `[frontend.<language>] extension` that is itself malformed is a different
 /// matter, and still fails the compile that reads it.
-fn workspace_frontend(workspace: &Path) -> Option<FrontendSection> {
+fn workspace_frontend_with_observation(
+    workspace: &Path,
+    observation: Option<&crate::commands::ui::model_originals::observation::HostSourceLease>,
+) -> Option<FrontendSection> {
     let config_path = match discover_config(workspace) {
         Ok(found) => found?,
         Err(error) => {
@@ -457,7 +503,15 @@ fn workspace_frontend(workspace: &Path) -> Option<FrontendSection> {
             return None;
         }
     };
-    match load_config_context_with(&config_path, &ConfigLoadOptions::default()) {
+    let loaded = match observation {
+        Some(source) => morphir_devkit::load_config_context_observed(
+            &config_path,
+            &ConfigLoadOptions::default(),
+            source.source_scope(),
+        ),
+        None => load_config_context_with(&config_path, &ConfigLoadOptions::default()),
+    };
+    match loaded {
         Ok(context) => context.config.frontend,
         Err(error) => {
             tracing::warn!(

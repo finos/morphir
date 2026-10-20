@@ -1,7 +1,12 @@
 //! Private bounded evidence about actual blocking workers and their join handles.
 //! This is a worker prefix, never a source-read or whole-host coverage claim.
+mod host;
 use cap_std::fs::Dir;
-use same_file::Handle;
+pub use host::{
+    HostCall, HostObservationError, HostObservationLimits, HostSourceIdentity, HostSourceLease,
+    HostSourceObservationScope, HostSourceSnapshot,
+};
+use morphir_common::file_identity::FileIdentity;
 use std::{
     future::Future,
     path::Path,
@@ -128,7 +133,7 @@ struct ScopeState {
 }
 struct Scope {
     // Metadata identity is retained, but no directory/read grant is exposed.
-    _identity: Handle,
+    _identity: FileIdentity,
     limits: WorkerObservationLimits,
     state: Mutex<ScopeState>,
 }
@@ -157,9 +162,11 @@ impl WorkerObservationScope {
         let identity = held
             .try_clone()
             .ok()
-            .and_then(|dir| Handle::from_file(dir.into_std_file()).ok())
+            .and_then(|dir| FileIdentity::from_file(dir.into_std_file()).ok())
             .ok_or(WorkerObservationError::RootIdentity)?;
-        if identity != Handle::from_path(label).map_err(|_| WorkerObservationError::RootIdentity)? {
+        if identity
+            != FileIdentity::from_path(label).map_err(|_| WorkerObservationError::RootIdentity)?
+        {
             return Err(WorkerObservationError::RootIdentity);
         }
         Ok(Self {
@@ -419,10 +426,12 @@ impl WorkerAttemptObservation {
 
 /// Fixed immutable counters. Complete observed events and joined cleanup are
 /// separate: a completed body can still have a genuinely held unjoined handle.
+#[derive(Clone, Copy)]
 pub struct WorkerSnapshot {
     counts: Counts,
     coverage: WorkerCoverage,
 }
+#[derive(Clone, Copy)]
 enum WorkerCoverage {
     Unobserved,
     Partial(WorkerObservationError),

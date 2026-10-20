@@ -33,6 +33,7 @@ pub(crate) struct UiHostState {
     pub(crate) artifact_capacity: super::artifacts::HostArtifactCapacity,
     pub(crate) original_capacity: super::model_originals::HostModelCaptureCapacity,
     pub(crate) current: super::provider::current::CurrentSessionCapabilities,
+    pub(crate) source_observation: Option<super::model_originals::observation::HostSourceLease>,
 }
 
 pub struct BoundUiHost {
@@ -58,6 +59,63 @@ impl BoundUiHost {
         session_id: String,
         capabilities: SessionCapabilities,
         originals: Option<super::provider::originals::OriginalsProvider>,
+    ) -> Result<Self, CliError> {
+        Self::bind_configured(session_id, capabilities, originals, None).await
+    }
+
+    pub(in crate::commands::ui) async fn bind_source_observed(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
+        scope: &super::model_originals::observation::HostSourceObservationScope,
+    ) -> Result<Self, CliError> {
+        let source = scope.lease();
+        let expected = source.identity();
+        let identities = [
+            capabilities
+                .workspace
+                .as_ref()
+                .and_then(|provider| provider.source_observation_identity()),
+            capabilities
+                .playground
+                .as_ref()
+                .and_then(|provider| provider.source_observation_identity()),
+        ];
+        for identity in identities {
+            match identity {
+                Some(actual) if !actual.matches(&expected) => {
+                    return Err(super::protocol::protocol_error(
+                        super::model_originals::observation::HostObservationError::ForeignScope
+                            .to_string(),
+                    ));
+                }
+                None => source.mark_incomplete(),
+                Some(_) => {}
+            }
+        }
+        if let Some(originals) = &originals {
+            match originals.workspace().source_observation_identity() {
+                Some(actual) if !actual.matches(&expected) => {
+                    return Err(super::protocol::protocol_error(
+                        super::model_originals::observation::HostObservationError::ForeignScope
+                            .to_string(),
+                    ));
+                }
+                None => source.mark_incomplete(),
+                Some(_) => {}
+            }
+        }
+        let host = Self::bind_configured(session_id, capabilities, originals, Some(source.clone()))
+            .await?;
+        source.bound();
+        Ok(host)
+    }
+
+    async fn bind_configured(
+        session_id: String,
+        capabilities: SessionCapabilities,
+        originals: Option<super::provider::originals::OriginalsProvider>,
+        source_observation: Option<super::model_originals::observation::HostSourceLease>,
     ) -> Result<Self, CliError> {
         let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
             .await
@@ -124,6 +182,7 @@ impl BoundUiHost {
             artifact_capacity,
             original_capacity: original_capacity.clone(),
             current,
+            source_observation,
         };
         let router = Router::new()
             .route("/launch", get(exchange_launch_token))

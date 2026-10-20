@@ -15,10 +15,12 @@ pub mod artifacts;
 pub mod assets;
 pub mod auth;
 pub mod model_originals;
+mod native_startup;
 pub mod protocol;
 pub mod provider;
 pub mod rpc;
 pub mod server;
+pub(in crate::commands::ui) use native_startup::prepare_native_ui_observed;
 
 #[derive(Clone, Debug, Args)]
 pub struct UiArgs {
@@ -73,7 +75,7 @@ pub async fn run_ui(
     // playground read extensions out of the same Morphir Home.
     let home = crate::home::MorphirHome::resolve()
         .map_err(|error| miette::miette!("Unable to resolve Morphir Home: {error}"))?;
-    let provider = match args.workspace_extension.as_deref() {
+    let (provider, capabilities) = match args.workspace_extension.as_deref() {
         Some(extension_id) => {
             let provider = ExtensionWorkspaceProvider::select(
                 home.clone(),
@@ -89,30 +91,29 @@ pub async fn run_ui(
                     .authorize_originals_lookup(cap_std::ambient_authority())
                     .map_err(miette::Report::new)?,
             };
-            provider::originals::OriginalsProvider::Installed(Arc::new(provider))
+            let provider = provider::originals::OriginalsProvider::Installed(Arc::new(provider));
+            let capabilities = SessionCapabilities {
+                workspace: Some(provider.workspace()),
+                playground: Some(Arc::new(NativePlaygroundProvider::in_workspace(
+                    home, &workspace,
+                ))),
+                ..Default::default()
+            };
+            (provider, capabilities)
         }
         None => {
-            let provider = NativeWorkspaceProvider::discover(&workspace, &session_id)
-                .map_err(miette::Report::new)?
-                .with_out_overrides(out);
-            let provider = match originals_mode {
-                ModelOriginalsMode::Disabled => provider,
-                ModelOriginalsMode::Preview => provider
-                    .authorize_originals_lookup(cap_std::ambient_authority())
-                    .map_err(miette::Report::new)?,
-            };
-            provider::originals::OriginalsProvider::Native(Arc::new(provider))
+            let setup = native_startup::prepare_native_ui(
+                &workspace,
+                &session_id,
+                home,
+                morphir_devkit::ConfigLoadOptions::default(),
+                out,
+                originals_mode,
+                native_startup::NativeStartupSource::Historical,
+            )
+            .map_err(miette::Report::new)?;
+            (setup.originals_provider(), setup.capabilities())
         }
-    };
-    let capabilities = SessionCapabilities {
-        workspace: Some(provider.workspace()),
-        // The playground reads the same workspace the UI was pointed at,
-        // so a project that configures its frontend provider gets it in
-        // the browser too.
-        playground: Some(Arc::new(NativePlaygroundProvider::in_workspace(
-            home, &workspace,
-        ))),
-        ..Default::default()
     };
     let host = match originals_mode {
         ModelOriginalsMode::Disabled => BoundUiHost::bind(session_id, capabilities).await,
