@@ -73,6 +73,9 @@ pub fn run_configured(
         Configuration::ModelOriginals(_) => {
             Session::spawn_mep(&options.adapter, &options.adapter_args, options.limits)
         }
+        Configuration::NativeOriginals { .. } => {
+            unreachable!("external dispatch rejects native configuration before factory")
+        }
     })
 }
 /// The actual CLI uses this callback to install its existing terminator only
@@ -85,6 +88,9 @@ pub fn run_configured_with_session_factory<F>(
 where
     F: FnOnce() -> Result<Session, crate::transport::TransportError>,
 {
+    if matches!(configuration.mode, Configuration::NativeOriginals { .. }) {
+        return Err("native configuration requires explicit native adapter".into());
+    }
     let corpus = load(root)?;
     dispatch(&corpus, configuration, factory)
 }
@@ -113,6 +119,9 @@ where
         (CorpusStorage::Historical(_), Configuration::ModelOriginals(_)) => {
             Err("historical corpus requires historical checker policy".into())
         }
+        (_, Configuration::NativeOriginals { .. }) => {
+            Err("native configuration requires explicit native adapter".into())
+        }
     }
 }
 /// Explicit pre1.0 source API successor: selected missing policy is an Err,
@@ -132,6 +141,9 @@ pub fn run_with_session_configured(
     configuration: &RunConfiguration,
 ) -> Result<Report, String> {
     let mismatch = match (&corpus.storage, &configuration.mode) {
+        (_, Configuration::NativeOriginals { .. }) => {
+            Some("native configuration requires explicit native adapter")
+        }
         (CorpusStorage::ModelOriginals(_), Configuration::Historical) => {
             Some(pipeline::MISSING_POLICY)
         }
@@ -179,6 +191,40 @@ pub fn check_report_configured(
         }
         (ReportStorage::Historical(_), Configuration::ModelOriginals(_)) => {
             Err("historical report requires historical checker policy".into())
+        }
+        (ReportStorage::ModelOriginals(report), Configuration::NativeOriginals { checker, .. }) => {
+            let corpus = load(root)?;
+            match &corpus.storage {
+                CorpusStorage::ModelOriginals(source) => {
+                    pipeline::replay_native(source, checker, report)
+                }
+                CorpusStorage::Historical(_) => Err("corpus/report family differs".into()),
+            }
+        }
+        (ReportStorage::Historical(_), Configuration::NativeOriginals { .. }) => {
+            Err("historical report requires historical checker policy".into())
+        }
+    }
+}
+pub fn run_configured_with_native_adapter(
+    root: &Path,
+    configuration: &RunConfiguration,
+    adapter: &mut dyn super::model_originals::native::NativeOriginalAdapter,
+) -> Result<Report, String> {
+    let Configuration::NativeOriginals {
+        checker,
+        observation,
+    } = &configuration.mode
+    else {
+        return Err("native adapter requires explicit native configuration".into());
+    };
+    let corpus = load(root)?;
+    match &corpus.storage {
+        CorpusStorage::ModelOriginals(source) => {
+            pipeline::execute_native(source, checker, observation, adapter).map(Report::selected)
+        }
+        CorpusStorage::Historical(_) => {
+            Err("historical corpus requires historical checker policy".into())
         }
     }
 }

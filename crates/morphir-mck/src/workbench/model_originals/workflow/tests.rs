@@ -46,12 +46,12 @@ fn closed_operands_require_explicit_null_and_refuse_extra_or_mistyped_fields() {
         d.decode::<Selection>(r#"{"kind":"none","model":"A"}"#)
             .is_err()
     );
-    assert!(
-        d.decode::<Selection>(
-            r#"{"kind":"selected","model":"A","mode":"current","inferred":false}"#
-        )
-        .is_ok()
-    );
+    let selected = d
+        .decode::<Selection>(r#"{"kind":"selected","model":"A","mode":"current","inferred":false}"#)
+        .unwrap();
+    assert!(matches!(selected, Selection::Selected {
+        model, mode: Mode::Current, inferred: Confirmed,
+    } if model.as_str() == "A"));
     assert!(
         d.decode::<Selection>(
             r#"{"kind":"selected","model":"A","mode":"current","inferred":true}"#
@@ -93,6 +93,9 @@ fn counts_use_exact_decimal_integrality_without_float_rounding_or_marker_coercio
 
 #[test]
 fn embedded_json_uses_the_same_owner_and_exhaustion_remains_sticky() {
+    let parsed: RawPair = decoder().decode(r#"{"left":"0","right":"1"}"#).unwrap();
+    assert_eq!(parsed.left.0, "0");
+    assert_eq!(parsed.right.0, "1");
     let mut d = Decoder::new(DecodeLimits::new(4096, 65536, 4, 65536, 4096).unwrap());
     assert!(matches!(
         d.decode::<RawPair>(r#"{"left":"0","right":"0"}"#),
@@ -110,6 +113,16 @@ fn embedded_json_uses_the_same_owner_and_exhaustion_remains_sticky() {
 
 #[test]
 fn aggregate_array_slots_are_reserved_before_any_child_decode() {
+    let parsed: AliasList = decoder().decode(r#"{"items":["A","B"]}"#).unwrap();
+    assert_eq!(
+        parsed
+            .items
+            .0
+            .iter()
+            .map(FixtureAlias::as_str)
+            .collect::<Vec<_>>(),
+        ["A", "B"]
+    );
     let mut d = Decoder::new(DecodeLimits::new(4096, 65536, 4096, 65536, 1).unwrap());
     // The first alias is independently invalid. The whole-array reservation
     // must refuse first, before invoking even that child's constructor.

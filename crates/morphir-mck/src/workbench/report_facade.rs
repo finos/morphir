@@ -60,6 +60,7 @@ impl Report {
             ReportStorage::ModelOriginals(_) => None,
         }
     }
+    #[cfg(test)]
     pub(super) fn as_historical_mut(&mut self) -> Option<&mut HistoricalReport> {
         match &mut self.storage {
             ReportStorage::Historical(report) => Some(report),

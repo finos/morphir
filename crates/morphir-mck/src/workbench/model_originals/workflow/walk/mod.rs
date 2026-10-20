@@ -320,5 +320,7 @@ mod expected_walk {
     include!("expected-descriptor.rs");
 }
 
+mod native;
+
 #[cfg(test)]
 mod tests;

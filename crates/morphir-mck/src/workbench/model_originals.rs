@@ -47,6 +47,7 @@ pub use transcript::{
     CaptureCompletion, CheckedCaptureTranscript, ConnectedCaptureExpectation,
     ExpectedProjectionState, Transcript, TranscriptError, TranscriptLimits,
 };
+pub use workflow::native;
 
 /// Inclusive bound on the complete JSON-RPC request, before parsing.
 pub const MAX_REQUEST_BYTES: usize = 16 * 1024;
@@ -92,7 +93,8 @@ impl RequestId {
 }
 macro_rules! bounded_identity {
     ($name:ident, $limit:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+        #[serde(transparent)]
         pub struct $name(String);
         impl $name {
             pub fn as_str(&self) -> &str {
@@ -141,8 +143,9 @@ bounded_count!(PageSize, 1, 256);
 bounded_count!(ByteOffset, 0, 67108864);
 bounded_count!(ChunkSize, 1, 65536);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct SourceIdentity {
+    #[serde(rename = "providerId")]
     pub provider: ProviderId,
     pub locator: SourceLocator,
 }
@@ -366,7 +369,23 @@ impl Declaration {
     /// ownership and compatibility with the actual primary belong to the caller.
     pub fn parse(raw: &str) -> Result<Self, InvalidFrame> {
         let value = parse(raw, MAX_RECORD_BYTES)?;
-        validate(Schema::Declaration, &value)?;
+        Self::from_value(&value)
+    }
+    /// Retain the original private-record bytes at the caller. Borrow its
+    /// reserved value directly into the same declaration validator, without
+    /// serializing a normalized intermediate document.
+    pub(in crate::workbench::model_originals) fn from_compile_record(
+        raw: &str,
+    ) -> Result<Self, InvalidFrame> {
+        let value = parse(raw, MAX_RECORD_BYTES)?;
+        Self::from_value(
+            value
+                .get("morphirModelOriginals")
+                .ok_or(InvalidFrame::Shape)?,
+        )
+    }
+    fn from_value(value: &Value) -> Result<Self, InvalidFrame> {
+        validate(Schema::Declaration, value)?;
         let companions = value["companions"]
             .as_array()
             .ok_or(InvalidFrame::Shape)?

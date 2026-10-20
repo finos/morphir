@@ -1,13 +1,13 @@
 //! One selected branch of the existing Workbench pipeline. The fixed reviewed
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
-mod policy;
+pub(in crate::workbench) mod policy;
 mod raw;
 mod wire;
 use super::ingress::BoundCorpus;
 use super::observation_check::ObservationError;
 use super::reviewed_sources::ReviewedSources;
 use super::source_compile::{
-    CaseCompiler, CompilationError, CompiledSourceCase, WorkflowRecordError,
+    CaseCompiler, CompilationError, CompiledExecution, WorkflowRecordError,
 };
 use super::source_proof::{SourceError, SourceVerifier};
 use super::{DecodeError, Decoder, Fields, string};
@@ -58,7 +58,8 @@ impl Source {
 fn prepared<R>(
     source: &Source,
     policy: &Policy,
-    action: impl FnOnce(&[CompiledSourceCase<'_, '_, '_, '_>], &mut Owners) -> Result<R, String>,
+    sources: ReviewedSources<'_>,
+    action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut Owners) -> Result<R, String>,
 ) -> Result<R, String> {
     let mut owners = policy.owners();
     let bound = BoundCorpus::decode_selected(source.raw.text(), &mut owners.decode)
@@ -71,12 +72,15 @@ fn prepared<R>(
     compiled
         .try_reserve_exact(bound.cases().len())
         .map_err(|_| "source prepared inventory allocation refused".to_owned())?;
-    let sources = ReviewedSources::selected();
     let verifier = SourceVerifier::new(&sources, &mut owners.decode)
         .map_err(|_| "source anchors refused".to_owned())?;
     let mut compiler = CaseCompiler::new(verifier, &mut owners.closure, &mut owners.expansion);
     for case in bound.cases() {
-        compiled.push(compiler.compile(case).map_err(compilation_message)?);
+        compiled.push(
+            compiler
+                .compile_execution(case)
+                .map_err(compilation_message)?,
+        );
     }
     compiler
         .require_inventory(bound.cases())
@@ -105,10 +109,63 @@ enum RunFault {
     Exchange(TransportError),
     Capture(CaptureFault),
     Record(WorkflowRecordError),
+    Native(super::native::NativeAdapterError),
 }
 impl RunFault {
     fn summary(&self) -> FailureSummary {
         let (phase, code, message) = match self {
+            Self::Native(error) => match error {
+                super::native::NativeAdapterError::Startup => (
+                    "native-startup",
+                    "native-startup-refused",
+                    "native adapter startup failed",
+                ),
+                super::native::NativeAdapterError::Fixture => (
+                    "native-fixture",
+                    "native-fixture-refused",
+                    "native fixture preparation failed",
+                ),
+                super::native::NativeAdapterError::Authentication => (
+                    "native-authentication",
+                    "native-authentication-refused",
+                    "native host authentication failed",
+                ),
+                super::native::NativeAdapterError::Discovery => (
+                    "native-discovery",
+                    "native-discovery-refused",
+                    "native host discovery failed",
+                ),
+                super::native::NativeAdapterError::Selection => (
+                    "native-selection",
+                    "native-selection-refused",
+                    "native host selection failed",
+                ),
+                super::native::NativeAdapterError::Exchange => (
+                    "native-exchange",
+                    "native-exchange-refused",
+                    "native host exchange failed",
+                ),
+                super::native::NativeAdapterError::ObservationIncomplete => (
+                    "native-observation",
+                    "native-observation-incomplete",
+                    "native observation coverage is incomplete",
+                ),
+                super::native::NativeAdapterError::Cleanup => (
+                    "native-cleanup",
+                    "native-cleanup-refused",
+                    "native host cleanup failed",
+                ),
+                super::native::NativeAdapterError::Cancelled => (
+                    "native-cancelled",
+                    "native-cancelled",
+                    "native execution was cancelled",
+                ),
+                super::native::NativeAdapterError::UnsupportedAction => (
+                    "native-action",
+                    "native-action-unsupported",
+                    "native action is unsupported",
+                ),
+            },
             Self::Record(WorkflowRecordError::Observation(ObservationError::ExpectedBlocked)) => (
                 "observation",
                 "expected-blocked",
@@ -283,32 +340,37 @@ pub(in crate::workbench) fn execute<F>(
 where
     F: FnOnce() -> Result<Session, TransportError>,
 {
-    prepared(source, policy, |compiled, owners| {
-        // All actual source/closure/expansion and ordered inventory work is
-        // complete before the real factory is invoked. No context is lent out.
-        ready(owners).map_err(|_| "source owner refused before spawn".to_owned())?;
-        let mut session = factory().map_err(|_| "adapter spawn refused".to_owned())?;
-        let result = execute_prepared(source, compiled, owners, &mut session);
-        let shutdown = session.close();
-        match result {
-            Ok(mut execution) => {
-                if let Err(error) = shutdown {
-                    execution.shutdown = Some(error);
-                    execution.report.errors.push(FailureSummary {
-                        phase: "shutdown",
-                        code: "shutdown-refused",
-                        message: "adapter shutdown failed",
-                    });
+    prepared(
+        source,
+        policy,
+        ReviewedSources::selected(),
+        |compiled, owners| {
+            // All actual source/closure/expansion and ordered inventory work is
+            // complete before the real factory is invoked. No context is lent out.
+            ready(owners).map_err(|_| "source owner refused before spawn".to_owned())?;
+            let mut session = factory().map_err(|_| "adapter spawn refused".to_owned())?;
+            let result = execute_prepared(source, compiled, owners, &mut session);
+            let shutdown = session.close();
+            match result {
+                Ok(mut execution) => {
+                    if let Err(error) = shutdown {
+                        execution.shutdown = Some(error);
+                        execution.report.errors.push(FailureSummary {
+                            phase: "shutdown",
+                            code: "shutdown-refused",
+                            message: "adapter shutdown failed",
+                        });
+                    }
+                    render(execution)
                 }
-                render(execution)
+                Err(error) => Err(error),
             }
-            Err(error) => Err(error),
-        }
-    })
+        },
+    )
 }
 fn execute_prepared<'a>(
     source: &'a Source,
-    compiled: &'a [CompiledSourceCase<'_, '_, '_, '_>],
+    compiled: &'a [CompiledExecution<'_, '_, '_, '_>],
     owners: &mut Owners,
     session: &mut Session,
 ) -> Result<PreparedExecution<'a>, String> {
@@ -337,6 +399,9 @@ fn execute_prepared<'a>(
         }
     };
     for (index, compiled_case) in compiled.iter().enumerate() {
+        let compiled_case = compiled_case
+            .current()
+            .ok_or("external adapter cannot execute native source")?;
         let context = compiled_case.report_context();
         let role = Role::of(context.paired().run());
         let evidence = if attempt.ready().is_err() {
@@ -459,132 +524,428 @@ fn render(execution: PreparedExecution<'_>) -> Result<StoredReport, String> {
     Ok(StoredReport::rendered(raw, report.records.len()))
 }
 
+/// The native producer uses the same source preparation, cumulative owners,
+/// first-fault attempt, report representation and factual replay checker.
+pub(in crate::workbench) fn execute_native(
+    source: &Source,
+    policy: &Policy,
+    limits: &super::native::NativeObservationLimits,
+    adapter: &mut dyn super::native::NativeOriginalAdapter,
+) -> Result<StoredReport, String> {
+    prepared(
+        source,
+        policy,
+        ReviewedSources::native_selected(),
+        |compiled, owners| {
+            owners
+                .decode
+                .slots(compiled.len())
+                .map_err(|_| "inventory work refused")?;
+            let mut records = Vec::new();
+            records
+                .try_reserve_exact(compiled.len())
+                .map_err(|_| "inventory allocation refused")?;
+            owners
+                .decode
+                .slots(1)
+                .map_err(|_| "failure inventory work refused")?;
+            let mut errors = Vec::new();
+            errors
+                .try_reserve_exact(1)
+                .map_err(|_| "failure inventory allocation refused")?;
+            let mut attempt = Attempt { fault: None };
+            for case in compiled {
+                let evidence = if attempt.ready().is_err() {
+                    Evidence::NotAttempted {
+                        prior_failure_index: 0,
+                    }
+                } else {
+                    match ready(owners).and_then(|()| match case {
+                        CompiledExecution::Native(native) => {
+                            let result =
+                                adapter.observe(super::native::NativeOriginalRun::from_compiled(
+                                    native,
+                                    limits,
+                                    &mut owners.comparison,
+                                ));
+                            // A producer may report its own failure after recipe
+                            // work refused. Preserve the genuine owner's first
+                            // typed fault before interpreting that adapter result.
+                            owners.comparison.ready().map_err(|error| {
+                                RunFault::Record(WorkflowRecordError::Observation(error))
+                            })?;
+                            result.map_err(RunFault::Native)
+                        }
+                        CompiledExecution::Current(_) => Err(RunFault::UnsupportedRole),
+                    }) {
+                        Err(error) => {
+                            attempt.fail(error);
+                            Evidence::AttemptFailed { failure_index: 0 }
+                        }
+                        Ok(measurement) => {
+                            // Count before retaining the returned factual DATA in
+                            // the report. This is not an invented transport frame.
+                            let retained = crate::workbench::contract::encoded_size(
+                                &measurement,
+                                MAX_REPORT_BYTES,
+                            )
+                            .map_err(|_| RunFault::Capture(CaptureFault::Reply))
+                            .and_then(|bytes| {
+                                owners.capture.retain(0, bytes).map_err(RunFault::Capture)
+                            })
+                            .and_then(|()| {
+                                wire::NativeMeasurement::retain(measurement, &mut owners.decode)
+                                    .map_err(RunFault::Decode)
+                            });
+                            match retained {
+                                Err(error) => {
+                                    attempt.fail(error);
+                                    Evidence::AttemptFailed { failure_index: 0 }
+                                }
+                                Ok(measurement) => {
+                                    let CompiledExecution::Native(native) = case else {
+                                        return Err(
+                                            "native measurement without native source".into()
+                                        );
+                                    };
+                                    let verdict =
+                                    match super::observation_check::server::compare_declaration_data(
+                                        native.plan(),
+                                        measurement.value(),
+                                        &mut owners.comparison,
+                                    ) {
+                                        Ok(_) => Verdict::Checked,
+                                        Err(error) => {
+                                            attempt.fail(RunFault::Record(
+                                                WorkflowRecordError::Observation(error),
+                                            ));
+                                            Verdict::Failed { failure_index: 0 }
+                                        }
+                                    };
+                                    Evidence::NativeMeasured {
+                                        measurement,
+                                        verdict,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+                records.push(RuntimeRecord {
+                    case_id: case.case().id(),
+                    execution: ExecutionRef::from_compiled(case),
+                    evidence,
+                });
+            }
+            if let Some(error) = &attempt.fault {
+                errors.push(error.summary())
+            }
+            render(PreparedExecution {
+                report: RuntimeReport {
+                    format_version: VERSION,
+                    suite: "workbench",
+                    corpus_hash: source.digest(),
+                    capabilities: None,
+                    records,
+                    negotiation: None,
+                    errors,
+                    qualified: false,
+                },
+                attempt,
+                shutdown: None,
+            })
+        },
+    )
+}
+
+pub(in crate::workbench) fn replay_native(
+    source: &Source,
+    policy: &Policy,
+    report: &StoredReport,
+) -> Result<(), String> {
+    prepared(
+        source,
+        policy,
+        ReviewedSources::native_selected(),
+        |compiled, owners| {
+            ready(owners).map_err(|_| "source owners refused before replay")?;
+            let document =
+                Document::parse_exact_with_work(report.text().as_bytes(), &mut owners.saved)
+                    .map_err(|_| "saved report decode refused")?;
+            let saved = wire::saved(document, &mut owners.decode)
+                .map_err(|_| "saved report decode refused")?;
+            if saved.corpus_hash != source.digest() {
+                return Err("corpus fullfile digest differs".into());
+            }
+            if saved.records.len() != compiled.len() {
+                return Err("inventory record count differs".into());
+            }
+            if saved.capabilities.is_some() || saved.negotiation.is_some() {
+                return Err("native report cannot claim external negotiation".into());
+            }
+            for (row, case) in saved.records.iter().zip(compiled) {
+                owners
+                    .decode
+                    .bytes(
+                        row.case_id
+                            .len()
+                            .checked_add(case.case().id().len())
+                            .ok_or("inventory overflow")?,
+                    )
+                    .map_err(|_| "inventory work refused")?;
+                if row.case_id != case.case().id()
+                    || !row
+                        .execution
+                        .matches_compiled(case, &mut owners.decode)
+                        .map_err(|_| "inventory work refused")?
+                {
+                    return Err("inventory execution key/order differs".into());
+                }
+            }
+            let mut attempt = Attempt { fault: None };
+            for (row, case) in saved.records.iter().zip(compiled) {
+                if attempt.ready().is_err() {
+                    if !matches!(
+                        row.evidence,
+                        Evidence::NotAttempted {
+                            prior_failure_index: 0
+                        }
+                    ) {
+                        return Err("inventory contains evidence after first fault".into());
+                    }
+                    continue;
+                }
+                match (&row.evidence, case) {
+                    (
+                        Evidence::NativeMeasured {
+                            measurement,
+                            verdict,
+                        },
+                        CompiledExecution::Native(native),
+                    ) => {
+                        ready(owners).map_err(|_| "replay owner refused")?;
+                        let bytes = crate::workbench::contract::encoded_size(
+                            measurement.value(),
+                            MAX_REPORT_BYTES,
+                        )?;
+                        owners
+                            .capture
+                            .retain(0, bytes)
+                            .map_err(|_| "capture aggregate refused")?;
+                        match super::observation_check::server::compare_declaration_data(
+                            native.plan(),
+                            measurement.value(),
+                            &mut owners.comparison,
+                        ) {
+                            Ok(_) if matches!(verdict, Verdict::Checked) => {}
+                            Err(error)
+                                if matches!(verdict, Verdict::Failed { failure_index: 0 }) =>
+                            {
+                                attempt
+                                    .fail(RunFault::Record(WorkflowRecordError::Observation(error)))
+                            }
+                            _ => return Err("forged native factual verdict".into()),
+                        }
+                    }
+                    (
+                        Evidence::AttemptFailed { failure_index: 0 },
+                        CompiledExecution::Native(_),
+                    ) => {
+                        // Saved incomplete attempts establish no actual SDK/host
+                        // outcome. Only their closed unqualified record structure
+                        // is accepted; they cannot issue a live invocation.
+                        // This is closed saved failure DATA, not reconstruction
+                        // of a live failure or SDK owner. Keep its category while
+                        // checking factual report structure only.
+                        use super::native::NativeAdapterError;
+                        let category = [
+                            NativeAdapterError::Startup,
+                            NativeAdapterError::Fixture,
+                            NativeAdapterError::Authentication,
+                            NativeAdapterError::Discovery,
+                            NativeAdapterError::Selection,
+                            NativeAdapterError::Exchange,
+                            NativeAdapterError::ObservationIncomplete,
+                            NativeAdapterError::Cleanup,
+                            NativeAdapterError::Cancelled,
+                            NativeAdapterError::UnsupportedAction,
+                        ]
+                        .into_iter()
+                        .find(|error| {
+                            saved
+                                .errors
+                                .first()
+                                .is_some_and(|row| row.matches(RunFault::Native(*error).summary()))
+                        })
+                        .ok_or("saved native failure category differs")?;
+                        attempt.fail(RunFault::Native(category));
+                    }
+                    (
+                        Evidence::AttemptFailed { failure_index: 0 },
+                        CompiledExecution::Current(_),
+                    ) => attempt.fail(RunFault::UnsupportedRole),
+                    _ => return Err("native evidence/source kind differs".into()),
+                }
+            }
+            match &attempt.fault {
+                Some(error)
+                    if saved.errors.len() == 1 && saved.errors[0].matches(error.summary()) => {}
+                None if saved.errors.is_empty() => {}
+                _ => return Err("saved first failure differs".into()),
+            }
+            if saved.qualified {
+                return Err("forged qualified claim for partial/unproven source set".into());
+            }
+            Ok(())
+        },
+    )
+}
+
 pub(in crate::workbench) fn replay(
     source: &Source,
     policy: &Policy,
     report: &StoredReport,
 ) -> Result<(), String> {
-    prepared(source, policy, |compiled, owners| {
-        ready(owners).map_err(|_| "source owners refused before replay".to_owned())?;
-        let document = Document::parse_exact_with_work(report.text().as_bytes(), &mut owners.saved)
-            .map_err(|_| "saved report decode refused".to_owned())?;
-        let saved = wire::saved(document, &mut owners.decode).map_err(|error| {
-            match error {
-                wire::SavedError::Negotiation(_) => "saved negotiation decode refused",
-                wire::SavedError::Report(_) => "saved report decode refused",
+    prepared(
+        source,
+        policy,
+        ReviewedSources::selected(),
+        |compiled, owners| {
+            ready(owners).map_err(|_| "source owners refused before replay".to_owned())?;
+            let document =
+                Document::parse_exact_with_work(report.text().as_bytes(), &mut owners.saved)
+                    .map_err(|_| "saved report decode refused".to_owned())?;
+            let saved = wire::saved(document, &mut owners.decode).map_err(|error| {
+                match error {
+                    wire::SavedError::Negotiation(_) => "saved negotiation decode refused",
+                    wire::SavedError::Report(_) => "saved report decode refused",
+                }
+                .to_owned()
+            })?;
+            if saved.corpus_hash != source.digest() {
+                return Err("corpus fullfile digest differs".into());
             }
-            .to_owned()
-        })?;
-        if saved.corpus_hash != source.digest() {
-            return Err("corpus fullfile digest differs".into());
-        }
-        if saved.records.len() != compiled.len() {
-            return Err("inventory record count differs".into());
-        }
-        // Check ALL source-derived keys/order before decoding any observation.
-        for (record, case) in saved.records.iter().zip(compiled) {
-            let context = case.report_context();
+            if saved.records.len() != compiled.len() {
+                return Err("inventory record count differs".into());
+            }
+            // Check ALL source-derived keys/order before decoding any observation.
+            for (record, case) in saved.records.iter().zip(compiled) {
+                let case = case
+                    .current()
+                    .ok_or("external replay cannot use native source")?;
+                let context = case.report_context();
+                owners
+                    .decode
+                    .bytes(
+                        record
+                            .case_id
+                            .len()
+                            .saturating_add(context.case().id().len()),
+                    )
+                    .map_err(|_| "inventory work refused".to_owned())?;
+                if record.case_id != context.case().id()
+                    || !record
+                        .execution
+                        .matches(context.paired(), &mut owners.decode)
+                        .map_err(|_| "inventory work refused".to_owned())?
+                {
+                    return Err("inventory execution key/order differs".into());
+                }
+            }
+            let negotiation = saved
+                .negotiation
+                .as_ref()
+                .ok_or("negotiation evidence missing")?;
             owners
-                .decode
-                .bytes(
-                    record
-                        .case_id
-                        .len()
-                        .saturating_add(context.case().id().len()),
+                .capture
+                .retain(
+                    negotiation.sent_payload().len(),
+                    negotiation.received_payload().len(),
                 )
-                .map_err(|_| "inventory work refused".to_owned())?;
-            if record.case_id != context.case().id()
-                || !record
-                    .execution
-                    .matches(context.paired(), &mut owners.decode)
-                    .map_err(|_| "inventory work refused".to_owned())?
+                .map_err(|_| "negotiation capture aggregate refused".to_owned())?;
+            let caps = check_negotiation(negotiation, &mut owners.decode)
+                .map_err(|_| "negotiation request/reply refused".to_owned())?;
+            let Some(summary) = &saved.capabilities else {
+                return Err("unverified negotiation capabilities failure report".into());
+            };
+            if !caps
+                .matches(summary, &mut owners.decode)
+                .map_err(|_| "negotiation summary comparison refused".to_owned())?
             {
-                return Err("inventory execution key/order differs".into());
+                return Err("negotiation capabilities summary differs".into());
             }
-        }
-        let negotiation = saved
-            .negotiation
-            .as_ref()
-            .ok_or("negotiation evidence missing")?;
-        owners
-            .capture
-            .retain(
-                negotiation.sent_payload().len(),
-                negotiation.received_payload().len(),
-            )
-            .map_err(|_| "negotiation capture aggregate refused".to_owned())?;
-        let caps = check_negotiation(negotiation, &mut owners.decode)
-            .map_err(|_| "negotiation request/reply refused".to_owned())?;
-        let Some(summary) = &saved.capabilities else {
-            return Err("unverified negotiation capabilities failure report".into());
-        };
-        if !caps
-            .matches(summary, &mut owners.decode)
-            .map_err(|_| "negotiation summary comparison refused".to_owned())?
-        {
-            return Err("negotiation capabilities summary differs".into());
-        }
-        let mut attempt = Attempt { fault: None };
-        for (index, (record, case)) in saved.records.iter().zip(compiled).enumerate() {
-            let context = case.report_context();
-            if attempt.ready().is_err() {
-                if !matches!(
-                    record.evidence,
-                    Evidence::NotAttempted {
-                        prior_failure_index: 0
+            let mut attempt = Attempt { fault: None };
+            for (index, (record, case)) in saved.records.iter().zip(compiled).enumerate() {
+                let case = case
+                    .current()
+                    .ok_or("external replay cannot use native source")?;
+                let context = case.report_context();
+                if attempt.ready().is_err() {
+                    if !matches!(
+                        record.evidence,
+                        Evidence::NotAttempted {
+                            prior_failure_index: 0
+                        }
+                    ) {
+                        return Err("inventory contains evidence after first fault".into());
                     }
-                ) {
-                    return Err("inventory contains evidence after first fault".into());
+                    continue;
                 }
-                continue;
-            }
-            if !caps.supports(Role::of(context.paired().run())) {
-                return Err("capabilities omit selected source role".into());
-            }
-            match &record.evidence {
-                Evidence::Captured { exchange, verdict } => {
-                    owners
-                        .capture
-                        .retain(
-                            exchange.sent_payload().len(),
-                            exchange.received_payload().len(),
-                        )
-                        .map_err(|_| "capture aggregate refused".to_owned())?;
-                    check_sequence(exchange, index, &mut owners.decode)
-                        .map_err(|_| "session outer request sequence differs".to_owned())?;
-                    match context.check_record(exchange, &mut owners.decode, &mut owners.comparison)
-                    {
-                        Ok(_) => {
-                            if !matches!(verdict, Verdict::Checked) {
-                                return Err("forged record verdict".into());
+                if !caps.supports(Role::of(context.paired().run())) {
+                    return Err("capabilities omit selected source role".into());
+                }
+                match &record.evidence {
+                    Evidence::Captured { exchange, verdict } => {
+                        owners
+                            .capture
+                            .retain(
+                                exchange.sent_payload().len(),
+                                exchange.received_payload().len(),
+                            )
+                            .map_err(|_| "capture aggregate refused".to_owned())?;
+                        check_sequence(exchange, index, &mut owners.decode)
+                            .map_err(|_| "session outer request sequence differs".to_owned())?;
+                        match context.check_record(
+                            exchange,
+                            &mut owners.decode,
+                            &mut owners.comparison,
+                        ) {
+                            Ok(_) => {
+                                if !matches!(verdict, Verdict::Checked) {
+                                    return Err("forged record verdict".into());
+                                }
+                            }
+                            Err(error) => {
+                                if !matches!(verdict, Verdict::Failed { failure_index: 0 }) {
+                                    return Err("forged record verdict".into());
+                                }
+                                attempt.fail(RunFault::Record(error));
                             }
                         }
-                        Err(error) => {
-                            if !matches!(verdict, Verdict::Failed { failure_index: 0 }) {
-                                return Err("forged record verdict".into());
-                            }
-                            attempt.fail(RunFault::Record(error));
-                        }
+                    }
+                    // Incomplete transport/capture has no recorded complete reply
+                    // from which replay could recompute the actual typed cause.
+                    Evidence::AttemptFailed { .. } => {
+                        return Err("unverified incomplete actual attempt".into());
+                    }
+                    Evidence::NotAttempted { .. } => {
+                        return Err("inventory omits required actual attempt".into());
+                    }
+                    Evidence::NativeMeasured { .. } => {
+                        return Err("native measurements require native configuration".into());
                     }
                 }
-                // Incomplete transport/capture has no recorded complete reply
-                // from which replay could recompute the actual typed cause.
-                Evidence::AttemptFailed { .. } => {
-                    return Err("unverified incomplete actual attempt".into());
-                }
-                Evidence::NotAttempted { .. } => {
-                    return Err("inventory omits required actual attempt".into());
-                }
             }
-        }
-        match &attempt.fault {
-            Some(error) if saved.errors.len() == 1 && saved.errors[0].matches(error.summary()) => {}
-            None if saved.errors.is_empty() => {}
-            _ => return Err("saved first failure differs".into()),
-        }
-        if saved.qualified {
-            return Err("forged qualified claim for partial/unproven source set".into());
-        }
-        Ok(())
-    })
+            match &attempt.fault {
+                Some(error)
+                    if saved.errors.len() == 1 && saved.errors[0].matches(error.summary()) => {}
+                None if saved.errors.is_empty() => {}
+                _ => return Err("saved first failure differs".into()),
+            }
+            if saved.qualified {
+                return Err("forged qualified claim for partial/unproven source set".into());
+            }
+            Ok(())
+        },
+    )
 }

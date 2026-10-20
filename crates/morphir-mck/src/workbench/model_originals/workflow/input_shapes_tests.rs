@@ -104,13 +104,18 @@ fn optional_fields_preserve_absence_empty_and_invalid_null_without_defaults() {
 #[test]
 fn nested_owner_selection_keeps_exact_owner_and_boundary_correlation() {
     let mut d = decoder();
-    for raw in [
-        r#"{"kind":"await-boundary","owner":{"kind":"pending-capture","pending":"A"},"at":"shared-lock-waiting"}"#,
-        r#"{"kind":"await-boundary","owner":{"kind":"cooperating-writer","writer":"A"},"at":"exclusive-lock-waiting"}"#,
-        r#"{"kind":"tick"}"#,
-    ] {
-        assert!(d.decode::<Action>(raw).is_ok(), "{raw}");
-    }
+    let capture = d.decode::<Action>(r#"{"kind":"await-boundary","owner":{"kind":"pending-capture","pending":"A"},"at":"shared-lock-waiting"}"#).unwrap();
+    assert!(matches!(capture, Action::Await(AwaitBoundary::Capture {
+        owner: CaptureOwner::Pending { pending }, at: CaptureAt::Waiting,
+    }) if pending.as_str() == "A"));
+    let writer = d.decode::<Action>(r#"{"kind":"await-boundary","owner":{"kind":"cooperating-writer","writer":"A"},"at":"exclusive-lock-waiting"}"#).unwrap();
+    assert!(matches!(writer, Action::Await(AwaitBoundary::Writer {
+        owner: WriterOwner::Writer { writer }, at: WriterAt::Waiting,
+    }) if writer.as_str() == "A"));
+    assert!(matches!(
+        d.decode::<Action>(r#"{"kind":"tick"}"#).unwrap(),
+        Action::Tick {}
+    ));
     for raw in [
         r#"{"kind":"await-boundary","owner":{"kind":"pending-capture","pending":"A"},"at":"exclusive-lock-waiting"}"#,
         r#"{"kind":"await-boundary","owner":{"kind":"cooperating-writer","writer":"A"},"at":"shared-lock-waiting"}"#,

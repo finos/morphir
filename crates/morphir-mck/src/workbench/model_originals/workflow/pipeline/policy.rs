@@ -76,7 +76,7 @@ impl CaptureBudget {
     }
 }
 
-pub(super) fn closed<'a>(
+pub(in crate::workbench) fn closed<'a>(
     value: &'a Document,
     names: &[&str],
 ) -> Result<&'a [(String, Document)], String> {
@@ -88,7 +88,7 @@ pub(super) fn closed<'a>(
     }
     Ok(fields)
 }
-pub(super) fn get<'a>(
+pub(in crate::workbench) fn get<'a>(
     fields: &'a [(String, Document)],
     name: &str,
 ) -> Result<&'a Document, String> {

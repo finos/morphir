@@ -43,8 +43,8 @@ pub use report::{
 };
 pub use report_facade::{Report, check_report};
 pub use run::{
-    RunOptions, check_report_configured, run, run_configured, run_configured_with_session_factory,
-    run_with_session, run_with_session_configured,
+    RunOptions, check_report_configured, run, run_configured, run_configured_with_native_adapter,
+    run_configured_with_session_factory, run_with_session, run_with_session_configured,
 };
 
 #[cfg(test)]
@@ -99,3 +99,9 @@ mod artifact_tests;
 
 #[cfg(test)]
 mod model_originals_connected_tests;
+
+#[cfg(test)]
+mod native_pipeline_tests;
+
+#[cfg(test)]
+mod native_typed_fault_tests;

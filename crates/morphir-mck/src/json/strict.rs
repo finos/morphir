@@ -257,6 +257,23 @@ impl Document {
     pub(crate) fn parse_exact(bytes: &[u8]) -> Result<Self, String> {
         document(bytes, exact_number, &mut Unchecked)
     }
+    /// Selected unsigned-count configuration uses the original numeric token
+    /// before Number can normalize representations such as negative zero.
+    pub(crate) fn parse_unsigned_counts(bytes: &[u8]) -> Result<Self, String> {
+        fn unsigned(token: &str) -> Result<Number, String> {
+            if token.is_empty()
+                || !token.bytes().all(|byte| byte.is_ascii_digit())
+                || (token.len() > 1 && token.starts_with('0'))
+            {
+                return Err("count requires canonical unsigned integer".into());
+            }
+            token
+                .parse::<u64>()
+                .map_err(|_| "count exceeds u64".to_owned())?;
+            exact_number(token)
+        }
+        document(bytes, unsigned, &mut Unchecked)
+    }
     pub(crate) fn parse_exact_with_work(
         bytes: &[u8],
         work: &mut ReadWork,

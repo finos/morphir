@@ -43,9 +43,9 @@ tagged! { CaptureCleanup("kind") {
     },
 } }
 
-literal! { CaptureCoverageCompleteDeclaration => "0.1.0-draft.1" }
+literal! { pub CaptureCoverageCompleteDeclaration => "0.1.0-draft.1" }
 
-tagged! { CaptureCoverage("kind") {
+tagged! { pub CaptureCoverage("kind") {
     Primary => "primary" {
 
     },
@@ -54,7 +54,7 @@ tagged! { CaptureCoverage("kind") {
     },
 } }
 
-tagged! { CaptureStateClosedCleanup("kind") {
+tagged! { pub CaptureStateClosedCleanup("kind") {
     None => "none" {
 
     },
@@ -64,7 +64,7 @@ tagged! { CaptureStateClosedCleanup("kind") {
     },
 } }
 
-tagged! { CaptureState("kind") {
+tagged! { pub CaptureState("kind") {
     Empty => "empty" {
 
     },
@@ -89,7 +89,7 @@ tagged! { CaptureState("kind") {
     },
 } }
 
-record! { CapturedEvidence {
+record! { pub CapturedEvidence {
         capture: FixtureAlias => "capture",
         coverage: CaptureCoverage => "coverage",
         inventory: InventoryEvidence => "inventory",
@@ -277,28 +277,28 @@ tagged! { ExecutionOwner("kind") {
     },
 } }
 
-record! { SourceRoles {
+record! { pub SourceRoles {
         companion_roots: Items<Root, 0, 63> => "companionRoots",
         primary_root: Root => "primaryRoot",
         source_format_version: SourceHeader => "sourceFormatVersion",
 } }
 
-literal! { HarnessTeardownConfirmedHeldCoreResults => 0 }
+literal! { pub HarnessTeardownConfirmedHeldCoreResults => 0 }
 
-literal! { HarnessTeardownConfirmedPendingEffects => 0 }
+literal! { pub HarnessTeardownConfirmedPendingEffects => 0 }
 
-literal! { HarnessTeardownConfirmedProductReleaseInferred => false }
+literal! { pub HarnessTeardownConfirmedProductReleaseInferred => false }
 
-literal! { HarnessTeardownConfirmedStillOwnedWorkers => 0 }
+literal! { pub HarnessTeardownConfirmedStillOwnedWorkers => 0 }
 
-literal! { HarnessTeardownFailedProductReleaseInferred => false }
+literal! { pub HarnessTeardownFailedProductReleaseInferred => false }
 
-words! { HarnessTeardownFailedReason {
+words! { pub HarnessTeardownFailedReason {
     Timeout => "timeout",
     DisposalFailed => "disposal-failed",
 } }
 
-tagged! { HarnessTeardown("kind") {
+tagged! { pub HarnessTeardown("kind") {
     Confirmed => "confirmed" {
         disposed_transports: super::input::Count => "disposedTransports",
         held_core_results: HarnessTeardownConfirmedHeldCoreResults => "heldCoreResults",
@@ -317,7 +317,7 @@ tagged! { HarnessTeardown("kind") {
     },
 } }
 
-record! { InventoryEvidence {
+record! { pub InventoryEvidence {
         directory_count: Natural<0, 100064> => "directoryCount",
         entry_count: Natural<0, 100064> => "entryCount",
         file_count: Natural<0, 100064> => "fileCount",
@@ -349,12 +349,12 @@ tagged! { LateSignalSource("kind") {
     },
 } }
 
-record! { MeasuredTranscriptExchangesItem {
+record! { pub MeasuredTranscriptExchangesItem {
         reply: super::input::Frame => "reply",
         request: super::input::Frame => "request",
 } }
 
-record! { MeasuredTranscript {
+record! { pub MeasuredTranscript {
         exchanges: Items<MeasuredTranscriptExchangesItem, 0, 8192> => "exchanges",
 } }
 
@@ -451,7 +451,7 @@ tagged! { Observation("role") {
     } optional { identity_results: Items<IdentityResult, 0, {usize::MAX}> => "identityResults" },
 } }
 
-tagged! { OfferEvidence("kind") {
+tagged! { pub OfferEvidence("kind") {
     Held => "held" {
         provider: FixtureAlias => "provider",
         registration: FixtureAlias => "registration",
@@ -519,7 +519,7 @@ record! { ProducedCoreResult {
         raw_reply: super::input::Frame => "rawReply",
 } }
 
-words! { ProjectionWitnessUnavailableReason {
+words! { pub ProjectionWitnessUnavailableReason {
     UnsupportedRepresentation => "unsupported_representation",
     InvalidModel => "invalid_model",
     DecodeLimit => "decode_limit",
@@ -528,7 +528,7 @@ words! { ProjectionWitnessUnavailableReason {
     Timeout => "timeout",
 } }
 
-tagged! { ProjectionWitness("kind") {
+tagged! { pub ProjectionWitness("kind") {
     NotRequested => "not-requested" {
 
     },
@@ -542,7 +542,7 @@ tagged! { ProjectionWitness("kind") {
     },
 } }
 
-record! { ResourceEvidence {
+record! { pub ResourceEvidence {
         active_workers: Natural<0, 1> => "activeWorkers",
         metadata_bytes: Natural<0, 67108864> => "metadataBytes",
         projection_bytes: Natural<0, 134217728> => "projectionBytes",
@@ -564,7 +564,7 @@ tagged! { RichOwnerEvidence("kind") {
     },
 } }
 
-tagged! { Root("kind") {
+tagged! { pub Root("kind") {
     File => "file" {
         path: SourcePath => "path",
     },
@@ -573,17 +573,17 @@ tagged! { Root("kind") {
     },
 } }
 
-words! { ScenarioOutcomeIntentionallyRetainedUncertainCleanupReason {
+words! { pub ScenarioOutcomeIntentionallyRetainedUncertainCleanupReason {
     SubmissionStatusUnknown => "submission-status-unknown",
     TransportDisconnected => "transport-disconnected",
 } }
 
-words! { ScenarioOutcomeIntentionallyRetainedUncertainPhase {
+words! { pub ScenarioOutcomeIntentionallyRetainedUncertainPhase {
     Unknown => "unknown",
     Disconnected => "disconnected",
 } }
 
-tagged! { ScenarioOutcome("kind") {
+tagged! { pub ScenarioOutcome("kind") {
     Clean => "clean" {
         final_checkpoint: FixtureAlias => "finalCheckpoint",
     },
@@ -625,7 +625,7 @@ record! { SourceEffects {
         source_reads: super::input::Count => "sourceReads",
 } }
 
-tagged! { SourceHeader("kind") {
+tagged! { pub SourceHeader("kind") {
     Reported => "reported" {
         release: Text<0, 128> => "release",
     },

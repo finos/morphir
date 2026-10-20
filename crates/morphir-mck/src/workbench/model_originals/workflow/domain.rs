@@ -1803,7 +1803,7 @@ tagged! { PickerSignal("kind") {
     },
 } }
 
-tagged! { Root("kind") {
+tagged! { pub Root("kind") {
     File => "file" {
         path: SourcePath => "path",
     },

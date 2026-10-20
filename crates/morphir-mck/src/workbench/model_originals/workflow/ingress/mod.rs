@@ -30,8 +30,32 @@ pub(super) struct BoundCase<'source> {
     id: CorpusCaseId,
     input_token: &'source RawValue,
     expected_token: &'source RawValue,
-    input: input::Scenario,
-    expected: domain::ExpectedWorkflow,
+    operands: BoundOperands,
+}
+enum BoundOperands {
+    Current {
+        input: input::Scenario,
+        expected: domain::ExpectedWorkflow,
+    },
+    OriginalDeclaration {
+        input: super::native_original::OriginalScenario,
+        expected: super::native_original::NativeDeclarationExpectation,
+    },
+}
+fn original_expected(document: &Document, owner: &mut Decoder) -> Result<bool, DecodeError> {
+    let Document::Object(fields) = document else {
+        return Ok(false);
+    };
+    for (key, value) in fields {
+        owner.bytes(key.len().saturating_add(4))?;
+        if key == "kind" {
+            let value = string(value, owner)?;
+            const KIND: &str = "concrete-native-declaration-workflow-expectation";
+            owner.bytes(value.len().saturating_add(KIND.len()))?;
+            return Ok(value == KIND);
+        }
+    }
+    Ok(false)
 }
 
 /// Uses the existing workbench identity policy, independently of fixture
@@ -143,10 +167,21 @@ impl<'source> BoundCorpus<'source> {
                     return Err(IngressError::DuplicateCase);
                 }
             }
-            let input = fields.field::<input::Scenario>("input", owner)?;
-            let expected = fields.field::<domain::ExpectedWorkflow>("expected", owner)?;
+            let operands = if original_expected(fields.document("expected", owner)?, owner)? {
+                BoundOperands::OriginalDeclaration {
+                    input: fields.field("input", owner)?,
+                    expected: fields.field("expected", owner)?,
+                }
+            } else {
+                BoundOperands::Current {
+                    input: fields.field("input", owner)?,
+                    expected: fields.field("expected", owner)?,
+                }
+            };
             owner.ready()?;
-            pair_with_work(&input, &expected, owner)?;
+            if let BoundOperands::Current { input, expected } = &operands {
+                pair_with_work(input, expected, owner)?;
+            }
             let members = owner.raw_members(raw_item)?;
             let input_token = raw_field(&members, "input", owner)?;
             let expected_token = raw_field(&members, "expected", owner)?;
@@ -156,8 +191,7 @@ impl<'source> BoundCorpus<'source> {
                 id,
                 input_token,
                 expected_token,
-                input,
-                expected,
+                operands,
             });
         }
         Ok(Self { raw, cases })
@@ -186,14 +220,31 @@ impl<'source> BoundCase<'source> {
     /// The typed operands are private and immutable, so this reuses the
     /// genuine pairing boundary without a self-reference or lifetime erasure.
     pub(super) fn paired(&self) -> Result<PairedWorkflow<'_>, PairError> {
-        PairedWorkflow::new(&self.input, &self.expected)
+        match &self.operands {
+            BoundOperands::Current { input, expected } => PairedWorkflow::new(input, expected),
+            BoundOperands::OriginalDeclaration { .. } => Err(PairError::Role),
+        }
     }
 
     pub(super) fn paired_with_work(
         &self,
         owner: &mut Decoder,
     ) -> Result<PairedWorkflow<'_>, IngressError> {
-        pair_with_work(&self.input, &self.expected, owner)
+        match &self.operands {
+            BoundOperands::Current { input, expected } => pair_with_work(input, expected, owner),
+            BoundOperands::OriginalDeclaration { .. } => Err(IngressError::Pair(PairError::Role)),
+        }
+    }
+    pub(super) fn native_operands(
+        &self,
+    ) -> Option<(
+        &super::native_original::OriginalScenario,
+        &super::native_original::NativeDeclarationExpectation,
+    )> {
+        match &self.operands {
+            BoundOperands::OriginalDeclaration { input, expected } => Some((input, expected)),
+            BoundOperands::Current { .. } => None,
+        }
     }
 }
 

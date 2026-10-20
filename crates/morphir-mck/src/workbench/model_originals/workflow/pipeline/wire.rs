@@ -1,5 +1,7 @@
 //! Selected Report wire data only. These types grant no source or runtime proof.
+use super::super::native_original::NativeDeclarationObservation;
 use super::super::pairing::{PairedRun, PairedWorkflow};
+use super::super::source_compile::CompiledExecution;
 use super::super::{Decode, DecodeError, Decoder, Fields, Natural, UniqueKey, input, string};
 use super::raw::VERSION;
 use crate::json::strict::Document;
@@ -188,6 +190,21 @@ pub(super) struct ExecutionRef<'a> {
     run_index: usize,
 }
 impl<'a> ExecutionRef<'a> {
+    pub(super) fn from_compiled(case: &'a CompiledExecution<'_, '_, '_, '_>) -> Self {
+        let origin = case.origin();
+        Self {
+            origin: OriginRef {
+                packet: origin.packet.key(),
+                sha256: DigestRef(&origin.sha256.0),
+                id: &origin.id.0,
+            },
+            role: match case {
+                CompiledExecution::Current(value) => Role::of(value.source().paired().run()),
+                CompiledExecution::Native(_) => Role::Server,
+            },
+            run_index: case.run_index(),
+        }
+    }
     pub(super) fn from_pair(pair: &'a PairedWorkflow<'a>) -> Self {
         let origin = &pair.scenario().origin;
         Self {
@@ -207,6 +224,36 @@ pub(super) struct ExecutionKey {
     run_index: usize,
 }
 impl ExecutionKey {
+    pub(super) fn matches_compiled(
+        &self,
+        case: &CompiledExecution<'_, '_, '_, '_>,
+        owner: &mut Decoder,
+    ) -> Result<bool, DecodeError> {
+        let expected = ExecutionRef::from_compiled(case);
+        owner.ready()?;
+        owner.bytes(
+            self.origin
+                .packet
+                .key()
+                .len()
+                .checked_add(expected.origin.packet.len())
+                .ok_or(DecodeError::Limits)?,
+        )?;
+        owner.bytes(
+            self.origin
+                .id
+                .0
+                .len()
+                .checked_add(expected.origin.id.len())
+                .ok_or(DecodeError::Limits)?,
+        )?;
+        owner.bytes(64)?;
+        Ok(self.origin.packet.key() == expected.origin.packet
+            && self.origin.sha256.0 == *expected.origin.sha256.0
+            && self.origin.id.0 == expected.origin.id
+            && self.role == expected.role
+            && self.run_index == expected.run_index)
+    }
     fn decode(doc: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         let fields = Fields::new(doc, &["origin", "role", "runIndex"], owner)?;
         Ok(Self {
@@ -279,6 +326,10 @@ pub(super) enum Verdict {
 #[derive(Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub(super) enum Evidence {
+    NativeMeasured {
+        measurement: NativeMeasurement,
+        verdict: Verdict,
+    },
     Captured {
         exchange: WorkflowExchangeRecord,
         verdict: Verdict,
@@ -291,6 +342,33 @@ pub(super) enum Evidence {
         #[serde(rename = "priorFailureIndex")]
         prior_failure_index: usize,
     },
+}
+/// One immutable factual measurement, retained fallibly. The closed private
+/// constructor keeps exactly one value. Indirection avoids reserving the large
+/// native header for every not-attempted row; no unsafe/fallible-Box shim is
+/// needed. The existing decoder charges the actual extra storage slot first.
+pub(super) struct NativeMeasurement(Vec<NativeDeclarationObservation>);
+impl NativeMeasurement {
+    pub(super) fn retain(
+        value: NativeDeclarationObservation,
+        owner: &mut Decoder,
+    ) -> Result<Self, DecodeError> {
+        owner.slots(1)?;
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(1)
+            .map_err(|_| DecodeError::Allocation)?;
+        values.push(value);
+        Ok(Self(values))
+    }
+    pub(super) fn value(&self) -> &NativeDeclarationObservation {
+        &self.0[0]
+    }
+}
+impl Serialize for NativeMeasurement {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.value().serialize(serializer)
+    }
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -398,22 +476,24 @@ fn evidence(doc: Document, owner: &mut Decoder) -> Result<Evidence, DecodeError>
     };
     let kind = owned_text(take(&mut fields, "kind", owner)?, owner)?;
     match kind.as_str() {
+        "native-measured" if fields.len() == 2 => {
+            let measurement = NativeDeclarationObservation::decode(
+                &take(&mut fields, "measurement", owner)?,
+                owner,
+            )?;
+            let measurement = NativeMeasurement::retain(measurement, owner)?;
+            let verdict = verdict(take(&mut fields, "verdict", owner)?, owner)?;
+            Ok(Evidence::NativeMeasured {
+                measurement,
+                verdict,
+            })
+        }
         "captured" => {
             if fields.len() != 2 {
                 return Err(DecodeError::Shape("captured fields"));
             }
             let exchange = exchange(take(&mut fields, "exchange", owner)?, owner)?;
-            let Document::Object(mut verdict) = take(&mut fields, "verdict", owner)? else {
-                return Err(DecodeError::Shape("verdict"));
-            };
-            let kind = owned_text(take(&mut verdict, "kind", owner)?, owner)?;
-            let verdict = match kind.as_str() {
-                "checked" if verdict.is_empty() => Verdict::Checked,
-                "failed" if verdict.len() == 1 => Verdict::Failed {
-                    failure_index: index(&take(&mut verdict, "failureIndex", owner)?, owner)?,
-                },
-                _ => return Err(DecodeError::Shape("closed verdict")),
-            };
+            let verdict = verdict(take(&mut fields, "verdict", owner)?, owner)?;
             Ok(Evidence::Captured { exchange, verdict })
         }
         "attempt-failed" if fields.len() == 1 => Ok(Evidence::AttemptFailed {
@@ -423,6 +503,19 @@ fn evidence(doc: Document, owner: &mut Decoder) -> Result<Evidence, DecodeError>
             prior_failure_index: index(&take(&mut fields, "priorFailureIndex", owner)?, owner)?,
         }),
         _ => Err(DecodeError::Shape("closed evidence")),
+    }
+}
+fn verdict(doc: Document, owner: &mut Decoder) -> Result<Verdict, DecodeError> {
+    let Document::Object(mut fields) = doc else {
+        return Err(DecodeError::Shape("verdict"));
+    };
+    let kind = owned_text(take(&mut fields, "kind", owner)?, owner)?;
+    match kind.as_str() {
+        "checked" if fields.is_empty() => Ok(Verdict::Checked),
+        "failed" if fields.len() == 1 => Ok(Verdict::Failed {
+            failure_index: index(&take(&mut fields, "failureIndex", owner)?, owner)?,
+        }),
+        _ => Err(DecodeError::Shape("closed verdict")),
     }
 }
 fn exchange(doc: Document, owner: &mut Decoder) -> Result<WorkflowExchangeRecord, DecodeError> {

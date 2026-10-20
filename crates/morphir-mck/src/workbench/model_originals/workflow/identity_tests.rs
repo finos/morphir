@@ -315,28 +315,27 @@ tagged! { OptionalIdentityProbe("kind") {
 #[test]
 fn shared_tagged_optional_suffix_preserves_old_fields_duplicates_null_and_explicit_presence() {
     let mut decode = decoder();
-    assert!(
-        decode
-            .decode::<OptionalIdentityProbe>(r#"{"kind":"historical","required":"a"}"#)
-            .is_ok()
-    );
+    assert!(matches!(
+        decode.decode::<OptionalIdentityProbe>(r#"{"kind":"historical","required":"a"}"#).unwrap(),
+        OptionalIdentityProbe::Historical { required } if required.0 == "a"
+    ));
     assert!(matches!(
         decode
             .decode::<OptionalIdentityProbe>(r#"{"kind":"extended","required":"a"}"#)
             .unwrap(),
         OptionalIdentityProbe::Extended {
+            required,
             metadata: Presence::Absent,
-            ..
-        }
+        } if required.0 == "a"
     ));
     assert!(matches!(
         decode
             .decode::<OptionalIdentityProbe>(r#"{"kind":"extended","required":"a","metadata":"b"}"#)
             .unwrap(),
         OptionalIdentityProbe::Extended {
-            metadata: Presence::Present(_),
-            ..
-        }
+            required,
+            metadata: Presence::Present(metadata),
+        } if required.0 == "a" && metadata.0 == "b"
     ));
     for raw in [
         r#"{"kind":"extended","required":"a","metadata":null}"#,

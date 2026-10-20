@@ -307,17 +307,31 @@ impl ExpansionOwner {
         fixture: &input::HostFixture,
         actions: &[input::HostAction],
     ) -> Result<(), ExpansionError> {
-        for grant in &fixture.grants.0 {
+        self.host_parts(
+            &fixture.grants.0,
+            &fixture.records.0,
+            &fixture.guests.0,
+            actions,
+        )
+    }
+    fn host_parts(
+        &mut self,
+        grants: &[input::HostFixtureGrantsItem],
+        records: &[input::HostFixtureRecordsItem],
+        guests: &[input::Guest],
+        actions: &[input::HostAction],
+    ) -> Result<(), ExpansionError> {
+        for grant in grants {
             self.visit()?;
             for node in &grant.nodes.0 {
                 self.node(node)?;
             }
         }
-        for record in &fixture.records.0 {
+        for record in records {
             self.visit()?;
             self.frame(&record.raw)?;
         }
-        for guest in &fixture.guests.0 {
+        for guest in guests {
             self.visit()?;
             self.raw(&guest.initialize)?;
             self.raw(&guest.answers)?;
@@ -502,6 +516,29 @@ impl ExpansionOwner {
         }
         Ok(())
     }
+}
+/// The source-vintage native branch uses exactly the same physical recipe
+/// traversal and cumulative owner as the historical host branch.
+pub(super) fn measure_native(
+    scenario: &super::native_original::OriginalScenario,
+    owner: &mut ExpansionOwner,
+) -> Result<ExpansionUsage, ExpansionError> {
+    owner.ready()?;
+    let before = owner.usage();
+    for run in &scenario.runs.0 {
+        owner.visit()?;
+        match run {
+            super::native_original::OriginalRun::ModelOriginalsServer { fixture, actions } => {
+                owner.host_parts(
+                    &fixture.grants.0,
+                    &fixture.records.0,
+                    &fixture.guests.0,
+                    &actions.0,
+                )?;
+            }
+        }
+    }
+    Ok(owner.usage().since(before))
 }
 /// Static recipes in every run passed this owner's explicit limits. No runtime
 /// handle, trusted provenance, path confinement or effect authority is implied.

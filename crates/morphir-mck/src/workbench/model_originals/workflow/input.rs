@@ -6,9 +6,9 @@
 
 use super::*;
 
-text! { AtomicBytesHexHex { min: 0, max: 1048576, pattern: "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$" } }
+text! { pub AtomicBytesHexHex { min: 0, max: 1048576, pattern: "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$" } }
 
-tagged! { AtomicBytes("kind") {
+tagged! { pub AtomicBytes("kind") {
     Hex => "hex" {
         hex: AtomicBytesHexHex => "hex",
     },
@@ -29,9 +29,9 @@ tagged! { AtomicBytes("kind") {
     },
 } }
 
-text! { BytesHexHex { min: 0, max: 1048576, pattern: "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$" } }
+text! { pub BytesHexHex { min: 0, max: 1048576, pattern: "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$" } }
 
-tagged! { Bytes("kind") {
+tagged! { pub Bytes("kind") {
     Hex => "hex" {
         hex: BytesHexHex => "hex",
     },
@@ -462,7 +462,7 @@ record! { ConnectedTransferLimits {
         read_max_bytes: Natural<1, 65536> => "readMaxBytes",
 } }
 
-pub(super) type Count = Natural<0, 9007199254740991>;
+pub type Count = Natural<0, 9007199254740991>;
 
 words! { DeliveredReplyTextOperation {
     ExecutionNativeDescriptor => "execution.native-descriptor",
@@ -541,7 +541,7 @@ tagged! { Entry("kind") {
     },
 } }
 
-tagged! { Frame("kind") {
+tagged! { pub Frame("kind") {
     Literal => "literal" {
         text: Text<0, 1048576> => "text",
     },
@@ -550,7 +550,7 @@ tagged! { Frame("kind") {
     },
 } }
 
-tagged! { FramePart("kind") {
+tagged! { pub FramePart("kind") {
     Literal => "literal" {
         text: Text<0, 1048576> => "text",
     },

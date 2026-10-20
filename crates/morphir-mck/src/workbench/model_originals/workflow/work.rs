@@ -128,9 +128,12 @@ impl ClosureOwner {
         first: &FixtureAlias,
         second: &FixtureAlias,
     ) -> Result<bool, ClosureError> {
+        self.same_text(first.as_str(), second.as_str())
+    }
+    pub(super) fn same_text(&mut self, first: &str, second: &str) -> Result<bool, ClosureError> {
         self.ready()?;
-        let first = first.as_str().as_bytes();
-        let second = second.as_str().as_bytes();
+        let first = first.as_bytes();
+        let second = second.as_bytes();
         if first.len() != second.len() {
             return Ok(false);
         }

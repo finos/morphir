@@ -9,6 +9,8 @@ mod expansion;
 mod identity_input;
 mod input;
 mod meaning;
+pub mod native;
+mod native_original;
 mod pairing;
 mod scope;
 mod walk;
@@ -95,3 +97,6 @@ mod pipeline_negotiation_tests;
 
 #[cfg(test)]
 mod pipeline_negotiation_evidence_tests;
+
+#[cfg(test)]
+mod native_original_unit_controls;

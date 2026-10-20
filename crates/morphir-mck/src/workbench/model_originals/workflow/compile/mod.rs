@@ -5,7 +5,7 @@ use super::scope::{
     ResolvedMeaning, RuntimeBindingObligation, ScopeError, ScopeKey, ScopeWork, SourcePosition,
     Sources, Symbol,
 };
-use super::walk::{AliasSink, Segment, Trail, WalkAliases};
+use super::walk::{AliasSink, Segment, Trail};
 use super::work::{ClosureError, ClosureOwner, Resource};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -354,6 +354,23 @@ pub(super) fn compile<'source>(
 ) -> Result<CompiledAliases<'source>, CompileError> {
     owner.ready()?;
     let sources = Sources::from_paired(paired);
+    compile_sources(sources, owner)
+}
+
+pub(super) fn compile_native<'source>(
+    input: &'source super::native_original::OriginalScenario,
+    expected: &'source super::native_original::NativeDeclarationExpectation,
+    selected_run: super::native_original::ValidatedRunIndex,
+    owner: &mut ClosureOwner,
+) -> Result<CompiledAliases<'source>, CompileError> {
+    owner.ready()?;
+    compile_sources(Sources::from_native(input, expected, selected_run), owner)
+}
+
+fn compile_sources<'source>(
+    sources: Sources<'source>,
+    owner: &mut ClosureOwner,
+) -> Result<CompiledAliases<'source>, CompileError> {
     let mut compiler = Compiler {
         sources,
         owner,
@@ -369,8 +386,8 @@ pub(super) fn compile<'source>(
     };
     for pass in [Pass::Declarations, Pass::References] {
         compiler.pass = pass;
-        compiler.sources.input().walk(&root, &mut compiler)?;
-        compiler.sources.expected().walk(&root, &mut compiler)?;
+        sources.walk_input(&root, &mut compiler)?;
+        sources.walk_expected(&root, &mut compiler)?;
     }
     Ok(compiler.result)
 }

@@ -8,7 +8,7 @@ use super::{
 };
 use std::{collections::BTreeMap, fmt};
 
-const MAX_SOURCE_BYTES: usize = 64 * 1024 * 1024;
+pub(super) const MAX_SOURCE_BYTES: usize = 64 * 1024 * 1024;
 const MAX_ENTRIES: usize = 100064;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -6,10 +6,12 @@ use super::compile::{self, CompileError, CompiledAliases};
 use super::expansion::{ExpansionError, ExpansionOwner, ExpansionUsage, ScenarioExpansion};
 use super::identity_input::{IdentityInputError, IdentityInputPlan};
 use super::ingress::BoundCase;
+use super::native_original::{self, NativeComparisonPlan};
 use super::observation_check::{self, CompareOwner, ComparedPredicates, ObservationError};
 use super::observed;
 use super::pairing::PairedWorkflow;
 pub(super) use super::record_check::WorkflowRecordError;
+use super::source_proof::MatchedNativeSourceCase;
 use super::source_proof::{LineageStatus, MatchedSourceCase, SourceError, SourceVerifier};
 use super::work::{ClosureOwner, ClosureUsage};
 use serde_json::value::RawValue;
@@ -37,6 +39,48 @@ pub(super) struct CompiledSourceCase<'case, 'sources, 'raw, 'supplied> {
     aliases: CompiledAliases<'case>,
     expansion: ScenarioExpansion<'case>,
     identity_input: IdentityInputPlan<'case>,
+}
+pub(super) struct CompiledNativeSourceCase<'case, 'sources, 'raw, 'supplied> {
+    source: MatchedNativeSourceCase<'case, 'sources, 'raw, 'supplied>,
+    plan: NativeComparisonPlan<'case>,
+}
+impl<'case, 'raw> CompiledNativeSourceCase<'case, '_, 'raw, '_> {
+    pub(super) fn source(&self) -> &MatchedNativeSourceCase<'case, '_, 'raw, '_> {
+        &self.source
+    }
+    pub(super) fn plan(&self) -> &NativeComparisonPlan<'case> {
+        &self.plan
+    }
+}
+pub(super) enum CompiledExecution<'case, 'sources, 'raw, 'supplied> {
+    Current(CompiledSourceCase<'case, 'sources, 'raw, 'supplied>),
+    Native(CompiledNativeSourceCase<'case, 'sources, 'raw, 'supplied>),
+}
+impl<'case, 'raw> CompiledExecution<'case, '_, 'raw, '_> {
+    pub(super) fn case(&self) -> &'case BoundCase<'raw> {
+        match self {
+            Self::Current(value) => value.source.case(),
+            Self::Native(value) => value.source.case(),
+        }
+    }
+    pub(super) fn current(&self) -> Option<&CompiledSourceCase<'case, '_, 'raw, '_>> {
+        match self {
+            Self::Current(value) => Some(value),
+            Self::Native(_) => None,
+        }
+    }
+    pub(super) fn origin(&self) -> &super::input::PacketRef {
+        match self {
+            Self::Current(value) => &value.source.paired().scenario().origin,
+            Self::Native(value) => &value.source.input().origin,
+        }
+    }
+    pub(super) fn run_index(&self) -> usize {
+        match self {
+            Self::Current(value) => value.source.paired().run_index(),
+            Self::Native(value) => value.source.run().get(),
+        }
+    }
 }
 impl<'case, 'sources, 'raw, 'supplied> CompiledSourceCase<'case, 'sources, 'raw, 'supplied> {
     pub(super) fn source(&self) -> &MatchedSourceCase<'case, 'sources, 'raw, 'supplied> {
@@ -166,6 +210,56 @@ impl<'owner, 'policies, 'sources, 'supplied> CaseCompiler<'owner, 'policies, 'so
             expansion,
             identity_input,
         })
+    }
+    fn compile_native_case<'case, 'raw>(
+        &mut self,
+        case: &'case BoundCase<'raw>,
+    ) -> Result<CompiledNativeSourceCase<'case, 'sources, 'raw, 'supplied>, CompilationError> {
+        self.verifier
+            .ready()
+            .map_err(|error| CompilationError::Source(SourceError::Decode(error)))?;
+        self.closure
+            .ready()
+            .map_err(|error| CompilationError::Closure(CompileError::Owner(error)))?;
+        self.expansion
+            .ready()
+            .map_err(CompilationError::Expansion)?;
+        let source = self
+            .verifier
+            .bind_native(case)
+            .map_err(CompilationError::Source)?;
+        // Same cumulative alias and expansion algorithms, after exact actual
+        // source proof. A free DATA plan cannot construct this wrapper.
+        let plan = native_original::compile_native_plan(
+            source.input(),
+            source.expected(),
+            source.run(),
+            self.closure,
+            self.expansion,
+        )?;
+        Ok(CompiledNativeSourceCase { source, plan })
+    }
+    pub(super) fn compile_execution<'compiler, 'case, 'raw>(
+        &'compiler mut self,
+        case: &'case BoundCase<'raw>,
+    ) -> Result<CompiledExecution<'case, 'sources, 'raw, 'supplied>, &'compiler CompilationError>
+    {
+        if self.fault.is_none() {
+            let result = if case.native_operands().is_some() {
+                self.compile_native_case(case)
+                    .map(CompiledExecution::Native)
+            } else {
+                self.compile_case(case).map(CompiledExecution::Current)
+            };
+            match result {
+                Ok(value) => return Ok(value),
+                Err(error) => self.fault = Some(error),
+            }
+        }
+        Err(self
+            .fault
+            .as_ref()
+            .expect("failed compiler retains its fault"))
     }
 
     pub(super) fn compile<'compiler, 'case, 'raw>(

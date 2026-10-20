@@ -139,6 +139,7 @@ impl Decoder {
         let result = crate::json::strict::raw_elements_with_work(raw, &mut self.literal);
         self.read_result(result)
     }
+    #[cfg(test)]
     pub(super) fn decode<T: Decode>(&mut self, raw: &str) -> Result<T, DecodeError> {
         self.ready()?;
         if raw.len() > self.limits.saved.get() {
@@ -360,7 +361,31 @@ impl<T: Decode> Decode for Nullable<T> {
     }
 }
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) struct Text<const MIN: usize, const MAX: usize>(pub(super) String);
+pub struct Text<const MIN: usize, const MAX: usize>(pub(super) String);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DataValueError {
+    Length,
+    Range,
+    Pattern,
+    Path,
+    Version,
+}
+impl<const MIN: usize, const MAX: usize> Text<MIN, MAX> {
+    pub fn new(value: &str) -> Result<Self, DataValueError> {
+        if !(MIN..=MAX).contains(&value.chars().count()) {
+            return Err(DataValueError::Length);
+        }
+        Ok(Self(value.to_owned()))
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+impl<const MIN: usize, const MAX: usize> serde::Serialize for Text<MIN, MAX> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&self.0)
+    }
+}
 impl<const MIN: usize, const MAX: usize> Decode for Text<MIN, MAX> {
     fn decode(value: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         let text = string(value, owner)?;
@@ -378,7 +403,23 @@ impl Decode for FixtureAlias {
     }
 }
 #[derive(Debug)]
-pub(super) struct Natural<const MIN: u64, const MAX: u64>(pub(super) u64);
+pub struct Natural<const MIN: u64, const MAX: u64>(pub(super) u64);
+impl<const MIN: u64, const MAX: u64> Natural<MIN, MAX> {
+    pub fn new(value: u64) -> Result<Self, DataValueError> {
+        if !(MIN..=MAX).contains(&value) {
+            return Err(DataValueError::Range);
+        }
+        Ok(Self(value))
+    }
+    pub fn get(&self) -> u64 {
+        self.0
+    }
+}
+impl<const MIN: u64, const MAX: u64> serde::Serialize for Natural<MIN, MAX> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_u64(self.0)
+    }
+}
 impl<const MIN: u64, const MAX: u64> Decode for Natural<MIN, MAX> {
     fn decode(value: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         owner.ready()?;
@@ -401,7 +442,25 @@ impl<const MIN: u64, const MAX: u64> Decode for Natural<MIN, MAX> {
     }
 }
 #[derive(Debug)]
-pub(super) struct Items<T, const MIN: usize, const MAX: usize>(pub(super) Vec<T>);
+pub struct Items<T, const MIN: usize, const MAX: usize>(pub(super) Vec<T>);
+impl<T, const MIN: usize, const MAX: usize> Items<T, MIN, MAX> {
+    pub fn new(values: Vec<T>) -> Result<Self, DataValueError> {
+        if !(MIN..=MAX).contains(&values.len()) {
+            return Err(DataValueError::Length);
+        }
+        Ok(Self(values))
+    }
+    pub fn as_slice(&self) -> &[T] {
+        &self.0
+    }
+}
+impl<T: serde::Serialize, const MIN: usize, const MAX: usize> serde::Serialize
+    for Items<T, MIN, MAX>
+{
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        self.0.serialize(s)
+    }
+}
 impl<T: Decode, const MIN: usize, const MAX: usize> Decode for Items<T, MIN, MAX> {
     fn decode(value: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         owner.ready()?;
@@ -469,7 +528,25 @@ impl Decode for ContentSha256 {
     }
 }
 #[derive(Debug)]
-pub(super) struct SourcePath(pub(super) super::super::RootPath);
+pub struct SourcePath(pub(super) super::super::RootPath);
+impl SourcePath {
+    pub fn new(value: &str) -> Result<Self, DataValueError> {
+        if value.chars().count() > 4096 {
+            return Err(DataValueError::Length);
+        }
+        super::super::Root::file(value)
+            .map(|root| Self(root.path))
+            .map_err(|_| DataValueError::Path)
+    }
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+impl serde::Serialize for SourcePath {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
 impl Decode for SourcePath {
     fn decode(value: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         let text = string(value, owner)?;
@@ -482,7 +559,20 @@ impl Decode for SourcePath {
     }
 }
 #[derive(Debug)]
-pub(super) struct U64Token(pub(super) super::super::RequestId);
+pub struct U64Token(pub(super) super::super::RequestId);
+impl U64Token {
+    pub fn new(value: u64) -> Self {
+        Self(super::super::RequestId(value))
+    }
+    pub fn get(&self) -> u64 {
+        self.0.get()
+    }
+}
+impl serde::Serialize for U64Token {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&self.0.get().to_string())
+    }
+}
 impl Decode for U64Token {
     fn decode(value: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         let text = string(value, owner)?;

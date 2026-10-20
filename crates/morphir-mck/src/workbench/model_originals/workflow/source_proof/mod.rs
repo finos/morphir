@@ -118,6 +118,32 @@ struct ManifestCase<'sources> {
     role: WorkflowRole,
     input: DeclaredOperandFile<'sources>,
     expected: DeclaredOperandFile<'sources>,
+    native_witnesses: Option<super::native_original::WitnessMetadata>,
+}
+pub(super) struct MatchedNativeSourceCase<'case, 'sources, 'raw, 'supplied> {
+    case: &'case BoundCase<'raw>,
+    _sources: &'sources ReviewedSources<'supplied>,
+    input: &'case super::native_original::OriginalScenario,
+    expected: &'case super::native_original::NativeDeclarationExpectation,
+    run: super::native_original::ValidatedRunIndex,
+    witnesses: super::native_original::WitnessMetadata,
+}
+impl<'case, 'raw> MatchedNativeSourceCase<'case, '_, 'raw, '_> {
+    pub(super) fn case(&self) -> &'case BoundCase<'raw> {
+        self.case
+    }
+    pub(super) fn input(&self) -> &'case super::native_original::OriginalScenario {
+        self.input
+    }
+    pub(super) fn expected(&self) -> &'case super::native_original::NativeDeclarationExpectation {
+        self.expected
+    }
+    pub(super) fn run(&self) -> super::native_original::ValidatedRunIndex {
+        self.run
+    }
+    pub(super) fn witnesses(&self) -> super::native_original::WitnessMetadata {
+        self.witnesses
+    }
 }
 pub(super) struct SourceVerifier<'owner, 'sources, 'supplied> {
     owner: &'owner mut Decoder,
@@ -164,6 +190,21 @@ fn member<'doc>(
         }
     }
     Err(SourceError::Shape("required source field"))
+}
+fn optional_member<'doc>(
+    document: &'doc Document,
+    name: &str,
+    owner: &mut Decoder,
+) -> Result<Option<&'doc Document>, SourceError> {
+    let Document::Object(fields) = document else {
+        return Err(SourceError::Shape("source object"));
+    };
+    for (key, value) in fields {
+        if same(key, name, owner)? {
+            return Ok(Some(value));
+        }
+    }
+    Ok(None)
 }
 fn items<'doc>(
     document: &'doc Document,
@@ -337,6 +378,30 @@ fn decoded_manifest<'sources, 'supplied>(
             "expectedBytes",
             owner,
         )?;
+        let native_witnesses = match optional_member(row, "dialect", owner)? {
+            None => None,
+            Some(dialect) => {
+                if !same(text(dialect, owner)?, "original-native-declaration", owner)? {
+                    return Err(SourceError::Shape("closed source dialect"));
+                }
+                let run = usize::try_from(run_index.0).map_err(|_| SourceError::SizeOverflow)?;
+                let metadata = super::native_original::first_witness_metadata(&origin, run)
+                    .ok_or(SourceError::ManifestCase)?;
+                let fields = member(row, "witnessMetadata", owner)?;
+                for (key, expected) in [
+                    ("grant", "workspace"),
+                    ("outputPrefix", metadata.output_prefix),
+                    ("compileRecord", metadata.record),
+                    ("primary", metadata.primary),
+                    ("sentinel", metadata.sentinel),
+                ] {
+                    if !same(text(member(fields, key, owner)?, owner)?, expected, owner)? {
+                        return Err(SourceError::ManifestCase);
+                    }
+                }
+                Some(metadata)
+            }
+        };
         result.push(ManifestCase {
             id,
             origin,
@@ -344,6 +409,7 @@ fn decoded_manifest<'sources, 'supplied>(
             role,
             input,
             expected,
+            native_witnesses,
         });
     }
     Ok(result)
@@ -386,6 +452,10 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
             SourceSet::IdentityController => (
                 "ff6a905d4c25c590190353d119fd34ca774e2b7cbb258448df902f6f1bb3815c",
                 "79056ac33aac8aec8191790250e7d60bc9934bff97ed09b11e06ce7b2368c602",
+            ),
+            SourceSet::NativeFirst => (
+                "e3d3ca84be11068fa75da61c8e295bccd3eae927e3e6cb820e3347302db7f96e",
+                "949be1c5e3551ccfb977e03d0dee6769bae0db6c17a4e5296b71dfa1934ab62b",
             ),
         };
         anchor(
@@ -492,6 +562,29 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
         self.owner.ready()?;
         let paired = case.paired_with_work(self.owner).map_err(pairing_error)?;
         let origin = &paired.scenario().origin;
+        let row = self.bind_tokens(
+            case,
+            origin,
+            paired.run_index(),
+            WorkflowRole::of(paired.run()),
+        )?;
+        if row.native_witnesses.is_some() {
+            return Err(SourceError::ManifestRole);
+        }
+        Ok(MatchedSourceCase {
+            case,
+            _sources: self.sources,
+            paired,
+        })
+    }
+    /// Both dialects use this one actual source/packet/token authority check.
+    fn bind_tokens(
+        &mut self,
+        case: &BoundCase<'_>,
+        origin: &input::PacketRef,
+        run_index: usize,
+        role: WorkflowRole,
+    ) -> Result<&ManifestCase<'sources>, SourceError> {
         let packet = self
             .packets
             .iter()
@@ -513,10 +606,10 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
             return Err(SourceError::ManifestCase);
         }
         let run = row.run_index.0;
-        if usize::try_from(run).map_err(|_| SourceError::SizeOverflow)? != paired.run_index() {
+        if usize::try_from(run).map_err(|_| SourceError::SizeOverflow)? != run_index {
             return Err(SourceError::ManifestCase);
         }
-        if row.role != WorkflowRole::of(paired.run()) {
+        if row.role != role {
             return Err(SourceError::ManifestRole);
         }
         let input = row.input.verify(self.owner)?;
@@ -527,10 +620,41 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
         if !same(expected.raw, case.expected_token(), self.owner)? {
             return Err(SourceError::ExpectedToken);
         }
-        Ok(MatchedSourceCase {
+        Ok(row)
+    }
+    pub(super) fn bind_native<'case, 'raw>(
+        &mut self,
+        case: &'case BoundCase<'raw>,
+    ) -> Result<MatchedNativeSourceCase<'case, 'sources, 'raw, 'supplied>, SourceError> {
+        self.owner.ready()?;
+        let (input, expected) = case.native_operands().ok_or(SourceError::ManifestRole)?;
+        if !same(
+            input.origin.packet.key(),
+            expected.origin.packet.key(),
+            self.owner,
+        )? {
+            return Err(SourceError::Pair(PairError::Packet));
+        }
+        self.owner.bytes(64)?;
+        if input.origin.sha256 != expected.origin.sha256 {
+            return Err(SourceError::Pair(PairError::Digest));
+        }
+        if !same(&input.origin.id.0, &expected.origin.id.0, self.owner)? {
+            return Err(SourceError::Pair(PairError::Case));
+        }
+        let row = manifest_case(&self.manifest, case.id(), self.owner)?;
+        let index = usize::try_from(row.run_index.0).map_err(|_| SourceError::SizeOverflow)?;
+        let row = self.bind_tokens(case, &input.origin, index, WorkflowRole::Server)?;
+        let witnesses = row.native_witnesses.ok_or(SourceError::ManifestRole)?;
+        let run = super::native_original::ValidatedRunIndex::for_original(input, index)
+            .map_err(|_| SourceError::Pair(PairError::RunIndex))?;
+        Ok(MatchedNativeSourceCase {
             case,
             _sources: self.sources,
-            paired,
+            input,
+            expected,
+            run,
+            witnesses,
         })
     }
 }

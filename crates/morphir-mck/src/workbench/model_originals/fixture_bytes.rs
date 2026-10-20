@@ -14,6 +14,7 @@ pub(super) fn literal_factories() -> usize {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixtureByteError {
+    Allocation,
     Limits,
     SavedBytes,
     Json,
@@ -27,6 +28,7 @@ pub enum FixtureByteError {
 impl fmt::Display for FixtureByteError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
+            Self::Allocation => "fixture recipe allocation refused",
             Self::Limits => "fixture byte limits must be positive",
             Self::SavedBytes => "fixture recipe exceeds its saved byte bound",
             Self::Json => "fixture recipe is not strict duplicate-free JSON",
@@ -105,7 +107,56 @@ pub struct FixtureBytes {
     atoms: Vec<Atom>,
     length: usize,
 }
+/// Already typed recipe parts from the shared workflow decoder. This input
+/// grants no source access; it reaches the same Plan/Atom implementation as
+/// the saved JSON recipe boundary.
+#[derive(Clone, Copy)]
+pub(super) enum RecipePart<'a> {
+    Utf8(&'a str),
+    Hex(&'a str),
+    Repeat { byte: u8, length: usize },
+    Cycle { seed: u8, length: usize },
+    ChunkIndexed { seed: u8, length: usize },
+}
 impl FixtureBytes {
+    pub(super) fn from_typed_parts(
+        parts: &[RecipePart<'_>],
+        expanded_limit: usize,
+    ) -> Result<Self, FixtureByteError> {
+        if parts.is_empty() || parts.len() > 4096 {
+            return Err(FixtureByteError::Parts);
+        }
+        let mut length = 0usize;
+        let mut plans = Vec::new();
+        plans
+            .try_reserve_exact(parts.len())
+            .map_err(|_| FixtureByteError::Allocation)?;
+        for part in parts {
+            let plan = match *part {
+                RecipePart::Utf8(text) => Plan::Utf8(text),
+                RecipePart::Hex(text) => {
+                    hex_byte_length(text)?;
+                    Plan::Hex(text)
+                }
+                RecipePart::Repeat { byte, length } => Plan::Pattern(Atom::Repeat { byte, length }),
+                RecipePart::Cycle { seed, length } => Plan::Pattern(Atom::Cycle { seed, length }),
+                RecipePart::ChunkIndexed { seed, length } => {
+                    Plan::Pattern(Atom::ChunkIndexed { seed, length })
+                }
+            };
+            length = length
+                .checked_add(plan.length())
+                .filter(|n| *n <= expanded_limit)
+                .ok_or(FixtureByteError::ExpandedBytes)?;
+            plans.push(plan);
+        }
+        let mut atoms = Vec::new();
+        atoms
+            .try_reserve_exact(plans.len())
+            .map_err(|_| FixtureByteError::Allocation)?;
+        atoms.extend(plans.into_iter().map(Plan::decode));
+        Ok(Self { atoms, length })
+    }
     pub fn parse(text: &str, limits: FixtureByteLimits) -> Result<Self, FixtureByteError> {
         if text.len() > limits.saved.get() {
             return Err(FixtureByteError::SavedBytes);

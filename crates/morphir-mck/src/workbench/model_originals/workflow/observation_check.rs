@@ -5,6 +5,7 @@ use super::input::{self, ClientAction};
 use super::observed::{self, ClientCheckpoint};
 use super::pairing::{PairedRun, PairedWorkflow};
 use super::{FixtureAlias, Nullable, Presence};
+pub(super) mod server;
 mod workspace;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,6 +63,7 @@ pub(super) enum ObservationError {
     Role,
     ExpectedBlocked,
     UnsupportedServer,
+    NativeDeclaration(server::NativeFault),
     UnsupportedClientCheck {
         index: usize,
     },
@@ -130,6 +132,7 @@ impl CompareOwner {
             fault: None,
         }
     }
+    #[cfg(test)]
     pub(super) fn usage(&self) -> CompareUsage {
         self.usage
     }
