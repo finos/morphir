@@ -110,10 +110,58 @@ enum RunFault {
     Capture(CaptureFault),
     Record(WorkflowRecordError),
     Native(super::native::NativeAdapterError),
+    RecordRetention(super::native::PrivateRecordError),
 }
 impl RunFault {
     fn summary(&self) -> FailureSummary {
         let (phase, code, message) = match self {
+            Self::RecordRetention(error) => match error {
+                super::native::PrivateRecordError::Capacity { .. } => (
+                    "native-record-retention",
+                    "record-retention-capacity",
+                    "private record capacity refused",
+                ),
+                super::native::PrivateRecordError::SizeOverflow => (
+                    "native-record-retention",
+                    "record-retention-size-overflow",
+                    "private record capacity arithmetic refused",
+                ),
+                super::native::PrivateRecordError::LengthMismatch { .. } => (
+                    "native-record-retention",
+                    "record-length-mismatch",
+                    "private record length differs from permission",
+                ),
+                super::native::PrivateRecordError::CapacityMismatch { .. } => (
+                    "native-record-retention",
+                    "record-capacity-mismatch",
+                    "private record capacity differs from permission",
+                ),
+                super::native::PrivateRecordError::AllocationMismatch => (
+                    "native-record-retention",
+                    "record-allocation-mismatch",
+                    "private record allocation differs from permission",
+                ),
+                super::native::PrivateRecordError::InvalidUtf8 => (
+                    "native-record-retention",
+                    "record-invalid-utf8",
+                    "private record UTF8 representation refused",
+                ),
+                super::native::PrivateRecordError::UnsupportedRepresentation => (
+                    "native-record-retention",
+                    "record-representation-unsupported",
+                    "private record exceeds supported text representation",
+                ),
+                super::native::PrivateRecordError::Abandoned => (
+                    "native-record-retention",
+                    "record-adoption-abandoned",
+                    "private record adoption was abandoned",
+                ),
+                super::native::PrivateRecordError::PriorWorkFault => (
+                    "native-record-retention",
+                    "record-prior-work-fault",
+                    "private record work owner already refused",
+                ),
+            },
             Self::Native(error) => match error {
                 super::native::NativeAdapterError::Startup => (
                     "native-startup",
@@ -530,8 +578,13 @@ pub(in crate::workbench) fn execute_native(
     source: &Source,
     policy: &Policy,
     limits: &super::native::NativeObservationLimits,
+    record_limits: &super::native::RecordRetentionLimits,
     adapter: &mut dyn super::native::NativeOriginalAdapter,
 ) -> Result<StoredReport, String> {
+    // Exactly one caller-selected receiving owner for the whole invocation,
+    // outside preparation and every case/callback. No per-case reset/refund.
+    let mut record_owner =
+        super::native::record_retention::RecordRetentionOwner::new(record_limits);
     prepared(
         source,
         policy,
@@ -567,6 +620,7 @@ pub(in crate::workbench) fn execute_native(
                                     native,
                                     limits,
                                     &mut owners.comparison,
+                                    &mut record_owner,
                                 ));
                             // A producer may report its own failure after recipe
                             // work refused. Preserve the genuine owner's first
@@ -574,6 +628,9 @@ pub(in crate::workbench) fn execute_native(
                             owners.comparison.ready().map_err(|error| {
                                 RunFault::Record(WorkflowRecordError::Observation(error))
                             })?;
+                            record_owner
+                                .ready()
+                                .map_err(|error| RunFault::RecordRetention(*error))?;
                             result.map_err(RunFault::Native)
                         }
                         CompiledExecution::Current(_) => Err(RunFault::UnsupportedRole),

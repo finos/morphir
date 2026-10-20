@@ -371,11 +371,19 @@ pub enum DataValueError {
     Version,
 }
 impl<const MIN: usize, const MAX: usize> Text<MIN, MAX> {
-    pub fn new(value: &str) -> Result<Self, DataValueError> {
+    fn validate(value: &str) -> Result<(), DataValueError> {
         if !(MIN..=MAX).contains(&value.chars().count()) {
             return Err(DataValueError::Length);
         }
+        Ok(())
+    }
+    pub fn new(value: &str) -> Result<Self, DataValueError> {
+        Self::validate(value)?;
         Ok(Self(value.to_owned()))
+    }
+    pub(super) fn from_owned(value: String) -> Result<Self, DataValueError> {
+        Self::validate(&value)?;
+        Ok(Self(value))
     }
     pub fn as_str(&self) -> &str {
         &self.0
@@ -389,9 +397,7 @@ impl<const MIN: usize, const MAX: usize> serde::Serialize for Text<MIN, MAX> {
 impl<const MIN: usize, const MAX: usize> Decode for Text<MIN, MAX> {
     fn decode(value: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         let text = string(value, owner)?;
-        if !(MIN..=MAX).contains(&text.chars().count()) {
-            return Err(DecodeError::Shape("text length"));
-        }
+        Self::validate(text).map_err(|_| DecodeError::Shape("text length"))?;
         Ok(Self(text.to_owned()))
     }
 }

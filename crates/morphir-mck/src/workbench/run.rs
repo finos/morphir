@@ -214,6 +214,7 @@ pub fn run_configured_with_native_adapter(
     let Configuration::NativeOriginals {
         checker,
         observation,
+        private_record,
     } = &configuration.mode
     else {
         return Err("native adapter requires explicit native configuration".into());
@@ -221,7 +222,8 @@ pub fn run_configured_with_native_adapter(
     let corpus = load(root)?;
     match &corpus.storage {
         CorpusStorage::ModelOriginals(source) => {
-            pipeline::execute_native(source, checker, observation, adapter).map(Report::selected)
+            pipeline::execute_native(source, checker, observation, private_record, adapter)
+                .map(Report::selected)
         }
         CorpusStorage::Historical(_) => {
             Err("historical corpus requires historical checker policy".into())

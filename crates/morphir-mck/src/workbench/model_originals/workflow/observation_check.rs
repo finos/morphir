@@ -139,6 +139,13 @@ impl CompareOwner {
     pub(super) fn ready(&self) -> Result<(), ObservationError> {
         self.fault.map_or(Ok(()), Err)
     }
+    pub(super) fn preflight_owned_text(&mut self, bytes: usize) -> Result<(), ObservationError> {
+        self.ready()?;
+        let Some(visits) = bytes.checked_mul(2) else {
+            return self.refuse(ObservationError::SizeOverflow);
+        };
+        self.charge(CompareResource::ComparisonBytes, visits)
+    }
     fn refuse<T>(&mut self, error: ObservationError) -> Result<T, ObservationError> {
         Err(*self.fault.get_or_insert(error))
     }

@@ -105,3 +105,6 @@ mod native_pipeline_tests;
 
 #[cfg(test)]
 mod native_typed_fault_tests;
+
+#[cfg(test)]
+mod native_record_receiver_tests;

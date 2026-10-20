@@ -19,7 +19,35 @@ pub(super) enum Configuration {
     NativeOriginals {
         checker: Box<Policy>,
         observation: NativeObservationLimits,
+        private_record: RecordRetentionLimits,
     },
+}
+/// Explicit cumulative native-record Vec capacity, separate from all existing
+/// source/work/serialized-capture policies. Zero installs no positive credit.
+pub struct RecordRetentionLimits {
+    retained_bytes: u64,
+}
+impl RecordRetentionLimits {
+    pub fn retained_bytes(&self) -> u64 {
+        self.retained_bytes
+    }
+    fn from_document(value: &Document) -> Result<Self, String> {
+        use super::model_originals::workflow::pipeline::policy::{closed, get};
+        let fields = closed(value, &["retainedBytes"])?;
+        let Document::Number(number) = get(fields, "retainedBytes")? else {
+            return Err("record retention requires canonical u64".into());
+        };
+        let token = number.as_str();
+        if token.is_empty()
+            || !token.bytes().all(|byte| byte.is_ascii_digit())
+            || (token.len() > 1 && token.starts_with('0'))
+        {
+            return Err("record retention requires canonical u64".into());
+        }
+        Ok(Self {
+            retained_bytes: token.parse().map_err(|_| "record retention exceeds u64")?,
+        })
+    }
 }
 /// Explicit finite caller policy, not a source grant or observation result.
 pub struct NativeObservationLimits {
@@ -90,6 +118,12 @@ impl NativeObservationLimits {
     }
 }
 impl RunConfiguration {
+    pub fn private_record_limits(&self) -> Option<&RecordRetentionLimits> {
+        match &self.mode {
+            Configuration::NativeOriginals { private_record, .. } => Some(private_record),
+            _ => None,
+        }
+    }
     pub fn native_observation_limits(&self) -> Option<&NativeObservationLimits> {
         match &self.mode {
             Configuration::NativeOriginals { observation, .. } => Some(observation),
@@ -126,7 +160,10 @@ impl RunConfiguration {
             }
             Some(Document::String(kind)) if kind == "model-originals-native" => {
                 use super::model_originals::workflow::pipeline::policy::{closed, get};
-                let fields = closed(&document, &["kind", "checker", "observation"])?;
+                let fields = closed(
+                    &document,
+                    &["kind", "checker", "observation", "privateRecord"],
+                )?;
                 // Only the new observation policy has canonical-token rules.
                 // Borrow its original subtree after the shared duplicate/shape
                 // check, preserving all historical checker count semantics.
@@ -134,14 +171,19 @@ impl RunConfiguration {
                 struct RawObservation<'a> {
                     #[serde(borrow)]
                     observation: &'a serde_json::value::RawValue,
+                    #[serde(borrow, rename = "privateRecord")]
+                    private_record: &'a serde_json::value::RawValue,
                 }
                 let raw: RawObservation<'_> = serde_json::from_str(raw)
                     .map_err(|_| "native observation policy is not JSON")?;
                 let observation =
                     Document::parse_unsigned_counts(raw.observation.get().as_bytes())?;
+                let private_record =
+                    Document::parse_unsigned_counts(raw.private_record.get().as_bytes())?;
                 Configuration::NativeOriginals {
                     checker: Box::new(Policy::from_document(get(fields, "checker")?)?),
                     observation: NativeObservationLimits::from_document(&observation)?,
+                    private_record: RecordRetentionLimits::from_document(&private_record)?,
                 }
             }
             _ => return Err("policy has unknown kind or fields".into()),

@@ -1,9 +1,11 @@
 //! Borrowed engine-issued invocation and native producer DATA. The CLI owns
 //! filesystem/host effects. This module neither links SDK nor grants access.
 use super::{UniqueKey, input, native_original, source_compile::CompiledNativeSourceCase};
-pub use crate::workbench::configuration::NativeObservationLimits;
+pub use crate::workbench::configuration::{NativeObservationLimits, RecordRetentionLimits};
+pub(super) mod record_retention;
 pub use crate::workbench::model_originals::{CaptureScope, FixtureAlias, SemanticRequest};
 pub use native_original::NativeDeclarationObservation as NativeOriginalMeasurements;
+pub use record_retention::{PrivateRecordAdoption, PrivateRecordError, RecordRetentionUsage};
 
 /// Exact shared DATA definitions. Constructors validate values only; none can
 /// create a live invocation, source match, SDK snapshot or cleanup proof.
@@ -61,17 +63,20 @@ pub struct NativeOriginalRun<'a> {
     compiled: &'a CompiledNativeSourceCase<'a, 'a, 'a, 'a>,
     limits: &'a NativeObservationLimits,
     comparison: &'a mut super::observation_check::CompareOwner,
+    records: &'a mut record_retention::RecordRetentionOwner,
 }
 impl<'a> NativeOriginalRun<'a> {
     pub(super) fn from_compiled(
         compiled: &'a CompiledNativeSourceCase<'a, 'a, 'a, 'a>,
         limits: &'a NativeObservationLimits,
         comparison: &'a mut super::observation_check::CompareOwner,
+        records: &'a mut record_retention::RecordRetentionOwner,
     ) -> Self {
         Self {
             compiled,
             limits,
             comparison,
+            records,
         }
     }
     pub fn source(&self) -> NativeOriginalSource<'_> {
@@ -82,11 +87,20 @@ impl<'a> NativeOriginalRun<'a> {
     pub fn fixture(&self) -> NativeOriginalFixture<'a> {
         NativeOriginalFixture(self.compiled.plan().selected().0)
     }
-    pub fn actions(&self) -> impl ExactSizeIterator<Item = NativeOriginalAction<'_>> {
+    pub fn actions(&self) -> impl ExactSizeIterator<Item = NativeOriginalAction<'a>> + use<'a> {
         self.compiled.plan().selected().1.iter().map(action)
     }
     pub fn observation_limits(&self) -> &NativeObservationLimits {
         self.limits
+    }
+    pub fn private_record_retention_usage(&self) -> RecordRetentionUsage {
+        self.records.usage()
+    }
+    pub fn prepare_private_record_adoption<'ticket>(
+        &'ticket mut self,
+        actual: &Vec<u8>,
+    ) -> Result<PrivateRecordAdoption<'ticket>, &'ticket PrivateRecordError> {
+        record_retention::prepare(self.records, self.comparison, actual)
     }
     /// Reuse the same validated Plan/Atom expansion as the factual checker.
     /// The real cumulative comparison owner pays visit and expanded-byte
@@ -96,6 +110,9 @@ impl<'a> NativeOriginalRun<'a> {
         &mut self,
         recipe: &data::Bytes,
     ) -> Result<crate::workbench::model_originals::FixtureBytes, NativeAdapterError> {
+        self.records
+            .ready()
+            .map_err(|_| NativeAdapterError::ObservationIncomplete)?;
         super::observation_check::server::recipe(recipe, self.comparison)
             .map_err(|_| NativeAdapterError::Fixture)
     }
@@ -566,3 +583,7 @@ fn action(value: &input::HostAction) -> NativeOriginalAction<'_> {
         other => NativeOriginalAction::Unsupported(NativeUnsupportedAction(other)),
     }
 }
+
+#[cfg(test)]
+#[path = "native_record_retention_metadata_controls.rs"]
+mod retention_metadata_tests;
