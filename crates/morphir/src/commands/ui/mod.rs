@@ -33,12 +33,27 @@ pub struct UiArgs {
     /// Print the one-time launch URL instead of opening a browser.
     #[arg(long)]
     pub no_open: bool,
+
+    /// Enable the model-originals preview before full connected qualification.
+    #[arg(long)]
+    pub preview_model_originals: bool,
+}
+
+#[derive(Clone, Copy)]
+enum ModelOriginalsMode {
+    Disabled,
+    Preview,
 }
 
 pub async fn run_ui(
     args: UiArgs,
     out: crate::commands::out_context::OutOverrides,
 ) -> Result<Option<u8>, miette::Report> {
+    let originals_mode = if args.preview_model_originals {
+        ModelOriginalsMode::Preview
+    } else {
+        ModelOriginalsMode::Disabled
+    };
     let workspace = match args.workspace {
         Some(path) => path,
         None => std::env::current_dir()
@@ -59,41 +74,52 @@ pub async fn run_ui(
     let home = crate::home::MorphirHome::resolve()
         .map_err(|error| miette::miette!("Unable to resolve Morphir Home: {error}"))?;
     let provider = match args.workspace_extension.as_deref() {
-        Some(extension_id) => provider::originals::OriginalsProvider::Installed(Arc::new(
-            ExtensionWorkspaceProvider::select(
+        Some(extension_id) => {
+            let provider = ExtensionWorkspaceProvider::select(
                 home.clone(),
                 &workspace,
                 &session_id,
                 Some(extension_id),
             )
             .map_err(miette::Report::new)?
-            .with_out_overrides(out.clone())
-            .authorize_originals_lookup(cap_std::ambient_authority())
-            .map_err(miette::Report::new)?,
-        )),
-        None => provider::originals::OriginalsProvider::Native(Arc::new(
-            NativeWorkspaceProvider::discover(&workspace, &session_id)
+            .with_out_overrides(out.clone());
+            let provider = match originals_mode {
+                ModelOriginalsMode::Disabled => provider,
+                ModelOriginalsMode::Preview => provider
+                    .authorize_originals_lookup(cap_std::ambient_authority())
+                    .map_err(miette::Report::new)?,
+            };
+            provider::originals::OriginalsProvider::Installed(Arc::new(provider))
+        }
+        None => {
+            let provider = NativeWorkspaceProvider::discover(&workspace, &session_id)
                 .map_err(miette::Report::new)?
-                .with_out_overrides(out)
-                .authorize_originals_lookup(cap_std::ambient_authority())
-                .map_err(miette::Report::new)?,
-        )),
+                .with_out_overrides(out);
+            let provider = match originals_mode {
+                ModelOriginalsMode::Disabled => provider,
+                ModelOriginalsMode::Preview => provider
+                    .authorize_originals_lookup(cap_std::ambient_authority())
+                    .map_err(miette::Report::new)?,
+            };
+            provider::originals::OriginalsProvider::Native(Arc::new(provider))
+        }
     };
-    let host = BoundUiHost::bind_with_originals(
-        session_id,
-        SessionCapabilities {
-            workspace: Some(provider.workspace()),
-            // The playground reads the same workspace the UI was pointed at,
-            // so a project that configures its frontend provider gets it in
-            // the browser too.
-            playground: Some(Arc::new(NativePlaygroundProvider::in_workspace(
-                home, &workspace,
-            ))),
-            ..Default::default()
-        },
-        Some(provider),
-    )
-    .await
+    let capabilities = SessionCapabilities {
+        workspace: Some(provider.workspace()),
+        // The playground reads the same workspace the UI was pointed at,
+        // so a project that configures its frontend provider gets it in
+        // the browser too.
+        playground: Some(Arc::new(NativePlaygroundProvider::in_workspace(
+            home, &workspace,
+        ))),
+        ..Default::default()
+    };
+    let host = match originals_mode {
+        ModelOriginalsMode::Disabled => BoundUiHost::bind(session_id, capabilities).await,
+        ModelOriginalsMode::Preview => {
+            BoundUiHost::bind_with_originals(session_id, capabilities, Some(provider)).await
+        }
+    }
     .map_err(miette::Report::new)?;
     let base_url = host.base_url();
     let launch_url = host.launch_url();

@@ -31,6 +31,33 @@ impl Drop for Process {
     }
 }
 
+fn compile_at(root: &Path) {
+    let mut child = Process(Some(
+        Command::new(env!("CARGO_BIN_EXE_morphir"))
+            .args(["compile", "--json"])
+            .current_dir(root)
+            .env("MORPHIR_HOME", root.join("home"))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    ));
+    let deadline = Instant::now() + TIMEOUT;
+    while child.0.as_mut().unwrap().try_wait().unwrap().is_none() {
+        assert!(
+            Instant::now() < deadline,
+            "actual compiler exceeded deadline"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let output = child.0.take().unwrap().wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "actual compile failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 #[derive(Clone, Copy)]
 pub enum Layout {
     File,
@@ -78,30 +105,7 @@ impl Fixture {
             "pub type Answer { Answer }\n",
         )
         .unwrap();
-        let mut child = Process(Some(
-            Command::new(env!("CARGO_BIN_EXE_morphir"))
-                .args(["compile", "--json"])
-                .current_dir(root)
-                .env("MORPHIR_HOME", root.join("home"))
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .unwrap(),
-        ));
-        let deadline = Instant::now() + TIMEOUT;
-        while child.0.as_mut().unwrap().try_wait().unwrap().is_none() {
-            assert!(
-                Instant::now() < deadline,
-                "actual compiler exceeded deadline"
-            );
-            std::thread::sleep(Duration::from_millis(10));
-        }
-        let output = child.0.take().unwrap().wait_with_output().unwrap();
-        assert!(
-            output.status.success(),
-            "actual compile failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        compile_at(root);
         let record: Value =
             serde_json::from_slice(&fs::read(root.join(".morphir/out/compile.json")).unwrap())
                 .unwrap();
@@ -183,6 +187,30 @@ impl Fixture {
     pub fn root(&self) -> &Path {
         self.temp.path()
     }
+    /// Keep the original immutable expected snapshot while a real later CLI
+    /// compile owns its ordinary writer lock and replaces live compiler output.
+    pub fn recompile_source(&self, source: &str) -> Vec<u8> {
+        fs::write(self.root().join("models/api.gleam"), source).unwrap();
+        compile_at(self.root());
+        fs::read(
+            self.root()
+                .join(".morphir/out/compile.dest")
+                .join(&self.primary),
+        )
+        .unwrap()
+    }
+    pub fn with_compile_lock<T>(&self, write: impl FnOnce(&Path) -> T) -> T {
+        let output = self.root().join(".morphir/out");
+        let lock = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(output.join("compile.lock"))
+            .unwrap();
+        fs2::FileExt::lock_exclusive(&lock).unwrap();
+        let result = write(&output);
+        fs2::FileExt::unlock(&lock).unwrap();
+        result
+    }
 }
 fn snapshot(base: &Path, path: &Path, entries: &mut Vec<(String, Option<Vec<u8>>)>) {
     let relative = path
@@ -212,10 +240,24 @@ pub struct Host {
     pub manifest: Value,
     client: reqwest::Client,
 }
+enum LaunchMode {
+    Default,
+    Preview,
+}
 impl Host {
     pub async fn launch(fixture: &Fixture) -> Self {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_morphir"))
-            .args(["ui", "--no-open"])
+        Self::launch_mode(fixture, LaunchMode::Preview).await
+    }
+    pub async fn launch_default(fixture: &Fixture) -> Self {
+        Self::launch_mode(fixture, LaunchMode::Default).await
+    }
+    async fn launch_mode(fixture: &Fixture, mode: LaunchMode) -> Self {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
+        command.args(["ui", "--no-open"]);
+        if matches!(mode, LaunchMode::Preview) {
+            command.arg("--preview-model-originals");
+        }
+        let mut child = command
             .arg(fixture.root())
             .current_dir(fixture.root())
             .env("MORPHIR_HOME", fixture.root().join("home"))

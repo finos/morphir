@@ -804,3 +804,348 @@ async fn actual_cli_regression_malformed_json_after_method_keeps_closed_profile_
     expectation.verify_release(&release.exchange()).unwrap();
     socket.close().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn actual_cli_default_host_does_not_offer_or_enable_preview_originals() {
+    let fixture = Fixture::compile_format(Layout::File, Format::Json);
+    // The default route deliberately excludes --preview-model-originals.
+    let host = Host::launch_default(&fixture).await;
+    assert!(
+        host.manifest["providers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|provider| {
+                provider["capabilities"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|capability| capability["name"] != PROFILE)
+            }),
+        "default manifest must not advertise an unqualified preview: {}",
+        host.manifest
+    );
+    let source = &host.manifest["initialSources"][0];
+    let mut socket = host.connect().await;
+    let workspace = socket
+        .call("morphir.workspace.open", json!({"source":source}))
+        .await;
+    assert!(workspace["error"].is_null(), "{workspace}");
+    let snapshot = &workspace["result"]["snapshot"];
+    let project = snapshot["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["relativePath"] == ".")
+        .unwrap()["id"]
+        .as_str()
+        .unwrap();
+    let (sent, reply) = socket
+        .raw_call(
+            "morphir.model-originals.capture",
+            capture_params(source, project),
+        )
+        .await;
+    let request = Request::parse(&sent).unwrap();
+    closed_profile_failure(
+        &reply,
+        json!(request.id().get()),
+        "model_originals.unavailable",
+    );
+    // Refusing the preview must preserve the historical initialized workspace path.
+    let after = socket
+        .call("morphir.workspace.open", json!({"source":source}))
+        .await;
+    assert!(after["error"].is_null(), "{after}");
+    assert_eq!(after["result"]["snapshot"]["id"], snapshot["id"]);
+    assert_eq!(
+        after["result"]["snapshot"]["projects"],
+        snapshot["projects"]
+    );
+    socket.close().await;
+}
+
+fn expected_snapshot<'a>(
+    entries: &'a [(String, Option<Vec<u8>>)],
+    source: ExpectedSource,
+) -> ExpectedOriginals<'a> {
+    let entries = entries
+        .iter()
+        .map(|(path, bytes)| match bytes {
+            Some(bytes) => {
+                ExpectedOriginalEntry::file(path, ExpectedBytes::literal(bytes).unwrap()).unwrap()
+            }
+            None => ExpectedOriginalEntry::directory(path).unwrap(),
+        })
+        .collect();
+    ExpectedOriginals::new(entries, source).unwrap()
+}
+
+async fn verify_snapshot_and_release(
+    socket: &mut support::Socket,
+    session: &SessionId,
+    capture: &Recorded,
+    entries: &[(String, Option<Vec<u8>>)],
+    expected: &ExpectedOriginals<'_>,
+) {
+    let expectation = CaptureExpectation::from_exchange(&capture.exchange(), session).unwrap();
+    let ready: Value = serde_json::from_str(&capture.reply).unwrap();
+    let id = ready["result"]["captureId"].as_str().unwrap();
+    let page = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.inventory",
+                json!({"contractVersion":VERSION,"captureId":id,"startIndex":0,"maxEntries":256}),
+            )
+            .await,
+    );
+    let pages = [page.exchange()];
+    let inventory = expectation.verify_inventory(&pages).unwrap();
+    let mut streams = Vec::new();
+    for entry in inventory.inventory().entries() {
+        if entry.kind() != morphir_mck::workbench::model_originals::RootKind::File {
+            continue;
+        }
+        let bytes = entries
+            .iter()
+            .find(|(path, _)| path == entry.path())
+            .unwrap()
+            .1
+            .as_ref()
+            .unwrap();
+        let mut reads = Vec::new();
+        let mut offset = 0;
+        loop {
+            let read = Recorded::new(socket.raw_call("morphir.model-originals.read", json!({"contractVersion":VERSION,"captureId":id,"target":{"kind":"original","entryId":entry.id().as_str()},"offset":offset,"maxBytes":65536})).await);
+            let value: Value = serde_json::from_str(&read.reply).unwrap();
+            assert!(value["error"].is_null(), "{value}");
+            let next = value["result"]["nextOffset"].as_u64().unwrap() as usize;
+            assert!(next <= bytes.len());
+            reads.push(read);
+            if next == bytes.len() {
+                break;
+            }
+            assert!(next > offset);
+            offset = next;
+        }
+        streams.push((entry.id().clone(), reads));
+    }
+    let reads = streams
+        .iter()
+        .map(|(_, reads)| reads.iter().map(Recorded::exchange).collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    let originals = streams
+        .iter()
+        .zip(&reads)
+        .map(|((entry, _), exchanges)| OriginalTransfer { entry, exchanges })
+        .collect::<Vec<_>>();
+    expected
+        .verify(
+            session,
+            CaptureEvidence {
+                capture: capture.exchange(),
+                pages: &pages,
+                originals: &originals,
+            },
+        )
+        .unwrap();
+    let release = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.release",
+                json!({"contractVersion":VERSION,"captureId":id}),
+            )
+            .await,
+    );
+    expectation.verify_release(&release.exchange()).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn actual_cli_acceptance_old_capture_survives_a_genuine_changed_compile() {
+    let fixture = Fixture::compile_format(Layout::File, Format::Json);
+    // Issued before the second compile and always borrowing the FIRST source.
+    let expected = expected_snapshot(
+        &fixture.originals,
+        ExpectedSource::new(
+            Root::file(&fixture.primary).unwrap(),
+            vec![],
+            fixture.expected_version.clone(),
+        )
+        .unwrap(),
+    );
+    let host = Host::launch(&fixture).await;
+    let source = &host.manifest["initialSources"][0];
+    let session = SessionId::new(host.manifest["sessionId"].as_str().unwrap()).unwrap();
+    let mut socket = host.connect().await;
+    let workspace = socket
+        .call("morphir.workspace.open", json!({"source":source}))
+        .await;
+    assert!(workspace["error"].is_null(), "{workspace}");
+    let project = workspace["result"]["snapshot"]["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["relativePath"] == ".")
+        .unwrap()["id"]
+        .as_str()
+        .unwrap();
+    let capture = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.capture",
+                capture_params(source, project),
+            )
+            .await,
+    );
+    assert_eq!(
+        serde_json::from_str::<Value>(&capture.reply).unwrap()["result"]["status"],
+        "ready"
+    );
+    let newer = fixture.recompile_source("pub type Changed { Changed }\n");
+    assert_ne!(
+        newer,
+        *fixture.originals[0].1.as_ref().unwrap(),
+        "the genuine second compiler output must differ"
+    );
+    verify_snapshot_and_release(
+        &mut socket,
+        &session,
+        &capture,
+        &fixture.originals,
+        &expected,
+    )
+    .await;
+    socket.close().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn actual_cli_acceptance_missing_declaration_recovers_and_declared_companion_roots_transfer()
+{
+    let fixture = Fixture::compile_format(Layout::File, Format::Json);
+    let expected_primary = expected_snapshot(
+        &fixture.originals,
+        ExpectedSource::new(
+            Root::file(&fixture.primary).unwrap(),
+            vec![],
+            fixture.expected_version.clone(),
+        )
+        .unwrap(),
+    );
+    let original_record = fixture.with_compile_lock(|output| {
+        let path = output.join("compile.json");
+        let original = std::fs::read(&path).unwrap();
+        let mut record: Value = serde_json::from_slice(&original).unwrap();
+        assert_eq!(
+            record
+                .as_object_mut()
+                .unwrap()
+                .remove("morphirModelOriginals")
+                .unwrap(),
+            json!({"contractVersion":VERSION,"companions":[]})
+        );
+        std::fs::write(path, serde_json::to_vec(&record).unwrap()).unwrap();
+        original
+    });
+    let host = Host::launch(&fixture).await;
+    let source = &host.manifest["initialSources"][0];
+    let session = SessionId::new(host.manifest["sessionId"].as_str().unwrap()).unwrap();
+    let mut socket = host.connect().await;
+    let workspace = socket
+        .call("morphir.workspace.open", json!({"source":source}))
+        .await;
+    assert!(workspace["error"].is_null(), "{workspace}");
+    let project = workspace["result"]["snapshot"]["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["relativePath"] == ".")
+        .unwrap()["id"]
+        .as_str()
+        .unwrap();
+    let unavailable = socket
+        .call(
+            "morphir.model-originals.capture",
+            capture_params(source, project),
+        )
+        .await;
+    assert_eq!(unavailable.as_object().unwrap().len(), 3);
+    assert!(unavailable.get("error").is_none());
+    assert_eq!(
+        unavailable["result"],
+        json!({"profile":PROFILE,"contractVersion":VERSION,"status":"unavailable","reason":"companions_undeclared"})
+    );
+
+    // Restore the EXACT genuine record first and independently prove recovery.
+    fixture.with_compile_lock(|output| {
+        std::fs::write(output.join("compile.json"), &original_record).unwrap()
+    });
+    let recovered = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.capture",
+                capture_params(source, project),
+            )
+            .await,
+    );
+    verify_snapshot_and_release(
+        &mut socket,
+        &session,
+        &recovered,
+        &fixture.originals,
+        &expected_primary,
+    )
+    .await;
+
+    // Separate positive declaration policy transaction. These are companion
+    // ROOTS outside the primary file, not descendants relabeled as companions.
+    let declaration = json!({"contractVersion":VERSION,"companions":[{"kind":"file","path":"companion.bin"},{"kind":"directory","path":"notes"}]});
+    morphir_mck::workbench::model_originals::Declaration::parse(&declaration.to_string()).unwrap();
+    fixture.with_compile_lock(|output| {
+        let dest = output.join("compile.dest");
+        std::fs::write(dest.join("companion.bin"), SIDECAR).unwrap();
+        std::fs::create_dir(dest.join("notes")).unwrap();
+        std::fs::create_dir(dest.join("notes/empty")).unwrap();
+        std::fs::write(dest.join("notes/opaque.bin"), [255, 0, 128, 10]).unwrap();
+        std::fs::write(
+            dest.join("do-not-capture.bin"),
+            b"UNDECLARED ADJACENT SOURCE",
+        )
+        .unwrap();
+        let mut record: Value = serde_json::from_slice(&original_record).unwrap();
+        record["morphirModelOriginals"] = declaration;
+        std::fs::write(
+            output.join("compile.json"),
+            serde_json::to_vec(&record).unwrap(),
+        )
+        .unwrap();
+    });
+    let mut entries = fixture.originals.clone();
+    entries.extend([
+        ("companion.bin".to_owned(), Some(SIDECAR.to_vec())),
+        ("notes".to_owned(), None),
+        ("notes/empty".to_owned(), None),
+        ("notes/opaque.bin".to_owned(), Some(vec![255, 0, 128, 10])),
+    ]);
+    let expected = expected_snapshot(
+        &entries,
+        ExpectedSource::new(
+            Root::file(&fixture.primary).unwrap(),
+            vec![
+                Root::file("companion.bin").unwrap(),
+                Root::directory("notes").unwrap(),
+            ],
+            fixture.expected_version.clone(),
+        )
+        .unwrap(),
+    );
+    let capture = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.capture",
+                capture_params(source, project),
+            )
+            .await,
+    );
+    verify_snapshot_and_release(&mut socket, &session, &capture, &entries, &expected).await;
+    socket.close().await;
+}
