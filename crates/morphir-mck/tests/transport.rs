@@ -10,6 +10,9 @@
 #[path = "support/raw_multiline_tests.rs"]
 mod raw_multiline_tests;
 
+#[path = "support/one_shot_controls.rs"]
+mod one_shot_controls;
+
 use std::ffi::OsString;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -69,6 +72,9 @@ mod adapter {
     }
 
     pub fn run(mode: &str, arg: Option<&str>) {
+        if super::one_shot_controls::peer(mode, arg) {
+            return;
+        }
         if super::recorded_literal_tests::adapter(mode) {
             return;
         }
@@ -1384,6 +1390,22 @@ fn main() {
     }
 
     let tests: &[(&str, fn())] = &[
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        ("one_shot_u01_observing_exit_keeps_child_waitable_before_explicit_reap",one_shot_controls::one_shot_u01_observing_exit_keeps_child_waitable_before_explicit_reap),
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        ("one_shot_u02_after_raw_reap_first_delayed_request_and_drop_cannot_signal",one_shot_controls::one_shot_u02_after_raw_reap_first_delayed_request_and_drop_cannot_signal),
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        ("one_shot_u03_foreign_reap_identity_uncertainty_refuses_numeric_signal",one_shot_controls::one_shot_u03_foreign_reap_identity_uncertainty_refuses_numeric_signal),
+        ("one_shot_s11_consuming_raw_finished_does_not_terminate_held_descendant",one_shot_controls::one_shot_s11_consuming_raw_finished_does_not_terminate_held_descendant),
+        ("one_shot_s01_literal_raw_output_has_no_adapter_protocol",one_shot_controls::one_shot_s01_literal_raw_output_has_no_adapter_protocol),
+        ("one_shot_s02_literal_argv_private_environment_and_absolute_paths",one_shot_controls::one_shot_s02_literal_argv_private_environment_and_absolute_paths),
+        ("one_shot_s03_exact_stdout_and_first_excess_retained_byte",one_shot_controls::one_shot_s03_exact_stdout_and_first_excess_retained_byte),
+        ("one_shot_s04_stderr_prefix_and_zero_still_drain",one_shot_controls::one_shot_s04_stderr_prefix_and_zero_still_drain),
+        ("one_shot_s05_actual_nonzero_status_is_not_cleanup_failure",one_shot_controls::one_shot_s05_actual_nonzero_status_is_not_cleanup_failure),
+        ("one_shot_s06_pending_owner_survives_deadline_and_same_owner_retry",one_shot_controls::one_shot_s06_pending_owner_survives_deadline_and_same_owner_retry),
+        ("one_shot_s08_same_tree_termination_and_actual_direct_child_join",one_shot_controls::one_shot_s08_same_tree_termination_and_actual_direct_child_join),
+        ("one_shot_s09_root_exit_does_not_join_inherited_pipe_reader",one_shot_controls::one_shot_s09_root_exit_does_not_join_inherited_pipe_reader),
+        ("one_shot_s10_fault_progresses_cleanup_and_drop_does_not_claim_join",one_shot_controls::one_shot_s10_fault_progresses_cleanup_and_drop_does_not_claim_join),
 ("recorded_literal_retains_the_actual_sent_request_without_second_serialize",recorded_literal_tests::recorded_literal_retains_the_actual_sent_request_without_second_serialize),
 ("recorded_literal_lf_refusal_cannot_return_a_completed_exchange_receipt",recorded_literal_tests::recorded_literal_lf_refusal_cannot_return_a_completed_exchange_receipt),
 ("recorded_literal_first_fault_precedes_next_serialization_or_receipt",recorded_literal_tests::recorded_literal_first_fault_precedes_next_serialization_or_receipt),
