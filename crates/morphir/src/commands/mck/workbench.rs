@@ -2,12 +2,19 @@
 
 use std::ffi::OsString;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::Duration;
 
 use clap::Args;
 use morphir_mck::transport::{Limits, Session};
-use morphir_mck::workbench::{MAX_REPORT_BYTES, Report, check_report, load, run_with_session};
+use morphir_mck::workbench::{
+    AdapterProtocol, MAX_REPORT_BYTES, Report, RunConfiguration, check_report_configured,
+    run_configured_with_session_factory,
+};
 use starbase::AppResult;
 
 use super::{Outcome, finish};
@@ -26,6 +33,9 @@ pub struct RunArgs {
     /// Write versioned JSON evidence, including adapter and qualification failures
     #[arg(long, value_name = "FILE")]
     pub report: PathBuf,
+    /// Explicit caller-owned checker policy; required for selected workflow corpora
+    #[arg(long, value_name = "FILE")]
+    pub checker_policy: Option<PathBuf>,
     /// Maximum duration of one adapter exchange, in milliseconds
     #[arg(long, value_name = "MS", default_value_t = 30_000, value_parser = clap::value_parser!(u64).range(1..))]
     pub timeout: u64,
@@ -34,9 +44,25 @@ pub struct RunArgs {
     pub session_timeout: u64,
 }
 
+fn configuration(path: Option<&Path>) -> Result<RunConfiguration, String> {
+    let Some(path) = path else {
+        // Historical dispatch alone keeps its existing default. Selected
+        // source is refused by the shared runner without explicit policy.
+        return RunConfiguration::from_json(r#"{"kind":"historical"}"#);
+    };
+    let mut text = String::new();
+    std::fs::File::open(path)
+        .and_then(|file| {
+            file.take(MAX_REPORT_BYTES as u64 + 1)
+                .read_to_string(&mut text)
+        })
+        .map_err(|error| format!("cannot read checker policy {}: {error}", path.display()))?;
+    RunConfiguration::from_json(&text).map_err(|error| format!("checker policy refused: {error}"))
+}
+
 pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
-    let corpus = match load(&args.kit) {
-        Ok(corpus) => corpus,
+    let configuration = match configuration(args.checker_policy.as_deref()) {
+        Ok(configuration) => configuration,
         Err(error) => return finish(Outcome::Error(error)),
     };
     let source = args.kit.join("cases.json");
@@ -62,21 +88,45 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
         session_timeout: Duration::from_millis(args.session_timeout),
         ..Limits::DEFAULT
     };
-    let report = match Session::spawn(&args.adapter, &args.adapter_args, limits) {
-        Err(error) => Report::adapter_error(&corpus, error.to_string()),
-        Ok(session) => {
-            let terminator = session.terminator();
-            let interrupt = tokio::spawn(async move {
-                if tokio::signal::ctrl_c().await.is_ok() {
-                    terminator.kill();
-                    eprintln!("error: interrupted; the adapter was terminated");
-                    std::process::exit(130);
+    let mut interrupt = None;
+    let interrupted = Arc::new(AtomicBool::new(false));
+    let report = tokio::task::block_in_place(|| {
+        run_configured_with_session_factory(&args.kit, &configuration, || {
+            // The shared runner finishes source preparation BEFORE invoking
+            // this real process factory. No expected data/context crosses it.
+            let session = match configuration.adapter_protocol() {
+                AdapterProtocol::HistoricalNewline => {
+                    Session::spawn(&args.adapter, &args.adapter_args, limits)
                 }
-            });
-            let report = tokio::task::block_in_place(|| run_with_session(&corpus, session));
-            interrupt.abort();
-            report
-        }
+                AdapterProtocol::ContentLength => {
+                    Session::spawn_mep(&args.adapter, &args.adapter_args, limits)
+                }
+            }?;
+            let terminator = session.terminator();
+            let interrupted = Arc::clone(&interrupted);
+            interrupt = Some(tokio::spawn(async move {
+                if tokio::signal::ctrl_c().await.is_ok() {
+                    interrupted.store(true, Ordering::SeqCst);
+                    terminator.kill();
+                }
+            }));
+            Ok(session)
+        })
+    });
+    if let Some(interrupt) = interrupt {
+        interrupt.abort();
+        let _ = interrupt.await;
+    }
+    if interrupted.load(Ordering::SeqCst) {
+        // The shared runner has returned through Session::close, which kills
+        // the owned tree and waits for the adapter child. Exit after that owner
+        // has completed cleanup, without publishing an interrupted report.
+        eprintln!("error: interrupted; the adapter was terminated");
+        std::process::exit(130);
+    }
+    let report = match report {
+        Ok(report) => report,
+        Err(error) => return finish(Outcome::Error(error)),
     };
     if let Err(error) = super::report::write_atomic(&args.report, report.to_json().as_bytes()) {
         return finish(Outcome::Error(format!(
@@ -85,7 +135,7 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
         )));
     }
     print_summary(&report);
-    finish(if report.qualified {
+    finish(if report.qualified() {
         Outcome::Passed
     } else {
         Outcome::Failed
@@ -100,10 +150,14 @@ pub struct CheckArgs {
     /// Saved Workbench JSON evidence; its claimed results are independently recomputed
     #[arg(long, value_name = "FILE")]
     pub report: PathBuf,
+    /// Same explicit caller-owned policy used for selected workflow verification
+    #[arg(long, value_name = "FILE")]
+    pub checker_policy: Option<PathBuf>,
 }
 
 pub fn check(args: CheckArgs) -> AppResult<miette::Report> {
     let result = (|| {
+        let configuration = configuration(args.checker_policy.as_deref())?;
         let mut text = String::new();
         std::fs::File::open(&args.report)
             .and_then(|file| {
@@ -112,9 +166,9 @@ pub fn check(args: CheckArgs) -> AppResult<miette::Report> {
             })
             .map_err(|error| format!("cannot read {}: {error}", args.report.display()))?;
         let report = Report::from_json(&text)?;
-        check_report(&args.kit, &report)?;
+        check_report_configured(&args.kit, &report, &configuration)?;
         print_summary(&report);
-        Ok::<_, String>(report.qualified)
+        Ok::<_, String>(report.qualified())
     })();
     finish(match result {
         Ok(true) => Outcome::Passed,
@@ -127,18 +181,20 @@ fn print_summary(report: &Report) {
     println!(
         "workbench: {}; {}",
         report.summary_line(),
-        if report.qualified {
+        if report.qualified() {
             "qualified"
         } else {
             "not qualified"
         }
     );
-    for record in &report.records {
-        if record.result != morphir_mck::workbench::ResultKind::Pass {
-            println!("{}: {:?}", record.case_id, record.result);
+    if let Some(historical) = report.as_historical() {
+        for record in &historical.records {
+            if record.result != morphir_mck::workbench::ResultKind::Pass {
+                println!("{}: {:?}", record.case_id, record.result);
+            }
         }
-    }
-    for failure in &report.errors {
-        eprintln!("workbench {:?}: {}", failure.phase, failure.message);
+        for failure in &historical.errors {
+            eprintln!("workbench {:?}: {}", failure.phase, failure.message);
+        }
     }
 }

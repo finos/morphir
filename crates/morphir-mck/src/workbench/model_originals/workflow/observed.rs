@@ -1,4 +1,5 @@
-//! Independent observed evidence types from frozen1b94, not expected predicates.
+//! Independent observed evidence types from frozen1b94 plus the sealed
+//! identity-controller schema, not expected predicates.
 //! Exact reused input types were checked through their whole reference closure.
 //! No authority/runtime/semantic lineage follows from decoding this evidence.
 use super::*;
@@ -376,7 +377,61 @@ tagged! { IdentityResult("kind") {
     },
 } }
 
+// Actual development-workspace observations. These are separate from expected
+// predicates and from MoonBit semantic model/opening owners.
+literal! { WorkspaceEntryKind => "development" }
+literal! { WorkspaceEntryStatus => "ready" }
+record! { WorkspaceProject {
+    key: Text<0, {usize::MAX}> => "key",
+    name: Text<0, {usize::MAX}> => "name",
+    relative_path: Text<0, {usize::MAX}> => "relativePath",
+} }
+record! { WorkspaceEntry {
+    key: Text<0, {usize::MAX}> => "key",
+    source_snapshot: super::input::IdentitySourceSnapshot => "sourceSnapshot",
+    kind: WorkspaceEntryKind => "kind",
+    status: WorkspaceEntryStatus => "status",
+    projects: Items<WorkspaceProject, 0, {usize::MAX}> => "projects",
+} }
+record! { WorkspaceCheckpoint {
+    name: FixtureAlias => "name",
+    active_key: Nullable<Text<0, {usize::MAX}>> => "activeKey",
+    entries: Items<WorkspaceEntry, 0, {usize::MAX}> => "entries",
+    recent_keys: Items<Text<0, {usize::MAX}>, 0, {usize::MAX}> => "recentKeys",
+} }
+words! { WorkspaceInvocationKind {
+    Inspect => "inspect",
+    LoadDevelopment => "load-development",
+} }
+record! { WorkspaceInvocation {
+    kind: WorkspaceInvocationKind => "kind",
+    source_snapshot: super::input::IdentitySourceSnapshot => "sourceSnapshot",
+    reply: RawJson => "reply",
+} }
+literal! { WorkspaceClean => "clean" }
+record! { WorkspaceOutcome {
+    kind: WorkspaceClean => "kind",
+    final_checkpoint: FixtureAlias => "finalCheckpoint",
+} }
+literal! { WorkspaceDisposed => "disposed" }
+literal! { WorkspaceNoPendingProviderCalls => 0 }
+literal! { WorkspaceNoHeldPeerReplies => 0 }
+literal! { WorkspaceNoActiveWatches => 0 }
+record! { WorkspaceTeardown {
+    kind: WorkspaceDisposed => "kind",
+    pending_provider_calls: WorkspaceNoPendingProviderCalls => "pendingProviderCalls",
+    held_peer_replies: WorkspaceNoHeldPeerReplies => "heldPeerReplies",
+    active_workspace_watches: WorkspaceNoActiveWatches => "activeWorkspaceWatches",
+} }
+
 tagged! { Observation("role") {
+    WorkspaceClient => "model-originals-workspace-client" {
+        checkpoints: Items<WorkspaceCheckpoint, 1, {usize::MAX}> => "checkpoints",
+        identity_results: Items<IdentityResult, 0, {usize::MAX}> => "identityResults",
+        provider_invocations: Items<WorkspaceInvocation, 0, {usize::MAX}> => "providerInvocations",
+        outcome: WorkspaceOutcome => "outcome",
+        teardown: WorkspaceTeardown => "teardown",
+    },
     ModelOriginalsServer => "model-originals-server" {
         captures: Items<CapturedEvidence, 0, 8192> => "captures",
         checkpoints: Items<ServerCheckpoint, 1, 8192> => "checkpoints",

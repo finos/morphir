@@ -112,6 +112,21 @@ impl<'owner, 'policies, 'sources, 'supplied> CaseCompiler<'owner, 'policies, 'so
         }
     }
 
+    /// Additional actual pipeline inventory work on the same first-fault owner.
+    pub(super) fn require_inventory<'compiler>(
+        &'compiler mut self,
+        cases: &[BoundCase<'_>],
+    ) -> Result<(), &'compiler CompilationError> {
+        if self.fault.is_none()
+            && let Err(error) = self.verifier.require_inventory(cases)
+        {
+            self.fault = Some(CompilationError::Source(error));
+        }
+        match &self.fault {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
+    }
     pub(super) fn usage(&self) -> CompilationUsage {
         CompilationUsage {
             decode: self.verifier.usage(),

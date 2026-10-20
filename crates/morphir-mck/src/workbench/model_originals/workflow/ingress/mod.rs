@@ -89,8 +89,34 @@ impl<'source> BoundCorpus<'source> {
     /// Only parent-selected bytes are bound. Equal origin claims remain
     /// metadata; neither the caller nor this method can issue packet trust.
     pub(super) fn decode(raw: &'source str, owner: &mut Decoder) -> Result<Self, IngressError> {
+        Self::decode_header(raw, owner, false)
+    }
+    pub(super) fn decode_selected(
+        raw: &'source str,
+        owner: &mut Decoder,
+    ) -> Result<Self, IngressError> {
+        Self::decode_header(raw, owner, true)
+    }
+    fn decode_header(
+        raw: &'source str,
+        owner: &mut Decoder,
+        selected: bool,
+    ) -> Result<Self, IngressError> {
         let (document, raw_root) = owner.literal_with_raw(raw)?;
-        let root_fields = Fields::new(&document, &["cases"], owner)?;
+        let root_fields = Fields::new(
+            &document,
+            if selected {
+                &["formatVersion", "cases"]
+            } else {
+                &["cases"]
+            },
+            owner,
+        )?;
+        if selected
+            && string(root_fields.document("formatVersion", owner)?, owner)? != "0.1.0-draft.30"
+        {
+            return Err(DecodeError::Shape("selected corpus draft").into());
+        }
         let cases_document = root_fields.document("cases", owner)?;
         owner.ready()?;
         let Document::Array(items) = cases_document else {

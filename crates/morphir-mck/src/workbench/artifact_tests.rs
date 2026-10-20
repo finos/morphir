@@ -101,23 +101,39 @@ fn artifact_mck_authored_corpus_and_report_checker_are_self_consistent() {
     assert_eq!(corpus.case_count(), 103);
     let canonical = load(kit().parent().unwrap()).unwrap();
     let selected = canonical
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .filter(|case| case.operation() == Operation::ArtifactServer)
         .collect::<Vec<_>>();
     assert_eq!(selected.len(), corpus.case_count());
-    for (left, right) in selected.into_iter().zip(&corpus.cases) {
+    for (left, right) in selected.into_iter().zip(
+        &corpus
+            .as_historical()
+            .expect("historical corpus fixture")
+            .cases,
+    ) {
         assert_eq!(left.id, right.id);
         assert_eq!(left.input, right.input);
         assert_eq!(left.expected, right.expected);
     }
     let answers = corpus
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .map(|case| serde_json::to_value(&case.expected).unwrap())
         .collect();
     let report = execute(&corpus, &mut AuthoredEvidence(answers));
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     let saved = serde_json::to_string(&report).unwrap();
     let checked = Report::from_json(&saved).unwrap();
     check_report(&kit(), &checked).unwrap();
@@ -151,12 +167,21 @@ fn artifact_nonobject_options_kit_has_independent_zero_invocation_evidence() {
     let corpus = load(&path).unwrap();
     assert_eq!(corpus.case_count(), 6);
     let answers = corpus
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .map(|case| serde_json::to_value(&case.expected).unwrap())
         .collect();
     let report = execute(&corpus, &mut AuthoredEvidence(answers));
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     check_report(&path, &Report::from_json(&report.to_json()).unwrap()).unwrap();
     for field in [
         "invocations",
@@ -178,6 +203,8 @@ fn artifact_nonobject_options_kit_has_independent_zero_invocation_evidence() {
 fn artifact_mck_bounds_fixture_work_before_adapter_execution() {
     let corpus = load(&kit()).unwrap();
     let original = &corpus
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .find(|case| case.id == "bytes-indexed-16777216-0")
@@ -298,12 +325,14 @@ fn artifact_mck_saved_rpc_error_codes_require_exact_signed_i32() {
     .unwrap();
     let corpus = load(temp.path()).unwrap();
     let answers = corpus
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .map(|case| serde_json::to_value(&case.expected).unwrap())
         .collect();
     let baseline = execute(&corpus, &mut AuthoredEvidence(answers));
-    assert!(baseline.qualified);
+    assert!(baseline.qualified());
     for (token, valid, matches) in [
         ("2147483648", false, false),
         ("-2147483649", false, false),

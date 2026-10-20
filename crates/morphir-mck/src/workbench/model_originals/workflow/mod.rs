@@ -78,3 +78,20 @@ mod record_attempt_tests;
 
 #[cfg(test)]
 mod fixture_tests;
+
+#[cfg(test)]
+mod pipeline_tests;
+
+#[cfg(test)]
+mod workspace_predicate_tests;
+
+pub(in crate::workbench) mod pipeline;
+
+#[cfg(test)]
+mod factory_tests;
+
+#[cfg(test)]
+mod pipeline_negotiation_tests;
+
+#[cfg(test)]
+mod pipeline_negotiation_evidence_tests;

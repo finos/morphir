@@ -103,7 +103,14 @@ fn worksheet_fixed_corpora_are_independent_and_scoped() {
             }
         );
         let report = execute(&corpus, &mut fixed(scope, operations));
-        assert!(report.qualified, "{scope}: {:?}", report.errors);
+        assert!(
+            report.qualified(),
+            "{scope}: {:?}",
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+        );
         check_report(&kit(scope), &Report::from_json(&report.to_json()).unwrap()).unwrap();
         for pointer in [
             "/records/2/observed/value/source/revision",
@@ -124,7 +131,7 @@ fn worksheet_fixed_corpora_are_independent_and_scoped() {
     let corpus = load(&kit("")).unwrap();
     let report = execute(&corpus, &mut fixed("evaluate", vec!["worksheet-evaluate"]));
     assert!(
-        !report.qualified,
+        !report.qualified(),
         "single operation cannot qualify the complete kit"
     );
 }

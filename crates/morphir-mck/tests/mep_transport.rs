@@ -18,7 +18,13 @@ mod raw_mep_tests;
 #[path = "support/workflow_report_peer.rs"]
 mod workflow_report_peer;
 
+#[path = "support/workflow_pipeline_peer.rs"]
+mod workflow_pipeline_peer;
+
 fn adapter(mode: &str) {
+    if workflow_pipeline_peer::adapter(mode) {
+        return;
+    }
     if workflow_report_peer::adapter(mode) {
         return;
     }

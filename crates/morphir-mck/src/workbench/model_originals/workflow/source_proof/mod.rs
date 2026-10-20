@@ -24,6 +24,7 @@ pub(super) enum ReviewedAnchor {
 }
 #[derive(Debug)]
 pub(super) enum SourceError {
+    Inventory,
     Decode(DecodeError),
     Pair(PairError),
     Ingress(IngressError),
@@ -457,6 +458,20 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
             original_cases,
             manifest,
         })
+    }
+    /// Ordered manifest metadata only. Each bind still verifies genuine source
+    /// input/expected bytes, original packet, role and selected run separately.
+    pub(super) fn require_inventory(&mut self, cases: &[BoundCase<'_>]) -> Result<(), SourceError> {
+        self.owner.ready()?;
+        if cases.len() != self.manifest.len() {
+            return Err(SourceError::Inventory);
+        }
+        for (case, row) in cases.iter().zip(&self.manifest) {
+            if !same(case.id(), row.id.as_str(), self.owner)? {
+                return Err(SourceError::Inventory);
+            }
+        }
+        Ok(())
     }
     pub(super) fn packet_count(&self) -> usize {
         self.packets.len()

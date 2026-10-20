@@ -1,10 +1,11 @@
 //! Pure comparison of independently decoded observations and actual paired
-//! input/expected operands. This initial tranche has no runtime result type.
+//! input/expected operands. Comparison never issues runtime qualification.
 use super::domain::{self, ExpectedClientCheck};
 use super::input::{self, ClientAction};
 use super::observed::{self, ClientCheckpoint};
 use super::pairing::{PairedRun, PairedWorkflow};
 use super::{FixtureAlias, Nullable, Presence};
+mod workspace;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum CompareResource {
@@ -27,6 +28,7 @@ pub(super) enum PredicateFault {
     Navigation,
     IdentityKey,
     IdentityRelation,
+    Controller,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum IdentityFault {
@@ -42,6 +44,17 @@ pub(super) enum IdentityFault {
     Unexpected,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ControllerFault {
+    SourceBinding,
+    InvocationOrder,
+    MissingInvocation,
+    UnexpectedInvocation,
+    Key,
+    Checkpoint,
+    Project,
+    UnsupportedInput,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ObservationError {
     InvalidLimits,
     Resource(CompareResource),
@@ -55,6 +68,10 @@ pub(super) enum ObservationError {
     UnsupportedOutcome,
     UnqualifiedEvidence,
     IdentityInputActionMissing,
+    Controller {
+        index: usize,
+        kind: ControllerFault,
+    },
     Identity {
         result: usize,
         kind: IdentityFault,
@@ -442,7 +459,7 @@ fn same_snapshot(
 fn correlate_identity(
     paired: &PairedWorkflow<'_>,
     plan: Option<&super::identity_input::IdentityInputPlan<'_>>,
-    results: &Presence<super::Items<observed::IdentityResult, 0, { usize::MAX }>>,
+    results: Option<&[observed::IdentityResult]>,
     actions: &[ClientAction],
     owner: &mut CompareOwner,
 ) -> Result<(), ObservationError> {
@@ -455,8 +472,8 @@ fn correlate_identity(
             }
         }
         match results {
-            Presence::Absent => return Ok(()),
-            Presence::Present(items) if items.0.is_empty() => return Ok(()),
+            None => return Ok(()),
+            Some([]) => return Ok(()),
             _ => return identity_fault(owner, 0, IdentityFault::Unexpected),
         }
     };
@@ -472,10 +489,7 @@ fn correlate_identity(
                 .ok_or_else(|| *owner.fault.get_or_insert(ObservationError::SizeOverflow))?;
         }
     }
-    let items = match results {
-        Presence::Absent => &[][..],
-        Presence::Present(items) => &items.0,
-    };
+    let items = results.unwrap_or(&[]);
     // Exact action/sample duplicates precede cardinality. A collision on only
     // one coordinate must reach input binding, so a forged sample is reported
     // at the offending row rather than as a duplicate of a later valid row.
@@ -558,6 +572,7 @@ fn predicate(
     check: &ExpectedClientCheck,
     identity_results: &[observed::IdentityResult],
     checkpoints: &[ClientCheckpoint],
+    workspace_checkpoints: Option<&[observed::WorkspaceCheckpoint]>,
     owner: &mut CompareOwner,
 ) -> Result<(), ObservationError> {
     owner.charge(CompareResource::Checks, 1)?;
@@ -653,8 +668,29 @@ fn predicate(
                 && number(destinations, actual.destination_count.0, owner)?;
             (same, PredicateFault::Navigation)
         }
-        ExpectedClientCheck::IdentityController { .. }
-        | ExpectedClientCheck::PortTrace { .. }
+        ExpectedClientCheck::IdentityController {
+            checkpoint,
+            active_key,
+            entries,
+            recent_keys,
+            ..
+        } => {
+            let Some(checkpoints) = workspace_checkpoints else {
+                return owner.refuse(ObservationError::UnsupportedClientCheck { index });
+            };
+            (
+                workspace::predicate(
+                    checkpoint,
+                    active_key,
+                    &entries.0,
+                    &recent_keys.0,
+                    checkpoints,
+                    owner,
+                )?,
+                PredicateFault::Controller,
+            )
+        }
+        ExpectedClientCheck::PortTrace { .. }
         | ExpectedClientCheck::PortCounts { .. }
         | ExpectedClientCheck::VerifiedOwner { .. }
         | ExpectedClientCheck::CoreResult { .. }
@@ -685,8 +721,8 @@ fn predicate(
 }
 
 /// This cannot ignore extra evidence or use matching peer labels as actual
-/// production bindings. The initial successful subset is deliberately only
-/// the empty-input port case with actual input Checkpoint actions.
+/// production bindings. The historical empty-state subset and the separate
+/// source-correlated workspace component share this comparison owner.
 fn check_core<'source, 'actual>(
     paired: &PairedWorkflow<'source>,
     identity_plan: Option<&super::identity_input::IdentityInputPlan<'source>>,
@@ -699,6 +735,9 @@ fn check_core<'source, 'actual>(
         && !std::ptr::eq(plan.scenario(), paired.scenario())
     {
         return identity_fault(owner, 0, IdentityFault::Plan);
+    }
+    if matches!(actual, observed::Observation::WorkspaceClient { .. }) {
+        return workspace::check(paired, identity_plan, actual, owner);
     }
     let (
         PairedRun::Client { actions, fixture },
@@ -735,7 +774,16 @@ fn check_core<'source, 'actual>(
         return owner.refuse(ObservationError::ExpectedBlocked);
     }
     correlate_checkpoints(actions, &checkpoints.0, owner)?;
-    correlate_identity(paired, identity_plan, identity_results, actions, owner)?;
+    correlate_identity(
+        paired,
+        identity_plan,
+        match identity_results {
+            Presence::Absent => None,
+            Presence::Present(items) => Some(&items.0),
+        },
+        actions,
+        owner,
+    )?;
 
     // Actual effect/core/download/transcript/owner proof paths are not yet
     // connected. Explicitly block them rather than accepting matching claims.
@@ -785,7 +833,7 @@ fn check_core<'source, 'actual>(
             Presence::Absent => &[][..],
             Presence::Present(items) => &items.0,
         };
-        predicate(index, check, results, &checkpoints.0, owner)?;
+        predicate(index, check, results, &checkpoints.0, None, owner)?;
         let Some(next) = checked.checked_add(1) else {
             return owner.refuse(ObservationError::SizeOverflow);
         };

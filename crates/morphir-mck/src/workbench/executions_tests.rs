@@ -257,6 +257,8 @@ fn executions_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_e
     assert_eq!(corpus.case_count(), 170);
     assert!(
         corpus
+            .as_historical()
+            .expect("historical corpus fixture")
             .cases
             .iter()
             .all(|case| case.operation() == operation() && case.format == Format::Json)
@@ -267,6 +269,8 @@ fn executions_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_e
         replies: std::iter::once(capabilities())
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|case| serde_json::to_value(&case.expected).unwrap()),
@@ -276,10 +280,13 @@ fn executions_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_e
     };
     let report = execute(&corpus, &mut replay);
     assert!(
-        report.qualified,
+        report.qualified(),
         "{} {:?}",
         report.summary_line(),
-        report.errors
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
     );
     check_report(&root, &report).unwrap();
     assert!(
@@ -295,6 +302,8 @@ fn executions_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_e
             .all(|request| request["op"] == "reduce-execution" && request["format"] == "json")
     );
     let index = corpus
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .position(|case| matches!(case.expected, Observation::Ok { .. }))
@@ -339,6 +348,8 @@ fn executions_fixed_corpus_replay_recomputes_report_evidence_and_does_not_leak_e
         );
     }
     let observed_index = corpus
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .position(|case| {
@@ -382,9 +393,23 @@ fn executions_malformed_adapter_projection_is_an_exchange_error_and_valid_differ
         requests: vec![],
     };
     let report = execute(&corpus, &mut malformed);
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
-    assert!(!report.qualified);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
+    assert!(!report.qualified());
     check_report(root.path(), &report).unwrap();
 
     let mut different = projection();
@@ -395,9 +420,22 @@ fn executions_malformed_adapter_projection_is_an_exchange_error_and_valid_differ
         requests: vec![],
     };
     let report = execute(&corpus, &mut replay);
-    assert_eq!(report.records[0].result, ResultKind::Fail);
-    assert!(report.errors.is_empty());
-    assert!(!report.qualified);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
+    assert!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+            .is_empty()
+    );
+    assert!(!report.qualified());
     check_report(root.path(), &report).unwrap();
 }
 
@@ -439,7 +477,16 @@ fn execution_corpus_preserves_exact_opaque_negative_inputs() {
         );
         std::fs::write(root.path().join("cases.json"), text).unwrap();
         let corpus = load(root.path()).unwrap();
-        assert_eq!(corpus.cases[0].input.to_string(), input, "{token}");
+        assert_eq!(
+            corpus
+                .as_historical()
+                .expect("historical corpus fixture")
+                .cases[0]
+                .input
+                .to_string(),
+            input,
+            "{token}"
+        );
     }
 }
 
@@ -475,7 +522,7 @@ fn execution_saved_report_refuses_literal_private_marker_projections() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut replay);
-    assert!(report.qualified);
+    assert!(report.qualified());
     let mut saved: Value = serde_json::from_str(&report.to_json()).unwrap();
     saved["records"][0]["observed"]["value"] =
         json!({"$serde_json::private::RawValue":projection().to_string()});

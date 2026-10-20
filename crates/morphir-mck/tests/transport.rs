@@ -925,11 +925,25 @@ fn http_policy_live_observations_cannot_reinterpret_private_json_objects() {
         )
         .unwrap();
         assert!(
-            !report.qualified,
+            !report.qualified(),
             "HTTP draft.{draft} accepted a literal private object as a valid observation"
         );
-        assert_eq!(report.records[0].result, ResultKind::Error);
-        assert_eq!(report.errors[0].phase, Phase::Exchange);
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            ResultKind::Error
+        );
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .errors[0]
+                .phase,
+            Phase::Exchange
+        );
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
 }
@@ -956,11 +970,25 @@ fn execution_literal_private_objects_cannot_forge_live_adapter_success() {
     };
     let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
     assert!(
-        !report.qualified,
+        !report.qualified(),
         "literal marker must not become a valid execution projection"
     );
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
@@ -975,11 +1003,25 @@ fn native_workbench_literal_private_objects_cannot_forge_live_adapter_success() 
     };
     let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
     assert!(
-        !report.qualified,
+        !report.qualified(),
         "literal object must never qualify as a boolean marker"
     );
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
@@ -1007,9 +1049,23 @@ fn native_owner_live_literal_infrastructure_faults_are_exchange_errors() {
             limits: quick(),
         };
         let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
-        assert_eq!(report.records[0].result, ResultKind::Error);
-        assert_eq!(report.errors[0].phase, Phase::Exchange);
-        assert!(!report.qualified);
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            ResultKind::Error
+        );
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .errors[0]
+                .phase,
+            Phase::Exchange
+        );
+        assert!(!report.qualified());
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
 }
@@ -1042,11 +1098,32 @@ fn selected_scheme_live_transport_preserves_missing_claim_and_literal_projection
             limits: quick(),
         };
         let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
-        assert_eq!(report.records[0].result, result, "{kind}");
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            result,
+            "{kind}"
+        );
         if kind == "marker" {
-            assert_eq!(report.errors[0].phase, Phase::Exchange);
+            assert_eq!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors[0]
+                    .phase,
+                Phase::Exchange
+            );
         } else {
-            assert!(report.errors.is_empty());
+            assert!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+                    .is_empty()
+            );
         }
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
@@ -1079,11 +1156,32 @@ fn capability_policy_live_transport_preserves_missing_claim_and_literal_projecti
             limits: quick(),
         };
         let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
-        assert_eq!(report.records[0].result, result, "{kind}");
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            result,
+            "{kind}"
+        );
         if kind == "marker" {
-            assert_eq!(report.errors[0].phase, Phase::Exchange);
+            assert_eq!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors[0]
+                    .phase,
+                Phase::Exchange
+            );
         } else {
-            assert!(report.errors.is_empty());
+            assert!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+                    .is_empty()
+            );
         }
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
@@ -1116,11 +1214,32 @@ fn capability_executions_live_transport_preserves_missing_claim_and_literal_proj
             limits: quick(),
         };
         let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
-        assert_eq!(report.records[0].result, result, "{kind}");
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            result,
+            "{kind}"
+        );
         if kind == "marker" {
-            assert_eq!(report.errors[0].phase, Phase::Exchange);
+            assert_eq!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors[0]
+                    .phase,
+                Phase::Exchange
+            );
         } else {
-            assert!(report.errors.is_empty());
+            assert!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+                    .is_empty()
+            );
         }
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
@@ -1149,11 +1268,25 @@ fn codec_comparison_live_marker_objects_cannot_forge_observations() {
     )
     .unwrap();
     assert!(
-        !report.qualified,
+        !report.qualified(),
         "literal private marker forged codec evidence"
     );
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
@@ -1171,7 +1304,14 @@ fn codec_comparison_live_input_preserves_literal_marker_objects() {
         },
     )
     .unwrap();
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .errors
+    );
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
@@ -1201,10 +1341,31 @@ fn codec_operation_specific_kits_qualify_one_operation_without_qualifying_combin
                 },
             )
             .unwrap();
-            assert_eq!(report.qualified, !combined, "{name}: {:?}", report.errors);
-            assert!(report.errors.is_empty(), "{:?}", report.errors);
+            assert_eq!(
+                report.qualified(),
+                !combined,
+                "{name}: {:?}",
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+            );
+            assert!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+                    .is_empty(),
+                "{:?}",
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+            );
             assert_eq!(
                 report
+                    .as_historical()
+                    .expect("historical transport fixture")
                     .records
                     .iter()
                     .any(|record| record.result == ResultKind::Unsupported),

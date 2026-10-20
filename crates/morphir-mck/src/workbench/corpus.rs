@@ -66,13 +66,13 @@ struct Document {
 }
 
 #[derive(Debug, Clone)]
-pub struct Corpus {
+pub(super) struct HistoricalCorpus {
     pub(super) version: String,
     pub(super) cases: Vec<Case>,
     pub(super) hash: String,
 }
 
-impl Corpus {
+impl HistoricalCorpus {
     pub fn case_count(&self) -> usize {
         self.cases.len()
     }
@@ -84,6 +84,7 @@ impl Corpus {
 /// Immutable UTF-8 corpus bytes acquired through the shared bounded file path.
 /// Borrowed operand views cannot outlive this source. Acquisition alone proves
 /// neither a corpus shape nor membership of an independently pinned packet.
+#[derive(Debug, Clone)]
 pub(super) struct CorpusSource {
     text: String,
 }
@@ -115,8 +116,11 @@ impl CorpusSource {
 
 /// Verify a frozen corpus before starting an adapter. All bytes and expected
 /// projections are parent-owned; inputs are not interpreted by this loader.
-pub fn load(root: &Path) -> Result<Corpus, String> {
+pub(super) fn load_historical_file(root: &Path) -> Result<HistoricalCorpus, String> {
     let source = CorpusSource::load(root)?;
+    load_historical(source)
+}
+fn load_historical(source: CorpusSource) -> Result<HistoricalCorpus, String> {
     let bytes = source.bytes();
     let text = source.text();
     // Sniff this exact draft without first narrowing opaque operands to IEEE-754.
@@ -462,9 +466,52 @@ pub fn load(root: &Path) -> Result<Corpus, String> {
                 .map_err(|e| format!("case {} input-bound expectation: {e}", case.id))?;
         }
     }
-    Ok(Corpus {
+    Ok(HistoricalCorpus {
         version: document.format_version,
         cases: document.cases,
         hash: sha256_hex(bytes),
     })
+}
+
+/// Closed owned corpus families. Selected bytes are retained without decoding
+/// selected operands under an implicit caller policy.
+#[derive(Debug, Clone)]
+pub struct Corpus {
+    pub(super) storage: CorpusStorage,
+}
+#[derive(Debug, Clone)]
+pub(super) enum CorpusStorage {
+    Historical(HistoricalCorpus),
+    ModelOriginals(super::model_originals::workflow::pipeline::Source),
+}
+impl Corpus {
+    pub fn case_count(&self) -> usize {
+        match &self.storage {
+            CorpusStorage::Historical(v) => v.case_count(),
+            CorpusStorage::ModelOriginals(v) => v.case_count(),
+        }
+    }
+    pub fn corpus_hash(&self) -> &str {
+        match &self.storage {
+            CorpusStorage::Historical(v) => v.corpus_hash(),
+            CorpusStorage::ModelOriginals(v) => v.digest(),
+        }
+    }
+    pub(super) fn as_historical(&self) -> Option<&HistoricalCorpus> {
+        match &self.storage {
+            CorpusStorage::Historical(v) => Some(v),
+            CorpusStorage::ModelOriginals(_) => None,
+        }
+    }
+}
+pub fn load(root: &Path) -> Result<Corpus, String> {
+    let source = CorpusSource::load(root)?;
+    let storage = if super::model_originals::workflow::pipeline::recognizes(source.text())? {
+        CorpusStorage::ModelOriginals(super::model_originals::workflow::pipeline::Source::new(
+            source,
+        )?)
+    } else {
+        CorpusStorage::Historical(load_historical(source)?)
+    };
+    Ok(Corpus { storage })
 }

@@ -76,7 +76,14 @@ fn http_fixed_corpora_and_saved_reports_are_checked_independently() {
                 .collect(),
         };
         let report = execute(&corpus, &mut fixed);
-        assert!(report.qualified, "{draft}: {:?}", report.errors);
+        assert!(
+            report.qualified(),
+            "{draft}: {:?}",
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+        );
         let saved = Report::from_json(&report.to_json()).unwrap();
         check_report(&path, &saved).unwrap();
         let mut forged: serde_json::Value = serde_json::from_str(&report.to_json()).unwrap();
@@ -151,9 +158,20 @@ fn http_provider_opaque_submission_preserves_literal_private_marker_maps() {
     let directory = tempfile::tempdir().unwrap();
     std::fs::write(directory.path().join("cases.json"), raw.to_string()).unwrap();
     let corpus = load(directory.path()).unwrap();
-    assert!(corpus.cases[0].input["submission"].is_object());
+    assert!(
+        corpus
+            .as_historical()
+            .expect("historical corpus fixture")
+            .cases[0]
+            .input["submission"]
+            .is_object()
+    );
     assert_eq!(
-        corpus.cases[0].input["submission"]["$serde_json::private::Number"],
+        corpus
+            .as_historical()
+            .expect("historical corpus fixture")
+            .cases[0]
+            .input["submission"]["$serde_json::private::Number"],
         "123"
     );
 }

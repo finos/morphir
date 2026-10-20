@@ -6,7 +6,7 @@ use serde_json::Value;
 use super::contract::{
     Capabilities, Format, Observation, Operation, encoded_size, identity, version,
 };
-use super::corpus::{Corpus, load};
+use super::corpus::{HistoricalCorpus as Corpus, load_historical_file as load};
 
 pub const MAX_REPORT_BYTES: usize = 32 * 1024 * 1024;
 pub const MAX_OBSERVATION_BYTES: usize = 16 * 1024 * 1024;
@@ -22,6 +22,18 @@ pub(in crate::workbench) struct WorkflowExchangeRecord {
 }
 
 impl WorkflowExchangeRecord {
+    /// Untrusted already-decoded wire strings, moved from the configured strict
+    /// report decoder. This issues data only, never transport/source proof.
+    pub(in crate::workbench) fn from_decoded_payloads(
+        sent_payload: String,
+        received_payload: String,
+    ) -> Self {
+        Self {
+            sent_payload,
+            received_payload,
+        }
+    }
+
     pub(in crate::workbench) fn capture(exchange: crate::transport::LiteralExchange) -> Self {
         let (sent_payload, received_payload) = exchange.into_parts();
         Self {
@@ -141,7 +153,7 @@ pub struct Record {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct Report {
+pub struct HistoricalReport {
     pub format_version: String,
     pub suite: String,
     pub corpus_hash: String,
@@ -174,8 +186,8 @@ fn take_artifact_observations(value: &mut Value) -> Result<Vec<Option<Observatio
         .collect()
 }
 
-impl Report {
-    pub fn adapter_error(corpus: &Corpus, message: String) -> Self {
+impl HistoricalReport {
+    pub(super) fn adapter_error(corpus: &Corpus, message: String) -> Self {
         let mut report = Self::new(corpus);
         report.errors.push(Failure::new(Phase::Spawn, message));
         report.records = corpus
@@ -323,7 +335,10 @@ impl Report {
 
 /// Validate recorded observations against a freshly admitted corpus. Qualification
 /// is computed again instead of trusting the report's result or qualified fields.
-pub fn check_report(root: &Path, report: &Report) -> Result<(), String> {
+pub(super) fn check_historical_report(
+    root: &Path,
+    report: &HistoricalReport,
+) -> Result<(), String> {
     let corpus = load(root)?;
     version(&report.format_version)?;
     if report.suite != "workbench"

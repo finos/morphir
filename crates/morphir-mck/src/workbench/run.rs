@@ -3,9 +3,12 @@ use std::path::Path;
 
 use serde_json::{Value, json};
 
+use super::configuration::{Configuration, RunConfiguration};
 use super::contract::{Capabilities, Observation, encoded_size};
-use super::corpus::{Corpus, load};
-use super::report::{Failure, MAX_OBSERVATION_BYTES, Phase, Record, Report, ResultKind};
+use super::corpus::{Corpus, CorpusStorage, HistoricalCorpus, load};
+use super::model_originals::workflow::pipeline;
+use super::report::{Failure, HistoricalReport, MAX_OBSERVATION_BYTES, Phase, Record, ResultKind};
+use super::report_facade::{Report, ReportStorage};
 use crate::transport::{Limits, Session};
 
 pub struct RunOptions {
@@ -50,28 +53,145 @@ impl Testee for Session {
 }
 
 pub fn run(root: &Path, options: &RunOptions) -> Result<Report, String> {
+    run_configured(
+        root,
+        options,
+        &RunConfiguration {
+            mode: Configuration::Historical,
+        },
+    )
+}
+pub fn run_configured(
+    root: &Path,
+    options: &RunOptions,
+    configuration: &RunConfiguration,
+) -> Result<Report, String> {
+    run_configured_with_session_factory(root, configuration, || match &configuration.mode {
+        Configuration::Historical => {
+            Session::spawn(&options.adapter, &options.adapter_args, options.limits)
+        }
+        Configuration::ModelOriginals(_) => {
+            Session::spawn_mep(&options.adapter, &options.adapter_args, options.limits)
+        }
+    })
+}
+/// The actual CLI uses this callback to install its existing terminator only
+/// after source preparation. It receives no private core/context/expected data.
+pub fn run_configured_with_session_factory<F>(
+    root: &Path,
+    configuration: &RunConfiguration,
+    factory: F,
+) -> Result<Report, String>
+where
+    F: FnOnce() -> Result<Session, crate::transport::TransportError>,
+{
     let corpus = load(root)?;
-    match Session::spawn(&options.adapter, &options.adapter_args, options.limits) {
-        Err(error) => Ok(Report::adapter_error(&corpus, error.to_string())),
-        Ok(session) => Ok(run_with_session(&corpus, session)),
+    dispatch(&corpus, configuration, factory)
+}
+fn dispatch<F>(
+    corpus: &Corpus,
+    configuration: &RunConfiguration,
+    factory: F,
+) -> Result<Report, String>
+where
+    F: FnOnce() -> Result<Session, crate::transport::TransportError>,
+{
+    match (&corpus.storage, &configuration.mode) {
+        (CorpusStorage::Historical(corpus), Configuration::Historical) => match factory() {
+            Ok(session) => Ok(run_historical_session(corpus, session)),
+            Err(error) => Ok(Report::historical(HistoricalReport::adapter_error(
+                corpus,
+                error.to_string(),
+            ))),
+        },
+        (CorpusStorage::ModelOriginals(source), Configuration::ModelOriginals(policy)) => {
+            pipeline::execute(source, policy, factory).map(Report::selected)
+        }
+        (CorpusStorage::ModelOriginals(_), Configuration::Historical) => {
+            Err(pipeline::MISSING_POLICY.into())
+        }
+        (CorpusStorage::Historical(_), Configuration::ModelOriginals(_)) => {
+            Err("historical corpus requires historical checker policy".into())
+        }
     }
 }
-
-/// Consume a shared bounded session after the command layer installs its Ctrl-C
-/// terminator. Adapter shutdown remains part of compatibility qualification.
-pub fn run_with_session(corpus: &Corpus, mut session: Session) -> Report {
-    let mut report = execute(corpus, &mut session);
+/// Explicit pre1.0 source API successor: selected missing policy is an Err,
+/// never a fabricated failure inventory. An already-created session is closed.
+pub fn run_with_session(corpus: &Corpus, session: Session) -> Result<Report, String> {
+    run_with_session_configured(
+        corpus,
+        session,
+        &RunConfiguration {
+            mode: Configuration::Historical,
+        },
+    )
+}
+pub fn run_with_session_configured(
+    corpus: &Corpus,
+    session: Session,
+    configuration: &RunConfiguration,
+) -> Result<Report, String> {
+    let mismatch = match (&corpus.storage, &configuration.mode) {
+        (CorpusStorage::ModelOriginals(_), Configuration::Historical) => {
+            Some(pipeline::MISSING_POLICY)
+        }
+        (CorpusStorage::Historical(_), Configuration::ModelOriginals(_)) => {
+            Some("historical corpus requires historical checker policy")
+        }
+        _ => None,
+    };
+    if let Some(primary) = mismatch {
+        return match session.close() {
+            Ok(()) => Err(primary.into()),
+            Err(error) => Err(format!("{primary}; shutdown: {error}")),
+        };
+    }
+    dispatch(corpus, configuration, || Ok(session))
+}
+fn run_historical_session(corpus: &HistoricalCorpus, mut session: Session) -> Report {
+    let mut report = execute_historical(corpus, &mut session);
     if let Err(error) = session.close() {
         report
             .errors
             .push(Failure::new(Phase::Shutdown, error.to_string()));
     }
     report.finish();
-    report
+    Report::historical(report)
+}
+pub fn check_report_configured(
+    root: &Path,
+    report: &Report,
+    configuration: &RunConfiguration,
+) -> Result<(), String> {
+    match (&report.storage, &configuration.mode) {
+        (ReportStorage::Historical(report), Configuration::Historical) => {
+            super::report::check_historical_report(root, report)
+        }
+        (ReportStorage::ModelOriginals(report), Configuration::ModelOriginals(policy)) => {
+            let corpus = load(root)?;
+            match &corpus.storage {
+                CorpusStorage::ModelOriginals(source) => pipeline::replay(source, policy, report),
+                CorpusStorage::Historical(_) => Err("corpus/report family differs".into()),
+            }
+        }
+        (ReportStorage::ModelOriginals(_), Configuration::Historical) => {
+            Err(pipeline::MISSING_POLICY.into())
+        }
+        (ReportStorage::Historical(_), Configuration::ModelOriginals(_)) => {
+            Err("historical report requires historical checker policy".into())
+        }
+    }
+}
+#[cfg(test)]
+pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
+    let corpus = corpus
+        .as_historical()
+        .expect("historical Testee fixture selected a historical corpus");
+    Report::historical(execute_historical(corpus, adapter))
 }
 
-pub(super) fn execute(corpus: &Corpus, adapter: &mut dyn Testee) -> Report {
-    let mut report = Report::new(corpus);
+fn execute_historical(corpus: &HistoricalCorpus, adapter: &mut dyn Testee) -> HistoricalReport {
+    let mut report = HistoricalReport::new(corpus);
     let negotiated = adapter
         .exchange(
             &json!({"op":"capabilities","suite":"workbench","contractVersion":corpus.version}),

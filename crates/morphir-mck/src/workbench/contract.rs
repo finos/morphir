@@ -5,6 +5,10 @@ use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(test)]
+#[path = "model_originals_capability_tests.rs"]
+mod model_originals_capability_tests;
+
 pub const VERSION: &str = "0.1.0-draft.1";
 pub const ADMISSION_VERSION: &str = "0.1.0-draft.2";
 pub const INVOCATION_VERSION: &str = "0.1.0-draft.3";
@@ -28,6 +32,7 @@ pub const WORKSHEET_PROFILE_VERSION: &str = "0.1.0-draft.1";
 pub const WORKSHEET_VERSION: &str = "0.1.0-draft.27";
 pub const CODEC_COMPARISON_VERSION: &str = "0.1.0-draft.26";
 pub const LOCAL_MODELS_VERSION: &str = "0.1.0-draft.29";
+pub const MODEL_ORIGINALS_VERSION: &str = "0.1.0-draft.30";
 pub const ARTIFACT_TRANSFER_VERSION: &str = "0.1.0-draft.28";
 pub const MAX_VALUE_BYTES: usize = 1024 * 1024;
 
@@ -83,6 +88,7 @@ pub(super) fn version(text: &str) -> Result<(), String> {
         "=0.1.0-draft.27",
         "=0.1.0-draft.28",
         "=0.1.0-draft.29",
+        "=0.1.0-draft.30",
     ]
     .map(|v| VersionReq::parse(v).expect("fixed draft requirement"));
     if parsed.to_string() != text
@@ -104,6 +110,10 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Operation {
+    #[serde(rename = "model-originals-server")]
+    ModelOriginalsServer,
+    #[serde(rename = "model-originals-client")]
+    ModelOriginalsClient,
     #[serde(rename = "inspect-model")]
     InspectModel,
     #[serde(rename = "export-model-original")]
@@ -162,6 +172,22 @@ pub enum Operation {
 
 impl Operation {
     pub(super) fn validate_version(self, version: &str) -> Result<(), String> {
+        if version == MODEL_ORIGINALS_VERSION {
+            return if matches!(
+                self,
+                Self::ModelOriginalsServer | Self::ModelOriginalsClient
+            ) {
+                Ok(())
+            } else {
+                Err("operation is not defined by this Workbench draft".into())
+            };
+        }
+        if matches!(
+            self,
+            Self::ModelOriginalsServer | Self::ModelOriginalsClient
+        ) {
+            return Err("operation is not defined by this Workbench draft".into());
+        }
         if version == LOCAL_MODELS_VERSION {
             return if matches!(self, Self::InspectModel | Self::ExportModelOriginal) {
                 Ok(())
@@ -263,7 +289,9 @@ impl Operation {
         }
         if matches!(
             self,
-            Self::ArtifactServer
+            Self::ModelOriginalsServer
+                | Self::ModelOriginalsClient
+                | Self::ArtifactServer
                 | Self::ArtifactClient
                 | Self::WorksheetEvaluate
                 | Self::WorksheetValidate
@@ -311,6 +339,15 @@ pub struct Capabilities {
 pub(super) fn identity(value: &str, limit: usize) -> Result<(), String> {
     if value.is_empty() || value.encode_utf16().count() > limit {
         return Err(format!("identity must contain 1 to {limit} UTF-16 units"));
+    }
+    Ok(())
+}
+
+/// Capability identity policy for the connected draft only. Historical
+/// capability identities keep their existing UTF-16 limits in `identity`.
+pub(super) fn model_originals_identity(value: &str) -> Result<(), String> {
+    if value.is_empty() || value.len() > 128 {
+        return Err("connected capability identity must contain 1 to 128 UTF-8 bytes".into());
     }
     Ok(())
 }
@@ -437,8 +474,16 @@ impl Capabilities {
         if self.contract_version == CODEC_COMPARISON_VERSION && self.formats != [Format::Json] {
             return Err("codec comparison requires JSON framing".into());
         }
-        identity(&self.binding, 256)?;
-        identity(&self.language, 128)?;
+        if self.contract_version == MODEL_ORIGINALS_VERSION {
+            if self.operations.is_empty() || self.formats != [Format::Json] {
+                return Err("connected model originals require operations and exactly JSON".into());
+            }
+            model_originals_identity(&self.binding)?;
+            model_originals_identity(&self.language)?;
+        } else {
+            identity(&self.binding, 256)?;
+            identity(&self.language, 128)?;
+        }
         if self.operations.iter().collect::<BTreeSet<_>>().len() != self.operations.len()
             || self.formats.iter().collect::<BTreeSet<_>>().len() != self.formats.len()
         {

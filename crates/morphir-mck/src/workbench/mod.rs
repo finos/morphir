@@ -5,6 +5,7 @@ mod artifacts;
 mod capability_executions;
 mod capability_policy;
 mod codec_comparison;
+mod configuration;
 mod contract;
 mod corpus;
 mod executions;
@@ -20,26 +21,31 @@ mod native_policy_owner;
 mod native_replies;
 mod outcomes;
 mod report;
+mod report_facade;
 mod run;
 mod selected_scheme;
 mod worksheet;
 
+pub use configuration::{AdapterProtocol, RunConfiguration};
 pub use contract::{
     ADMISSION_VERSION, ARTIFACT_TRANSFER_VERSION, CAPABILITY_EXECUTIONS_VERSION,
     CAPABILITY_POLICY_VERSION, CODEC_COMPARISON_VERSION, Capabilities, EXECUTIONS_VERSION, Format,
     HTTP_POLICY_BOUNDARY_VERSION, HTTP_POLICY_CLIENT_VERSION, HTTP_POLICY_PROVIDER_VERSION,
-    INVOCATION_VERSION, LOCAL_MODELS_VERSION, MAX_VALUE_BYTES, NATIVE_CLIENT_VERSION,
-    NATIVE_FRAMES_VERSION, NATIVE_OWNER_VERSION, NATIVE_POLICY_BOUNDARY_VERSION,
-    NATIVE_POLICY_CLIENT_VERSION, NATIVE_POLICY_OWNER_VERSION, NATIVE_REPLIES_VERSION,
-    OUTCOMES_VERSION, OUTPUT_VERSION, Observation, Operation, SELECTED_SCHEME_VERSION, VERSION,
-    WORKSHEET_PROFILE_VERSION, WORKSHEET_VERSION,
+    INVOCATION_VERSION, LOCAL_MODELS_VERSION, MAX_VALUE_BYTES, MODEL_ORIGINALS_VERSION,
+    NATIVE_CLIENT_VERSION, NATIVE_FRAMES_VERSION, NATIVE_OWNER_VERSION,
+    NATIVE_POLICY_BOUNDARY_VERSION, NATIVE_POLICY_CLIENT_VERSION, NATIVE_POLICY_OWNER_VERSION,
+    NATIVE_REPLIES_VERSION, OUTCOMES_VERSION, OUTPUT_VERSION, Observation, Operation,
+    SELECTED_SCHEME_VERSION, VERSION, WORKSHEET_PROFILE_VERSION, WORKSHEET_VERSION,
 };
 pub use corpus::{Corpus, load};
 pub use report::{
-    Failure, MAX_OBSERVATION_BYTES, MAX_REPORT_BYTES, Phase, Record, Report, ResultKind,
-    check_report,
+    Failure, HistoricalReport, MAX_OBSERVATION_BYTES, MAX_REPORT_BYTES, Phase, Record, ResultKind,
 };
-pub use run::{RunOptions, run, run_with_session};
+pub use report_facade::{Report, check_report};
+pub use run::{
+    RunOptions, check_report_configured, run, run_configured, run_configured_with_session_factory,
+    run_with_session, run_with_session_configured,
+};
 
 #[cfg(test)]
 use contract::projection;
@@ -90,3 +96,6 @@ mod worksheet_tests;
 
 #[cfg(test)]
 mod artifact_tests;
+
+#[cfg(test)]
+mod model_originals_connected_tests;

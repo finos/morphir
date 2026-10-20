@@ -191,13 +191,15 @@ mod tests {
         let corpus = load(&root).unwrap();
         let mut adapter = Fixed(
             corpus
+                .as_historical()
+                .expect("historical corpus fixture")
                 .cases
                 .iter()
                 .map(|case| serde_json::to_value(&case.expected).unwrap())
                 .collect(),
         );
         let report = execute(&corpus, &mut adapter);
-        assert!(report.qualified);
+        assert!(report.qualified());
         assert!(adapter.0.is_empty());
         check_report(&root, &report).unwrap();
     }

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/0.1.0-draft.30/mck-capabilities.schema.json",
+  "title": "Connected model originals capabilities, exact draft.30",
+  "description": "Structural capability document for the connected server/client contract. Binding and language additionally require 1 to 128 decoded UTF-8 bytes. JSON Schema maxLength counts Unicode code points and does not establish that byte rule; the shared capability decoder must enforce it. No capability document establishes source lineage, producer authority or qualification",
+  "examples": [
+    {
+      "suite": "workbench",
+      "contractVersion": "0.1.0-draft.30",
+      "binding": "schema-example-only",
+      "language": "example",
+      "operations": [ "model-originals-server", "model-originals-client" ],
+      "formats": [ "json" ]
+    }
+  ],
+  "type": "object",
+  "required": [
+    "suite",
+    "contractVersion",
+    "binding",
+    "language",
+    "operations",
+    "formats"
+  ],
+  "properties": {
+    "suite": {
+      "const": "workbench"
+    },
+    "contractVersion": {
+      "const": "0.1.0-draft.30"
+    },
+    "binding": {
+      "description": "Require 1 to 128 UTF-8 bytes of decoded text, with no normalization; maxLength is a necessary structural check only",
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "language": {
+      "description": "Require 1 to 128 UTF-8 bytes of decoded text, with no normalization; maxLength is a necessary structural check only",
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1
+    },
+    "operations": {
+      "type": "array",
+      "maxItems": 2,
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [ "model-originals-server", "model-originals-client" ]
+      }
+    },
+    "formats": {
+      "const": [ "json" ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -113,7 +113,14 @@ fn native_policy_parent_owned_corpora_and_saved_reports_are_checked_independentl
                 .collect(),
         };
         let report = execute(&corpus, &mut adapter);
-        assert!(report.qualified, "{draft}: {:?}", report.errors);
+        assert!(
+            report.qualified(),
+            "{draft}: {:?}",
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+        );
         let saved = Report::from_json(&report.to_json()).unwrap();
         check_report(&path, &saved).unwrap();
         let mut forged: Value = serde_json::from_str(&report.to_json()).unwrap();

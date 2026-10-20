@@ -76,6 +76,8 @@ fn capability_executions_fixed_inventory_replays_and_rechecks_without_linking_an
         std::iter::once(capabilities())
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|c| serde_json::to_value(&c.expected).unwrap()),
@@ -83,7 +85,14 @@ fn capability_executions_fixed_inventory_replays_and_rechecks_without_linking_an
             .collect(),
     );
     let report = execute(&corpus, &mut replay);
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     check_report(&root, &Report::from_json(&report.to_json()).unwrap()).unwrap();
 }
 #[test]
@@ -127,7 +136,7 @@ fn capability_executions_reports_recompute_captured_selection_context_receipts_a
     let case = fixture();
     let corpus = small_corpus(root.path(), case.clone()).unwrap();
     let report = execute(&corpus, &mut Reply(case["expected"].clone()));
-    assert!(report.qualified);
+    assert!(report.qualified());
     let saved = serde_json::to_value(&report).unwrap();
     for kind in [
         "policy",
@@ -172,13 +181,27 @@ fn capability_executions_reports_recompute_captured_selection_context_receipts_a
     let mut mismatch = case["expected"].clone();
     mismatch["value"]["executions"][0]["plan"]["admission"]["policy"] = json!("strict");
     let failed = execute(&corpus, &mut Reply(mismatch));
-    assert_eq!(failed.records[0].result, ResultKind::Fail);
+    assert_eq!(
+        failed
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
     check_report(root.path(), &failed).unwrap();
     let malformed = execute(
         &corpus,
         &mut Reply(json!({"status":"invalid","code":"workbench.host_selection_mismatch"})),
     );
-    assert_eq!(malformed.records[0].result, ResultKind::Error);
+    assert_eq!(
+        malformed
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
     check_report(root.path(), &malformed).unwrap();
     let mut bytes = std::fs::read(root.path().join("cases.json")).unwrap();
     bytes.push(b' ');
@@ -225,7 +248,15 @@ fn capability_executions_projection_resources_and_receipt_binding_are_checked() 
             _ => unreachable!(),
         }
         let report = execute(&corpus, &mut Reply(value));
-        assert_eq!(report.records[0].result, ResultKind::Error, "{kind}");
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .records[0]
+                .result,
+            ResultKind::Error,
+            "{kind}"
+        );
         check_report(root.path(), &report).unwrap();
     }
 }
