@@ -1,0 +1,6 @@
+interface:
+  display_name: "Build Master"
+  short_description: "Keep CI fast and release assurance deliberate"
+  default_prompt: >-
+    Use $build-master to review the whole build and CI/CD execution plan,
+    keep correctness feedback fast, and place deeper checks in explicit assurance workflows.

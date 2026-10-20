@@ -16,6 +16,24 @@ This repository includes AI agent skills to enhance development workflows. The s
 
 ## Available Skills
 
+### Build master skill and agent
+
+Read [build-master](skills/build-master/SKILL.md) for CI/CD execution planning, check placement,
+artifact reuse, qualification, and build performance work. Keep PR CI a quick, credible correctness
+signal and give deeper assurance deliberate execution paths and enforced release requirements.
+
+The separate [build-master agent](agents/build-master.agent.md) owns that specialist role in delegated
+work and agent teams. For workflow structure, new jobs or matrices, gate placement, or cross-cutting
+build changes, delegate a bounded review to it when delegation is available and permitted. Otherwise
+apply its skill directly. Give it the candidate/diff, desired outcome, constraints, available run evidence,
+review or implementation mode, and file ownership. It returns decisions and evidence to the coordinator;
+it does not grant merge or release approval. Routine test execution does not need a separate review.
+For material decisions, its shared rubric makes classification, hard requirements, scoring criteria,
+evidence, confidence, and tradeoffs visible to the team.
+
+The [skill catalog](skills/README.md#build-master-skill-and-agent) lists native entry points and a portable
+handoff prompt. The repository contains the complete skill and persona; personal installations are optional.
+
 ### Rich designs and frontend design
 
 - [Rich designs](../.agents/skills/rich-designs/SKILL.md) covers HTML authoring, diagrams, browser review,

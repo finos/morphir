@@ -7,6 +7,7 @@ Their instructions use ordinary file access, terminal commands, and available tr
 
 | Skill | Purpose |
 |---|---|
+| [build-master](build-master/SKILL.md) | Fast correctness feedback, CI/CD execution planning, check placement, artifact reuse, and release assurance |
 | [project-management](project-management/SKILL.md) | Initiative and open-work reports; priorities, dependencies, and task management across beads and GitHub Issues |
 | [code-reviewer](code-reviewer/SKILL.md) | Review MoonBit changes, package structure, tests, builds, and project standards |
 
@@ -26,6 +27,55 @@ Run its helpers with `moonx scripts/beads-companion.mbtx` or `mise run beads:com
 
 **Location**: [beads-companion/SKILL.md](beads-companion/SKILL.md)
 
+
+## Build-master skill and agent
+
+The skill is the reusable CI/CD practice. The [agent profile](../agents/build-master.agent.md) defines a
+named specialist, its ownership, and its handoff to a coordinator or team lead. `agents/openai.yaml` inside
+a skill supplies skill UI metadata; it does not register a custom agent.
+
+The shared [decision rubric](build-master/references/decision-rubric.md) makes the agent's reasoning
+reviewable. It classifies risk and execution obligations, checks hard requirements separately, and scores
+coverage, feedback, release evidence, efficiency, ownership, and recovery. Handoffs show the criteria,
+evidence, confidence, unknowns, and reasons for the recommendation. A score does not grant merge or release approval.
+
+Canonical repository sources are `.github/skills/build-master/` and `.github/agents/build-master.agent.md`.
+Edit those sources rather than the discovery links. Codex and OpenCode have small native adapters that load
+the shared persona. No adapter pins a model or overrides the parent's permissions.
+
+| Client | Skill discovery | Native build-master agent |
+|---|---|---|
+| Codex | `.agents/skills/build-master/` | `.codex/agents/build-master.toml` |
+| Claude Code | `.claude/skills/build-master/` | `.claude/agents/build-master.md` |
+| Cursor | `.agents/skills/build-master/` | `.cursor/agents/build-master.md` |
+| GitHub Copilot | `.github/skills/build-master/` | `.github/agents/build-master.agent.md` |
+| Grok Build | `.grok/skills/build-master/` | `.grok/agents/build-master.md` |
+| OpenCode | `.agents/skills/build-master/` | `.opencode/agents/build-master.md` |
+
+These entry points follow the provider formats for [Codex](https://learn.chatgpt.com/docs/agent-configuration/subagents),
+[Claude Code](https://code.claude.com/docs/en/sub-agents), [Cursor](https://cursor.com/docs/subagents),
+[Copilot](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents),
+[Grok](https://docs.x.ai/build/features/subagents), and [OpenCode](https://opencode.ai/docs/agents/).
+Discovery and team capabilities depend on the installed client, version, trust, and enabled features.
+Existing sessions may need to reload their agent definitions. Symlink discovery needs a checkout that preserves
+links; the canonical files also work through direct reads.
+
+Ask a supporting client to use the `build-master` agent for a bounded task. For subagent workflows, team
+members, SDK integrations, or clients without native discovery, pass this prompt to the assigned worker:
+
+```text
+Act as the build-master. Read .github/agents/build-master.agent.md and follow its
+persona, including .github/skills/build-master/SKILL.md and the repository reference.
+Assignment: review <candidate or diff> for <desired outcome>.
+Constraints and available run evidence: <details>.
+Mode: review only. File ownership: none.
+Return the classification, requirement results, rubric scorecard with evidence and
+confidence, decisive tradeoffs, validation, and owned follow-up to the coordinator.
+```
+
+For implementation, explicitly assign the allowed files and required validation instead of review-only mode.
+The agent does not assume access to its parent's history or authority. This registration creates an available
+role; it does not launch a persistent worker or run qualification workflows.
 
 ## Project management across agents
 
