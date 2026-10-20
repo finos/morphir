@@ -912,3 +912,5 @@ async fn genuine_blocked_capture_disconnect_retains_worker_until_explicit_host_j
     assert_eq!(final_snapshot.workers().dropped_unjoined(), 0);
     final_snapshot.workers().require_joined_cleanup().unwrap();
 }
+
+mod http_driver_tests;

@@ -1,4 +1,4 @@
-//! Actual upgraded-task ownership, independent of socket events and captures.
+//! Actual HTTP-driver and upgraded-task ownership, independent of events and captures.
 
 use super::model_originals::{HostModelCaptureCapacity, RetainedEvidenceCredit};
 use std::{
@@ -229,6 +229,21 @@ impl SocketTaskRegistry {
     where
         F: Future<Output = ()> + Send + 'static,
     {
+        self.spawn(actual)
+    }
+    pub(in crate::commands::ui) fn spawn_http_driver<F>(
+        &self,
+        actual: F,
+    ) -> Result<(), SocketCleanupError>
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.spawn(actual)
+    }
+    fn spawn<F>(&self, actual: F) -> Result<(), SocketCleanupError>
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
         self.reap_finished();
         let mut state = self.state();
         if !matches!(state.acceptance, Acceptance::Open) {
@@ -329,6 +344,21 @@ pub(in crate::commands::ui) struct HostSocketCleanupOwner {
     registry: SocketTaskRegistry,
 }
 impl HostSocketCleanupOwner {
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn table_capacity(&self) -> usize {
+        self.registry.state().slots.capacity()
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn actual_task_id(&self) -> Option<tokio::task::Id> {
+        self.registry
+            .state()
+            .slots
+            .iter()
+            .find_map(|slot| match slot {
+                TaskSlot::Retained(actual) => Some(actual.id()),
+                TaskSlot::Vacant | TaskSlot::Draining => None,
+            })
+    }
     #[cfg(test)]
     pub(in crate::commands::ui) fn retained_metadata_bytes(&self) -> usize {
         let state = self.registry.state();

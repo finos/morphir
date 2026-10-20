@@ -84,6 +84,7 @@ pub struct BoundUiHost {
     record_observer: Option<HostPrivateRecordObserver>,
     capture_cleanup: Option<HostCaptureCleanupOwner>,
     socket_cleanup: Option<super::socket_tasks::HostSocketCleanupOwner>,
+    socket_tasks: super::socket_tasks::SocketTaskRegistry,
 }
 
 impl BoundUiHost {
@@ -438,7 +439,7 @@ impl BoundUiHost {
             authority: address.to_string(),
             artifact_capacity,
             original_capacity: original_capacity.clone(),
-            socket_tasks,
+            socket_tasks: socket_tasks.clone(),
             capture_cleanup: capture_registry,
             current,
             observation,
@@ -464,6 +465,7 @@ impl BoundUiHost {
             record_observer,
             capture_cleanup,
             socket_cleanup: Some(socket_cleanup),
+            socket_tasks,
         })
     }
 
@@ -522,9 +524,7 @@ impl BoundUiHost {
     pub async fn serve(self) -> Result<(), CliError> {
         let _ordinary_socket_owner = self.socket_cleanup;
         let _ordinary_capture_owner = self.capture_cleanup;
-        axum::serve(self.listener, self.router)
-            .await
-            .map_err(CliError::from)
+        serve_connections(self.listener, self.router, self.socket_tasks).await
     }
 
     #[cfg(test)]
@@ -540,6 +540,68 @@ impl BoundUiHost {
             .take()
             .expect("test fixture takes ordinary socket owner once");
         (self.listener, self.router, owner)
+    }
+}
+
+/// Keep the whole HTTP connection future in the same funded registry as its
+/// upgrades. Listener completion alone cannot establish connection completion.
+async fn serve_connections<L>(
+    mut listener: L,
+    router: Router,
+    tasks: super::socket_tasks::SocketTaskRegistry,
+) -> Result<(), CliError>
+where
+    L: axum::serve::Listener,
+    L::Addr: std::fmt::Debug,
+{
+    use super::socket_tasks::SocketCleanupError;
+    use hyper_util::{
+        rt::{TokioExecutor, TokioIo},
+        server::conn::auto::Builder,
+        service::TowerToHyperService,
+    };
+
+    loop {
+        // Preserve axum's listener retry policy, including its delay for
+        // resource errors. TcpListener's inherent accept has a different contract.
+        let (io, remote) = axum::serve::Listener::accept(&mut listener).await;
+        tracing::trace!(?remote, "UI HTTP connection accepted");
+        // This is Router's same make-service state conversion and generic
+        // request-body mapping; no additional parser or handshake is involved.
+        let service = TowerToHyperService::new(router.clone().with_state(()));
+        let spawned = tasks.spawn_http_driver(async move {
+            let builder = Builder::new(TokioExecutor::new());
+            // The current dependency graph enables HTTP/1. If HTTP/2 is
+            // enabled later, its executor tasks need explicit ownership too.
+            if let Err(error) = builder
+                .serve_connection_with_upgrades(TokioIo::new(io), service)
+                .await
+            {
+                tracing::trace!(%error, "UI HTTP connection ended with an error");
+            }
+        });
+        match spawned {
+            Ok(()) => {}
+            Err(
+                SocketCleanupError::Capacity
+                | SocketCleanupError::Allocation
+                | SocketCleanupError::SizeOverflow,
+            ) => {
+                // The rejected future already destroyed this accepted peer.
+                // Existing connections remain owned and can keep making progress.
+                tracing::trace!("UI HTTP connection refused by task metadata capacity");
+            }
+            Err(SocketCleanupError::Closed) => return Ok(()),
+            Err(
+                error @ (SocketCleanupError::Poisoned
+                | SocketCleanupError::TaskPanicked
+                | SocketCleanupError::TaskCancelled),
+            ) => {
+                return Err(super::protocol::protocol_error(format!(
+                    "UI HTTP task ownership: {error:?}"
+                )));
+            }
+        }
     }
 }
 
@@ -1011,3 +1073,6 @@ pub(crate) mod tests {
         second_task.abort();
     }
 }
+
+#[cfg(test)]
+mod http_driver_tests;
