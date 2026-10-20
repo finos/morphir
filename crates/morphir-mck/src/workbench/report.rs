@@ -6,10 +6,88 @@ use serde_json::Value;
 use super::contract::{
     Capabilities, Format, Observation, Operation, encoded_size, identity, version,
 };
-use super::corpus::{Corpus, load};
+use super::corpus::{HistoricalCorpus as Corpus, load_historical_file as load};
 
 pub const MAX_REPORT_BYTES: usize = 32 * 1024 * 1024;
 pub const MAX_OBSERVATION_BYTES: usize = 16 * 1024 * 1024;
+
+/// Private staged record body, separate from every historical report shape.
+/// Capture proves transport completion only. Loading issues untrusted literal
+/// data; only a genuine workflow source context can check its correspondence.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(in crate::workbench) struct WorkflowExchangeRecord {
+    sent_payload: String,
+    received_payload: String,
+}
+
+impl WorkflowExchangeRecord {
+    /// Untrusted already-decoded wire strings, moved from the configured strict
+    /// report decoder. This issues data only, never transport/source proof.
+    pub(in crate::workbench) fn from_decoded_payloads(
+        sent_payload: String,
+        received_payload: String,
+    ) -> Self {
+        Self {
+            sent_payload,
+            received_payload,
+        }
+    }
+
+    pub(in crate::workbench) fn capture(exchange: crate::transport::LiteralExchange) -> Self {
+        let (sent_payload, received_payload) = exchange.into_parts();
+        Self {
+            sent_payload,
+            received_payload,
+        }
+    }
+    pub(in crate::workbench) fn sent_payload(&self) -> &str {
+        &self.sent_payload
+    }
+    pub(in crate::workbench) fn received_payload(&self) -> &str {
+        &self.received_payload
+    }
+    pub(in crate::workbench) fn to_json(&self) -> Result<String, String> {
+        encoded_size(self, MAX_REPORT_BYTES)?;
+        serde_json::to_string(self).map_err(|error| error.to_string())
+    }
+    pub(in crate::workbench) fn from_json(
+        text: &str,
+        work: &mut crate::json::strict::ReadWork,
+    ) -> Result<Self, String> {
+        if text.len() > MAX_REPORT_BYTES {
+            return Err("Workbench record exceeds 32 MiB".into());
+        }
+        let document = crate::json::strict::Document::parse_exact_with_work(text.as_bytes(), work)
+            .map_err(|error| error.to_string())?;
+        let crate::json::strict::Document::Object(fields) = document else {
+            return Err("workflow record must be a closed object".into());
+        };
+        if fields.len() != 2 {
+            return Err("workflow record requires exactly two literal payloads".into());
+        }
+        let mut sent_payload = None;
+        let mut received_payload = None;
+        for (key, value) in fields {
+            let crate::json::strict::Document::String(payload) = value else {
+                return Err("workflow record payload must be a string".into());
+            };
+            match key.as_str() {
+                "sentPayload" => sent_payload = Some(payload),
+                "receivedPayload" => received_payload = Some(payload),
+                _ => return Err("workflow record has an unknown field".into()),
+            }
+        }
+        // Duplicate keys were rejected by the same strict reader before any
+        // field extraction; the two decoded strings are moved, never Value-
+        // normalized or deserialized through a second scalar visitor.
+        Ok(Self {
+            sent_payload: sent_payload.ok_or("workflow record is missing sentPayload")?,
+            received_payload: received_payload
+                .ok_or("workflow record is missing receivedPayload")?,
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -75,7 +153,7 @@ pub struct Record {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct Report {
+pub struct HistoricalReport {
     pub format_version: String,
     pub suite: String,
     pub corpus_hash: String,
@@ -108,8 +186,8 @@ fn take_artifact_observations(value: &mut Value) -> Result<Vec<Option<Observatio
         .collect()
 }
 
-impl Report {
-    pub fn adapter_error(corpus: &Corpus, message: String) -> Self {
+impl HistoricalReport {
+    pub(super) fn adapter_error(corpus: &Corpus, message: String) -> Self {
         let mut report = Self::new(corpus);
         report.errors.push(Failure::new(Phase::Spawn, message));
         report.records = corpus
@@ -257,7 +335,10 @@ impl Report {
 
 /// Validate recorded observations against a freshly admitted corpus. Qualification
 /// is computed again instead of trusting the report's result or qualified fields.
-pub fn check_report(root: &Path, report: &Report) -> Result<(), String> {
+pub(super) fn check_historical_report(
+    root: &Path,
+    report: &HistoricalReport,
+) -> Result<(), String> {
     let corpus = load(root)?;
     version(&report.format_version)?;
     if report.suite != "workbench"

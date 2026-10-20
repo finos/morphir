@@ -82,7 +82,18 @@ fn terminal_corpus_retains_history_and_report_operation_evidence() {
     let old = load(&root.join("../draft.4")).unwrap();
     let corpus = load(&root).unwrap();
     assert_eq!(corpus.case_count(), 377);
-    for (before, after) in old.cases.iter().zip(&corpus.cases) {
+    for (before, after) in old
+        .as_historical()
+        .expect("historical corpus fixture")
+        .cases
+        .iter()
+        .zip(
+            &corpus
+                .as_historical()
+                .expect("historical corpus fixture")
+                .cases,
+        )
+    {
         assert_eq!(before.id, after.id);
         assert_eq!(before.operation(), after.operation());
         assert_eq!(before.format, after.format);
@@ -91,6 +102,8 @@ fn terminal_corpus_retains_history_and_report_operation_evidence() {
     }
     assert_eq!(
         corpus
+            .as_historical()
+            .expect("historical corpus fixture")
             .cases
             .iter()
             .filter(|c| c.operation() == operation())
@@ -99,9 +112,16 @@ fn terminal_corpus_retains_history_and_report_operation_evidence() {
     );
     for format in [Format::Json, Format::IonText] {
         for successful in [true, false] {
-            assert!(corpus.cases.iter().any(|c| c.operation() == operation()
-                && c.format == format
-                && matches!(c.expected, Observation::Ok { .. }) == successful));
+            assert!(
+                corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
+                    .cases
+                    .iter()
+                    .any(|c| c.operation() == operation()
+                        && c.format == format
+                        && matches!(c.expected, Observation::Ok { .. }) == successful)
+            );
         }
     }
     let caps = json!({"suite":"workbench","contractVersion":OUTCOMES_VERSION,
@@ -113,6 +133,8 @@ fn terminal_corpus_retains_history_and_report_operation_evidence() {
         replies: std::iter::once(caps)
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|c| serde_json::to_value(&c.expected).unwrap()),
@@ -121,7 +143,7 @@ fn terminal_corpus_retains_history_and_report_operation_evidence() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut replay);
-    assert!(report.qualified);
+    assert!(report.qualified());
     check_report(&root, &report).unwrap();
     assert!(
         replay
@@ -130,6 +152,8 @@ fn terminal_corpus_retains_history_and_report_operation_evidence() {
             .all(|r| r.get("expected").is_none() && r.get("caseId").is_none())
     );
     let index = corpus
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .position(|c| c.id == "terminal-exact-int-json")

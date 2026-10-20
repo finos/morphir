@@ -5,5 +5,5 @@ pub mod protocol;
 pub mod session;
 mod tree;
 
-pub use session::{Limits, Session, TransportError};
+pub use session::{Limits, LiteralExchange, LiteralFrame, Session, TransportError};
 pub use tree::Terminator;

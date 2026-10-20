@@ -55,7 +55,25 @@ impl std::error::Error for InventoryError {}
 // Separate digest roles prevent a source-file digest being used as an inventory
 // commitment. The constructors remain private to these validated boundaries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct ContentSha256(pub(super) [u8; 32]);
+pub struct ContentSha256(pub(super) [u8; 32]);
+impl ContentSha256 {
+    pub fn new(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+    pub fn bytes(self) -> [u8; 32] {
+        self.0
+    }
+}
+impl serde::Serialize for ContentSha256 {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use std::fmt::Write as _;
+        let mut hex = String::with_capacity(64);
+        for byte in self.0 {
+            write!(&mut hex, "{byte:02x}").map_err(serde::ser::Error::custom)?;
+        }
+        s.serialize_str(&hex)
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InventorySha256(pub(super) [u8; 32]);
 impl InventorySha256 {

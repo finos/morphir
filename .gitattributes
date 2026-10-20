@@ -18,5 +18,31 @@ spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/** -text
 spec/workbench/model-originals/0.1.0-draft.1/acceptance/fixtures/v4-bom-crlf.json whitespace=-blank-at-eol,cr-at-eol
 crates/morphir/tests/support/model_originals_host/model-primary.ionb -text
 
+# Workflow source proofs compare complete files and original JSON token bytes.
+crates/morphir-mck/src/workbench/model_originals/workflow/ingress/controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/source_proof/controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/source_compile/controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/raw_boundary_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/observed_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/identity_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/report_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/record_boundary_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/identity_source_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/fixture_controls/** -text
+crates/morphir-mck/tests/support/workflow_report_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/pipeline_controls/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/pipeline_negotiation_controls/** -text
+crates/morphir-mck/tests/support/workflow_pipeline_controls/** -text
+# These literal reply bodies intentionally include CRLF and outer whitespace.
+crates/morphir-mck/src/workbench/model_originals/workflow/report_controls/received-reply.payload.json whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+crates/morphir-mck/tests/support/workflow_report_controls/received-reply.payload.json whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+crates/morphir-mck/src/workbench/model_originals/workflow/pipeline_controls/first-reply.payload.json whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+crates/morphir-mck/src/workbench/model_originals/workflow/pipeline_controls/whitespace-cases.json whitespace=-blank-at-eol
+crates/morphir-mck/tests/support/workflow_pipeline_controls/first-reply.payload.json whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/** -text
+crates/morphir-mck/src/workbench/model_originals/workflow/ingress/controls/corpus.json whitespace=-blank-at-eol,cr-at-eol
+# This source mutation intentionally appends one space after the original file.
+crates/morphir-mck/src/workbench/model_originals/workflow/source_proof/controls/mutations/preceding60-plus-space.json whitespace=-blank-at-eol,-blank-at-eof
+
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads

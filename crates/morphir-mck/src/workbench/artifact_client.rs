@@ -1723,12 +1723,21 @@ mod shared_runner_tests {
         let corpus = load(&kit()).unwrap();
         assert_eq!(corpus.case_count(), 102);
         let answers = corpus
+            .as_historical()
+            .expect("historical corpus fixture")
             .cases
             .iter()
             .map(|case| serde_json::to_value(&case.expected).unwrap())
             .collect();
         let report = execute(&corpus, &mut AuthoredInfrastructure(answers));
-        assert!(report.qualified, "{:?}", report.errors);
+        assert!(
+            report.qualified(),
+            "{:?}",
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+        );
         let saved = Report::from_json(&report.to_json()).unwrap();
         check_report(&kit(), &saved).unwrap();
         for (pointer, bad) in [
@@ -1782,7 +1791,14 @@ mod shared_runner_tests {
         let directory = tempfile::tempdir().unwrap();
         std::fs::write(directory.path().join("cases.json"), value.to_string()).unwrap();
         let corpus = load(directory.path()).unwrap();
-        assert_eq!(corpus.cases[0].input["attempts"][0]["input"]["ir"], literal);
+        assert_eq!(
+            corpus
+                .as_historical()
+                .expect("historical corpus fixture")
+                .cases[0]
+                .input["attempts"][0]["input"]["ir"],
+            literal
+        );
     }
 }
 

@@ -122,6 +122,48 @@ impl fmt::Display for TransportError {
 
 impl std::error::Error for TransportError {}
 
+/// A selected literal envelope received by this session, with its actual ID
+/// checked. It proves receipt and correlation, not observed payload semantics
+/// or any producer, filesystem or runtime authority.
+#[derive(Debug)]
+pub struct LiteralFrame {
+    id: u64,
+    raw: String,
+}
+impl LiteralFrame {
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+    /// Exact payload returned by the existing framing reader. Newline framing
+    /// excludes LF and strips a final CR; Content-Length retains body newlines.
+    pub fn raw(&self) -> &str {
+        &self.raw
+    }
+}
+
+/// Actual payloads from a successful send and correlated literal reply.
+/// The request is moved from the send boundary, never serialized again.
+/// This proves transport receipt, not producer or workflow authority.
+#[derive(Debug)]
+pub struct LiteralExchange {
+    sent_payload: String,
+    received: LiteralFrame,
+}
+impl LiteralExchange {
+    /// Exact serialized request payload, excluding framing bytes.
+    pub fn sent_payload(&self) -> &str {
+        &self.sent_payload
+    }
+    pub fn received(&self) -> &LiteralFrame {
+        &self.received
+    }
+    /// Move the actual payloads into retained evidence without copying or
+    /// serializing them again. The strings alone grant no source authority.
+    pub fn into_parts(self) -> (String, String) {
+        (self.sent_payload, self.received.raw)
+    }
+}
+
 /// What the stdout thread reports.
 enum Frame {
     Line(String),
@@ -528,7 +570,10 @@ impl Session {
 
     /// Sends `request` and returns the body of its answer, without the id.
     pub fn exchange(&mut self, request: &Request) -> Result<Map<String, Value>, TransportError> {
-        self.exchange_line(|id| Ok(request.line(id)), EnvelopePolicy::LegacyIr)
+        self.exchange_line(
+            |id| Ok(request.line(id)),
+            |session, id, deadline| session.receive(id, EnvelopePolicy::LegacyIr, deadline),
+        )
     }
 
     /// Sends a MEP request and returns its entire validated JSON-RPC response.
@@ -633,40 +678,117 @@ impl Session {
         self.exchange_serializable_with_policy(request, EnvelopePolicy::PreserveExactLiteralMembers)
     }
 
+    /// Selected infrastructure can retain actual literal envelope bytes while
+    /// serializing borrowed RawValue request fields verbatim. Only this method
+    /// requires a canonical positive-u64 outer response ID; historical methods
+    /// retain their existing envelope policies. Newline framing refuses actual
+    /// LF in a serialized request before sending it. Content-Length framing
+    /// preserves multiline raw input without normalizing its bytes.
+    pub fn exchange_literal_frame<T: serde::Serialize>(
+        &mut self,
+        request: &T,
+    ) -> Result<LiteralFrame, TransportError> {
+        let framing = self.framing;
+        self.exchange_line(
+            |id| Self::serializable_literal_request_line(request, id, framing),
+            Self::receive_literal_frame,
+        )
+    }
+
+    /// Retain both actual payloads for selected live/replay infrastructure.
+    /// Uses the same serializer, framing, deadline and failure latch as other
+    /// exchanges. No complete receipt is issued after a send or reply failure.
+    pub fn exchange_recorded_literal<T: serde::Serialize>(
+        &mut self,
+        request: &T,
+    ) -> Result<LiteralExchange, TransportError> {
+        let framing = self.framing;
+        self.exchange_line_with_sent(
+            |id| Self::serializable_literal_request_line(request, id, framing),
+            |session, id, deadline, sent_payload| {
+                let received = session.receive_literal_frame(id, deadline)?;
+                Ok(LiteralExchange {
+                    sent_payload,
+                    received,
+                })
+            },
+        )
+    }
+
     fn exchange_serializable_with_policy<T: serde::Serialize>(
         &mut self,
         request: &T,
         policy: EnvelopePolicy,
     ) -> Result<Map<String, Value>, TransportError> {
-        self.exchange_line(
-            |id| {
-                let body = serde_json::to_string(request)
-                    .map_err(|error| TransportError::Malformed(error.to_string()))?;
-                if !body.starts_with('{') {
-                    return Err(TransportError::Malformed(
-                        "request must be an object".into(),
-                    ));
-                }
-                Ok(format!("{{\"id\":{id},{}", &body[1..]))
-            },
-            policy,
-        )
+        self.exchange_serializable_with(request, |session, id, deadline| {
+            session.receive(id, policy, deadline)
+        })
     }
 
-    fn exchange_line(
+    fn exchange_serializable_with<T: serde::Serialize, R>(
+        &mut self,
+        request: &T,
+        receive: impl FnOnce(&mut Self, u64, &Deadline) -> Result<R, TransportError>,
+    ) -> Result<R, TransportError> {
+        self.exchange_line(|id| Self::serializable_request_line(request, id), receive)
+    }
+
+    fn serializable_request_line<T: serde::Serialize>(
+        request: &T,
+        id: u64,
+    ) -> Result<String, TransportError> {
+        let body = serde_json::to_string(request)
+            .map_err(|error| TransportError::Malformed(error.to_string()))?;
+        if !body.starts_with('{') {
+            return Err(TransportError::Malformed(
+                "request must be an object".into(),
+            ));
+        }
+        Ok(format!("{{\"id\":{id},{}", &body[1..]))
+    }
+
+    fn serializable_literal_request_line<T: serde::Serialize>(
+        request: &T,
+        id: u64,
+        framing: Framing,
+    ) -> Result<String, TransportError> {
+        let line = Self::serializable_request_line(request, id)?;
+        if framing == Framing::Newline && line.as_bytes().contains(&b'\n') {
+            return Err(TransportError::Malformed(
+                "literal request contains LF; multiline input requires Content-Length framing"
+                    .into(),
+            ));
+        }
+        Ok(line)
+    }
+
+    fn exchange_line<R>(
         &mut self,
         line: impl FnOnce(u64) -> Result<String, TransportError>,
-        policy: EnvelopePolicy,
-    ) -> Result<Map<String, Value>, TransportError> {
+        receive: impl FnOnce(&mut Self, u64, &Deadline) -> Result<R, TransportError>,
+    ) -> Result<R, TransportError> {
+        self.exchange_line_with_sent(line, |session, id, deadline, sent_payload| {
+            // Historical paths release the request before receiving its reply.
+            drop(sent_payload);
+            receive(session, id, deadline)
+        })
+    }
+
+    fn exchange_line_with_sent<R>(
+        &mut self,
+        line: impl FnOnce(u64) -> Result<String, TransportError>,
+        receive: impl FnOnce(&mut Self, u64, &Deadline, String) -> Result<R, TransportError>,
+    ) -> Result<R, TransportError> {
         if let Some(broken) = &self.broken {
             return Err(broken.clone());
         }
         let id = self.next_id;
         self.next_id += 1;
         let deadline = self.request_deadline(id);
-        let result = line(id)
-            .and_then(|line| self.send_line(&line, &deadline))
-            .and_then(|()| self.receive(id, policy, &deadline));
+        let result = line(id).and_then(|sent_payload| {
+            self.send_line(&sent_payload, &deadline)?;
+            receive(self, id, &deadline, sent_payload)
+        });
         if let Err(error) = &result {
             self.broken = Some(error.clone());
         }
@@ -753,6 +875,36 @@ impl Session {
         } else {
             Err(TransportError::WrongId { expected: id, got })
         }
+    }
+
+    fn receive_literal_frame(
+        &mut self,
+        id: u64,
+        deadline: &Deadline,
+    ) -> Result<LiteralFrame, TransportError> {
+        let raw = self.receive_frame(deadline)?;
+        // The same duplicate-aware exact parser is the boundary. Its temporary
+        // Document is dropped; the actual frame is never normalized, trimmed
+        // with RawValue::from_string, converted to Value or reserialized.
+        let document = crate::json::strict::Document::parse_exact(raw.as_bytes())
+            .map_err(TransportError::Malformed)?;
+        let value = document.get("id").map_err(TransportError::Malformed)?;
+        let crate::json::strict::Document::Number(number) = value else {
+            return Err(TransportError::Malformed(
+                "id must be a canonical positive u64".into(),
+            ));
+        };
+        let token = number.to_string();
+        let got = token.parse::<u64>().ok().filter(|got| *got > 0);
+        let Some(got) = got.filter(|_| token.as_bytes().iter().all(u8::is_ascii_digit)) else {
+            return Err(TransportError::Malformed(
+                "id must be a canonical positive u64".into(),
+            ));
+        };
+        if got != id {
+            return Err(TransportError::WrongId { expected: id, got });
+        }
+        Ok(LiteralFrame { id, raw })
     }
 
     fn receive_frame(&mut self, deadline: &Deadline) -> Result<String, TransportError> {

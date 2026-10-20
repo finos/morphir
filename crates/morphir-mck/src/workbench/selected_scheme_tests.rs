@@ -61,7 +61,14 @@ fn selected_scheme_fixed_unused_hole_witness_runs_and_report_rechecks() {
     let root = tempfile::tempdir().unwrap();
     let corpus = small_corpus(root.path(), fixture()).unwrap();
     let report = execute(&corpus, &mut Reply(fixture()["expected"].clone()));
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     check_report(root.path(), &Report::from_json(&report.to_json()).unwrap()).unwrap();
 }
 
@@ -82,6 +89,8 @@ fn selected_scheme_entire_fixed_witness_inventory_recomputes_without_source_deco
         std::iter::once(capabilities())
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|c| serde_json::to_value(&c.expected).unwrap()),
@@ -89,7 +98,14 @@ fn selected_scheme_entire_fixed_witness_inventory_recomputes_without_source_deco
             .collect(),
     );
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     check_report(&root, &Report::from_json(&report.to_json()).unwrap()).unwrap();
 }
 
@@ -152,7 +168,14 @@ fn selected_scheme_observed_domain_failures_differ_from_missing_capability_and_e
     case["expected"] = json!({"status":"ok","value":{"policy":"permissive","runtime":"scheme","boundary":null,"values":null,"failure":{"stage":"plan","code":"execution.wrong_arity"}}});
     let corpus = small_corpus(root.path(), case.clone()).unwrap();
     let domain = execute(&corpus, &mut Reply(case["expected"].clone()));
-    assert!(domain.qualified && domain.errors.is_empty());
+    assert!(
+        domain.qualified()
+            && domain
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+                .is_empty()
+    );
     check_report(root.path(), &domain).unwrap();
     struct Unclaimed;
     impl Testee for Unclaimed {
@@ -167,15 +190,43 @@ fn selected_scheme_observed_domain_failures_differ_from_missing_capability_and_e
         }
     }
     let missing = execute(&corpus, &mut Unclaimed);
-    assert_eq!(missing.records[0].result, ResultKind::Unsupported);
-    assert!(!missing.qualified && missing.errors.is_empty());
+    assert_eq!(
+        missing
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Unsupported
+    );
+    assert!(
+        !missing.qualified()
+            && missing
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+                .is_empty()
+    );
     check_report(root.path(), &missing).unwrap();
     let malformed = execute(
         &corpus,
         &mut Reply(json!({"status":"invalid","code":"execution.wrong_arity"})),
     );
-    assert_eq!(malformed.records[0].result, ResultKind::Error);
-    assert_eq!(malformed.errors[0].phase, Phase::Exchange);
+    assert_eq!(
+        malformed
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        malformed
+            .as_historical()
+            .expect("historical report fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     check_report(root.path(), &malformed).unwrap();
 }
 
@@ -218,7 +269,15 @@ fn selected_scheme_success_and_failure_evidence_have_closed_disjoint_shapes() {
             _ => unreachable!(),
         }
         let report = execute(&corpus, &mut Reply(observed));
-        assert_eq!(report.records[0].result, ResultKind::Error, "{kind}");
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .records[0]
+                .result,
+            ResultKind::Error,
+            "{kind}"
+        );
         check_report(root.path(), &report).unwrap();
     }
 }
@@ -230,7 +289,14 @@ fn selected_scheme_failure_codes_use_bounded_utf16_identities() {
     let corpus = small_corpus(root.path(), case).unwrap();
     let observation = json!({"status":"ok","value":{"policy":"permissive","runtime":"scheme","boundary":null,"values":null,"failure":{"stage":"plan","code":"😀".repeat(65)}}});
     let report = execute(&corpus, &mut Reply(observation));
-    assert_eq!(report.records[0].result, ResultKind::Error);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
     check_report(root.path(), &report).unwrap();
 }
 
@@ -242,8 +308,21 @@ fn selected_scheme_report_recomputes_policy_boundary_value_and_corpus_evidence()
     let mut mismatch = case["expected"].clone();
     mismatch["value"]["values"][0]["value"] = json!("41");
     let failed = execute(&corpus, &mut Reply(mismatch));
-    assert_eq!(failed.records[0].result, ResultKind::Fail);
-    assert!(failed.errors.is_empty());
+    assert_eq!(
+        failed
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
+    assert!(
+        failed
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+            .is_empty()
+    );
     check_report(root.path(), &failed).unwrap();
     let report = execute(&corpus, &mut Reply(case["expected"].clone()));
     let saved = serde_json::to_value(&report).unwrap();
@@ -308,16 +387,34 @@ fn selected_scheme_bounds_compact_input_and_each_retained_projection() {
     let overhead = serde_json::to_vec(&observed["value"]).unwrap().len();
     observed["value"]["boundary"] = json!(" ".repeat(MAX_VALUE_BYTES - overhead));
     let at_limit = execute(&corpus, &mut Reply(observed.clone()));
-    assert_eq!(at_limit.records[0].result, ResultKind::Fail);
+    assert_eq!(
+        at_limit
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
     check_report(root.path(), &at_limit).unwrap();
     observed["value"]["boundary"] = json!(format!(
         "{} ",
         observed["value"]["boundary"].as_str().unwrap()
     ));
     let over_limit = execute(&corpus, &mut Reply(observed.clone()));
-    assert_eq!(over_limit.records[0].result, ResultKind::Error);
+    assert_eq!(
+        over_limit
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
     check_report(root.path(), &over_limit).unwrap();
     let mut forged = at_limit;
-    forged.records[0].observed = Some(Observation::parse(observed).unwrap());
+    forged
+        .as_historical_mut()
+        .expect("historical report fixture")
+        .records[0]
+        .observed = Some(Observation::parse(observed).unwrap());
     assert!(check_report(root.path(), &Report::from_json(&forged.to_json()).unwrap()).is_err());
 }

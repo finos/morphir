@@ -45,7 +45,7 @@ fn workbench_expected_results_never_reach_adapter() {
     let mut adapter =
         fake(json!({"status":"ok","value":{"type":"int","value":"9007199254740993"}}));
     let report = execute(&kit, &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     assert_eq!(adapter.requests.len(), 2);
     assert!(
         adapter
@@ -62,10 +62,24 @@ fn workbench_wrong_observation_fails_and_forged_verdict_is_rejected() {
     let mut adapter =
         fake(json!({"status":"ok","value":{"type":"int","value":"9007199254740992"}}));
     let mut report = execute(&load(root.path()).unwrap(), &mut adapter);
-    assert_eq!(report.records[0].result, ResultKind::Fail);
-    assert!(!report.qualified);
-    report.records[0].result = ResultKind::Pass;
-    report.qualified = true;
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
+    assert!(!report.qualified());
+    report
+        .as_historical_mut()
+        .expect("historical report fixture")
+        .records[0]
+        .result = ResultKind::Pass;
+    report
+        .as_historical_mut()
+        .expect("historical report fixture")
+        .qualified = true;
     assert!(check_report(root.path(), &report).is_err());
 }
 
@@ -79,8 +93,15 @@ fn workbench_missing_claim_skips_without_decode() {
         requests: vec![],
     };
     let report = execute(&load(root.path()).unwrap(), &mut adapter);
-    assert_eq!(report.records[0].result, ResultKind::Unsupported);
-    assert!(!report.qualified);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Unsupported
+    );
+    assert!(!report.qualified());
     assert_eq!(adapter.requests.len(), 1);
     check_report(root.path(), &report).unwrap();
 }
@@ -101,8 +122,14 @@ fn workbench_wrong_draft_duplicate_claims_and_malformed_observations_fail() {
             requests: vec![],
         };
         let report = execute(&kit, &mut adapter);
-        assert!(!report.qualified);
-        assert!(!report.errors.is_empty());
+        assert!(!report.qualified());
+        assert!(
+            !report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+                .is_empty()
+        );
         check_report(root.path(), &report).unwrap();
     }
     for malformed in [
@@ -111,8 +138,14 @@ fn workbench_wrong_draft_duplicate_claims_and_malformed_observations_fail() {
         json!({"status":"invalid","code":"bad","extra":true}),
     ] {
         let report = execute(&kit, &mut fake(malformed));
-        assert!(!report.qualified);
-        assert!(!report.errors.is_empty());
+        assert!(!report.qualified());
+        assert!(
+            !report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+                .is_empty()
+        );
         check_report(root.path(), &report).unwrap();
     }
 }
@@ -139,24 +172,45 @@ fn workbench_report_rejects_missing_duplicate_changed_and_fabricated_records() {
         &mut fake(one()[0]["expected"].clone()),
     );
     let mut bad = report.clone();
-    bad.records.clear();
+    bad.as_historical_mut()
+        .expect("historical report fixture")
+        .records
+        .clear();
     assert!(check_report(root.path(), &bad).is_err());
     let mut bad = report.clone();
-    bad.records.push(bad.records[0].clone());
+    let duplicate = bad
+        .as_historical()
+        .expect("historical report fixture")
+        .records[0]
+        .clone();
+    bad.as_historical_mut()
+        .expect("historical report fixture")
+        .records
+        .push(duplicate);
     assert!(check_report(root.path(), &bad).is_err());
     let mut bad = report.clone();
-    bad.corpus_hash = "0".repeat(64);
+    bad.as_historical_mut()
+        .expect("historical report fixture")
+        .corpus_hash = "0".repeat(64);
     assert!(check_report(root.path(), &bad).is_err());
     let mut bad = report.clone();
-    bad.records[0].observed = None;
+    bad.as_historical_mut()
+        .expect("historical report fixture")
+        .records[0]
+        .observed = None;
     assert!(check_report(root.path(), &bad).is_err());
     let mut bad = report.clone();
-    bad.errors.push(Failure {
-        phase: Phase::Shutdown,
-        message: "failed cleanup".into(),
-    });
+    bad.as_historical_mut()
+        .expect("historical report fixture")
+        .errors
+        .push(Failure {
+            phase: Phase::Shutdown,
+            message: "failed cleanup".into(),
+        });
     assert!(check_report(root.path(), &bad).is_err());
-    bad.qualified = false;
+    bad.as_historical_mut()
+        .expect("historical report fixture")
+        .qualified = false;
     check_report(root.path(), &bad).unwrap();
 }
 
@@ -215,10 +269,31 @@ fn workbench_lost_transport_does_not_become_a_domain_rejection() {
         requests: vec![],
     };
     let report = execute(&load(root.path()).unwrap(), &mut adapter);
-    assert!(!report.qualified);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert!(report.records[0].observed.is_none());
+    assert!(!report.qualified());
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .observed
+            .is_none()
+    );
     check_report(root.path(), &report).unwrap();
 }
 
@@ -231,9 +306,23 @@ fn workbench_spawn_failure_still_produces_checkable_evidence() {
         limits: crate::transport::Limits::DEFAULT,
     };
     let report = run(root.path(), &options).unwrap();
-    assert!(!report.qualified);
-    assert_eq!(report.errors[0].phase, Phase::Spawn);
-    assert_eq!(report.records.len(), 1);
+    assert!(!report.qualified());
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors[0]
+            .phase,
+        Phase::Spawn
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records
+            .len(),
+        1
+    );
     check_report(root.path(), &report).unwrap();
 }
 
@@ -255,7 +344,7 @@ fn workbench_invalid_rejection_is_an_observation_and_decimal_payload_is_preserve
         requests: vec![],
     };
     let report = execute(&load(root.path()).unwrap(), &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     check_report(root.path(), &report).unwrap();
 }
 
@@ -315,12 +404,16 @@ fn workbench_published_corpus_has_json_ion_and_success_rejection_cases() {
     for format in [Format::Json, Format::IonText] {
         assert!(
             corpus
+                .as_historical()
+                .expect("historical corpus fixture")
                 .cases
                 .iter()
                 .any(|c| c.format == format && matches!(c.expected, Observation::Ok { .. }))
         );
         assert!(
             corpus
+                .as_historical()
+                .expect("historical corpus fixture")
                 .cases
                 .iter()
                 .any(|c| c.format == format && matches!(c.expected, Observation::Invalid { .. }))
@@ -342,7 +435,7 @@ fn workbench_changed_golden_bytes_invalidate_prior_evidence() {
     .unwrap();
     assert!(check_report(root.path(), &report).is_err());
     // The corpus admitted before the change keeps its original fixed expectation.
-    assert!(execute(&corpus, &mut fake(one()[0]["expected"].clone())).qualified);
+    assert!(execute(&corpus, &mut fake(one()[0]["expected"].clone())).qualified());
 }
 
 #[test]
@@ -380,8 +473,15 @@ fn workbench_output_encoded_size_and_total_retained_observations_are_bounded() {
         requests: 0,
     };
     let report = execute(&load(root.path()).unwrap(), &mut adapter);
-    assert!(!report.qualified);
-    assert!(report.errors.iter().any(|e| e.phase == Phase::Exchange));
+    assert!(!report.qualified());
+    assert!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+            .iter()
+            .any(|e| e.phase == Phase::Exchange)
+    );
     assert!(adapter.requests < 33);
     assert!(report.to_json().len() <= MAX_REPORT_BYTES);
     check_report(root.path(), &report).unwrap();
@@ -414,7 +514,7 @@ fn workbench_admission_negotiates_exact_draft_and_dispatches_without_goldens() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     assert_eq!(adapter.requests[0]["contractVersion"], "0.1.0-draft.2");
     assert_eq!(adapter.requests[1]["op"], "validate-value");
     assert!(adapter.requests.iter().all(|r| r.get("expected").is_none()
@@ -444,8 +544,15 @@ fn workbench_admission_requires_operation_inventory_and_exact_caps() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(!report.qualified);
-    assert_eq!(report.errors[0].phase, Phase::Capabilities);
+    assert!(!report.qualified());
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors[0]
+            .phase,
+        Phase::Capabilities
+    );
     check_report(root.path(), &report).unwrap();
     let mut doc: Value =
         serde_json::from_slice(&std::fs::read(root.path().join("cases.json")).unwrap()).unwrap();
@@ -472,6 +579,8 @@ fn workbench_admission_published_corpus_has_independent_operation_format_invento
     assert_eq!(corpus.case_count(), 162);
     assert_eq!(
         corpus
+            .as_historical()
+            .expect("historical corpus fixture")
             .cases
             .iter()
             .filter(|c| c.operation() == Operation::DecodeValue)
@@ -482,6 +591,8 @@ fn workbench_admission_published_corpus_has_independent_operation_format_invento
         for successful in [true, false] {
             assert!(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .any(|c| c.operation() == Operation::ValidateValue
@@ -496,6 +607,8 @@ fn workbench_admission_published_corpus_has_independent_operation_format_invento
         replies: std::iter::once(Ok(admission_caps()))
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|c| Ok(serde_json::to_value(&c.expected).unwrap())),
@@ -504,10 +617,14 @@ fn workbench_admission_published_corpus_has_independent_operation_format_invento
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     check_report(&root, &report).unwrap();
     let mut changed = report.clone();
-    changed.records[64].operation = Some(Operation::DecodeValue);
+    changed
+        .as_historical_mut()
+        .expect("historical report fixture")
+        .records[64]
+        .operation = Some(Operation::DecodeValue);
     assert!(check_report(&root, &changed).is_err());
     let mut changed = serde_json::to_value(&report).unwrap();
     changed["records"][64]
@@ -526,7 +643,14 @@ fn workbench_admission_unsupported_operation_never_reaches_adapter() {
         requests: vec![],
     };
     let report = execute(&load(root.path()).unwrap(), &mut adapter);
-    assert_eq!(report.records[0].result, ResultKind::Unsupported);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Unsupported
+    );
     assert_eq!(adapter.requests.len(), 1);
     check_report(root.path(), &report).unwrap();
 }
@@ -570,8 +694,15 @@ fn workbench_admission_capability_and_success_forgery_is_rejected() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(!report.qualified);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    assert!(!report.qualified());
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     check_report(root.path(), &report).unwrap();
     let mut adapter = Fake {
         replies: vec![
@@ -581,7 +712,13 @@ fn workbench_admission_capability_and_success_forgery_is_rejected() {
         requests: vec![],
     };
     let mut report = execute(&corpus, &mut adapter);
-    report.capabilities.as_mut().unwrap().contract_version = VERSION.into();
+    report
+        .as_historical_mut()
+        .expect("historical report fixture")
+        .capabilities
+        .as_mut()
+        .unwrap()
+        .contract_version = VERSION.into();
     assert!(check_report(root.path(), &report).is_err());
 }
 
@@ -640,13 +777,20 @@ fn invocation_caps() -> Value {
 fn workbench_invocation_dispatch_and_report_context_are_bound() {
     let root = invocation_source();
     let corpus = load(root.path()).unwrap();
-    let expected = serde_json::to_value(&corpus.cases[0].expected).unwrap();
+    let expected = serde_json::to_value(
+        &corpus
+            .as_historical()
+            .expect("historical corpus fixture")
+            .cases[0]
+            .expected,
+    )
+    .unwrap();
     let mut adapter = Fake {
         replies: vec![Ok(invocation_caps()), Ok(expected)],
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     assert_eq!(adapter.requests[1]["op"], "validate-invocations");
     assert!(
         adapter
@@ -670,7 +814,14 @@ fn workbench_invocation_projection_rejects_argument_errors_and_duplicate_calls()
     let root = invocation_source();
     let corpus = load(root.path()).unwrap();
     for mutate in 0..4 {
-        let mut observation = serde_json::to_value(&corpus.cases[0].expected).unwrap();
+        let mut observation = serde_json::to_value(
+            &corpus
+                .as_historical()
+                .expect("historical corpus fixture")
+                .cases[0]
+                .expected,
+        )
+        .unwrap();
         match mutate {
             0 => {
                 observation["value"]["calls"][0]["arguments"][0] =
@@ -693,8 +844,15 @@ fn workbench_invocation_projection_rejects_argument_errors_and_duplicate_calls()
             requests: vec![],
         };
         let report = execute(&corpus, &mut adapter);
-        assert!(!report.qualified);
-        assert_eq!(report.errors[0].phase, Phase::Exchange);
+        assert!(!report.qualified());
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors[0]
+                .phase,
+            Phase::Exchange
+        );
         check_report(root.path(), &report).unwrap();
     }
 }
@@ -730,12 +888,19 @@ fn workbench_invocation_projection_budgets_are_per_call_not_per_argument() {
     let mut adapter = Fake {
         replies: vec![
             Ok(invocation_caps()),
-            Ok(serde_json::to_value(&corpus.cases[0].expected).unwrap()),
+            Ok(serde_json::to_value(
+                &corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
+                    .cases[0]
+                    .expected,
+            )
+            .unwrap()),
         ],
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     check_report(root.path(), &report).unwrap();
     doc["cases"][0]["expected"]["value"]["calls"][0]["arguments"][1] = text(49_999);
     std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
@@ -754,7 +919,14 @@ fn workbench_invocation_records_compare_by_name_but_calls_and_extensions_stay_or
     std::fs::write(root.path().join("cases.json"), doc.to_string()).unwrap();
     let corpus = load(root.path()).unwrap();
     for mutate in 0..3 {
-        let mut observed = serde_json::to_value(&corpus.cases[0].expected).unwrap();
+        let mut observed = serde_json::to_value(
+            &corpus
+                .as_historical()
+                .expect("historical corpus fixture")
+                .cases[0]
+                .expected,
+        )
+        .unwrap();
         match mutate {
             0 => {
                 for call in observed["value"]["calls"].as_array_mut().unwrap() {
@@ -775,9 +947,13 @@ fn workbench_invocation_records_compare_by_name_but_calls_and_extensions_stay_or
             requests: vec![],
         };
         let report = execute(&corpus, &mut adapter);
-        assert_eq!(report.qualified, mutate == 0);
+        assert_eq!(report.qualified(), mutate == 0);
         assert_eq!(
-            report.records[0].result,
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .records[0]
+                .result,
             if mutate == 0 {
                 ResultKind::Pass
             } else {
@@ -798,12 +974,22 @@ fn workbench_invocation_published_corpus_is_fixed_and_complete() {
         Operation::ValidateValue,
         Operation::ValidateInvocations,
     ]
-    .map(|op| corpus.cases.iter().filter(|c| c.operation() == op).count());
+    .map(|op| {
+        corpus
+            .as_historical()
+            .expect("historical corpus fixture")
+            .cases
+            .iter()
+            .filter(|c| c.operation() == op)
+            .count()
+    });
     assert_eq!(counts, [64, 98, 80]);
     for format in [Format::Json, Format::IonText] {
         for successful in [true, false] {
             assert!(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .any(|c| c.operation() == Operation::ValidateInvocations
@@ -817,6 +1003,8 @@ fn workbench_invocation_published_corpus_is_fixed_and_complete() {
         replies: std::iter::once(Ok(invocation_caps()))
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|c| Ok(serde_json::to_value(&c.expected).unwrap())),
@@ -825,7 +1013,7 @@ fn workbench_invocation_published_corpus_is_fixed_and_complete() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     check_report(&root, &report).unwrap();
 }
 
@@ -865,7 +1053,18 @@ fn workbench_output_corpus_retains_history_and_binds_report_evidence() {
     let old = load(&root.join("../draft.3")).unwrap();
     let corpus = load(&root).unwrap();
     assert_eq!(corpus.case_count(), 291);
-    for (before, after) in old.cases.iter().zip(&corpus.cases) {
+    for (before, after) in old
+        .as_historical()
+        .expect("historical corpus fixture")
+        .cases
+        .iter()
+        .zip(
+            &corpus
+                .as_historical()
+                .expect("historical corpus fixture")
+                .cases,
+        )
+    {
         assert_eq!(before.id, after.id);
         assert_eq!(before.operation(), after.operation());
         assert_eq!(before.format, after.format);
@@ -875,6 +1074,8 @@ fn workbench_output_corpus_retains_history_and_binds_report_evidence() {
     let operation = Operation::ValidateOutput;
     assert_eq!(
         corpus
+            .as_historical()
+            .expect("historical corpus fixture")
             .cases
             .iter()
             .filter(|c| c.operation() == operation)
@@ -883,9 +1084,16 @@ fn workbench_output_corpus_retains_history_and_binds_report_evidence() {
     );
     for format in [Format::Json, Format::IonText] {
         for successful in [true, false] {
-            assert!(corpus.cases.iter().any(|c| c.operation() == operation
-                && c.format == format
-                && matches!(c.expected, Observation::Ok { .. }) == successful));
+            assert!(
+                corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
+                    .cases
+                    .iter()
+                    .any(|c| c.operation() == operation
+                        && c.format == format
+                        && matches!(c.expected, Observation::Ok { .. }) == successful)
+            );
         }
     }
     let caps = json!({"suite":"workbench","contractVersion":OUTPUT_VERSION,
@@ -897,6 +1105,8 @@ fn workbench_output_corpus_retains_history_and_binds_report_evidence() {
         replies: std::iter::once(Ok(caps))
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|c| Ok(serde_json::to_value(&c.expected).unwrap())),
@@ -905,7 +1115,7 @@ fn workbench_output_corpus_retains_history_and_binds_report_evidence() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     check_report(&root, &report).unwrap();
     assert!(
         adapter
@@ -914,6 +1124,8 @@ fn workbench_output_corpus_retains_history_and_binds_report_evidence() {
             .all(|r| r.get("expected").is_none() && r.get("caseId").is_none())
     );
     let index = corpus
+        .as_historical()
+        .expect("historical corpus fixture")
         .cases
         .iter()
         .position(|c| c.id == "output-sdk.division_by_zero-json")

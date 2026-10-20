@@ -41,9 +41,23 @@ fn native_reply_literal_objects_are_exchange_errors_not_forged_successes() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(!report.qualified);
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    assert!(!report.qualified());
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     check_report(root.path(), &report).unwrap();
 }
 
@@ -58,7 +72,7 @@ fn native_reply_saved_reports_reject_literal_forgery_before_typed_conversion() {
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified);
+    assert!(report.qualified());
     check_report(root.path(), &report).unwrap();
     let mut saved = serde_json::to_value(&report).unwrap();
     saved["records"][0]["observed"]["value"] = json!({"$serde_json::private::RawValue":
@@ -76,6 +90,8 @@ fn native_reply_fixed_corpus_runs_and_reports_are_recomputed_without_an_oracle()
         replies: std::iter::once(capabilities())
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|c| serde_json::to_value(&c.expected).unwrap()),
@@ -84,7 +100,14 @@ fn native_reply_fixed_corpus_runs_and_reports_are_recomputed_without_an_oracle()
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     check_report(&root, &report).unwrap();
     assert!(
         adapter
@@ -272,9 +295,22 @@ fn native_reply_compatibility_failures_remain_checkable_without_infrastructure_e
         requests: vec![],
     };
     let report = execute(&corpus, &mut adapter);
-    assert!(!report.qualified);
-    assert_eq!(report.records[0].result, ResultKind::Fail);
-    assert!(report.errors.is_empty());
+    assert!(!report.qualified());
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
+    assert!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+            .is_empty()
+    );
     check_report(root.path(), &report).unwrap();
     let saved = serde_json::to_string(&report).unwrap();
     check_report(root.path(), &Report::from_json(&saved).unwrap()).unwrap();

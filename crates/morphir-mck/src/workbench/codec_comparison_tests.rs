@@ -49,7 +49,14 @@ fn codec_comparison_fixed_expectations_and_reports_are_independent() {
             .collect(),
     };
     let report = execute(&corpus, &mut fixed);
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     check_report(&path, &Report::from_json(&report.to_json()).unwrap()).unwrap();
     let mut forged: serde_json::Value = serde_json::from_str(&report.to_json()).unwrap();
     forged["records"][0]["observed"]["value"]["invocations"]["calls"][0]["arguments"][0]["value"] =
@@ -93,7 +100,14 @@ fn codec_comparison_preserves_opaque_inputs_and_rejects_forged_projection_kinds(
     let temp = tempfile::tempdir().unwrap();
     std::fs::write(temp.path().join("cases.json"), corpus.to_string()).unwrap();
     let loaded = load(temp.path()).unwrap();
-    assert_eq!(loaded.cases[0].input, input);
+    assert_eq!(
+        loaded
+            .as_historical()
+            .expect("historical corpus fixture")
+            .cases[0]
+            .input,
+        input
+    );
 }
 
 #[test]
@@ -102,7 +116,12 @@ fn codec_comparison_opaque_numbers_reach_the_adapter_without_legacy_float_narrow
     std::fs::write(root.path().join("cases.json"),r#"{"formatVersion":"0.1.0-draft.26","cases":[{"id":"opaque-number","operation":"compare-values","format":"json","input":{"actual":{"type":"int","value":1e400},"expected":{"type":"int","value":"1"},"comparison":{"profile":"morphir-comparison-exact-v1"}},"expected":{"status":"invalid","code":"execution.invalid_integer"}}]}"#).unwrap();
     let corpus = load(root.path()).unwrap();
     assert_eq!(
-        corpus.cases[0].input["actual"]["value"].to_string(),
+        corpus
+            .as_historical()
+            .expect("historical corpus fixture")
+            .cases[0]
+            .input["actual"]["value"]
+            .to_string(),
         "1e+400"
     );
 }
@@ -145,12 +164,27 @@ fn codec_operation_specific_kits_publish_exact_canonical_subsets() {
     ] {
         let subset = load(&base.join(name)).unwrap();
         let expected: Vec<_> = combined
+            .as_historical()
+            .expect("historical corpus fixture")
             .cases
             .iter()
             .filter(|case| case.operation() == operation)
             .collect();
-        assert_eq!(subset.cases.len(), expected.len());
-        for (actual, expected) in subset.cases.iter().zip(expected) {
+        assert_eq!(
+            subset
+                .as_historical()
+                .expect("historical corpus fixture")
+                .cases
+                .len(),
+            expected.len()
+        );
+        for (actual, expected) in subset
+            .as_historical()
+            .expect("historical corpus fixture")
+            .cases
+            .iter()
+            .zip(expected)
+        {
             assert_eq!(actual.id, expected.id);
             assert_eq!(actual.input, expected.input);
             assert_eq!(actual.expected, expected.expected);

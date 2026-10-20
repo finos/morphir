@@ -52,7 +52,14 @@ fn native_owner_runs_fixed_authority_negative_case_and_recomputes_report() {
     let corpus = small_corpus(root.path(), fixture()).unwrap();
     assert_eq!(corpus.case_count(), 1);
     let report = execute(&corpus, &mut Reply(fixture()["expected"].clone()));
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     check_report(root.path(), &Report::from_json(&report.to_json()).unwrap()).unwrap();
 }
 
@@ -200,7 +207,14 @@ fn native_owner_expected_effect_sets_match_only_fixed_explicit_choices() {
         let mut observed = case["expected"].clone();
         observed["value"]["results"][0]["reply"]["effect"] = json!(effect);
         let report = execute(&corpus, &mut Reply(observed));
-        assert!(report.qualified, "{effect}: {:?}", report.errors);
+        assert!(
+            report.qualified(),
+            "{effect}: {:?}",
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+        );
         check_report(root.path(), &Report::from_json(&report.to_json()).unwrap()).unwrap();
     }
     for allowed in [json!("none"), json!(["none"])] {
@@ -210,7 +224,14 @@ fn native_owner_expected_effect_sets_match_only_fixed_explicit_choices() {
         let mut observed = case["expected"].clone();
         observed["value"]["results"][0]["reply"]["effect"] = json!("unknown");
         let report = execute(&corpus, &mut Reply(observed));
-        assert_eq!(report.records[0].result, ResultKind::Fail);
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .records[0]
+                .result,
+            ResultKind::Fail
+        );
         check_report(root.path(), &report).unwrap();
     }
     for effect in [
@@ -226,7 +247,11 @@ fn native_owner_expected_effect_sets_match_only_fixed_explicit_choices() {
     let corpus = small_corpus(root.path(), case.clone()).unwrap();
     let report = execute(&corpus, &mut Reply(case["expected"].clone()));
     assert_eq!(
-        report.records[0].result,
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
         ResultKind::Error,
         "actual observations forbid effect arrays"
     );
@@ -239,7 +264,11 @@ fn native_owner_expected_effect_sets_match_only_fixed_explicit_choices() {
         json!(["none", "unknown"]);
     assert!(Report::from_json(&saved.to_string()).is_err());
     let mut forged = good;
-    forged.records[0].observed = Some(Observation::parse(case["expected"].clone()).unwrap());
+    forged
+        .as_historical_mut()
+        .expect("historical report fixture")
+        .records[0]
+        .observed = Some(Observation::parse(case["expected"].clone()).unwrap());
     assert!(check_report(root.path(), &forged).is_err());
 }
 
@@ -253,16 +282,44 @@ fn native_owner_reports_preserve_errors_mismatches_and_reject_forgery() {
         json!({"status":"ok","value":{"$serde_json::private::RawValue":case["expected"]["value"].to_string()}}),
     ] {
         let report = execute(&corpus, &mut Reply(observed));
-        assert_eq!(report.records[0].result, ResultKind::Error);
-        assert_eq!(report.errors[0].phase, Phase::Exchange);
-        assert!(!report.qualified);
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .records[0]
+                .result,
+            ResultKind::Error
+        );
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors[0]
+                .phase,
+            Phase::Exchange
+        );
+        assert!(!report.qualified());
         check_report(root.path(), &Report::from_json(&report.to_json()).unwrap()).unwrap();
     }
     let mut mismatch = case["expected"].clone();
     mismatch["value"]["usedPickers"] = json!(1);
     let report = execute(&corpus, &mut Reply(mismatch));
-    assert_eq!(report.records[0].result, ResultKind::Fail);
-    assert!(!report.qualified && report.errors.is_empty());
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
+    assert!(
+        !report.qualified()
+            && report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+                .is_empty()
+    );
     check_report(root.path(), &report).unwrap();
     let report = execute(&corpus, &mut Reply(case["expected"].clone()));
     let saved = serde_json::to_value(&report).unwrap();
@@ -337,14 +394,32 @@ fn native_owner_input_and_projection_budgets_count_compact_encoded_bytes() {
     value["calls"] = json!([" ".repeat(MAX_VALUE_BYTES - current)]);
     assert_eq!(serde_json::to_vec(&value).unwrap().len(), MAX_VALUE_BYTES);
     let at_limit = execute(&corpus, &mut Reply(json!({"status":"ok","value":value})));
-    assert_eq!(at_limit.records[0].result, ResultKind::Fail);
+    assert_eq!(
+        at_limit
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
     check_report(root.path(), &at_limit).unwrap();
     value["calls"][0] = json!(format!("{} ", value["calls"][0].as_str().unwrap()));
     let over_limit = execute(&corpus, &mut Reply(json!({"status":"ok","value":value})));
-    assert_eq!(over_limit.records[0].result, ResultKind::Error);
+    assert_eq!(
+        over_limit
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
     check_report(root.path(), &over_limit).unwrap();
     let mut forged = at_limit;
-    forged.records[0].observed = Some(Observation::Ok { value });
+    forged
+        .as_historical_mut()
+        .expect("historical report fixture")
+        .records[0]
+        .observed = Some(Observation::Ok { value });
     assert!(check_report(root.path(), &Report::from_json(&forged.to_json()).unwrap()).is_err());
 }
 

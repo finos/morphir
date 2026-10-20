@@ -1,0 +1,325 @@
+{
+  "target": "https://morphir.finos.org/spec/workbench/0.1.0-draft.30/mck-capabilities.schema.json",
+  "tests": [
+    {
+      "description": "server alone",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "client alone",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-client"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "both in either order",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-client",
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "empty operation set refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "duplicate operation refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-server",
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "historical operation refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "inspect-model"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "empty formats refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": []
+      },
+      "valid": false
+    },
+    {
+      "description": "Ion framing refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "mixed formats refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json",
+          "ion-text"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "adjacent draft refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.29",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "build metadata refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30+extra",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "unknown member refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ],
+        "unknown": true
+      },
+      "valid": false
+    },
+    {
+      "description": "128 ASCII binding boundary",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "129 ASCII binding refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "128 ASCII language boundary",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "129 ASCII language refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "empty binding refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "empty language refuses",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "description": "64 U+00E9 are exactly128 UTF8 bytes",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+        "language": "example",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "description": "32 U+1F4AB are exactly128 UTF8 bytes",
+      "data": {
+        "suite": "workbench",
+        "contractVersion": "0.1.0-draft.30",
+        "binding": "schema-example-only",
+        "language": "💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫💫",
+        "operations": [
+          "model-originals-server"
+        ],
+        "formats": [
+          "json"
+        ]
+      },
+      "valid": true
+    }
+  ]
+}

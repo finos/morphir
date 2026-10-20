@@ -5,8 +5,16 @@ use super::{EvidenceError, ExpectedBytes};
 use serde_json::Value;
 use std::{fmt, num::NonZeroUsize};
 
+#[cfg(test)]
+thread_local! {static LITERAL_FACTORIES:std::cell::Cell<usize>=const {std::cell::Cell::new(0)};}
+#[cfg(test)]
+pub(super) fn literal_factories() -> usize {
+    LITERAL_FACTORIES.with(std::cell::Cell::get)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixtureByteError {
+    Allocation,
     Limits,
     SavedBytes,
     Json,
@@ -20,6 +28,7 @@ pub enum FixtureByteError {
 impl fmt::Display for FixtureByteError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
+            Self::Allocation => "fixture recipe allocation refused",
             Self::Limits => "fixture byte limits must be positive",
             Self::SavedBytes => "fixture recipe exceeds its saved byte bound",
             Self::Json => "fixture recipe is not strict duplicate-free JSON",
@@ -98,7 +107,56 @@ pub struct FixtureBytes {
     atoms: Vec<Atom>,
     length: usize,
 }
+/// Already typed recipe parts from the shared workflow decoder. This input
+/// grants no source access; it reaches the same Plan/Atom implementation as
+/// the saved JSON recipe boundary.
+#[derive(Clone, Copy)]
+pub(super) enum RecipePart<'a> {
+    Utf8(&'a str),
+    Hex(&'a str),
+    Repeat { byte: u8, length: usize },
+    Cycle { seed: u8, length: usize },
+    ChunkIndexed { seed: u8, length: usize },
+}
 impl FixtureBytes {
+    pub(super) fn from_typed_parts(
+        parts: &[RecipePart<'_>],
+        expanded_limit: usize,
+    ) -> Result<Self, FixtureByteError> {
+        if parts.is_empty() || parts.len() > 4096 {
+            return Err(FixtureByteError::Parts);
+        }
+        let mut length = 0usize;
+        let mut plans = Vec::new();
+        plans
+            .try_reserve_exact(parts.len())
+            .map_err(|_| FixtureByteError::Allocation)?;
+        for part in parts {
+            let plan = match *part {
+                RecipePart::Utf8(text) => Plan::Utf8(text),
+                RecipePart::Hex(text) => {
+                    hex_byte_length(text)?;
+                    Plan::Hex(text)
+                }
+                RecipePart::Repeat { byte, length } => Plan::Pattern(Atom::Repeat { byte, length }),
+                RecipePart::Cycle { seed, length } => Plan::Pattern(Atom::Cycle { seed, length }),
+                RecipePart::ChunkIndexed { seed, length } => {
+                    Plan::Pattern(Atom::ChunkIndexed { seed, length })
+                }
+            };
+            length = length
+                .checked_add(plan.length())
+                .filter(|n| *n <= expanded_limit)
+                .ok_or(FixtureByteError::ExpandedBytes)?;
+            plans.push(plan);
+        }
+        let mut atoms = Vec::new();
+        atoms
+            .try_reserve_exact(plans.len())
+            .map_err(|_| FixtureByteError::Allocation)?;
+        atoms.extend(plans.into_iter().map(Plan::decode));
+        Ok(Self { atoms, length })
+    }
     pub fn parse(text: &str, limits: FixtureByteLimits) -> Result<Self, FixtureByteError> {
         if text.len() > limits.saved.get() {
             return Err(FixtureByteError::SavedBytes);
@@ -177,13 +235,7 @@ impl<'a> Plan<'a> {
             Some("hex") => {
                 fields(value, &["kind", "hex"])?;
                 let text = value["hex"].as_str().ok_or(FixtureByteError::Shape)?;
-                if text.len() % 2 != 0
-                    || !text
-                        .bytes()
-                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-                {
-                    return Err(FixtureByteError::Hex);
-                }
+                hex_byte_length(text)?;
                 Ok(Self::Hex(text))
             }
             Some("utf8") => {
@@ -225,6 +277,10 @@ impl<'a> Plan<'a> {
         }
     }
     fn decode(self) -> Atom {
+        #[cfg(test)]
+        if matches!(&self, Self::Hex(_) | Self::Utf8(_)) {
+            LITERAL_FACTORIES.with(|count| count.set(count.get() + 1));
+        }
         fn digit(byte: u8) -> u8 {
             if byte.is_ascii_digit() {
                 byte - b'0'
@@ -245,6 +301,17 @@ impl<'a> Plan<'a> {
             Self::Pattern(atom) => atom,
         }
     }
+}
+/// Shared exact hex length validation. This does not allocate decoded bytes.
+pub(super) fn hex_byte_length(text: &str) -> Result<usize, FixtureByteError> {
+    if !text.len().is_multiple_of(2)
+        || !text
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(FixtureByteError::Hex);
+    }
+    Ok(text.len() / 2)
 }
 fn fields(value: &Value, names: &[&str]) -> Result<(), FixtureByteError> {
     let object = value.as_object().ok_or(FixtureByteError::Shape)?;

@@ -61,8 +61,15 @@ fn missing_adapter_leaves_checkable_failure_evidence() {
     let text = std::fs::read_to_string(&report).unwrap();
     let saved = morphir_mck::workbench::Report::from_json(&text).unwrap();
     morphir_mck::workbench::check_report(&kit, &saved).unwrap();
-    assert!(!saved.qualified);
-    assert_eq!(saved.records.len(), 1);
+    assert!(!saved.qualified());
+    assert_eq!(
+        saved
+            .as_historical()
+            .expect("historical report fixture")
+            .records
+            .len(),
+        1
+    );
     assert_eq!(check(&kit, &report).status.code(), Some(1));
     assert!(String::from_utf8_lossy(&run.stdout).contains("not qualified"));
 }
@@ -410,7 +417,7 @@ fn native_reply_cli_preserves_failure_evidence_and_rechecks_effects_and_literal_
     let text = std::fs::read_to_string(&report).unwrap();
     let failure = morphir_mck::workbench::Report::from_json(&text).unwrap();
     morphir_mck::workbench::check_report(&kit, &failure).unwrap();
-    assert!(!failure.qualified);
+    assert!(!failure.qualified());
     assert_eq!(check(&kit, &report).status.code(), Some(1));
     let mut saved: Value = serde_json::from_str(&text).unwrap();
     saved["capabilities"] = json!({"suite":"workbench","contractVersion":"0.1.0-draft.16",
@@ -486,7 +493,7 @@ fn native_client_cli_saves_failure_evidence_and_rejects_invalid_fixtures_before_
         morphir_mck::workbench::Report::from_json(&std::fs::read_to_string(&report).unwrap())
             .unwrap();
     morphir_mck::workbench::check_report(&kit, &failure).unwrap();
-    assert!(!failure.qualified);
+    assert!(!failure.qualified());
     assert_eq!(check(&kit, &report).status.code(), Some(1));
     published["cases"][0]["input"]["invocations"][0]["held"] =
         json!({"$serde_json::private::RawValue":"false"});
@@ -532,9 +539,13 @@ fn native_owner_cli_saves_failure_evidence_and_rejects_invalid_fixtures_before_s
         morphir_mck::workbench::Report::from_json(&std::fs::read_to_string(&report).unwrap())
             .unwrap();
     morphir_mck::workbench::check_report(&kit, &failure).unwrap();
-    assert!(!failure.qualified);
+    assert!(!failure.qualified());
     assert_eq!(
-        failure.records[0].operation,
+        failure
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .operation,
         Some(morphir_mck::workbench::Operation::RunNativeOwner)
     );
     assert_eq!(check(&kit, &report).status.code(), Some(1));
@@ -585,9 +596,13 @@ fn worksheet_cli_preserves_spawn_failure_and_rejects_forged_qualification() {
         morphir_mck::workbench::Report::from_json(&std::fs::read_to_string(&report).unwrap())
             .unwrap();
     morphir_mck::workbench::check_report(&kit, &evidence).unwrap();
-    assert!(!evidence.qualified);
+    assert!(!evidence.qualified());
     assert_eq!(
-        evidence.records[0].operation,
+        evidence
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .operation,
         Some(morphir_mck::workbench::Operation::WorksheetEvaluate)
     );
     let mut forged: Value = serde_json::from_str(&evidence.to_json()).unwrap();

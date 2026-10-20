@@ -8,9 +8,8 @@ use crate::commands::ui::{
     prepare_native_ui_observed,
     protocol::project_key,
     provider::{
-        SessionCapabilities, WorkspaceCapability,
-        native::NativeWorkspaceProvider, originals::OriginalsProvider,
-        playground::NativePlaygroundProvider,
+        SessionCapabilities, WorkspaceCapability, native::NativeWorkspaceProvider,
+        originals::OriginalsProvider, playground::NativePlaygroundProvider,
     },
     server::BoundUiHost,
 };

@@ -1,0 +1,1507 @@
+{
+  "kind": "independently-authored-contract-scenarios",
+  "wireOrMckSchema": false,
+  "adapterExecuted": false,
+  "cases": [
+    {
+      "id": "identity-provider-separation",
+      "requirement": "ID-1",
+      "materialization": "fixed",
+      "input": {
+        "sources": [
+          {
+            "providerId": "provider-A",
+            "locator": "workspace:orders",
+            "displayName": "Orders"
+          },
+          {
+            "providerId": "provider-B",
+            "locator": "workspace:orders",
+            "displayName": "Orders"
+          }
+        ],
+        "projects": [
+          {
+            "source": {
+              "providerId": "provider-A",
+              "locator": "workspace:orders",
+              "displayName": "Orders"
+            },
+            "path": "packages/orders",
+            "name": "Orders"
+          },
+          {
+            "source": {
+              "providerId": "provider-B",
+              "locator": "workspace:orders",
+              "displayName": "Orders"
+            },
+            "path": "packages/orders",
+            "name": "Orders"
+          }
+        ]
+      },
+      "expected": {
+        "sourceKeys": [
+          "[\"provider-A\",\"workspace:orders\"]",
+          "[\"provider-B\",\"workspace:orders\"]"
+        ],
+        "projectKeys": [
+          "[\"provider-A\",\"workspace:orders\",\"packages/orders\"]",
+          "[\"provider-B\",\"workspace:orders\",\"packages/orders\"]"
+        ],
+        "distinct": true,
+        "hostAuthority": "none"
+      }
+    },
+    {
+      "id": "identity-label-and-persistence-do-not-rekey",
+      "requirement": "ID-1",
+      "materialization": "fixed",
+      "input": {
+        "first": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "second": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Renamed",
+          "persistence": "session"
+        }
+      },
+      "expected": {
+        "sourceKey": "[\"provider-A\",\"workspace:orders\"]",
+        "sameLocation": true,
+        "doesNotProveSameRevision": true
+      }
+    },
+    {
+      "id": "identity-same-name-distinct-project-paths",
+      "requirement": "ID-2",
+      "materialization": "fixed",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projects": [
+          {
+            "name": "Orders",
+            "relativePath": "a"
+          },
+          {
+            "name": "Orders",
+            "relativePath": "b"
+          }
+        ]
+      },
+      "expected": {
+        "projectKeys": [
+          "[\"provider-A\",\"workspace:orders\",\"a\"]",
+          "[\"provider-A\",\"workspace:orders\",\"b\"]"
+        ],
+        "distinct": true
+      }
+    },
+    {
+      "id": "identity-reopened-location-has-new-local-opening",
+      "requirement": "ID-3",
+      "materialization": "fixed",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "actions": [
+          "open-A",
+          "close-A",
+          "open-A-again"
+        ]
+      },
+      "expected": {
+        "locationEqual": true,
+        "openingEqual": false,
+        "oldReplyAdopted": false,
+        "oldBackEntryRestored": false,
+        "hostAuthority": "none"
+      }
+    },
+    {
+      "id": "browser-import-v1-rentals.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "browser-import",
+        "fixture": "v1-rentals.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 71442,
+          "sha256": "ff6fedd2171c0c9906549cd61e79afba4402d6dc264c14b0b3159385866bbeaf"
+        },
+        "sourceVersion": "1.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "native-import-v1-rentals.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "native-import",
+        "fixture": "v1-rentals.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 71442,
+          "sha256": "ff6fedd2171c0c9906549cd61e79afba4402d6dc264c14b0b3159385866bbeaf"
+        },
+        "sourceVersion": "1.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "browser-import-v2-rentals.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "browser-import",
+        "fixture": "v2-rentals.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 71464,
+          "sha256": "c897d44ce57529900810dc26bab1fc3dc4e32ff3e3ca51e152770744422523fc"
+        },
+        "sourceVersion": "2.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "native-import-v2-rentals.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "native-import",
+        "fixture": "v2-rentals.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 71464,
+          "sha256": "c897d44ce57529900810dc26bab1fc3dc4e32ff3e3ca51e152770744422523fc"
+        },
+        "sourceVersion": "2.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "browser-import-v3-greeting.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "browser-import",
+        "fixture": "v3-greeting.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 29091,
+          "sha256": "539664c494509047ff485e37aff86a900978fa717bde8da30c24dc72599a0423"
+        },
+        "sourceVersion": "3.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "native-import-v3-greeting.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "native-import",
+        "fixture": "v3-greeting.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 29091,
+          "sha256": "539664c494509047ff485e37aff86a900978fa717bde8da30c24dc72599a0423"
+        },
+        "sourceVersion": "3.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "browser-import-v3-library-release.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "browser-import",
+        "fixture": "v3-library-release.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 29097,
+          "sha256": "1454c880fc0ed4d6f3fe343895b330fc84999edc690e13d363704a2baa99f392"
+        },
+        "sourceVersion": "3.1.7",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "native-import-v3-library-release.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "native-import",
+        "fixture": "v3-library-release.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 29097,
+          "sha256": "1454c880fc0ed4d6f3fe343895b330fc84999edc690e13d363704a2baa99f392"
+        },
+        "sourceVersion": "3.1.7",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "browser-import-v4-bom-crlf.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "browser-import",
+        "fixture": "v4-bom-crlf.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 119,
+          "sha256": "0346b209b65f0b6ec56a17e5612567159b5ef5e3ddef96d203eb28bf06cb89e0"
+        },
+        "sourceVersion": "4.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "native-import-v4-bom-crlf.json",
+      "requirement": "OR-1",
+      "materialization": "fixed",
+      "input": {
+        "path": "native-import",
+        "fixture": "v4-bom-crlf.json"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "byteLength": 119,
+          "sha256": "0346b209b65f0b6ec56a17e5612567159b5ef5e3ddef96d203eb28bf06cb89e0"
+        },
+        "sourceVersion": "4.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "adoption": "current-opening-only"
+      }
+    },
+    {
+      "id": "browser-import-ion-text",
+      "requirement": "OR-2",
+      "materialization": "fixed",
+      "input": {
+        "path": "browser-import",
+        "fixture": "v4-rich-source.ion"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "sha256": "89f8205f60f046302c2ee18f50313181b4e820c487ba387f945308c53dfc3237"
+        },
+        "sourceVersion": "4.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "richMetadata": "preserve-ordered-annotations-duplicate-fields-exact-values-provenance"
+      }
+    },
+    {
+      "id": "native-import-ion-text",
+      "requirement": "OR-2",
+      "materialization": "fixed",
+      "input": {
+        "path": "native-import",
+        "fixture": "v4-rich-source.ion"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-file",
+          "sha256": "89f8205f60f046302c2ee18f50313181b4e820c487ba387f945308c53dfc3237"
+        },
+        "sourceVersion": "4.0.0",
+        "semanticVersion": "4.0.0",
+        "download": "exact-original-bytes",
+        "richMetadata": "preserve-ordered-annotations-duplicate-fields-exact-values-provenance"
+      }
+    },
+    {
+      "id": "native-and-browser-ion-binary-rich-source",
+      "requirement": "OR-2",
+      "materialization": "requires-independent-standard-Ion-binary-byte-fixture-before-MCK-freeze",
+      "input": {
+        "paths": [
+          "browser-import",
+          "native-import"
+        ],
+        "codec": "ion-binary",
+        "sourceVersion": "3.1.7",
+        "richKinds": [
+          "ordered-annotations",
+          "duplicate-metadata-fields",
+          "large-integer",
+          "decimal",
+          "timestamp",
+          "blob",
+          "typed-null",
+          "provenance"
+        ]
+      },
+      "expected": {
+        "original": "exact-frozen-input-bytes",
+        "semanticVersion": "4.0.0",
+        "metadata": "retain-rich-source-owner",
+        "jsonReencodingUsedForDownload": false
+      }
+    },
+    {
+      "id": "connected-v1-legacy-json",
+      "requirement": "OR-3",
+      "materialization": "fixed",
+      "input": {
+        "method": "morphir.project-model.open",
+        "protocolVersion": 1,
+        "path": "legacy-json",
+        "reply": {
+          "descriptor": "existing-v1",
+          "content": "semantic-json"
+        }
+      },
+      "expected": {
+        "original": {
+          "kind": "unavailable",
+          "reason": "connected-v1-no-original-provenance"
+        },
+        "semanticInspection": "allowed",
+        "sourceFormatVersionMeaning": "supplied-semantic-content-only",
+        "originalDownload": "unavailable",
+        "v1ShapeChanged": false
+      }
+    },
+    {
+      "id": "connected-v1-compiled-single-file",
+      "requirement": "OR-3",
+      "materialization": "fixed",
+      "input": {
+        "method": "morphir.project-model.open",
+        "protocolVersion": 1,
+        "path": "compiled-single-file",
+        "reply": {
+          "descriptor": "existing-v1",
+          "content": "semantic-json"
+        }
+      },
+      "expected": {
+        "original": {
+          "kind": "unavailable",
+          "reason": "connected-v1-no-original-provenance"
+        },
+        "semanticInspection": "allowed",
+        "sourceFormatVersionMeaning": "supplied-semantic-content-only",
+        "originalDownload": "unavailable",
+        "v1ShapeChanged": false
+      }
+    },
+    {
+      "id": "connected-v1-compiled-document-tree",
+      "requirement": "OR-3",
+      "materialization": "fixed",
+      "input": {
+        "method": "morphir.project-model.open",
+        "protocolVersion": 1,
+        "path": "compiled-document-tree",
+        "reply": {
+          "descriptor": "existing-v1",
+          "content": "semantic-json"
+        }
+      },
+      "expected": {
+        "original": {
+          "kind": "unavailable",
+          "reason": "connected-v1-no-original-provenance"
+        },
+        "semanticInspection": "allowed",
+        "sourceFormatVersionMeaning": "supplied-semantic-content-only",
+        "originalDownload": "unavailable",
+        "v1ShapeChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-single-file-json-v3",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "single-file",
+          "format": "json",
+          "version": "v3",
+          "path": "model.json"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "single-file",
+        "format": "json",
+        "sourceVersion": "v3",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-single-file-json-v4",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "single-file",
+          "format": "json",
+          "version": "v4",
+          "path": "model.json"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "single-file",
+        "format": "json",
+        "sourceVersion": "v4",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-single-file-yaml-v3",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "single-file",
+          "format": "yaml",
+          "version": "v3",
+          "path": "model.yaml"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "single-file",
+        "format": "yaml",
+        "sourceVersion": "v3",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-single-file-yaml-v4",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "single-file",
+          "format": "yaml",
+          "version": "v4",
+          "path": "model.yaml"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "single-file",
+        "format": "yaml",
+        "sourceVersion": "v4",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-single-file-ion-v3",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "single-file",
+          "format": "ion",
+          "version": "v3",
+          "path": "model.ion"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "single-file",
+        "format": "ion",
+        "sourceVersion": "v3",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-single-file-ion-v4",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "single-file",
+          "format": "ion",
+          "version": "v4",
+          "path": "model.ion"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "single-file",
+        "format": "ion",
+        "sourceVersion": "v4",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-document-tree-json-v3",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "document-tree",
+          "format": "json",
+          "version": "v3",
+          "path": "model"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "document-tree",
+        "format": "json",
+        "sourceVersion": "v3",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-document-tree-json-v4",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "document-tree",
+          "format": "json",
+          "version": "v4",
+          "path": "model"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "document-tree",
+        "format": "json",
+        "sourceVersion": "v4",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-document-tree-yaml-v3",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "document-tree",
+          "format": "yaml",
+          "version": "v3",
+          "path": "model"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "document-tree",
+        "format": "yaml",
+        "sourceVersion": "v3",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-document-tree-yaml-v4",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "document-tree",
+          "format": "yaml",
+          "version": "v4",
+          "path": "model"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "document-tree",
+        "format": "yaml",
+        "sourceVersion": "v4",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-document-tree-ion-v3",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "document-tree",
+          "format": "ion",
+          "version": "v3",
+          "path": "model"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "document-tree",
+        "format": "ion",
+        "sourceVersion": "v3",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "connected-inventory-document-tree-ion-v4",
+      "requirement": "OR-4",
+      "materialization": "requires-valid-storage-layout-byte-inventory-before-MCK-freeze",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "projectPath": "packages/orders",
+        "compileDescriptor": {
+          "layout": "document-tree",
+          "format": "ion",
+          "version": "v4",
+          "path": "model"
+        },
+        "inventoryIncludes": [
+          "compile.json",
+          "all-selected-root-files",
+          {
+            "path": "notes/opaque-sidecar.bin",
+            "byteLength": 256,
+            "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+          }
+        ],
+        "snapshot": "same-confined-compile-lock"
+      },
+      "expected": {
+        "original": {
+          "kind": "retained-inventory",
+          "entrySet": "exact-selected-root-files-plus-record",
+          "unknownSidecars": "byte-identical",
+          "allEntryDigests": "match-independent-input"
+        },
+        "layout": "document-tree",
+        "format": "ion",
+        "sourceVersion": "v4",
+        "semanticVersion": "4.0.0",
+        "provenance": "compiled-inventory",
+        "v1MethodChanged": false
+      }
+    },
+    {
+      "id": "inventory-refuses-path-escape",
+      "requirement": "OR-4",
+      "materialization": "requires-bounded-host-fixture-before-MCK-freeze",
+      "input": {
+        "additiveInventory": true,
+        "fault": "path-escape"
+      },
+      "expected": {
+        "adoption": "refused",
+        "partialOriginalOwner": false,
+        "fallbackToClaimedOriginal": false
+      }
+    },
+    {
+      "id": "inventory-refuses-symlink-entry",
+      "requirement": "OR-4",
+      "materialization": "requires-bounded-host-fixture-before-MCK-freeze",
+      "input": {
+        "additiveInventory": true,
+        "fault": "symlink-entry"
+      },
+      "expected": {
+        "adoption": "refused",
+        "partialOriginalOwner": false,
+        "fallbackToClaimedOriginal": false
+      }
+    },
+    {
+      "id": "inventory-refuses-fifo-entry",
+      "requirement": "OR-4",
+      "materialization": "requires-bounded-host-fixture-before-MCK-freeze",
+      "input": {
+        "additiveInventory": true,
+        "fault": "fifo-entry"
+      },
+      "expected": {
+        "adoption": "refused",
+        "partialOriginalOwner": false,
+        "fallbackToClaimedOriginal": false
+      }
+    },
+    {
+      "id": "inventory-refuses-record-artifact-mismatch",
+      "requirement": "OR-4",
+      "materialization": "requires-bounded-host-fixture-before-MCK-freeze",
+      "input": {
+        "additiveInventory": true,
+        "fault": "record-artifact-mismatch"
+      },
+      "expected": {
+        "adoption": "refused",
+        "partialOriginalOwner": false,
+        "fallbackToClaimedOriginal": false
+      }
+    },
+    {
+      "id": "inventory-refuses-aggregate-byte-limit",
+      "requirement": "OR-4",
+      "materialization": "requires-bounded-host-fixture-before-MCK-freeze",
+      "input": {
+        "additiveInventory": true,
+        "fault": "aggregate-byte-limit"
+      },
+      "expected": {
+        "adoption": "refused",
+        "partialOriginalOwner": false,
+        "fallbackToClaimedOriginal": false
+      }
+    },
+    {
+      "id": "inventory-refuses-tree-depth-limit",
+      "requirement": "OR-4",
+      "materialization": "requires-bounded-host-fixture-before-MCK-freeze",
+      "input": {
+        "additiveInventory": true,
+        "fault": "tree-depth-limit"
+      },
+      "expected": {
+        "adoption": "refused",
+        "partialOriginalOwner": false,
+        "fallbackToClaimedOriginal": false
+      }
+    },
+    {
+      "id": "inventory-refuses-tree-entry-limit",
+      "requirement": "OR-4",
+      "materialization": "requires-bounded-host-fixture-before-MCK-freeze",
+      "input": {
+        "additiveInventory": true,
+        "fault": "tree-entry-limit"
+      },
+      "expected": {
+        "adoption": "refused",
+        "partialOriginalOwner": false,
+        "fallbackToClaimedOriginal": false
+      }
+    },
+    {
+      "id": "inventory-refuses-snapshot-race",
+      "requirement": "OR-4",
+      "materialization": "requires-bounded-host-fixture-before-MCK-freeze",
+      "input": {
+        "additiveInventory": true,
+        "fault": "snapshot-race"
+      },
+      "expected": {
+        "adoption": "refused",
+        "partialOriginalOwner": false,
+        "fallbackToClaimedOriginal": false
+      }
+    },
+    {
+      "id": "compiled-single-file-retains-unknown-sidecars",
+      "requirement": "OR-4",
+      "materialization": "inventory-root-agreement-required",
+      "input": {
+        "layout": "single-file",
+        "selectedRoot": "compile.dest",
+        "knownFile": "model.json",
+        "unknownSidecar": {
+          "path": "notes/opaque-sidecar.bin",
+          "byteLength": 256,
+          "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+        }
+      },
+      "expected": {
+        "entrySet": [
+          "model.json",
+          "notes/opaque-sidecar.bin"
+        ],
+        "sidecar": {
+          "path": "notes/opaque-sidecar.bin",
+          "byteLength": 256,
+          "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+        },
+        "reconstructedJsonIsOriginal": false
+      }
+    },
+    {
+      "id": "close-model-refuses-submission-pending",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "submission-pending",
+        "action": "close-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "replace-model-refuses-submission-pending",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "submission-pending",
+        "action": "replace-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "close-model-refuses-submission-unknown",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "submission-unknown",
+        "action": "close-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "replace-model-refuses-submission-unknown",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "submission-unknown",
+        "action": "replace-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "close-model-refuses-retained-running",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "retained-running",
+        "action": "close-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "replace-model-refuses-retained-running",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "retained-running",
+        "action": "replace-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "close-model-refuses-retained-terminal-unreleased",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "retained-terminal-unreleased",
+        "action": "close-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "replace-model-refuses-retained-terminal-unreleased",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "retained-terminal-unreleased",
+        "action": "replace-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "close-model-refuses-disconnected-retained",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "disconnected-retained",
+        "action": "close-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "replace-model-refuses-disconnected-retained",
+      "requirement": "LC-1",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "disconnected-retained",
+        "action": "replace-model",
+        "incoming": "model-B"
+      },
+      "expected": {
+        "transition": "refused",
+        "active": "model-A",
+        "originalOwner": "model-A",
+        "hostWork": "unchanged",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "id": "named-close-clears-all-model-owned-state",
+      "requirement": "LC-2",
+      "materialization": "fixed",
+      "input": {
+        "active": "model-A",
+        "hostState": "none",
+        "selection": "symbol-A",
+        "navigation": [
+          "home",
+          "model-A",
+          "symbol-A"
+        ],
+        "output": {
+          "originalArtifact": "A",
+          "sourceUnitIon": "A"
+        },
+        "action": "close-model"
+      },
+      "expected": {
+        "active": null,
+        "originalOwner": null,
+        "selection": null,
+        "modelOwnedOutput": null,
+        "navigation": [
+          "home"
+        ],
+        "openingInvalidated": true,
+        "remoteModelReleaseCalls": 0
+      }
+    },
+    {
+      "id": "late-browser-picker-read-cannot-reopen-closed-model",
+      "requirement": "LC-3",
+      "materialization": "fixed",
+      "input": {
+        "actions": [
+          "begin-picker-A",
+          "close-model",
+          "finish-file-read-A",
+          "inspect-reply-A"
+        ]
+      },
+      "expected": {
+        "active": null,
+        "adoptedReplies": [],
+        "openingCaptured": "before-picker-or-read",
+        "originalOwner": null
+      }
+    },
+    {
+      "id": "newer-import-wins-delayed-inspection",
+      "requirement": "LC-3",
+      "materialization": "fixed",
+      "input": {
+        "actions": [
+          "begin-A",
+          "begin-B",
+          "reply-B",
+          "reply-A"
+        ]
+      },
+      "expected": {
+        "active": "B",
+        "originalOwner": "B",
+        "discarded": [
+          "A"
+        ],
+        "selectionFromA": false,
+        "modelOutputFromA": false
+      }
+    },
+    {
+      "id": "replacement-clears-old-model-output-and-navigation",
+      "requirement": "LC-2",
+      "materialization": "fixed",
+      "input": {
+        "active": "A",
+        "originalOwner": "A",
+        "output": {
+          "originalArtifact": "A",
+          "sourceUnitIon": "A"
+        },
+        "navigation": [
+          "home",
+          "A"
+        ],
+        "action": "adopt-B"
+      },
+      "expected": {
+        "active": "B",
+        "originalOwner": "B",
+        "modelOwnedOutput": "B-or-empty",
+        "historyContainsA": false
+      }
+    },
+    {
+      "id": "release-is-idempotent-local-transition",
+      "requirement": "LC-2",
+      "materialization": "fixed",
+      "input": {
+        "hostState": "none",
+        "actions": [
+          "close-model",
+          "close-model"
+        ]
+      },
+      "expected": {
+        "active": null,
+        "originalOwner": null,
+        "remoteModelReleaseCalls": 0,
+        "secondTransition": "unchanged"
+      }
+    },
+    {
+      "id": "accepted-execution-snapshot-is-not-model-ownership",
+      "requirement": "ID-4",
+      "materialization": "fixed",
+      "input": {
+        "source": {
+          "providerId": "provider-A",
+          "locator": "workspace:orders",
+          "displayName": "Orders"
+        },
+        "logicalUnitId": "workbench",
+        "modelRevision": 7,
+        "executionIdentity": {
+          "host": "H",
+          "session": "S",
+          "provider": "P",
+          "execution": "E",
+          "snapshot": "X"
+        }
+      },
+      "expected": {
+        "identitySpacesDistinct": true,
+        "modelReferenceGrantsExecution": false,
+        "transferReleaseReleasesExecution": false,
+        "terminalExecutionReleaseSeparate": true
+      }
+    },
+    {
+      "id": "inspection-and-search-use-current-local-reference",
+      "requirement": "LC-4",
+      "materialization": "fixed",
+      "input": {
+        "actions": [
+          "open-A",
+          "inspect-symbol-A",
+          "search-A",
+          "close-model",
+          "delayed-search-A"
+        ]
+      },
+      "expected": {
+        "inspection": "local-production-projection",
+        "resultsAfterClose": [],
+        "noRemoteRetainedModelRequired": true,
+        "noRustSchemeEvaluatorRequired": true
+      }
+    },
+    {
+      "id": "retained-last-usable-recovery-is-not-release",
+      "requirement": "LC-4",
+      "materialization": "fixed",
+      "input": {
+        "actions": [
+          "load-A",
+          "begin-load-B",
+          "fail-B"
+        ]
+      },
+      "expected": {
+        "display": "A",
+        "recoveryState": "failed-with-last-usable",
+        "originalOwner": "A",
+        "releaseOccurred": false
+      }
+    },
+    {
+      "id": "native-capture-release-precedes-adoption",
+      "requirement": "LC-5",
+      "materialization": "fixed",
+      "input": {
+        "actions": [
+          "capture-file-A",
+          "release-native-capture",
+          "revalidate-session",
+          "adopt-current-A"
+        ]
+      },
+      "expected": {
+        "originalOwner": "A-local-bytes",
+        "captureRetention": "released",
+        "rootGrant": "not-model-authority",
+        "closeModelDoesNotConflateCaptureOrExecution": true
+      }
+    }
+  ]
+}
+ 

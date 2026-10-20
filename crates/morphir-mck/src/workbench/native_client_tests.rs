@@ -40,6 +40,8 @@ fn native_client_corpus_uses_fixed_opaque_scenarios_and_recomputed_reports() {
         replies: std::iter::once(caps)
             .chain(
                 corpus
+                    .as_historical()
+                    .expect("historical corpus fixture")
                     .cases
                     .iter()
                     .map(|c| serde_json::to_value(&c.expected).unwrap()),
@@ -47,7 +49,14 @@ fn native_client_corpus_uses_fixed_opaque_scenarios_and_recomputed_reports() {
             .collect(),
     };
     let report = execute(&corpus, &mut replay);
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .errors
+    );
     check_report(&root, &report).unwrap();
 }
 
@@ -153,19 +162,47 @@ fn native_client_errors_and_mismatches_have_distinct_truthful_reports() {
         json!({"status":"ok","value":{"$serde_json::private::RawValue":case["expected"]["value"].to_string()}}),
     ] {
         let report = execute(&corpus, &mut Reply(observed));
-        assert!(!report.qualified);
-        assert_eq!(report.records[0].result, ResultKind::Error);
-        assert_eq!(report.errors[0].phase, Phase::Exchange);
+        assert!(!report.qualified());
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .records[0]
+                .result,
+            ResultKind::Error
+        );
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors[0]
+                .phase,
+            Phase::Exchange
+        );
         check_report(root.path(), &Report::from_json(&report.to_json()).unwrap()).unwrap();
     }
     let mut mismatch = case["expected"].clone();
     mismatch["value"]["consumed"] = json!(0);
     let report = execute(&corpus, &mut Reply(mismatch));
-    assert!(!report.qualified && report.errors.is_empty());
-    assert_eq!(report.records[0].result, ResultKind::Fail);
+    assert!(
+        !report.qualified()
+            && report
+                .as_historical()
+                .expect("historical report fixture")
+                .errors
+                .is_empty()
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
     check_report(root.path(), &report).unwrap();
     let report = execute(&corpus, &mut Reply(case["expected"].clone()));
-    assert!(report.qualified);
+    assert!(report.qualified());
     check_report(root.path(), &report).unwrap();
     let saved = serde_json::to_value(&report).unwrap();
     for kind in [
@@ -224,7 +261,14 @@ fn native_client_projection_limit_applies_to_live_and_saved_evidence() {
     .validate_for(Operation::RunNativeClient)
     .unwrap();
     let at_limit = execute(&corpus, &mut Reply(json!({"status":"ok","value":value})));
-    assert_eq!(at_limit.records[0].result, ResultKind::Fail);
+    assert_eq!(
+        at_limit
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Fail
+    );
     check_report(root.path(), &at_limit).unwrap();
     value["requests"][0] = json!(format!("{} ", value["requests"][0].as_str().unwrap()));
     assert!(
@@ -235,11 +279,29 @@ fn native_client_projection_limit_applies_to_live_and_saved_evidence() {
         .is_err()
     );
     let over_limit = execute(&corpus, &mut Reply(json!({"status":"ok","value":value})));
-    assert_eq!(over_limit.records[0].result, ResultKind::Error);
-    assert_eq!(over_limit.errors[0].phase, Phase::Exchange);
+    assert_eq!(
+        over_limit
+            .as_historical()
+            .expect("historical report fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        over_limit
+            .as_historical()
+            .expect("historical report fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     check_report(root.path(), &over_limit).unwrap();
     let mut forged = at_limit;
-    forged.records[0].observed = Some(Observation::Ok { value });
+    forged
+        .as_historical_mut()
+        .expect("historical report fixture")
+        .records[0]
+        .observed = Some(Observation::Ok { value });
     let saved = Report::from_json(&forged.to_json()).unwrap();
     assert!(check_report(root.path(), &saved).is_err());
 }

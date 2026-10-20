@@ -126,3 +126,23 @@ Exact offline [draft.29](draft.29/README.md) adds `inspect-model` and
 The parent owns fixed semantic and original-byte expectations; it never links a
 model codec. Its positive controls are checker infrastructure evidence only.
 Historical exact kits and connected model-service ownership remain unchanged.
+
+## Connected model originals allocation preparation
+
+The parent owns the Workbench MCK draft registry. The next connected allocation
+is prepared separately from the offline local model kit:
+
+| Exact MCK contract | Operations | Current scope |
+| --- | --- | --- |
+| `0.1.0-draft.29` | `inspect-model`, `export-model-original` | Existing offline local model kit |
+| `0.1.0-draft.30` | `model-originals-server`, `model-originals-client` | [Unpublished capability allocation preparation](../draft.30/README.html); remaining schemas, corpus and actual adapters pending |
+
+Draft.30 requires a nonempty unique subset of its two operations and exactly
+JSON framing. Its binding and language identities each contain 1 to 128 decoded
+UTF-8 bytes. The older drafts retain their existing identity and empty-claim
+rules. The connected service wire profile remains `0.1.0-draft.1`.
+
+This preparation does not qualify a role or publish a complete runnable kit.
+The full objective remains all original 151 cases and 175 role executions with
+independent strong expectations, complete source lineage and genuine producer
+evidence. The existing partial candidate remains explicitly unqualified.

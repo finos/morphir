@@ -13,6 +13,11 @@ impl std::error::Error for InvalidFixtureAlias {}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FixtureAlias(String);
+impl serde::Serialize for FixtureAlias {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.as_str())
+    }
+}
 impl FixtureAlias {
     pub fn new(text: &str) -> Result<Self, InvalidFixtureAlias> {
         if text.is_empty()

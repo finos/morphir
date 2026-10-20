@@ -10,10 +10,11 @@ use super::{
 use serde::Deserialize;
 use std::{fmt, num::NonZeroUsize};
 
-const MAX_REPLY_BYTES: usize = 128 * 1024;
+pub(super) const MAX_REPLY_BYTES: usize = 128 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TranscriptError {
+    Allocation,
     Limits,
     SavedBytes,
     ExpandedBytes,
@@ -33,6 +34,7 @@ pub enum TranscriptError {
 impl fmt::Display for TranscriptError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
+            Self::Allocation => "transcript allocation refused",
             Self::Limits => "transcript limits must be finite positive counts",
             Self::SavedBytes => "saved transcript exceeds its encoded byte bound",
             Self::ExpandedBytes => "lossless transcript exceeds its expanded byte bound",
@@ -173,6 +175,57 @@ impl Transcript {
         // and integer recipe counts cross a typed, non-coercing serde boundary.
         let document: SavedDocument =
             serde_json::from_value(value).map_err(|_| TranscriptError::Shape)?;
+        Self::from_saved(document, limits)
+    }
+
+    /// Borrow actual literal frames without a Value/string normalization
+    /// roundtrip. Caller has already reserved the complete frame spans on its
+    /// own cumulative owner. Parsing and verification share the saved core.
+    pub(in crate::workbench::model_originals) fn from_literal_frames(
+        frames: &[(&str, &str)],
+        limits: TranscriptLimits,
+    ) -> Result<Self, TranscriptError> {
+        if frames.is_empty() || frames.len() > limits.exchanges.get() {
+            return Err(TranscriptError::ExchangeCount);
+        }
+        let mut bytes = 0usize;
+        for (request, reply) in frames {
+            if request.len() > super::MAX_REQUEST_BYTES || reply.len() > MAX_REPLY_BYTES {
+                return Err(TranscriptError::Frame(InvalidFrame::FrameLimit));
+            }
+            bytes = bytes
+                .checked_add(request.len())
+                .and_then(|n| n.checked_add(reply.len()))
+                .filter(|n| *n <= limits.expanded.get() && *n <= limits.saved.get())
+                .ok_or(TranscriptError::ExpandedBytes)?;
+        }
+        fn owned(text: &str) -> Result<String, TranscriptError> {
+            let mut result = String::new();
+            result
+                .try_reserve_exact(text.len())
+                .map_err(|_| TranscriptError::Allocation)?;
+            result.push_str(text);
+            Ok(result)
+        }
+        let mut exchanges = Vec::new();
+        exchanges
+            .try_reserve_exact(frames.len())
+            .map_err(|_| TranscriptError::Allocation)?;
+        for (request, reply) in frames {
+            exchanges.push(SavedExchange {
+                request: owned(request)?,
+                reply: SavedReply::Literal {
+                    text: owned(reply)?,
+                },
+            });
+        }
+        Self::from_saved(SavedDocument { exchanges }, limits)
+    }
+
+    fn from_saved(
+        document: SavedDocument,
+        limits: TranscriptLimits,
+    ) -> Result<Self, TranscriptError> {
         if document.exchanges.is_empty() || document.exchanges.len() > limits.exchanges.get() {
             return Err(TranscriptError::ExchangeCount);
         }

@@ -7,6 +7,9 @@
 //! One mode replays the frozen protocol transcript of the TypeScript adapter
 //! (`spec/mck/baseline/transcripts/`), checking every request byte for byte.
 
+#[path = "support/raw_multiline_tests.rs"]
+mod raw_multiline_tests;
+
 use std::ffi::OsString;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -18,6 +21,12 @@ use morphir_mck::transport::protocol::{
 };
 use morphir_mck::transport::{Limits, Session, TransportError};
 use serde_json::Value;
+
+#[path = "support/recorded_literal_tests.rs"]
+mod recorded_literal_tests;
+
+#[path = "support/raw_workflow_tests.rs"]
+mod raw_workflow_tests;
 
 const ADAPTER_FLAG: &str = "--mck-test-adapter";
 
@@ -60,6 +69,15 @@ mod adapter {
     }
 
     pub fn run(mode: &str, arg: Option<&str>) {
+        if super::recorded_literal_tests::adapter(mode) {
+            return;
+        }
+        if super::raw_multiline_tests::adapter(mode) {
+            return;
+        }
+        if super::raw_workflow_tests::adapter(mode) {
+            return;
+        }
         match mode {
             "workbench-http-policy-marker" | "workbench-codec-comparison-marker" => {
                 let draft = arg.unwrap();
@@ -907,11 +925,25 @@ fn http_policy_live_observations_cannot_reinterpret_private_json_objects() {
         )
         .unwrap();
         assert!(
-            !report.qualified,
+            !report.qualified(),
             "HTTP draft.{draft} accepted a literal private object as a valid observation"
         );
-        assert_eq!(report.records[0].result, ResultKind::Error);
-        assert_eq!(report.errors[0].phase, Phase::Exchange);
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            ResultKind::Error
+        );
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .errors[0]
+                .phase,
+            Phase::Exchange
+        );
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
 }
@@ -938,11 +970,25 @@ fn execution_literal_private_objects_cannot_forge_live_adapter_success() {
     };
     let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
     assert!(
-        !report.qualified,
+        !report.qualified(),
         "literal marker must not become a valid execution projection"
     );
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
@@ -957,11 +1003,25 @@ fn native_workbench_literal_private_objects_cannot_forge_live_adapter_success() 
     };
     let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
     assert!(
-        !report.qualified,
+        !report.qualified(),
         "literal object must never qualify as a boolean marker"
     );
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
@@ -989,9 +1049,23 @@ fn native_owner_live_literal_infrastructure_faults_are_exchange_errors() {
             limits: quick(),
         };
         let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
-        assert_eq!(report.records[0].result, ResultKind::Error);
-        assert_eq!(report.errors[0].phase, Phase::Exchange);
-        assert!(!report.qualified);
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            ResultKind::Error
+        );
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .errors[0]
+                .phase,
+            Phase::Exchange
+        );
+        assert!(!report.qualified());
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
 }
@@ -1024,11 +1098,32 @@ fn selected_scheme_live_transport_preserves_missing_claim_and_literal_projection
             limits: quick(),
         };
         let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
-        assert_eq!(report.records[0].result, result, "{kind}");
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            result,
+            "{kind}"
+        );
         if kind == "marker" {
-            assert_eq!(report.errors[0].phase, Phase::Exchange);
+            assert_eq!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors[0]
+                    .phase,
+                Phase::Exchange
+            );
         } else {
-            assert!(report.errors.is_empty());
+            assert!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+                    .is_empty()
+            );
         }
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
@@ -1061,11 +1156,32 @@ fn capability_policy_live_transport_preserves_missing_claim_and_literal_projecti
             limits: quick(),
         };
         let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
-        assert_eq!(report.records[0].result, result, "{kind}");
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            result,
+            "{kind}"
+        );
         if kind == "marker" {
-            assert_eq!(report.errors[0].phase, Phase::Exchange);
+            assert_eq!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors[0]
+                    .phase,
+                Phase::Exchange
+            );
         } else {
-            assert!(report.errors.is_empty());
+            assert!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+                    .is_empty()
+            );
         }
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
@@ -1098,11 +1214,32 @@ fn capability_executions_live_transport_preserves_missing_claim_and_literal_proj
             limits: quick(),
         };
         let report = morphir_mck::workbench::run(root.path(), &options).unwrap();
-        assert_eq!(report.records[0].result, result, "{kind}");
+        assert_eq!(
+            report
+                .as_historical()
+                .expect("historical transport fixture")
+                .records[0]
+                .result,
+            result,
+            "{kind}"
+        );
         if kind == "marker" {
-            assert_eq!(report.errors[0].phase, Phase::Exchange);
+            assert_eq!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors[0]
+                    .phase,
+                Phase::Exchange
+            );
         } else {
-            assert!(report.errors.is_empty());
+            assert!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+                    .is_empty()
+            );
         }
         morphir_mck::workbench::check_report(root.path(), &report).unwrap();
     }
@@ -1131,11 +1268,25 @@ fn codec_comparison_live_marker_objects_cannot_forge_observations() {
     )
     .unwrap();
     assert!(
-        !report.qualified,
+        !report.qualified(),
         "literal private marker forged codec evidence"
     );
-    assert_eq!(report.records[0].result, ResultKind::Error);
-    assert_eq!(report.errors[0].phase, Phase::Exchange);
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .records[0]
+            .result,
+        ResultKind::Error
+    );
+    assert_eq!(
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .errors[0]
+            .phase,
+        Phase::Exchange
+    );
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
@@ -1153,7 +1304,14 @@ fn codec_comparison_live_input_preserves_literal_marker_objects() {
         },
     )
     .unwrap();
-    assert!(report.qualified, "{:?}", report.errors);
+    assert!(
+        report.qualified(),
+        "{:?}",
+        report
+            .as_historical()
+            .expect("historical transport fixture")
+            .errors
+    );
     morphir_mck::workbench::check_report(root.path(), &report).unwrap();
 }
 
@@ -1183,10 +1341,31 @@ fn codec_operation_specific_kits_qualify_one_operation_without_qualifying_combin
                 },
             )
             .unwrap();
-            assert_eq!(report.qualified, !combined, "{name}: {:?}", report.errors);
-            assert!(report.errors.is_empty(), "{:?}", report.errors);
+            assert_eq!(
+                report.qualified(),
+                !combined,
+                "{name}: {:?}",
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+            );
+            assert!(
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+                    .is_empty(),
+                "{:?}",
+                report
+                    .as_historical()
+                    .expect("historical transport fixture")
+                    .errors
+            );
             assert_eq!(
                 report
+                    .as_historical()
+                    .expect("historical transport fixture")
                     .records
                     .iter()
                     .any(|record| record.result == ResultKind::Unsupported),
@@ -1204,7 +1383,18 @@ fn main() {
         return;
     }
 
-    let tests: &[(&str, fn())] = &[("codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined",codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined),("codec_comparison_live_input_preserves_literal_marker_objects",codec_comparison_live_input_preserves_literal_marker_objects),("codec_comparison_live_marker_objects_cannot_forge_observations",codec_comparison_live_marker_objects_cannot_forge_observations),("http_policy_live_observations_cannot_reinterpret_private_json_objects",http_policy_live_observations_cannot_reinterpret_private_json_objects),("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
+    let tests: &[(&str, fn())] = &[
+("recorded_literal_retains_the_actual_sent_request_without_second_serialize",recorded_literal_tests::recorded_literal_retains_the_actual_sent_request_without_second_serialize),
+("recorded_literal_lf_refusal_cannot_return_a_completed_exchange_receipt",recorded_literal_tests::recorded_literal_lf_refusal_cannot_return_a_completed_exchange_receipt),
+("recorded_literal_first_fault_precedes_next_serialization_or_receipt",recorded_literal_tests::recorded_literal_first_fault_precedes_next_serialization_or_receipt),
+
+("literal_newline_request_refuses_actual_lf_without_normalizing_source", raw_multiline_tests::literal_newline_request_refuses_actual_lf_without_normalizing_source),
+("raw_workflow_transport_preserves_whole_request_and_response_tokens", raw_workflow_tests::raw_workflow_transport_preserves_whole_request_and_response_tokens),
+("raw_workflow_selected_outer_ids_are_canonical_positive_u64", raw_workflow_tests::raw_workflow_selected_outer_ids_are_canonical_positive_u64),
+("raw_workflow_duplicate_members_never_disappear_inside_opaque_objects", raw_workflow_tests::raw_workflow_duplicate_members_never_disappear_inside_opaque_objects),
+("raw_workflow_first_transport_fault_precedes_retry_serialization_and_io", raw_workflow_tests::raw_workflow_first_transport_fault_precedes_retry_serialization_and_io),
+("raw_workflow_exact_frame_bound_and_one_less_are_actual_session_limits", raw_workflow_tests::raw_workflow_exact_frame_bound_and_one_less_are_actual_session_limits),
+("codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined",codec_operation_specific_kits_qualify_one_operation_without_qualifying_combined),("codec_comparison_live_input_preserves_literal_marker_objects",codec_comparison_live_input_preserves_literal_marker_objects),("codec_comparison_live_marker_objects_cannot_forge_observations",codec_comparison_live_marker_objects_cannot_forge_observations),("http_policy_live_observations_cannot_reinterpret_private_json_objects",http_policy_live_observations_cannot_reinterpret_private_json_objects),("execution_literal_private_objects_cannot_forge_live_adapter_success",execution_literal_private_objects_cannot_forge_live_adapter_success),
         ("capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_executions_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         ("capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence", capability_policy_live_transport_preserves_missing_claim_and_literal_projection_evidence),
         (
