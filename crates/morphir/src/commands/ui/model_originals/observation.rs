@@ -547,6 +547,10 @@ pub(super) struct TrackedJoin<T> {
     observation: WorkerAttemptObservation,
 }
 impl<T> TrackedJoin<T> {
+    #[cfg(test)]
+    pub(super) fn task_id(&self) -> Option<tokio::task::Id> {
+        self.handle.as_ref().map(JoinHandle::id)
+    }
     pub(super) fn new(handle: JoinHandle<T>, issuance: WorkerIssuance) -> Self {
         let observation = issuance.install();
         Self {

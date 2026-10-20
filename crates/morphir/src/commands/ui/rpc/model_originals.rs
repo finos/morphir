@@ -19,6 +19,10 @@ struct OwnedBinding {
     _credit: RetainedEvidenceCredit,
 }
 impl OriginalSession {
+    #[cfg(test)]
+    pub(super) fn attach_capture_test_hook(&mut self, hook: &CaptureWorkerTestHook) {
+        self.connection.attach_capture_test_hook(hook);
+    }
     pub(super) fn new(capacity: HostModelCaptureCapacity) -> Self {
         Self {
             connection: ModelCaptureConnection::new(capacity),
@@ -28,8 +32,9 @@ impl OriginalSession {
     pub(super) fn from_host_observation(
         capacity: HostModelCaptureCapacity,
         observation: &HostObservationBinding,
+        cleanup: &CleanupRegistry,
     ) -> Self {
-        let connection = match observation {
+        let mut connection = match observation {
             HostObservationBinding::Disabled => ModelCaptureConnection::new(capacity),
             HostObservationBinding::Source(source) => {
                 ModelCaptureConnection::new_observed(capacity, source.worker_scope())
@@ -37,24 +42,23 @@ impl OriginalSession {
             HostObservationBinding::Record {
                 source,
                 registry,
-                cleanup,
                 #[cfg(test)]
                 capture_hook,
             }
             | HostObservationBinding::Installed {
                 source,
                 registry,
-                cleanup,
                 #[cfg(test)]
                 capture_hook,
             } => {
-                let mut connection = ModelCaptureConnection::record_observed(
+                let connection = ModelCaptureConnection::record_observed(
                     capacity,
                     source,
                     Some(registry.clone()),
                 )
                 .0;
-                connection.attach_cleanup_registry(cleanup);
+                #[cfg(test)]
+                let mut connection = connection;
                 #[cfg(test)]
                 if let Some(hook) = capture_hook {
                     connection.attach_capture_test_hook(hook);
@@ -62,6 +66,7 @@ impl OriginalSession {
                 connection
             }
         };
+        connection.attach_cleanup_registry(cleanup);
         Self {
             connection,
             binding: None,

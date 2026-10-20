@@ -61,7 +61,7 @@ fn offer(actual: &Actual) -> crate::commands::ui::provider::originals::SelectedO
 async fn socket_poison_tail(join_poison: bool) {
     let fixture = Fixture::new(RECORD);
     let mut actual = Actual::new(&fixture);
-    let registry = super::super::super::lifecycle::CleanupRegistry::new();
+    let registry = super::super::super::lifecycle::CleanupRegistry::new(&actual.capacity).unwrap();
     actual.connection.attach_cleanup_registry(&registry);
     let mut cleanup = registry.control().into_pending();
     let mut gate = Gate::new();
@@ -522,3 +522,5 @@ async fn real_authenticated_socket_disconnect_hands_off_actual_dispatch_before_f
     // No Ready/captureId was issued, no raw record was read, and no synthetic
     // observer slot/controller/connection/capture identity was constructed.
 }
+
+mod unbounded_join_tests;

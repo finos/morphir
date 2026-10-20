@@ -118,6 +118,7 @@ struct RunningHost {
     project: String,
     usage: ModelCaptureUsageObserver,
     socket_cleanup: crate::commands::ui::socket_tasks::SocketCleanup,
+    capture_cleanup: Option<crate::commands::ui::model_originals::PendingCaptureCleanup>,
 }
 impl Drop for RunningHost {
     fn drop(&mut self) {
@@ -131,6 +132,7 @@ impl RunningHost {
         let base = host.base_url();
         let launch = host.launch_url();
         let usage = host.model_originals_observer();
+        let capture_cleanup = Some(host.take_capture_cleanup().unwrap().into_pending());
         let socket_cleanup = crate::commands::ui::socket_tasks::SocketCleanup::Pending(
             host.take_socket_cleanup().unwrap(),
         );
@@ -156,6 +158,7 @@ impl RunningHost {
             project,
             usage,
             socket_cleanup,
+            capture_cleanup,
         }
     }
     async fn connect(&self) -> Socket {
@@ -201,7 +204,15 @@ impl RunningHost {
         assert_eq!(actual.active_workers(), 0);
         assert_eq!(
             actual.metadata_bytes(),
-            self.socket_cleanup.retained_metadata_bytes()
+            self.socket_cleanup
+                .retained_metadata_bytes()
+                .checked_add(
+                    self.capture_cleanup
+                        .as_ref()
+                        .unwrap()
+                        .retained_metadata_bytes()
+                )
+                .unwrap()
         );
         actual
     }
@@ -218,6 +229,14 @@ impl RunningHost {
                 .drain(tokio::time::Instant::now() + WAIT)
                 .await,
             crate::commands::ui::socket_tasks::SocketDrainOutcome::Joined,
+        );
+        assert!(
+            self.capture_cleanup
+                .take()
+                .unwrap()
+                .drain(tokio::time::Instant::now() + WAIT)
+                .await
+                .is_ok()
         );
         tokio::time::timeout(WAIT, async {
             while self.usage.usage() != ModelCaptureUsage::default() {
@@ -766,7 +785,7 @@ async fn host_observer_event_limit_does_not_become_a_source_or_startup_business_
 }
 
 #[tokio::test]
-async fn genuine_blocked_capture_disconnect_does_not_read_record_or_primary_or_prove_join() {
+async fn genuine_blocked_capture_disconnect_retains_worker_until_explicit_host_join() {
     let fixture = SourceFixture::new(None);
     let lock = std::fs::OpenOptions::new()
         .create(true)
@@ -824,9 +843,10 @@ async fn genuine_blocked_capture_disconnect_does_not_read_record_or_primary_or_p
             let usage = host.usage.usage();
             if worker.returned_error() == 1
                 && usage.source_bytes() == 0
-                && usage.captures() == 0
+                && usage.captures() == 1
                 && usage.active_workers() == 0
-                && usage.metadata_bytes() == host.socket_cleanup.retained_metadata_bytes()
+                && worker.owned_handles() == 1
+                && host.capture_cleanup.as_ref().unwrap().retained_handles() == 1
             {
                 break;
             }
@@ -854,8 +874,28 @@ async fn genuine_blocked_capture_disconnect_does_not_read_record_or_primary_or_p
             .content_attempts(),
         0
     );
-    assert_eq!(product.workers().owned_handles(), 0);
-    assert_eq!(product.workers().dropped_unjoined(), 1);
+    assert!(
+        host.usage.usage().metadata_bytes()
+            > host
+                .socket_cleanup
+                .retained_metadata_bytes()
+                .checked_add(
+                    host.capture_cleanup
+                        .as_ref()
+                        .unwrap()
+                        .retained_metadata_bytes()
+                )
+                .unwrap()
+    );
+    assert!(
+        host.capture_cleanup
+            .as_ref()
+            .unwrap()
+            .actual_task_id()
+            .is_some()
+    );
+    assert_eq!(product.workers().owned_handles(), 1);
+    assert_eq!(product.workers().dropped_unjoined(), 0);
     assert_eq!(
         product.workers().joined_ok()
             + product.workers().joined_panicked()
@@ -867,8 +907,8 @@ async fn genuine_blocked_capture_disconnect_does_not_read_record_or_primary_or_p
     drop(lock);
     host.stop().await;
     let final_snapshot = recover(scope).await;
-    assert!(
-        final_snapshot.workers().require_joined_cleanup().is_err(),
-        "sealed source owner and zero credits do not repair a detached task's missing join"
-    );
+    assert_eq!(final_snapshot.workers().joined_ok(), 1);
+    assert_eq!(final_snapshot.workers().owned_handles(), 0);
+    assert_eq!(final_snapshot.workers().dropped_unjoined(), 0);
+    final_snapshot.workers().require_joined_cleanup().unwrap();
 }

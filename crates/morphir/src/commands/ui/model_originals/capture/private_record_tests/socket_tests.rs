@@ -66,6 +66,7 @@ pub(super) async fn component(actual: &Actual, run: &mut NativeOriginalRun<'_>) 
     .await
     .unwrap();
     let usage = host.model_originals_observer();
+    let capture_cleanup = host.take_capture_cleanup().unwrap();
     let mut socket_cleanup = crate::commands::ui::socket_tasks::SocketCleanup::Pending(
         host.take_socket_cleanup().unwrap(),
     );
@@ -130,7 +131,10 @@ pub(super) async fn component(actual: &Actual, run: &mut NativeOriginalRun<'_>) 
     assert_eq!(baseline.active_workers(), 0);
     assert_eq!(
         baseline.metadata_bytes(),
-        socket_cleanup.retained_metadata_bytes()
+        socket_cleanup
+            .retained_metadata_bytes()
+            .checked_add(capture_cleanup.retained_metadata_bytes())
+            .unwrap()
     );
     let ready = exchange(&mut socket, 3, "morphir.model-originals.capture", json!({
         "contractVersion":"0.1.0-draft.1", "source":{"providerId":source_json["providerId"],"locator":source_json["locator"]},
@@ -220,6 +224,12 @@ pub(super) async fn component(actual: &Actual, run: &mut NativeOriginalRun<'_>) 
             .drain(tokio::time::Instant::now() + WAIT)
             .await,
         crate::commands::ui::socket_tasks::SocketDrainOutcome::Joined,
+    );
+    assert!(
+        capture_cleanup
+            .drain(tokio::time::Instant::now() + WAIT)
+            .await
+            .is_ok()
     );
     tokio::time::timeout(WAIT, async {
         while usage.usage() != ModelCaptureUsage::default() {

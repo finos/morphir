@@ -135,13 +135,58 @@ pub async fn run_ui(
         webbrowser::open(&launch_url)
             .map_err(|error| miette::miette!("Unable to open Morphir UI in a browser: {error}"))?;
     }
-    tokio::select! {
-        result = host.serve() => result.map_err(miette::Report::new)?,
-        signal = tokio::signal::ctrl_c() => signal
-            .map_err(|error| miette::miette!("Unable to listen for shutdown signal: {error}"))?,
-    }
+    serve_until_shutdown(host, tokio::signal::ctrl_c())
+        .await
+        .map_err(miette::Report::new)?;
     tracing::info!(url = %base_url, "Morphir UI stopped");
     Ok(None)
+}
+
+/// Listener completion is not an HTTP-driver join. These owners cover actual
+/// whole upgrades and provider captures, including a held synchronous body.
+async fn serve_until_shutdown(
+    mut host: BoundUiHost,
+    shutdown: impl std::future::Future<Output = std::io::Result<()>>,
+) -> Result<(), crate::error::CliError> {
+    let mut captures = host
+        .take_capture_cleanup()
+        .map_err(|error| {
+            protocol::protocol_error(format!("UI capture cleanup ownership: {error}"))
+        })?
+        .into_pending();
+    let mut sockets =
+        socket_tasks::SocketCleanup::Pending(host.take_socket_cleanup().ok_or_else(|| {
+            protocol::protocol_error("UI socket cleanup owner was already taken")
+        })?);
+    let first = {
+        let serving = host.serve();
+        tokio::pin!(serving);
+        let first = tokio::select! {
+            result = &mut serving => result,
+            signal = shutdown => signal.map_err(crate::error::CliError::from),
+        };
+        sockets.stop_accepting_upgrades();
+        first
+        // Actual listener/router storage is destroyed here, before joining
+        // upgrades. No detached listener task or invented cleanup deadline.
+    };
+    let socket_outcome = sockets.join().await;
+    let capture_outcome = captures.join_retained().await;
+    // Always attempt both cleanup owners, even after listener or socket faults.
+    first?;
+    match socket_outcome {
+        socket_tasks::SocketDrainOutcome::Joined => {}
+        socket_tasks::SocketDrainOutcome::JoinedWithFault(error) => {
+            return Err(protocol::protocol_error(format!(
+                "UI socket cleanup failed: {error:?}"
+            )));
+        }
+        socket_tasks::SocketDrainOutcome::Pending { .. } => {
+            unreachable!("unbounded socket join retains pending owners")
+        }
+    }
+    capture_outcome
+        .map_err(|error| protocol::protocol_error(format!("UI capture cleanup failed: {error}")))
 }
 
 pub(super) fn generate_session_id() -> Result<String, miette::Report> {

@@ -484,9 +484,14 @@ async fn serve_socket_observed(
         originals: model_originals::OriginalSession::from_host_observation(
             host.original_capacity.clone(),
             &host.observation,
+            &host.capture_cleanup,
         ),
         ..Default::default()
     };
+    #[cfg(test)]
+    if let Some(hook) = &host.capture_hook {
+        state.originals.attach_capture_test_hook(hook);
+    }
     let refresh_interval = host
         .capabilities
         .workspace
@@ -1133,6 +1138,8 @@ mod tests {
         let original_capacity = super::super::model_originals::HostModelCaptureCapacity::default();
         let (socket_tasks, socket_owner) =
             super::super::socket_tasks::SocketTaskRegistry::new(&original_capacity).unwrap();
+        let capture_cleanup =
+            super::super::model_originals::CleanupRegistry::new(&original_capacity).unwrap();
         DispatchHost {
             state: UiHostState {
                 auth: std::sync::Arc::new(auth),
@@ -1146,7 +1153,9 @@ mod tests {
                 artifact_capacity: super::super::artifacts::HostArtifactCapacity::default(),
                 original_capacity,
                 socket_tasks,
+                capture_cleanup,
                 observation: HostObservationBinding::Disabled,
+                capture_hook: None,
             },
             _socket_owner: socket_owner,
         }

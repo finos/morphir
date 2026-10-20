@@ -31,6 +31,8 @@ const CONFIG: &[u8] =
     include_bytes!("../../model_originals/capture/private_record_fixtures/project.toml");
 const WAIT: Duration = Duration::from_secs(5);
 
+mod main_shutdown_tests;
+mod ordinary_host_tests;
 #[cfg(test)]
 mod socket_task_tests;
 

@@ -1,4 +1,4 @@
-//! Actual provider join ownership for the explicitly observed native host.
+//! Actual provider join ownership for hosts and opt-in component captures.
 //! No task is spawned here. A deadline returns the same retained handles.
 use super::*;
 use std::{
@@ -43,6 +43,17 @@ enum JoinState {
     Joined,
     Abandoned,
 }
+#[derive(Clone, Copy)]
+enum CaptureJoinWait {
+    Until(tokio::time::Instant),
+    UntilJoined,
+}
+enum CaptureJoinProgress {
+    // Disposal of a previously abandoned handle remains observation-incomplete.
+    // This is ownership resolution, never a worker business-success assertion.
+    Resolved,
+    Pending,
+}
 pub(super) struct CleanupSlot {
     join: Mutex<JoinState>,
     observation: std::sync::OnceLock<WorkerAttemptObservation>,
@@ -56,6 +67,13 @@ pub(super) struct CleanupSlot {
     _credit: RetainedEvidenceCredit,
 }
 impl CleanupSlot {
+    #[cfg(test)]
+    fn actual_task_id(&self) -> Option<tokio::task::Id> {
+        match &*self.join.lock().unwrap() {
+            JoinState::Awaited(actual) | JoinState::Retained(actual) => actual.task_id(),
+            _ => None,
+        }
+    }
     pub(super) fn prepare(
         reservation: &mut Reservation,
         owner: &Arc<Mutex<ConnectionOwner>>,
@@ -219,7 +237,7 @@ impl CleanupSlot {
         }
         if let Some(registry) = self.registry.as_ref().and_then(Weak::upgrade) {
             let mut entries = registry.lock().expect("host capture cleanup");
-            for entry in &mut entries.0 {
+            for entry in &mut entries.entries {
                 if entry
                     .as_ref()
                     .is_some_and(|slot| std::ptr::eq(slot.as_ref(), self))
@@ -273,7 +291,10 @@ impl CleanupSlot {
         }
         outcome
     }
-    async fn drain(self: &Arc<Self>, deadline: tokio::time::Instant) -> bool {
+    async fn drain(self: &Arc<Self>, deadline: tokio::time::Instant) -> CaptureJoinProgress {
+        self.wait(CaptureJoinWait::Until(deadline)).await
+    }
+    async fn wait(self: &Arc<Self>, wait: CaptureJoinWait) -> CaptureJoinProgress {
         self.retain();
         let actual =
             self.cleanup_join(
@@ -288,24 +309,37 @@ impl CleanupSlot {
             );
         let actual = match actual {
             Ok(actual) => actual,
-            Err(done) => return done,
+            Err(done) => {
+                return if done {
+                    CaptureJoinProgress::Resolved
+                } else {
+                    CaptureJoinProgress::Pending
+                };
+            }
         };
         let mut guard = DrainGuard {
             slot: self.clone(),
             actual: Some(actual),
         };
-        let result =
-            tokio::time::timeout_at(deadline, guard.actual.as_mut().expect("actual owned join"))
-                .await;
-        if result.is_err() {
+        let actual = guard.actual.as_mut().expect("actual owned join");
+        let joined = match wait {
+            CaptureJoinWait::Until(deadline) => {
+                tokio::time::timeout_at(deadline, actual).await.is_ok()
+            }
+            CaptureJoinWait::UntilJoined => {
+                let _outcome = actual.await;
+                true
+            }
+        };
+        if !joined {
             // Guard puts the SAME actual join back before returning Pending.
-            return false;
+            return CaptureJoinProgress::Pending;
         }
         // Both Ok(body result) and Err(real JoinError) are resolved joins.
         guard.actual = None;
         self.cleanup_join(|state| *state = JoinState::Joined);
         self.retire();
-        true
+        CaptureJoinProgress::Resolved
     }
 }
 struct DrainGuard {
@@ -357,7 +391,8 @@ impl Drop for PrearmedCleanup {
     }
 }
 
-// Ordinary/storage connections keep their historical direct waiter ownership.
+// Standalone/storage connections keep their historical direct waiter ownership.
+// A host registry retains provider tasks independently of observation.
 pub(super) enum ProviderJoin {
     Direct(ActualProviderJoin),
     Owned {
@@ -410,19 +445,38 @@ impl Drop for ProviderJoin {
 
 // This fixed table is host infrastructure. Entries are actual precharged
 // attempt owners, not empty connection history or read-only observer records.
-struct CleanupEntries([Option<Arc<CleanupSlot>>; MAX_HOST_CAPTURES]);
+// Entries drop before returning their backing table's metadata credit.
+struct CleanupEntries {
+    entries: [Option<Arc<CleanupSlot>>; MAX_HOST_CAPTURES],
+    _infrastructure_credit: RetainedEvidenceCredit,
+}
 #[derive(Clone)]
 pub(in crate::commands::ui) struct CleanupRegistry(Arc<Mutex<CleanupEntries>>);
 impl CleanupRegistry {
-    pub(in crate::commands::ui) fn new() -> Self {
-        Self(Arc::new(Mutex::new(CleanupEntries(std::array::from_fn(
-            |_| None,
-        )))))
+    pub(in crate::commands::ui) fn new(
+        capacity: &HostModelCaptureCapacity,
+    ) -> Result<Self, CaptureError> {
+        let bytes = std::mem::size_of::<Mutex<CleanupEntries>>()
+            .checked_add(2 * std::mem::size_of::<usize>())
+            .ok_or(CaptureError::Capacity)?;
+        let credit = capacity.reserve_evidence(bytes)?;
+        Ok(Self(Arc::new(Mutex::new(CleanupEntries {
+            entries: std::array::from_fn(|_| None),
+            _infrastructure_credit: credit,
+        }))))
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn retained_metadata_bytes(&self) -> usize {
+        self.0
+            .lock()
+            .expect("host capture cleanup")
+            ._infrastructure_credit
+            .retained_bytes()
     }
     fn insert(&self, slot: &Arc<CleanupSlot>) -> Result<(), CaptureError> {
         let mut entries = self.0.lock().expect("host capture cleanup");
         let entry = entries
-            .0
+            .entries
             .iter_mut()
             .find(|entry| entry.is_none())
             .ok_or(CaptureError::Capacity)?;
@@ -435,12 +489,16 @@ impl CleanupRegistry {
 }
 pub(in crate::commands::ui) struct HostCaptureCleanupOwner(CleanupRegistry);
 impl HostCaptureCleanupOwner {
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn retained_metadata_bytes(&self) -> usize {
+        self.0.retained_metadata_bytes()
+    }
     pub(in crate::commands::ui) fn retained_handles(&self) -> usize {
         self.0
             .0
             .lock()
             .expect("host capture cleanup")
-            .0
+            .entries
             .iter()
             .flatten()
             .filter(|slot| slot.retained())
@@ -467,6 +525,39 @@ enum CleanupOwner {
     Host(CleanupRegistry),
 }
 impl PendingCaptureCleanup {
+    pub(in crate::commands::ui) async fn join_retained(&mut self) -> Result<(), CaptureError> {
+        loop {
+            if matches!(
+                self.wait_retained(CaptureJoinWait::UntilJoined).await,
+                CaptureJoinProgress::Resolved
+            ) {
+                return Ok(());
+            }
+            // Prearmed or concurrently Draining is still owned, never joined.
+            tokio::task::yield_now().await;
+        }
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn retained_metadata_bytes(&self) -> usize {
+        match &self.owner {
+            CleanupOwner::Single(_) => 0,
+            CleanupOwner::Host(registry) => registry.retained_metadata_bytes(),
+        }
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn actual_task_id(&self) -> Option<tokio::task::Id> {
+        match &self.owner {
+            CleanupOwner::Single(slot) => slot.as_ref().and_then(|slot| slot.actual_task_id()),
+            CleanupOwner::Host(registry) => registry
+                .0
+                .lock()
+                .unwrap()
+                .entries
+                .iter()
+                .flatten()
+                .find_map(|slot| slot.actual_task_id()),
+        }
+    }
     pub(super) fn single(slot: Option<Arc<CleanupSlot>>) -> Self {
         Self {
             owner: CleanupOwner::Single(slot),
@@ -481,7 +572,7 @@ impl PendingCaptureCleanup {
                 .0
                 .lock()
                 .expect("host capture cleanup")
-                .0
+                .entries
                 .iter()
                 .flatten()
                 .filter(|slot| slot.owns_handle())
@@ -503,6 +594,12 @@ impl PendingCaptureCleanup {
         &mut self,
         deadline: tokio::time::Instant,
     ) -> Result<(), CaptureError> {
+        match self.wait_retained(CaptureJoinWait::Until(deadline)).await {
+            CaptureJoinProgress::Resolved => Ok(()),
+            CaptureJoinProgress::Pending => Err(CaptureError::Timeout),
+        }
+    }
+    async fn wait_retained(&mut self, wait: CaptureJoinWait) -> CaptureJoinProgress {
         // The Host variant retains the SAME fixed table, not a separately
         // allocated snapshot or new task. Caller must quiesce new dispatch.
         for index in 0..MAX_HOST_CAPTURES {
@@ -510,19 +607,23 @@ impl PendingCaptureCleanup {
                 CleanupOwner::Single(slot) if index == 0 => slot.clone(),
                 CleanupOwner::Single(_) => None,
                 CleanupOwner::Host(registry) => {
-                    registry.0.lock().expect("host capture cleanup").0[index].clone()
+                    registry.0.lock().expect("host capture cleanup").entries[index].clone()
                 }
             };
             if let Some(slot) = slot {
-                if !slot.drain(deadline).await {
-                    return Err(CaptureError::Timeout);
+                let joined = match wait {
+                    CaptureJoinWait::Until(deadline) => slot.drain(deadline).await,
+                    CaptureJoinWait::UntilJoined => slot.wait(wait).await,
+                };
+                if matches!(joined, CaptureJoinProgress::Pending) {
+                    return CaptureJoinProgress::Pending;
                 }
                 if let CleanupOwner::Single(entry) = &mut self.owner {
                     *entry = None;
                 }
             }
         }
-        Ok(())
+        CaptureJoinProgress::Resolved
     }
 }
 pub(in crate::commands::ui) struct CaptureDisconnect {
@@ -569,3 +670,6 @@ impl CaptureDisconnect {
         }
     }
 }
+
+#[cfg(test)]
+mod registry_funding_tests;

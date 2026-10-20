@@ -32,6 +32,7 @@ struct Fixture {
     _directory: tempfile::TempDir,
     worker: Option<tokio::task::JoinHandle<Result<(), crate::error::CliError>>>,
     socket_cleanup: crate::commands::ui::socket_tasks::SocketCleanup,
+    capture_cleanup: Option<crate::commands::ui::model_originals::PendingCaptureCleanup>,
     observer: ModelCaptureUsageObserver,
     workspace: WorkspaceSessionControl,
     lock: fs::File,
@@ -42,11 +43,44 @@ struct Fixture {
     send_buffer: Option<usize>,
 }
 impl Fixture {
+    async fn join_returned_captures(&mut self) {
+        // The compile lock is still held in the disconnect/refusal controls.
+        // Require actual body/work return before cleanup can request anything,
+        // so this explicit join cannot substitute for socket cancellation.
+        usage_is(&self.observer, |usage| usage.active_workers() == 0).await;
+        let sockets = self
+            .socket_cleanup
+            .owner_mut()
+            .expect("live fixture retains its unique socket owner through listener lifetime")
+            .drain(tokio::time::Instant::now() + WAIT)
+            .await;
+        let captures = self
+            .capture_cleanup
+            .as_mut()
+            .unwrap()
+            .drain_retained(tokio::time::Instant::now() + WAIT)
+            .await;
+        assert_eq!(
+            sockets,
+            crate::commands::ui::socket_tasks::SocketDrainOutcome::Joined
+        );
+        captures.unwrap();
+    }
     fn released(&self, usage: ModelCaptureUsage) -> bool {
         usage.source_bytes() == 0
             && usage.captures() == 0
             && usage.active_workers() == 0
-            && usage.metadata_bytes() == self.socket_cleanup.retained_metadata_bytes()
+            && usage.metadata_bytes()
+                == self
+                    .socket_cleanup
+                    .retained_metadata_bytes()
+                    .checked_add(
+                        self.capture_cleanup
+                            .as_ref()
+                            .unwrap()
+                            .retained_metadata_bytes(),
+                    )
+                    .unwrap()
     }
     async fn stop(mut self) {
         self.socket_cleanup.stop_accepting_upgrades();
@@ -58,6 +92,14 @@ impl Fixture {
                 .drain(tokio::time::Instant::now() + WAIT)
                 .await,
             crate::commands::ui::socket_tasks::SocketDrainOutcome::Joined
+        );
+        assert!(
+            self.capture_cleanup
+                .take()
+                .unwrap()
+                .drain(tokio::time::Instant::now() + WAIT)
+                .await
+                .is_ok()
         );
         usage_is(&self.observer, |usage| {
             usage == ModelCaptureUsage::default()
@@ -268,7 +310,7 @@ async fn fixture_with(primary: &[u8], buffers: SocketBuffers) -> (Fixture, Socke
         .unwrap(),
     );
     let source = serde_json::to_value(provider.initial_sources().pop().unwrap()).unwrap();
-    let host = BoundUiHost::bind_with_originals(
+    let mut host = BoundUiHost::bind_with_originals(
         "socket-originals-session".into(),
         SessionCapabilities {
             workspace: Some(provider.clone()),
@@ -282,6 +324,7 @@ async fn fixture_with(primary: &[u8], buffers: SocketBuffers) -> (Fixture, Socke
     let launch = host.launch_url();
     let observer = host.model_originals_observer();
     let workspace = host.workspace_control();
+    let capture_cleanup = Some(host.take_capture_cleanup().unwrap().into_pending());
     let (listener, router, owner) = host.into_parts();
     let socket_cleanup = crate::commands::ui::socket_tasks::SocketCleanup::Pending(owner);
     let (worker, send_buffer) = match buffers {
@@ -383,6 +426,7 @@ async fn fixture_with(primary: &[u8], buffers: SocketBuffers) -> (Fixture, Socke
             _directory: directory,
             worker: Some(worker),
             socket_cleanup,
+            capture_cleanup,
             observer,
             workspace,
             lock,
@@ -474,12 +518,13 @@ async fn ping_and_one_pipelined_request_preserve_actual_blocked_capture() {
 
 #[tokio::test]
 async fn disconnect_cancels_actual_lock_wait_and_returns_credits_after_worker_exit() {
-    let (fixture, mut socket) = fixture().await;
+    let (mut fixture, mut socket) = fixture().await;
     capture_while_locked(&fixture, &mut socket).await;
     socket.close(None).await.unwrap();
     drop(socket);
     // The compile lock remains exclusively held. Cancellation must let the
     // real polling worker exit; a waiter drop cannot manufacture a refund.
+    fixture.join_returned_captures().await;
     usage_is(&fixture.observer, |usage| fixture.released(usage)).await;
     assert!(fixture.lock.metadata().unwrap().is_file());
     fs2::FileExt::unlock(&fixture.lock).unwrap();
@@ -545,7 +590,7 @@ fn profile_failure(value: &Value, id: Value, code: &str) {
 
 #[tokio::test]
 async fn second_queued_text_refuses_and_closes_without_publishing_blocked_capture() {
-    let (fixture, mut socket) = fixture().await;
+    let (mut fixture, mut socket) = fixture().await;
     capture_while_locked(&fixture, &mut socket).await;
     for id in [4, 5] {
         send(
@@ -584,6 +629,7 @@ async fn second_queued_text_refuses_and_closes_without_publishing_blocked_captur
     .await
     .expect("bounded overflow refusal and actual socket termination");
     drop(socket);
+    fixture.join_returned_captures().await;
     usage_is(&fixture.observer, |usage| fixture.released(usage)).await;
     // Unlock only after the actual cancelled worker has returned its permit.
     fs2::FileExt::unlock(&fixture.lock).unwrap();

@@ -37,6 +37,22 @@ pub(in crate::commands::ui) enum SocketCleanup {
     JoinedWithFault(SocketCleanupError),
 }
 impl SocketCleanup {
+    pub(in crate::commands::ui) async fn join(&mut self) -> SocketDrainOutcome {
+        let outcome = match self {
+            Self::Pending(owner) => owner.join().await,
+            Self::Joined => SocketDrainOutcome::Joined,
+            Self::JoinedWithFault(fault) => SocketDrainOutcome::JoinedWithFault(*fault),
+        };
+        self.record_outcome(outcome);
+        outcome
+    }
+    fn record_outcome(&mut self, outcome: SocketDrainOutcome) {
+        match outcome {
+            SocketDrainOutcome::Joined => *self = Self::Joined,
+            SocketDrainOutcome::JoinedWithFault(fault) => *self = Self::JoinedWithFault(fault),
+            SocketDrainOutcome::Pending { .. } => {}
+        }
+    }
     #[cfg(test)]
     pub(in crate::commands::ui) fn retained_metadata_bytes(&self) -> usize {
         match self {
@@ -55,11 +71,7 @@ impl SocketCleanup {
             Self::Joined => SocketDrainOutcome::Joined,
             Self::JoinedWithFault(fault) => SocketDrainOutcome::JoinedWithFault(*fault),
         };
-        match outcome {
-            SocketDrainOutcome::Joined => *self = Self::Joined,
-            SocketDrainOutcome::JoinedWithFault(fault) => *self = Self::JoinedWithFault(fault),
-            SocketDrainOutcome::Pending { .. } => {}
-        }
+        self.record_outcome(outcome);
         outcome
     }
     #[cfg(test)]
@@ -365,6 +377,20 @@ impl HostSocketCleanupOwner {
     pub(in crate::commands::ui) async fn drain(&mut self, deadline: Instant) -> SocketDrainOutcome {
         self.pending_drain().wait(deadline).await
     }
+    pub(in crate::commands::ui) async fn join(&mut self) -> SocketDrainOutcome {
+        loop {
+            let outcome = self
+                .pending_drain()
+                .finish(SocketJoinWait::UntilJoined)
+                .await;
+            if !matches!(outcome, SocketDrainOutcome::Pending { .. }) {
+                return outcome;
+            }
+            // Another synchronous reaper can still have a handle checked out.
+            // It must restore or resolve that SAME handle before completion.
+            tokio::task::yield_now().await;
+        }
+    }
 }
 impl Drop for HostSocketCleanupOwner {
     fn drop(&mut self) {
@@ -399,8 +425,16 @@ impl Drop for HostSocketCleanupOwner {
 pub(in crate::commands::ui) struct PendingSocketDrain<'a> {
     owner: &'a mut HostSocketCleanupOwner,
 }
+#[derive(Clone, Copy)]
+enum SocketJoinWait {
+    Until(Instant),
+    UntilJoined,
+}
 impl PendingSocketDrain<'_> {
     pub(in crate::commands::ui) async fn wait(self, deadline: Instant) -> SocketDrainOutcome {
+        self.finish(SocketJoinWait::Until(deadline)).await
+    }
+    async fn finish(self, wait: SocketJoinWait) -> SocketDrainOutcome {
         let registry = &self.owner.registry;
         let length = {
             let mut state = registry.state();
@@ -413,10 +447,14 @@ impl PendingSocketDrain<'_> {
         };
         for index in 0..length {
             if let Some(mut checked) = registry.checkout(index, false) {
-                let outcome =
-                    tokio::time::timeout_at(deadline, &mut checked.actual.as_mut().unwrap().actual)
-                        .await;
-                if let Ok(result) = outcome {
+                let actual = &mut checked.actual.as_mut().unwrap().actual;
+                let outcome = match wait {
+                    SocketJoinWait::Until(deadline) => {
+                        tokio::time::timeout_at(deadline, actual).await.ok()
+                    }
+                    SocketJoinWait::UntilJoined => Some(actual.await),
+                };
+                if let Some(result) = outcome {
                     checked.finish(result);
                 }
                 // Deadline/cancellation drops the guard, restoring SAME join.
@@ -875,4 +913,5 @@ mod tests {
         );
         assert_eq!(capacity.usage().metadata_bytes(), 0);
     }
+    mod unbounded_join_tests;
 }

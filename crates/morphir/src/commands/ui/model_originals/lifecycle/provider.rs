@@ -68,7 +68,7 @@ impl ModelCaptureConnection {
         let attempt = AttemptKey(uuid::Uuid::new_v4());
         self.records
             .prepare(&mut reservation, &permit, attempt, &mut state)?;
-        let cleanup = if self.records.enabled() {
+        let cleanup = if self.records.enabled() || self.cleanup_registry.is_some() {
             let slot = CleanupSlot::prepare(
                 &mut reservation,
                 &self.state,
