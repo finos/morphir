@@ -144,6 +144,9 @@ let moonbit_string_example : String =
   #|  if enabled { greet(name) } else { "" }
   #|}
   #|pub fn is_morphir(name : String) -> Bool { name == "Morphir" }
+  #|pub fn mentions_morphir(text : String) -> Bool {
+  #|  !text.is_empty() && text.contains("Morphir")
+  #|}
 
 ///|
 let moonbit_current_example : String =

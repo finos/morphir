@@ -9,6 +9,7 @@ import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 import {testInstalledFrontend} from './test-installed-frontend.ts';
 import {testInstalledLibrary,testInstalledNaming} from './test-installed-library.ts';
+import {testInstalledString} from './test-installed-string.ts';
 
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const home=process.env.MOON_HOME;
@@ -54,6 +55,10 @@ try {
   const deps=Object.entries(dependencyPaths).flatMap(([name,path])=>['--dependency',name+'='+path]);
   for(const name of ['execution.mjs','evaluator.mjs','telemetry.mjs','wasm-gc.mjs','supervision.mjs','identity.mjs'])assert.ok(existsSync(join(installed,'build-provider',name)),name);
   assert.ok(!existsSync(join(installed,'scripts')),'No repository scripts in installed package');
+  if(process.argv.includes('--string-only')) {
+    testInstalledString({run,root,receipts,cli,helper,cwd,home,llvmHome,llvmPin,required,deps,pack});
+    console.log('Installed String qualification passed.');
+  } else {
   const naming=testInstalledNaming({run,root,receipts,cli,helper,cwd,home,llvmHome,llvmPin,required,deps,pack,fixtures:formats.naming,repo});
   if(process.argv.includes('--naming-only')) {
     console.log('Installed naming qualification passed.');
@@ -104,9 +109,11 @@ try {
   const frontend=testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llvmHome,llvmPin,required,deps,pack});
   const libraryFixtures=JSON.parse(run(moon,['run','--target','js','pkgs/morphir-moonbit-frontend/library-acceptance']).stdout);
   const library=testInstalledLibrary({run,root,receipts,cli,helper,cwd,home,llvmHome,llvmPin,required,deps,pack,fixtures:libraryFixtures});
+  const string=testInstalledString({run,root,receipts,cli,helper,cwd,home,llvmHome,llvmPin,required,deps,pack});
   assert.deepEqual(readdirSync(cwd),['.morphir'],'Only explicitly enabled default logs in cwd');
   assert.deepEqual(readdirSync(join(cwd,'.morphir')),['logs']);
-  writeFileSync(join(receipts,'summary.json'),JSON.stringify({profile:'morphir-installed-lifecycle-v1',package:pack.integrity,node:process.version,platform:process.platform,arch:process.arch,requiredTargets:required,rows,frontend,library,naming,formats:models.map(m=>m[0]),calls:23,dryRun:true,mismatchRejected:true,stdoutFraming:true,localSinks:['ion-binary','json-lines','stderr-text']},null,2)+'\n');
+  writeFileSync(join(receipts,'summary.json'),JSON.stringify({profile:'morphir-installed-lifecycle-v1',package:pack.integrity,node:process.version,platform:process.platform,arch:process.arch,requiredTargets:required,rows,frontend,library,string,naming,formats:models.map(m=>m[0]),calls:23,dryRun:true,mismatchRejected:true,stdoutFraming:true,localSinks:['ion-binary','json-lines','stderr-text']},null,2)+'\n');
   console.log('Installed lifecycle: '+required.join(', ')+' debug/release, JSON + Ion text/binary, 23 calls; framing, sinks, dry-run and deliberate mismatch passed.');
+  }
   }
 } finally {rmSync(root,{recursive:true,force:true});}

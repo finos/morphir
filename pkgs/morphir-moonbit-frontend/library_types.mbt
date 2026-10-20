@@ -100,6 +100,7 @@ priv enum LibraryExpr {
   )
   Call(String, Array[LibraryExpr], @ir.SourceLocation)
   QualifiedCall(String, String, Array[LibraryExpr], @ir.SourceLocation)
+  MethodCall(String, LibraryExpr, Array[LibraryExpr], @ir.SourceLocation)
 }
 
 ///|
@@ -227,6 +228,33 @@ priv struct ResolvedSourceBinding {
   contract : SourceBindingContract
   effect : LibraryEffect
   origin : SourceBindingOrigin
+  form : SourceBindingForm
+}
+
+///|
+/// A String method takes its receiver as the first source input. The canonical
+/// SDK value receives the same evaluated inputs in `canonical_order`.
+priv enum SourceBindingForm {
+  Qualified
+  StringMethod(Array[Int32])
+}
+
+///|
+fn ResolvedSourceBinding::authored(self : ResolvedSourceBinding) -> String {
+  match self.form {
+    Qualified => "@" + self.source_alias + "." + self.source_name
+    StringMethod(_) => "String::" + self.source_name
+  }
+}
+
+///|
+fn ResolvedSourceBinding::canonical_order(
+  self : ResolvedSourceBinding,
+) -> Array[Int32] {
+  match self.form {
+    Qualified => Array::makei(self.inputs.length(), i => i)
+    StringMethod(order) => order
+  }
 }
 
 ///|
@@ -262,6 +290,10 @@ priv enum SourceBindingContract {
   RoundedIntegerToFloat64
   CheckedIntegerToFloat64
   CheckedFloat64ToInteger(IntegerConversionPolicy)
+  Utf16Empty
+  Utf16Substring
+  Utf16Prefix
+  Utf16Suffix
 }
 
 ///|
@@ -279,6 +311,12 @@ priv enum IntegerConversionPolicy {
   Floor
   Ceiling
   Rounded
+}
+
+///|
+/// Stable admits only promoted contracts; experimental admits every contract.
+fn SourceBindingContract::is_stable(self : SourceBindingContract) -> Bool {
+  self is (ExactBool | Utf16Empty | Utf16Substring | Utf16Prefix | Utf16Suffix)
 }
 
 ///|
@@ -313,6 +351,10 @@ fn SourceBindingContract::identifier(self : SourceBindingContract) -> String {
         Ceiling => "binary64-to-integer-checked-ceiling"
         Rounded => "binary64-to-integer-checked-rounded"
       }
+    Utf16Empty => "utf16-empty"
+    Utf16Substring => "utf16-code-unit-substring"
+    Utf16Prefix => "utf16-code-unit-prefix"
+    Utf16Suffix => "utf16-code-unit-suffix"
   }
 }
 
@@ -370,6 +412,7 @@ pub fn PinnedSourceBindings::sdk_basics_not(
         contract: ExactBool,
         effect: Pure,
         origin: Classic,
+        form: Qualified,
       },
     ],
   }
@@ -411,6 +454,7 @@ pub fn PinnedSourceBindings::sdk_numeric_math(
       contract: policy,
       effect: Pure,
       origin: Classic,
+      form: Qualified,
     })
   }
   bindings
@@ -448,6 +492,7 @@ pub fn PinnedSourceBindings::sdk_numeric_conversions(
       contract: ClassicIntegerRounding(policy),
       effect: SdkError,
       origin: Classic,
+      form: Qualified,
     })
   }
   for
@@ -473,6 +518,7 @@ pub fn PinnedSourceBindings::sdk_numeric_conversions(
       contract,
       effect: Pure,
       origin: Classic,
+      form: Qualified,
     })
   }
   for
@@ -496,6 +542,7 @@ pub fn PinnedSourceBindings::sdk_numeric_conversions(
       contract: CheckedFloat64ToInteger(policy),
       effect: Pure,
       origin: NumericExtension,
+      form: Qualified,
     })
   }
   for
@@ -520,9 +567,81 @@ pub fn PinnedSourceBindings::sdk_numeric_conversions(
       contract,
       effect: Pure,
       origin: NumericExtension,
+      form: Qualified,
     })
   }
   bindings
+}
+
+///|
+pub const MOONBIT_CORE_PACKAGE : String = "moonbitlang/core/builtin"
+
+///|
+pub const MOONBIT_CORE_VERSION : String = "0.10.15+943464bfa"
+
+///|
+pub const MOONBIT_CORE_TREE : String = "a951c067f909286603efada85c379197d589dc61"
+
+///|
+/// The four pinned String predicates admitted by the reviewed specification.
+/// Names alone grant nothing: only this finite table is consulted.
+let string_predicates : Array[
+  (String, Array[LibraryScalar], SourceBindingContract, String, Array[Int32]),
+] = [
+  ("is_empty", [Text], Utf16Empty, "is-empty", [0]),
+  ("contains", [Text, Text], Utf16Substring, "contains", [1, 0]),
+  ("has_prefix", [Text, Text], Utf16Prefix, "starts-with", [1, 0]),
+  ("has_suffix", [Text, Text], Utf16Suffix, "ends-with", [1, 0]),
+]
+
+///|
+/// Add the pinned MoonBit core String predicates. The adapter supplies the core
+/// identity; another package, compiler or source tree is refused.
+pub fn PinnedSourceBindings::with_string_predicates(
+  self : PinnedSourceBindings,
+  core_package : String,
+  core_version : String,
+  core_tree : String,
+) -> PinnedSourceBindings raise FrontendError {
+  if core_package != MOONBIT_CORE_PACKAGE ||
+    core_version != MOONBIT_CORE_VERSION ||
+    core_tree != MOONBIT_CORE_TREE {
+    library_error(
+      "binding_identity",
+      "Resolved String methods do not match the audited MoonBit core package, compiler and tree",
+      None,
+    )
+  }
+  if self.find_method("is_empty") is Some(_) {
+    library_error(
+      "binding_identity",
+      "Pinned String methods are already supplied",
+      None,
+    )
+  }
+  let entries = self.entries.copy()
+  for (name, inputs, contract, canonical, order) in string_predicates {
+    entries.push({
+      source_alias: "String",
+      source_name: name,
+      source_package: core_package,
+      source_version: core_version,
+      source_tree: core_tree,
+      source_signature: if inputs.length() == 1 {
+        "(String) -> Bool"
+      } else {
+        "(String, StringView) -> Bool"
+      },
+      canonical: "morphir/SDK:string#" + canonical,
+      inputs,
+      output: Boolean,
+      contract,
+      effect: Pure,
+      origin: Classic,
+      form: StringMethod(order),
+    })
+  }
+  { entries, types: self.types.copy(), }
 }
 
 ///|
@@ -532,12 +651,32 @@ fn PinnedSourceBindings::find(
   source_name : String,
 ) -> Int32? {
   for i = 0; i < self.entries.length(); i = i + 1 {
-    if self.entries[i].source_alias == package_alias &&
+    if self.entries[i].form is Qualified &&
+      self.entries[i].source_alias == package_alias &&
       self.entries[i].source_name == source_name {
       return Some(i)
     }
   }
   None
+}
+
+///|
+fn PinnedSourceBindings::find_method(
+  self : PinnedSourceBindings,
+  source_name : String,
+) -> Int32? {
+  for i = 0; i < self.entries.length(); i = i + 1 {
+    if self.entries[i].form is StringMethod(_) &&
+      self.entries[i].source_name == source_name {
+      return Some(i)
+    }
+  }
+  None
+}
+
+///|
+fn is_string_predicate(name : String) -> Bool {
+  string_predicates.any(p => p.0 == name)
 }
 
 ///|
@@ -1039,6 +1178,7 @@ pub fn PinnedSourceBindings::sdk_decimal(
       contract,
       effect,
       origin,
+      form: Qualified,
     })
   }
   bindings

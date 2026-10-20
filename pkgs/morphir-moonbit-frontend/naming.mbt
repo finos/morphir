@@ -295,10 +295,16 @@ fn collect_bindings(
       collect_bindings(yes, names)
       collect_bindings(no, names)
     }
-    Call(_, arguments, _) =>
+    Call(_, arguments, _) | QualifiedCall(_, _, arguments, _) =>
       for arg in arguments {
         collect_bindings(arg, names)
       }
+    MethodCall(_, receiver, arguments, _) => {
+      collect_bindings(receiver, names)
+      for arg in arguments {
+        collect_bindings(arg, names)
+      }
+    }
     _ => ()
   }
 }

@@ -1094,7 +1094,7 @@ fn LibraryLowerer::sdk_call(
   source : @ir.SourceLocation,
 ) -> @ir.Value raise {
   let binding = self.bindings.entries[index]
-  let authored = "@" + binding.source_alias + "." + binding.source_name
+  let authored = binding.authored()
   self.origins.push(
     ion_record([
       ("sdk_call", library_origin(authored, source)),
@@ -1118,6 +1118,16 @@ fn LibraryLowerer::sdk_call(
       ("sdk_classification", @ir.Data::Text(binding.origin.identifier())),
     ]),
   )
+  if binding.form is StringMethod(_) && facts is @ir.Data::Object(fields) {
+    fields["source_form"] = @ir.Data::Text("string-method")
+    fields["receiver_type"] = @ir.Data::Text("String")
+    fields["argument_coercion"] = @ir.Data::Text(
+      "pinned-implicit-string-to-stringview",
+    )
+    fields["canonical_argument_order"] = @ir.Data::Text(
+      binding.canonical_order().map(i => i.to_string()).join(","),
+    )
+  }
   if self.profile == EXPERIMENTAL_PROFILE && facts is @ir.Data::Object(fields) {
     fields["source_error_contract"] = @ir.Data::Text(
       binding.effect.identifier(),
@@ -1150,16 +1160,19 @@ fn LibraryLowerer::sdk_call(
     }.to_ir(self.metadata)
   })
   let values = arguments.map(argument => self.expression(argument))
-  let temporaries = if self.metadata {
+  // A reordered method call always binds temporaries, so the SDK argument order
+  // cannot change source evaluation order.
+  let temporaries = if self.metadata || binding.form is StringMethod(_) {
     values.map(value => self.fresh(value, "sdk-call-argument", source))
   } else {
     []
   }
+  let order = binding.canonical_order()
   let mut signature = output_type
-  for i = input_types.length() - 1; i >= 0; i = i - 1 {
+  for k = order.length() - 1; k >= 0; k = k - 1 {
     signature = @ir.Type::Function(
       @ir.TypeAttributes::default(),
-      input_types[i],
+      input_types[order[k]],
       signature,
     )
   }
@@ -1169,7 +1182,8 @@ fn LibraryLowerer::sdk_call(
     reference_attrs,
     @ir.FQName::parse(binding.canonical),
   )
-  for i = 0; i < values.length(); i = i + 1 {
+  // Temporaries keep source evaluation order; application uses SDK order.
+  for i in order {
     guard signature is @ir.Type::Function(_, _, remaining) else {
       abort("invalid pinned SDK signature")
     }
@@ -1179,13 +1193,13 @@ fn LibraryLowerer::sdk_call(
     value = @ir.Value::Apply(
       apply_attrs,
       value,
-      if self.metadata {
+      if temporaries.is_empty() {
+        values[i]
+      } else {
         @ir.Value::Variable(
           library_attributes(source, input_types[i]),
           temporaries[i],
         )
-      } else {
-        values[i]
       },
     )
   }

@@ -135,6 +135,38 @@ fn math_categories() -> Array[(String, String)] {
 }
 
 ///|
+/// Independent rows for the pinned MoonBit core String predicates. The
+/// typed-source gate checks each row against the original compiler too.
+fn string_sdk_rows() -> Array[(String, Array[String], Bool)] {
+  [
+    ("empty", [""], true),
+    ("empty", ["a"], false),
+    ("empty", ["😀"], false),
+    ("empty", ["\u0301"], false),
+    ("has", ["", ""], true),
+    ("has", ["abc", ""], true),
+    ("has", ["", "a"], false),
+    ("has", ["a😀b", "😀"], true),
+    ("has", ["a😀b", "b"], true),
+    ("has", ["😀", "😁"], false),
+    ("has", ["é", "e"], false),
+    ("has", ["e\u0301", "e"], true),
+    ("has", ["e\u0301", "\u0301"], true),
+    ("starts", ["😀a", "😀"], true),
+    ("starts", ["abc", ""], true),
+    ("starts", ["", "a"], false),
+    ("starts", ["ab", "abc"], false),
+    ("starts", ["é", "e"], false),
+    ("starts", ["e\u0301", "e"], true),
+    ("ends", ["a😀", "😀"], true),
+    ("ends", ["", ""], true),
+    ("ends", ["abc", "abcd"], false),
+    ("ends", ["e\u0301", "\u0301"], true),
+    ("ends", ["😁", "😀"], false),
+  ]
+}
+
+///|
 fn main raise {
   let sources = [
     (
@@ -171,6 +203,9 @@ fn main raise {
         "indexed", "pub fn count(s : String) -> Int32 { s.length() }\npub fn cut(s : String, start : Int32, end : Int32) -> String { s[start:end].to_owned() }\npub fn count_cut(s : String, start : Int32, end : Int32) -> Int32 { cut(s, start, end).length() + start }",
       ),
       ("pinnedsdk", "pub fn invert(flag : Bool) -> Bool { @basics.not_(flag) }"),
+      (
+        "stringsdk", "pub fn empty(s : String) -> Bool { s.is_empty() }\npub fn has(s : String, needle : String) -> Bool { s.contains(needle) }\npub fn starts(s : String, prefix : String) -> Bool { s.has_prefix(prefix) }\npub fn ends(s : String, suffix : String) -> Bool { s.has_suffix(suffix) }\npub fn compose(s : String, needle : String, n : Int32) -> Bool { let cut : String = s[0:n].to_owned(); !cut.is_empty() && cut.contains(needle) && !(s < needle) }\npub fn literal() -> Bool { \"a😀b\".contains(\"😀\") && !\"\".has_prefix(\"a\") }",
+      ),
       (
         "math", "pub fn root_two() -> Double { @basics.sqrt(2.0) }\npub fn root_half() -> Double { @basics.sqrt(0.5) }\npub fn sine_one() -> Double { @basics.sin(1.0) }\npub fn cosine_one() -> Double { @basics.cos(1.0) }\npub fn sine_hundred() -> Double { @basics.sin(100.0) }\npub fn cosine_hundred() -> Double { @basics.cos(100.0) }\npub fn power_quarter() -> Double { @basics.power_float(10.0, 0.25) }\npub fn power_integer() -> Double { @basics.power_float(-2.0, 3.0) }\npub fn absolute() -> Double { @basics.abs_float(-3.5) }\npub fn root_zero() -> Double { @basics.sqrt(-0.0) }\npub fn sine_zero() -> Double { @basics.sin(-0.0) }\npub fn absolute_zero() -> Double { @basics.abs_float(-0.0) }\npub fn cosine_zero() -> Double { @basics.cos(-0.0) }\npub fn power_nan_zero() -> Double { @basics.power_float(0.0 / 0.0, 0.0) }\npub fn root_invalid() -> Double { @basics.sqrt(-1.0) }\npub fn sine_invalid() -> Double { @basics.sin(1.0 / 0.0) }\npub fn cosine_invalid() -> Double { @basics.cos(1.0 / 0.0) }\npub fn power_invalid() -> Double { @basics.power_float(-1.0, 0.5) }\npub fn absolute_invalid() -> Double { @basics.abs_float(0.0 / 0.0) }\npub fn root_infinity() -> Double { @basics.sqrt(1.0 / 0.0) }\npub fn power_infinity() -> Double { @basics.power_float(0.0, -1.0) }\npub fn mixed(label : String, enabled : Bool, count : Int32, amount : Double) -> Double { let yes = @basics.not_(enabled); if yes && label.length() > count { @basics.sqrt(amount * amount) } else { @basics.abs_float(-amount) } }",
       ),
@@ -423,6 +458,43 @@ fn main raise {
         fail("Expected mixed math")
       }
       assert_eq(mixed, 3.0)
+    } else if kind == "stringsdk" {
+      for row in string_sdk_rows() {
+        let (name, arguments, expected) = row
+        guard @backend.call_entry(
+            runtime,
+            entry(name),
+            arguments.map(text => @scheme.Value::Text(text)),
+          )
+          is Boolean(actual) else {
+          fail("Expected String predicate Bool")
+        }
+        assert_eq(actual, expected)
+      }
+      for
+        (text, needle, n, expected) in [
+          ("a😀b", "😀", 3, true),
+          ("a😀b", "😀", 2, false),
+          ("abc", "", 0, false),
+          ("e\u0301x", "\u0301", 2, true),
+        ] {
+        guard @backend.call_entry(runtime, entry("compose"), [
+            @scheme.Value::Text(text),
+            @scheme.Value::Text(needle),
+            @scheme.Tagged("morphir/SDK:int#int32", [
+              @scheme.integer(n.to_string()),
+            ]),
+          ])
+          is Boolean(actual) else {
+          fail("Expected composed String predicate Bool")
+        }
+        assert_eq(actual, expected)
+      }
+      guard @backend.call_entry(runtime, entry("literal"), [])
+        is Boolean(literal) else {
+        fail("Expected literal predicate Bool")
+      }
+      assert_true(literal)
     } else if kind == "pinnedsdk" {
       for flag in [false, true] {
         guard @backend.call_entry(runtime, entry("invert"), [
@@ -635,6 +707,13 @@ fn main raise {
       (
         {
           "id": id,
+          "stringRows": if kind == "stringsdk" {
+            string_sdk_rows().map(row => {
+              ({ "name": row.0, "args": row.1, "expected": row.2 } : Json)
+            })
+          } else {
+            []
+          },
           "decimalReferences": if kind == "decimal" {
             decimal_references().map(row => {
               ({ "name": row.0, "args": row.1, "expected": row.2 } : Json)

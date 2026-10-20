@@ -89,7 +89,7 @@ test "bounded concatenation rejects growth and preserves short circuiting" {
 test "String basics refuse unqualified operations and malformed literal scalars" {
   for
     source in [
-      "pub fn f(s : String) -> Bool { s.is_empty() }", "pub fn f(s : String) -> String { s + true }",
+      "pub fn f(s : String) -> String { s.to_upper() }", "pub fn f(s : String) -> String { s + true }",
       "pub fn f(s : String) -> String { if s { s } else { s } }", "pub fn f(s : String) -> Bool { s == false }",
       "pub fn f() -> String { \"\\uD800\" }", "pub fn f() -> String { \"\\u{110000}\" }",
       "pub fn f() -> String { \"\\{true}\" }",

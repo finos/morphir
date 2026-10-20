@@ -206,10 +206,10 @@ fn library_check_body(
     }
     SdkCall(index, arguments, source) => {
       let binding = bindings.entries[index]
-      if channel == Stable && !(binding.contract is ExactBool) {
+      if channel == Stable && !binding.contract.is_stable() {
         library_error(
           "experimental_capability",
-          "Numeric SDK calls require " + EXPERIMENTAL_PROFILE,
+          binding.authored() + " requires " + EXPERIMENTAL_PROFILE,
           Some(source),
         )
       }
@@ -221,14 +221,13 @@ fn library_check_body(
         )
       }
       if arguments.length() != binding.inputs.length() {
+        let receiver = if binding.form is StringMethod(_) { 1 } else { 0 }
         library_error(
           "binding_arity",
           "Pinned source binding requires " +
-          binding.inputs.length().to_string() +
-          " positional argument(s): @" +
-          binding.source_alias +
-          "." +
-          binding.source_name,
+          (binding.inputs.length() - receiver).to_string() +
+          " positional argument(s): " +
+          binding.authored(),
           Some(source),
         )
       }

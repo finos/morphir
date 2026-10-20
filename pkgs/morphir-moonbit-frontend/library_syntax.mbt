@@ -275,9 +275,9 @@ fn LibraryAdapter::expression(
         source,
       )
     }
-    @ast.DotApply(self=receiver, method_name~, args~, return_self=false, ..) if args.is_empty() =>
+    @ast.DotApply(self=receiver, method_name~, args~, return_self=false, ..) =>
       match (method_name.name, receiver) {
-        ("length", value) =>
+        ("length", value) if args.is_empty() =>
           StringLength(self.expression(value, depth + 1), source)
         (
           "to_owned",
@@ -287,19 +287,31 @@ fn LibraryAdapter::expression(
             end_index=Some(end),
             ..
           ),
-        ) =>
+        ) if args.is_empty() =>
           StringSlice(
             self.expression(array, depth + 1),
             self.expression(start, depth + 1),
             self.expression(end, depth + 1),
             source,
           )
-        _ => {
-          reject(
-            "unsupported_expression", "Only String.length() and String[start:end].to_owned() are supported",
-            loc,
-          )
-          abort("unreachable")
+        (name, value) => {
+          // Resolution, not this adapter, decides whether the method is pinned.
+          self.calls += 1
+          if self.calls > self.limits.max_calls {
+            reject("call_limit", "Unit call-site budget exceeded", loc)
+          }
+          let receiver = self.expression(value, depth + 1)
+          let arguments = []
+          for arg in args {
+            if !(arg.kind is @ast.Positional) {
+              reject(
+                "unsupported_arguments", "Only positional method arguments are supported",
+                loc,
+              )
+            }
+            arguments.push(self.expression(arg.value, depth + 1))
+          }
+          MethodCall(name, receiver, arguments, source)
         }
       }
     @ast.Apply(func~, args~, ..) => {

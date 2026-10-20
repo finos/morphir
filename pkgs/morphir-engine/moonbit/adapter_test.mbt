@@ -1082,3 +1082,98 @@ test "catalog exposes stable and experimental and retired IDs fail selection" {
     }
   }
 }
+
+///|
+fn string_predicate_snapshot(profile : String) -> Map[String, String] {
+  let snapshot = files()
+  snapshot["morphir.toml"] = snapshot["morphir.toml"].replace(
+    old="language='moonbit'",
+    new="language='moonbit'\nprofile='" + profile + "'",
+  )
+  snapshot["src/Main.mbt"] = "pub fn has(s : String, needle : String) -> Bool { s.contains(needle) }\npub fn starts(s : String, prefix : String) -> Bool { s.has_prefix(prefix) }"
+  snapshot
+}
+
+///|
+test "pinned String predicates reach the engine evaluator with UTF-16 text" {
+  let engine = @engine.Engine::new()
+  @adapter.register(engine)
+  let snapshot = string_predicate_snapshot(@frontend.STABLE_PROFILE)
+  let descriptor = plan(engine, snapshot).source_frontends()[0]
+  assert_eq(
+    descriptor.dependencies["moonbitlang/core/builtin"],
+    "0.10.15+943464bfa+tree:a951c067f909286603efada85c379197d589dc61",
+  )
+  let report = execute(engine, snapshot)
+  assert_true(report.successful())
+  let unit = @data.Registry::new().decode("ion-binary", {
+    unit_id: "Main",
+    content: report.artifacts[0].content,
+  })
+  fn text(value : String) -> Json {
+    {
+      "type": "text",
+      "units": value
+      .iter()
+      .fold(init=[], fn(units, c) {
+        units..append(
+          if c.to_int() > 0xFFFF {
+            let v = c.to_int() - 0x10000
+            [0xD800 + (v >> 10), 0xDC00 + (v & 0x3FF)]
+          } else {
+            [c.to_int()]
+          },
+        )
+      })
+      .map(u => Json::number(u.to_double())),
+    }
+  }
+  let suite = @protocol.Suite::from_json({
+    "profile": "morphir-invocations-v1",
+    "calls": [
+      {
+        "id": "emoji",
+        "entry": "pricing:app/main#has",
+        "arguments": [text("a😀b"), text("😀")],
+      },
+      {
+        "id": "neighbour",
+        "entry": "pricing:app/main#has",
+        "arguments": [text("😀"), text("😁")],
+      },
+      {
+        "id": "combining",
+        "entry": "pricing:app/main#starts",
+        "arguments": [text("é"), text("e")],
+      },
+      {
+        "id": "composed",
+        "entry": "pricing:app/main#starts",
+        "arguments": [text("é"), text("e")],
+      },
+    ],
+  })
+  let plan = @execution.plan_scheme(unit, suite)
+  assert_eq(plan.evaluate().map(@protocol.Value::to_json), [
+    { "type": "bool", "value": true },
+    { "type": "bool", "value": false },
+    { "type": "bool", "value": true },
+    { "type": "bool", "value": false },
+  ])
+}
+
+///|
+test "both channels advertise the promoted String predicates" {
+  let provider = @adapter.provider()
+  for profile in provider.languages[0].profiles {
+    assert_true(
+      profile.capabilities.supported.contains(
+        "Pinned String is_empty, contains, has_prefix and has_suffix predicates",
+      ),
+    )
+    assert_eq(
+      profile.dependencies["moonbitlang/core/builtin"],
+      "0.10.15+943464bfa+tree:a951c067f909286603efada85c379197d589dc61",
+    )
+  }
+}

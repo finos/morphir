@@ -66,7 +66,7 @@ export interface FrontendInventory {
   source: string; unitId: string; frontend: string; profile: string; language: string; provider: string;
   defaultProfile: boolean; evidence: string; outputContract: string; availableProfiles: string[];
   dependencies: Record<string,string>;
-  capabilities: { maxDocuments: number; incremental: boolean; limits: Record<string,number> };
+  capabilities: { maxDocuments: number; incremental: boolean; limits: Record<string,number>; supported?: string[]; excluded?: string[] };
 }
 export interface Visibility { model: LibraryModel; original: string; generated: string; canonical: (name: string) => string; }
 export interface Consumer { id: string; path: string; module: string; rows: { id: string; function: string; arguments: boolean[]; expected: boolean }[]; }

@@ -7,7 +7,7 @@ The source language is `moonbit`; profiles describe the supported subset.
 
 | Channel | Profile | Source contract |
 | --- | --- | --- |
-| Stable, default | `moonbit-model-stable-v1` | Typed Bool/String/Int32 libraries, immutable bindings, direct acyclic calls, String ordering, length and owned slices, audited Boolean SDK binding |
+| Stable, default | `moonbit-model-stable-v1` | Typed Bool/String/Int32 libraries, immutable bindings, direct acyclic calls, String ordering, length and owned slices, pinned String predicates, audited Boolean SDK binding |
 | Experimental, explicit opt-in | `moonbit-model-experimental-v1` | Stable plus expanded integer widths, BigInt, Float/Double, audited SDK math/conversions and checked Decimal |
 
 `compile_library(input)` uses `SourceChannel::Stable`. Opt in with
@@ -154,6 +154,58 @@ UTF-16 in either operand. Comparison owners retain `moonbit-source-string-order-
 facts with the source operator, shortlex policy and lowering rule; synthetic integer
 lengths do not claim authored Int32 type uses. Ion replay preserves these facts,
 and checked JSON export refuses their loss.
+
+### Pinned String predicates
+
+Both channels admit four String methods from the pinned MoonBit core. They
+entered experimental first and were promoted to stable after the installed
+qualification below. The adapter
+supplies package `moonbitlang/core/builtin`, compiler/core `0.10.15+943464bfa`
+and core tree `a951c067f909286603efada85c379197d589dc61`. Another package,
+compiler or tree is refused, and source text cannot add a method.
+
+| Source call | Pinned signature | Canonical SDK value | Contract |
+| --- | --- | --- | --- |
+| `s.is_empty()` | `(String) -> Bool` | `morphir/SDK:string#is-empty` | True only for zero UTF-16 units |
+| `s.contains(needle)` | `(String, StringView) -> Bool` | `morphir/SDK:string#contains` | UTF-16 code-unit substring; an empty needle matches |
+| `s.has_prefix(prefix)` | `(String, StringView) -> Bool` | `morphir/SDK:string#starts-with` | UTF-16 code-unit prefix |
+| `s.has_suffix(suffix)` | `(String, StringView) -> Bool` | `morphir/SDK:string#ends-with` | UTF-16 code-unit suffix |
+
+The argument must be a source `String`. The pinned compiler's implicit
+String-to-StringView coercion is frozen in the binding; no StringView value is
+admitted. No normalization occurs: `"é".has_prefix("e")` is false, and
+`"é".has_prefix("e")` is true. Because source Strings are well-formed, a
+match cannot split a surrogate pair. Lowering binds the receiver and then the
+argument once, in source order, and applies the SDK value needle first. Public
+String guards still refuse malformed UTF-16 and oversized text in either position.
+
+Call references and applications retain `moonbit-source-binding-v1` facts: the
+core pin, source signature, `string-method` form, frozen coercion, canonical
+argument order and contract. Ion replay preserves them; checked JSON export
+refuses their loss. The classic 248-binding SDK inventory is unchanged.
+
+Other methods refuse with `moonbit_frontend.unsupported_method`, including
+`to_upper`, `to_lower`, `trim`, `split`, `find`, the deprecated aliases
+`starts_with` and `ends_with`, and methods that take callbacks or return
+Option or List values. MoonBit ASCII case conversion differs from SDK Unicode
+case conversion, so case conversion stays deferred. Wrong argument counts refuse
+with `binding_arity`, wrong receiver or argument types with `type_mismatch`, and
+labelled arguments with `unsupported_arguments`. A qualified spelling such as
+`@String.contains` or `@string.contains` cannot reach a method. A host binding
+map without the pinned methods refuses them with `unknown_binding`; a same-named
+library function does not replace a method.
+[string-sdk.json](conformance/string-sdk.json) records the admitted calls and
+their qualification scope.
+
+`mise run test:typed-source` checks independent rows against original source,
+Scheme and generated consumers on native, JavaScript, Wasm and Wasm GC in debug
+and release. `mise run test:installed-lifecycle` then qualifies every stable
+String type, operator and call through the packed npm CLI: 39 independent rows,
+34 of them also checked by the original compiler, on each required installed
+target in debug and release. The other 5 rows send malformed UTF-16 or oversized
+text that source cannot spell. The installed execution helper offers JavaScript,
+Wasm GC, native C and, on macOS, LLVM; it does not offer Wasm without GC, so that
+lane has local typed-source evidence only.
 
 ## Supported source
 

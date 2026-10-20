@@ -136,6 +136,29 @@ fn LibraryResolver::expression(
       }
       SdkCall(index, arguments.map(arg => self.expression(arg, scope)), source)
     }
+    MethodCall(name, receiver, arguments, source) => {
+      guard self.bindings.find_method(name) is Some(index) else {
+        if is_string_predicate(name) {
+          library_error(
+            "unknown_binding",
+            "String::" + name + " requires its pinned MoonBit core binding",
+            Some(source),
+          )
+        }
+        library_error(
+          "unsupported_method",
+          "Method is outside the pinned String source subset: " + name,
+          Some(source),
+        )
+        abort("unreachable")
+      }
+      let receiver = self.expression(receiver, scope)
+      SdkCall(
+        index,
+        [receiver, ..arguments.map(arg => self.expression(arg, scope))],
+        source,
+      )
+    }
   }
 }
 

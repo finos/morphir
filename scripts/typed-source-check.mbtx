@@ -542,6 +542,48 @@ async fn main {
         .replace(old="CALL_COUNT", new=g("count"))
         .replace(old="CALL_CUT", new=g("cut")),
       )
+    } else if kind == "stringsdk" {
+      let lines = StringBuilder()
+      for row in array(field(model, "stringRows")) {
+        let name = string(field(row, "name"))
+        let args = array(field(row, "args")).map(v => string(v).escape())
+        let expected = if field(row, "expected") == Json::boolean(true) {
+          "true"
+        } else {
+          "false"
+        }
+        lines.write_string(
+          "  assert_eq(@ostringsdk." +
+          name +
+          "(" +
+          args.join(", ") +
+          "), " +
+          expected +
+          ")\n  assert_eq(" +
+          g(name) +
+          args.map(a => "(@sdk.Text::from_string(" + a + "))").join("") +
+          ", " +
+          expected +
+          ")\n",
+        )
+      }
+      model_tests.write_string(
+        "test \"pinned String predicates match original source and independent rows\" {\n" +
+        lines.to_string() +
+        "}\n",
+      )
+      model_tests.write_string(
+        "test \"String predicates compose with owned slices and shortlex ordering\" {\n  for (text, needle, n, expected) in [(\"a😀b\", \"😀\", 3, true), (\"a😀b\", \"😀\", 2, false), (\"abc\", \"\", 0, false), (\"e\\u0301x\", \"\\u0301\", 2, true)] {\n    assert_eq(@ostringsdk.compose(text, needle, n), expected)\n    let bound = @int.to_int32(@integer.from_int64(n.to_int64())).unwrap()\n    assert_eq(CALL_COMPOSE(@sdk.Text::from_string(text))(@sdk.Text::from_string(needle))(bound), expected)\n  }\n  assert_true(@ostringsdk.literal())\n  assert_true(CALL_LITERAL)\n}\n"
+        .replace(old="CALL_COMPOSE", new=g("compose"))
+        .replace(old="CALL_LITERAL", new=g("literal")),
+      )
+      model_tests.write_string(
+        "test \"String predicate entries reject malformed UTF-16 receivers and arguments\" {\n  for units in [[55357], [56832], [56832, 55357]] {\n    let invalid = @sdk.Text::from_units(units.map(u => u.to_uint16()))\n    let empty = @sdk.Text::from_string(\"\")\n    try { ignore(CALL_EMPTY(invalid)); fail(\"Expected receiver refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n    for (a, b) in [(invalid, empty), (empty, invalid)] {\n      try { ignore(CALL_HAS(a)(b)); fail(\"Expected contains refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n      try { ignore(CALL_STARTS(a)(b)); fail(\"Expected prefix refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n      try { ignore(CALL_ENDS(a)(b)); fail(\"Expected suffix refusal\") } catch { @sdk.UnrepresentableText(_) => (); error => raise error }\n    }\n  }\n}\n"
+        .replace(old="CALL_EMPTY", new=g("empty"))
+        .replace(old="CALL_HAS", new=g("has"))
+        .replace(old="CALL_STARTS", new=g("starts"))
+        .replace(old="CALL_ENDS", new=g("ends")),
+      )
     } else if kind == "strings" {
       model_tests.write_string(
         "test \"String original, Scheme and generated greeting\" {\n  for name in [\"\", \"Morphir\", \"😀\", \"é\", \"é\"] {\n    let original = @ostrings.greet(name)\n    assert_eq(original, \"Hello, \" + name)\n    assert_eq(" +
@@ -641,7 +683,7 @@ async fn main {
     }
     let original_alias = if [
         "foundation", "numeric", "integer", "float", "indexed", "strings", "bounded",
-        "ordered", "orderedbounded", "pinnedsdk", "math", "conversions",
+        "ordered", "orderedbounded", "pinnedsdk", "stringsdk", "math", "conversions",
       ].contains(kind) {
       kind
     } else {
@@ -765,11 +807,42 @@ async fn main {
         "canonical": "morphir/SDK:basics#not",
         "conversionPolicy": "exact-bool",
       },
+      "pinnedStringMethods": {
+        "sourcePackage": "moonbitlang/core/builtin",
+        "sourceVersion": "0.10.15+943464bfa",
+        "sourceTree": "a951c067f909286603efada85c379197d589dc61",
+        "methods": [
+          {
+            "source": "String::is_empty",
+            "signature": "(String) -> Bool",
+            "canonical": "morphir/SDK:string#is-empty",
+            "contract": "utf16-empty",
+          },
+          {
+            "source": "String::contains",
+            "signature": "(String, StringView) -> Bool",
+            "canonical": "morphir/SDK:string#contains",
+            "contract": "utf16-code-unit-substring",
+          },
+          {
+            "source": "String::has_prefix",
+            "signature": "(String, StringView) -> Bool",
+            "canonical": "morphir/SDK:string#starts-with",
+            "contract": "utf16-code-unit-prefix",
+          },
+          {
+            "source": "String::has_suffix",
+            "signature": "(String, StringView) -> Bool",
+            "canonical": "morphir/SDK:string#ends-with",
+            "contract": "utf16-code-unit-suffix",
+          },
+        ],
+      },
       "lanes": lanes,
       "sdkFiles": identities,
       "models": output,
       "supportedProfiles": ["moonbit-model-experimental-v1"],
-      "scope": "Local original source, Scheme, generated direct consumers, pinned math, Integer conversion and checked Decimal SDK calls, and private access. Installed qualification remains a separate task.",
+      "scope": "Local original source, Scheme, generated direct consumers, pinned String predicates, pinned math, Integer conversion and checked Decimal SDK calls, and private access. Installed String qualification is recorded separately by the installed lifecycle gate.",
     } : Json)
   let ion = @ion_json.to_ion(receipt)
   let bytes = @binary.write_binary_value(ion)

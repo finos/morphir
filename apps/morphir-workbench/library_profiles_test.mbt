@@ -251,3 +251,49 @@ test "String source compiles and executes typed public entries in the workbench"
     })
   }
 }
+
+///|
+test "stable String predicates compile and evaluate in the workbench" {
+  let compiled = @pipeline.execute({
+    "operation": "compile",
+    "languageId": "moonbit",
+    "frontendProfile": "moonbit-model-stable-v1",
+    "target": "moonbit",
+    "source": "pub fn mentions_morphir(text : String) -> Bool { !text.is_empty() && text.contains(\"Morphir\") }\npub fn framed(text : String) -> Bool { text.has_prefix(\"<\") && text.has_suffix(\">\") }",
+  })
+  assert_eq(
+    @wire.field(compiled, "success"),
+    Json::boolean(true),
+    msg=compiled.stringify(),
+  )
+  for
+    (name, units, expected) in [
+      ("mentions_morphir", [77, 111, 114, 112, 104, 105, 114], true),
+      ("mentions_morphir", [], false),
+      ("mentions_morphir", [55357, 56832], false),
+      ("framed", [60, 55357, 56832, 62], true),
+      ("framed", [60], false),
+    ] {
+    let evaluated = @pipeline.execute({
+      "operation": "evaluate",
+      "executionMode": "typed",
+      "source": @wire.string(@wire.field(compiled, "irSource")),
+      "entry": library_entry(compiled, name),
+      "arguments": [
+        {
+          "type": "text",
+          "units": Json::array(units.map(u => Json::number(u.to_double()))),
+        },
+      ],
+    })
+    assert_eq(
+      @wire.field(evaluated, "success"),
+      Json::boolean(true),
+      msg=evaluated.stringify(),
+    )
+    assert_eq(@wire.field(evaluated, "typed"), {
+      "type": "bool",
+      "value": expected,
+    })
+  }
+}

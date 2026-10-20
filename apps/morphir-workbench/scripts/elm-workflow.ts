@@ -692,12 +692,22 @@ export async function stringWorkflow(page: Page) {
   await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
   await page.getByRole('button',{name:'Result JSON',exact:true}).click();
   await page.waitForFunction(()=>JSON.parse(document.querySelector<CodeEditor>('#evaluation-output')?.value ?? '{}').value===true);
+  await tree.filter({hasText:'mentions_morphir'}).click();
+  await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
+  for(const [text,expected] of [['Hello, Morphir',true],['',false],['Hello, 😀',false]] as const) {
+    await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill(JSON.stringify([{type:'text',units:Array.from({length:text.length},(_,i)=>text.charCodeAt(i))}]));
+    await page.getByRole('button',{name:'Evaluate',exact:true}).click();
+    await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
+    await page.getByRole('button',{name:'Result JSON',exact:true}).click();
+    await page.waitForFunction(value=>JSON.parse(document.querySelector<CodeEditor>('#evaluation-output')?.value ?? '{}').value===value,expected);
+  }
   await showSource(page);
   await showGenerated(page);
   const navigator=page.getByRole('navigation',{name:'Generated files',exact:true});
   await navigator.getByRole('button',{name:'library.mbt',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value.includes('@source_string.require_valid'));
-  console.log(JSON.stringify({stringProfile:true,stringGreeting:true,booleanCondition:true,exactEquality:true,generatedGuards:true}));
+  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value.includes('@string.contains('));
+  console.log(JSON.stringify({stringProfile:true,stringGreeting:true,booleanCondition:true,exactEquality:true,stringPredicates:true,generatedGuards:true}));
 }
 
 export async function supportedWorkflow(page: Page) {

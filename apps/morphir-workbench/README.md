@@ -185,7 +185,8 @@ values, so Scheme's implicit numeric `main` must be renamed before Elm compilati
 
 Choose **MoonBit** in Language, or open the **MoonBit Boolean** sample.
 Stable accepts multiple typed Bool/String/Int32 functions, immutable bindings,
-Boolean operators, direct acyclic calls, String ordering, length and owned slices.
+Boolean operators, direct acyclic calls, String ordering, length, owned slices and
+the pinned `is_empty`, `contains`, `has_prefix` and `has_suffix` predicates.
 Use **Compile**, then select a public function in the **Models** view to enter
 Boolean inputs and evaluate through typed validation. **Evaluate in Explorer**
 in the build menu opens the model document, because the frontend does not create an

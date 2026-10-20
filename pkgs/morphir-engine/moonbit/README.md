@@ -14,7 +14,7 @@ provider `finos/morphir-moonbit-frontend`, exported as `PROVIDER`, for language
 
 | Profile | Source behavior |
 | --- | --- |
-| `moonbit-model-stable-v1`, default | Typed Bool/String/Int32 libraries, bindings, direct calls, String ordering, length and owned slices, audited Boolean SDK call |
+| `moonbit-model-stable-v1`, default | Typed Bool/String/Int32 libraries, bindings, direct calls, String ordering, length and owned slices, pinned String predicates, audited Boolean SDK call |
 | `moonbit-model-experimental-v1`, opt-in | Stable plus expanded integer widths, BigInt, Float/Double, SDK math/Integer conversions and checked Decimal |
 
 Engine, CLI, Workbench and MEP use stable by default. Select experimental with
@@ -27,7 +27,7 @@ retained checkpoints preserve their original identities and provenance.
 
 All profiles process one document per unit and do not support incremental
 compilation or cross-file imports. The library excludes
-recursion, mutation and indirect calls. Qualified calls are limited to each profile's audited SDK bindings. Profile names describe supported source
+recursion, mutation and indirect calls. Qualified calls are limited to each profile's audited SDK bindings. Both channels supply the pinned MoonBit core String predicates, `is_empty`, `contains`, `has_prefix` and `has_suffix`, and declare dependency `moonbitlang/core/builtin` at `0.10.15+943464bfa+tree:a951c067f909286603efada85c379197d589dc61`. Profile names describe supported source
 forms; the source language remains `moonbit`.
 
 `provider()` exposes these same descriptors and callbacks to in-process clients.

@@ -124,7 +124,6 @@ test "a textual alias cannot turn another package tree into an SDK binding" {
         assert_eq(diagnostic.code, "moonbit_frontend.binding_identity")
         true
       }
-      error => raise error
     }
     assert_true(rejected)
   }

@@ -19,6 +19,10 @@ pub fn compile_library(
           PinnedSourceBindings::sdk_basics_not(
             "finos/morphir-sdk/basics", "0.1.0", "9c83a100383570236b3d781362524008f76dd56d",
             "basics",
+          ).with_string_predicates(
+            MOONBIT_CORE_PACKAGE,
+            MOONBIT_CORE_VERSION,
+            MOONBIT_CORE_TREE,
           )
         None =>
           PinnedSourceBindings::sdk_decimal(
@@ -26,6 +30,10 @@ pub fn compile_library(
             "0.1.0",
             DECIMAL_SDK_TREE,
             "decimal",
+          ).with_string_predicates(
+            MOONBIT_CORE_PACKAGE,
+            MOONBIT_CORE_VERSION,
+            MOONBIT_CORE_TREE,
           )
       }
       let output = library_compile_scoped(

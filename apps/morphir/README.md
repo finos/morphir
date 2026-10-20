@@ -814,6 +814,19 @@ and generated execution must agree. Separate compiler consumers check that
 private helpers stay private in both original and generated libraries, including
 the all-private fixture. Library receipts are retained under `moonbit-library/`.
 
+A stable String library then exercises every stable String type, operator and
+call: concatenation, equality, shortlex ordering, UTF-16 `length()`, owned slices
+and the pinned `is_empty`, `contains`, `has_prefix` and `has_suffix` predicates.
+Its 39 hand-authored rows cover empty, supplementary and combining text, split
+surrogates, negative and Int32-extreme indexes, malformed UTF-16 and the
+1,048,576-unit bound. The original compiler checks the 34 rows that source can
+spell, and the independent evaluator, Scheme and generated execution check all
+39 on every required target in debug and release. The gate also checks Ion text
+replay with an unknown provenance fact, lossy JSON refusal, rejected source that
+keeps the published checkpoint, private-entry refusal, cancellation and a
+deliberate mismatch. `--string-only` runs this part alone. Receipts and a
+`summary.json` evidence matrix are retained under `moonbit-string/`.
+
 Library checks include lazy planning, explicit profile selection, preservation
 of published output after rejected source or lossy JSON export, optional logging
 under `.morphir/logs/`, explicit log paths, failed sinks, stdout framing, execution

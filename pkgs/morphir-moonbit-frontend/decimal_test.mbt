@@ -77,14 +77,14 @@ test "checked Decimal bindings require their audited identity" {
     ),
   )
   for
-    (tree, alias) in [
+    (tree, sdk_alias) in [
       ("9c83a100383570236b3d781362524008f76dd56d", "decimal"),
       (@frontend.DECIMAL_SDK_TREE, "other"),
     ] {
     try {
       ignore(
         @frontend.PinnedSourceBindings::sdk_decimal(
-          "finos/morphir-sdk/decimal", "0.1.0", tree, alias,
+          "finos/morphir-sdk/decimal", "0.1.0", tree, sdk_alias,
         ),
       )
       fail("Expected identity refusal")
