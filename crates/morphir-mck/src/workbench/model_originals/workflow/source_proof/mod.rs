@@ -598,6 +598,11 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
     pub(super) fn usage(&self) -> DecodeUsage {
         self.owner.usage()
     }
+    /// Only canonical compilation can borrow this SAME cumulative decoder.
+    /// No source, expected operand or adapter-facing owner is issued here.
+    pub(super) fn decoder(&mut self) -> &mut Decoder {
+        self.owner
+    }
     pub(super) fn bind<'case, 'raw>(
         &mut self,
         case: &'case BoundCase<'raw>,

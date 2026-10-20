@@ -3,6 +3,7 @@ mod association;
 mod fixture;
 mod processes;
 mod snapshots;
+mod source_witnesses;
 
 use super::{
     installed_observation::InstalledHostObservation,
@@ -87,8 +88,13 @@ fn end(limits: Limits) -> Result<Instant, InstalledAdapterError> {
         .ok_or(InstalledAdapterError::ObservationIncomplete)
 }
 
-struct RunningHost {
+struct RunningHost<'source> {
+    // Raw containment/destruction runs before the final source owner drops.
+    runtime: RunningHostRuntime,
+    witnesses: source_witnesses::Witnesses<'source>,
     scope: HostSourceObservationScope,
+}
+struct RunningHostRuntime {
     _startup: PreparedNativeUi,
     events: InstalledHostObservation,
     launch_url: String,
@@ -96,9 +102,9 @@ struct RunningHost {
     cleanup: PendingCaptureCleanup,
     socket_cleanup: super::socket_tasks::SocketCleanup,
 }
-impl RunningHost {
+impl<'source> RunningHost<'source> {
     async fn start(
-        run: &mut InstalledClientRun<'_>,
+        run: &mut InstalledClientRun<'source>,
         fixture: &fixture::Fixture,
         end: Instant,
         interrupted: &AtomicBool,
@@ -122,6 +128,7 @@ impl RunningHost {
             HostObservationLimits::new(limits.host_updates()).map_err(incomplete)?,
         )
         .map_err(incomplete)?;
+        let witnesses = source_witnesses::Witnesses::register(run, &scope, &held)?;
         // The canonical outside-callback guard owns revocation. Issue against
         // this actual scope BEFORE DEFAULT discovery, auth, bind or spawn.
         let token = run
@@ -161,19 +168,80 @@ impl RunningHost {
             .ok_or(InstalledAdapterError::ObservationIncomplete)?;
         let launch_url = host.launch_url();
         Ok(Self {
+            runtime: RunningHostRuntime {
+                _startup: startup,
+                events,
+                launch_url,
+                listener: Some(tokio::spawn(host.serve())),
+                cleanup,
+                socket_cleanup: super::socket_tasks::SocketCleanup::Pending(socket_cleanup),
+            },
+            witnesses,
             scope,
-            _startup: startup,
-            events,
-            launch_url,
-            listener: Some(tokio::spawn(host.serve())),
-            cleanup,
-            socket_cleanup: super::socket_tasks::SocketCleanup::Pending(socket_cleanup),
         })
     }
     async fn stop(&mut self, end: Instant) -> Result<(), InstalledAdapterError> {
+        self.runtime.stop(end).await
+    }
+    async fn complete(
+        &mut self,
+        run: &mut InstalledClientRun<'_>,
+        end: Instant,
+    ) -> Result<(), InstalledAdapterError> {
+        self.runtime.complete(run, end).await
+    }
+    #[cfg(test)]
+    async fn stop_listener(&mut self, end: Instant) -> Result<(), InstalledAdapterError> {
+        self.runtime.stop_listener(end).await
+    }
+    #[cfg(test)]
+    fn into_source_scope(self) -> Result<HostSourceObservationScope, InstalledAdapterError> {
+        self.into_source_parts().map(|(scope, _)| scope)
+    }
+    fn into_source_parts(
+        self,
+    ) -> Result<
+        (
+            HostSourceObservationScope,
+            source_witnesses::Witnesses<'source>,
+        ),
+        InstalledAdapterError,
+    > {
+        let Self {
+            runtime,
+            scope,
+            witnesses,
+        } = self;
+        let joined = runtime.listener.is_none()
+            && matches!(
+                runtime.socket_cleanup,
+                super::socket_tasks::SocketCleanup::Joined
+            )
+            && runtime.cleanup.retained_handles() == 0;
+        // Preserve raw containment order even when extraction is refused.
+        drop(runtime);
+        if joined {
+            Ok((scope, witnesses))
+        } else {
+            Err(InstalledAdapterError::ObservationIncomplete)
+        }
+    }
+}
+impl RunningHostRuntime {
+    async fn stop(&mut self, end: Instant) -> Result<(), InstalledAdapterError> {
         self.socket_cleanup.stop_accepting_upgrades();
         self.events.close();
-        let listener_result = if let Some(listener) = self.listener.as_mut() {
+        let listener_result = self.stop_listener(end).await;
+        let socket_result = match self.socket_cleanup.drain(end).await {
+            super::socket_tasks::SocketDrainOutcome::Joined => Ok(()),
+            _ => Err(InstalledAdapterError::ObservationIncomplete),
+        };
+        // Attempt genuine capture drain even after listener/socket error/deadline.
+        let capture_result = self.cleanup.drain_retained(end).await.map_err(incomplete);
+        listener_result.and(socket_result).and(capture_result)
+    }
+    async fn stop_listener(&mut self, end: Instant) -> Result<(), InstalledAdapterError> {
+        if let Some(listener) = self.listener.as_mut() {
             listener.abort();
             match tokio::time::timeout_at(end, listener).await {
                 Err(_) => Err(InstalledAdapterError::ObservationIncomplete),
@@ -189,17 +257,46 @@ impl RunningHost {
             }
         } else {
             Ok(())
-        };
-        let socket_result = match self.socket_cleanup.drain(end).await {
-            super::socket_tasks::SocketDrainOutcome::Joined => Ok(()),
-            _ => Err(InstalledAdapterError::ObservationIncomplete),
-        };
-        // Attempt genuine capture drain even after listener/socket error/deadline.
-        let capture_result = self.cleanup.drain_retained(end).await.map_err(incomplete);
-        listener_result.and(socket_result).and(capture_result)
+        }
+    }
+    async fn complete(
+        &mut self,
+        run: &mut InstalledClientRun<'_>,
+        end: Instant,
+    ) -> Result<(), InstalledAdapterError> {
+        self.socket_cleanup.stop_accepting_upgrades();
+        let result = async {
+            self.stop_listener(end).await?;
+            loop {
+                // Losing this borrowed wait restores the SAME checked-out
+                // handles. Publishers stay live until their events are cached.
+                tokio::select! {
+                    outcome = self.socket_cleanup.wait_naturally(end) => {
+                        match outcome {
+                            super::socket_tasks::SocketDrainOutcome::Joined => break,
+                            _ => return Err(InstalledAdapterError::ObservationIncomplete),
+                        }
+                    }
+                    event = self.events.next() => {
+                        event.ok_or(InstalledAdapterError::ObservationIncomplete)?
+                            .collect(run).map_err(incomplete)?;
+                    }
+                }
+            }
+            self.events.close();
+            self.cleanup.drain_retained(end).await.map_err(incomplete)
+        }
+        .await;
+        if let Err(error) = result {
+            // Real cleanup remains required after a producer/work/task fault.
+            // The original failure wins; an expired end retains pending owners.
+            let _cleanup = self.stop(end).await;
+            return Err(error);
+        }
+        Ok(())
     }
 }
-impl Drop for RunningHost {
+impl Drop for RunningHostRuntime {
     fn drop(&mut self) {
         self.socket_cleanup.stop_accepting_upgrades();
         self.events.close();
@@ -252,7 +349,7 @@ async fn observe(
                     // Store the live owner before either fallible retention
                     // or write, so the ordinary error path attempts cleanup.
                     let launch_text =
-                        run.observation_text::<1, { usize::MAX }>(&active.launch_url)?;
+                        run.observation_text::<1, { usize::MAX }>(&active.runtime.launch_url)?;
                     fixture::Fixture::write_private(
                         fixture.paths.launch_file(),
                         launch_text.as_str().as_bytes(),
@@ -262,7 +359,7 @@ async fn observe(
                             launch,
                             &fixture.paths,
                             &mut run,
-                            &mut active.events,
+                            &mut active.runtime.events,
                             limits,
                             end,
                             interrupted.clone(),
@@ -291,7 +388,7 @@ async fn observe(
                     )?);
                     let finished = processes::execute(
                         &mut run,
-                        &mut active.events,
+                        &mut active.runtime.events,
                         &mut pending,
                         command_end,
                         &interrupted,
@@ -334,7 +431,7 @@ async fn observe(
                 InstalledClientAction::StopAndJoin => {
                     host.as_mut()
                         .ok_or(InstalledAdapterError::ObservationIncomplete)?
-                        .stop(end)
+                        .complete(&mut run, end)
                         .await?;
                 }
                 InstalledClientAction::Checkpoint { .. } => {
@@ -352,7 +449,7 @@ async fn observe(
             .checked_add(limits.session_timeout)
             .unwrap_or(end);
         if let Some(active) = host.as_mut() {
-            active.events.close();
+            active.runtime.events.close();
         }
         let _process_cleanup = processes::terminate(&mut pending, cleanup_end).await;
         let _host_cleanup = match host.as_mut() {
@@ -364,14 +461,22 @@ async fn observe(
         return Err(error);
     }
     let host = host
-        .as_ref()
+        .take()
         .ok_or(InstalledAdapterError::ObservationIncomplete)?;
-    let snapshot = host.scope.snapshot();
-    let source = data::SourceMeasurements::OpenPrefix {
-        counts: measurements::prefix(snapshot.reads()),
+    let (mut scope, witnesses) = host.into_source_parts()?;
+    let snapshot = loop {
+        match scope.try_seal() {
+            Ok(snapshot) => break snapshot,
+            Err(pending) => {
+                scope = pending.into_scope();
+                check(end, &interrupted)?;
+                tokio::task::yield_now().await;
+            }
+        }
     };
+    let source = witnesses.measurements(&mut run, &snapshot)?;
     let workers =
-        measurements::workers(snapshot.workers(), SnapshotPhase::Open).map_err(incomplete)?;
+        measurements::workers(snapshot.workers(), SnapshotPhase::Sealed).map_err(incomplete)?;
     let published = run.copy_published_path()?;
     let reported = std::path::Path::new(published.as_str());
     if reported.as_os_str().is_empty() {
@@ -416,3 +521,6 @@ async fn observe(
         workers,
     )
 }
+
+#[cfg(test)]
+mod tail_tests;

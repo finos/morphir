@@ -343,6 +343,11 @@ impl InstalledClientSource<'_> {
 }
 pub struct InstalledClientFixture<'a>(&'a installed_client::InstalledClientPlan<'a>);
 impl<'a> InstalledClientFixture<'a> {
+    pub fn witnesses(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (native::data::FileRole, &'a SourcePath)> + use<'a> {
+        self.0.witnesses()
+    }
     pub fn module(&self) -> &'a SourcePath {
         &self.0.fixture().module
     }

@@ -43,6 +43,15 @@ pub(in crate::commands::ui) struct EventKey {
     sequence: u64,
     connection: u64,
 }
+#[cfg(test)]
+#[derive(Debug, Clone, Copy)]
+pub(in crate::commands::ui) struct InstalledCollectedTestDiagnostic {
+    pub kind: HostEventKind,
+    pub key: EventKey,
+    pub prepared: Option<EventKey>,
+    pub outcome: Option<SendOutcome>,
+    pub slot_checked_out: bool,
+}
 enum Payload {
     Authenticated,
     Received(Utf8Bytes),
@@ -96,6 +105,8 @@ pub(in crate::commands::ui) struct InstalledSlot {
     hook: Mutex<Option<InstalledSocketEntryTestHook>>,
     #[cfg(test)]
     retention_probe: Mutex<Option<RetentionProbe>>,
+    #[cfg(test)]
+    after_collect_probe: Mutex<Option<std::sync::mpsc::Sender<InstalledCollectedTestDiagnostic>>>,
 }
 impl InstalledSlot {
     pub(in crate::commands::ui) fn dormant() -> Self {
@@ -110,6 +121,8 @@ impl InstalledSlot {
             hook: Mutex::new(None),
             #[cfg(test)]
             retention_probe: Mutex::new(None),
+            #[cfg(test)]
+            after_collect_probe: Mutex::new(None),
         }
     }
     fn state(&self) -> MutexGuard<'_, State> {
@@ -125,6 +138,43 @@ impl InstalledSlot {
     fn close(&self) {
         self.state().slot = Slot::Closed;
         self.wake();
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn set_after_collect_test_probe(
+        &self,
+        sender: std::sync::mpsc::Sender<InstalledCollectedTestDiagnostic>,
+    ) {
+        *self.after_collect_probe.lock().unwrap() = Some(sender);
+    }
+    #[cfg(test)]
+    pub(in crate::commands::ui) fn offered_test_diagnostic(
+        &self,
+    ) -> Option<InstalledCollectedTestDiagnostic> {
+        let state = self.state.lock().ok()?;
+        let Slot::Offered(key, payload) = &state.slot else {
+            return None;
+        };
+        let (prepared, outcome) = match payload {
+            Payload::Outcome { prepared, outcome } => (Some(*prepared), Some(*outcome)),
+            _ => (None, None),
+        };
+        Some(InstalledCollectedTestDiagnostic {
+            kind: payload.kind(),
+            key: *key,
+            prepared,
+            outcome,
+            slot_checked_out: false,
+        })
+    }
+    #[cfg(test)]
+    fn report_collected(&self, mut diagnostic: InstalledCollectedTestDiagnostic) {
+        diagnostic.slot_checked_out = self.state.lock().is_ok_and(
+            |state| matches!(state.slot, Slot::CheckedOut(key) if key == diagnostic.key),
+        );
+        let sender = self.after_collect_probe.lock().unwrap().clone();
+        if let Some(sender) = sender {
+            let _ = sender.send(diagnostic);
+        }
     }
 }
 pub(in crate::commands::ui) struct InstalledHostObservation {
@@ -451,10 +501,28 @@ impl PendingHostEvent {
         self,
         run: &mut InstalledClientRun<'_>,
     ) -> Result<(), HostEventRefusal> {
+        // Test-only lease exists only during this call. The probe sees actual
+        // successful cache work while the same business slot is checked out.
+        #[cfg(test)]
+        let probe_source = self.source.clone();
+        let finish = |event: RetainedHostEvent, run: &mut InstalledClientRun<'_>| {
+            #[cfg(test)]
+            let diagnostic = InstalledCollectedTestDiagnostic {
+                kind: event.kind(),
+                key: event.key(),
+                prepared: event.prepared_event(),
+                outcome: event.send_outcome(),
+                slot_checked_out: false,
+            };
+            event.collect(run)?;
+            #[cfg(test)]
+            probe_source.installed_slot().report_collected(diagnostic);
+            Ok(())
+        };
         if self.kind() == HostEventKind::ReadyOpportunity {
-            self.adopt_ready_with(run, |event, run| event.collect(run))
+            self.adopt_ready_with(run, finish)
         } else {
-            self.retain_with(run, |event, run| event.collect(run))
+            self.retain_with(run, finish)
         }
     }
     fn retain_with<T>(

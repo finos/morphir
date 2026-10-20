@@ -74,6 +74,23 @@ impl SocketCleanup {
         self.record_outcome(outcome);
         outcome
     }
+    pub(in crate::commands::ui) async fn wait_naturally(
+        &mut self,
+        deadline: Instant,
+    ) -> SocketDrainOutcome {
+        let outcome = match self {
+            Self::Pending(owner) => {
+                owner
+                    .pending_drain()
+                    .finish(SocketJoinWait::Until(deadline), SocketCompletion::Natural)
+                    .await
+            }
+            Self::Joined => SocketDrainOutcome::Joined,
+            Self::JoinedWithFault(fault) => SocketDrainOutcome::JoinedWithFault(*fault),
+        };
+        self.record_outcome(outcome);
+        outcome
+    }
     #[cfg(test)]
     pub(in crate::commands::ui) fn owner_mut(&mut self) -> Option<&mut HostSocketCleanupOwner> {
         match self {
@@ -411,7 +428,7 @@ impl HostSocketCleanupOwner {
         loop {
             let outcome = self
                 .pending_drain()
-                .finish(SocketJoinWait::UntilJoined)
+                .finish(SocketJoinWait::UntilJoined, SocketCompletion::StopRequested)
                 .await;
             if !matches!(outcome, SocketDrainOutcome::Pending { .. }) {
                 return outcome;
@@ -460,16 +477,31 @@ enum SocketJoinWait {
     Until(Instant),
     UntilJoined,
 }
+#[derive(Clone, Copy)]
+enum SocketCompletion {
+    StopRequested,
+    Natural,
+}
 impl PendingSocketDrain<'_> {
     pub(in crate::commands::ui) async fn wait(self, deadline: Instant) -> SocketDrainOutcome {
-        self.finish(SocketJoinWait::Until(deadline)).await
+        self.finish(
+            SocketJoinWait::Until(deadline),
+            SocketCompletion::StopRequested,
+        )
+        .await
     }
-    async fn finish(self, wait: SocketJoinWait) -> SocketDrainOutcome {
+    async fn finish(
+        self,
+        wait: SocketJoinWait,
+        completion: SocketCompletion,
+    ) -> SocketDrainOutcome {
         let registry = &self.owner.registry;
         let length = {
             let mut state = registry.state();
             for slot in &mut state.slots {
-                if let TaskSlot::Retained(actual) = slot {
+                if let TaskSlot::Retained(actual) = slot
+                    && matches!(completion, SocketCompletion::StopRequested)
+                {
                     actual.request_stop();
                 }
             }
@@ -943,5 +975,6 @@ mod tests {
         );
         assert_eq!(capacity.usage().metadata_bytes(), 0);
     }
+    mod natural_completion_tests;
     mod unbounded_join_tests;
 }

@@ -442,7 +442,10 @@ impl serde::Serialize for InstalledClientMeasurements {
 }
 /// Authorize the actual temporary reparse/typed-copy destinations on the SAME
 /// Decoder before using the existing protocol parser. No resident/RSS claim.
-fn reparse_credit(doc: &Document, owner: &mut Decoder) -> Result<(), DecodeError> {
+pub(in crate::workbench::model_originals::workflow) fn reparse_credit(
+    doc: &Document,
+    owner: &mut Decoder,
+) -> Result<(), DecodeError> {
     match doc {
         Document::String(text) => owner.bytes(text.len()),
         Document::Array(values) => {
@@ -598,7 +601,10 @@ fn raw_credit(
     let raw = payload(wire, event).ok_or(DecodeError::Shape("retained frame"))?;
     owner.bytes(raw.len().checked_mul(passes).ok_or(DecodeError::Limits)?)
 }
-fn normalized_copy(path: &str, owner: &mut Decoder) -> Result<(), DecodeError> {
+pub(in crate::workbench::model_originals::workflow) fn normalized_copy(
+    path: &str,
+    owner: &mut Decoder,
+) -> Result<(), DecodeError> {
     owner.slots(1)?;
     owner.bytes(path.len())?;
     // SAME normalization iterator as the original collector; admit census and
@@ -609,7 +615,10 @@ fn normalized_copy(path: &str, owner: &mut Decoder) -> Result<(), DecodeError> {
     }
     Ok(())
 }
-fn namespace_path(path: &str, owner: &mut Decoder) -> Result<(), DecodeError> {
+pub(in crate::workbench::model_originals::workflow) fn namespace_path(
+    path: &str,
+    owner: &mut Decoder,
+) -> Result<(), DecodeError> {
     owner.slots(1)?; // NamespacePath row
     normalized_copy(path, owner)?;
     for part in path.split('/') {

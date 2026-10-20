@@ -139,3 +139,7 @@ mod process_effect_tests;
 
 mod process_fault_test;
 mod snapshot_record_tests;
+
+mod source_files_iterator_tests;
+mod source_files_tests;
+mod witness_view_test;

@@ -280,3 +280,7 @@ mod supplement;
 
 #[cfg(test)]
 mod review;
+
+mod witness_role_tests;
+
+mod sealed_claims;

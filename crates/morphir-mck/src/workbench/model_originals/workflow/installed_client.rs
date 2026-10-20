@@ -8,6 +8,9 @@ use super::work::{ClosureError, ClosureOwner, Resource};
 use super::*;
 use crate::json::strict::Document;
 
+mod witness_roles;
+pub(super) use witness_roles::{SourceWitnessRoles, compile_fixture_witness_roles};
+
 pub(super) const CASE: &str = "single-file-explicit-companion-preserves-opaque-bytes";
 pub(super) const PATH: &str = "installed-client-first-v1/materialization.json";
 pub(super) const SHA: &str = "92e2711ac430a12bd5a2e98e8ea22fcf48e28f090c3cd1837f5729c513509009";
@@ -225,6 +228,7 @@ pub(super) struct InstalledClientPlan<'a> {
     // Real old expected byte-source operands, not copied/decoded substitutes.
     byte_sources: Vec<&'a domain::ExpectedByteSource>,
     file_sources: Vec<&'a domain::ExpectedByteSource>,
+    witnesses: SourceWitnessRoles,
 }
 fn closure(error: ClosureError) -> CompilationError {
     CompilationError::Closure(CompileError::Owner(error))
@@ -235,9 +239,17 @@ impl<'a> InstalledClientPlan<'a> {
         paired: &PairedWorkflow<'a>,
         owner: &mut ClosureOwner,
         expansion: &mut ExpansionOwner,
+        decode: &mut Decoder,
     ) -> Result<Self, CompilationError> {
         owner.ready().map_err(closure)?;
         expansion.ready().map_err(CompilationError::Expansion)?;
+        let witnesses = compile_fixture_witness_roles(
+            &reviewed.payload().draft.fixture,
+            paired,
+            owner,
+            expansion,
+            decode,
+        )?;
         let domain::ExpectedWorkflow::ModelOriginalsClient { byte_sources, .. } = paired.expected()
         else {
             return Err(CompilationError::Source(SourceError::ManifestRole));
@@ -342,7 +354,13 @@ impl<'a> InstalledClientPlan<'a> {
             reviewed,
             byte_sources: resolved,
             file_sources,
+            witnesses,
         })
+    }
+    pub(super) fn witnesses(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (super::native::data::FileRole, &SourcePath)> {
+        self.witnesses.paths(self.fixture())
     }
     pub(super) fn actions(&self) -> impl ExactSizeIterator<Item = &Action> {
         self.reviewed.payload().draft.actions.0.iter()

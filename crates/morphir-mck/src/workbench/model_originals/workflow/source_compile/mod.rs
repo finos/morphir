@@ -223,6 +223,7 @@ impl<'owner, 'policies, 'sources, 'supplied> CaseCompiler<'owner, 'policies, 'so
                     source.paired(),
                     self.closure,
                     self.expansion,
+                    self.verifier.decoder(),
                 )
             })
             .transpose()?;

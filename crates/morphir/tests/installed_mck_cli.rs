@@ -20,6 +20,13 @@ const ID: &str = "single-file-explicit-companion-preserves-opaque-bytes";
 const WAIT: Duration = Duration::from_secs(90);
 const LOG_LIMIT: u64 = 1_048_576;
 
+mod sealed_claim_mutations {
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../morphir-mck/tests/support/installed_sealed_claim_mutations.rs"
+    ));
+}
+
 #[derive(Clone, Copy)]
 enum Target {
     Node,
@@ -203,6 +210,47 @@ fn corrupt_actual_destination(measured: &mut Value) {
         other => panic!("actual observed bytes must be retained literal, got {other}"),
     }
 }
+fn check_sealed_claim_mutations(setup: &Setup, measured: &Value) {
+    use sealed_claim_mutations::{MUTATIONS, Mutation, SOURCE, WORKERS, altered};
+    assert_eq!(
+        measured.pointer(&format!("{SOURCE}/kind")).unwrap(),
+        "sealed-complete"
+    );
+    assert_eq!(
+        measured.pointer(&format!("{WORKERS}/kind")).unwrap(),
+        "joined-cleanup"
+    );
+    for mutation in MUTATIONS {
+        let changed = altered(measured, mutation);
+        let raw = changed.to_string();
+        let report = Report::from_json(&raw).expect("same strict factual wire shape");
+        let replay = check_report_configured(&setup.kit, &report, &setup.configuration);
+        let id = format!("sealed-{}", mutation.name());
+        let path = setup.root.path().join(format!("{id}.json"));
+        fs::write(&path, raw).unwrap();
+        let output = execute(setup.command("check", &path), setup.root.path(), &id);
+        assert_eq!(output.status.code(), Some(1), "{}", output.stderr);
+        if matches!(mutation, Mutation::OpenSourceWithJoinedWorkers) {
+            replay.expect("weaker source with joined workers is valid unqualified evidence");
+            assert!(output.stdout.contains("not qualified"));
+            assert!(!output.stderr.contains("saved first failure differs"));
+        } else {
+            assert_eq!(
+                replay.unwrap_err(),
+                "saved first failure differs",
+                "{} requires {}",
+                mutation.name(),
+                mutation.expected()
+            );
+            assert!(
+                output.stderr.contains("saved first failure differs"),
+                "{}: {}",
+                mutation.name(),
+                output.stderr
+            );
+        }
+    }
+}
 fn qualify(target: Target) {
     let inputs = Inputs::from_environment(target); // Missing input FAILS, never skips.
     let setup = Setup::new(&inputs);
@@ -314,6 +362,9 @@ fn qualify(target: Target) {
     let replay = execute(setup.command("check", &path), setup.root.path(), "replay");
     assert_eq!(replay.status.code(), Some(1), "{}", replay.stderr);
     assert!(replay.stdout.contains("not qualified"));
+    // Fresh real report plus its accepted base replay, then the SAME pure
+    // mutations as engine controls. No historical report is used on this path.
+    check_sealed_claim_mutations(&setup, &measured);
     let mut tampered = measured;
     corrupt_actual_destination(&mut tampered); // Only AFTER live source-bound check.
     let forged = Report::from_json(&tampered.to_string()).unwrap();

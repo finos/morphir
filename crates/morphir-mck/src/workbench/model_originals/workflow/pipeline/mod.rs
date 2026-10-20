@@ -278,6 +278,15 @@ impl RunFault {
                     super::observation_check::InstalledClientFault::SourceBinding => {
                         "installed-source-binding"
                     }
+                    super::observation_check::InstalledClientFault::SourceCoverage => {
+                        "installed-source-coverage"
+                    }
+                    super::observation_check::InstalledClientFault::SourceWitness => {
+                        "installed-source-witness"
+                    }
+                    super::observation_check::InstalledClientFault::WorkerCoverage => {
+                        "installed-worker-coverage"
+                    }
                     super::observation_check::InstalledClientFault::ProcessOrder => {
                         "installed-process-order"
                     }

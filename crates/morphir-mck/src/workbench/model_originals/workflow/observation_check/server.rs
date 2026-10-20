@@ -38,11 +38,18 @@ impl ComparedNativeFacts {
 }
 type Result<T> = std::result::Result<T, ObservationError>;
 fn require(owner: &mut CompareOwner, condition: bool, kind: NativeFault) -> Result<()> {
+    require_observation(owner, condition, ObservationError::NativeDeclaration(kind))
+}
+fn require_observation(
+    owner: &mut CompareOwner,
+    condition: bool,
+    fault: ObservationError,
+) -> Result<()> {
     owner.charge(CompareResource::Checks, 1)?;
     if condition {
         Ok(())
     } else {
-        owner.refuse(ObservationError::NativeDeclaration(kind))
+        owner.refuse(fault)
     }
 }
 fn bytes(owner: &mut CompareOwner, amount: usize) -> Result<()> {
@@ -63,7 +70,9 @@ fn sum(owner: &mut CompareOwner, a: usize, b: usize) -> Result<usize> {
 fn allocation<T>(owner: &mut CompareOwner) -> Result<T> {
     owner.refuse(ObservationError::NativeDeclaration(NativeFault::Allocation))
 }
-fn recipe_part<'a>(part: &'a input::AtomicBytes) -> RecipePart<'a> {
+pub(in crate::workbench::model_originals::workflow) fn recipe_part<'a>(
+    part: &'a input::AtomicBytes,
+) -> RecipePart<'a> {
     match part {
         input::AtomicBytes::Utf8 { text } => RecipePart::Utf8(&text.0),
         input::AtomicBytes::Hex { hex } => RecipePart::Hex(hex.as_str()),
@@ -81,7 +90,7 @@ fn recipe_part<'a>(part: &'a input::AtomicBytes) -> RecipePart<'a> {
         },
     }
 }
-fn part_length(part: RecipePart<'_>) -> usize {
+pub(in crate::workbench::model_originals::workflow) fn part_length(part: RecipePart<'_>) -> usize {
     match part {
         RecipePart::Utf8(text) => text.len(),
         RecipePart::Hex(text) => text.len() / 2,
@@ -838,31 +847,35 @@ fn compare_record(
     )
 }
 
-fn read_counts(counts: &ReadCounts) -> [u64; 3] {
+pub(super) fn read_counts(counts: &ReadCounts) -> [u64; 3] {
     [
         counts.attempts.0,
         counts.read_calls.0,
         counts.returned_bytes.0,
     ]
 }
-fn valid_read_prefix(prefix: &ReadPrefix, owner: &mut CompareOwner) -> Result<()> {
+pub(super) fn valid_read_prefix(
+    prefix: &ReadPrefix,
+    owner: &mut CompareOwner,
+    fault: ObservationError,
+) -> Result<()> {
     for ((total, workspace), ambient) in read_counts(&prefix.total)
         .into_iter()
         .zip(read_counts(&prefix.workspace))
         .zip(read_counts(&prefix.ambient))
     {
-        require(
-            owner,
-            workspace.checked_add(ambient) == Some(total),
-            NativeFault::SourceCoverage,
-        )?;
+        require_observation(owner, workspace.checked_add(ambient) == Some(total), fault)?;
     }
     Ok(())
 }
-fn worker_counts(value: &WorkerCounts, owner: &mut CompareOwner) -> Result<()> {
+pub(super) fn worker_counts(
+    value: &WorkerCounts,
+    owner: &mut CompareOwner,
+    fault: ObservationError,
+) -> Result<()> {
     let normal = value.returned_ok.0.checked_add(value.returned_error.0);
     let bodies = normal.and_then(|n| n.checked_add(value.panicked.0));
-    require(
+    require_observation(
         owner,
         value.scheduled.0 != 0
             && value.owned_handles.0 == 0
@@ -871,7 +884,7 @@ fn worker_counts(value: &WorkerCounts, owner: &mut CompareOwner) -> Result<()> {
             && value.panicked.0 == value.joined_panicked.0
             && bodies == Some(value.started.0)
             && value.started.0.checked_add(value.joined_cancelled.0) == Some(value.scheduled.0),
-        NativeFault::WorkerCoverage,
+        fault,
     )
 }
 fn compare_checkpoints(
@@ -951,7 +964,11 @@ fn compare_checkpoints(
                 ));
             }
         };
-        valid_read_prefix(counts, owner)?;
+        valid_read_prefix(
+            counts,
+            owner,
+            ObservationError::NativeDeclaration(NativeFault::SourceCoverage),
+        )?;
         let total = read_counts(&counts.total);
         for (before, now) in previous.into_iter().zip(total) {
             require(owner, now >= before, NativeFault::SourceCoverage)?;
@@ -968,7 +985,11 @@ fn compare_checkpoints(
                 ));
             }
         };
-        worker_counts(workers, owner)?;
+        worker_counts(
+            workers,
+            owner,
+            ObservationError::NativeDeclaration(NativeFault::WorkerCoverage),
+        )?;
         let EntryCoverage::Complete {
             compile_calls,
             legacy_model_open_calls,

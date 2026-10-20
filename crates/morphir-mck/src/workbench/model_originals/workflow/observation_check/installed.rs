@@ -26,6 +26,8 @@ macro_rules! require {
         require_value($owner, yes, $fault)
     }};
 }
+#[path = "installed_source.rs"]
+mod source;
 fn field<'a>(
     doc: &'a Document,
     key: &str,
@@ -867,6 +869,7 @@ pub(in crate::workbench::model_originals::workflow) fn check(
     claims(actual, owner)?;
     corroborate(plan, actual, owner)?;
     implementation::check(plan, actual, owner)?;
+    source::check(plan, actual, owner)?;
     if matches!(
         paired.expected(),
         domain::ExpectedWorkflow::ModelOriginalsClient {

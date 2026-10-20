@@ -1,0 +1,19 @@
+{
+  "kind": "historical-actual-installed-report-test-input",
+  "report": {"path":"node-report.json","sha256":"e218f27f94c099d0683a2e3beeec3aeb568ce35d5c33c79ddf9682d5f832ac98","bytes":650373},
+  "policy": {"path":"checker-policy-v3.json","sha256":"2e210b9a852352118beb755fb0aa74bf08d51b33499a46140fc948d77d1473b4","bytes":1629},
+  "cases": {"path":"../../installed_client_controls/cases24.json","sha256":"26559149b6a1e67e13a4e59422ebf5e22f399799f3f28eba0b20c7002919e26e","meaning":"Existing maintained full24 source, not a new fixture or allocation."},
+  "capture": {
+    "producerBase":"bed444516b4d3e1b9717029006081b3a6ab45e0a",
+    "testedDirtySourceManifestSha256":"efac10e5f27bcd30d0bd9a97a2fb8005fb14ccd0bc6e0107acb680dbf468b774",
+    "oldCheckerSha256":"88b3137706ffadc82a90c3f13155e23ad3621f25a9b4b2018345b71b970e5a91",
+    "authorSourceCommandReceiptSha256":"bf3b47496428eab64b052c1f50cd99d592e1de1df576d9023c7d430eda22b2ea",
+    "actualNodeSession":99720,
+    "actualNodeExit":1,
+    "actualSavedReplayExit":1,
+    "sutSourceHead":"01416289e7a90a8481dc751cb41340a7c3ba38cc",
+    "result":"Actual3 commands exit0, real sealed source and joined workers, existing ExpectedBlocked/Failed0/qualifiedfalse, remaining23NotAttempted."
+  },
+  "use": "Byte-exact historical consistency/replay test input only. It does not run the installed SUT, prove current OS reads or joins, qualify the whole profile, establish build equivalence, or grant source/workspace/process authority. Recorded absolute paths are data; tests create only a private temporary kit using the existing cases24 bytes.",
+  "liveQualification": "The two separately ignored installed_mck_cli tests require explicit installed package, Node, native, source checkout and caller policy inputs. They use each freshly produced actual report and never substitute this historical report. Ordinary CI does not provision those SUT inputs."
+}

@@ -1,6 +1,7 @@
 //! Physical post-exit census DATA. Completion is explicit after the actual walk.
 use super::collection::grow;
 use super::*;
+use crate::workbench::model_originals::native::data::{FileCounts, FileRole, ReadCounts};
 use crate::workbench::model_originals::workflow::{
     ContentSha256, Items, Natural, installed_measurements as data,
 };
@@ -11,6 +12,73 @@ pub enum InstalledSnapshot {
     Scratch,
 }
 impl InstalledClientRun<'_> {
+    /// Retain observation DATA from existing validated paths. This creates no
+    /// SDK file witness or source-seal authority.
+    pub fn retain_source_files<'path>(
+        &mut self,
+        files: impl ExactSizeIterator<Item = (FileRole, &'path SourcePath, ReadCounts)>,
+    ) -> Result<Items<FileCounts, 1, 4096>, InstalledAdapterError> {
+        self.work_ready()?;
+        let length = files.len();
+        if !(1..=4096).contains(&length) {
+            self.attempt.fail(RunFault::Decode(
+                crate::workbench::model_originals::workflow::DecodeError::Shape(
+                    "source file observation count",
+                ),
+            ));
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        }
+        let mut retained = self.vector(length)?;
+        for (role, path, reads) in files {
+            // ExactSizeIterator is a safe, advisory contract. Actual yields
+            // cannot authorize a copy or Vec growth beyond the funded length.
+            if retained.len() == length {
+                return Err(self.observation_failure(InstalledObservationError::LayoutMismatch));
+            }
+            retained.push(FileCounts {
+                role,
+                path: self.copy_validated_source_path(path)?,
+                reads,
+            });
+        }
+        if retained.len() != length {
+            return Err(self.observation_failure(InstalledObservationError::LayoutMismatch));
+        }
+        Items::new(retained).map_err(|_| {
+            self.attempt.fail(RunFault::Decode(
+                crate::workbench::model_originals::workflow::DecodeError::Shape(
+                    "source file observation count",
+                ),
+            ));
+            InstalledAdapterError::ObservationIncomplete
+        })
+    }
+    fn copy_validated_source_path(
+        &mut self,
+        path: &SourcePath,
+    ) -> Result<SourcePath, InstalledAdapterError> {
+        self.work_ready()?;
+        let raw = path.as_str();
+        let result = self.decode.bytes(raw.len());
+        self.decoded(result)?;
+        let copied = super::super::observation::prepare_text_copy(
+            self.receiving,
+            self.comparison,
+            ObservationBufferRole::CensusMetadata,
+            raw,
+        )
+        .and_then(|ticket| ticket.retain_text())
+        .map_err(|error| *error);
+        let text = copied
+            .map_err(|error| self.observation_failure(error))?
+            .into_string();
+        // SourcePath already enforces the exact output path invariants. The
+        // SAME ticket copies its valid UTF-8 bytes without modification, so
+        // wrapping that owned copy preserves both RootPath and SourcePath.
+        Ok(SourcePath(crate::workbench::model_originals::RootPath(
+            text,
+        )))
+    }
     pub fn observation_read_buffer(
         &mut self,
         length: usize,
