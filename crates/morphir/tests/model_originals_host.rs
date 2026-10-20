@@ -677,3 +677,130 @@ async fn actual_cli_raw_selected_frames_refuse_without_publishing_and_exact_limi
     expectation.verify_release(&release.exchange()).unwrap();
     socket.close().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn actual_cli_regression_read_directory_is_invalid_request_and_owner_stays_usable() {
+    let fixture = Fixture::compile(Layout::Tree);
+    let host = Host::launch(&fixture).await;
+    let source = &host.manifest["initialSources"][0];
+    let session = SessionId::new(host.manifest["sessionId"].as_str().unwrap()).unwrap();
+    let mut socket = host.connect().await;
+    let workspace = socket
+        .call("morphir.workspace.open", json!({"source":source}))
+        .await;
+    assert!(workspace["error"].is_null(), "{workspace}");
+    let project = workspace["result"]["snapshot"]["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["relativePath"] == ".")
+        .unwrap()["id"]
+        .as_str()
+        .unwrap();
+    let capture = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.capture",
+                capture_params(source, project),
+            )
+            .await,
+    );
+    let expectation = CaptureExpectation::from_exchange(&capture.exchange(), &session).unwrap();
+    let ready: Value = serde_json::from_str(&capture.reply).unwrap();
+    let capture_id = ready["result"]["captureId"].as_str().unwrap();
+    let page = Recorded::new(socket.raw_call("morphir.model-originals.inventory", json!({"contractVersion":VERSION,"captureId":capture_id,"startIndex":0,"maxEntries":256})).await);
+    let inventory = expectation.verify_inventory(&[page.exchange()]).unwrap();
+    let directory = inventory
+        .inventory()
+        .entries()
+        .iter()
+        .find(|entry| entry.path() == "morphir-ir/empty")
+        .unwrap();
+    assert_eq!(
+        directory.kind(),
+        morphir_mck::workbench::model_originals::RootKind::Directory
+    );
+    let (sent, reply) = socket.raw_call("morphir.model-originals.read", json!({"contractVersion":VERSION,"captureId":capture_id,"target":{"kind":"original","entryId":directory.id().as_str()},"offset":0,"maxBytes":1})).await;
+    let request = Request::parse(&sent).unwrap();
+    // Original wire49 fixes invalid_request for a known directory. The result
+    // must not be reclassified as an unknown handle or an out-of-range file.
+    closed_profile_failure(
+        &reply,
+        json!(request.id().get()),
+        "model_originals.invalid_request",
+    );
+
+    let file = inventory
+        .inventory()
+        .entries()
+        .iter()
+        .find(|entry| entry.path() == "morphir-ir/opaque.bin")
+        .unwrap();
+    let read = Recorded::new(socket.raw_call("morphir.model-originals.read", json!({"contractVersion":VERSION,"captureId":capture_id,"target":{"kind":"original","entryId":file.id().as_str()},"offset":0,"maxBytes":65536})).await);
+    let target = morphir_mck::workbench::model_originals::ReadTarget::Original {
+        entry: file.id().clone(),
+    };
+    let stream = inventory
+        .verify_stream(&target, &[read.exchange()])
+        .unwrap();
+    assert_eq!(stream.bytes(), SIDECAR);
+    let release = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.release",
+                json!({"contractVersion":VERSION,"captureId":capture_id}),
+            )
+            .await,
+    );
+    expectation.verify_release(&release.exchange()).unwrap();
+    socket.close().await;
+    // Error shape plus a usable owner does not instrument actual byte-access
+    // counters. The original case's full no-byte-access obligation stays separate.
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn actual_cli_regression_malformed_json_after_method_keeps_closed_profile_error() {
+    const MALFORMED: &str = r#"{"jsonrpc":"2.0","id":999,"method":"morphir.model-originals.read","params":{"broken":]}}"#;
+    let fixture = Fixture::compile_format(Layout::File, Format::Json);
+    let host = Host::launch(&fixture).await;
+    let source = &host.manifest["initialSources"][0];
+    let session = SessionId::new(host.manifest["sessionId"].as_str().unwrap()).unwrap();
+    let mut socket = host.connect().await;
+    let workspace = socket
+        .call("morphir.workspace.open", json!({"source":source}))
+        .await;
+    assert!(workspace["error"].is_null(), "{workspace}");
+    let project = workspace["result"]["snapshot"]["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["relativePath"] == ".")
+        .unwrap()["id"]
+        .as_str()
+        .unwrap();
+    let reply = socket.literal(MALFORMED).await;
+    // Method evidence was structurally decoded before the later syntax error;
+    // incomplete request identity is null and no generic protocol fallback wins.
+    closed_profile_failure(&reply, Value::Null, "model_originals.invalid_request");
+
+    let capture = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.capture",
+                capture_params(source, project),
+            )
+            .await,
+    );
+    let expectation = CaptureExpectation::from_exchange(&capture.exchange(), &session).unwrap();
+    let ready: Value = serde_json::from_str(&capture.reply).unwrap();
+    let release = Recorded::new(
+        socket
+            .raw_call(
+                "morphir.model-originals.release",
+                json!({"contractVersion":VERSION,"captureId":ready["result"]["captureId"]}),
+            )
+            .await,
+    );
+    expectation.verify_release(&release.exchange()).unwrap();
+    socket.close().await;
+}

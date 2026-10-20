@@ -29,34 +29,34 @@ use super::{
 const MAX_INBOUND_MESSAGE_BYTES: usize = 1024 * 1024;
 
 fn selects_originals(raw: &str) -> bool {
-    struct MethodEvidence;
-    impl<'de> serde::de::Visitor<'de> for MethodEvidence {
-        type Value = bool;
+    struct MethodEvidence<'a>(&'a mut bool);
+    impl<'de> serde::de::Visitor<'de> for MethodEvidence<'_> {
+        type Value = ();
         fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             formatter.write_str("a request object")
         }
-        fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<bool, A::Error> {
-            let mut selected = false;
+        fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<(), A::Error> {
             while let Some(key) = map.next_key::<String>()? {
                 if key == "method" {
                     let value = map.next_value::<Value>()?;
-                    selected |= value
+                    *self.0 |= value
                         .as_str()
                         .is_some_and(|method| method.starts_with("morphir.model-originals."));
                 } else {
                     map.next_value::<serde::de::IgnoredAny>()?;
                 }
             }
-            Ok(selected)
+            Ok(())
         }
     }
-    // This recognizes profile evidence only, including a duplicated method.
-    // The independent strict request decoder still refuses every duplicate.
-    serde::Deserializer::deserialize_map(
+    // Retain an actually decoded root method even if a later member is malformed.
+    // This only classifies errors; the strict decoder still refuses the frame.
+    let mut selected = false;
+    let _ = serde::Deserializer::deserialize_map(
         &mut serde_json::Deserializer::from_str(raw),
-        MethodEvidence,
-    )
-    .unwrap_or(false)
+        MethodEvidence(&mut selected),
+    );
+    selected
 }
 
 #[cfg(test)]

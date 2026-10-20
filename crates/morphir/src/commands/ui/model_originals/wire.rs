@@ -298,6 +298,9 @@ pub(crate) fn read(
         .iter()
         .find(|entry| entry.entry_id() == entry_id)
         .ok_or(CaptureError::UnknownHandle)?;
+    if entry.kind() == SourceKind::Directory {
+        return Err(WireError::InvalidRequest);
+    }
     let bytes = sources
         .file_bytes(entry.path())
         .ok_or(WireError::InvalidRange)?;
