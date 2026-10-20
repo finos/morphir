@@ -53,7 +53,7 @@ pub(all) struct ContentPublisher {
   begin : (Array[String]) -> ContentPublication raise
 }
 pub fn ContentPublisher::filesystem(String, String) -> Self raise
-pub fn ContentPublisher::filesystem_inventory(String, String, Array[String]) -> Self raise
+pub fn ContentPublisher::filesystem_inventory(String, String, Array[String], destination_policy? : DestinationPolicy) -> Self raise
 pub fn ContentPublisher::memory(Map[String, @data.Content]) -> Self
 pub fn ContentPublisher::text(Publisher) -> Self
 
@@ -65,6 +65,11 @@ pub(all) struct ContentResult {
   cancelled : Bool
 }
 pub fn ContentResult::successful(Self) -> Bool
+
+pub(all) enum DestinationPolicy {
+  Replace
+  Create
+}
 
 pub(all) enum Event {
   Phase(String)

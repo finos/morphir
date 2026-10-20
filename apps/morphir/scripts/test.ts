@@ -34,11 +34,13 @@ function headlessAcceptance(target: string, binary: string, launcher?: string, i
     MORPHIR_CONNECTED_PROVIDER_BUILD: join(workspaceDirectory, '_build'),
     MORPHIR_CONNECTED_HELPER: join(appDirectory, 'build-provider/connected.mjs'),
     MORPHIR_TRANSFER_HELPER: join(appDirectory, 'build-provider/transfers.mjs'),
+    MORPHIR_ORIGINALS_HELPER: join(appDirectory, 'build-provider/originals.mjs'),
     ...(launcher ? { MORPHIR_HEADLESS_LAUNCHER: launcher } : {}),
     ...(installedRoot ? {
       MORPHIR_GENERATION_HELPER: join(installedRoot, 'build-provider/library-build.mjs'),
       MORPHIR_CONNECTED_HELPER: join(installedRoot, 'build-provider/connected.mjs'),
       MORPHIR_TRANSFER_HELPER: join(installedRoot, 'build-provider/transfers.mjs'),
+      MORPHIR_ORIGINALS_HELPER: join(installedRoot, 'build-provider/originals.mjs'),
     } : {}),
   };
   for (const script of [
@@ -48,6 +50,7 @@ function headlessAcceptance(target: string, binary: string, launcher?: string, i
     'test-generation.ts',
     ...(target === 'wasm' || target === 'wasm-gc' || process.platform === 'win32' || process.env.MORPHIR_WORKBENCH_LIVE_HOST ? ['test-headless-connected.ts'] : []),
     ...(target === 'wasm' || target === 'wasm-gc' || process.platform === 'win32' || process.env.MORPHIR_WORKBENCH_ARTIFACT_HOST ? ['test-headless-transfers.ts'] : []),
+    ...(target === 'wasm' || target === 'wasm-gc' || process.platform === 'win32' || process.env.MORPHIR_MODEL_ORIGINALS_HOST ? ['test-headless-originals.ts'] : []),
     ...(process.env.MORPHIR_MCK_BIN && (target === 'js' || target === 'native') ? ['test-headless-model-mck.ts'] : []),
   ]) {
     execFileSync(process.execPath, [join(appDirectory, 'scripts', script), target], {
@@ -86,7 +89,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("packages/core/src/nested/Other.scm", '41');
   put("packages/tools/lib/Main.scm", '"hello λ😀"');
   checkHelp(run([]).stdout);
-  assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "workspace", "project list", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec"]);
+  assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "connected originals", "workspace", "project list", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec"]);
   assert.equal(lines(["--help"])[0].type, "help");
   for (const args of [["run", "--help"], ["workspace", "--help"], ["project", "list", "--help"]]) {
     assert.ok(JSON.parse(run([...args, "--json"]).stdout).options.includes("--json-lines"));

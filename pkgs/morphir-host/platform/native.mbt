@@ -33,6 +33,20 @@ pub fn rename(a : String, b : String) -> Unit raise {
 }
 
 ///|
+#borrow(a, b)
+extern "C" fn rename_directory_new_c(a : Bytes, b : Bytes) -> Int32 = "morphir_host_rename_directory_new"
+
+///|
+pub fn rename_directory_new(a : String, b : String) -> Unit raise {
+  match rename_directory_new_c(cstring(a), cstring(b)) {
+    0 => ()
+    1 => raise IOError("publication.destination_unavailable: " + b)
+    2 => raise IOError("publication.create_failed: " + b)
+    _ => raise IOError("publication.reservation_cleanup_failed: " + b)
+  }
+}
+
+///|
 pub fn stderr(text : String) -> Unit {
   stderr_c(cstring(text))
 }

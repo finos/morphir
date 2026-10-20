@@ -15,7 +15,7 @@ const byteLength = (source: string) => new TextEncoder().encode(source).byteLeng
 
 /** Open only the supplied attempt-owned socket, with bounded abortable setup. */
 export function openArtifactChannel(
-  createSocket: () => RpcSocket, signal: AbortSignal, timeout = 10000,
+  createSocket: () => RpcSocket, signal: AbortSignal, timeout = 10000, exchangeTimeout = 60000,
 ): Promise<ArtifactRpcChannel> {
   if (!Number.isSafeInteger(timeout) || timeout < 1) return Promise.reject(new Error('Invalid artifact connection timeout.'));
   if (signal.aborted) return Promise.reject(new Error('The artifact connection was cancelled.'));
@@ -36,7 +36,7 @@ export function openArtifactChannel(
     };
     const opened = () => {
       clean();
-      try { resolve(new ArtifactRpcChannel(socket)); }
+      try { resolve(new ArtifactRpcChannel(socket, exchangeTimeout)); }
       catch (cause) { try { socket.close(); } catch { /* Already disconnected. */ } reject(workbenchError(cause)); }
     };
     const failed = () => refuse('The artifact connection failed.');

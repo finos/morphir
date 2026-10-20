@@ -7,7 +7,7 @@
     "build": "bun --check scripts/build.ts",
     "dev": "bun --check scripts/serve.ts",
     "test": "bun run test:model-originals && node --test browser/transport.test.ts browser/worksheet.test.ts browser/execution-descriptor.test.ts browser/http-policy.test.ts browser/native-session.test.ts browser/native-client-trace.test.ts browser/native-workspace.test.ts browser/artifact-download.test.ts browser/artifact-rpc.test.ts browser/artifact-transfer.test.ts browser/verified-artifacts.test.ts browser/artifact-registry.test.ts browser/connected-artifacts.test.ts scripts/server.test.ts scripts/execution-provider.test.ts scripts/capability-execution.test.ts scripts/http-policy-budget.test.ts scripts/desktop-profile-owner.test.ts browser/editor/marks.test.ts browser/editor/document-text.test.ts browser/project-io.test.ts browser/model-import.test.ts",
-    "test:model-originals": "bun test browser/model-originals-session.test.ts",
+    "test:model-originals": "bun test browser/model-originals-session.test.ts ../../pkgs/morphir-host/model-originals-client/originals.test.ts ../../pkgs/morphir-host/model-originals-client/selection.test.ts",
     "test:worksheet": "bun --check scripts/worksheet-browser-test.ts",
     "test:artifacts": "bun --check scripts/artifact-browser-test.ts",
     "test:browser": "node scripts/browser-test.ts",

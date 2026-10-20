@@ -3,14 +3,29 @@
 pub struct OriginalPath(String) derive(Eq, Debug)
 
 ///|
+/// Connected originals use their own published path and inventory bounds.
+pub(all) enum InventoryPathProfile {
+  Local
+  Connected
+}
+
+///|
 pub extend OriginalPath with Eq::{equal, not_equal}
 
 ///|
 pub extend OriginalPath with @debug.Debug::{to_repr}
 
 ///|
-pub fn OriginalPath::parse(path : String) -> OriginalPath raise DocumentError {
-  if path == "" || path.length() > 4096 {
+pub fn OriginalPath::parse(
+  path : String,
+  profile~ : InventoryPathProfile = Local,
+) -> OriginalPath raise DocumentError {
+  if path == "" ||
+    path.length() > (if profile is Connected { 8000 } else { 4096 }) {
+    raise InvalidFilename
+  }
+  if profile is Connected &&
+    (@utf8.encode(path).length() > 16000 || path.iter().count() > 4000) {
     raise InvalidFilename
   }
   let normalized = @workspace.normalize(path) catch {
@@ -22,7 +37,7 @@ pub fn OriginalPath::parse(path : String) -> OriginalPath raise DocumentError {
   let mut depth = 0
   for part in path.split("/") {
     depth += 1
-    if depth > 128 {
+    if depth > (if profile is Connected { 256 } else { 128 }) {
       raise InvalidFilename
     }
     ignore(OriginalFilename::parse(part.to_owned()))
@@ -87,8 +102,12 @@ pub fn OriginalTree::new(
 pub fn validate_inventory_paths(
   files : Array[String],
   directories : Array[String],
+  profile~ : InventoryPathProfile = Local,
 ) -> Unit raise DocumentError {
-  if files.length() > 4096 || directories.length() > 4096 {
+  if (
+      profile is Local && (files.length() > 4096 || directories.length() > 4096)
+    ) ||
+    files.length() + directories.length() > 100064 {
     raise TooLarge
   }
   let folded_files : Map[String, Bool] = Map([])
@@ -96,9 +115,9 @@ pub fn validate_inventory_paths(
   let seen_directories : Map[String, Bool] = Map([])
   let mut path_units = 0
   fn check_path(path : String) -> Unit raise DocumentError {
-    ignore(OriginalPath::parse(path))
+    ignore(OriginalPath::parse(path, profile~))
     path_units += path.length()
-    if path_units > 1048576 {
+    if path_units > (if profile is Connected { 67108864 } else { 1048576 }) {
       raise TooLarge
     }
     let mut parent = ""

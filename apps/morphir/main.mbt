@@ -9,8 +9,9 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
             [
               "run", "execute", "verify", "conform", "eval", "worksheet", "generate",
               "model inspect", "model export-original", "connected connect", "connected run",
-              "connected artifacts", "workspace", "project list", "toolchain info",
-              "toolchain setup", "toolchain build", "toolchain run", "toolchain exec",
+              "connected artifacts", "connected originals", "workspace", "project list",
+              "toolchain info", "toolchain setup", "toolchain build", "toolchain run",
+              "toolchain exec",
             ].map(Json::string),
           ),
         ),
@@ -34,7 +35,8 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
               "--receipt-format", "--metadata-grants", "--metadata-timeout", "--provider",
               "--checking-policy", "--source-id", "--source-revision", "--connection",
               "--connected-helper", "--build-target", "--backend-option", "--filename",
-              "--overwrite", "--connection-scope", "--transfer-helper",
+              "--overwrite", "--connection-scope", "--transfer-helper", "--originals-helper",
+              "--list",
             ].map(Json::string),
           ),
         ),
@@ -96,6 +98,9 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
   }
   if cli.command == "connected artifacts" {
     return transfer_command(cli, mode)
+  }
+  if cli.command == "connected originals" {
+    return originals_command(cli, mode)
   }
   if cli.command.has_prefix("connected ") {
     return connected_command(cli, mode)

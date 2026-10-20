@@ -8,7 +8,7 @@ import {
 }
 
 // Values
-pub fn validate_inventory_paths(Array[String], Array[String]) -> Unit raise DocumentError
+pub fn validate_inventory_paths(Array[String], Array[String], profile? : InventoryPathProfile) -> Unit raise DocumentError
 
 // Errors
 pub(all) suberror DocumentError {
@@ -62,6 +62,11 @@ pub fn HostRetention::equal(Self, Self) -> Bool
 pub fn HostRetention::not_equal(Self, Self) -> Bool
 pub fn HostRetention::to_repr(Self) -> @debug.Repr
 
+pub(all) enum InventoryPathProfile {
+  Local
+  Connected
+}
+
 pub struct OpenAttempt(Int) derive(Eq, @debug.Debug)
 pub fn OpenAttempt::equal(Self, Self) -> Bool
 pub fn OpenAttempt::not_equal(Self, Self) -> Bool
@@ -92,7 +97,7 @@ pub fn OriginalFilename::to_string(Self) -> String
 pub struct OriginalPath(String) derive(Eq, @debug.Debug)
 pub fn OriginalPath::equal(Self, Self) -> Bool
 pub fn OriginalPath::not_equal(Self, Self) -> Bool
-pub fn OriginalPath::parse(String) -> Self raise DocumentError
+pub fn OriginalPath::parse(String, profile? : InventoryPathProfile) -> Self raise DocumentError
 pub fn OriginalPath::to_repr(Self) -> @debug.Repr
 pub fn OriginalPath::to_string(Self) -> String
 

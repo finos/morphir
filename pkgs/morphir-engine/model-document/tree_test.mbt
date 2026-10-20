@@ -52,3 +52,35 @@ test "tree originals reject escaping and conflicting portable inventories" {
     assert_true(refused, msg=paths.to_string())
   }
 }
+
+///|
+test "connected inventory bounds are separate from local document limits" {
+  let files = Array::makei(4097, index => "file-" + index.to_string() + ".bin")
+  @document.validate_inventory_paths(
+    files,
+    [],
+    profile=@document.InventoryPathProfile::Connected,
+  )
+  assert_true(
+    try {
+      @document.validate_inventory_paths(files, [])
+      false
+    } catch {
+      _ => true
+    },
+  )
+  let path = Array::make(129, "part").join("/")
+  @document.validate_inventory_paths(
+    [path],
+    [],
+    profile=@document.InventoryPathProfile::Connected,
+  )
+  assert_true(
+    try {
+      @document.validate_inventory_paths([path], [])
+      false
+    } catch {
+      _ => true
+    },
+  )
+}

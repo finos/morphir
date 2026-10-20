@@ -32,6 +32,32 @@ pub fn kind(path : String) -> Int32 raise {
 }
 
 ///|
+extern "js" fn rename_directory_new_js(a : String, b : String) -> Int32 =
+  #| (a,b)=>{
+  #|   const fs=process.getBuiltinModule('node:fs'); let owned;
+  #|   try { fs.mkdirSync(b,{mode:0o700}); } catch { return 1; }
+  #|   try { owned=fs.lstatSync(b,{bigint:true}); fs.renameSync(a,b); return 0; }
+  #|   catch {
+  #|     try { const current=fs.lstatSync(b,{bigint:true});
+  #|       if(!owned||current.dev!==owned.dev||current.ino!==owned.ino||!current.isDirectory()) return 3;
+  #|       fs.rmdirSync(b); return 2;
+  #|     } catch { return 3; }
+  #|   }
+  #| }
+
+///|
+/// Reserve a previously absent destination, then rename the complete tree.
+/// A populated reservation is never replaced or recursively removed.
+pub fn rename_directory_new(a : String, b : String) -> Unit raise {
+  match rename_directory_new_js(a, b) {
+    0 => ()
+    1 => raise IOError("publication.destination_unavailable: " + b)
+    2 => raise IOError("publication.create_failed: " + b)
+    _ => raise IOError("publication.reservation_cleanup_failed: " + b)
+  }
+}
+
+///|
 extern "js" fn list_bounded_js(path : String, limit : Int32) -> String =
   #| (path,limit) => {
   #|   try {

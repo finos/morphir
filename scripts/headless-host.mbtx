@@ -11,7 +11,7 @@ import {
 }
 
 ///|
-let revision = "b0de0899b2a9d37a33730d65505f0b3d39274132"
+let revision = "314a739d30c8c5900a983abec52e8aa10f46d1dc"
 
 ///|
 fn executable(messages : String) -> String? {
@@ -277,6 +277,8 @@ async fn main {
     }
   }
   let values = "MORPHIR_WORKBENCH_LIVE_HOST=" +
+    host +
+    "\nMORPHIR_MODEL_ORIGINALS_HOST=" +
     host +
     "\nMORPHIR_MCK_BIN=" +
     host +

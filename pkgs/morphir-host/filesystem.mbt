@@ -91,16 +91,24 @@ pub fn ContentPublisher::filesystem(
 ///|
 /// Original inventories can include empty directories. They use the same
 /// confined transaction, locking, replacement and rollback as generated files.
+pub(all) enum DestinationPolicy {
+  Replace
+  Create
+}
+
+///|
 pub fn ContentPublisher::filesystem_inventory(
   root : String,
   output_root : String,
   directories : Array[String],
+  destination_policy~ : DestinationPolicy = Replace,
 ) -> ContentPublisher raise {
   filesystem_content_publisher(
     root,
     output_root,
     @platform.rename,
     directories~,
+    destination_policy~,
   )
 }
 
@@ -112,6 +120,7 @@ fn filesystem_content_publisher(
   output_root : String,
   rename : (String, String) -> Unit raise,
   directories~ : Array[String] = [],
+  destination_policy~ : DestinationPolicy = Replace,
 ) -> ContentPublisher raise {
   let output_root = @workspace.normalize(output_root)
   if output_root == "" {
@@ -183,6 +192,14 @@ fn filesystem_content_publisher(
           let saved = @workspace.join(backup, rel)
           ensure_dirs(root, @workspace.parent(destination))
           ensure_dirs(root, @workspace.parent(saved))
+          if destination_policy is Create {
+            @platform.rename_directory_new(
+              confined(root, staged),
+              confined(root, destination),
+            )
+            done[destination] = true
+            return
+          }
           let existing = @platform.kind(confined(root, destination))
           if existing != 0 && existing != 2 {
             raise @config.Invalid("Destination is not a directory")

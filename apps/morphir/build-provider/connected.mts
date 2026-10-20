@@ -1,4 +1,5 @@
 import {artifactConnectionDescriptor} from '../../../pkgs/morphir-host/artifact-client/selection.mts';
+import {originalsConnectionDescriptor} from '../../../pkgs/morphir-host/model-originals-client/selection.mts';
 import {Refusal,refuse,record,closed,readBounded,decode,connection,context,establishConnection} from '../../../pkgs/morphir-host/connection/node-session.mts';
 import { existsSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
@@ -12,7 +13,7 @@ const version = '0.1.0';
 const binding = 'workbench-http';
 interface Configuration {
   profile: typeof profile; contractVersion: typeof version;
-  operation: 'connect' | 'run'; binding: typeof binding; source: string; connectionScope?: 'executions' | 'artifacts';
+  operation: 'connect' | 'run'; binding: typeof binding; source: string; connectionScope?: 'executions' | 'artifacts' | 'models';
   connection: string; timeout: number; cancelFile: string;
 }
 type Stop = 'sigint' | 'timeout' | 'cancel-file';
@@ -20,7 +21,7 @@ const safeFailure = (error: unknown) => error instanceof Refusal ? error.code : 
 function configuration(raw: unknown): Configuration {
   if (!closed(raw, ['profile', 'contractVersion', 'operation', 'binding', 'source', 'connection', 'timeout', 'cancelFile', ...(record(raw) && Object.hasOwn(raw,'connectionScope') ? ['connectionScope'] : [])])) refuse('connected.invalid_command');
   const value = raw as unknown as Configuration;
-  if (value.connectionScope !== undefined && !['executions','artifacts'].includes(value.connectionScope)) refuse('connected.invalid_connection_scope');
+  if (value.connectionScope !== undefined && !['executions','artifacts','models'].includes(value.connectionScope)) refuse('connected.invalid_connection_scope');
   if (value.profile !== profile || value.contractVersion !== version || value.binding !== binding ||
       !['connect', 'run'].includes(value.operation) || typeof value.source !== 'string' ||
       typeof value.connection !== 'string' || !value.connection || typeof value.cancelFile !== 'string' ||
@@ -29,13 +30,19 @@ function configuration(raw: unknown): Configuration {
   return value;
 }
 async function openConnection(config: Configuration, core: Core, interrupted: () => boolean): Promise<{ code: number; report: object }> {
+  let sources: Json | undefined;
   const selected = await establishConnection(config, core, interrupted, async (manifest, http) => {
     if (config.connectionScope === 'artifacts') return artifactConnectionDescriptor(manifest);
+    if (config.connectionScope === 'models') {
+      const descriptor = originalsConnectionDescriptor(manifest);
+      sources = (descriptor as Record<string, Json>).sources;
+      return descriptor;
+    }
     const client = new ExecutionClient(manifest.sessionId, { core, transport: new HttpExecutionTransport({ fetchFn: http.fetchFn, timeout: Math.min(config.timeout, 10000) }) });
     if (!await client.initialize()) refuse('connected.execution_unavailable');
     return client.offer as unknown as Json;
   }, () => !!config.cancelFile && existsSync(config.cancelFile));
-  return {code: 0, report: {profile, contractVersion: version, operation:'connect', binding, connectionScope:config.connectionScope ?? 'executions', connected: true, ...selected}};
+  return {code: 0, report: {profile, contractVersion: version, operation:'connect', binding, connectionScope:config.connectionScope ?? 'executions', connected: true, ...selected, ...(sources ? {sources} : {})}};
 }
 
 function capture(core: Core, source: string): WorkRequest {

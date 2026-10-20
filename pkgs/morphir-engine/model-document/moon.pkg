@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/encoding/utf8",
   "finos/morphir-ir/version",
   "finos/morphir-engine/data",
   "finos/morphir-engine/workspace",

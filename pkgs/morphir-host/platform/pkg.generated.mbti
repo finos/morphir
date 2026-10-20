@@ -58,6 +58,8 @@ pub fn remove_file(String) -> Unit raise
 
 pub fn rename(String, String) -> Unit raise
 
+pub fn rename_directory_new(String, String) -> Unit raise
+
 pub fn stderr(String) -> Unit
 
 pub fn system_type() -> String

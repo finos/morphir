@@ -60,6 +60,20 @@ int morphir_host_size(const char *path) {
 #endif
   return st.st_size > 16777216 ? 16777217 : (int)st.st_size;
 }
+int morphir_host_rename_directory_new(const char *a, const char *b) {
+#ifdef _WIN32
+  /* Native Windows connected effects remain explicitly unavailable. */
+  (void)a; (void)b; return 1;
+#else
+  struct stat owned, current;
+  if (mkdir(b, 0700)) return 1;
+  if (lstat(b, &owned)) return 3;
+  if (!rename(a, b)) return 0;
+  if (lstat(b, &current) || !S_ISDIR(current.st_mode) ||
+      current.st_dev != owned.st_dev || current.st_ino != owned.st_ino) return 3;
+  return rmdir(b) ? 3 : 2;
+#endif
+}
 int morphir_host_rename(const char *a, const char *b) {
 #ifdef _WIN32
   wchar_t *first = wide_path(a), *second = wide_path(b);

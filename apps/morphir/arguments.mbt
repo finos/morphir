@@ -114,7 +114,7 @@ fn command_schema(path : String) -> CliSchema {
       options = worksheet_options
       positional = true
     }
-    "connected" => children = ["connect", "run", "artifacts"]
+    "connected" => children = ["connect", "run", "artifacts", "originals"]
     "connected connect" => {
       options = connected_options + ["connection-scope"]
       positional = true
@@ -126,6 +126,14 @@ fn command_schema(path : String) -> CliSchema {
     "connected artifacts" => {
       options = [
         "provider", "connection", "output", "transfer-helper", "node", "timeout",
+        "cancel-file",
+      ]
+      positional = true
+    }
+    "connected originals" => {
+      flags = ["list"]
+      options = [
+        "provider", "connection", "output", "originals-helper", "node", "timeout",
         "cancel-file",
       ]
       positional = true

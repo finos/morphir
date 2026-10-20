@@ -1037,3 +1037,10 @@ Wasm/Wasm-GC retain pure receipt/core and help support and refuse connected effe
 explicitly. Windows private credential-file protection is not qualified by this
 binding and refuses explicitly. Installed packaging and platform qualification
 remain separate from the authenticated host protocol.
+
+`connected originals` discovers and downloads complete declared model originals
+using a separately selected `--connection-scope models` connection. It requests
+original bytes with semantic conversion disabled, verifies the whole inventory,
+and publishes to the explicit destination only after acknowledged release.
+See [connected model originals](docs/connected-transfers.md#connected-model-originals)
+for source/project selection, commands, bounds and qualification scope.

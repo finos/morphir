@@ -4,6 +4,12 @@ pub(all) suberror IOError {
 }
 
 ///|
+#cfg(any(target="wasm", target="wasm-gc"))
+pub fn rename_directory_new(_a : String, _b : String) -> Unit raise {
+  raise IOError("publication.create_unavailable")
+}
+
+///|
 #cfg(not(target="wasm-gc"))
 fn check(code : Int32, operation : String) -> Unit raise {
   if code != 0 {
