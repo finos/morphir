@@ -216,6 +216,12 @@ impl ExpansionOwner {
             }
         }
     }
+    pub(super) fn measure_materialization_bytes(
+        &mut self,
+        recipe: &input::Bytes,
+    ) -> Result<(), ExpansionError> {
+        self.bytes(recipe)
+    }
     fn bytes(&mut self, recipe: &input::Bytes) -> Result<(), ExpansionError> {
         self.visit()?;
         match recipe {

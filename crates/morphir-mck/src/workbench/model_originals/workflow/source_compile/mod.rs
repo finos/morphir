@@ -39,6 +39,7 @@ pub(super) struct CompiledSourceCase<'case, 'sources, 'raw, 'supplied> {
     aliases: CompiledAliases<'case>,
     expansion: ScenarioExpansion<'case>,
     identity_input: IdentityInputPlan<'case>,
+    installed: Option<super::installed_client::InstalledClientPlan<'case>>,
 }
 pub(super) struct CompiledNativeSourceCase<'case, 'sources, 'raw, 'supplied> {
     source: MatchedNativeSourceCase<'case, 'sources, 'raw, 'supplied>,
@@ -83,6 +84,9 @@ impl<'case, 'raw> CompiledExecution<'case, '_, 'raw, '_> {
     }
 }
 impl<'case, 'sources, 'raw, 'supplied> CompiledSourceCase<'case, 'sources, 'raw, 'supplied> {
+    pub(super) fn installed(&self) -> Option<&super::installed_client::InstalledClientPlan<'case>> {
+        self.installed.as_ref()
+    }
     pub(super) fn source(&self) -> &MatchedSourceCase<'case, 'sources, 'raw, 'supplied> {
         &self.source
     }
@@ -195,7 +199,7 @@ impl<'owner, 'policies, 'sources, 'supplied> CaseCompiler<'owner, 'policies, 'so
             .ready()
             .map_err(CompilationError::Expansion)?;
 
-        let source = self.verifier.bind(case).map_err(CompilationError::Source)?;
+        let mut source = self.verifier.bind(case).map_err(CompilationError::Source)?;
         // bind already paid the genuine paired_with_work comparison. Reuse
         // that same value instead of revalidating metadata without a debit.
         let aliases =
@@ -204,11 +208,23 @@ impl<'owner, 'policies, 'sources, 'supplied> CaseCompiler<'owner, 'policies, 'so
             .map_err(CompilationError::IdentityInput)?;
         let expansion = ScenarioExpansion::measure(source.paired().scenario(), self.expansion)
             .map_err(CompilationError::Expansion)?;
+        let installed = source
+            .take_installed()
+            .map(|reviewed| {
+                super::installed_client::InstalledClientPlan::compile(
+                    reviewed,
+                    source.paired(),
+                    self.closure,
+                    self.expansion,
+                )
+            })
+            .transpose()?;
         Ok(CompiledSourceCase {
             source,
             aliases,
             expansion,
             identity_input,
+            installed,
         })
     }
     fn compile_native_case<'case, 'raw>(

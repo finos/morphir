@@ -217,6 +217,9 @@ impl<'source> BoundCase<'source> {
     pub(super) fn input_raw(&self) -> &'source RawValue {
         self.input_token
     }
+    pub(super) fn expected_raw(&self) -> &'source RawValue {
+        self.expected_token
+    }
     /// The typed operands are private and immutable, so this reuses the
     /// genuine pairing boundary without a self-reference or lifetime erasure.
     pub(super) fn paired(&self) -> Result<PairedWorkflow<'_>, PairError> {

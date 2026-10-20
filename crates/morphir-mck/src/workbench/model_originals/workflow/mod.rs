@@ -8,6 +8,7 @@ mod domain;
 mod expansion;
 mod identity_input;
 mod input;
+mod installed_client;
 mod meaning;
 pub mod native;
 mod native_original;

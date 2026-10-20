@@ -151,6 +151,7 @@ pub(super) struct SourceVerifier<'owner, 'sources, 'supplied> {
     packets: Vec<OriginalPacket>,
     original_cases: usize,
     manifest: Vec<ManifestCase<'sources>>,
+    installed: Option<super::installed_client::ReviewedMaterialization>,
 }
 
 /// Only this module can issue a match. Keep both immutable owners borrowed.
@@ -158,8 +159,14 @@ pub(super) struct MatchedSourceCase<'case, 'sources, 'raw, 'supplied> {
     case: &'case BoundCase<'raw>,
     _sources: &'sources ReviewedSources<'supplied>,
     paired: PairedWorkflow<'case>,
+    installed: Option<super::installed_client::ReviewedMaterialization>,
 }
 impl<'case, 'raw> MatchedSourceCase<'case, '_, 'raw, '_> {
+    pub(super) fn take_installed(
+        &mut self,
+    ) -> Option<super::installed_client::ReviewedMaterialization> {
+        self.installed.take()
+    }
     pub(super) fn case(&self) -> &'case BoundCase<'raw> {
         self.case
     }
@@ -457,6 +464,10 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
                 "e3d3ca84be11068fa75da61c8e295bccd3eae927e3e6cb820e3347302db7f96e",
                 "949be1c5e3551ccfb977e03d0dee6769bae0db6c17a4e5296b71dfa1934ab62b",
             ),
+            SourceSet::InstalledClientFirst => (
+                "b953fc3c599f8a54c6281cc50db406f1efb6b5f2172567c4c2a1c14cb9139d1a",
+                "c9a94e9be249cc0dc211b33943eb4ecaf0d2680dfdbfe02d8cc28b047046e16f",
+            ),
         };
         anchor(
             sources.acceptance_receipt(),
@@ -493,6 +504,7 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
             .try_reserve_exact(4)
             .map_err(|_| DecodeError::Allocation)?;
         let mut original_cases = 0usize;
+        let mut installed_original = None;
         for key in [
             input::PacketRefPacket::Original60,
             input::PacketRefPacket::Inventory35,
@@ -509,6 +521,22 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
             }
             let digest = decoded_digest(member(entry, "sha256", owner)?, owner)?;
             let document = source_document(bytes, owner)?;
+            if sources.source_set() == SourceSet::InstalledClientFirst
+                && key == input::PacketRefPacket::Inventory35
+            {
+                for row in items(member(&document, "cases", owner)?, owner)? {
+                    if same(case_id(row, owner)?, super::installed_client::CASE, owner)? {
+                        if installed_original.is_some() {
+                            return Err(SourceError::Shape("unique installed original"));
+                        }
+                        let expected = member(row, "expected", owner)?;
+                        super::installed_client::copy_credit(expected, owner)?;
+                        installed_original = Some(
+                            super::installed_client::OriginalExpectation::decode(expected, owner)?,
+                        );
+                    }
+                }
+            }
             let cases = decode_original_cases(&document, owner)?;
             let actual = cases.len();
             let declared =
@@ -521,12 +549,27 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
                 .ok_or(SourceError::SizeOverflow)?;
             packets.push(OriginalPacket { key, digest, cases });
         }
+        let installed = if sources.source_set() == SourceSet::InstalledClientFirst {
+            let view = file(sources, super::installed_client::PATH, owner)?;
+            if !hash_matches(view.bytes(), super::installed_client::SHA, owner)? {
+                return Err(SourceError::SourceFileDigest);
+            }
+            let doc = source_document(view.bytes(), owner)?;
+            Some(super::installed_client::ReviewedMaterialization::decode(
+                &doc,
+                installed_original.ok_or(SourceError::MissingOriginalCase)?,
+                owner,
+            )?)
+        } else {
+            None
+        };
         Ok(Self {
             owner,
             sources,
             packets,
             original_cases,
             manifest,
+            installed,
         })
     }
     /// Ordered manifest metadata only. Each bind still verifies genuine source
@@ -571,10 +614,36 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
         if row.native_witnesses.is_some() {
             return Err(SourceError::ManifestRole);
         }
+        let (input_digest, expected_digest, input_path, expected_path) = (
+            row.input.digest,
+            row.expected.digest,
+            row.input.view.path(),
+            row.expected.view.path(),
+        );
+        let installed = if self.sources.source_set() == SourceSet::InstalledClientFirst
+            && origin.id.0 == super::installed_client::CASE
+        {
+            let materialization = self
+                .installed
+                .take()
+                .ok_or(SourceError::Shape("single reviewed installed invocation"))?;
+            materialization.bind(
+                origin,
+                input_digest,
+                expected_digest,
+                input_path,
+                expected_path,
+                self.owner,
+            )?;
+            Some(materialization)
+        } else {
+            None
+        };
         Ok(MatchedSourceCase {
             case,
             _sources: self.sources,
             paired,
+            installed,
         })
     }
     /// Both dialects use this one actual source/packet/token authority check.

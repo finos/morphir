@@ -1,5 +1,6 @@
 //! One selected branch of the existing Workbench pipeline. The fixed reviewed
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
+mod installed;
 pub(in crate::workbench) mod policy;
 mod raw;
 mod wire;
@@ -15,6 +16,7 @@ use crate::json::strict::Document;
 use crate::transport::{Session, TransportError};
 use crate::workbench::corpus::CorpusSource;
 use crate::workbench::report::{MAX_REPORT_BYTES, WorkflowExchangeRecord};
+use installed::prepared_installed_client;
 pub(in crate::workbench) use policy::Policy;
 use policy::{CaptureFault, Owners};
 use raw::VERSION;
@@ -1006,3 +1008,6 @@ pub(in crate::workbench) fn replay(
         },
     )
 }
+
+#[cfg(test)]
+mod installed_client_tests;

@@ -4,12 +4,28 @@
 mod data;
 mod identity_data;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum SourceSet {
     Legacy,
     IdentityController,
     NativeFirst,
+    InstalledClientFirst,
 }
+const INSTALLED_MANIFEST: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/installed-client-first-v1/source-manifest.json"
+));
+const INSTALLED_PAIRED: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/installed-client-first-v1/bundle-receipt.json"
+));
+const INSTALLED_FILE: &[(&str, &[u8])] = &[(
+    "installed-client-first-v1/materialization.json",
+    include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/installed-client-first-v1/materialization.json"
+    )),
+)];
 const NATIVE_MANIFEST: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/native-original-first-v1/source-manifest.json"
@@ -116,6 +132,12 @@ impl<'source> ReviewedSources<'source> {
             replacements: Vec::new(),
         }
     }
+    pub(super) fn installed_client_selected() -> Self {
+        Self {
+            set: SourceSet::InstalledClientFirst,
+            replacements: Vec::new(),
+        }
+    }
 
     /// A second fixed parent-selected bundle; it cannot accept hashes, paths
     /// or caller bytes. Historical selected() remains the unchanged old23 set.
@@ -154,6 +176,10 @@ impl<'source> ReviewedSources<'source> {
                 "native-original-first-v1/bundle-receipt.json",
                 NATIVE_PAIRED,
             ),
+            SourceSet::InstalledClientFirst => self.supplied(
+                "installed-client-first-v1/bundle-receipt.json",
+                INSTALLED_PAIRED,
+            ),
         }
     }
     pub(super) fn manifest(&self) -> &[u8] {
@@ -169,6 +195,10 @@ impl<'source> ReviewedSources<'source> {
                 "native-original-first-v1/source-manifest.json",
                 NATIVE_MANIFEST,
             ),
+            SourceSet::InstalledClientFirst => self.supplied(
+                "installed-client-first-v1/source-manifest.json",
+                INSTALLED_MANIFEST,
+            ),
         }
     }
     pub(super) fn files(&self) -> impl Iterator<Item = FileView<'_>> {
@@ -178,7 +208,12 @@ impl<'source> ReviewedSources<'source> {
             .chain(match self.set {
                 SourceSet::Legacy => &[][..],
                 SourceSet::IdentityController => identity_data::IDENTITY_FILES,
-                SourceSet::NativeFirst => NATIVE_FILES,
+                SourceSet::NativeFirst | SourceSet::InstalledClientFirst => NATIVE_FILES,
+            })
+            .chain(if self.set == SourceSet::InstalledClientFirst {
+                INSTALLED_FILE
+            } else {
+                &[][..]
             })
             .map(|(path, bytes)| FileView {
                 path,
