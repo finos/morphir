@@ -9,7 +9,7 @@ mod binding;
 mod codec;
 #[cfg(target_os = "macos")]
 mod collector;
-pub(in crate::workbench::model_originals::workflow) mod deadline;
+pub(in crate::workbench::model_originals::workflow) use crate::workbench::model_originals::workflow::pipeline::clock::deadline;
 #[cfg(target_os = "macos")]
 mod export;
 #[cfg(target_os = "macos")]
