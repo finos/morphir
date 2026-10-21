@@ -6,4 +6,5 @@ import {
 
 import {
   "finos/morphir-engine/config",
+  "finos/morphir-toml-edit" @edit,
 } for "test"

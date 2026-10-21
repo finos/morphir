@@ -9,6 +9,7 @@ members = [
   "../../pkgs/morphir-ir",
   "../../pkgs/morphir-scheme",
   "../../pkgs/morphir-engine",
+  "../../pkgs/morphir-toml-edit",
   "../../pkgs/morphir-execution",
   "../../pkgs/morphir-host",
   "../../pkgs/morphir-sdk",

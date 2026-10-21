@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/string",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+}
+
+import {
+  "finos/morphir-toml-edit" @edit,
+} for "test"
