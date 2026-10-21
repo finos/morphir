@@ -66,12 +66,7 @@ impl ContentSha256 {
 }
 impl serde::Serialize for ContentSha256 {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        use std::fmt::Write as _;
-        let mut hex = String::with_capacity(64);
-        for byte in self.0 {
-            write!(&mut hex, "{byte:02x}").map_err(serde::ser::Error::custom)?;
-        }
-        s.serialize_str(&hex)
+        s.collect_str(&HexDigest(&self.0))
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -512,4 +507,18 @@ fn check_coverage(
         }
     }
     Ok(())
+}
+
+struct HexDigest<'a>(&'a [u8; 32]);
+impl std::fmt::Display for HexDigest<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const DIGITS: [&str; 16] = [
+            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f",
+        ];
+        for byte in self.0 {
+            f.write_str(DIGITS[(byte >> 4) as usize])?;
+            f.write_str(DIGITS[(byte & 15) as usize])?;
+        }
+        Ok(())
+    }
 }

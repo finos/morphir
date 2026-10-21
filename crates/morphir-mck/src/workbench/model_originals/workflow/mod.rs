@@ -103,3 +103,6 @@ mod pipeline_negotiation_evidence_tests;
 
 #[cfg(test)]
 mod native_original_unit_controls;
+
+#[cfg(test)]
+mod streaming_field_tests;

@@ -576,7 +576,7 @@ impl U64Token {
 }
 impl serde::Serialize for U64Token {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&self.0.get().to_string())
+        s.collect_str(&self.0.get())
     }
 }
 impl Decode for U64Token {

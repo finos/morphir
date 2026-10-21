@@ -116,7 +116,7 @@ record! { NativeDeclarationExpectation {
 pub struct ObservedCount(pub u64);
 impl serde::Serialize for ObservedCount {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&self.0.to_string())
+        s.collect_str(&self.0)
     }
 }
 record! { pub ReadCounts {
@@ -221,7 +221,7 @@ impl MeasurementVersion {
 }
 impl serde::Serialize for MeasurementVersion {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&self.0.to_string())
+        s.collect_str(&self.0)
     }
 }
 literal! { pub MeasurementProfile => "morphir/mck/model-originals-native-server-measurements" }
