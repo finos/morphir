@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+  # No branch filter: stacked children target their parent's branch.
   pull_request:
-    branches: [main]
   # The merge queue tests each queued PR on top of main and the PRs ahead of it.
   merge_group:
   workflow_dispatch:
@@ -24,6 +24,10 @@ jobs:
     name: Detect code changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
     outputs:
       code: ${{ steps.detect.outputs.code }}
       site: ${{ steps.detect.outputs.site }}
@@ -58,6 +62,8 @@ jobs:
       - name: Select focused checks
         id: detect
         env:
+          GH_TOKEN: ${{ github.token }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
@@ -437,4 +443,22 @@ jobs:
         env:
           CI_NEEDS: ${{ toJSON(needs) }}
           CI_REQUIRED_JOBS: ${{ needs.changes.outputs.required }}
-        run: mise run ci:gate
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          # The receipt records the tested merge commit's first parent as pr.base;
+          # this payload value is kept as pr.payloadBase only when it differs.
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_SELECTION: ${{ toJSON(needs.changes.outputs) }}
+        run: mise run ci:gate:receipt
+      # A re-run of a green run uploads the same name again; overwrite replaces
+      # the earlier receipt, so the upload does not fail and each run keeps one.
+      - name: Upload the CI receipt
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-receipt-${{ github.sha }}
+          path: .dev/ci/receipt.json
+          overwrite: true
+          retention-days: 30
+          if-no-files-found: error

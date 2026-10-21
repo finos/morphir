@@ -918,7 +918,7 @@ let task_table : Array[(String, Effect)] = [
   ("validate:packages", Always),
   ("test:ci", Full),
   ("ci:changes", Full),
-  ("ci:gate", Full),
+  ("ci:gate:receipt", Full),
   ("setup:core", Full),
   ("check:core", Full),
   ("build:workbench-packaged", Full),

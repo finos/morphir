@@ -1,11 +1,13 @@
 ///|
 /// Select focused CI checks. Unknown paths and empty diffs select every suite.
-/// Use --event in Actions, BASE HEAD locally, or --self-test to check the rules.
+/// Use --event in Actions, BASE HEAD locally, or --self-test to check the rules;
+/// --json prints the selection as one JSON object.
 import {
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
@@ -334,6 +336,44 @@ fn mise_decision(
 }
 
 ///|
+/// The outcome of a reuse decision. `proven` lists, in the order of `own`, the
+/// keys that `own` selects and `selection` leaves out. `log` has one line for
+/// each proven key, without a prefix.
+struct Reuse {
+  selection : Map[String, Bool]
+  proven : Array[String]
+  log : Array[String]
+}
+
+///|
+/// Leave out the checks that both a landed change and a green receipt cover.
+/// A landed `full` reuses nothing. Otherwise a key stays selected unless
+/// `landed` also selects it or the receipt did, so a key that `own` selects
+/// and the receipt did not select re-runs. A missing key counts as false.
+fn reuse_selection(
+  own : Map[String, Bool],
+  landed : Map[String, Bool],
+  receipt : Map[String, Bool],
+) -> Reuse {
+  guard landed.get("full") != Some(true) else {
+    { selection: own.copy(), proven: [], log: [], }
+  }
+  let selection : Map[String, Bool] = Map([])
+  let proven = []
+  let log = []
+  for key, selected in own {
+    let keep = selected &&
+      (landed.get(key) == Some(true) || receipt.get(key) != Some(true))
+    selection.set(key, keep)
+    if selected && !keep {
+      proven.push(key)
+      log.push("\{key}: proven by the receipt, not affected by landed changes")
+    }
+  }
+  { selection, proven, log, }
+}
+
+///|
 fn required(selection : Map[String, Bool]) -> Array[String] {
   let jobs = ["changes", "lint", "format-check", "validate-config"]
   if selection.get("code") == Some(true) {
@@ -575,8 +615,104 @@ async fn self_test() -> Unit {
     "ci-changes: isolated, shared, unknown and combined baseline dependencies pass",
   )
   mise_test()
+  reuse_test()
   timeout_test()
   diff_test()
+}
+
+///|
+/// A selection that selects exactly `names`, over every key `select` sets.
+fn selecting(names : Array[String]) -> Map[String, Bool] {
+  let result = select(["README.md"], mise={
+    full: false,
+    checks: [],
+    reasons: [],
+    mise: "test",
+  })
+  for name in names {
+    result.set(name, true)
+  }
+  result
+}
+
+///|
+/// The reuse decision: what landed on main and what the receipt proved.
+fn reuse_test() -> Unit raise {
+  let own = selecting(["code", "compiler", "workbench"])
+  let none = selecting([])
+  let r = reuse_selection(own, none, own)
+  guard selected_names(r.selection) == "" &&
+    r.proven == ["code", "compiler", "workbench"] &&
+    required(r.selection) ==
+    ["changes", "lint", "format-check", "validate-config"] else {
+    fail(
+      "reuse_nothing_landed: \{selected_names(r.selection)} \{r.proven.join(",")}",
+    )
+  }
+  let r = reuse_selection(own, selecting(["site"]), own)
+  guard selected_names(r.selection) == "" && r.proven.length() == 3 else {
+    fail("reuse_docs_landed: \{selected_names(r.selection)}")
+  }
+  let r = reuse_selection(own, selecting(["full"]), none)
+  guard selected_names(r.selection) == selected_names(own) &&
+    r.proven.is_empty() else {
+    fail("reuse_landed_full: \{selected_names(r.selection)}")
+  }
+  let r = reuse_selection(
+    own,
+    selecting(["code", "workbench"]),
+    selecting(["code", "compiler", "workbench"]),
+  )
+  guard selected_names(r.selection) == "code,workbench" &&
+    r.proven == ["compiler"] else {
+    fail(
+      "reuse_intersection: \{selected_names(r.selection)} \{r.proven.join(",")}",
+    )
+  }
+  // A key that own selects and the receipt did not select re-runs.
+  let r = reuse_selection(
+    selecting(["compiler", "telemetry"]),
+    none,
+    selecting(["compiler"]),
+  )
+  guard selected_names(r.selection) == "telemetry" && r.proven == ["compiler"] else {
+    fail("reuse_own_key_not_in_receipt: \{selected_names(r.selection)}")
+  }
+  // A missing key counts as false; own full and site follow the same rule.
+  let r = reuse_selection(
+    selecting(["full", "site"]),
+    { "site": true },
+    selecting(["full", "site"]),
+  )
+  guard selected_names(r.selection) == "site" && r.proven == ["full"] else {
+    fail("reuse_missing_and_full_key: \{selected_names(r.selection)}")
+  }
+  // The receipt proved code but not full: full re-runs and code is proven.
+  let r = reuse_selection(
+    selecting(["code", "full"]),
+    none,
+    selecting(["code"]),
+  )
+  guard selected_names(r.selection) == "full" && r.proven == ["code"] else {
+    fail(
+      "reuse_receipt_code_not_full: \{selected_names(r.selection)} \{r.proven.join(",")}",
+    )
+  }
+  let r = reuse_selection(
+    selecting(["code", "workbench"]),
+    selecting(["code"]),
+    selecting(["code", "workbench"]),
+  )
+  let jobs = required(r.selection)
+  for job in ["changes", "lint", "format-check", "validate-config"] {
+    guard jobs.contains(job) else {
+      fail("reuse_required_jobs: \{jobs.join(",")}")
+    }
+  }
+  guard jobs.contains("build") && !jobs.contains("installed-qualification") else {
+    fail("reuse_required_jobs: \{jobs.join(",")}")
+  }
+  println("ci-changes: reuse decision passes")
 }
 
 ///|
@@ -911,6 +1047,7 @@ async fn diff_test() -> Unit {
     "ci-changes: legacy automation additions/pushes refuse and removals pass",
   )
   event_shadow_test(script, root)
+  reuse_wiring_test(script)
 }
 
 ///|
@@ -981,7 +1118,34 @@ async fn event_shadow_test(script : String, root : String) -> Unit {
       "event_shadow_logs: exit \{status}\nstdout:\n\{out.text()}\nstderr:\n\{err.text()}",
     )
   }
+  // landed_mise_log_labelled: the mise config landed since the receipt's
+  // base, and the queue run's own change is docs. The landed impact logs
+  // under the reuse prefix, and the run's own mise log is absent.
+  @fs.write_file(root + "/README.md", "fixture\nqueued docs\n")
+  ignore(fixture_git(root, ["commit", "-qam", "fixture queued docs"]))
+  let queue_head = fixture_git(root, ["rev-parse", "HEAD"])
+  @fs.write_file(root + "/scripts/ci-reuse.mbtx", fake_reuse_script)
+  let run = run_event(
+    script,
+    root,
+    {
+      "EVENT": "merge_group",
+      "QUEUE_REF": "refs/heads/gh-readonly-queue/main/pr-194-\{opt_in}",
+      "QUEUE_BASE": opt_in,
+      "QUEUE_HEAD": queue_head,
+    },
+    fixture_verdict(select(["README.md"]), base=Some(world)),
+  )
+  let queue_today = changed(opt_in, queue_head, cwd=root) |> select |> render
+  let landed_header = "ci-changes: reuse: landed mise: \{mise_config_path} changed (base \{world}, head \{opt_in}, mise "
+  guard run.0 == 0 &&
+    run.1 == queue_today &&
+    run.2.contains(landed_header) &&
+    !run.2.contains("ci-changes: mise: ") else {
+    fail(run_failure("landed_mise_log_labelled", run))
+  }
   println("ci-changes: pull request shadow mise impact logs pass")
+  println("ci-changes: landed mise impact logs under the reuse prefix")
 }
 
 ///|
@@ -1067,17 +1231,11 @@ async fn mise_impact(
 /// `GITHUB_OUTPUT` for `selection`.
 fn render(selection : Map[String, Bool]) -> String {
   let lines = StringBuilder()
-  for
-    name in [
-      "code", "site", "full", "supervision", "embedding", "typescript", "elm-scheme",
-      ..suites,
-    ] {
+  for name in output_names {
     lines.write_string("\{name}=\{selection.get(name) == Some(true)}\n")
   }
-  let lanes = ["compiler", "frontend", "conformance"].filter(s => {
-    selection.get(s) == Some(true)
-  })
-  lines.write_string("acceptance-lanes=\{Json(lanes).stringify()}\n")
+  let lanes = Json(acceptance_lanes(selection)).stringify()
+  lines.write_string("acceptance-lanes=\{lanes}\n")
   lines.write_string("required=\{Json(required(selection)).stringify()}\n")
   lines.to_string()
 }
@@ -1087,13 +1245,15 @@ fn render(selection : Map[String, Bool]) -> String {
 /// the mise config is one of them, also get its impact from `base` (the merge
 /// base of `base` and `head` when `merge_base`) to `head` and log it on
 /// stderr, after a line with both revisions and the mise version of the
-/// child. `mise_decision` says which selection counts.
+/// child; each line starts with `log_prefix`. `mise_decision` says which
+/// selection counts.
 async fn select_changes(
   paths : Array[String],
   base : String,
   head : String,
   merge_base~ : Bool = true,
   cwd~ : String = ".",
+  log_prefix~ : String = "ci-changes: mise: ",
 ) -> Map[String, Bool] {
   guard paths.contains(mise_config_path) else { return select(paths) }
   let mut compared = base
@@ -1129,7 +1289,7 @@ async fn select_changes(
   let header = "\{mise_config_path} changed (base \{compared}, head \{head}, mise \{version})"
   for entry in [header, ..log] {
     for line in entry.split("\n") {
-      @stdio.stderr.write("ci-changes: mise: \{line}\n")
+      @stdio.stderr.write("\{log_prefix}\{line}\n")
     }
   }
   selection
@@ -1141,55 +1301,930 @@ fn environment(name : String) -> String {
 }
 
 ///|
-async fn main {
-  let args = @env.args()[1:].to_owned()
-  if args == ["--self-test"] {
-    self_test()
-    return
+/// `reuse_enforced` is false while queue and bypass reuse run in shadow mode:
+/// the reuse decision is only logged on stderr, and the run selects as today.
+/// Task 7 of morphir-ukvn.5.90.1.1 sets it to true. The push skip for a commit
+/// that a merge-queue run proved is always enforced.
+let reuse_enforced : Bool = false
+
+///|
+/// A full commit SHA, as `valid_revision` accepts it.
+struct Sha(String) derive(Eq)
+
+///|
+fn Sha::parse(text : String) -> Sha? {
+  if valid_revision(text) {
+    Some(Sha(text))
+  } else {
+    None
   }
-  let selection = match args {
-    ["--event"] =>
-      match environment("EVENT") {
-        "pull_request" => {
-          let (base, head) = (environment("PR_BASE"), environment("PR_HEAD"))
-          changed(base, head) |> select_changes(base, head)
-        }
-        "merge_group" => {
-          let (base, head) = (
-            environment("QUEUE_BASE"),
-            environment("QUEUE_HEAD"),
-          )
-          changed(base, head) |> select_changes(base, head)
-        }
-        "push" => {
-          let (before, after) = (
-            environment("PUSH_BASE"),
-            environment("GITHUB_SHA"),
-          )
-          let paths : Array[String]? = if valid_revision(before) {
-            Some(changed(before, after, merge_base=false)) catch {
-              LegacyAutomation(path) => raise LegacyAutomation(path)
-              _ => None // An unreachable pre-force-push commit selects all.
-            }
-          } else {
-            None
-          }
-          let selected = match paths {
-            Some(paths) =>
-              paths |> select_changes(before, after, merge_base=false)
-            None => select([])
-          }
-          selected.set("site", false) // Site workflow owns main deployment.
-          selected
-        }
-        _ => select([])
+}
+
+///|
+fn Sha::short(self : Sha) -> String {
+  self.0.view(end_offset=7).to_owned()
+}
+
+///|
+/// The first seven digits of a SHA, or `text` when it is not one.
+fn abbreviated(text : String) -> String {
+  Sha::parse(text).map(Sha::short).unwrap_or(text)
+}
+
+///|
+/// The fields of a CI receipt that reuse reads. `base` is the base of the PR
+/// run, `None` for a merge-queue receipt. `selection` keeps the outputs of the
+/// receipt's `changes` job whose value is "true" or "false".
+struct Receipt {
+  run : String
+  attempt : String
+  tested : String
+  tree : String
+  base : Sha?
+  selection : Map[String, Bool]
+}
+
+///|
+/// The verdict that `ci-reuse.mbtx --json` prints.
+enum Verdict {
+  Trusted(
+    receipt~ : Receipt,
+    exact~ : Bool,
+    reason~ : String,
+    rerun_jobs~ : Array[String]
+  )
+  Untrusted(reason~ : String)
+}
+
+///|
+/// A text field of `fields`, or "unknown".
+fn text_field(fields : Map[String, Json], key : String) -> String {
+  match fields.get(key) {
+    Some(String(text)) => text
+    _ => "unknown"
+  }
+}
+
+///|
+/// Read the last nonempty line of the child's stdout as a verdict. A trusted
+/// verdict must have a receipt selection and `rerunJobs`.
+fn Verdict::parse(text : String) -> Verdict raise {
+  let lines = text
+    .split("\n")
+    .map(line => line.trim().to_owned())
+    .filter(line => line != "")
+    .collect()
+  guard lines.last() is Some(line) else { fail("ci-reuse printed nothing") }
+  guard @json.parse(line) is Object(fields) &&
+    fields.get("reason") is Some(String(reason)) else {
+    fail("verdict has no reason: \{line}")
+  }
+  match fields.get("trusted") {
+    Some(False) => Untrusted(reason~)
+    Some(True) => {
+      let exact = match fields.get("exact") {
+        Some(True) => true
+        Some(False) => false
+        _ => fail("verdict has no boolean exact: \{line}")
       }
-    [base, head] => changed(base, head) |> select_changes(base, head)
-    _ => fail("Usage: ci-changes.mbtx --event | BASE HEAD | --self-test")
+      guard fields.get("receipt") is Some(Object(receipt)) &&
+        receipt.get("selection") is Some(Object(outputs)) &&
+        fields.get("rerunJobs") is Some(Array(jobs)) else {
+        fail("trusted verdict has no receipt selection or rerunJobs: \{line}")
+      }
+      let selection : Map[String, Bool] = Map([])
+      for key, value in outputs {
+        match value {
+          String("true") => selection.set(key, true)
+          String("false") => selection.set(key, false)
+          _ => ()
+        }
+      }
+      let base = match receipt.get("pr") {
+        Some(Object(pr)) =>
+          match pr.get("base") {
+            Some(String(text)) => Sha::parse(text)
+            _ => None
+          }
+        _ => None
+      }
+      let rerun_jobs = jobs.map(job => {
+        guard job is String(name) else {
+          fail("rerunJobs has an entry that is not a name: \{line}")
+        }
+        name
+      })
+      Trusted(
+        receipt={
+          run: text_field(receipt, "runId"),
+          attempt: text_field(receipt, "runAttempt"),
+          tested: text_field(receipt, "testedCommit"),
+          tree: text_field(receipt, "testedTree"),
+          base,
+          selection,
+        },
+        exact~,
+        reason~,
+        rerun_jobs~,
+      )
+    }
+    _ => fail("verdict has no boolean trusted: \{line}")
+  }
+}
+
+///|
+/// Read one run of `ci-reuse.mbtx`. A nonzero exit, or stdout without a
+/// verdict, is an error with the reason.
+fn Verdict::from_child(
+  status : Int32,
+  out : String,
+  err : String,
+) -> Result[Verdict, String] {
+  guard status == 0 else {
+    return Err("ci-reuse exited \{status}: \{err.trim()}")
+  }
+  Ok(Verdict::parse(out)) catch {
+    error => Err("ci-reuse output: \{error}")
+  }
+}
+
+///|
+/// Write `entry` on stderr, each line with the prefix `ci-changes: reuse: `.
+async fn reuse_log(entry : String) -> Unit {
+  for line in entry.split("\n") {
+    @stdio.stderr.write("ci-changes: reuse: \{line}\n")
+  }
+}
+
+///|
+/// Run `ci-reuse.mbtx ARGS --json` from the repository root `cwd`, for at most
+/// `timeout` seconds, and read its verdict. The notes that a child that exits 0
+/// writes on stderr go to the reuse log. A child that does not run, does not
+/// end in time, exits nonzero or prints no verdict gives `None`, and the reason
+/// is logged: the run selects as today. As for `mise_impact`, the self-test
+/// puts a stand-in script in a fixture root; nothing else selects the child.
+async fn reuse_verdict(
+  args : Array[String],
+  cwd~ : String = ".",
+  timeout~ : Int32 = 60,
+) -> Verdict? {
+  let run = try {
+    let script = @fs.realpath(cwd + "/scripts/ci-reuse.mbtx")
+    @async.with_timeout_opt(timeout * 1000, () => {
+      @process.collect_output("moonx", [script, ..args, "--json"], cwd~)
+    })
+  } catch {
+    err => {
+      reuse_log("ci-reuse did not run: \{err}; selects as today")
+      return None
+    }
+  }
+  let outcome = match run {
+    None => Err("ci-reuse timed out after \{timeout} s")
+    Some((status, out, err)) => {
+      let err = err.text()
+      if status == 0 {
+        for line in err.split("\n") {
+          if !line.trim().is_empty() {
+            reuse_log(line.to_owned())
+          }
+        }
+      }
+      Verdict::from_child(status, out.text(), err)
+    }
+  }
+  match outcome {
+    Ok(verdict) => Some(verdict)
+    Err(reason) => {
+      reuse_log("\{reason}; selects as today")
+      None
+    }
+  }
+}
+
+///|
+/// The selected output names of `selection` in output order, or "none".
+fn selected_list(selection : Map[String, Bool]) -> String {
+  let names = output_names.filter(name => selection.get(name) == Some(true))
+  if names.is_empty() {
+    "none"
+  } else {
+    names.join(",")
+  }
+}
+
+///|
+/// A selection that selects nothing: only the always-run jobs run.
+fn nothing_selected() -> Map[String, Bool] {
+  Map::from_array(output_names.map(name => (name, false)))
+}
+
+///|
+/// Select from what landed on main between `base`, the base of the receipt's
+/// PR run, and `current`, the base of this run (two-dot), with the rules of
+/// the event. Log the landed commits. An empty diff selects nothing.
+async fn landed_selection(
+  base : Sha,
+  current : Sha,
+  cwd~ : String = ".",
+) -> Map[String, Bool] {
+  let (status, out, err) = @process.collect_output(
+    "git",
+    ["log", "--format=%h %s", "\{base.0}..\{current.0}"],
+    cwd~,
+  )
+  guard status == 0 else { fail("git log failed: \{err.text().trim()}") }
+  let commits = out.text().split("\n").filter(line => line != "").collect()
+  let since = "landed since receipt base \{base.short()}: "
+  if commits.is_empty() {
+    reuse_log(since + "none")
+  }
+  for commit in commits {
+    reuse_log(since + commit.to_owned())
+  }
+  let paths = changed(base.0, current.0, merge_base=false, cwd~).filter(path => {
+    path != ""
+  })
+  if paths.is_empty() {
+    nothing_selected()
+  } else {
+    // The run's own mise impact logs as `ci-changes: mise: `; this one is
+    // labelled as the landed changes'.
+    select_changes(
+      paths,
+      base.0,
+      current.0,
+      merge_base=false,
+      cwd~,
+      log_prefix="ci-changes: reuse: landed mise: ",
+    )
+  }
+}
+
+///|
+/// The selection of a queue or bypass run whose own selection is `own` and
+/// whose base is `current`. A trusted verdict leaves out the checks that its
+/// receipt proved and that nothing landed since the receipt's base selects;
+/// `reuse_enforced` says whether that counts or is only logged. Anything that
+/// cannot be proven selects `own`, and the reason is logged.
+async fn reuse_or_own(
+  own : Map[String, Bool],
+  verdict : Verdict?,
+  current : String,
+  cwd~ : String = ".",
+) -> Map[String, Bool] {
+  let (receipt, rerun_jobs) = match verdict {
+    None => return own
+    Some(Untrusted(reason~)) => {
+      reuse_log("untrusted: \{reason}; selects as today")
+      return own
+    }
+    Some(Trusted(receipt~, reason~, rerun_jobs~, ..)) => {
+      let tested = abbreviated(receipt.tested)
+      let tree = abbreviated(receipt.tree)
+      reuse_log("trusted: \{reason} (tested \{tested}, tree \{tree})")
+      (receipt, rerun_jobs)
+    }
+  }
+  guard receipt.base is Some(base) else {
+    reuse_log(
+      "receipt has no PR base (run \{receipt.run} attempt \{receipt.attempt}); selects as today",
+    )
+    return own
+  }
+  guard Sha::parse(current) is Some(current) else {
+    reuse_log("this run has no valid base; selects as today")
+    return own
+  }
+  let landed = landed_selection(base, current, cwd~) catch {
+    error => {
+      reuse_log("landed classification failed: \{error}; selects as today")
+      return own
+    }
+  }
+  let reuse = reuse_selection(own, landed, receipt.selection)
+  let proven = if reuse.proven.is_empty() {
+    "none"
+  } else {
+    reuse.proven.join(",")
+  }
+  let reran = if rerun_jobs.is_empty() { "none" } else { rerun_jobs.join(", ") }
+  reuse_log("own selection: \{selected_list(own)}")
+  reuse_log("landed selection: \{selected_list(landed)}")
+  reuse_log("re-run: \{selected_list(reuse.selection)}")
+  reuse_log("proven: \{proven}")
+  for line in reuse.log {
+    reuse_log(line)
+  }
+  reuse_log("trusted after re-run attempt: \{reran}")
+  let summary = "full=\{reuse.selection.get("full") == Some(true)} checks=" +
+    selected_checks(reuse.selection)
+  if reuse_enforced {
+    reuse_log("enforced; selects " + summary)
+    reuse.selection
+  } else {
+    reuse_log("shadow, not enforced; would select " + summary)
+    own
+  }
+}
+
+///|
+/// A push of a commit that a merge-queue run proved selects nothing, so only
+/// the always-run jobs run. This is enforced: it is the same commit.
+async fn exact_skip(reason : String) -> Map[String, Bool] {
+  let selection = nothing_selected()
+  reuse_log("trusted (exact): \{reason}")
+  reuse_log(
+    "exact push, enforced; selects no checks, required " +
+    Json(required(selection)).stringify(),
+  )
+  selection
+}
+
+///|
+/// The selection for the Actions event in EVENT. Merge-queue and push runs
+/// also ask `ci-reuse.mbtx` for a verdict.
+async fn event_selection() -> Map[String, Bool] {
+  match environment("EVENT") {
+    "pull_request" => {
+      let (base, head) = (environment("PR_BASE"), environment("PR_HEAD"))
+      changed(base, head) |> select_changes(base, head)
+    }
+    "merge_group" => {
+      let (base, head) = (environment("QUEUE_BASE"), environment("QUEUE_HEAD"))
+      let own = changed(base, head) |> select_changes(base, head)
+      let verdict = reuse_verdict([
+        "queue",
+        "--ref",
+        environment("QUEUE_REF"),
+        "--base",
+        base,
+        "--head",
+        head,
+      ])
+      reuse_or_own(own, verdict, base)
+    }
+    "push" => {
+      let (before, after) = (
+        environment("PUSH_BASE"),
+        environment("GITHUB_SHA"),
+      )
+      let paths : Array[String]? = if valid_revision(before) {
+        Some(changed(before, after, merge_base=false)) catch {
+          LegacyAutomation(path) => raise LegacyAutomation(path)
+          _ => None // An unreachable pre-force-push commit selects all.
+        }
+      } else {
+        None
+      }
+      let selected = match paths {
+        Some(paths) => paths |> select_changes(before, after, merge_base=false)
+        None => select([])
+      }
+      selected.set("site", false) // Site workflow owns main deployment.
+      match reuse_verdict(["push", "--sha", after, "--before", before]) {
+        Some(Trusted(exact=true, reason~, ..)) => exact_skip(reason)
+        verdict => reuse_or_own(selected, verdict, before)
+      }
+    }
+    _ => select([])
+  }
+}
+
+///|
+/// What `ci-changes` runs: the self-test, the selection for the Actions event
+/// in EVENT, or the selection for the commits BASE and HEAD.
+priv enum Mode {
+  SelfTest
+  Event
+  Range(String, String)
+} derive(Eq)
+
+///|
+priv struct Invocation {
+  mode : Mode
+  json : Bool
+}
+
+///|
+fn changes_command() -> @argparse.Command {
+  @argparse.Command(
+    "ci-changes",
+    about="Select focused CI checks",
+    flags=[
+      @argparse.FlagArg("self-test", about="Run the built-in tests", conflicts_with=[
+        "event", "json", "base", "head",
+      ]),
+      @argparse.FlagArg(
+        "event",
+        about="Select for the Actions event in EVENT",
+        conflicts_with=["base", "head"],
+      ),
+      @argparse.FlagArg("json", about="Print the selection as one JSON object"),
+    ],
+    positionals=[
+      @argparse.PositionArg("base", about="Base commit", requires=["head"]),
+      @argparse.PositionArg("head", about="Head commit", requires=["base"]),
+    ],
+  )
+}
+
+///|
+fn invocation(matches : @argparse.Matches) -> Invocation raise {
+  let flag = (name : String) => matches.flags.get(name).unwrap_or(false)
+  let mode = if flag("self-test") {
+    SelfTest
+  } else if flag("event") {
+    Event
+  } else {
+    match (matches.values.get("base"), matches.values.get("head")) {
+      (Some([base]), Some([head])) => Range(base, head)
+      _ =>
+        fail(
+          "Usage: ci-changes.mbtx --event [--json] | BASE HEAD [--json] | --self-test",
+        )
+    }
+  }
+  { mode, json: flag("json"), }
+}
+
+///|
+async fn main {
+  let invocation = invocation(changes_command().parse())
+  let selection = match invocation.mode {
+    SelfTest => {
+      self_test()
+      return
+    }
+    Event => event_selection()
+    Range(base, head) => changed(base, head) |> select_changes(base, head)
   }
   let text = render(selection)
-  @stdio.stdout.write(text)
+  @stdio.stdout.write(
+    if invocation.json {
+      selection_json(selection).stringify() + "\n"
+    } else {
+      text
+    },
+  )
   if @env.get_env_var("GITHUB_OUTPUT") is Some(path) {
     @fs.write_file(path, @fs.read_file(path).text() + text)
   }
+}
+
+///|
+/// The output names of a selection, in the order `render` prints them.
+let output_names : Array[String] = [
+  "code", "site", "full", "supervision", "embedding", "typescript", "elm-scheme",
+  ..suites,
+]
+
+///|
+fn acceptance_lanes(selection : Map[String, Bool]) -> Array[String] {
+  ["compiler", "frontend", "conformance"].filter(s => {
+    selection.get(s) == Some(true)
+  })
+}
+
+///|
+/// The outputs of `selection` as one JSON object: each output name as a
+/// boolean, and `acceptance-lanes` and `required` as arrays of job names.
+fn selection_json(selection : Map[String, Bool]) -> Json {
+  let fields : Map[String, Json] = Map([])
+  for name in output_names {
+    fields.set(name, Json::boolean(selection.get(name) == Some(true)))
+  }
+  fields.set("acceptance-lanes", Json(acceptance_lanes(selection)))
+  fields.set("required", Json(required(selection)))
+  Json::object(fields)
+}
+
+///|
+/// A stand-in for `ci-reuse.mbtx` in a fixture root. It writes its arguments
+/// to `reuse-args` and prints the content of `reuse-verdict`, or fails when
+/// that content is `crash`.
+let fake_reuse_script : String =
+  #|import {
+  #|  "moonbitlang/async@0.22.1",
+  #|  "moonbitlang/async@0.22.1/fs",
+  #|  "moonbitlang/async@0.22.1/stdio",
+  #|  "moonbitlang/core/env",
+  #|}
+  #|
+  #|///|
+  #|async fn main {
+  #|  @fs.write_file("reuse-args", @env.args()[1:].to_owned().join(" "))
+  #|  @stdio.stderr.write("ci-reuse: fixture note\n")
+  #|  let verdict = @fs.read_file("reuse-verdict").text()
+  #|  if verdict == "crash\n" {
+  #|    fail("simulated ci-reuse crash")
+  #|  }
+  #|  println(verdict)
+  #|}
+
+///|
+/// A trusted verdict as `ci-reuse.mbtx --json` prints it. The receipt holds
+/// the `changes` outputs for `selection` as strings, and a PR with `base`, or
+/// a null PR (a merge-queue receipt) when `base` is `None`.
+fn fixture_verdict(
+  selection : Map[String, Bool],
+  base~ : String?,
+  exact~ : Bool = false,
+) -> String {
+  let outputs : Map[String, Json] = Map([])
+  for name in output_names {
+    outputs.set(
+      name,
+      Json::string((selection.get(name) == Some(true)).to_string()),
+    )
+  }
+  outputs.set(
+    "acceptance-lanes",
+    Json::string(Json(acceptance_lanes(selection)).stringify()),
+  )
+  outputs.set("required", Json::string(Json(required(selection)).stringify()))
+  let pr : Json = match base {
+    Some(base) =>
+      {
+        "number": 194,
+        "head": "4046644e7e5db6ca170e8b730b040af69c354f6e",
+        "base": base,
+      }
+    None => Json::null()
+  }
+  let verdict : Json = {
+    "trusted": true,
+    "exact": exact,
+    "reason": "PR #194 head 4046644 run 39549808921 attempt 2",
+    "receipt": {
+      "runId": "39549808921",
+      "runAttempt": "2",
+      "testedCommit": "7c1e5a0b9d8c7f6e5d4c3b2a1908f7e6d5c4b3a2",
+      "testedTree": "9ab3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5",
+      "pr": pr,
+      "selection": Json::object(outputs),
+    },
+    "rerunJobs": ["Elm and Scheme end to end"],
+  }
+  verdict.stringify()
+}
+
+///|
+/// Run `ci-changes --event` in `root` with `env`, after a stand-in verdict
+/// `verdict` and with an existing line in GITHUB_OUTPUT. Return the exit
+/// status, stdout, stderr, GITHUB_OUTPUT and the stand-in's arguments ("" when
+/// it did not run).
+async fn run_event(
+  script : String,
+  root : String,
+  env : Map[String, String],
+  verdict : String,
+) -> (Int32, String, String, String, String) {
+  let destination = root + "/output"
+  @fs.write_file(destination, "existing=true\n")
+  @fs.write_file(root + "/reuse-verdict", verdict)
+  @fs.write_file(root + "/reuse-args", "")
+  let env = env.copy()
+  env.set("GITHUB_OUTPUT", destination)
+  let (status, out, err) = @process.collect_output(
+    "moonx",
+    [script, "--event"],
+    cwd=root,
+    extra_env=env,
+  )
+  (
+    status,
+    out.text(),
+    err.text(),
+    @fs.read_file(destination).text(),
+    @fs.read_file(root + "/reuse-args").text(),
+  )
+}
+
+///|
+/// One failure line with the child's output.
+fn run_failure(
+  name : String,
+  run : (Int32, String, String, String, String),
+) -> String {
+  let (status, out, err, output, args) = run
+  "\{name}: exit \{status}\nstdout:\n\{out}\nstderr:\n\{err}\nGITHUB_OUTPUT:\n\{output}\nci-reuse args: \{args}"
+}
+
+///|
+/// Queue, push, failure and CLI wiring of reuse, with a stand-in
+/// `ci-reuse.mbtx`. On main, `docs/landed.md` landed after the receipt's base;
+/// the PR changes the IR. Every check runs, and all failures are reported.
+async fn reuse_wiring_test(script : String) -> Unit {
+  let root = @fs.tmpdir(prefix="morphir-ci-reuse-")
+  defer @fs.rmdir(root, recursive=true)
+  ignore(fixture_git(root, ["init", "-q"]))
+  @fs.write_file(root + "/README.md", "fixture\n")
+  ignore(fixture_git(root, ["add", "."]))
+  ignore(fixture_git(root, ["commit", "-qm", "fixture receipt base"]))
+  let receipt_base = fixture_git(root, ["rev-parse", "HEAD"])
+  @fs.mkdir(root + "/docs")
+  @fs.write_file(root + "/docs/landed.md", "landed\n")
+  ignore(fixture_git(root, ["add", "."]))
+  ignore(fixture_git(root, ["commit", "-qm", "docs: landed note"]))
+  let main_head = fixture_git(root, ["rev-parse", "HEAD"])
+  let landed = fixture_git(root, ["log", "-1", "--format=%h %s", main_head])
+  @fs.mkdir(root + "/pkgs/morphir-ir", recursive=true)
+  @fs.write_file(root + "/pkgs/morphir-ir/ir.mbt", "fixture\n")
+  ignore(fixture_git(root, ["add", "."]))
+  ignore(fixture_git(root, ["commit", "-qm", "feat: change the IR"]))
+  let pr_head = fixture_git(root, ["rev-parse", "HEAD"])
+  @fs.mkdir(root + "/scripts")
+  @fs.write_file(root + "/scripts/ci-reuse.mbtx", fake_reuse_script)
+  let failures : Array[String] = []
+  let log = "ci-changes: reuse: "
+  let receipt = select(["pkgs/morphir-ir/ir.mbt"])
+  let trusted = fixture_verdict(receipt, base=Some(receipt_base))
+  let queue_ref = "refs/heads/gh-readonly-queue/main/pr-194-\{main_head}"
+  let queue_env = {
+    "EVENT": "merge_group",
+    "QUEUE_REF": queue_ref,
+    "QUEUE_BASE": main_head,
+    "QUEUE_HEAD": pr_head,
+  }
+  let queue_today = changed(main_head, pr_head, cwd=root) |> select |> render
+  let queue_args = "queue --ref \{queue_ref} --base \{main_head} --head \{pr_head} --json"
+  let push_env = {
+    "EVENT": "push",
+    "PUSH_BASE": main_head,
+    "GITHUB_SHA": pr_head,
+  }
+  let push_selection = select(
+    changed(main_head, pr_head, merge_base=false, cwd=root),
+  )
+  push_selection.set("site", false)
+  let push_today = render(push_selection)
+  let push_args = "push --sha \{pr_head} --before \{main_head} --json"
+  let unchanged = (
+    run : (Int32, String, String, String, String),
+    today : String,
+    args : String,
+  ) => {
+    run.0 == 0 &&
+    run.1 == today &&
+    run.3 == "existing=true\n" + today &&
+    run.4 == args
+  }
+  // event_queue_shadow_unchanged
+  let run = run_event(script, root, queue_env, trusted)
+  if !(unchanged(run, queue_today, queue_args) &&
+    run.2.contains(
+      "\{log}trusted: PR #194 head 4046644 run 39549808921 attempt 2 (tested 7c1e5a0, tree 9ab3c4d)\n",
+    ) &&
+    run.2.contains(
+      "\{log}landed since receipt base \{receipt_base.view(end_offset=7)}: \{landed}\n",
+    ) &&
+    run.2.contains("\{log}re-run: site,typescript\n") &&
+    run.2.contains(
+      "\{log}trusted after re-run attempt: Elm and Scheme end to end\n",
+    ) &&
+    run.2.contains(
+      "\{log}shadow, not enforced; would select full=false checks=[\"site\",\"typescript\"]\n",
+    ) &&
+    run.2.contains("\{log}ci-reuse: fixture note\n")) {
+    failures.push(run_failure("event_queue_shadow_unchanged", run))
+  }
+  // event_queue_exact_not_skipped: only a push skips on an exact verdict; a
+  // queue run selects as today, with or without a PR base.
+  for base in [Some(receipt_base), None] {
+    let run = run_event(
+      script,
+      root,
+      queue_env,
+      fixture_verdict(receipt, base~, exact=true),
+    )
+    if !(unchanged(run, queue_today, queue_args) &&
+      !run.2.contains("\{log}exact push") &&
+      !run.2.contains("\{log}trusted (exact)")) {
+      failures.push(run_failure("event_queue_exact_not_skipped", run))
+    }
+  }
+  // event_push_exact_skips
+  let skip = render(nothing_selected())
+  let run = run_event(
+    script,
+    root,
+    push_env,
+    fixture_verdict(receipt, base=None, exact=true),
+  )
+  if !(unchanged(run, skip, push_args) &&
+    skip.contains(
+      "\nrequired=[\"changes\",\"lint\",\"format-check\",\"validate-config\"]\n",
+    ) &&
+    !skip.contains("=true\n") &&
+    run.2.contains("\{log}exact push, enforced;")) {
+    failures.push(run_failure("event_push_exact_skips", run))
+  }
+  // event_push_bypass_shadow
+  let run = run_event(script, root, push_env, trusted)
+  if !(unchanged(run, push_today, push_args) &&
+    push_today != skip &&
+    run.2.contains(
+      "\{log}shadow, not enforced; would select full=false checks=[\"typescript\"]\n",
+    )) {
+    failures.push(run_failure("event_push_bypass_shadow", run))
+  }
+  // reuse_child_failure_shadow
+  for
+    case in [
+      ("crash\n", "\{log}ci-reuse exited "),
+      ("not json\n", "\{log}ci-reuse output: "),
+      (
+        "{\"trusted\":false,\"exact\":false,\"reason\":\"no receipt artifact for run 1\"}\n",
+        "\{log}untrusted: no receipt artifact for run 1; selects as today\n",
+      ),
+      (
+        fixture_verdict(receipt, base=Some("ab".repeat(20))),
+        "\{log}landed classification failed: ",
+      ),
+      (fixture_verdict(receipt, base=None), "\{log}receipt has no PR base"),
+    ] {
+    let (verdict, phrase) = case
+    let run = run_event(script, root, queue_env, verdict)
+    if !(unchanged(run, queue_today, queue_args) &&
+      run.2.contains(phrase) &&
+      run.2.contains("selects as today")) {
+      failures.push(run_failure("reuse_child_failure_shadow \{phrase}", run))
+    }
+  }
+  failures.append(verdict_test(pr_head))
+  failures.append(reuse_timeout_test())
+  let run = run_event(
+    script,
+    root,
+    { "EVENT": "pull_request", "PR_BASE": main_head, "PR_HEAD": pr_head },
+    trusted,
+  )
+  if !(run.0 == 0 && run.4 == "" && !run.2.contains(log)) {
+    failures.push(run_failure("reuse_child_only_queue_and_push", run))
+  }
+  // cli_json_selection
+  let destination = root + "/output"
+  @fs.write_file(destination, "")
+  @fs.write_file(root + "/reuse-args", "")
+  let (status, out, err) = @process.collect_output(
+    "moonx",
+    [script, receipt_base, pr_head, "--json"],
+    cwd=root,
+    extra_env={ "GITHUB_OUTPUT": destination },
+  )
+  let selection = changed(receipt_base, pr_head, cwd=root) |> select
+  let pinned =
+    #|{"code":false,"site":false,"full":false,"supervision":false,"embedding":false,"typescript":false,"elm-scheme":false,"compiler":false,"frontend":false,"conformance":false,"provider":false,"lifecycle":false,"telemetry":false,"workbench":false,"acceptance-lanes":[],"required":["changes","lint","format-check","validate-config"]}
+  if !(status == 0 &&
+    out.text() == selection_json(selection).stringify() + "\n" &&
+    out.text().contains("\"code\":true,") &&
+    out
+    .text()
+    .contains(
+      "\"acceptance-lanes\":[\"compiler\",\"frontend\",\"conformance\"],",
+    ) &&
+    @fs.read_file(destination).text() == render(selection) &&
+    @fs.read_file(root + "/reuse-args").text() == "" &&
+    selection_json(nothing_selected()).stringify() == pinned) {
+    failures.push(
+      "cli_json_selection: exit \{status}\nstdout:\n\{out.text()}\nstderr:\n\{err.text()}",
+    )
+  }
+  failures.append(cli_argparse_forms())
+  guard failures.is_empty() else { fail(failures.join("\n---\n")) }
+  println(
+    "ci-changes: queue and bypass shadow, exact push skip, child failures and CLI pass",
+  )
+}
+
+///|
+/// Reading the child's result: a nonzero exit or unreadable output is an
+/// error with the reason; a trusted verdict keeps the receipt's PR base and
+/// its Bool selection keys only.
+fn verdict_test(base : String) -> Array[String] {
+  let failures = []
+  let receipt = select(["pkgs/morphir-ir/ir.mbt"])
+  let trusted = "compiling\n" + fixture_verdict(receipt, base=Some(base))
+  let checks : Array[(String, Bool)] = [
+    (
+      "exit",
+      Verdict::from_child(2, "", "gh: not found\n") is Err(reason) &&
+      reason == "ci-reuse exited 2: gh: not found",
+    ),
+    (
+      "unreadable",
+      Verdict::from_child(0, "not json", "") is Err(reason) &&
+      reason.has_prefix("ci-reuse output: "),
+    ),
+    (
+      "no receipt",
+      Verdict::from_child(
+        0, "{\"trusted\":true,\"exact\":false,\"reason\":\"r\"}", "",
+      )
+      is Err(_),
+    ),
+    (
+      "untrusted",
+      Verdict::from_child(
+        0, "{\"trusted\":false,\"exact\":false,\"reason\":\"no receipt\"}", "",
+      )
+      is Ok(Untrusted(reason="no receipt")),
+    ),
+    (
+      "trusted",
+      Verdict::from_child(0, trusted, "")
+      is Ok(Trusted(receipt=r, exact=false, rerun_jobs=jobs, ..)) &&
+      r.base == Some(Sha(base)) &&
+      r.selection == receipt &&
+      r.run == "39549808921" &&
+      r.attempt == "2" &&
+      jobs == ["Elm and Scheme end to end"],
+    ),
+  ]
+  for check in checks {
+    if !check.1 {
+      failures.push("reuse_child_failure_shadow verdict: \{check.0}")
+    }
+  }
+  failures
+}
+
+///|
+/// A stand-in `ci-reuse.mbtx` that sleeps is stopped after the timeout, and
+/// there is no verdict.
+async fn reuse_timeout_test() -> Array[String] {
+  let root = @fs.tmpdir(prefix="morphir-ci-reuse-timeout-")
+  defer @fs.rmdir(root, recursive=true)
+  @fs.mkdir(root + "/scripts")
+  @fs.write_file(
+    root + "/scripts/ci-reuse.mbtx",
+    (
+      #|import {
+      #|  "moonbitlang/async@0.22.1",
+      #|}
+      #|
+      #|///|
+      #|async fn main {
+      #|  @async.sleep(60000)
+      #|}
+    ),
+  )
+  let verdict = reuse_verdict(["push"], cwd=root, timeout=1)
+  if verdict is None {
+    []
+  } else {
+    ["reuse_child_failure_shadow: a child that times out gave a verdict"]
+  }
+}
+
+///|
+/// The command line forms and their refusals.
+fn cli_argparse_forms() -> Array[String] {
+  let failures = []
+  let command = changes_command()
+  let base = "a".repeat(40)
+  let head = "b".repeat(40)
+  let cases : Array[(Array[String], Mode, Bool)] = [
+    (["--self-test"], SelfTest, false),
+    (["--event"], Event, false),
+    (["--event", "--json"], Event, true),
+    ([base, head], Range(base, head), false),
+    ([base, head, "--json"], Range(base, head), true),
+    (["--json", base, head], Range(base, head), true),
+  ]
+  for case in cases {
+    let (argv, mode, json) = case
+    let parsed = try {
+      let got = invocation(command.parse(argv~))
+      got.mode == mode && got.json == json
+    } catch {
+      _ => false
+    }
+    if !parsed {
+      failures.push("cli_argparse_forms: wrong parse of \{argv.join(" ")}")
+    }
+  }
+  for
+    argv in [
+      [],
+      ["--json"],
+      ["--event", base, head],
+      ["--self-test", "--event"],
+      ["--self-test", "--json"],
+      [base],
+      [base, head, "c"],
+      ["--bogus"],
+    ] {
+    let refused = try {
+      ignore(invocation(command.parse(argv~)))
+      false
+    } catch {
+      _ => true
+    }
+    if !refused {
+      failures.push("cli_argparse_forms: accepted \{argv.join(" ")}")
+    }
+  }
+  failures
 }

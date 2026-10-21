@@ -80,10 +80,11 @@ description = "Test focused CI selection and fail-closed aggregate gates"
 run = [
   "actionlint",
   "moon run scripts/moonbit-core.mbtx --self-test",
-  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx scripts/ci-mise-impact.mbtx",
+  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx scripts/ci-mise-impact.mbtx scripts/ci-reuse.mbtx",
   "moonx scripts/ci-changes.mbtx --self-test",
   "moonx scripts/ci-mise-impact.mbtx --self-test",
   "moonx scripts/ci-gate.mbtx --self-test",
+  "moonx scripts/ci-reuse.mbtx --self-test",
   "moonx scripts/ci-measure.mbtx --self-test",
   "moonx scripts/beads-companion.mbtx --self-test",
   "moonx scripts/headless-host.mbtx --self-test",
@@ -100,6 +101,10 @@ run = "moonx scripts/ci-changes.mbtx --event"
 [tasks."ci:gate"]
 description = "Require every selected CI job to pass"
 run = "moonx scripts/ci-gate.mbtx"
+
+[tasks."ci:gate:receipt"]
+description = "Require every selected CI job to pass, then write the CI receipt"
+run = "moonx scripts/ci-gate.mbtx --receipt .dev/ci/receipt.json"
 
 [tasks."beads:check"]
 description = "Check that this checkout or worktree uses the bootstrapped shared beads database"
