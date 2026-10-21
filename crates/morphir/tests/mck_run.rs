@@ -20,6 +20,8 @@ mod metadata_acceptance;
 mod mvp_acceptance;
 #[path = "support/package_acceptance.rs"]
 mod package_acceptance;
+#[path = "support/workbench_acceptance.rs"]
+mod workbench_acceptance;
 
 const ADAPTER_FLAG: &str = "--mck-test-adapter";
 
@@ -552,10 +554,13 @@ fn installed_cli_runs_vendored_kit_without_tool_runtimes() {
         mvp_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
     }
     metadata_acceptance::qualify(work.path(), &run, denied_probe.as_deref());
+    workbench_acceptance::qualify(work.path(), &adapter, &run, denied_probe.as_deref());
 
     if let Some(directory) = std::env::var_os("MORPHIR_MCK_ACCEPTANCE_EVIDENCE") {
         let directory = Path::new(&directory);
         std::fs::create_dir_all(directory).unwrap();
+        copy_snapshot(&work.path().join("workbench"), &directory.join("workbench"))
+            .expect("retain Workbench installed acceptance evidence");
         for name in [
             "source.json",
             "report.json",
@@ -1240,6 +1245,10 @@ fn a_shutdown_failure_is_in_the_report_even_when_records_pass() {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some(ADAPTER_FLAG) {
+        if args.get(2).map(String::as_str) == Some("workbench-control") {
+            workbench_acceptance::adapter(&args[3], Path::new(&args[4]));
+            return;
+        }
         if let Some(mode @ ("old" | "pass" | "reordered-facts")) = args.get(2).map(String::as_str) {
             metadata_adapter(mode);
             return;
@@ -1304,6 +1313,10 @@ fn main() {
         (
             "a_missing_preacquired_kit_does_not_fall_back_to_embedded",
             a_missing_preacquired_kit_does_not_fall_back_to_embedded,
+        ),
+        (
+            "installed_cli_qualification_requires_workbench_evidence",
+            workbench_acceptance::installed_cli_qualification_requires_workbench_evidence,
         ),
         (
             "installed_cli_runs_vendored_kit_without_tool_runtimes",

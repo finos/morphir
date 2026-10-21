@@ -38,7 +38,9 @@ fn digest(data: &[u8]) -> String {
     )
 }
 fn canonical(value: &Value) -> Result<Vec<u8>> {
-    Ok(serde_json::to_vec(value)?)
+    let mut value = value.clone();
+    value.sort_all_objects();
+    Ok(serde_json::to_vec(&value)?)
 }
 fn physical(reference: &Value) -> Result<String> {
     let path = reference["path"].as_str().ok_or("reference path")?;

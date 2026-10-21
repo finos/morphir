@@ -442,18 +442,16 @@ Each row is argued in the decision record named in its last column.
 | Rename after extensions adopt version 2 | Every first-party bundle would publish the old names and then change them | [0007](/decisions/0007-extensions-make-capability-claims.md) |
 | Alias the new names inside draft.1 | A draft matches only exactly, so one version cannot have two spellings | [0007](/decisions/0007-extensions-make-capability-claims.md) |
 
-## Unresolved
+## Beta.10 release dispositions
 
-These questions are open in #921. The `requires.host` syntax is settled: it is a list of single SemVer
-comparators, which the Rust `semver` crate and `@std/semver` parse the same way.
-
-1. What canonical form do two claim sets take before a reader compares them (key order, number
-   spelling)?
-2. Does publish also probe WASM artifacts, which it can always run, and should that be required?
-3. Should the artifact's provenance or signature cover the claims once publisher authenticity exists?
-   This is open question 4 of the distribution design (source `distribution`).
-4. Can a process probe get an operating-system sandbox where one is available, for example a restricted
-   profile on macOS or a namespace on Linux?
+On 2026-10-21, [decision 0008](/decisions/0008-beta10-claims-gate-dispositions.md) records the five
+`morphir-o4qc` release gate dispositions against the pinned implementation. It resolves #921 Q1 with
+parsed-value comparison, including ordered arrays and no added numeric normalization guarantee.
+Q2 keeps WASM publication and installation unchecked; packaging describes the exact guest bytes it ships.
+Q3 formally postpones claim signatures until publisher-authenticity policy exists. Q4 formally postpones
+process sandboxing while retaining the disclosed ambient-user-rights limitation. Claims stay at
+`0.1.0-draft.2`, and descriptor, index and catalog formats stay at `2.0.0-draft.2`, pending adoption and
+stability review. Decision 0008 names the evidence and conditions that reopen each gate.
 
 What would change the position: if a host cannot keep reading version-1 or draft.1 records, the
 single-side release paths do not hold, and decision 0004 reopens. If a process probe turns out to need

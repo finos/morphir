@@ -16,7 +16,13 @@ pub enum Json {
 impl Serialize for Json {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::Value(value) => value.serialize(serializer),
+            Self::Value(value) => {
+                // Parsed values used sorted maps before feature unification;
+                // explicit Json::Object entries keep their authored order.
+                let mut value = value.clone();
+                value.sort_all_objects();
+                value.serialize(serializer)
+            }
             Self::Object(entries) => {
                 let mut map = serializer.serialize_map(Some(entries.len()))?;
                 for (key, value) in entries {
@@ -81,7 +87,9 @@ pub fn pretty(value: &Json) -> Vec<u8> {
     bytes
 }
 pub fn canonical(value: &impl Serialize) -> Vec<u8> {
-    // Value's default map representation sorts object members recursively.
-    serde_json::to_vec(&serde_json::to_value(value).expect("fixture JSON value"))
-        .expect("fixture canonical JSON")
+    // Workspace dependencies may enable preserve_order. Signing must still
+    // sort every object, including objects nested inside arrays.
+    let mut value = serde_json::to_value(value).expect("fixture JSON value");
+    value.sort_all_objects();
+    serde_json::to_vec(&value).expect("fixture canonical JSON")
 }
