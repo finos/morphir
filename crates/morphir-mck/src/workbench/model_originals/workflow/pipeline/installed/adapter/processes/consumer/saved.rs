@@ -143,7 +143,7 @@ impl Serialize for EndpointFault {
 record! { pub Endpoint {role:Role=>"role",terminal:Terminal=>"terminal",fault:EndpointFault =>"fault",frames:Items<Row,0,5> =>"frames"} }
 record! { pub Record {kind:Recorded=>"kind",version:Revision=>"version",association:Association=>"association",clock:Clock=>"clock",completion:Completion=>"completion",endpoints:Items<Endpoint,2,2> =>"endpoints"} }
 record! { pub FactRef {role:Role=>"role",sequence:Natural<0,{u64::MAX}> =>"sequence"} }
-pub enum Dynamic {
+enum Dynamic {
     Unobserved,
     Observed {
         reference: FactRef,
@@ -214,9 +214,9 @@ impl Serialize for Dynamic {
 }
 pub(in crate::workbench::model_originals::workflow) struct Measurement {
     pub(super) record: Record,
-    pub(super) release: Dynamic,
-    pub(super) commit: Dynamic,
-    pub(super) cleanup: Dynamic,
+    release: Dynamic,
+    commit: Dynamic,
+    cleanup: Dynamic,
 }
 impl Measurement {
     pub(in crate::workbench::model_originals::workflow) fn decode(

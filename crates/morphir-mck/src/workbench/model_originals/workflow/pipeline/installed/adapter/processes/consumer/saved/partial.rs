@@ -24,7 +24,7 @@ pub(in crate::workbench::model_originals::workflow) struct Partial {
     protocol: Result<model::ProtocolFacts, Fault>,
 }
 impl Partial {
-    pub(in crate::workbench::model_originals::workflow) fn matches_first(
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn matches_first(
         &self,
         summary: crate::workbench::model_originals::workflow::pipeline::wire::FailureSummary,
         owner: &mut Decoder,

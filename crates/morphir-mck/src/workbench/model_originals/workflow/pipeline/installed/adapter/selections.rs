@@ -145,7 +145,7 @@ impl InstalledClientRun<'_> {
         project: bool,
     ) -> Result<RetainedObservationText, InstalledAdapterError> {
         self.work_ready()?;
-        let value = fields(&self.collected, self.decode, project).map_err(|error| {
+        let value = fields(self.collected, self.decode, project).map_err(|error| {
             self.attempt.fail(RunFault::Decode(error));
             InstalledAdapterError::ObservationIncomplete
         })?;

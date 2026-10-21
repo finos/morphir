@@ -45,7 +45,9 @@ pub struct ConsumerRecordRejected {
     finished: FinishedInstalledProcess,
 }
 impl ConsumerRecordRejected {
-    pub fn fault(&self) -> wire::ConsumerCodecError {
+    pub(in crate::workbench::model_originals::workflow) fn fault(
+        &self,
+    ) -> wire::ConsumerCodecError {
         self.fault
     }
     pub fn into_parts(self) -> (InstalledConsumerPorts, FinishedInstalledProcess) {
@@ -194,10 +196,10 @@ impl InstalledClientRun<'_> {
             first_failure,
             reservation,
         });
-        if let Some(record) = self.collected.consumer.as_mut() {
-            if let Err(fault) = record.project_process() {
-                self.encoding_fault(fault);
-            }
+        if let Some(record) = self.collected.consumer.as_mut()
+            && let Err(fault) = record.project_process()
+        {
+            self.encoding_fault(fault);
         }
         if self.attempt.ready().is_ok() {
             let claim = {

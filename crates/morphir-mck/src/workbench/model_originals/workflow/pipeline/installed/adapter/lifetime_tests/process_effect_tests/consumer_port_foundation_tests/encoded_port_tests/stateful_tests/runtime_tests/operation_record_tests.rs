@@ -118,8 +118,9 @@ impl InstalledClientAdapter for RecordProbe {
         let open_retained = first.is_some();
         let mut injected_framing = false;
         let mut observed_ack_prefix = None;
-        if matches!(self.case, RecordCase::InterruptedPrefix) && first.is_some() {
-            let ticket = first.as_mut().unwrap();
+        if matches!(self.case, RecordCase::InterruptedPrefix)
+            && let Some(ticket) = first.as_mut()
+        {
             while Instant::now() < end && ticket.test_written_prefix() < 3 {
                 let remaining = 3 - ticket.test_written_prefix();
                 match run.test_write_consumer_ack_capped(

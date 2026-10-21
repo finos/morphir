@@ -294,7 +294,7 @@ impl InstalledClientRun<'_> {
         }
         let relative = self.observation_path(published_relative_root)?;
         let selected =
-            super::selections::runtime_selection(&self.collected, self.decode, self.receiving)
+            super::selections::runtime_selection(self.collected, self.decode, self.receiving)
                 .map_err(|error| {
                     self.attempt.fail(RunFault::Decode(error));
                     InstalledAdapterError::ObservationIncomplete

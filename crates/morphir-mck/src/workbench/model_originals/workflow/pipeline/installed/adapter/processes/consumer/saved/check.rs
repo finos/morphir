@@ -36,12 +36,17 @@ fn path_bytes(path: &wire::Operand) -> impl Iterator<Item = u8> + '_ {
         _ => None,
     };
     let hex = match bytes {
-        wire::LiteralBytes::Hex { hex } => {
-            Some(hex.as_str().as_bytes().chunks_exact(2).map(|pair| {
-                let digit = |b: u8| if b <= b'9' { b - b'0' } else { b - b'a' + 10 };
-                digit(pair[0]) * 16 + digit(pair[1])
-            }))
-        }
+        wire::LiteralBytes::Hex { hex } => Some(
+            hex.as_str()
+                .as_bytes()
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|pair| {
+                    let digit = |b: u8| if b <= b'9' { b - b'0' } else { b - b'a' + 10 };
+                    digit(pair[0]) * 16 + digit(pair[1])
+                }),
+        ),
         _ => None,
     };
     text.into_iter().flatten().chain(hex.into_iter().flatten())
@@ -638,7 +643,14 @@ pub(super) fn release(
             )?;
             let digest = Sha256::digest(raw.as_bytes());
             let mut matches = true;
-            for (pair, byte) in wanted.as_str().as_bytes().chunks_exact(2).zip(digest) {
+            for (pair, byte) in wanted
+                .as_str()
+                .as_bytes()
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .zip(digest)
+            {
                 let d = |b: u8| if b <= b'9' { b - b'0' } else { b - b'a' + 10 };
                 matches &= d(pair[0]) * 16 + d(pair[1]) == byte;
             }

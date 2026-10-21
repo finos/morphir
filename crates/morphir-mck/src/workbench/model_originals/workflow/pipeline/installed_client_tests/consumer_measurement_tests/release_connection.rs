@@ -29,14 +29,13 @@ fn earlier_connection_may_reuse_the_selected_release_id_for_initialize() {
                 payload["id"].as_u64().unwrap(),
             ));
         }
-        if let Some((connection, id)) = earlier {
-            if event["connection"].as_u64() == Some(connection)
-                && payload["id"].as_u64() == Some(id)
-            {
-                payload["id"] = json!(release);
-                event["event"]["payload"] = payload.to_string().into();
-                changed += 1;
-            }
+        if let Some((connection, id)) = earlier
+            && event["connection"].as_u64() == Some(connection)
+            && payload["id"].as_u64() == Some(id)
+        {
+            payload["id"] = json!(release);
+            event["event"]["payload"] = payload.to_string().into();
+            changed += 1;
         }
     }
     assert_eq!(

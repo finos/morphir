@@ -267,24 +267,24 @@ impl Serialize for DynamicFact<'_> {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         for (index, frames) in self.record.frames.iter().enumerate() {
             for row in frames {
-                if let wire::Frame::Fact { fact, .. } = &row.frame {
-                    if self.kind.matches(fact) {
-                        let mut m = s.serialize_map(None)?;
-                        m.serialize_entry("kind", "observed")?;
-                        m.serialize_entry(
-                            "frameRef",
-                            &FrameRef {
-                                role: if index == 0 {
-                                    "outer"
-                                } else {
-                                    "transfer-helper"
-                                },
-                                sequence: row.sequence(),
+                if let wire::Frame::Fact { fact, .. } = &row.frame
+                    && self.kind.matches(fact)
+                {
+                    let mut m = s.serialize_map(None)?;
+                    m.serialize_entry("kind", "observed")?;
+                    m.serialize_entry(
+                        "frameRef",
+                        &FrameRef {
+                            role: if index == 0 {
+                                "outer"
+                            } else {
+                                "transfer-helper"
                             },
-                        )?;
-                        fact_fields(fact, &mut m)?;
-                        return m.end();
-                    }
+                            sequence: row.sequence(),
+                        },
+                    )?;
+                    fact_fields(fact, &mut m)?;
+                    return m.end();
                 }
             }
         }
