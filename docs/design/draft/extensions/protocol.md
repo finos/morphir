@@ -265,6 +265,15 @@ Packaging, publication and installation copy the claim set the extension
 reported; no manifest declares a capability by hand. The working specification is
 [finos/morphir#921](https://github.com/finos/morphir/discussions/921).
 
+The 2026-10-21 [beta.10 claims decision](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0008-beta10-claims-gate-dispositions.md)
+records parsed-value comparison for complete claim sets. Object key order and
+whitespace do not matter; array order does. Numbers use the Rust host's parsed
+JSON value equality, without an additional numeric normalization rule. Consumers
+must not assume that `1` and `1.0` compare equal. No canonical byte encoding for
+signatures is defined. The claim and record formats remain exact draft.2
+contracts pending adoption and stability review. WASM publish/install probes,
+claim signatures and process sandboxing retain the boundaries recorded there.
+
 ```json
 {
   "claimsVersion": "0.1.0-draft.2",
