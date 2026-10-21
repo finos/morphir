@@ -18,6 +18,13 @@ struct Header<'a> {
     qualified: Option<&'a RawValue>,
 }
 pub(in crate::workbench) fn recognizes(raw: &str) -> Result<bool, String> {
+    Ok(format_version(raw)?.is_some_and(|version| version == VERSION))
+}
+pub(in crate::workbench) fn recognizes_report(raw: &str) -> Result<bool, String> {
+    Ok(format_version(raw)?
+        .is_some_and(|version| super::report_revision::ReportRevision::parse(&version).is_ok()))
+}
+fn format_version(raw: &str) -> Result<Option<String>, String> {
     let raw: &RawValue = serde_json::from_str(raw).map_err(|e| e.to_string())?;
     // Classification borrows member values without interpreting selected
     // operands. The wire length bounds both scanned bytes and member count.
@@ -37,10 +44,10 @@ pub(in crate::workbench) fn recognizes(raw: &str) -> Result<bool, String> {
     // Exact supported version is ASCII. Six-byte escaping per source character
     // is the largest JSON spelling that can decode to that fixed string.
     if version.get().len() > VERSION.len() * 6 + 2 {
-        return Ok(false);
+        return Ok(None);
     }
     let version: String = serde_json::from_str(version.get()).map_err(|e| e.to_string())?;
-    Ok(version == VERSION)
+    Ok(Some(version))
 }
 struct Count(usize);
 impl<'de> Deserialize<'de> for Count {

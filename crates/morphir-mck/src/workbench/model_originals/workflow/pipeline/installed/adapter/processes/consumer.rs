@@ -14,6 +14,7 @@ pub(in crate::workbench::model_originals::workflow) mod deadline;
 mod export;
 #[cfg(target_os = "macos")]
 mod launch;
+pub(in crate::workbench::model_originals::workflow) mod record;
 mod sdk;
 pub(in crate::workbench::model_originals::workflow) mod wire;
 pub use sdk::ConsumerTransportState;
@@ -52,6 +53,8 @@ pub struct InstalledConsumerPorts {
     channels: [collector::Channel; 2],
     #[cfg(target_os = "macos")]
     helper_association: collector::HelperAssociation,
+    #[cfg(target_os = "macos")]
+    record_reservation: Option<record::ConsumerRecordReservation>,
 }
 impl InstalledConsumerPorts {
     /// Revoke these SAME owned peers after a delivery/process fault. Logical
@@ -136,6 +139,8 @@ pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter
     end: Instant,
     max_frame: usize,
     invocation: std::sync::Weak<dyn InvocationGateSource>,
+    process_ordinal: u64,
+    purpose: InstalledProcessPurpose,
     deadline: OnceLock<Result<deadline::DarwinContinuousDeadline, wire::ConsumerCodecError>>,
 }
 #[cfg(target_os = "macos")]
@@ -281,6 +286,7 @@ impl InstalledClientRun<'_> {
             &env,
             limits,
         )?;
+        let record_reservation = self.prepare_consumer_record()?;
         for _ in 0..2 {
             match self
                 .receiving
@@ -322,6 +328,8 @@ impl InstalledClientRun<'_> {
             end,
             max_frame: limits.max_frame,
             invocation: process.description.invocation.clone(),
+            process_ordinal: process.description.ordinal,
+            purpose: process.description.purpose,
             deadline: clock.into_cache(),
         });
         self.revoker
@@ -369,6 +377,7 @@ impl InstalledClientRun<'_> {
                 helper_association: collector::HelperAssociation::new(&control.binding),
                 control,
                 channels: buffers.map(collector::Channel::new),
+                record_reservation: Some(record_reservation),
             },
         ))
     }
@@ -431,6 +440,11 @@ impl InstalledConsumerPorts {
 }
 #[cfg(all(test, target_os = "macos"))]
 impl PreparedInstalledConsumerProcess {
+    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn test_process_ordinal(
+        &self,
+    ) -> u64 {
+        self.process.description.ordinal
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn test_child_handle(
         &self,
         role: ConsumerProducerRole,

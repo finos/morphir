@@ -77,7 +77,7 @@ impl Report {
         if text.len() > super::MAX_REPORT_BYTES {
             return Err("Workbench report exceeds 32 MiB".into());
         }
-        if pipeline::recognizes(text)? {
+        if pipeline::recognizes_report(text)? {
             StoredReport::from_json(text).map(Self::selected)
         } else {
             HistoricalReport::from_json(text).map(Self::historical)

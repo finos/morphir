@@ -328,3 +328,5 @@ fn clocked_preparation_rejects_every_reserved_selector_before_endpoint_effects()
         exercise_runtime(Scenario::ReservedKey(key));
     }
 }
+
+mod operation_record_tests;

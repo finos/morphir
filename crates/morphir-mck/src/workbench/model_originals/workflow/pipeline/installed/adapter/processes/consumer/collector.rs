@@ -9,6 +9,8 @@ pub(super) struct Channel {
     buffer: Vec<u8>,
     header: [u8; 4],
     phase: Phase,
+    prior_fault_phase: Option<Phase>,
+    fault: Option<Error>,
     next: u64,
 }
 #[derive(Clone, Copy)]
@@ -29,6 +31,8 @@ impl Channel {
             buffer,
             header: [0; 4],
             phase: Phase::Header(0),
+            prior_fault_phase: None,
+            fault: None,
             next: 0,
         }
     }
@@ -123,6 +127,10 @@ impl InstalledClientRun<'_> {
     }
     fn poison_consumer(&mut self, ports: &mut InstalledConsumerPorts, error: Error) -> Error {
         for channel in &mut ports.channels {
+            if !matches!(channel.phase, Phase::Poisoned) {
+                channel.prior_fault_phase = Some(channel.phase);
+                channel.fault = Some(error);
+            }
             channel.phase = Phase::Poisoned;
         }
         ports.control.revoke();
@@ -171,6 +179,10 @@ impl InstalledClientRun<'_> {
                 .to_be_bytes(),
         );
         ports.channels[role.index()].phase = Phase::Ack { index, sequence };
+        self.consumer_cache[role.index()][index].delivery = record::ConsumerAckDelivery::Prefix {
+            written: 0,
+            total: encoded.length,
+        };
         Ok(Progress::Retained(Ticket {
             _private: (),
             control: Arc::downgrade(&ports.control),
@@ -235,6 +247,7 @@ impl InstalledClientRun<'_> {
                 return Err(Error::Framing);
             }
             let filled = filled + n;
+            channel.phase = Phase::Header(filled);
             if filled < 4 {
                 channel.phase = Phase::Header(filled);
                 return Ok(Progress::Pending);
@@ -258,6 +271,7 @@ impl InstalledClientRun<'_> {
             return Err(Error::Framing);
         }
         let filled = filled + n;
+        channel.phase = Phase::Body { length, filled };
         if filled < length {
             channel.phase = Phase::Body { length, filled };
             return Ok(Progress::Pending);
@@ -414,6 +428,17 @@ impl InstalledClientRun<'_> {
             Ok(0) => Err(Error::Io(std::io::ErrorKind::WriteZero)),
             Ok(n) => {
                 ticket.cursor += n;
+                self.consumer_cache[ticket.role.index()][ticket.cache_index].delivery =
+                    if ticket.cursor < ticket.length {
+                        record::ConsumerAckDelivery::Prefix {
+                            written: ticket.cursor,
+                            total: ticket.length,
+                        }
+                    } else {
+                        record::ConsumerAckDelivery::Written {
+                            total: ticket.length,
+                        }
+                    };
                 if ticket.cursor < ticket.length {
                     return Ok(Ack::Pending);
                 }

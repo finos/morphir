@@ -166,6 +166,14 @@ pub struct ConsumerPendingAck {
     #[cfg(target_os = "macos")]
     pub(super) cursor: usize,
 }
+#[cfg(all(test, target_os = "macos"))]
+impl ConsumerPendingAck {
+    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn test_written_prefix(
+        &self,
+    ) -> usize {
+        self.cursor
+    }
+}
 impl std::fmt::Debug for ConsumerPendingAck {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("ConsumerPendingAck")
@@ -184,8 +192,16 @@ impl std::fmt::Debug for ConsumerReceiveProgress {
 pub(in crate::workbench::model_originals::workflow) struct DecodedConsumerEnvelope {
     pub(super) frame: Frame,
     pub(super) literal: String,
+    #[cfg(target_os = "macos")]
+    pub(super) delivery: super::record::ConsumerAckDelivery,
 }
 impl DecodedConsumerEnvelope {
+    #[cfg(all(test, target_os = "macos"))]
+    pub(in crate::workbench::model_originals::workflow) fn delivery(
+        &self,
+    ) -> super::record::ConsumerAckDelivery {
+        self.delivery
+    }
     pub(in crate::workbench::model_originals::workflow) fn kind(&self) -> ConsumerEnvelopeKind {
         match self.frame {
             Frame::Open { .. } => ConsumerEnvelopeKind::Open,

@@ -180,7 +180,11 @@ impl InstalledClientRun<'_> {
             }
         })?;
         let literal = self.consumer_literal(payload)?;
-        Ok(DecodedConsumerEnvelope { frame, literal })
+        Ok(DecodedConsumerEnvelope {
+            frame,
+            literal,
+            delivery: super::record::ConsumerAckDelivery::NotIssued,
+        })
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn decode_consumer_ack_literal(
         &mut self,

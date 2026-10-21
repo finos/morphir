@@ -454,6 +454,7 @@ pub(super) struct SavedRecord {
     pub(super) evidence: Evidence,
 }
 pub(super) struct SavedReport {
+    pub(super) revision: super::report_revision::ReportRevision,
     pub(super) corpus_hash: String,
     pub(super) capabilities: Option<Capabilities>,
     pub(super) records: Vec<SavedRecord>,
@@ -620,9 +621,12 @@ pub(super) fn saved(doc: Document, owner: &mut Decoder) -> Result<SavedReport, S
         ],
         owner,
     )?;
-    if owned_text(take(&mut fields, "formatVersion", owner)?, owner)? != VERSION
-        || owned_text(take(&mut fields, "suite", owner)?, owner)? != "workbench"
-    {
+    let revision = super::report_revision::ReportRevision::parse(&owned_text(
+        take(&mut fields, "formatVersion", owner)?,
+        owner,
+    )?)
+    .map_err(DecodeError::Shape)?;
+    if owned_text(take(&mut fields, "suite", owner)?, owner)? != "workbench" {
         return Err(DecodeError::Shape("report header").into());
     }
     let corpus_hash = owned_text(take(&mut fields, "corpusHash", owner)?, owner)?;
@@ -646,6 +650,16 @@ pub(super) fn saved(doc: Document, owner: &mut Decoder) -> Result<SavedReport, S
         crate::workbench::contract::identity(&case_id, 128).map_err(DecodeError::Value)?;
         let execution = ExecutionKey::decode(&take(&mut row, "execution", owner)?, owner)?;
         let evidence = evidence(take(&mut row, "evidence", owner)?, owner)?;
+        // Only the controlled failure-only draft31 reader is enabled here.
+        // Measured consumer DATA needs its own source-first field/claim gates.
+        if revision == super::report_revision::ReportRevision::Consumer31
+            && !matches!(
+                evidence,
+                Evidence::AttemptFailed { .. } | Evidence::NotAttempted { .. }
+            )
+        {
+            return Err(DecodeError::Shape("consumer measurement revision unsupported").into());
+        }
         records.push(SavedRecord {
             case_id,
             execution,
@@ -673,6 +687,7 @@ pub(super) fn saved(doc: Document, owner: &mut Decoder) -> Result<SavedReport, S
     }
     let qualified = boolean(take(&mut fields, "qualified", owner)?)?;
     Ok(SavedReport {
+        revision,
         corpus_hash,
         capabilities,
         records,

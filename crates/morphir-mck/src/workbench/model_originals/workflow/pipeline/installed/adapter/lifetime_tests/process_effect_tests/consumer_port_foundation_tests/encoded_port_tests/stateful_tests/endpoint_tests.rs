@@ -425,3 +425,5 @@ mod byte_buffer_tests;
 mod process_fault_tests;
 
 mod terminal_drain_tests;
+
+mod record_predecessor_tests;

@@ -294,6 +294,8 @@ pub(super) enum LiveFrame {
 /// Partial factual collection. The SAME helpers and caller Decoder also build
 /// saved caches; malformed literals remain DATA, never invented successes.
 pub(super) struct LiveMeasurements {
+    pub(super) consumer:
+        Option<super::pipeline::installed::adapter::processes::ConsumerOperationRecord>,
     pub(super) events: Vec<SequencedSocketEvent>,
     pub(super) frames: Vec<ParsedFrame>,
     pub(super) processes: Vec<ProcessMeasurement>,
@@ -305,6 +307,7 @@ pub(super) struct LiveMeasurements {
 impl LiveMeasurements {
     pub(super) fn new() -> Self {
         Self {
+            consumer: None,
             events: Vec::new(),
             frames: Vec::new(),
             processes: Vec::new(),

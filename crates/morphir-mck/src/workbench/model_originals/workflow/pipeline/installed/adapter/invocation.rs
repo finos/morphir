@@ -97,6 +97,10 @@ pub(super) enum ConsumerWindow {
 pub(super) enum ConsumerRegistration {
     Unprepared,
     Registered(Weak<super::processes::consumer::ConsumerPortControl>),
+    Recorded {
+        control: Weak<super::processes::consumer::ConsumerPortControl>,
+        completion: super::processes::consumer::record::ConsumerRecordCompletion,
+    },
 }
 impl Default for InvocationRevoker {
     fn default() -> Self {
@@ -119,10 +123,48 @@ impl InvocationRevoker {
         &self,
     ) -> bool {
         #[cfg(target_os = "macos")]
-        if let ConsumerRegistration::Registered(control) = &self.consumer_ports {
-            return control.upgrade().is_none_or(|control| control.revoked());
+        match &self.consumer_ports {
+            ConsumerRegistration::Registered(control) => {
+                return control.upgrade().is_none_or(|control| control.revoked());
+            }
+            ConsumerRegistration::Recorded { completion, .. } => {
+                return *completion
+                    == super::processes::consumer::record::ConsumerRecordCompletion::Interrupted;
+            }
+            ConsumerRegistration::Unprepared => {}
         }
         false
+    }
+    #[cfg(target_os = "macos")]
+    pub(super) fn record_consumer(
+        &mut self,
+        control: Weak<super::processes::consumer::ConsumerPortControl>,
+        completion: super::processes::consumer::record::ConsumerRecordCompletion,
+    ) -> bool {
+        if !matches!(&self.consumer_ports, ConsumerRegistration::Registered(registered) if registered.ptr_eq(&control))
+        {
+            return false;
+        }
+        if completion == super::processes::consumer::record::ConsumerRecordCompletion::Interrupted {
+            // Cleanup-only retention after failure, not a reopened effect gate.
+            self.consumer_ports = ConsumerRegistration::Recorded {
+                control,
+                completion,
+            };
+            return true;
+        }
+        let Some(owner) = self.source.as_ref().and_then(Weak::upgrade) else {
+            return false;
+        };
+        owner
+            .invocation_gate()
+            .while_open(|| {
+                self.consumer_ports = ConsumerRegistration::Recorded {
+                    control,
+                    completion,
+                };
+            })
+            .is_ok()
     }
     #[cfg(target_os = "macos")]
     pub(super) fn register_consumer(
@@ -165,12 +207,15 @@ impl InvocationRevoker {
         Ok(InvocationObservation { source })
     }
     pub(super) fn matches(&self, source: &Weak<dyn InvocationGateSource>) -> bool {
-        self.source
-            .as_ref()
-            .is_some_and(|own| Weak::ptr_eq(own, source))
+        self.same_source(source)
             && source
                 .upgrade()
                 .is_some_and(|owner| owner.invocation_gate().while_open(|| ()).is_ok())
+    }
+    pub(super) fn same_source(&self, source: &Weak<dyn InvocationGateSource>) -> bool {
+        self.source
+            .as_ref()
+            .is_some_and(|own| Weak::ptr_eq(own, source))
     }
 }
 impl Drop for InvocationRevoker {
@@ -181,7 +226,8 @@ impl Drop for InvocationRevoker {
             owner.wake_observers();
         }
         #[cfg(target_os = "macos")]
-        if let ConsumerRegistration::Registered(control) = &self.consumer_ports
+        if let ConsumerRegistration::Registered(control)
+        | ConsumerRegistration::Recorded { control, .. } = &self.consumer_ports
             && let Some(control) = control.upgrade()
         {
             control.revoke();
@@ -208,5 +254,12 @@ impl InvocationObservationView {
         } else {
             InvocationObservationState::Revoked
         }
+    }
+}
+
+#[cfg(test)]
+impl InvocationGate {
+    pub(super) fn test_revoke_source(&self) {
+        self.revoke();
     }
 }

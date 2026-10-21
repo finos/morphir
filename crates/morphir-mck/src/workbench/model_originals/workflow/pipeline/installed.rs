@@ -130,6 +130,16 @@ pub(in crate::workbench) fn replay_installed(
                     .map_err(|_| "saved report decode refused")?;
             let saved = wire::saved(document, &mut owners.decode)
                 .map_err(|_| "saved report decode refused")?;
+            if saved.revision == super::report_revision::ReportRevision::Consumer31
+                && matches!(
+                    consumer,
+                    crate::workbench::configuration::ConsumerObservationSelection::Disabled
+                )
+            {
+                return Err(
+                    "consumer report revision requires explicit operation selection".into(),
+                );
+            }
             let compiled = prepared.cases();
             if saved.corpus_hash != source.digest() || saved.records.len() != compiled.len() {
                 return Err("inventory fullfile/count differs".into());
@@ -391,7 +401,8 @@ pub(in crate::workbench) fn execute_installed(
             }
             render(PreparedExecution {
                 report: RuntimeReport {
-                    format_version: VERSION,
+                    format_version: super::report_revision::ReportRevision::selected(consumer)
+                        .text(),
                     suite: "workbench",
                     corpus_hash: source.digest(),
                     capabilities: None,

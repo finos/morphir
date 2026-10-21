@@ -3,6 +3,7 @@
 pub(super) mod installed;
 pub(in crate::workbench) mod policy;
 mod raw;
+mod report_revision;
 mod wire;
 use super::ingress::BoundCorpus;
 use super::observation_check::ObservationError;
@@ -22,7 +23,7 @@ pub(in crate::workbench) use installed::{execute_installed, replay_installed};
 pub(in crate::workbench) use policy::Policy;
 use policy::{CaptureFault, Owners};
 use raw::VERSION;
-pub(in crate::workbench) use raw::{StoredReport, recognizes};
+pub(in crate::workbench) use raw::{StoredReport, recognizes, recognizes_report};
 use serde::Serialize;
 use serde_json::value::RawValue;
 use wire::{
@@ -845,6 +846,11 @@ pub(in crate::workbench) fn replay_native(
                     .map_err(|_| "saved report decode refused")?;
             let saved = wire::saved(document, &mut owners.decode)
                 .map_err(|_| "saved report decode refused")?;
+            if saved.revision != report_revision::ReportRevision::Legacy30 {
+                return Err(
+                    "consumer report revision requires explicit operation selection".into(),
+                );
+            }
             if saved.corpus_hash != source.digest() {
                 return Err("corpus fullfile digest differs".into());
             }
@@ -993,6 +999,11 @@ pub(in crate::workbench) fn replay(
                 }
                 .to_owned()
             })?;
+            if saved.revision != report_revision::ReportRevision::Legacy30 {
+                return Err(
+                    "consumer report revision requires explicit operation selection".into(),
+                );
+            }
             if saved.corpus_hash != source.digest() {
                 return Err("corpus fullfile digest differs".into());
             }

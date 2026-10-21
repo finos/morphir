@@ -131,3 +131,5 @@ fn consumer_failure_does_not_replace_missing_first_attempt_or_inventory() {
         "inventory execution key/order differs"
     );
 }
+
+mod report_revision_tests;

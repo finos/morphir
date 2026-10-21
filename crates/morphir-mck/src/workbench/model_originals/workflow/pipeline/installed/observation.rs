@@ -46,6 +46,7 @@ pub enum ObservationBufferRole {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObservationRecordRole {
+    ConsumerOperation,
     ConsumerProducer,
     ConsumerFrame,
     Mailbox,
