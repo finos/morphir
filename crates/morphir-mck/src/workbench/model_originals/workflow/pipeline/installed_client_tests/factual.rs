@@ -149,7 +149,12 @@ fn replay(raw: &str) -> Result<(), String> {
     let source = source(CORPUS);
     let policy = policy(POLICY);
     let report = StoredReport::from_json(raw)?;
-    replay_installed(&source, &policy, &report)
+    replay_installed(
+        &source,
+        &policy,
+        crate::workbench::configuration::ConsumerObservationSelection::Disabled,
+        &report,
+    )
 }
 
 #[test]

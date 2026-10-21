@@ -123,11 +123,9 @@ enum RunFault {
 impl RunFault {
     fn summary(&self) -> FailureSummary {
         let (phase, code, message) = match self {
-            Self::InstalledConsumer(error) => (
-                "installed-consumer",
-                error.code(),
-                "private consumer operation transport refused",
-            ),
+            Self::InstalledConsumer(error) => {
+                return FailureSummary::consumer(error.failure_kind());
+            }
             Self::InstalledProcessFault(error) => {
                 use crate::transport::process::ProcessFault;
                 let code = match error {

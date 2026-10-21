@@ -30,7 +30,79 @@ pub(in crate::workbench::model_originals::workflow) enum ConsumerCodecError {
     Deadline(super::deadline::DeadlineError),
 }
 impl ConsumerCodecError {
-    pub(in crate::workbench::model_originals::workflow) fn code(&self) -> &'static str {
+    pub(in crate::workbench::model_originals::workflow) fn failure_kind(
+        &self,
+    ) -> ConsumerFailureKind {
+        match self {
+            Self::ClockBasis => ConsumerFailureKind::ClockBasis,
+            Self::Framing => ConsumerFailureKind::Framing,
+            Self::FrameTooLarge => ConsumerFailureKind::FrameTooLarge,
+            Self::Utf8 => ConsumerFailureKind::Utf8,
+            Self::Json => ConsumerFailureKind::Json,
+            Self::Shape => ConsumerFailureKind::Shape,
+            Self::Revision => ConsumerFailureKind::Revision,
+            Self::Role => ConsumerFailureKind::Role,
+            Self::Direction => ConsumerFailureKind::Direction,
+            Self::Association => ConsumerFailureKind::Association,
+            Self::PriorFault => ConsumerFailureKind::PriorFault,
+            Self::Sequence => ConsumerFailureKind::Sequence,
+            Self::Outstanding => ConsumerFailureKind::Outstanding,
+            Self::Ticket => ConsumerFailureKind::Ticket,
+            Self::Expired => ConsumerFailureKind::Expired,
+            Self::Io(_) => ConsumerFailureKind::Io,
+            Self::Resource(_) => ConsumerFailureKind::Receiving,
+            Self::Decode => ConsumerFailureKind::Decode,
+            Self::Deadline(_) => ConsumerFailureKind::Deadline,
+        }
+    }
+}
+/// Stored failure classification only. This cannot construct an actual I/O,
+/// receiving or deadline fault, process owner, invocation or successful fact.
+#[derive(Clone, Copy)]
+pub(in crate::workbench::model_originals::workflow) enum ConsumerFailureKind {
+    ClockBasis,
+    Framing,
+    FrameTooLarge,
+    Utf8,
+    Json,
+    Shape,
+    Revision,
+    Role,
+    Direction,
+    Association,
+    PriorFault,
+    Sequence,
+    Outstanding,
+    Ticket,
+    Expired,
+    Io,
+    Receiving,
+    Decode,
+    Deadline,
+}
+impl ConsumerFailureKind {
+    pub(in crate::workbench::model_originals::workflow) const ALL: [Self; 19] = [
+        Self::ClockBasis,
+        Self::Framing,
+        Self::FrameTooLarge,
+        Self::Utf8,
+        Self::Json,
+        Self::Shape,
+        Self::Revision,
+        Self::Role,
+        Self::Direction,
+        Self::Association,
+        Self::PriorFault,
+        Self::Sequence,
+        Self::Outstanding,
+        Self::Ticket,
+        Self::Expired,
+        Self::Io,
+        Self::Receiving,
+        Self::Decode,
+        Self::Deadline,
+    ];
+    pub(in crate::workbench::model_originals::workflow) fn code(self) -> &'static str {
         match self {
             Self::ClockBasis => "clock-basis",
             Self::Framing => "framing",
@@ -47,10 +119,10 @@ impl ConsumerCodecError {
             Self::Outstanding => "outstanding",
             Self::Ticket => "ticket",
             Self::Expired => "expired",
-            Self::Io(_) => "io",
-            Self::Resource(_) => "receiving",
+            Self::Io => "io",
+            Self::Receiving => "receiving",
             Self::Decode => "decode",
-            Self::Deadline(_) => "deadline",
+            Self::Deadline => "deadline",
         }
     }
 }
@@ -63,6 +135,11 @@ pub(in crate::workbench::model_originals::workflow) enum ConsumerEnvelopeKind {
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConsumerAckProgress {
+    Pending,
+    Complete,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConsumerDrainProgress {
     Pending,
     Complete,
 }

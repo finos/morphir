@@ -17,7 +17,9 @@ mod launch;
 mod sdk;
 pub(in crate::workbench::model_originals::workflow) mod wire;
 pub use sdk::ConsumerTransportState;
-pub use wire::{ConsumerAckProgress, ConsumerPendingAck, ConsumerReceiveProgress};
+pub use wire::{
+    ConsumerAckProgress, ConsumerDrainProgress, ConsumerPendingAck, ConsumerReceiveProgress,
+};
 
 pub struct ConsumerProcessCommand<'a> {
     pub purpose: InstalledProcessPurpose,

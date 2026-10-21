@@ -116,6 +116,7 @@ pub(super) fn prepared_installed_client<R>(
 pub(in crate::workbench) fn replay_installed(
     source: &Source,
     policy: &Policy,
+    consumer: crate::workbench::configuration::ConsumerObservationSelection,
     report: &StoredReport,
 ) -> Result<(), String> {
     prepared_installed_client(
@@ -155,9 +156,11 @@ pub(in crate::workbench) fn replay_installed(
                     return Err("inventory execution key/order differs".into());
                 }
             }
-            let mut attempt = Attempt { fault: None };
+            // Replay retains a closed first-failure summary, never a recreated
+            // live consumer/process fault or invocation authority.
+            let mut first_failure = None;
             for (row, case) in saved.records.iter().zip(compiled) {
-                if attempt.ready().is_err() {
+                if first_failure.is_some() {
                     if !matches!(
                         row.evidence,
                         Evidence::NotAttempted {
@@ -175,21 +178,44 @@ pub(in crate::workbench) fn replay_installed(
                     if case.installed().is_none() {
                         return Err("installed failure/source kind differs".into());
                     }
-                    let category = [
-                        adapter::InstalledAdapterError::Cancelled,
-                        adapter::InstalledAdapterError::ObservationIncomplete,
-                    ]
-                    .into_iter()
-                    .find(|error| {
-                        saved
-                            .errors
-                            .first()
-                            .is_some_and(|row| row.matches(RunFault::Installed(*error).summary()))
-                    })
-                    .ok_or("unverified incomplete installed attempt category")?;
+                    let mut category = None;
+                    if let Some(first) = saved.errors.first() {
+                        for error in [
+                            adapter::InstalledAdapterError::Cancelled,
+                            adapter::InstalledAdapterError::ObservationIncomplete,
+                        ] {
+                            let summary = RunFault::Installed(error).summary();
+                            if first
+                                .matches_with_work(summary, &mut owners.decode)
+                                .map_err(|_| "saved first failure work refused")?
+                            {
+                                category = Some(summary);
+                                break;
+                            }
+                        }
+                        if category.is_none()
+                            && matches!(
+                                consumer,
+                                crate::workbench::configuration::ConsumerObservationSelection::OperationPort(_)
+                            )
+                        {
+                            for kind in adapter::processes::ConsumerFailureKind::ALL {
+                                let summary = FailureSummary::consumer(kind);
+                                if first
+                                    .matches_with_work(summary, &mut owners.decode)
+                                    .map_err(|_| "saved first failure work refused")?
+                                {
+                                    category = Some(summary);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    let category =
+                        category.ok_or("unverified incomplete installed attempt category")?;
                     // Closed failure DATA only. No replay callback, live owner,
                     // source grant or qualification is reconstructed.
-                    attempt.fail(RunFault::Installed(category));
+                    first_failure = Some(category);
                     continue;
                 }
                 let Evidence::ClientProcessMeasured {
@@ -213,14 +239,22 @@ pub(in crate::workbench) fn replay_installed(
                     .check_installed_process(measurement.value(), &mut owners.comparison)
                 {
                     Err(error) if matches!(verdict, Verdict::Failed { failure_index: 0 }) => {
-                        attempt.fail(RunFault::Record(WorkflowRecordError::Observation(error)))
+                        first_failure = Some(
+                            RunFault::Record(WorkflowRecordError::Observation(error)).summary(),
+                        )
                     }
                     _ => return Err("forged installed factual verdict".into()),
                 }
             }
-            match &attempt.fault {
-                Some(error)
-                    if saved.errors.len() == 1 && saved.errors[0].matches(error.summary()) => {}
+            match first_failure {
+                Some(summary) if saved.errors.len() == 1 => {
+                    if !saved.errors[0]
+                        .matches_with_work(summary, &mut owners.decode)
+                        .map_err(|_| "saved first failure work refused")?
+                    {
+                        return Err("saved first failure differs".into());
+                    }
+                }
                 _ => return Err("saved first failure differs".into()),
             }
             if saved.qualified {

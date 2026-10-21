@@ -423,3 +423,5 @@ mod native_eof_tests;
 mod byte_buffer_tests;
 
 mod process_fault_tests;
+
+mod terminal_drain_tests;

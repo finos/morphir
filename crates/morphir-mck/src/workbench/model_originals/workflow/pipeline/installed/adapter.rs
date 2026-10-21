@@ -44,10 +44,11 @@ use invocation::{InvocationObservationState, InvocationObservationView};
 use native::data::{Bytes, SourcePath, Text};
 use native::{FixtureAlias, PrivateRecordAdoption, PrivateRecordError, RecordRetentionUsage};
 pub use processes::{
-    ConsumerAckProgress, ConsumerPendingAck, ConsumerProcessCommand, ConsumerProducerRole,
-    ConsumerReceiveProgress, ConsumerTransportState, FinishedInstalledProcess,
-    InstalledConsumerPorts, InstalledMetadataQuery, InstalledProcessFinish,
-    InstalledProcessPurpose, PreparedInstalledConsumerProcess, RunningInstalledProcess,
+    ConsumerAckProgress, ConsumerDrainProgress, ConsumerPendingAck, ConsumerProcessCommand,
+    ConsumerProducerRole, ConsumerReceiveProgress, ConsumerTransportState,
+    FinishedInstalledProcess, InstalledConsumerPorts, InstalledMetadataQuery,
+    InstalledProcessFinish, InstalledProcessPurpose, PreparedInstalledConsumerProcess,
+    RunningInstalledProcess,
 };
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstalledAdapterError {

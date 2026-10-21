@@ -3,9 +3,9 @@ use super::super::installed_observation::InstalledHostObservation;
 use morphir_mck::{
     transport::process::ProcessProgress,
     workbench::model_originals::installed::{
-        ConsumerAckProgress, ConsumerPendingAck, ConsumerProducerRole, ConsumerReceiveProgress,
-        ConsumerTransportState, FinishedInstalledProcess, InstalledAdapterError,
-        InstalledClientRun, InstalledConsumerPorts, InstalledProcessFinish,
+        ConsumerAckProgress, ConsumerDrainProgress, ConsumerPendingAck, ConsumerProducerRole,
+        ConsumerReceiveProgress, ConsumerTransportState, FinishedInstalledProcess,
+        InstalledAdapterError, InstalledClientRun, InstalledConsumerPorts, InstalledProcessFinish,
         RunningInstalledProcess,
     },
 };
@@ -179,31 +179,29 @@ impl Operation {
             } else {
                 self.advance_observed(run, events)?;
             }
-            if self.failure.is_none()
-                && let Err(error) = self.collect(run)
-            {
-                self.failure = Some(error);
-                // Collector revokes actual port peers and latches the first
-                // typed fault. Release host observation ACK waiters too, then
-                // let actual consumer deferred cleanup run within SAME end.
-                events.close();
-            }
+            let drain = if self.failure.is_none() {
+                match self
+                    .collect(run)
+                    .and_then(|()| run.drain_consumer_operation(&mut self.ports))
+                {
+                    Ok(progress) => progress,
+                    Err(error) => {
+                        self.failure = Some(error);
+                        // Collector/drain revokes actual port peers and latches
+                        // the first typed fault. Let actual consumer deferred
+                        // cleanup run within SAME end while retaining owners.
+                        events.close();
+                        ConsumerDrainProgress::Pending
+                    }
+                }
+            } else {
+                ConsumerDrainProgress::Pending
+            };
             if matches!(self.process, Some(OperationProcess::Finished(_))) {
                 if let Some(error) = self.failure {
                     return Err(error);
                 }
-                let closed = [
-                    ConsumerProducerRole::Outer,
-                    ConsumerProducerRole::TransferHelper,
-                ]
-                .into_iter()
-                .all(|role| {
-                    !matches!(
-                        self.ports.transport_state(role),
-                        ConsumerTransportState::Collecting
-                    )
-                });
-                if closed {
+                if drain == ConsumerDrainProgress::Complete {
                     run.require_consumer_close(&mut self.ports)?;
                     let Some(OperationProcess::Finished(finished)) = self.process.take() else {
                         unreachable!()
@@ -303,3 +301,6 @@ pub(super) async fn terminate(
         tokio::time::sleep_until(end.min(Instant::now() + Duration::from_millis(1))).await;
     }
 }
+
+#[cfg(test)]
+mod terminal_tests;

@@ -284,3 +284,5 @@ mod review;
 mod witness_role_tests;
 
 mod sealed_claims;
+
+mod consumer_failure_tests;

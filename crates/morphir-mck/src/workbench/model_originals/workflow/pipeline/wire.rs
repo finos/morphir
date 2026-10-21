@@ -305,12 +305,42 @@ pub(super) struct FailureSummary {
     pub(super) code: &'static str,
     pub(super) message: &'static str,
 }
+impl FailureSummary {
+    pub(super) fn consumer(
+        kind: super::installed::adapter::processes::ConsumerFailureKind,
+    ) -> Self {
+        Self {
+            phase: "installed-consumer",
+            code: kind.code(),
+            message: "private consumer operation transport refused",
+        }
+    }
+}
 pub(super) struct SavedFailure {
     phase: String,
     code: String,
     message: String,
 }
 impl SavedFailure {
+    pub(super) fn matches_with_work(
+        &self,
+        summary: FailureSummary,
+        owner: &mut Decoder,
+    ) -> Result<bool, DecodeError> {
+        let bytes = [
+            self.phase.len(),
+            summary.phase.len(),
+            self.code.len(),
+            summary.code.len(),
+            self.message.len(),
+            summary.message.len(),
+        ]
+        .into_iter()
+        .try_fold(0usize, usize::checked_add)
+        .ok_or(DecodeError::Limits)?;
+        owner.bytes(bytes)?;
+        Ok(self.matches(summary))
+    }
     pub(super) fn matches(&self, summary: FailureSummary) -> bool {
         self.phase == summary.phase && self.code == summary.code && self.message == summary.message
     }

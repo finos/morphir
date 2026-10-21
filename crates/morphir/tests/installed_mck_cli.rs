@@ -145,6 +145,9 @@ impl Setup {
         }
     }
     fn command(&self, action: &str, report: &Path) -> Command {
+        self.command_with_policy(action, report, &self.policy)
+    }
+    fn command_with_policy(&self, action: &str, report: &Path, policy: &Path) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_morphir"));
         command
             .current_dir(self.root.path())
@@ -159,7 +162,7 @@ impl Setup {
             .arg("--kit")
             .arg(&self.kit)
             .arg("--checker-policy")
-            .arg(&self.policy)
+            .arg(policy)
             .arg("--report")
             .arg(report);
         command

@@ -209,12 +209,16 @@ pub fn check_report_configured(
         }
         (
             ReportStorage::ModelOriginals(report),
-            Configuration::InstalledOriginals { checker, .. },
+            Configuration::InstalledOriginals {
+                checker,
+                consumer_observation,
+                ..
+            },
         ) => {
             let corpus = load(root)?;
             match &corpus.storage {
                 CorpusStorage::ModelOriginals(source) => {
-                    pipeline::replay_installed(source, checker, report)
+                    pipeline::replay_installed(source, checker, *consumer_observation, report)
                 }
                 CorpusStorage::Historical(_) => Err("corpus/report family differs".into()),
             }

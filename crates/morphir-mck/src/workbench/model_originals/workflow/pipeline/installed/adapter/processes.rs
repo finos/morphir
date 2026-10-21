@@ -13,10 +13,12 @@ use std::{
     path::{Path, PathBuf},
 };
 pub(super) mod consumer;
-pub(in crate::workbench::model_originals::workflow) use consumer::wire::ConsumerCodecError;
+pub(in crate::workbench::model_originals::workflow) use consumer::wire::{
+    ConsumerCodecError, ConsumerFailureKind,
+};
 pub use consumer::{
-    ConsumerAckProgress, ConsumerPendingAck, ConsumerProcessCommand, ConsumerProducerRole,
-    ConsumerReceiveProgress, ConsumerTransportState, InstalledConsumerPorts,
+    ConsumerAckProgress, ConsumerDrainProgress, ConsumerPendingAck, ConsumerProcessCommand,
+    ConsumerProducerRole, ConsumerReceiveProgress, ConsumerTransportState, InstalledConsumerPorts,
     PreparedInstalledConsumerProcess,
 };
 

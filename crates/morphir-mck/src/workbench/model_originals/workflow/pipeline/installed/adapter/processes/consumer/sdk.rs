@@ -113,22 +113,28 @@ impl InstalledClientRun<'_> {
         {
             self.check_consumer_ports(ports)
                 .map_err(|_| InstalledAdapterError::ObservationIncomplete)?;
-            if [
-                ConsumerProducerRole::Outer,
-                ConsumerProducerRole::TransferHelper,
-            ]
-            .into_iter()
-            .all(|role| {
-                !matches!(
-                    ports.transport_state(role),
-                    ConsumerTransportState::Collecting
-                )
-            }) {
+            if ports.frames_drained() {
                 return Ok(());
             }
             ports.control.revoke();
             self.consumer_fault(wire::ConsumerCodecError::Framing);
         }
         Err(InstalledAdapterError::ObservationIncomplete)
+    }
+    /// Physical terminal EOF on both SAME endpoints, separately from logical
+    /// cached Close/ACK. Pending keeps these actual ports for a later step.
+    pub fn drain_consumer_operation(
+        &mut self,
+        ports: &mut InstalledConsumerPorts,
+    ) -> Result<ConsumerDrainProgress, InstalledAdapterError> {
+        #[cfg(target_os = "macos")]
+        return self
+            .drain_consumer_frames(ports)
+            .map_err(|_| InstalledAdapterError::ObservationIncomplete);
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = ports;
+            Err(InstalledAdapterError::ObservationIncomplete)
+        }
     }
 }

@@ -1,0 +1,27 @@
+{
+  "kind": "historical actual unhooked installed operation failure DATA",
+  "producer": {
+    "base": "a34b0b1ca92e5b77277bbb3d827411066f9c56a1",
+    "testedDirtySourceManifest": "e763f871e01bbac89760c274714883faf67c77ba2c70e3cadb42c97b0518e83a",
+    "binarySHA256": "5524efccb678991083b5433d787ee5c34e0e1d0fd62e6bb2b4abf9c57ff019a8",
+    "laterRootCommit": "8eda5626ad5c6e20ea609992d46cf76f0a6acf83",
+    "rootCommitMeaning": "additive committed blob equality, not a future-commit runtime run"
+  },
+  "input": {
+    "sutSourceHEAD": "01416289e7a90a8481dc751cb41340a7c3ba38cc",
+    "nodeSHA256": "b468fb9c67427c9d3aec07ee1105e63020923a631a9a2a00beb71a7ba3768bfd",
+    "policyOperationSHA256": "b1053606dc2dcfe71889213260e92f4896c469487d9c3004c029f57542454cb8",
+    "maintainedCasesSHA256": "26559149b6a1e67e13a4e59422ebf5e22f399799f3f28eba0b20c7002919e26e"
+  },
+  "report": {
+    "path": "operation-report.json",
+    "sha256": "42b62a4d4818f224e661fce517ff529fad0443efbabb5ef1bc5a296e74fa582a",
+    "meaning": "Actual Node and native runs emitted identical installed-consumer/framing failure with no measurement DATA,23NotAttempted,qualifiedfalse. Historical consistency test only, no current process/port/source authority or business proof."
+  },
+  "evidence": {
+    "priorInteropReceiptSHA256": "427e604872583dffc5ed46502e680989fed618569772edbd800b067cbea3e5af",
+    "priorImplementationAssociationSHA256": "1fc9447a8f86e04bb52bf7afb4f4ff868811905f0309b50dde53aaa39da63300",
+    "independentConsumerReceiptSHA256": "e171cfbbb12e89e604c8d6deff515b20f2488850fdea27e50444ebeec6450fde"
+  },
+  "ordinaryTests": "include byte-exact report/policy and existing maintained cases24; temporary kit only; no W/environment fallback. Live014 qualification remains separately ignored explicit-input tests."
+}

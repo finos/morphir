@@ -20,6 +20,7 @@ enum Phase {
     EmptyHelperEof,
     Unused,
     Closed,
+    Drained,
     Poisoned,
 }
 impl Channel {
@@ -35,10 +36,15 @@ impl Channel {
 impl InstalledConsumerPorts {
     pub fn transport_state(&self, role: ConsumerProducerRole) -> ConsumerTransportState {
         match self.channels[role.index()].phase {
-            Phase::Closed => ConsumerTransportState::Closed,
+            Phase::Closed | Phase::Drained => ConsumerTransportState::Closed,
             Phase::Unused => ConsumerTransportState::Unused,
             _ => ConsumerTransportState::Collecting,
         }
+    }
+    pub(super) fn frames_drained(&self) -> bool {
+        self.channels
+            .iter()
+            .all(|channel| matches!(channel.phase, Phase::Drained | Phase::Unused))
     }
 }
 pub(super) enum HelperAssociation {
@@ -89,6 +95,32 @@ impl std::fmt::Write for AckWriter {
     }
 }
 impl InstalledClientRun<'_> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn drain_consumer_frames(
+        &mut self,
+        ports: &mut InstalledConsumerPorts,
+    ) -> Result<wire::ConsumerDrainProgress, Error> {
+        self.check_consumer_ports(ports)?;
+        for index in 0..ports.channels.len() {
+            if !matches!(ports.channels[index].phase, Phase::Closed) {
+                continue;
+            }
+            // SAME owner/end and cumulative visit permission precede every
+            // physical read. Logical Close/ACK remains distinct from EOF.
+            self.check_consumer_ports(ports)?;
+            let parent = ports.control.parents.get().expect("published endpoints")[index].as_fd();
+            match self.consumer_read(parent, &mut [0u8; 1]) {
+                Ok(Some(0)) => ports.channels[index].phase = Phase::Drained,
+                Ok(None) => {}
+                Ok(Some(_)) => return Err(self.poison_consumer(ports, Error::Framing)),
+                Err(error) => return Err(self.poison_consumer(ports, error)),
+            }
+        }
+        Ok(if ports.frames_drained() {
+            wire::ConsumerDrainProgress::Complete
+        } else {
+            wire::ConsumerDrainProgress::Pending
+        })
+    }
     fn poison_consumer(&mut self, ports: &mut InstalledConsumerPorts, error: Error) -> Error {
         for channel in &mut ports.channels {
             channel.phase = Phase::Poisoned;
@@ -170,7 +202,7 @@ impl InstalledClientRun<'_> {
         let index = role.index();
         match ports.channels[index].phase {
             Phase::Ack { .. } => return Err(Error::Outstanding),
-            Phase::Closed => return Err(Error::Sequence),
+            Phase::Closed | Phase::Drained => return Err(Error::Sequence),
             Phase::Unused => return Ok(Progress::Unused),
             Phase::EmptyHelperEof => return self.resolve_empty_helper_eof(ports),
             Phase::Poisoned => return Err(Error::PriorFault),
@@ -325,7 +357,7 @@ impl InstalledClientRun<'_> {
         }
         if matches!(
             ports.channels[ConsumerProducerRole::Outer.index()].phase,
-            Phase::Closed
+            Phase::Closed | Phase::Drained
         ) {
             ports.channels[ConsumerProducerRole::TransferHelper.index()].phase = Phase::Unused;
             return Ok(Progress::Unused);
