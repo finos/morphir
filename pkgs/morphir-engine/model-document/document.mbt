@@ -335,36 +335,91 @@ pub struct OpenAttempt(Int32) derive(Eq, Debug)
 pub struct DocumentRevision(Int32) derive(Eq, Debug)
 
 ///|
+/// Standalone original-download controls never use a semantic revision.
+pub struct InventoryRevision(Int32) derive(Eq, Debug)
+
+///|
+pub extend InventoryRevision with Eq::{equal, not_equal}
+
+///|
+pub extend InventoryRevision with @debug.Debug::{to_repr}
+
+///|
 pub fn OpenAttempt::to_string(self : OpenAttempt) -> String {
   let OpenAttempt(value) = self
   value.to_string()
 }
 
 ///|
+priv struct SemanticOwner {
+  document : Document
+  revision : DocumentRevision
+} derive(Eq, Debug)
+
+///|
+priv struct OriginalsOwner {
+  inventory : OriginalInventory
+  revision : InventoryRevision
+} derive(Eq, Debug)
+
+///|
+/// A received inventory never changes which bytes belong to prior semantics.
+priv enum RetainedOwners {
+  Semantic(SemanticOwner)
+  Originals(OriginalsOwner)
+  Both(SemanticOwner, OriginalsOwner)
+} derive(Eq, Debug)
+
+///|
 priv enum Phase {
   Empty
-  Loaded(Document)
-  Opening(OpenAttempt, Document?)
+  Retained(RetainedOwners)
+  Opening(OpenAttempt, RetainedOwners?)
 } derive(Eq, Debug)
 
 ///|
 pub struct State {
   priv sequence : Int32
   priv revision : Int32
+  priv inventory_sequence : Int32
   priv phase : Phase
 } derive(Eq, Debug)
 
 ///|
 pub fn State::new() -> State {
-  { sequence: 0, revision: 0, phase: Empty, }
+  { sequence: 0, revision: 0, inventory_sequence: 0, phase: Empty, }
+}
+
+///|
+fn State::retained(self : State) -> RetainedOwners? {
+  match self.phase {
+    Empty => None
+    Retained(owners) => Some(owners)
+    Opening(_, previous) => previous
+  }
+}
+
+///|
+fn State::semantic_owner(self : State) -> SemanticOwner? {
+  match self.retained() {
+    Some(Semantic(owner)) | Some(Both(owner, _)) => Some(owner)
+    _ => None
+  }
+}
+
+///|
+fn State::originals_owner(self : State) -> OriginalsOwner? {
+  match self.retained() {
+    Some(Originals(owner)) | Some(Both(_, owner)) => Some(owner)
+    _ => None
+  }
 }
 
 ///|
 pub fn State::document(self : State) -> Document? {
-  match self.phase {
-    Empty => None
-    Loaded(document) | Opening(_, Some(document)) => Some(document)
-    Opening(_, None) => None
+  match self.semantic_owner() {
+    Some(owner) => Some(owner.document)
+    None => None
   }
 }
 
@@ -414,9 +469,37 @@ pub fn State::opening(self : State) -> OpenAttempt? {
 
 ///|
 pub fn State::current_revision(self : State) -> DocumentRevision? {
-  match self.document() {
-    Some(_) => Some(DocumentRevision(self.revision))
+  match self.semantic_owner() {
+    Some(owner) => Some(owner.revision)
     None => None
+  }
+}
+
+///|
+pub fn State::original_inventory(self : State) -> OriginalInventory? {
+  match self.originals_owner() {
+    Some(owner) => Some(owner.inventory)
+    None => None
+  }
+}
+
+///|
+pub fn State::inventory_revision(self : State) -> InventoryRevision? {
+  match self.originals_owner() {
+    Some(owner) => Some(owner.revision)
+    None => None
+  }
+}
+
+///|
+pub fn State::original_inventory_for(
+  self : State,
+  revision : InventoryRevision,
+) -> OriginalInventory? {
+  if self.inventory_revision() != Some(revision) {
+    None
+  } else {
+    self.original_inventory()
   }
 }
 
@@ -465,7 +548,7 @@ pub fn State::begin(self : State, host : HostRetention) -> BeginDecision {
     {
       ..self,
       sequence: self.sequence + 1,
-      phase: Opening(attempt, self.document()),
+      phase: Opening(attempt, self.retained()),
     },
     attempt,
   )
@@ -478,8 +561,8 @@ pub fn State::reject(self : State, attempt : OpenAttempt) -> State {
   }
   {
     ..self,
-    phase: match self.document() {
-      Some(document) => Loaded(document)
+    phase: match self.retained() {
+      Some(owners) => Retained(owners)
       None => Empty
     },
   }
@@ -507,7 +590,43 @@ pub fn State::replace(self : State, reply : Json) -> State raise DocumentError {
   {
     ..self,
     revision: self.revision + 1,
-    phase: Loaded(Document::from_reply(reply)),
+    // Successful semantic adoption retires an earlier standalone inventory.
+    phase: Retained(
+      Semantic({
+        document: Document::from_reply(reply),
+        revision: DocumentRevision(self.revision + 1),
+      }),
+    ),
+  }
+}
+
+///|
+/// The caller must first complete its genuine receiver and check the actual
+/// source/project selection and opening currentness. This pure transition
+/// checks its own opening token, not RPC/source authority or accepted release.
+pub fn State::finish_originals(
+  self : State,
+  attempt : OpenAttempt,
+  inventory : OriginalInventory,
+) -> State raise DocumentError {
+  if !self.is_current(attempt) {
+    return self
+  }
+  if self.inventory_sequence == 2147483647 {
+    raise RevisionLimit
+  }
+  let owner = {
+    inventory,
+    revision: InventoryRevision(self.inventory_sequence + 1),
+  }
+  let owners = match self.semantic_owner() {
+    Some(semantic) => Both(semantic, owner)
+    None => Originals(owner)
+  }
+  {
+    ..self,
+    inventory_sequence: self.inventory_sequence + 1,
+    phase: Retained(owners),
   }
 }
 

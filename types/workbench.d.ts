@@ -7,6 +7,7 @@ declare global {
   var morphirWorkbenchExecutionHost: (offer: string) => Core;
   var __MoonBit__: NativeBridge | undefined;
   var morphirWorkbench: {
+    readonly mode: import('../apps/morphir-workbench/browser/session-mode.ts').WorkbenchMode;
     connected: boolean;
     /** File, network and storage access of the project editor, for the MoonBit page. */
     projectIo: {
@@ -21,6 +22,10 @@ declare global {
     cancel(): void;
     importModelTree(attempt: string, receive: (source: string) => void): void;
     importModel(attempt: string, format: import('../apps/morphir-workbench/browser/contracts.ts').ModelCodec | '', receive: (source: string) => void): void;
+    openOriginals(makeHash: () => import('../pkgs/morphir-host/model-originals-client/originals.ts').Hasher,
+      receive: (event: import('../apps/morphir-workbench/browser/connected-originals.ts').ConnectedOriginalsEvent) => void): import('../apps/morphir-workbench/browser/connected-originals.ts').ConnectedOriginalsOpening;
+    disposeOriginals(opening: import('../apps/morphir-workbench/browser/connected-originals.ts').ConnectedOriginalsOpening): void;
+    originalHeaderParts(payload: import('../apps/morphir-workbench/browser/connected-originals.ts').OriginalPayload): number[];
     releaseModel(): void;
     cancelModelOpen(attempt: string): Promise<void>;
     download(text: string): void;

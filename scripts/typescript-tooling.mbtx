@@ -66,6 +66,9 @@ async fn main {
         "test", "--target", "js", "-p", "finos/morphir-workbench", "finos/morphir-workbench/arguments",
       ])
       run("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"])
+      run("bun", [
+        "run", "--cwd", "apps/morphir-workbench", "test:originals-opening",
+      ])
       run("bun", ["run", "--cwd", "apps/morphir-workbench", "test"])
       run("bun", ["run", "--cwd", "apps/morphir-workbench", "test:browser"])
       run("bun", ["run", "--cwd", "apps/morphir-workbench", "test:worksheet"])

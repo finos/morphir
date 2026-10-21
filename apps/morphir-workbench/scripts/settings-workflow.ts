@@ -74,8 +74,10 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
     await inHeader(page);
     const light = await background(page);
 
-    // Keyboard only: Tab reaches the toggle in the header after the connection pill, and Enter moves the theme on.
-    await page.locator('.connection a').focus();
+    // Both connection routes precede the theme toggle in the keyboard order.
+    await page.getByRole('link', { name: 'Connect', exact: true }).focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.getByRole('link', { name: 'Model sources', exact: true }).evaluate(link => link === document.activeElement), true);
     await page.keyboard.press('Tab');
     assert.equal(await focused(page), 'theme-toggle', 'Tab moves from the connection pill to the theme toggle');
     await page.keyboard.press('Enter');

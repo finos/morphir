@@ -149,6 +149,9 @@ fn workspace_picker(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 ///|
 /// The segmented mode picker: it applies to the source document only, so it shows only there.
 fn mode_picker(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+  if model.mode is ConnectedOriginals {
+    return @html.nothing
+  }
   let compile_reason = if model.connected || holds(model, SourceProject) {
     ""
   } else {
@@ -186,7 +189,9 @@ fn connection(model : Model) -> @html.Html {
       "",
     ),
     @html.span(
-      if model.connected {
+      if model.mode is ConnectedOriginals {
+        "Connected originals"
+      } else if model.connected {
         "Connected host"
       } else {
         local_runtime_label()
@@ -199,6 +204,20 @@ fn connection(model : Model) -> @html.Html {
         "Use local"
       } else {
         "Connect"
+      },
+      escape=true,
+    ),
+    @html.a(
+      href=if model.mode is ConnectedOriginals {
+        "?mode=connected"
+      } else {
+        "?mode=connected-originals"
+      },
+      class="small",
+      if model.mode is ConnectedOriginals {
+        "Host tools"
+      } else {
+        "Model sources"
       },
       escape=true,
     ),
@@ -449,7 +468,9 @@ fn models_section(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
     body.push(
       @html.p(
         class="small muted explorer-empty",
-        if holds(model, SourceProject) || model.connected {
+        if model.mode is ConnectedOriginals {
+          "Connect a model source to browse its original files."
+        } else if holds(model, SourceProject) || model.connected {
           "Compile the source to explore its model, or import a model."
         } else if holds(model, ModelDocument) {
           "This workspace's model is not loaded in this page. Import it again to explore it."
@@ -458,16 +479,18 @@ fn models_section(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         },
       ),
     )
-    body.push(
-      @html.div(class="explorer-empty-actions", [
-        @html.button(
-          class="ghost small",
-          disabled=model.busy,
-          on_click=@cmd.batch([emit(ShowDocument(Model)), emit(Import)]),
-          [icon_of("import"), @html.span("Import model…")],
-        ),
-      ]),
-    )
+    if model.mode != ConnectedOriginals {
+      body.push(
+        @html.div(class="explorer-empty-actions", [
+          @html.button(
+            class="ghost small",
+            disabled=model.busy,
+            on_click=@cmd.batch([emit(ShowDocument(Model)), emit(Import)]),
+            [icon_of("import"), @html.span("Import model…")],
+          ),
+        ]),
+      )
+    }
   } else {
     body.push(
       @explorer.navigation(
@@ -825,6 +848,9 @@ fn output_tabs(model : Model, emit : @cmd.Emit[Msg]) -> Array[@html.Html] {
 /// The build actions of the source document in the header: Cancel while a request runs, the primary action (Compile,
 /// or Run worksheet) and the build menu, which lists the other actions with the same availability as the palette.
 fn build_controls(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+  if model.mode is ConnectedOriginals {
+    return @html.nothing
+  }
   let commands = palette_commands(model)
   let reason_of = fn(id : @keys.CommandId) -> String? {
     commands.iter().find_first(c => c.id == id).map(c => c.reason)
@@ -1143,6 +1169,13 @@ fn model_document(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
     @html.div(class="model-toolbar", [
       @html.button(
         class="secondary small",
+        hidden=model.mode != ConnectedOriginals,
+        disabled=model.busy || host_execution_blocks_replacement(model),
+        on_click=emit(OpenOriginals),
+        "Connect model source",
+      ),
+      @html.button(
+        class="secondary small",
         hidden=!model.busy,
         on_click=emit(Cancel),
         if host_execution_pending(model) {
@@ -1160,34 +1193,41 @@ fn model_document(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         on_click=emit(Request("workspace")),
         [action_icon("folder"), @html.span("Open workspace")],
       ),
-      @html.label(class="compact-select", [
-        @html.span(class="small muted", "Model format"),
-        @html.select(
-          disabled=model.busy,
-          attrs=@html.Attrs::build()
-            .aria_label("Model format")
-            .value_prop(model.model_format.map(f => f.codec_id()).unwrap_or("")),
-          on_change=emit.map(value => ImportFormat(value)),
-          [
-            ("", "Automatic"),
-            ("morphir-json", "JSON"),
-            ("morphir-yaml", "YAML"),
-            ("ion-text", "Ion text"),
-            ("ion-binary", "Ion binary"),
-          ].map(option => {
-            @html.option(
-              value=option.0,
-              selected=model.model_format.map(f => f.codec_id()).unwrap_or("") ==
-                option.0,
-              option.1,
-            )
-          }),
-        ),
-      ]),
+      @html.label(
+        class="compact-select",
+        hidden=model.mode is ConnectedOriginals,
+        [
+          @html.span(class="small muted", "Model format"),
+          @html.select(
+            disabled=model.busy,
+            attrs=@html.Attrs::build()
+              .aria_label("Model format")
+              .value_prop(
+                model.model_format.map(f => f.codec_id()).unwrap_or(""),
+              ),
+            on_change=emit.map(value => ImportFormat(value)),
+            [
+              ("", "Automatic"),
+              ("morphir-json", "JSON"),
+              ("morphir-yaml", "YAML"),
+              ("ion-text", "Ion text"),
+              ("ion-binary", "Ion binary"),
+            ].map(option => {
+              @html.option(
+                value=option.0,
+                selected=model.model_format.map(f => f.codec_id()).unwrap_or("") ==
+                  option.0,
+                option.1,
+              )
+            }),
+          ),
+        ],
+      ),
       @html.button(
         class="ghost small",
         disabled=model.busy,
         on_click=emit(Import),
+        hidden=model.mode == ConnectedOriginals,
         "Import model",
       ),
       @html.button(
@@ -1195,6 +1235,7 @@ fn model_document(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         disabled=model.busy,
         title="Import captured files from a YAML tree; browser pickers do not report empty directories",
         on_click=emit(ImportTree),
+        hidden=model.mode == ConnectedOriginals,
         "Import YAML tree",
       ),
       @html.button(
@@ -1234,7 +1275,8 @@ fn model_document(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       @html.button(
         class="ghost artifact-icon-button close-model-button",
         hidden=model.document.document() == None &&
-          model.document.opening() == None,
+          model.document.opening() == None &&
+          model.document.original_inventory() == None,
         disabled=host_execution_blocks_replacement(model) ||
           (model.busy && model.document.opening() == None),
         title="Close model",
@@ -1259,6 +1301,7 @@ fn model_document(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       ],
     ),
     @html.div(class="model-body", [
+      originals_panel(model, emit),
       @explorer.details(
         explorer_props(model),
         emit.map(id => Select(id)),

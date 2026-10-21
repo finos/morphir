@@ -56,8 +56,7 @@ pub fn OriginalPath::to_string(self : OriginalPath) -> String {
 /// claim about filesystem entries that a picker or provider did not supply.
 pub struct OriginalTree {
   format_version : @version.FormatVersion
-  priv files : Map[String, Bytes]
-  priv directories : Array[String]
+  priv storage : InventoryStorage
 } derive(Eq, Debug)
 
 ///|
@@ -75,25 +74,13 @@ pub fn OriginalTree::new(
   format_version.check_supported() catch {
     _ => raise InvalidVersion
   }
-  let paths = files.keys().collect()
-  if paths.is_empty() {
+  if files.is_empty() {
     raise TooLarge
   }
-  validate_inventory_paths(paths, directories)
-  let mut bytes = 0
-  for path in paths {
-    if files[path].length() > 16777216 - bytes {
-      raise TooLarge
-    }
-    bytes += files[path].length()
+  {
+    format_version,
+    storage: InventoryStorage::capture(files, directories, Local),
   }
-  let owned : Map[String, Bytes] = Map([])
-  for path in paths {
-    owned[path] = copy_bytes(files[path])
-  }
-  let directories = directories.copy()
-  directories.sort()
-  { format_version, files: owned, directories, }
 }
 
 ///|
@@ -157,31 +144,18 @@ pub fn validate_inventory_paths(
 
 ///|
 pub fn OriginalTree::copy_files(self : OriginalTree) -> Map[String, Bytes] {
-  self.files.map(fn(_, bytes) { copy_bytes(bytes) })
+  self.storage.copy_files()
 }
 
 ///|
 pub fn OriginalTree::directory_paths(self : OriginalTree) -> Array[String] {
-  self.directories.copy()
+  self.storage.directory_paths()
 }
 
 ///|
 /// Reuse the existing artifact download/archive adapter at the effect boundary.
 pub fn OriginalTree::download(self : OriginalTree) -> Json {
-  let paths = self.files.keys().collect()
-  paths.sort()
-  {
-    "files": paths.map(path => {
-      (
-        {
-          "path": path,
-          "content": @base64.encode(self.files[path][:]),
-          "binary": true,
-          "encoding": "base64",
-        } : Json)
-    }),
-    "directories": self.directories,
-  }
+  self.storage.download()
 }
 
 ///|

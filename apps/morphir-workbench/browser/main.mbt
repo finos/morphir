@@ -240,6 +240,7 @@ enum CapabilityRuntime {
 
 ///|
 struct Model {
+  mode : SessionMode
   /// Getting started, or the active workspace.
   screen : Screen
   /// The workspace whose state the fields after `parked` hold; `None` before any workspace opens.
@@ -320,6 +321,8 @@ struct Model {
   worksheet_report : @worksheet.WorksheetReport?
   worksheet_reveal : String
   document : @document.State
+  originals : OriginalsPanel
+  originals_page : OriginalsPage
   generated : Bool
   generated_state : @generated.State
   /// Which panes of the source document show: both, or one expanded to the full width.
@@ -443,6 +446,13 @@ enum Msg {
   ImportTree
   ImportFormat(String)
   Imported(@document.OpenAttempt, String)
+  OpenOriginals
+  OriginalsStarted(@document.OpenAttempt, ConnectedOpening)
+  OriginalsChanged(@document.OpenAttempt, ConnectedOriginalsEvent)
+  OriginalsPageChanged(@document.InventoryRevision, OriginalsPage)
+  ChooseOriginalSource(@document.OpenAttempt, ConnectedOpening, Int32)
+  ChooseOriginalProject(@document.OpenAttempt, ConnectedOpening, Int32)
+  DownloadInventoryFile(@document.InventoryRevision, @document.OriginalPath)
   ReceiveModel(@document.OpenAttempt, Int32, Int32, String, String)
   Export
   Project(String)
@@ -551,7 +561,9 @@ extern "js" fn copy_text(text : String, done : (Bool) -> Unit) =
 ///|
 fn initial() -> Model {
   let narrow = narrow_window()
+  let mode = session_mode()
   let model : Model = {
+    mode,
     screen: GettingStarted,
     active: None,
     registry: @workspace.Registry::new(),
@@ -624,12 +636,18 @@ fn initial() -> Model {
     worksheet_report: None,
     worksheet_reveal: "",
     document: @document.State::new(),
+    originals: NoOriginalOpening,
+    originals_page: OriginalsPage::first(),
     generated: false,
     generated_state: @generated.State::new(),
     pane: Both,
     open_outputs: [],
-    status: "Initializing…",
-    busy: true,
+    status: if mode is ConnectedOriginals {
+      "Choose a model source"
+    } else {
+      "Initializing…"
+    },
+    busy: mode != ConnectedOriginals,
     request_id: 0,
     revision: 0,
     worksheet_revision: 0,
@@ -650,7 +668,9 @@ fn initial() -> Model {
       clock(),
       "Initialize",
       @bottom_panel.Info,
-      if connected_mode() {
+      if mode is ConnectedOriginals {
+        "Original model sources open after your selection"
+      } else if connected_mode() {
         "Connecting to the same-origin Morphir host"
       } else {
         "Starting the local compiler worker"
@@ -666,7 +686,12 @@ fn initial() -> Model {
     page: Current,
   }
   // The saved workspaces are read at once, so nothing created before the worker starts overwrites them.
-  read_registry(model, storage_load, stored_keys)
+  let model = read_registry(model, storage_load, stored_keys)
+  if mode is ConnectedOriginals {
+    { ..start_session(model), doc: Model, }
+  } else {
+    model
+  }
 }
 
 // Tool panel records: what the application did, what hosts reported and what
@@ -1723,6 +1748,13 @@ fn update_core(
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
   match msg {
+    OpenOriginals
+    | OriginalsStarted(_, _)
+    | OriginalsChanged(_, _)
+    | OriginalsPageChanged(_, _)
+    | ChooseOriginalSource(_, _, _)
+    | ChooseOriginalProject(_, _, _)
+    | DownloadInventoryFile(_, _) => update_originals(model, msg, emit)
     Routed(visit, inner) => in_workspace(model, visit, inner, emit)
     ShowStart
     | StartPanel(_)
@@ -1769,7 +1801,12 @@ fn update_core(
         }
       }
     }
-    Layout(worksheet) => (remember(model, { ..model, worksheet, }), @cmd.none)
+    Layout(worksheet) =>
+      if model.mode is ConnectedOriginals {
+        (model, @cmd.none)
+      } else {
+        (remember(model, { ..model, worksheet, }), @cmd.none)
+      }
     Source(source) =>
       if model.worksheet {
         // The worksheet is a workspace draft: it is saved with the intent and conceptual model.
@@ -2673,7 +2710,9 @@ fn update_core(
           )
         Closed(document, pending) => (document, pending)
       }
-      if model.document.document() == None && pending == None {
+      if model.document.document() == None &&
+        model.document.original_inventory() == None &&
+        pending == None {
         return (model, @cmd.none)
       }
       let output = if [
@@ -2687,6 +2726,7 @@ fn update_core(
         {
           ..model,
           document,
+          originals: NoOriginalOpening,
           output,
           history: replacement_history(model),
           model_revision: model.model_revision + 1,
@@ -2711,6 +2751,7 @@ fn update_core(
           status: "Model closed",
         },
         @cmd.custom_cmd(_ => {
+          dispose_originals_panel(model.originals)
           release_model()
           if pending is Some(attempt) {
             cancel_model_open(attempt.to_string())
@@ -2763,6 +2804,9 @@ fn update_core(
       )
     }
     Request(operation) => {
+      if model.mode is ConnectedOriginals {
+        return (model, @cmd.none)
+      }
       if model.busy &&
         operation != "initialize" &&
         !host_execution_blocks_replacement(model) {
@@ -3558,11 +3602,15 @@ fn update_core(
           {
             ..model,
             document: model.document.reject(attempt),
+            originals: NoOriginalOpening,
             busy: false,
             request_id: model.request_id + 1,
             status: "Model opening cancelled",
           },
-          @cmd.custom_cmd(_ => cancel_model_open(attempt.to_string())),
+          @cmd.custom_cmd(_ => {
+            dispose_originals_panel(model.originals)
+            cancel_model_open(attempt.to_string())
+          }),
         )
       }
       if model.worksheet_capture is Some(_) && model.busy {
@@ -4156,12 +4204,7 @@ fn main {
           model,
           @cmd.batch([
             watch_theme(model.settings, emit),
-            request_cmd(
-              emit,
-              0,
-              0,
-              object([("operation", Json::string("initialize"))]),
-            ),
+            startup_cmd(emit),
             @cmd.custom_cmd(scheduler => {
               watch_drop("[data-drop=\"project\"]", reply => {
                 // A dropped folder belongs to the workspace that showed the drop zone.

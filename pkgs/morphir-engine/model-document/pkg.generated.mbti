@@ -67,6 +67,11 @@ pub(all) enum InventoryPathProfile {
   Connected
 }
 
+pub struct InventoryRevision(Int) derive(Eq, @debug.Debug)
+pub fn InventoryRevision::equal(Self, Self) -> Bool
+pub fn InventoryRevision::not_equal(Self, Self) -> Bool
+pub fn InventoryRevision::to_repr(Self) -> @debug.Repr
+
 pub struct OpenAttempt(Int) derive(Eq, @debug.Debug)
 pub fn OpenAttempt::equal(Self, Self) -> Bool
 pub fn OpenAttempt::not_equal(Self, Self) -> Bool
@@ -94,12 +99,53 @@ pub fn OriginalFilename::parse(String) -> Self raise DocumentError
 pub fn OriginalFilename::to_repr(Self) -> @debug.Repr
 pub fn OriginalFilename::to_string(Self) -> String
 
+pub struct OriginalInventory {
+  source_header : OriginalSourceHeader
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn OriginalInventory::copy_files(Self) -> Map[String, Bytes]
+pub fn OriginalInventory::directory_paths(Self) -> Array[String]
+pub fn OriginalInventory::download(Self) -> Json
+pub fn OriginalInventory::download_file(Self, OriginalPath) -> Json raise DocumentError
+pub fn OriginalInventory::entry(Self, Int) -> OriginalInventoryEntry?
+pub fn OriginalInventory::entry_count(Self) -> Int
+pub fn OriginalInventory::equal(Self, Self) -> Bool
+pub fn OriginalInventory::file_paths(Self) -> Array[String]
+pub fn OriginalInventory::from_connected(Map[String, Bytes], Array[String], OriginalSourceHeader) -> Self raise DocumentError
+pub fn OriginalInventory::not_equal(Self, Self) -> Bool
+pub fn OriginalInventory::to_repr(Self) -> @debug.Repr
+
+pub(all) enum OriginalInventoryEntry {
+  File(OriginalPath)
+  Directory(OriginalPath)
+} derive(Eq, @debug.Debug)
+pub fn OriginalInventoryEntry::equal(Self, Self) -> Bool
+pub fn OriginalInventoryEntry::not_equal(Self, Self) -> Bool
+pub fn OriginalInventoryEntry::to_repr(Self) -> @debug.Repr
+
 pub struct OriginalPath(String) derive(Eq, @debug.Debug)
 pub fn OriginalPath::equal(Self, Self) -> Bool
 pub fn OriginalPath::not_equal(Self, Self) -> Bool
 pub fn OriginalPath::parse(String, profile? : InventoryPathProfile) -> Self raise DocumentError
 pub fn OriginalPath::to_repr(Self) -> @debug.Repr
 pub fn OriginalPath::to_string(Self) -> String
+
+pub struct OriginalRelease {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn OriginalRelease::equal(Self, Self) -> Bool
+pub fn OriginalRelease::new(UInt, UInt, UInt) -> Self
+pub fn OriginalRelease::not_equal(Self, Self) -> Bool
+pub fn OriginalRelease::to_release_string(Self) -> String
+pub fn OriginalRelease::to_repr(Self) -> @debug.Repr
+
+pub(all) enum OriginalSourceHeader {
+  NotReported
+  Reported(OriginalRelease)
+} derive(Eq, @debug.Debug)
+pub fn OriginalSourceHeader::equal(Self, Self) -> Bool
+pub fn OriginalSourceHeader::not_equal(Self, Self) -> Bool
+pub fn OriginalSourceHeader::to_repr(Self) -> @debug.Repr
 
 pub struct OriginalTree {
   format_version : @version.FormatVersion
@@ -152,13 +198,17 @@ pub fn State::current_revision(Self) -> DocumentRevision?
 pub fn State::document(Self) -> Document?
 pub fn State::equal(Self, Self) -> Bool
 pub fn State::finish(Self, OpenAttempt, Json) -> Self raise DocumentError
+pub fn State::finish_originals(Self, OpenAttempt, OriginalInventory) -> Self raise DocumentError
 pub fn State::inspection(Self) -> Json
+pub fn State::inventory_revision(Self) -> InventoryRevision?
 pub fn State::is_current(Self, OpenAttempt) -> Bool
 pub fn State::new() -> Self
 pub fn State::not_equal(Self, Self) -> Bool
 pub fn State::opening(Self) -> OpenAttempt?
 pub fn State::original(Self) -> OriginalFile?
 pub fn State::original_for(Self, DocumentRevision) -> OriginalFile?
+pub fn State::original_inventory(Self) -> OriginalInventory?
+pub fn State::original_inventory_for(Self, InventoryRevision) -> OriginalInventory?
 pub fn State::original_tree(Self) -> OriginalTree?
 pub fn State::original_tree_for(Self, DocumentRevision) -> OriginalTree?
 pub fn State::reject(Self, OpenAttempt) -> Self

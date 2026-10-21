@@ -116,6 +116,8 @@ struct Slice {
   worksheet_report : @worksheet.WorksheetReport?
   worksheet_reveal : String
   document : @document.State
+  originals : OriginalsPanel
+  originals_page : OriginalsPage
   generated : Bool
   generated_state : @generated.State
   pane : EditorPane
@@ -184,6 +186,8 @@ fn park(m : Model) -> Slice {
     worksheet_report: m.worksheet_report,
     worksheet_reveal: m.worksheet_reveal,
     document: m.document,
+    originals: m.originals,
+    originals_page: m.originals_page,
     generated: m.generated,
     generated_state: m.generated_state,
     pane: m.pane,
@@ -254,6 +258,8 @@ fn unpark(m : Model, s : Slice) -> Model {
     worksheet_report: s.worksheet_report,
     worksheet_reveal: s.worksheet_reveal,
     document: s.document,
+    originals: s.originals,
+    originals_page: s.originals_page,
     generated: s.generated,
     generated_state: s.generated_state,
     pane: s.pane,
@@ -345,6 +351,8 @@ fn fresh(
     worksheet_report: None,
     worksheet_reveal: "",
     document: @document.State::new(),
+    originals: NoOriginalOpening,
+    originals_page: OriginalsPage::first(),
     generated: false,
     generated_state: @generated.State::new(),
     pane: Both,
@@ -391,12 +399,20 @@ fn holds(model : Model, content : @workspace.Content) -> Bool {
 
 ///|
 fn documents_of(model : Model) -> Array[@workspace.Document] {
-  @workspace.documents(held(model), connected=model.connected)
+  if model.mode is ConnectedOriginals {
+    [Model]
+  } else {
+    @workspace.documents(held(model), connected=model.connected)
+  }
 }
 
 ///|
 fn views_of(model : Model) -> Array[@shell.View] {
-  @workspace.views(held(model), connected=model.connected)
+  if model.mode is ConnectedOriginals {
+    [Models]
+  } else {
+    @workspace.views(held(model), connected=model.connected)
+  }
 }
 
 ///|
@@ -904,6 +920,7 @@ fn in_workspace(
     return update_here(model, msg, emit)
   }
   guard model.parked.get(id) is Some(slice) && slice.opening == visit.opening else {
+    dispose_originals_message(msg)
     // A save that the closed opening scheduled has nothing left to write: closing wrote it.
     if msg is (SaveProject(_) | SaveDrafts(_)) {
       return (model, @cmd.none)
@@ -1151,6 +1168,7 @@ fn close_workspace(
     )
   }
   let name = entry.name.to_string()
+  dispose_originals_panel(view.originals)
   let parked = model.parked.copy()
   parked.remove(id)
   let closed = {
