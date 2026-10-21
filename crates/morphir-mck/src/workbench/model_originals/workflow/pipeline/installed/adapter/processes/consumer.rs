@@ -5,6 +5,7 @@ use crate::workbench::configuration::ConsumerObservationSelection;
 use std::time::Instant;
 #[cfg(target_os = "macos")]
 mod binding;
+mod candidate;
 #[cfg(target_os = "macos")]
 mod codec;
 #[cfg(target_os = "macos")]
@@ -16,7 +17,13 @@ mod export;
 mod launch;
 pub(in crate::workbench::model_originals::workflow) mod projection;
 pub(in crate::workbench::model_originals::workflow) mod record;
+pub(in crate::workbench::model_originals::workflow) mod report;
 mod sdk;
+#[cfg(feature = "operation-port-test-controls")]
+mod test_controls;
+#[cfg(feature = "operation-port-test-controls")]
+pub use test_controls::{ConsumerTestFact, ConsumerTestUsage};
+pub(in crate::workbench::model_originals::workflow) mod saved;
 pub(in crate::workbench::model_originals::workflow) mod wire;
 pub use sdk::ConsumerTransportState;
 pub use wire::{
@@ -287,7 +294,8 @@ impl InstalledClientRun<'_> {
             &env,
             limits,
         )?;
-        let record_reservation = self.prepare_consumer_record(&process.description, limits)?;
+        let record_reservation =
+            self.prepare_consumer_record(&process.description, limits, &binding)?;
         for _ in 0..2 {
             match self
                 .receiving
@@ -424,6 +432,29 @@ impl InstalledClientRun<'_> {
             let _ = process.request_termination();
         }
         Ok(process)
+    }
+}
+#[cfg(all(test, target_os = "macos"))]
+impl InstalledClientRun<'_> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn test_terminal_kind(
+        &self,
+        ports: &InstalledConsumerPorts,
+        role: ConsumerProducerRole,
+    ) -> &'static str {
+        use report::TerminalData as T;
+        match ports.channels[role.index()]
+            .record_terminal(&self.collected.consumer_cache[role.index()])
+            .0
+        {
+            T::NoFrame => "no-frame",
+            T::HeaderPrefix { .. } => "header-prefix",
+            T::BodyPrefix { .. } => "body-prefix",
+            T::Receiving => "receiving",
+            T::CloseRetained => "close-retained",
+            T::CloseAckWritten => "close-ack-written",
+            T::Drained => "drained",
+            T::Unused => "unused",
+        }
     }
 }
 #[cfg(all(test, target_os = "macos"))]

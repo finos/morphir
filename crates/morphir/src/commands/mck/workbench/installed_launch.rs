@@ -426,7 +426,7 @@ impl InstalledLaunch {
         paths: &InstalledCommandPaths,
         run: &mut morphir_mck::workbench::model_originals::installed::InstalledClientRun<'_>,
         invocation: InstalledInvocationSettings<'_>,
-        implementation: &morphir_mck::workbench::model_originals::installed::data::ImplementationObservation,
+        implementation: morphir_mck::workbench::model_originals::installed::data::ImplementationObservation,
         end: std::time::Instant,
     ) -> Result<
         (
@@ -498,7 +498,7 @@ impl InstalledLaunch {
             Self::NodePackage { node, .. } => node.as_path(),
             Self::NativeExecutable { program, .. } => program.as_path(),
         };
-        let (prepared, ports) = run.prepare_consumer_operation(
+        let (prepared, ports) = run.prepare_retained_consumer_operation(
             ConsumerProcessCommand {
                 purpose: InstalledProcessPurpose::Canonical {
                     action_index: index,

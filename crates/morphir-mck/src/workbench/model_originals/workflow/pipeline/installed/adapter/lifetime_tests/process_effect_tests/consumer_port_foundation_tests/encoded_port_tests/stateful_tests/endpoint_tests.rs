@@ -427,3 +427,5 @@ mod process_fault_tests;
 mod terminal_drain_tests;
 
 mod record_predecessor_tests;
+
+mod terminal_projection_tests;

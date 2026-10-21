@@ -57,6 +57,7 @@ pub(super) enum ProcessProjection {
     Prepared(PreparedProcessProjection),
     Projected(data::ProcessMeasurement),
     Moving,
+    Attached,
 }
 
 impl InstalledClientRun<'_> {
@@ -142,7 +143,7 @@ impl InstalledClientRun<'_> {
             arguments: Items(arguments),
         }))
     }
-    fn encoding_fault(&mut self, fault: ConsumerEncodingFault) {
+    pub(super) fn encoding_fault(&mut self, fault: ConsumerEncodingFault) {
         use crate::workbench::model_originals::workflow::decode::{DecodeError, OperandResource};
         let cause = match fault {
             ConsumerEncodingFault::Limit => DecodeError::SavedBytes,
@@ -155,7 +156,10 @@ impl InstalledClientRun<'_> {
 
 fn project(record: &mut record::ConsumerOperationRecord) -> Result<(), ConsumerEncodingFault> {
     let ProcessProjection::Prepared(metadata) = &record.reservation.process else {
-        return if matches!(record.reservation.process, ProcessProjection::Projected(_)) {
+        return if matches!(
+            record.reservation.process,
+            ProcessProjection::Projected(_) | ProcessProjection::Attached
+        ) {
             Ok(())
         } else {
             Err(ConsumerEncodingFault::PriorFault)
@@ -255,6 +259,30 @@ fn projected(
     }
 }
 impl record::ConsumerOperationRecord {
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn take_output(
+        &mut self,
+    ) -> Option<ReservedConsumerOutput> {
+        self.reservation.output.take()
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn take_measurement_slot(
+        &mut self,
+    ) -> Vec<data::InstalledClientMeasurements> {
+        std::mem::take(&mut self.reservation.measurement_slot)
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn take_failure_slot(
+        &mut self,
+    ) -> Vec<data::LiveMeasurements> {
+        std::mem::take(&mut self.reservation.failure_slot)
+    }
+    pub(super) fn take_projected_process(&mut self) -> Option<data::ProcessMeasurement> {
+        match std::mem::replace(&mut self.reservation.process, ProcessProjection::Attached) {
+            ProcessProjection::Projected(value) => Some(value),
+            same => {
+                self.reservation.process = same;
+                None
+            }
+        }
+    }
     /// Moves only the two precharged prefixes. The SAME joined outcome and
     /// its retained process-tree evidence remain owned by this record.
     pub(in crate::workbench::model_originals::workflow::pipeline) fn project_process(
@@ -307,6 +335,11 @@ impl std::io::Write for BoundedWriter<'_> {
 pub(in crate::workbench::model_originals::workflow) struct EncodedConsumerOutput {
     text: String,
 }
+impl EncodedConsumerOutput {
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn into_text(self) -> String {
+        self.text
+    }
+}
 pub(in crate::workbench::model_originals::workflow::pipeline) struct BufferRejected {
     output: ReservedConsumerOutput,
     fault: ConsumerEncodingFault,
@@ -320,6 +353,13 @@ impl std::fmt::Debug for BufferRejected {
             .field("progress", &self.progress)
             .field("passes", &self.passes)
             .finish_non_exhaustive()
+    }
+}
+impl BufferRejected {
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn fault(
+        &self,
+    ) -> ConsumerEncodingFault {
+        self.fault
     }
 }
 fn encode<T: ?Sized + Serialize>(

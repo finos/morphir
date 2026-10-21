@@ -1,0 +1,190 @@
+{
+  "kind": "Historical genuine operation report inputs",
+  "base": "80304a3f7e452995c2943a766663ac7bba98aa39",
+  "sourceBeforeExport": "assembly-successor sources0f00560e plus exact ignored exporter test-only source in reader-controls archive. Subsequent DATA reader changes did not produce these six reports.",
+  "producer": {
+    "cargoHandle": 93190,
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "morphir",
+      "--lib",
+      "export_actual52_reader_control_reports",
+      "--",
+      "--ignored",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "result": "1exporterPASS10.34s, six genuine host/consumer executions; actual cleanup before writes",
+    "feature": "operation-port-test-controls enabled ONLY through morphir dev dependency. This is a dev test artifact, not normal CLI qualification.",
+    "binaryLimitation": "Exporter test executable was not hashed before later legitimate Cargo relink. Exact source/command/log/input associations are retained, but no retrospective binary SHA or binary/source equivalence claim is made."
+  },
+  "inputCapsule": "6f6fbe0f85c9663d76553f67937a29942217734880d00901acb926d0a8464e56",
+  "inputReceipt": "c7aa472314cbca896e1fa08ab051e8f8bc94daf3d38d235cdd6a2e9addf41d63",
+  "source": "Frozen52adc3bc7278de8ce49632518c52ec6196828368, not merged2ffd source build; no SUT rebuild/producer edit",
+  "node": "b468fb9c67427c9d3aec07ee1105e63020923a631a9a2a00beb71a7ba3768bfd",
+  "native": "63413002dcf669f4ac566143317af41fddd6aaff27e57584efff7950feb504af",
+  "reports": [
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/raw-actual52/node-healthy.json",
+      "sha256": "ee208b3a2c06f75027c71d459dc84c5ec65c7beaf105b16a74609f192b20a45e",
+      "bytes": 664342
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/raw-actual52/native-healthy.json",
+      "sha256": "bda106175f704b1c041eda815babaa3e02875004960fced6a1c7c1c86b8db950",
+      "bytes": 665398
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/raw-actual52/node-release-ack-loss.json",
+      "sha256": "bffb37b6617943a773f25e791da7f7bd3603d4d384e9c4bc8919bc9a8f775927",
+      "bytes": 655024
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/raw-actual52/node-commit-ack-loss.json",
+      "sha256": "70f82c1b0ade7953500fd85632193273b2853d357f53fc80497e826f3bd2c6d1",
+      "bytes": 655596
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/raw-actual52/native-release-ack-loss.json",
+      "sha256": "c2dfa3fae80639b98f829bffe815fc10e75ad05313351972bf245862db738073",
+      "bytes": 656092
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/raw-actual52/native-commit-ack-loss.json",
+      "sha256": "486287f50c3a74a1d8e6a6b47e152e97b7cec3a647ce03c7e96038919fd68960",
+      "bytes": 656664
+    }
+  ],
+  "evidence": [
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/baseline/compiler.log",
+      "sha256": "d6939be8746eb481cf7a67b3f1f97df6dfef39fb2da202bdbd93b2bf72a78b87",
+      "bytes": 115014
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/baseline/terminal-projection-compiler.log",
+      "sha256": "88979b124424ace86af225d9365ddc6b8c81390a130d0bd394e3f55e512df18f",
+      "bytes": 4870
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/baseline/terminal-projection-first.log",
+      "sha256": "175d2c08321a79a0942148d2b7cdb290602ae6674fadbb021756d14ae8aac740",
+      "bytes": 76456
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/baseline/terminal-projection-corrected.log",
+      "sha256": "19ed8da33ef4f233df21f85714a6b5a58626c84d918a47730ebb18434ed95366",
+      "bytes": 73443
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/healthy.log",
+      "sha256": "23ea3075a7f8fa7017ffd878c2c41645329ed4453fa866607a71c3f8c938ee21",
+      "bytes": 102718
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/ack-loss.log",
+      "sha256": "95fc475da925abbc2034ef9b032f5fdbe2bdd57fc261f26214ef57f02e039b7f",
+      "bytes": 104253
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/partial-context.log",
+      "sha256": "e9bea3d96fc7fcde43e805475a303a88e5c590cef1aa9ab9dbd3e4ec0d98b59a",
+      "bytes": 102049
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/partial-context-owned-successor.log",
+      "sha256": "d8869aabebf992f4eb92daa789fae60d023ecdaeaea92f2063c798e7dced152c",
+      "bytes": 101638
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/export.log",
+      "sha256": "2c7a7da80417f709f0f0436f9a186bc31782412af6026ec7d3b5d9bdaef66820",
+      "bytes": 100032
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/export-mount-successor.log",
+      "sha256": "122defe34fc7a87e209b7a97114c3c61327f6a6be66d0d4fbb550073e4ee2bfe",
+      "bytes": 101604
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/reader-controls-compiler.log",
+      "sha256": "2cd256c77c6ac1c884c83d402eb0a47ac4e4392f4d21267c56d54eb670e4bc74",
+      "bytes": 2917
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/reader-typed-mechanics-successor.log",
+      "sha256": "b46e79dceb1b55243c6252661dcc369c4708ce966c531111f835af8769d2e3bf",
+      "bytes": 83268
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/reader-correlation-mapping-successor.log",
+      "sha256": "7edbbaca829ddf0d5769d7007b2a9a75c7a8894789550ed41fb4399c83f975d4",
+      "bytes": 77471
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/reader-helper-structure-first.log",
+      "sha256": "4208e0e680388ff43b0d3ee93a065d3914e851e02c80c168c3fdb016d56558ff",
+      "bytes": 80905
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/reader-helper-structure-corrected.log",
+      "sha256": "7e1c9d66ef3f2c04b999a2f68d683bc85702c805d6367ae9ae375a5ef1873adf",
+      "bytes": 74909
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/actual-first/healthy-reader-successor.log",
+      "sha256": "2fc5a7c36e65d18c2bc5d9704002d69b87fd730dce78de256879b6ec677cf4a0",
+      "bytes": 103503
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/assembly-successor/sources.sha256",
+      "sha256": "0f00560e2112a00f1c047b143b2f2d636a47a2fda2f295136d0c43afcc09c646",
+      "bytes": 4821
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/assembly-successor/sources.tar",
+      "sha256": "ac12c29e1c3d3f8a7c49a08a1f1fc96405fc451e7f97be90f42dc3fb07e8c9e0",
+      "bytes": 521728
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/reader-controls/sources.sha256",
+      "sha256": "0949cccb01603751515bf136c91525bf97f0680d32335b0972b9056089b826f7",
+      "bytes": 6789
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/reader-controls/sources.tar",
+      "sha256": "327b884caaa65ba2f659248ffed907ece9eef2fd8d423116f4847e575812a318",
+      "bytes": 4525056
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/reader-measured-successor/sources.sha256",
+      "sha256": "0afef6ad1bed6cde1b6110a032ef9657d776d0e3428451c1e3fc1cdd79a53f67",
+      "bytes": 8012
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/owned-port-report-assembly-implementation-v1/reader-measured-successor/sources.tar",
+      "sha256": "9d8435fbe6d6810b831d97b20959dec632fc467e4ce9dbbc59979a2a5e3eb851",
+      "bytes": 4650496
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/consumer52-root-input-v1/prepared/inputs.json",
+      "sha256": "6f6fbe0f85c9663d76553f67937a29942217734880d00901acb926d0a8464e56",
+      "bytes": 814
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/consumer52-root-input-v1/prepared/receipt.json",
+      "sha256": "c7aa472314cbca896e1fa08ab051e8f8bc94daf3d38d235cdd6a2e9addf41d63",
+      "bytes": 4846
+    },
+    {
+      "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/consumer52-root-input-v1/prepared/policy-operation.json",
+      "sha256": "b1053606dc2dcfe71889213260e92f4896c469487d9c3004c029f57542454cb8",
+      "bytes": 1721
+    }
+  ],
+  "meaning": "Historical actual DATA for ordinary source-bound reader/correlation controls. No W/env dependency in ordinary tests. Healthy report integrity remains unqualified ExpectedBlocked. Partial context is prefix only and asserts no source/workers/scratch/destination completion; cached Commit Returned survives lost ACK independently of run/child receipt. These literals cannot recreate any live invocation, process, port, ACK or receiving permission.",
+  "remaining": "Partial typed reader/source-prefix correlation, further strict/tamper/laterDrained/nonempty encoding-rejection gates, normal feature-off binary/current public CLI reports/replay and strict/full151175 remain separate requirements. No source push/commit qualification."
+}

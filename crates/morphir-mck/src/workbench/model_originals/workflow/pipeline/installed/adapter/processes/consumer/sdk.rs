@@ -75,6 +75,36 @@ impl InstalledClientRun<'_> {
             Err(InstalledAdapterError::ObservationIncomplete)
         }
     }
+    /// Retain the SAME already-observed implementation and selected runtime
+    /// before endpoint effects. The borrowed preparation remains available for
+    /// raw transport controls; it does not issue this partial-context record.
+    pub fn prepare_retained_consumer_operation(
+        &mut self,
+        command: ConsumerProcessCommand<'_>,
+        end: Instant,
+        implementation: data::ImplementationObservation,
+    ) -> Result<(PreparedInstalledConsumerProcess, InstalledConsumerPorts), InstalledAdapterError>
+    {
+        self.work_ready()?;
+        if self.collected.consumer_context.is_some() {
+            return Err(self.observation_failure(InstalledObservationError::LayoutMismatch));
+        }
+        self.reserve_storage(std::mem::size_of::<crate::workbench::model_originals::workflow::installed_measurements::ConsumerPrefixContext>())?;
+        let slots = self.decode.slots(1);
+        self.decoded(slots)?;
+        let selected = super::super::super::selections::runtime_selection(
+            self.collected,
+            self.decode,
+            self.receiving,
+        )
+        .map_err(|error| {
+            self.attempt.fail(RunFault::Decode(error));
+            InstalledAdapterError::ObservationIncomplete
+        })?;
+        let result = self.prepare_consumer_operation(command, end, &implementation);
+        self.collected.consumer_context=Some(crate::workbench::model_originals::workflow::installed_measurements::ConsumerPrefixContext{implementation,selection:selected});
+        result
+    }
     pub fn poll_consumer_operation(
         &mut self,
         ports: &mut InstalledConsumerPorts,

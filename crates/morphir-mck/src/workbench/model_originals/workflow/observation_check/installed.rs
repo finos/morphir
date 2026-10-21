@@ -164,9 +164,8 @@ fn expected_recipe(
         },
     )
 }
-fn frame(actual: &InstalledClientMeasurements, index: usize) -> Option<&Document> {
-    actual
-        .frames
+fn frame(frames: &[ParsedFrame], index: usize) -> Option<&Document> {
+    frames
         .iter()
         .find(|f| f.event == index)
         .and_then(|f| f.document.as_ref())
@@ -178,7 +177,21 @@ enum Pending {
     Prepared(usize),
 }
 fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Result<()> {
-    let events = &actual.wire.host.events.0;
+    event_prefix(
+        &actual.wire.host.selection,
+        &actual.wire.host.events.0,
+        &actual.frames,
+        false,
+        owner,
+    )
+}
+fn event_prefix(
+    selection: &SelectedRuntimeData,
+    events: &[SequencedSocketEvent],
+    frames: &[ParsedFrame],
+    prefix: bool,
+    owner: &mut CompareOwner,
+) -> Result<()> {
     for (index, event) in events.iter().enumerate() {
         owner.visit()?;
         require!(
@@ -213,7 +226,7 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                     }
                     SocketEvent::ReceivedText { .. } => {
                         require!(owner, matches!(pending, Pending::Idle), Fault::SocketOrder)?;
-                        let doc = frame(actual, i).ok_or_else(|| {
+                        let doc = frame(frames, i).ok_or_else(|| {
                             *owner.fault.get_or_insert(ObservationError::InstalledClient(
                                 Fault::SocketFrame,
                             ))
@@ -233,7 +246,7 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                                         && word(
                                             doc,
                                             &["params", "sessionId"],
-                                            actual.wire.host.selection.session_id.as_str(),
+                                            selection.session_id.as_str(),
                                             owner
                                         )?,
                                     Fault::SocketFrame
@@ -245,7 +258,7 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                                     owner,
                                     initialized
                                         && !opened
-                                        && source(doc, &["params", "source"], actual, owner)?,
+                                        && source(doc, &["params", "source"], selection, owner)?,
                                     Fault::SocketFrame
                                 )?;
                                 opened = true;
@@ -262,7 +275,7 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                         let Pending::Received(received) = pending else {
                             return require!(owner, false, Fault::SocketOrder);
                         };
-                        let capture = match frame(actual, received) {
+                        let capture = match frame(frames, received) {
                             Some(doc) => {
                                 word(doc, &["method"], "morphir.model-originals.capture", owner)?
                             }
@@ -275,10 +288,10 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                         let Pending::Received(received) = pending else {
                             return require!(owner, false, Fault::SocketOrder);
                         };
-                        let Some(request) = frame(actual, received) else {
+                        let Some(request) = frame(frames, received) else {
                             return require!(owner, false, Fault::SocketFrame);
                         };
-                        let Some(reply) = frame(actual, i) else {
+                        let Some(reply) = frame(frames, i) else {
                             return require!(owner, false, Fault::SocketFrame);
                         };
                         let request_id = field(request, "id", owner)?.and_then(number);
@@ -308,17 +321,13 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                             let mut selected = false;
                             for project in projects {
                                 owner.visit()?;
-                                selected |= word(
-                                    project,
-                                    &["id"],
-                                    actual.wire.host.selection.project_id.as_str(),
-                                    owner,
-                                )?;
+                                selected |=
+                                    word(project, &["id"], selection.project_id.as_str(), owner)?;
                             }
                             require!(owner, selected, Fault::SocketFrame)?;
                             require!(
                                 owner,
-                                source(reply, &["result", "snapshot", "root"], actual, owner)?
+                                source(reply, &["result", "snapshot", "root"], selection, owner)?
                                     && word(
                                         reply,
                                         &["result", "snapshot", "state"],
@@ -353,7 +362,7 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
             }
             require!(
                 owner,
-                matches!(pending, Pending::Idle) && opened,
+                prefix || matches!(pending, Pending::Idle) && opened,
                 Fault::SocketOrder
             )?;
         } else {
@@ -372,10 +381,38 @@ fn events(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
     }
     Ok(())
 }
+pub(in crate::workbench::model_originals::workflow) fn check_prefix_implementation(
+    plan: &InstalledClientPlan<'_>,
+    implementation:&super::super::installed_measurements::implementation::ImplementationObservation,
+    process: &ProcessMeasurement,
+    owner: &mut CompareOwner,
+) -> Result<()> {
+    implementation::check_prefix(plan, implementation, process, owner)
+}
+pub(in crate::workbench::model_originals::workflow) fn check_prefix_events(
+    selection: &SelectedRuntimeData,
+    events: &[SequencedSocketEvent],
+    frames: &[ParsedFrame],
+    owner: &mut CompareOwner,
+) -> Result<()> {
+    event_prefix(selection, events, frames, true, owner)
+}
+pub(in crate::workbench::model_originals::workflow) fn check_prefix_protocol(
+    plan: &InstalledClientPlan<'_>,
+    selection: &SelectedRuntimeData,
+    events: &[SequencedSocketEvent],
+    protocol: &std::result::Result<ProtocolFacts, Fault>,
+    owner: &mut CompareOwner,
+) -> Result<()> {
+    match protocol {
+        Ok(facts) => protocol_facts(plan, selection, events, facts, owner),
+        Err(_) => require!(owner, false, Fault::ConsumerRelease),
+    }
+}
 fn source(
     doc: &Document,
     keys: &[&str],
-    actual: &InstalledClientMeasurements,
+    selection: &SelectedRuntimeData,
     owner: &mut CompareOwner,
 ) -> Result<bool> {
     let Some(source) = at(doc, keys, owner)? else {
@@ -384,12 +421,12 @@ fn source(
     Ok(word(
         source,
         &["providerId"],
-        actual.wire.host.selection.source.provider.as_str(),
+        selection.source.provider.as_str(),
         owner,
     )? && word(
         source,
         &["locator"],
-        actual.wire.host.selection.source.locator.as_str(),
+        selection.source.locator.as_str(),
         owner,
     )?)
 }
@@ -607,7 +644,7 @@ fn claims(actual: &InstalledClientMeasurements, owner: &mut CompareOwner) -> Res
                 owner,
                 word(doc, &["operation"], "list", owner)?
                     && word(doc, &["observation"], "discovered", owner)?
-                    && source(doc, &["source"], actual, owner)?,
+                    && source(doc, &["source"], &actual.wire.host.selection, owner)?,
                 Fault::ProcessClaims
             )?,
             ProcessCommand::Publish => {
@@ -683,7 +720,7 @@ fn corroborate(
                 if next.connection == event.connection
                     && matches!(next.event, SocketEvent::PreparedSend { .. })
                 {
-                    let doc = frame(actual, j).ok_or_else(|| {
+                    let doc = frame(&actual.frames, j).ok_or_else(|| {
                         *owner
                             .fault
                             .get_or_insert(ObservationError::InstalledClient(Fault::RecordAdoption))
@@ -754,7 +791,7 @@ fn corroborate(
                 let mut found = false;
                 for item in sources {
                     owner.visit()?;
-                    found |= source(item, &[], actual, owner)?;
+                    found |= source(item, &[], &actual.wire.host.selection, owner)?;
                 }
                 require!(owner, found, Fault::ProcessClaims)?;
             }
@@ -796,9 +833,44 @@ pub(in crate::workbench::model_originals::workflow) fn check(
         Ok(facts) => facts,
         Err(fault) => return owner.refuse(ObservationError::InstalledClient(*fault)),
     };
+    protocol_facts(
+        plan,
+        &actual.wire.host.selection,
+        &actual.wire.host.events.0,
+        facts,
+        owner,
+    )?;
+    snapshot(plan, actual, publish, owner)?;
+    claims(actual, owner)?;
+    corroborate(plan, actual, owner)?;
+    implementation::check(plan, actual, owner)?;
+    source::check(plan, actual, owner)?;
+    if let Some(ConsumerMeasurement::Saved(record)) = &actual.consumer {
+        record.check(actual, owner)?;
+    }
+    if matches!(
+        paired.expected(),
+        domain::ExpectedWorkflow::ModelOriginalsClient {
+            qualification: domain::ExpectedWorkflowModelOriginalsClientQualification::Blocked { .. },
+            ..
+        }
+    ) {
+        owner.refuse(ObservationError::ExpectedBlocked)
+    } else {
+        owner.refuse(ObservationError::UnqualifiedEvidence)
+    }
+}
+
+fn protocol_facts(
+    plan: &InstalledClientPlan<'_>,
+    selection: &SelectedRuntimeData,
+    events: &[SequencedSocketEvent],
+    facts: &ProtocolFacts,
+    owner: &mut CompareOwner,
+) -> Result<()> {
     require!(
         owner,
-        matches!(facts.request.parameters(),protocol::Parameters::Capture{source,project,scope:protocol::CaptureScope::Complete,semantic:protocol::SemanticRequest::None} if source==&actual.wire.host.selection.source&&project==&actual.wire.host.selection.project_id),
+        matches!(facts.request.parameters(),protocol::Parameters::Capture{source,project,scope:protocol::CaptureScope::Complete,semantic:protocol::SemanticRequest::None} if source==&selection.source&&project==&selection.project_id),
         Fault::SocketFrame
     )?;
     let entries = facts.inventory.inventory().entries();
@@ -852,7 +924,7 @@ pub(in crate::workbench::model_originals::workflow) fn check(
         }
     }
     let mut records = 0;
-    for event in &actual.wire.host.events.0 {
+    for event in events {
         owner.visit()?;
         if let SocketEvent::ReadyRecordAdopted { bytes } = &event.event {
             recipe(
@@ -865,20 +937,5 @@ pub(in crate::workbench::model_originals::workflow) fn check(
         }
     }
     require!(owner, records == 1, Fault::RecordAdoption)?;
-    snapshot(plan, actual, publish, owner)?;
-    claims(actual, owner)?;
-    corroborate(plan, actual, owner)?;
-    implementation::check(plan, actual, owner)?;
-    source::check(plan, actual, owner)?;
-    if matches!(
-        paired.expected(),
-        domain::ExpectedWorkflow::ModelOriginalsClient {
-            qualification: domain::ExpectedWorkflowModelOriginalsClientQualification::Blocked { .. },
-            ..
-        }
-    ) {
-        owner.refuse(ObservationError::ExpectedBlocked)
-    } else {
-        owner.refuse(ObservationError::UnqualifiedEvidence)
-    }
+    Ok(())
 }

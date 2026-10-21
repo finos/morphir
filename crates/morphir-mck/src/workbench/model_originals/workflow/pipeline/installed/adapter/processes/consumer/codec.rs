@@ -217,7 +217,7 @@ impl InstalledClientRun<'_> {
         &self,
         role: ConsumerProducerRole,
     ) -> &[DecodedConsumerEnvelope] {
-        &self.consumer_cache[role.index()]
+        &self.collected.consumer_cache[role.index()]
     }
 }
 impl ConsumerProducerRole {

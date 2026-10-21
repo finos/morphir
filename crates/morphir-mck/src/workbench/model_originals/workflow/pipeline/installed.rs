@@ -184,7 +184,14 @@ pub(in crate::workbench) fn replay_installed(
                 let Some(case) = case.current() else {
                     return Err("installed evidence source kind differs".into());
                 };
-                if let Evidence::AttemptFailed { failure_index: 0 } = row.evidence {
+                if matches!(
+                    row.evidence,
+                    Evidence::AttemptFailed { failure_index: 0 }
+                        | Evidence::StoredConsumerAttemptFailed {
+                            failure_index: 0,
+                            ..
+                        }
+                ) {
                     if case.installed().is_none() {
                         return Err("installed failure/source kind differs".into());
                     }
@@ -223,6 +230,26 @@ pub(in crate::workbench) fn replay_installed(
                     }
                     let category =
                         category.ok_or("unverified incomplete installed attempt category")?;
+                    if let Evidence::StoredConsumerAttemptFailed {
+                        consumer_failure, ..
+                    } = &row.evidence
+                    {
+                        if !matches!(consumer,crate::workbench::configuration::ConsumerObservationSelection::OperationPort(_)) {
+                            return Err("consumer partial selection differs".into());
+                        }
+                        let plan = case.installed().ok_or("consumer partial source differs")?;
+                        consumer_failure
+                            .value()
+                            .check(plan, &mut owners.comparison)
+                            .map_err(|_| "consumer partial factual consistency refused")?;
+                        if !consumer_failure
+                            .value()
+                            .matches_first(category, &mut owners.decode)
+                            .map_err(|_| "consumer first failure work refused")?
+                        {
+                            return Err("consumer record first failure differs".into());
+                        }
+                    }
                     // Closed failure DATA only. No replay callback, live owner,
                     // source grant or qualification is reconstructed.
                     first_failure = Some(category);
@@ -311,10 +338,127 @@ pub(in crate::workbench) fn execute_installed(
                 .try_reserve_exact(1)
                 .map_err(|_| "failure inventory allocation refused")?;
             let mut attempt = Attempt { fault: None };
+            let mut consumer_output: Option<adapter::ReservedConsumerOutput> = None;
             for case in inventory.cases() {
                 let evidence = if attempt.ready().is_err() {
                     Evidence::NotAttempted {
                         prior_failure_index: 0,
+                    }
+                } else if matches!(
+                    consumer,
+                    crate::workbench::configuration::ConsumerObservationSelection::OperationPort(_)
+                ) {
+                    let current = ready(owners).and_then(|()| {
+                        // This closed source allocation selects one installed
+                        // case. Refuse another effect rather than replace its
+                        // unique preissued report writer with a later one.
+                        if consumer_output.is_some() {
+                            return Err(RunFault::UnsupportedRole);
+                        }
+                        record_owner
+                            .ready()
+                            .map_err(|error| RunFault::RecordRetention(*error))?;
+                        receiving
+                            .ready()
+                            .map_err(|error| RunFault::InstalledObservation(*error))?;
+                        case.current()
+                            .filter(|current| current.installed().is_some())
+                            .ok_or(RunFault::UnsupportedRole)
+                    });
+                    match current {
+                        Err(error) => {
+                            attempt.fail(error);
+                            Evidence::AttemptFailed { failure_index: 0 }
+                        }
+                        Ok(current) => {
+                            // The SAME collection survives an adapter error on
+                            // this stack. The callback receives only its loan.
+                            let mut collected =
+                                super::super::installed_measurements::LiveMeasurements::new();
+                            let mut revoker = adapter::InvocationRevoker::new(consumer);
+                            let actual =
+                                adapter.observe(adapter::InstalledClientRun::from_prepared(
+                                    inventory.invocation(),
+                                    limits,
+                                    &mut owners.comparison,
+                                    &mut record_owner,
+                                    &mut attempt,
+                                    adapter::HostObservationOwners {
+                                        collected: &mut collected,
+                                        receiving: &mut receiving,
+                                        revoker: &mut revoker,
+                                        capture: &mut owners.capture,
+                                        decode: &mut owners.decode,
+                                    },
+                                ));
+                            if revoker.consumer_fault() {
+                                attempt.fail(RunFault::InstalledObservation(
+                                    observation::InstalledObservationFault::Abandoned,
+                                ));
+                            }
+                            drop(revoker);
+                            match actual {
+                                Ok(mut actual) => {
+                                    let Some(record) = actual
+                                        .consumer
+                                        .as_mut()
+                                        .and_then(|record| record.live_mut())
+                                    else {
+                                        attempt.fail(RunFault::Installed(
+                                            adapter::InstalledAdapterError::ObservationIncomplete,
+                                        ));
+                                        // Never publish a smaller report by
+                                        // discarding an actual owned result.
+                                        drop((actual, collected));
+                                        return Err("consumer terminal record missing".into());
+                                    };
+                                    consumer_output =
+                                        Some(record.take_output().ok_or(
+                                            "consumer output permission already consumed",
+                                        )?);
+                                    let slot = record.take_measurement_slot();
+                                    let measurement =
+                                        wire::ClientProcessMeasurement::retain_reserved(
+                                            actual, slot,
+                                        );
+                                    let verdict =
+                                        match current.report_context().check_installed_process(
+                                            measurement.value(),
+                                            &mut owners.comparison,
+                                        ) {
+                                            Ok(()) => Verdict::Checked,
+                                            Err(error) => {
+                                                attempt.fail(RunFault::Record(
+                                                    WorkflowRecordError::Observation(error),
+                                                ));
+                                                Verdict::Failed { failure_index: 0 }
+                                            }
+                                        };
+                                    Evidence::ClientProcessMeasured {
+                                        measurement,
+                                        verdict,
+                                    }
+                                }
+                                Err(error) => {
+                                    attempt.fail(RunFault::Installed(error));
+                                    if let Some(record) = collected.consumer.as_mut() {
+                                        consumer_output = Some(record.take_output().ok_or(
+                                            "consumer output permission already consumed",
+                                        )?);
+                                        let slot = record.take_failure_slot();
+                                        Evidence::ConsumerAttemptFailed {
+                                            failure_index: 0,
+                                            consumer_failure:
+                                                wire::ClientPartialFailure::retain_reserved(
+                                                    collected, slot,
+                                                ),
+                                        }
+                                    } else {
+                                        Evidence::AttemptFailed { failure_index: 0 }
+                                    }
+                                }
+                            }
+                        }
                     }
                 } else {
                     let result = ready(owners).and_then(|()| {
@@ -329,6 +473,8 @@ pub(in crate::workbench) fn execute_installed(
                             .filter(|current| current.installed().is_some())
                             .ok_or(RunFault::UnsupportedRole)?;
                         let mut revoker = adapter::InvocationRevoker::new(consumer);
+                        let mut collected =
+                            super::super::installed_measurements::LiveMeasurements::new();
                         let result = adapter.observe(adapter::InstalledClientRun::from_prepared(
                             inventory.invocation(),
                             limits,
@@ -336,6 +482,7 @@ pub(in crate::workbench) fn execute_installed(
                             &mut record_owner,
                             &mut attempt,
                             adapter::HostObservationOwners {
+                                collected: &mut collected,
                                 receiving: &mut receiving,
                                 revoker: &mut revoker,
                                 capture: &mut owners.capture,
@@ -399,7 +546,7 @@ pub(in crate::workbench) fn execute_installed(
             if let Some(fault) = &attempt.fault {
                 errors.push(fault.summary())
             }
-            render(PreparedExecution {
+            let mut execution = PreparedExecution {
                 report: RuntimeReport {
                     format_version: super::report_revision::ReportRevision::selected(consumer)
                         .text(),
@@ -413,7 +560,47 @@ pub(in crate::workbench) fn execute_installed(
                 },
                 attempt,
                 shutdown: None,
-            })
+            };
+            if let Some(output) = consumer_output {
+                // The complete owned raw report remains here through either
+                // bounded success or refusal. No partial report is published.
+                match output.encode_report(&execution.report) {
+                    Ok(encoded) => {
+                        let text = encoded.into_text();
+                        if let Err(fault) = owners.capture.retain(0, text.len()) {
+                            execution.attempt.fail(RunFault::Capture(fault));
+                            // Accounting refusal is secondary to any existing
+                            // fault. Keep both raw report and encoded backing
+                            // until their explicit disposal, publish nothing.
+                            drop((execution, text));
+                            return Err("consumer report capture aggregate refused".into());
+                        }
+                        Ok(StoredReport::rendered(text, execution.report.records.len()))
+                    }
+                    Err(rejected) => {
+                        let fault = match rejected.fault() {
+                            adapter::ConsumerEncodingFault::Limit => {
+                                super::super::decode::DecodeError::SavedBytes
+                            }
+                            adapter::ConsumerEncodingFault::WorkLimit => {
+                                super::super::decode::DecodeError::Work(
+                                    super::super::decode::OperandResource::ByteVisits,
+                                )
+                            }
+                            _ => super::super::decode::DecodeError::Shape(
+                                "selected consumer report encoding",
+                            ),
+                        };
+                        execution.attempt.fail(RunFault::Decode(fault));
+                        // Both owners are still alive, including Outcome/tree,
+                        // cached literals and the spent failed writer backing.
+                        drop((execution, rejected));
+                        Err("consumer report encoding refused".into())
+                    }
+                }
+            } else {
+                render(execution)
+            }
         },
     )
 }

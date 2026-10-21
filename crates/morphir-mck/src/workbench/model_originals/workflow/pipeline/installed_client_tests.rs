@@ -6,6 +6,7 @@ use crate::workbench::model_originals::workflow::{
     source_proof::LineageStatus,
 };
 use std::cell::Cell;
+mod consumer_measurement_tests;
 
 const CORPUS: &str = include_str!("installed_client_controls/cases24.json");
 const POLICY: &str = include_str!("installed_client_controls/checker-policy.json");

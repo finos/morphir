@@ -311,15 +311,12 @@ impl InstalledClientAdapter for Probe {
             // returns Ok despite queued extra bytes. Cleanup happens on RED too.
             let process_cleanup = command.terminate(end).await;
             let host_cleanup = host.stop(end).await;
-            let actual_finished = match outcome.as_ref() {
-                Some(Ok(finished)) => Some(finished),
-                _ => match &command {
-                    Command::Operation(operation) => match operation.process.as_ref() {
-                        Some(OperationProcess::Finished(finished)) => Some(finished),
-                        _ => None,
-                    },
+            let actual_finished = match &command {
+                Command::Operation(operation) => match operation.process.as_ref() {
+                    Some(OperationProcess::Finished(finished)) => Some(finished),
                     _ => None,
                 },
+                _ => None,
             };
             let process_ok = actual_finished.is_some_and(|finished| {
                 finished.outcome().status().code() == Some(0)

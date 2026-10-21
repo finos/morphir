@@ -266,3 +266,7 @@ fn print_summary(report: &Report) {
 #[cfg(test)]
 #[path = "workbench/installed_launch/tests.rs"]
 mod installed_launch_tests;
+
+#[cfg(test)]
+#[path = "workbench/operation_record_tests.rs"]
+mod operation_record_tests;

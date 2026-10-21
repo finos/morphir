@@ -211,6 +211,60 @@ impl InstalledClientRun<'_> {
         }
         Ok(result)
     }
+    pub fn finish_consumer_measurements(
+        mut self,
+        published_relative_root: &str,
+        source: data::SourceMeasurements,
+        workers: data::WorkerMeasurements,
+    ) -> Result<InstalledClientMeasurements, InstalledAdapterError> {
+        self.work_ready()?;
+        if self.collected.consumer.is_none()
+            || !matches!(
+                self.collected
+                    .consumer_context
+                    .as_ref()
+                    .map(|context| &context.implementation),
+                Some(ImplementationObservation::Observed { .. })
+            )
+            || self.destination.is_none()
+            || self.scratch.is_none()
+        {
+            self.attempt.fail(RunFault::Installed(
+                InstalledAdapterError::ObservationIncomplete,
+            ));
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        }
+        let relative = self.observation_path(published_relative_root)?;
+        // All fallible prerequisites are checked before consuming the actual
+        // implementation, selection, host prefix or process collection.
+        let context = self
+            .collected
+            .consumer_context
+            .take()
+            .expect("validated retained context");
+        let host = model::HostMeasurement {
+            association: model::InvocationAssociation,
+            selection: context.selection,
+            events: Items(std::mem::take(&mut self.collected.events)),
+            source,
+            workers,
+        };
+        let destination = self.destination.take().expect("validated destination");
+        let scratch = self.scratch.take().expect("validated scratch");
+        self.collected
+            .finish(
+                context.implementation,
+                host,
+                destination,
+                relative,
+                scratch,
+                self.decode,
+            )
+            .map_err(|error| {
+                self.attempt.fail(RunFault::Decode(error));
+                InstalledAdapterError::ObservationIncomplete
+            })
+    }
     pub fn finish_measurements(
         mut self,
         implementation: ImplementationObservation,
@@ -219,6 +273,16 @@ impl InstalledClientRun<'_> {
         workers: data::WorkerMeasurements,
     ) -> Result<InstalledClientMeasurements, InstalledAdapterError> {
         self.work_ready()?;
+        if matches!(
+            self.revoker.consumer_selection,
+            crate::workbench::configuration::ConsumerObservationSelection::OperationPort(_)
+        ) && self.collected.consumer.is_none()
+        {
+            self.attempt.fail(RunFault::Installed(
+                InstalledAdapterError::ObservationIncomplete,
+            ));
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        }
         if !matches!(implementation, ImplementationObservation::Observed { .. }) {
             self.attempt
                 .fail(RunFault::Record(WorkflowRecordError::Observation(

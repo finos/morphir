@@ -82,7 +82,7 @@ impl ObservedBytes {
             ObservedByteStorage::MovedUtf8(text) => text.as_bytes(),
         }
     }
-    fn utf8<'a>(&'a self, owner: &mut Decoder) -> Result<Option<&'a str>, DecodeError> {
+    pub(super) fn utf8<'a>(&'a self, owner: &mut Decoder) -> Result<Option<&'a str>, DecodeError> {
         match &self.storage {
             ObservedByteStorage::Materialized {
                 wire: input::Bytes::Utf8 { text },
@@ -377,24 +377,49 @@ pub(super) struct StreamBytes {
     pub(super) bytes: Vec<u8>,
 }
 pub(super) struct ProtocolFacts {
+    pub(super) connection: u64,
+    pub(super) release_events: [usize; 2],
     pub(super) capture: protocol::CaptureExpectation,
     pub(super) inventory: protocol::CaptureInventory,
     pub(super) streams: Vec<StreamBytes>,
     pub(super) request: protocol::Request,
 }
 pub struct InstalledClientMeasurements {
+    pub(super) consumer: Option<ConsumerMeasurement>,
     pub(super) wire: WireMeasurements,
     pub(super) frames: Vec<ParsedFrame>,
     pub(super) claims: Vec<Option<Document>>,
     pub(super) protocol: Result<ProtocolFacts, Fault>,
 }
+pub(super) enum ConsumerMeasurement {
+    Live(super::pipeline::installed::adapter::processes::ConsumerOperationRecord),
+    Saved(super::pipeline::installed::adapter::processes::SavedConsumerMeasurement),
+}
+impl ConsumerMeasurement {
+    pub(super) fn live_mut(
+        &mut self,
+    ) -> Option<&mut super::pipeline::installed::adapter::processes::ConsumerOperationRecord> {
+        match self {
+            Self::Live(record) => Some(record),
+            Self::Saved(_) => None,
+        }
+    }
+}
 pub(super) enum LiveFrame {
     Received(String),
     Prepared(String),
 }
+/// Source-associated prefix only. No host/source/worker completion is implied.
+pub(super) struct ConsumerPrefixContext {
+    pub(super) implementation: ImplementationObservation,
+    pub(super) selection: SelectedRuntimeData,
+}
 /// Partial factual collection. The SAME helpers and caller Decoder also build
 /// saved caches; malformed literals remain DATA, never invented successes.
 pub(super) struct LiveMeasurements {
+    pub(super) consumer_context: Option<ConsumerPrefixContext>,
+    pub(super) consumer_cache:
+        [Vec<super::pipeline::installed::adapter::processes::DecodedConsumerEnvelope>; 2],
     pub(super) consumer:
         Option<super::pipeline::installed::adapter::processes::ConsumerOperationRecord>,
     pub(super) events: Vec<SequencedSocketEvent>,
@@ -408,6 +433,8 @@ pub(super) struct LiveMeasurements {
 impl LiveMeasurements {
     pub(super) fn new() -> Self {
         Self {
+            consumer_context: None,
+            consumer_cache: [Vec::new(), Vec::new()],
             consumer: None,
             events: Vec::new(),
             frames: Vec::new(),
@@ -511,7 +538,7 @@ impl LiveMeasurements {
         }
     }
     pub(super) fn finish(
-        self,
+        &mut self,
         implementation: ImplementationObservation,
         host: HostMeasurement,
         destination: PostExitSnapshot,
@@ -521,7 +548,7 @@ impl LiveMeasurements {
     ) -> Result<InstalledClientMeasurements, DecodeError> {
         let wire = WireMeasurements {
             implementation,
-            processes: Items(self.processes),
+            processes: Items(std::mem::take(&mut self.processes)),
             host,
             destination,
             published_relative_root,
@@ -530,18 +557,73 @@ impl LiveMeasurements {
             dynamic_scratch_cleanup: Unobserved,
             client_release_acceptance: Unobserved,
         };
-        let protocol = prepare_protocol(&wire, &self.frames, owner)?;
+        let protocol = match prepare_protocol(&wire, &self.frames, owner) {
+            Ok(protocol) => protocol,
+            Err(error) => {
+                self.processes = wire.processes.0;
+                self.events = wire.host.events.0;
+                if self.consumer.is_some() {
+                    self.consumer_context = Some(ConsumerPrefixContext {
+                        implementation: wire.implementation,
+                        selection: wire.host.selection,
+                    });
+                }
+                return Err(error);
+            }
+        };
         Ok(InstalledClientMeasurements {
+            consumer: self.consumer.take().map(ConsumerMeasurement::Live),
             wire,
-            frames: self.frames,
-            claims: self.claims,
+            frames: std::mem::take(&mut self.frames),
+            claims: std::mem::take(&mut self.claims),
             protocol,
         })
     }
 }
 impl serde::Serialize for InstalledClientMeasurements {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        self.wire.serialize(s)
+        if let Some(record) = &self.consumer {
+            use super::pipeline::installed::adapter::processes::{DynamicFact, FactKind};
+            use serde::ser::SerializeMap;
+            let wire = &self.wire;
+            let mut map = s.serialize_map(Some(10))?;
+            map.serialize_entry("implementation", &wire.implementation)?;
+            map.serialize_entry("processes", &wire.processes)?;
+            map.serialize_entry("host", &wire.host)?;
+            map.serialize_entry("destination", &wire.destination)?;
+            map.serialize_entry("publishedRelativeRoot", &wire.published_relative_root)?;
+            map.serialize_entry("scratch", &wire.scratch)?;
+            match record {
+                ConsumerMeasurement::Live(record) => {
+                    map.serialize_entry(
+                        "dynamicCommit",
+                        &DynamicFact {
+                            record,
+                            kind: FactKind::Commit,
+                        },
+                    )?;
+                    map.serialize_entry(
+                        "dynamicScratchCleanup",
+                        &DynamicFact {
+                            record,
+                            kind: FactKind::Cleanup,
+                        },
+                    )?;
+                    map.serialize_entry(
+                        "clientReleaseAcceptance",
+                        &DynamicFact {
+                            record,
+                            kind: FactKind::Release,
+                        },
+                    )?;
+                    map.serialize_entry("consumerObservation", record)?;
+                }
+                ConsumerMeasurement::Saved(record) => record.serialize_entries(&mut map)?,
+            }
+            map.end()
+        } else {
+            self.wire.serialize(s)
+        }
     }
 }
 /// Authorize the actual temporary reparse/typed-copy destinations on the SAME
@@ -570,7 +652,7 @@ pub(in crate::workbench::model_originals::workflow) fn reparse_credit(
         _ => Ok(()),
     }
 }
-fn literal(raw: &str, owner: &mut Decoder) -> Result<Option<Document>, DecodeError> {
+pub(super) fn literal(raw: &str, owner: &mut Decoder) -> Result<Option<Document>, DecodeError> {
     match owner.literal_with_raw(raw) {
         Ok((doc, _)) => Ok(Some(doc)),
         Err(error) => {
@@ -633,7 +715,10 @@ pub(super) fn number(doc: &Document) -> Option<u64> {
     }
 }
 fn payload(wire: &WireMeasurements, event: usize) -> Option<&str> {
-    match &wire.host.events.0.get(event)?.event {
+    prefix_payload(&wire.host.events.0, event)
+}
+pub(super) fn prefix_payload(events: &[SequencedSocketEvent], event: usize) -> Option<&str> {
+    match &events.get(event)?.event {
         SocketEvent::ReceivedText { payload } => Some(payload.text()),
         SocketEvent::PreparedSend { payload } => Some(payload.text()),
         _ => None,
@@ -641,6 +726,7 @@ fn payload(wire: &WireMeasurements, event: usize) -> Option<&str> {
 }
 struct ParsedExchange {
     request: protocol::Request,
+    request_event: usize,
     reply: usize,
     connection: u64,
 }
@@ -650,10 +736,64 @@ fn exchange<'a>(wire: &'a WireMeasurements, e: &'a ParsedExchange) -> protocol::
         reply: payload(wire, e.reply).unwrap_or(""),
     }
 }
+fn prefix_exchange<'a>(
+    events: &'a [SequencedSocketEvent],
+    e: &'a ParsedExchange,
+) -> protocol::Exchange<'a> {
+    protocol::Exchange {
+        request: &e.request,
+        reply: prefix_payload(events, e.reply).unwrap_or(""),
+    }
+}
 impl Decode for InstalledClientMeasurements {
     fn decode(doc: &Document, owner: &mut Decoder) -> Result<Self, DecodeError> {
         super::installed_client::copy_credit(doc, owner)?;
         let wire = WireMeasurements::decode(doc, owner)?;
+        Self::from_decoded_wire(wire, owner)
+    }
+}
+impl InstalledClientMeasurements {
+    pub(super) fn decode_consumer(
+        doc: &Document,
+        owner: &mut Decoder,
+    ) -> Result<Self, DecodeError> {
+        super::installed_client::copy_credit(doc, owner)?;
+        let consumer =
+            super::pipeline::installed::adapter::processes::SavedConsumerMeasurement::decode(
+                doc, owner,
+            )?;
+        let fields = Fields::new(
+            doc,
+            &[
+                "implementation",
+                "processes",
+                "host",
+                "destination",
+                "publishedRelativeRoot",
+                "scratch",
+                "dynamicCommit",
+                "dynamicScratchCleanup",
+                "clientReleaseAcceptance",
+                "consumerObservation",
+            ],
+            owner,
+        )?;
+        let wire = WireMeasurements {
+            implementation: fields.field("implementation", owner)?,
+            processes: fields.field("processes", owner)?,
+            host: fields.field("host", owner)?,
+            destination: fields.field("destination", owner)?,
+            published_relative_root: fields.field("publishedRelativeRoot", owner)?,
+            scratch: fields.field("scratch", owner)?,
+            dynamic_commit: Unobserved,
+            dynamic_scratch_cleanup: Unobserved,
+            client_release_acceptance: Unobserved,
+        };
+        let mut result = Self::from_decoded_wire(wire, owner)?;
+        result.consumer = Some(ConsumerMeasurement::Saved(consumer));
+        Ok(result)
+    }
+    fn from_decoded_wire(wire: WireMeasurements, owner: &mut Decoder) -> Result<Self, DecodeError> {
         owner.slots(wire.host.events.0.len())?;
         let mut frames = Vec::new();
         frames
@@ -680,6 +820,7 @@ impl Decode for InstalledClientMeasurements {
         }
         let protocol = prepare_protocol(&wire, &frames, owner)?;
         Ok(Self {
+            consumer: None,
             wire,
             frames,
             claims,
@@ -702,7 +843,15 @@ fn raw_credit(
     passes: usize,
     owner: &mut Decoder,
 ) -> Result<(), DecodeError> {
-    let raw = payload(wire, event).ok_or(DecodeError::Shape("retained frame"))?;
+    prefix_raw_credit(&wire.host.events.0, event, passes, owner)
+}
+fn prefix_raw_credit(
+    events: &[SequencedSocketEvent],
+    event: usize,
+    passes: usize,
+    owner: &mut Decoder,
+) -> Result<(), DecodeError> {
+    let raw = prefix_payload(events, event).ok_or(DecodeError::Shape("retained frame"))?;
     owner.bytes(raw.len().checked_mul(passes).ok_or(DecodeError::Limits)?)
 }
 pub(in crate::workbench::model_originals::workflow) fn normalized_copy(
@@ -790,18 +939,23 @@ fn prepare_protocol(
     frames: &[ParsedFrame],
     owner: &mut Decoder,
 ) -> Result<Result<ProtocolFacts, Fault>, DecodeError> {
+    prepare_prefix_protocol(&wire.host.selection, &wire.host.events.0, frames, owner)
+}
+pub(super) fn prepare_prefix_protocol(
+    selection: &SelectedRuntimeData,
+    events: &[SequencedSocketEvent],
+    frames: &[ParsedFrame],
+    owner: &mut Decoder,
+) -> Result<Result<ProtocolFacts, Fault>, DecodeError> {
     owner.ready()?;
     let bad = || Ok(Err(Fault::SocketFrame));
-    owner.slots(wire.host.events.0.len())?;
+    owner.slots(events.len())?;
     let mut exchanges = Vec::new();
     exchanges
-        .try_reserve_exact(wire.host.events.0.len())
+        .try_reserve_exact(events.len())
         .map_err(|_| DecodeError::Allocation)?;
     for frame in frames {
-        if !matches!(
-            wire.host.events.0[frame.event].event,
-            SocketEvent::ReceivedText { .. }
-        ) {
+        if !matches!(events[frame.event].event, SocketEvent::ReceivedText { .. }) {
             continue;
         }
         let Some(doc) = &frame.document else {
@@ -822,20 +976,17 @@ fn prepare_protocol(
         }
         reparse_credit(doc, owner)?;
         reparse_credit(doc, owner)?;
-        raw_credit(wire, frame.event, 1, owner)?;
-        let Some(raw) = payload(wire, frame.event) else {
+        prefix_raw_credit(events, frame.event, 1, owner)?;
+        let Some(raw) = prefix_payload(events, frame.event) else {
             return bad();
         };
         let Ok(request) = protocol::Request::parse(raw) else {
             return bad();
         };
-        let connection = wire.host.events.0[frame.event].connection.get();
-        let reply = (frame.event + 1..wire.host.events.0.len()).find(|&i| {
-            wire.host.events.0[i].connection.get() == connection
-                && matches!(
-                    wire.host.events.0[i].event,
-                    SocketEvent::PreparedSend { .. }
-                )
+        let connection = events[frame.event].connection.get();
+        let reply = (frame.event + 1..events.len()).find(|&i| {
+            events[i].connection.get() == connection
+                && matches!(events[i].event, SocketEvent::PreparedSend { .. })
         });
         let Some(reply) = reply else { return bad() };
         let Some(doc) = frames
@@ -848,6 +999,7 @@ fn prepare_protocol(
         reparse_credit(doc, owner)?;
         exchanges.push(ParsedExchange {
             request,
+            request_event: frame.event,
             reply,
             connection,
         });
@@ -858,12 +1010,11 @@ fn prepare_protocol(
     if exchanges.iter().any(|e| e.connection != first.connection) {
         return Ok(Err(Fault::SocketAssociation));
     }
-    let borrow = |e| exchange(wire, e);
-    raw_credit(wire, first.reply, 1, owner)?;
-    let Ok(capture) = protocol::CaptureExpectation::from_exchange(
-        &borrow(first),
-        &wire.host.selection.session_id,
-    ) else {
+    let borrow = |e| prefix_exchange(events, e);
+    prefix_raw_credit(events, first.reply, 1, owner)?;
+    let Ok(capture) =
+        protocol::CaptureExpectation::from_exchange(&borrow(first), &selection.session_id)
+    else {
         return bad();
     };
     let mut end = 1;
@@ -887,7 +1038,7 @@ fn prepare_protocol(
         };
         // Two actual page parses and two compact lexical passes in the same
         // verify_inventory/check_page core. Typed copied destinations separate.
-        raw_credit(wire, e.reply, 4, owner)?;
+        prefix_raw_credit(events, e.reply, 4, owner)?;
         reparse_credit(doc, owner)?;
         if let Some(Document::Array(entries)) = path(doc, &["result", "entries"], owner)? {
             owner.slots(entries.len())?;
@@ -981,7 +1132,7 @@ fn prepare_protocol(
             let Some(doc) = document(e.reply) else {
                 return bad();
             };
-            raw_credit(wire, e.reply, 1, owner)?;
+            prefix_raw_credit(events, e.reply, 1, owner)?;
             reparse_credit(doc, owner)?;
             if let Some(encoded) = path(doc, &["result", "content"], owner)?.and_then(text) {
                 let estimate = encoded.len() / 4 * 3;
@@ -1009,15 +1160,18 @@ fn prepare_protocol(
     if exchanges.len() != end + 1 {
         return bad();
     }
-    raw_credit(wire, exchanges[end].reply, 1, owner)?;
+    prefix_raw_credit(events, exchanges[end].reply, 1, owner)?;
     if capture.verify_release(&borrow(&exchanges[end])).is_err() {
         return bad();
     }
+    let release_events = [exchanges[end].request_event, exchanges[end].reply];
     let first = exchanges
         .into_iter()
         .next()
         .ok_or(DecodeError::Shape("capture request"))?;
     Ok(Ok(ProtocolFacts {
+        connection: first.connection,
+        release_events,
         capture,
         inventory,
         streams,

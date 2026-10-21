@@ -1,5 +1,6 @@
 //! Consuming live evidence retention. Decoded report DATA cannot issue this owner.
 use super::*;
+use crate::workbench::model_originals::workflow::installed_measurements as measurements;
 use crate::workbench::model_originals::workflow::pipeline::wire::FailureSummary;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,8 +19,12 @@ pub(in crate::workbench::model_originals::workflow) enum ConsumerAckDelivery {
 /// Issued before endpoint effects. The destination is the one inline Option in
 /// LiveMeasurements; caches and actual process buffers move without conversion.
 pub(super) struct ConsumerRecordReservation {
+    pub(super) action_index: usize,
     pub(super) output: Option<super::projection::ReservedConsumerOutput>,
     pub(super) process: super::projection::ProcessProjection,
+    pub(super) launch: super::report::LaunchData,
+    pub(super) measurement_slot: Vec<measurements::InstalledClientMeasurements>,
+    pub(super) failure_slot: Vec<measurements::LiveMeasurements>,
 }
 
 /// Retains the SAME unique ports and joined process, with their already funded
@@ -29,8 +34,8 @@ pub(in crate::workbench::model_originals::workflow) struct ConsumerOperationReco
     pub(super) ports: InstalledConsumerPorts,
     pub(super) finished: FinishedInstalledProcess,
     pub(super) frames: [Vec<wire::DecodedConsumerEnvelope>; 2],
-    completion: ConsumerRecordCompletion,
-    first_failure: Option<FailureSummary>,
+    pub(super) completion: ConsumerRecordCompletion,
+    pub(super) first_failure: Option<FailureSummary>,
     pub(super) reservation: ConsumerRecordReservation,
 }
 
@@ -54,7 +59,15 @@ impl InstalledClientRun<'_> {
         &mut self,
         description: &ProcessDescription,
         limits: Limits,
+        binding: &super::binding::ConsumerBinding,
     ) -> Result<ConsumerRecordReservation, InstalledAdapterError> {
+        let InstalledProcessPurpose::Canonical {
+            action_index,
+            command: InstalledCommand::Publish,
+        } = description.purpose
+        else {
+            return Err(self.observation_failure(InstalledObservationError::LayoutMismatch));
+        };
         self.reserve_storage(std::mem::size_of::<Option<ConsumerOperationRecord>>())?;
         let result = self.decode.slots(1);
         self.decoded(result)?;
@@ -66,9 +79,22 @@ impl InstalledClientRun<'_> {
         result.map_err(|error| self.observation_failure(error))?;
         let output = self.prepare_consumer_output(limits)?;
         let process = self.prepare_consumer_process_projection(description)?;
+        let launch = super::report::LaunchData::prepare(self, binding, description)?;
+        super::super::super::collection::grow(self.receiving, &mut self.collected.processes, 1)
+            .map_err(|error| self.observation_failure(error))?;
+        super::super::super::collection::grow(self.receiving, &mut self.collected.claims, 1)
+            .map_err(|error| self.observation_failure(error))?;
+        let slots = self.decode.slots(2);
+        self.decoded(slots)?;
+        let measurement_slot = self.vector(1)?;
+        let failure_slot = self.vector(1)?;
         Ok(ConsumerRecordReservation {
+            action_index,
             output: Some(output),
             process,
+            launch,
+            measurement_slot,
+            failure_slot,
         })
     }
 
@@ -163,11 +189,39 @@ impl InstalledClientRun<'_> {
         self.collected.consumer = Some(ConsumerOperationRecord {
             ports,
             finished,
-            frames: std::mem::take(&mut self.consumer_cache),
+            frames: std::mem::take(&mut self.collected.consumer_cache),
             completion,
             first_failure,
             reservation,
         });
+        if let Some(record) = self.collected.consumer.as_mut() {
+            if let Err(fault) = record.project_process() {
+                self.encoding_fault(fault);
+            }
+        }
+        if self.attempt.ready().is_ok() {
+            let claim = {
+                let record = self.collected.consumer.as_ref().expect("stored record");
+                let process = record.projected_process().expect("projected record").0;
+                process.stdout.utf8(self.decode).and_then(|raw| match raw {
+                    Some(raw) => measurements::literal(raw, self.decode),
+                    None => Ok(None),
+                })
+            };
+            match claim {
+                Ok(claim) => {
+                    let record = self.collected.consumer.as_mut().expect("stored record");
+                    let process = record
+                        .take_projected_process()
+                        .expect("single measured move");
+                    self.collected.processes.push(process);
+                    self.collected.claims.push(claim);
+                }
+                Err(error) => {
+                    self.attempt.fail(RunFault::Decode(error));
+                }
+            }
+        }
         Ok(())
     }
 }
@@ -197,16 +251,17 @@ impl InstalledClientRun<'_> {
         self.collected.consumer.as_ref()
     }
 }
-#[cfg(test)]
 impl ConsumerOperationRecord {
     pub(in crate::workbench::model_originals::workflow) fn process_ordinal(&self) -> u64 {
         self.finished.description.ordinal
     }
+    #[cfg(test)]
     pub(in crate::workbench::model_originals::workflow) fn completion(
         &self,
     ) -> ConsumerRecordCompletion {
         self.completion
     }
+    #[cfg(test)]
     pub(in crate::workbench::model_originals::workflow) fn frames(
         &self,
         role: ConsumerProducerRole,

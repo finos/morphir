@@ -373,6 +373,20 @@ pub(super) enum Evidence {
         #[serde(rename = "failureIndex")]
         failure_index: usize,
     },
+    #[serde(rename = "attempt-failed")]
+    ConsumerAttemptFailed {
+        #[serde(rename = "failureIndex")]
+        failure_index: usize,
+        #[serde(rename = "consumerFailure")]
+        consumer_failure: ClientPartialFailure,
+    },
+    #[serde(rename = "attempt-failed")]
+    StoredConsumerAttemptFailed {
+        #[serde(rename = "failureIndex")]
+        failure_index: usize,
+        #[serde(rename = "consumerFailure")]
+        consumer_failure: StoredClientPartialFailure,
+    },
     NotAttempted {
         #[serde(rename = "priorFailureIndex")]
         prior_failure_index: usize,
@@ -385,7 +399,114 @@ pub(super) enum Evidence {
 pub(super) struct NativeMeasurement(Vec<NativeDeclarationObservation>);
 /// Exactly one fallibly retained factual DATA value; no live issuer.
 pub(super) struct ClientProcessMeasurement(Vec<InstalledClientMeasurements>);
+pub(super) struct ClientPartialFailure(Vec<super::super::installed_measurements::LiveMeasurements>);
+pub(super) struct StoredClientPartialFailure(
+    Vec<super::installed::adapter::processes::StoredConsumerPartial>,
+);
+impl StoredClientPartialFailure {
+    pub(super) fn value(&self) -> &super::installed::adapter::processes::StoredConsumerPartial {
+        &self.0[0]
+    }
+    fn retain(
+        value: super::installed::adapter::processes::StoredConsumerPartial,
+        owner: &mut Decoder,
+    ) -> Result<Self, DecodeError> {
+        owner.slots(1)?;
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(1)
+            .map_err(|_| DecodeError::Allocation)?;
+        values.push(value);
+        Ok(Self(values))
+    }
+}
+impl Serialize for StoredClientPartialFailure {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.value().serialize(serializer)
+    }
+}
+impl ClientPartialFailure {
+    pub(super) fn retain_reserved(
+        value: super::super::installed_measurements::LiveMeasurements,
+        mut slot: Vec<super::super::installed_measurements::LiveMeasurements>,
+    ) -> Self {
+        assert!(
+            slot.is_empty() && slot.capacity() >= 1,
+            "unique preissued partial slot"
+        );
+        slot.push(value);
+        Self(slot)
+    }
+}
+impl Serialize for ClientPartialFailure {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let live = &self.0[0];
+        let record = live.consumer.as_ref().expect("recorded partial owner");
+        let process = record
+            .projected_process()
+            .map(|pair| pair.0)
+            .or_else(|| {
+                live.processes
+                    .iter()
+                    .find(|process| process.process_ordinal.0 == record.process_ordinal())
+            })
+            .expect("actual partial process projection");
+        let mut map = s.serialize_map(None)?;
+        map.serialize_entry("kind", "recorded")?;
+        map.serialize_entry("process", process)?;
+        map.serialize_entry("operation", record)?;
+        if let Some(context) = &live.consumer_context {
+            map.serialize_entry(
+                "context",
+                &ConsumerPrefix {
+                    context,
+                    events: &live.events,
+                },
+            )?;
+        }
+        map.end()
+    }
+}
+struct ConsumerPrefix<'a> {
+    context: &'a super::super::installed_measurements::ConsumerPrefixContext,
+    events: &'a [super::super::installed_measurements::SequencedSocketEvent],
+}
+impl Serialize for ConsumerPrefix<'_> {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        #[derive(Serialize)]
+        struct Host<'a> {
+            association: super::super::installed_measurements::InvocationAssociation,
+            selection: &'a super::super::installed_measurements::SelectedRuntimeData,
+            events: &'a [super::super::installed_measurements::SequencedSocketEvent],
+        }
+        let mut map = s.serialize_map(Some(3))?;
+        map.serialize_entry("kind", "prefix")?;
+        map.serialize_entry("implementation", &self.context.implementation)?;
+        map.serialize_entry(
+            "host",
+            &Host {
+                association: super::super::installed_measurements::InvocationAssociation,
+                selection: &self.context.selection,
+                events: self.events,
+            },
+        )?;
+        map.end()
+    }
+}
 impl ClientProcessMeasurement {
+    pub(super) fn retain_reserved(
+        value: InstalledClientMeasurements,
+        mut slot: Vec<InstalledClientMeasurements>,
+    ) -> Self {
+        assert!(
+            slot.is_empty() && slot.capacity() >= 1,
+            "unique preissued measured slot"
+        );
+        slot.push(value);
+        Self(slot)
+    }
     pub(super) fn retain(
         value: InstalledClientMeasurements,
         owner: &mut Decoder,
@@ -530,17 +651,23 @@ fn array(doc: Document, maximum: usize, owner: &mut Decoder) -> Result<Vec<Docum
     owner.slots(values.len())?;
     Ok(values)
 }
-fn evidence(doc: Document, owner: &mut Decoder) -> Result<Evidence, DecodeError> {
+fn evidence(
+    doc: Document,
+    owner: &mut Decoder,
+    revision: super::report_revision::ReportRevision,
+) -> Result<Evidence, DecodeError> {
     let Document::Object(mut fields) = doc else {
         return Err(DecodeError::Shape("evidence"));
     };
     let kind = owned_text(take(&mut fields, "kind", owner)?, owner)?;
     match kind.as_str() {
         "client-process-measured" if fields.len() == 2 => {
-            let measurement = InstalledClientMeasurements::decode(
-                &take(&mut fields, "measurement", owner)?,
-                owner,
-            )?;
+            let document = take(&mut fields, "measurement", owner)?;
+            let measurement = if revision == super::report_revision::ReportRevision::Consumer31 {
+                InstalledClientMeasurements::decode_consumer(&document, owner)?
+            } else {
+                InstalledClientMeasurements::decode(&document, owner)?
+            };
             let measurement = ClientProcessMeasurement::retain(measurement, owner)?;
             let verdict = verdict(take(&mut fields, "verdict", owner)?, owner)?;
             Ok(Evidence::ClientProcessMeasured {
@@ -571,6 +698,20 @@ fn evidence(doc: Document, owner: &mut Decoder) -> Result<Evidence, DecodeError>
         "attempt-failed" if fields.len() == 1 => Ok(Evidence::AttemptFailed {
             failure_index: index(&take(&mut fields, "failureIndex", owner)?, owner)?,
         }),
+        "attempt-failed"
+            if fields.len() == 2
+                && revision == super::report_revision::ReportRevision::Consumer31 =>
+        {
+            let failure_index = index(&take(&mut fields, "failureIndex", owner)?, owner)?;
+            let document = take(&mut fields, "consumerFailure", owner)?;
+            let actual = super::installed::adapter::processes::StoredConsumerPartial::decode(
+                &document, owner,
+            )?;
+            Ok(Evidence::StoredConsumerAttemptFailed {
+                failure_index,
+                consumer_failure: StoredClientPartialFailure::retain(actual, owner)?,
+            })
+        }
         "not-attempted" if fields.len() == 1 => Ok(Evidence::NotAttempted {
             prior_failure_index: index(&take(&mut fields, "priorFailureIndex", owner)?, owner)?,
         }),
@@ -649,13 +790,16 @@ pub(super) fn saved(doc: Document, owner: &mut Decoder) -> Result<SavedReport, S
         let case_id = owned_text(take(&mut row, "caseId", owner)?, owner)?;
         crate::workbench::contract::identity(&case_id, 128).map_err(DecodeError::Value)?;
         let execution = ExecutionKey::decode(&take(&mut row, "execution", owner)?, owner)?;
-        let evidence = evidence(take(&mut row, "evidence", owner)?, owner)?;
-        // Only the controlled failure-only draft31 reader is enabled here.
-        // Measured consumer DATA needs its own source-first field/claim gates.
+        let evidence = evidence(take(&mut row, "evidence", owner)?, owner, revision)?;
+        // Draft31 is report-only and requires its closed operation measurement.
+        // Shared corpus, negotiation and historical draft30 remain unchanged.
         if revision == super::report_revision::ReportRevision::Consumer31
             && !matches!(
                 evidence,
-                Evidence::AttemptFailed { .. } | Evidence::NotAttempted { .. }
+                Evidence::AttemptFailed { .. }
+                    | Evidence::StoredConsumerAttemptFailed { .. }
+                    | Evidence::NotAttempted { .. }
+                    | Evidence::ClientProcessMeasured { .. }
             )
         {
             return Err(DecodeError::Shape("consumer measurement revision unsupported").into());

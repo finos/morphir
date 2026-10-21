@@ -17,10 +17,7 @@ pub(super) const RESERVED_KEYS: [&str; 9] = [
     "MORPHIR_PRIVATE_CONSUMER_TIMEBASE_NUMER",
     "MORPHIR_PRIVATE_CONSUMER_TIMEBASE_DENOM",
 ];
-const SELECTED_SHA: [u8; 32] = [
-    0xb4, 0x68, 0xfb, 0x9c, 0x67, 0x42, 0x7c, 0x9d, 0x3a, 0xec, 0x07, 0xee, 0x11, 0x05, 0xe6, 0x30,
-    0x20, 0x92, 0x3a, 0x63, 0x1a, 0x9a, 0x2a, 0x00, 0xbe, 0xb7, 0x1a, 0x7b, 0xa3, 0x76, 0x8b, 0xfd,
-];
+use super::candidate::{SELECTED_LENGTH, SELECTED_SHA};
 struct Decimal {
     bytes: [u8; 20],
     start: usize,
@@ -83,7 +80,7 @@ impl InstalledClientRun<'_> {
         )
         .map_err(|_| self.consumer_receiving_error())?;
         if !cfg!(all(target_os = "macos", target_arch = "aarch64"))
-            || runtime.byte_length.get() != 122_503_472
+            || runtime.byte_length.get() != SELECTED_LENGTH
             || runtime.sha256.0 != SELECTED_SHA
             || matches!(launch, data::LaunchObservation::NodePackage { .. })
                 && observed != command.program.as_os_str()

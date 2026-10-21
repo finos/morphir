@@ -43,6 +43,7 @@ pub use invocation::{
 use invocation::{InvocationObservationState, InvocationObservationView};
 use native::data::{Bytes, SourcePath, Text};
 use native::{FixtureAlias, PrivateRecordAdoption, PrivateRecordError, RecordRetentionUsage};
+pub(super) use processes::consumer::projection::{ConsumerEncodingFault, ReservedConsumerOutput};
 pub use processes::{
     ConsumerAckProgress, ConsumerDrainProgress, ConsumerPendingAck, ConsumerProcessCommand,
     ConsumerProducerRole, ConsumerReceiveProgress, ConsumerTransportState,
@@ -50,6 +51,8 @@ pub use processes::{
     InstalledProcessFinish, InstalledProcessPurpose, PreparedInstalledConsumerProcess,
     RunningInstalledProcess,
 };
+#[cfg(feature = "operation-port-test-controls")]
+pub use processes::{ConsumerTestFact, ConsumerTestUsage};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstalledAdapterError {
     Cancelled,
@@ -74,9 +77,8 @@ pub struct InstalledClientRun<'a> {
     capture: &'a mut super::super::policy::CaptureBudget,
     decode: &'a mut crate::workbench::model_originals::workflow::Decoder,
     collected:
-        crate::workbench::model_originals::workflow::installed_measurements::LiveMeasurements,
+        &'a mut crate::workbench::model_originals::workflow::installed_measurements::LiveMeasurements,
     next_process: u64,
-    consumer_cache: [Vec<processes::consumer::wire::DecodedConsumerEnvelope>; 2],
     destination: Option<
         crate::workbench::model_originals::workflow::installed_measurements::PostExitSnapshot,
     >,
@@ -85,6 +87,7 @@ pub struct InstalledClientRun<'a> {
     >,
 }
 pub(super) struct HostObservationOwners<'a> {
+    pub(super) collected: &'a mut crate::workbench::model_originals::workflow::installed_measurements::LiveMeasurements,
     pub(super) receiving: &'a mut InstalledObservationOwner,
     pub(super) revoker: &'a mut InvocationRevoker,
     pub(super) capture: &'a mut super::super::policy::CaptureBudget,
@@ -100,6 +103,7 @@ impl<'a> InstalledClientRun<'a> {
         host: HostObservationOwners<'a>,
     ) -> Self {
         let HostObservationOwners {
+            collected,
             receiving,
             revoker,
             capture,
@@ -115,11 +119,10 @@ impl<'a> InstalledClientRun<'a> {
             revoker,
             capture,
             decode,
-            collected: crate::workbench::model_originals::workflow::installed_measurements::LiveMeasurements::new(),
+            collected,
             next_process: 0,
-            consumer_cache:[Vec::new(),Vec::new()],
-            destination:None,
-            scratch:None,
+            destination: None,
+            scratch: None,
         }
     }
     pub fn source(&self) -> InstalledClientSource<'_> {

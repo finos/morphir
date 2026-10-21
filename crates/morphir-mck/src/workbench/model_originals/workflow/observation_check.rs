@@ -115,6 +115,13 @@ pub(super) enum InstalledClientFault {
     DestinationBytes,
     ScratchCoverage,
     ScratchEntries,
+    ConsumerAssociation,
+    ConsumerClock,
+    ConsumerTranscript,
+    ConsumerRelease,
+    ConsumerCommit,
+    ConsumerCleanup,
+    ConsumerHelper,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -173,10 +180,14 @@ impl CompareOwner {
         };
         self.charge(CompareResource::ComparisonBytes, visits)
     }
-    fn refuse<T>(&mut self, error: ObservationError) -> Result<T, ObservationError> {
+    pub(super) fn refuse<T>(&mut self, error: ObservationError) -> Result<T, ObservationError> {
         Err(*self.fault.get_or_insert(error))
     }
-    fn charge(&mut self, resource: CompareResource, amount: usize) -> Result<(), ObservationError> {
+    pub(super) fn charge(
+        &mut self,
+        resource: CompareResource,
+        amount: usize,
+    ) -> Result<(), ObservationError> {
         self.ready()?;
         let (used, maximum) = match resource {
             CompareResource::StructuralVisits => (&mut self.usage.visits, self.limits.0.visits),
@@ -195,7 +206,7 @@ impl CompareOwner {
         *used = next;
         Ok(())
     }
-    fn visit(&mut self) -> Result<(), ObservationError> {
+    pub(super) fn visit(&mut self) -> Result<(), ObservationError> {
         self.charge(CompareResource::StructuralVisits, 1)
     }
     fn same(
@@ -210,7 +221,7 @@ impl CompareOwner {
         self.charge(CompareResource::ComparisonBytes, upper)?;
         Ok(left == right)
     }
-    fn same_text(&mut self, left: &str, right: &str) -> Result<bool, ObservationError> {
+    pub(super) fn same_text(&mut self, left: &str, right: &str) -> Result<bool, ObservationError> {
         self.ready()?;
         let Some(upper) = left.len().checked_add(right.len()) else {
             return self.refuse(ObservationError::SizeOverflow);

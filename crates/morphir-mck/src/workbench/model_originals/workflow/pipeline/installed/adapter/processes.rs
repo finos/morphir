@@ -15,6 +15,10 @@ use std::{
 pub(super) mod consumer;
 pub(in crate::workbench::model_originals::workflow) use consumer::projection::IssuedPrefixProjection;
 pub(in crate::workbench::model_originals::workflow) use consumer::record::ConsumerOperationRecord;
+pub(in crate::workbench::model_originals::workflow) use consumer::report::{DynamicFact, FactKind};
+pub(in crate::workbench::model_originals::workflow) use consumer::saved::Measurement as SavedConsumerMeasurement;
+pub(in crate::workbench::model_originals::workflow) use consumer::saved::Partial as StoredConsumerPartial;
+pub(in crate::workbench::model_originals::workflow) use consumer::wire::DecodedConsumerEnvelope;
 pub(in crate::workbench::model_originals::workflow) use consumer::wire::{
     ConsumerCodecError, ConsumerFailureKind,
 };
@@ -23,6 +27,8 @@ pub use consumer::{
     ConsumerProducerRole, ConsumerReceiveProgress, ConsumerTransportState, InstalledConsumerPorts,
     PreparedInstalledConsumerProcess,
 };
+#[cfg(feature = "operation-port-test-controls")]
+pub use consumer::{ConsumerTestFact, ConsumerTestUsage};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InstalledMetadataQuery {

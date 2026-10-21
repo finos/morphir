@@ -268,6 +268,27 @@ impl RunFault {
             ))) => (
                 "observation",
                 match fault {
+                    super::observation_check::InstalledClientFault::ConsumerAssociation => {
+                        "installed-consumer-association"
+                    }
+                    super::observation_check::InstalledClientFault::ConsumerClock => {
+                        "installed-consumer-clock"
+                    }
+                    super::observation_check::InstalledClientFault::ConsumerTranscript => {
+                        "installed-consumer-transcript"
+                    }
+                    super::observation_check::InstalledClientFault::ConsumerRelease => {
+                        "installed-consumer-release"
+                    }
+                    super::observation_check::InstalledClientFault::ConsumerCommit => {
+                        "installed-consumer-commit"
+                    }
+                    super::observation_check::InstalledClientFault::ConsumerCleanup => {
+                        "installed-consumer-cleanup"
+                    }
+                    super::observation_check::InstalledClientFault::ConsumerHelper => {
+                        "installed-consumer-helper"
+                    }
                     super::observation_check::InstalledClientFault::ImplementationMissing => {
                         "implementation-missing"
                     }
@@ -1077,6 +1098,10 @@ pub(in crate::workbench) fn replay(
                     return Err("capabilities omit selected source role".into());
                 }
                 match &record.evidence {
+                    Evidence::ConsumerAttemptFailed { .. }
+                    | Evidence::StoredConsumerAttemptFailed { .. } => {
+                        return Err("consumer partial evidence requires installed selection".into());
+                    }
                     Evidence::Captured { exchange, verdict } => {
                         owners
                             .capture

@@ -284,8 +284,13 @@ impl<const SIGNED: bool> Decode for Decimal<SIGNED> {
     }
 }
 impl Decimal<false> {
-    fn value(&self) -> u64 {
+    pub(super) fn value(&self) -> u64 {
         self.0 as u64
+    }
+}
+impl Decimal<true> {
+    pub(super) fn is_zero(&self) -> bool {
+        self.0 == 0
     }
 }
 #[derive(Debug)]
@@ -315,6 +320,11 @@ impl<const EXACT: usize> Decode for Hex<EXACT> {
             return Err(DecodeError::Shape("literal lowercase hex"));
         }
         Ok(Self(text.to_owned()))
+    }
+}
+impl<const EXACT: usize> Hex<EXACT> {
+    pub(super) fn as_str(&self) -> &str {
+        &self.0
     }
 }
 tagged! { LiteralBytes("kind") {Utf8=>"utf8"{text:WireText<131072> =>"text"},Hex=>"hex"{hex:Hex<0> =>"hex"}} }
@@ -451,7 +461,7 @@ impl Frame {
             | Self::Close { sequence, .. } => sequence.0,
         }
     }
-    fn version(&self) -> &str {
+    pub(super) fn version(&self) -> &str {
         match self {
             Self::Open { version, .. }
             | Self::Fact { version, .. }
@@ -522,14 +532,14 @@ impl Frame {
         Ok(())
     }
 }
-fn positive(value: &Decimal<false>) -> Result<(), ConsumerCodecError> {
+pub(super) fn positive(value: &Decimal<false>) -> Result<(), ConsumerCodecError> {
     if value.value() == 0 || value.value() > i32::MAX as u64 {
         Err(ConsumerCodecError::Shape)
     } else {
         Ok(())
     }
 }
-fn validate_output(output: &Output) -> Result<(), ConsumerCodecError> {
+pub(super) fn validate_output(output: &Output) -> Result<(), ConsumerCodecError> {
     if let Output::Owned { read, disposal } = output {
         if let OutputRead::Failed {
             operation,

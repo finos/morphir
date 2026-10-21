@@ -43,6 +43,32 @@ pub(in crate::commands) struct InstalledWorkbenchAdapter {
     launch: InstalledLaunch,
     limits: Limits,
     interrupted: Arc<AtomicBool>,
+    controls: TestControls,
+}
+#[derive(Default)]
+struct TestControls {
+    #[cfg(test)]
+    cutoff: Option<TestConsumerAckCutoff>,
+    #[cfg(test)]
+    cuts: usize,
+    #[cfg(test)]
+    usage: Option<TestConsumerTerminalUsage>,
+}
+#[cfg(test)]
+#[derive(Clone, Copy)]
+pub(in crate::commands) enum TestConsumerAckCutoff {
+    Release,
+    Commit,
+}
+#[cfg(test)]
+#[derive(Clone, Copy)]
+pub(in crate::commands) struct TestConsumerTerminalUsage {
+    pub(in crate::commands) receiving_before:
+        morphir_mck::workbench::model_originals::installed::InstalledObservationUsage,
+    pub(in crate::commands) receiving_after:
+        morphir_mck::workbench::model_originals::installed::InstalledObservationUsage,
+    pub(in crate::commands) decoder_before: [usize; 4],
+    pub(in crate::commands) decoder_after: [usize; 4],
 }
 impl InstalledWorkbenchAdapter {
     pub(in crate::commands) fn new(
@@ -54,7 +80,26 @@ impl InstalledWorkbenchAdapter {
             launch,
             limits,
             interrupted,
+            controls: TestControls::default(),
         }
+    }
+    #[cfg(test)]
+    pub(in crate::commands) fn test_with_consumer_ack_cutoff(
+        mut self,
+        cutoff: TestConsumerAckCutoff,
+    ) -> Self {
+        self.controls.cutoff = Some(cutoff);
+        self
+    }
+    #[cfg(test)]
+    pub(in crate::commands) fn test_consumer_ack_cut_count(&self) -> usize {
+        self.controls.cuts
+    }
+    #[cfg(test)]
+    pub(in crate::commands) fn test_consumer_terminal_usage(
+        &self,
+    ) -> Option<TestConsumerTerminalUsage> {
+        self.controls.usage
     }
 }
 impl InstalledClientAdapter for InstalledWorkbenchAdapter {
@@ -68,6 +113,7 @@ impl InstalledClientAdapter for InstalledWorkbenchAdapter {
             &self.launch,
             self.limits,
             self.interrupted.clone(),
+            &mut self.controls,
         ))
     }
 }
@@ -314,6 +360,7 @@ async fn observe(
     launch: &InstalledLaunch,
     limits: Limits,
     interrupted: Arc<AtomicBool>,
+    _controls: &mut TestControls,
 ) -> Result<InstalledClientMeasurements, InstalledAdapterError> {
     let end = end(limits)?;
     check(end, &interrupted)?;
@@ -394,11 +441,15 @@ async fn observe(
                             &mut run,
                             InstalledInvocationSettings::new(&fixture.base, &environment, limits),
                             implementation
-                                .as_ref()
+                                .take()
                                 .ok_or(InstalledAdapterError::ObservationIncomplete)?,
                             end.into_std(),
                         )?;
                         pending = Some(processes::Command::operation(process, ports));
+                        #[cfg(test)]
+                        if let Some(command) = pending.as_mut() {
+                            command.configure_test_cutoff(_controls.cutoff);
+                        }
                         end
                     } else {
                         pending = Some(processes::Command::Ordinary(Some(launch.spawn(
@@ -410,7 +461,7 @@ async fn observe(
                         )?)));
                         command_end
                     };
-                    let finished = pending
+                    pending
                         .as_mut()
                         .ok_or(InstalledAdapterError::ObservationIncomplete)?
                         .execute(
@@ -420,7 +471,29 @@ async fn observe(
                             &interrupted,
                         )
                         .await?;
-                    run.record_finished_process(finished)?;
+                    let settled = pending
+                        .take()
+                        .ok_or(InstalledAdapterError::ObservationIncomplete)?;
+                    #[cfg(test)]
+                    let before = run.test_consumer_usage();
+                    #[cfg(test)]
+                    {
+                        _controls.cuts += settled.test_cut_count();
+                    }
+                    if let Err(rejected) = settled.record_terminal(&mut run) {
+                        pending = Some(rejected);
+                        return Err(InstalledAdapterError::ObservationIncomplete);
+                    }
+                    #[cfg(test)]
+                    {
+                        let after = run.test_consumer_usage();
+                        _controls.usage = Some(TestConsumerTerminalUsage {
+                            receiving_before: before.receiving,
+                            receiving_after: after.receiving,
+                            decoder_before: before.decoder,
+                            decoder_after: after.decoder,
+                        });
+                    }
                     if index == 8 {
                         snapshots::census(
                             &mut run,
@@ -485,10 +558,38 @@ async fn observe(
             Some(command) => command.terminate(cleanup_end).await,
             None => Ok(()),
         };
+        // Export only an actual settled owner. A rejected pair stays together
+        // for ordinary disposal; no raw Drop is relabeled as a record.
+        if _process_cleanup.is_ok()
+            && let Some(settled) = pending.take()
+        {
+            #[cfg(test)]
+            let before = run.test_consumer_usage();
+            #[cfg(test)]
+            {
+                _controls.cuts += settled.test_cut_count();
+            }
+            if let Err(rejected) = settled.record_terminal(&mut run) {
+                pending = Some(rejected);
+            }
+            #[cfg(test)]
+            {
+                let after = run.test_consumer_usage();
+                _controls.usage = Some(TestConsumerTerminalUsage {
+                    receiving_before: before.receiving,
+                    receiving_after: after.receiving,
+                    decoder_before: before.decoder,
+                    decoder_after: after.decoder,
+                });
+            }
+        }
         let _host_cleanup = match host.as_mut() {
             Some(active) => active.stop(cleanup_end).await,
             None => Ok(()),
         };
+        // The actual rejected ownerpair stays alive through host cleanup,
+        // then is explicitly disposed at this unsuccessful public boundary.
+        drop(pending);
         // Cleanup failure remains incomplete, but cannot replace the earlier
         // actual action failure, including observed cancellation.
         return Err(error);
@@ -547,6 +648,9 @@ async fn observe(
         return Err(InstalledAdapterError::ObservationIncomplete);
     }
     let relative = snapshots::portable_relative(&mut run, relative)?;
+    if operation_mode {
+        return run.finish_consumer_measurements(&relative, source, workers);
+    }
     run.finish_measurements(
         implementation.ok_or(InstalledAdapterError::ObservationIncomplete)?,
         &relative,

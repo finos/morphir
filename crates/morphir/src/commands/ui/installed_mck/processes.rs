@@ -18,6 +18,7 @@ use tokio::time::{Duration, Instant};
 )]
 pub(super) enum Command {
     Ordinary(Option<RunningInstalledProcess>),
+    OrdinaryFinished(FinishedInstalledProcess),
     Operation(Operation),
 }
 enum OperationProcess {
@@ -30,6 +31,10 @@ pub(super) struct Operation {
     ports: InstalledConsumerPorts,
     acknowledgements: [Option<ConsumerPendingAck>; 2],
     failure: Option<InstalledAdapterError>,
+    #[cfg(test)]
+    cutoff: Option<morphir_mck::workbench::model_originals::installed::ConsumerTestFact>,
+    #[cfg(test)]
+    cuts: usize,
 }
 impl Command {
     pub(super) fn operation(
@@ -41,7 +46,31 @@ impl Command {
             ports,
             acknowledgements: [None, None],
             failure: None,
+            #[cfg(test)]
+            cutoff: None,
+            #[cfg(test)]
+            cuts: 0,
         })
+    }
+    #[cfg(test)]
+    pub(super) fn configure_test_cutoff(&mut self, cutoff: Option<super::TestConsumerAckCutoff>) {
+        if let Self::Operation(operation) = self {
+            operation.cutoff = cutoff.map(|value| match value {
+                super::TestConsumerAckCutoff::Release => {
+                    morphir_mck::workbench::model_originals::installed::ConsumerTestFact::Release
+                }
+                super::TestConsumerAckCutoff::Commit => {
+                    morphir_mck::workbench::model_originals::installed::ConsumerTestFact::Commit
+                }
+            });
+        }
+    }
+    #[cfg(test)]
+    pub(super) fn test_cut_count(&self) -> usize {
+        match self {
+            Self::Operation(operation) => operation.cuts,
+            _ => 0,
+        }
     }
     pub(super) async fn execute(
         &mut self,
@@ -49,15 +78,66 @@ impl Command {
         events: &mut InstalledHostObservation,
         end: Instant,
         interrupted: &AtomicBool,
-    ) -> Result<FinishedInstalledProcess, InstalledAdapterError> {
+    ) -> Result<(), InstalledAdapterError> {
         match self {
-            Self::Ordinary(pending) => execute(run, events, pending, end, interrupted).await,
+            Self::Ordinary(pending) => {
+                let finished = execute(run, events, pending, end, interrupted).await?;
+                *self = Self::OrdinaryFinished(finished);
+                Ok(())
+            }
+            Self::OrdinaryFinished(_) => Err(InstalledAdapterError::ObservationIncomplete),
             Self::Operation(operation) => operation.execute(run, events, end, interrupted).await,
+        }
+    }
+    /// Synchronous consuming transfer after the awaited owner has settled.
+    /// Rejected operation owners return together, before any further await.
+    pub(super) fn record_terminal(self, run: &mut InstalledClientRun<'_>) -> Result<(), Self> {
+        match self {
+            Self::OrdinaryFinished(finished) => run
+                .record_finished_process(finished)
+                .map_err(|_| Self::Ordinary(None)),
+            Self::Operation(mut operation) => {
+                let finished = match operation.process.take() {
+                    Some(OperationProcess::Finished(finished)) => finished,
+                    same => {
+                        operation.process = same;
+                        return Err(Self::Operation(operation));
+                    }
+                };
+                let Operation {
+                    ports,
+                    acknowledgements,
+                    failure,
+                    #[cfg(test)]
+                    cutoff,
+                    #[cfg(test)]
+                    cuts,
+                    ..
+                } = operation;
+                match run.record_consumer_process(ports, finished) {
+                    Ok(()) => Ok(()),
+                    Err(rejected) => {
+                        let (ports, finished) = rejected.into_parts();
+                        Err(Self::Operation(Operation {
+                            process: Some(OperationProcess::Finished(finished)),
+                            ports,
+                            acknowledgements,
+                            failure,
+                            #[cfg(test)]
+                            cutoff,
+                            #[cfg(test)]
+                            cuts,
+                        }))
+                    }
+                }
+            }
+            other => Err(other),
         }
     }
     pub(super) async fn terminate(&mut self, end: Instant) -> Result<(), InstalledAdapterError> {
         match self {
             Self::Ordinary(pending) => terminate(pending, end).await,
+            Self::OrdinaryFinished(_) => Ok(()),
             Self::Operation(operation) => {
                 // The SAME actual owner remains here throughout cleanup.
                 if let Some(OperationProcess::Running(process)) = operation.process.as_mut() {
@@ -141,6 +221,14 @@ impl Operation {
         .enumerate()
         {
             if let Some(ticket) = self.acknowledgements[index].as_mut() {
+                #[cfg(test)]
+                if self.cuts == 0
+                    && let Some(kind) = self.cutoff
+                {
+                    if run.test_shutdown_consumer_ack(&mut self.ports, ticket, kind)? {
+                        self.cuts += 1;
+                    }
+                }
                 if run.write_consumer_retained(&mut self.ports, ticket)?
                     == ConsumerAckProgress::Complete
                 {
@@ -171,7 +259,7 @@ impl Operation {
         events: &mut InstalledHostObservation,
         end: Instant,
         interrupted: &AtomicBool,
-    ) -> Result<FinishedInstalledProcess, InstalledAdapterError> {
+    ) -> Result<(), InstalledAdapterError> {
         loop {
             super::check(end, interrupted)?;
             if self.failure.is_some() {
@@ -203,10 +291,7 @@ impl Operation {
                 }
                 if drain == ConsumerDrainProgress::Complete {
                     run.require_consumer_close(&mut self.ports)?;
-                    let Some(OperationProcess::Finished(finished)) = self.process.take() else {
-                        unreachable!()
-                    };
-                    return Ok(finished);
+                    return Ok(());
                 }
             }
             if self.failure.is_some() {

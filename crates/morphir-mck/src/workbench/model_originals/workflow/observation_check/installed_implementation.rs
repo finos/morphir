@@ -266,12 +266,47 @@ fn query_arguments(query: &GitQuery) -> &'static [&'static str] {
     }
 }
 
+#[derive(Clone, Copy)]
+enum ProcessScope<'a> {
+    Complete(&'a InstalledClientMeasurements),
+    Prefix(&'a ProcessMeasurement),
+}
+impl ProcessScope<'_> {
+    fn processes(&self) -> &[ProcessMeasurement] {
+        match self {
+            Self::Complete(actual) => &actual.wire.processes.0,
+            Self::Prefix(process) => std::slice::from_ref(*process),
+        }
+    }
+}
 pub(super) fn check(
     plan: &InstalledClientPlan<'_>,
     actual: &InstalledClientMeasurements,
     owner: &mut CompareOwner,
 ) -> Result<()> {
+    check_association(
+        plan,
+        &actual.wire.implementation,
+        ProcessScope::Complete(actual),
+        owner,
+    )
+}
+pub(super) fn check_prefix(
+    plan: &InstalledClientPlan<'_>,
+    implementation: &ImplementationObservation,
+    process: &ProcessMeasurement,
+    owner: &mut CompareOwner,
+) -> Result<()> {
+    check_association(plan, implementation, ProcessScope::Prefix(process), owner)
+}
+fn check_association(
+    plan: &InstalledClientPlan<'_>,
+    implementation: &ImplementationObservation,
+    scope: ProcessScope<'_>,
+    owner: &mut CompareOwner,
+) -> Result<()> {
     owner.ready()?;
+    let actual_processes = scope.processes();
     let ImplementationObservation::Observed {
         before_action,
         launch,
@@ -280,7 +315,7 @@ pub(super) fn check(
         package,
         source,
         metadata_tools: tools,
-    } = &actual.wire.implementation
+    } = implementation
     else {
         return owner.refuse(ObservationError::InstalledClient(
             Fault::ImplementationMissing,
@@ -353,27 +388,29 @@ pub(super) fn check(
     }
     need(
         owner,
-        tools.0.len() == 3 && actual.wire.processes.0.len() == 3,
+        tools.0.len() == 3
+            && match scope {
+                ProcessScope::Complete(_) => actual_processes.len() == 3,
+                ProcessScope::Prefix(process) => matches!(process.command, ProcessCommand::Publish),
+            },
         Fault::ImplementationProcess,
     )?;
-    for process in &actual.wire.processes.0 {
+    for process in actual_processes {
         owner.visit()?;
         let yes = checked_absolute(&process.directory, owner)?;
         need(owner, yes, Fault::ImplementationProcess)?;
-        let equal = same(
-            &process.directory,
-            &actual.wire.processes.0[0].directory,
-            owner,
-        )?;
+        let equal = same(&process.directory, &actual_processes[0].directory, owner)?;
         need(owner, equal, Fault::ImplementationProcess)?;
     }
-    let bound = resolves(
-        &actual.wire.processes.0[0].directory,
-        &paths.destination,
-        actual.wire.destination.root.as_str(),
-        owner,
-    )?;
-    need(owner, bound, Fault::ImplementationBinding)?;
+    if let ProcessScope::Complete(actual) = scope {
+        let bound = resolves(
+            &actual_processes[0].directory,
+            &paths.destination,
+            actual.wire.destination.root.as_str(),
+            owner,
+        )?;
+        need(owner, bound, Fault::ImplementationBinding)?;
+    }
     for (index, tool) in tools.0.iter().enumerate() {
         owner.visit()?;
         let query = matches!(
@@ -410,11 +447,27 @@ pub(super) fn check(
             need(owner, yes, Fault::ImplementationProcess)?;
         }
     }
-    for (index, process) in actual.wire.processes.0.iter().enumerate() {
+    for (index, process) in actual_processes.iter().enumerate() {
         owner.visit()?;
+        let expected_ordinal = match scope {
+            ProcessScope::Complete(_) => index as u64 + 3,
+            ProcessScope::Prefix(_) => {
+                let mut previous = 0u64;
+                for (index, action) in plan.actions().enumerate() {
+                    owner.visit()?;
+                    if index as u64 >= process.action_index.0 {
+                        break;
+                    }
+                    if matches!(action, Action::Run { .. }) {
+                        previous += 1;
+                    }
+                }
+                tools.0.len() as u64 + previous
+            }
+        };
         need(
             owner,
-            process.process_ordinal.0 == index as u64 + 3,
+            process.process_ordinal.0 == expected_ordinal,
             Fault::ImplementationProcess,
         )?;
         let program = match launch {

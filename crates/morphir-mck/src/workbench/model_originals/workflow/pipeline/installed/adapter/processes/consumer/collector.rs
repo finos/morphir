@@ -26,6 +26,36 @@ enum Phase {
     Poisoned,
 }
 impl Channel {
+    pub(super) fn record_terminal(
+        &self,
+        frames: &[wire::DecodedConsumerEnvelope],
+    ) -> (
+        super::report::TerminalData,
+        Option<wire::ConsumerFailureKind>,
+    ) {
+        use super::report::TerminalData as T;
+        let phase = self.prior_fault_phase.unwrap_or(self.phase);
+        let terminal = match phase {
+            Phase::Header(0) => T::NoFrame,
+            Phase::Header(bytes) => T::HeaderPrefix { bytes },
+            Phase::Body { length, filled } => T::BodyPrefix {
+                expected: length,
+                bytes: filled,
+            },
+            Phase::Association { index, .. } | Phase::Ack { index, .. } => {
+                match frames.get(index).map(|row| &row.frame) {
+                    Some(wire::Frame::Close { .. }) => T::CloseRetained,
+                    _ => T::Receiving,
+                }
+            }
+            Phase::EmptyHelperEof => T::Receiving,
+            Phase::Unused => T::Unused,
+            Phase::Closed => T::CloseAckWritten,
+            Phase::Drained => T::Drained,
+            Phase::Poisoned => T::Receiving,
+        };
+        (terminal, self.fault.map(|fault| fault.failure_kind()))
+    }
     pub(super) fn new(buffer: Vec<u8>) -> Self {
         Self {
             buffer,
@@ -179,10 +209,11 @@ impl InstalledClientRun<'_> {
                 .to_be_bytes(),
         );
         ports.channels[role.index()].phase = Phase::Ack { index, sequence };
-        self.consumer_cache[role.index()][index].delivery = record::ConsumerAckDelivery::Prefix {
-            written: 0,
-            total: encoded.length,
-        };
+        self.collected.consumer_cache[role.index()][index].delivery =
+            record::ConsumerAckDelivery::Prefix {
+                written: 0,
+                total: encoded.length,
+            };
         Ok(Progress::Retained(Ticket {
             _private: (),
             control: Arc::downgrade(&ports.control),
@@ -290,7 +321,7 @@ impl InstalledClientRun<'_> {
         // A role cannot reach a new Body until its previous actual ACK has
         // completed. Thus every prefix Fact here is both cached and ACKed.
         // Validate this prefix before recording/caching the incoming frame.
-        let prefix_length = self.consumer_cache[index].len();
+        let prefix_length = self.collected.consumer_cache[index].len();
         let visits = prefix_length
             .checked_mul(std::mem::size_of::<wire::Frame>())
             .ok_or_else(|| {
@@ -303,7 +334,7 @@ impl InstalledClientRun<'_> {
         self.consumer_decode(result)?;
         envelope
             .frame
-            .validate_business_prefix(&self.consumer_cache[index])?;
+            .validate_business_prefix(&self.collected.consumer_cache[index])?;
         if role == ConsumerProducerRole::Outer
             && let wire::Frame::Close { helper, .. } = &envelope.frame
             && !ports.helper_association.accepts_outer_completion(helper)
@@ -335,16 +366,16 @@ impl InstalledClientRun<'_> {
         self.consumer_decode(result)?;
         let result = super::super::super::collection::grow(
             self.receiving,
-            &mut self.consumer_cache[index],
+            &mut self.collected.consumer_cache[index],
             1,
         );
         if let Err(error) = result {
             self.observation_failure(error);
             return Err(Error::Resource(error));
         }
-        let cache_index = self.consumer_cache[index].len();
+        let cache_index = self.collected.consumer_cache[index].len();
         let starts_helper = matches!(envelope.frame, wire::Frame::HelperStarted { .. });
-        self.consumer_cache[index].push(envelope);
+        self.collected.consumer_cache[index].push(envelope);
         if starts_helper {
             ports.helper_association = HelperAssociation::Associated;
         }
@@ -428,7 +459,7 @@ impl InstalledClientRun<'_> {
             Ok(0) => Err(Error::Io(std::io::ErrorKind::WriteZero)),
             Ok(n) => {
                 ticket.cursor += n;
-                self.consumer_cache[ticket.role.index()][ticket.cache_index].delivery =
+                self.collected.consumer_cache[ticket.role.index()][ticket.cache_index].delivery =
                     if ticket.cursor < ticket.length {
                         record::ConsumerAckDelivery::Prefix {
                             written: ticket.cursor,
@@ -444,7 +475,7 @@ impl InstalledClientRun<'_> {
                 }
                 channel.next = ticket.sequence.checked_add(1).ok_or(Error::Sequence)?;
                 channel.phase = if matches!(
-                    self.consumer_cache[ticket.role.index()][ticket.cache_index].frame,
+                    self.collected.consumer_cache[ticket.role.index()][ticket.cache_index].frame,
                     wire::Frame::Close { .. }
                 ) {
                     Phase::Closed
