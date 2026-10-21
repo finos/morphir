@@ -10,6 +10,8 @@ import { ARTIFACT_PROFILE, ARTIFACT_CONTRACT_VERSION, selectArtifactTransferProf
   type ArtifactProfileSelection } from './artifact-client/artifact-transfer.ts';
 import { ArtifactDownloadRegistry, verifiedArtifactDownloads } from './artifact-registry.ts';
 import { openArtifactChannel } from './artifact-rpc.ts';
+import { ConnectedWorkspaceFiles, selectFileSource, type FileSourceSelection } from './connected-workspace-files.ts';
+import { openWorkspaceFilesRpc } from './workspace-files-rpc.ts';
 // Browser host boundary. Private operation envelopes never go onto Morphir RPC.
 export class LocalAdapter {
   workerFactory: () => WorkerPort;
@@ -54,14 +56,51 @@ export class LocalAdapter {
       return Promise.reject(new Error('Model bytes must use a supported codec and fit the 16 MiB import limit.'));
     }
     const limit = 16 * 1024 * 1024;
+    const workspace = request.workspace;
+    if (workspace !== undefined) {
+      if (!['compile-workspace', 'run-project', 'worksheet'].includes(request.operation) || workspace?.version !== 1 ||
+          !workspace.files || typeof workspace.files !== 'object' || Array.isArray(workspace.files)) {
+        return Promise.reject(new Error('Invalid workspace compile request.'));
+      }
+      const entries = Object.entries(workspace.files);
+      const encoder = new TextEncoder();
+      let size = 0;
+      if (entries.length > 2000) return Promise.reject(new Error('Workspace files exceed the 2000-file limit.'));
+      for (const [path, content] of entries) {
+        if (path.length === 0 || path.length > 4096 || /[\\:\u0000-\u001f\u007f]/.test(path) || path.split('/').some(part => part === '' || part === '.' || part === '..')) {
+          return Promise.reject(new Error('Workspace file paths must be confined relative paths.'));
+        }
+        size += encoder.encode(path).length;
+        if (typeof content === 'string') size += encoder.encode(content).length;
+        else {
+          if (!isRecord(content) || Object.keys(content).length !== 2 || content.encoding !== 'base64' ||
+              typeof content.content !== 'string' || content.content.length > 22369624) return Promise.reject(new Error('Invalid workspace binary file.'));
+          try {
+            const bytes = atob(content.content);
+            if (btoa(bytes) !== content.content) throw new Error('Noncanonical base64');
+            size += bytes.length;
+          } catch { return Promise.reject(new Error('Invalid workspace binary file.')); }
+        }
+        if (size > limit) return Promise.reject(new Error('Workspace files must fit the 16-MiB content limit.'));
+      }
+    }
     const files: unknown = request.operation === 'import-folder' ? request.files
       : typeof request.project === 'object' ? request.project.files : undefined;
     // A project holds at most 2,000 files, as a folder import does; paths and contents count toward the bound.
-    const projectSize = Array.isArray(files) && files.length <= 2000 &&
-      files.every(file => typeof file?.path === 'string' && file.path.length <= 4096 && typeof file.content === 'string')
-      ? files.reduce((total, file) => total + file.path.length + file.content.length, 0) : null;
-    if (typeof request.project === 'object' || request.operation === 'import-folder' ? projectSize === null || projectSize > limit
-        : typeof request.source !== 'string' || request.source.length > limit) {
+    let projectSize: number | null = Array.isArray(files) && files.length <= 2000 ? 0 : null;
+    if (projectSize !== null && Array.isArray(files)) for (const file of files) {
+      if (typeof file?.path !== 'string' || file.path.length > 4096) { projectSize = null; break; }
+      projectSize += new TextEncoder().encode(file.path).length;
+      if (typeof file.content === 'string') projectSize += new TextEncoder().encode(file.content).length;
+      else if (request.operation === 'import-folder' && isRecord(file.content) && Object.keys(file.content).length === 2 &&
+        file.content.encoding === 'base64' && typeof file.content.content === 'string' && file.content.content.length <= 22369624) {
+        try { const bytes = atob(file.content.content); if (btoa(bytes) !== file.content.content) throw new Error('Noncanonical bytes'); projectSize += bytes.length; }
+        catch { projectSize = null; break; }
+      } else { projectSize = null; break; }
+      if (projectSize > limit) break;
+    }
+    if (workspace === undefined && (typeof request.project === 'object' || request.operation === 'import-folder' ? projectSize === null || projectSize > limit
+        : typeof request.source !== 'string' || request.source.length > limit)) {
       return Promise.reject(new Error('Source must be text smaller than 16 MiB.'));
     }
     if (request.arguments !== undefined && JSON.stringify(request.arguments).length > 16 * 1024 * 1024) {
@@ -212,11 +251,13 @@ export interface ConnectedArtifactOptions {
   downloads?: ArtifactDownloadRegistry;
 }
 
+export interface ConnectedFileOptions { connect(signal: AbortSignal): Promise<Rpc> }
+
 export class ConnectedAdapter {
   rpc: Rpc;
   executions: ConnectedExecutions | null;
   manifest: Manifest;
-  local: Pick<Adapter, 'execute' | 'cancel'>;
+  local: Pick<Adapter, 'execute' | 'cancel'> & Partial<Pick<Adapter, 'initialize'>>;
   catalog: Catalog;
   projects: Project[];
   documentVersion: number;
@@ -226,11 +267,18 @@ export class ConnectedAdapter {
   readonly artifactDownloads: ArtifactDownloadRegistry;
   private readonly artifactConnect: ArtifactTransferEffects['connect'] | null;
   private activeArtifacts: ArtifactTransferAttempt | null = null;
-  constructor(rpc: Rpc, manifest: Manifest, local: Pick<Adapter, 'execute' | 'cancel'>, executions: ConnectedExecutions | null = null,
-    artifacts?: ConnectedArtifactOptions) {
+  private fileSelection: FileSourceSelection;
+  private files?: ConnectedWorkspaceFiles;
+  private fileOpening?: ConnectedWorkspaceFiles;
+  private fileConnecting?: AbortController;
+  private fileOptions?: ConnectedFileOptions;
+  constructor(rpc: Rpc, manifest: Manifest, local: Pick<Adapter, 'execute' | 'cancel'> & Partial<Pick<Adapter, 'initialize'>>, executions: ConnectedExecutions | null = null,
+    artifacts?: ConnectedArtifactOptions, files?: ConnectedFileOptions) {
     this.rpc = rpc;
     this.executions = executions;
     this.manifest = validateManifest(manifest);
+    this.fileSelection = selectFileSource(structuredClone(this.manifest));
+    this.fileOptions = files;
     this.local = local;
     this.catalog = { frontends: [], targets: [] };
     this.projects = [];
@@ -247,6 +295,7 @@ export class ConnectedAdapter {
       provider.capabilities.some(cap => cap.name === capability && cap.version === '1'));
   }
   async initialize() {
+    const epoch = this.epoch;
     await this.rpc.call('morphir.session.initialize', { protocolVersion: 1, sessionId: this.manifest.sessionId });
     if (this.supports('morphir/playground/catalog')) {
       const catalog = await this.call<Catalog>('morphir.playground.catalog', {});
@@ -272,9 +321,37 @@ export class ConnectedAdapter {
     this.executionsAvailable = this.executions ? await this.executions.initialize() : false;
     const capabilityEvaluator = this.executionsAvailable && this.executions?.capabilityEvaluator === schemeCapabilityEvaluator
       ? schemeCapabilityEvaluator : undefined;
-    return { success: true, operation: 'initialize', connected: true, executionsAvailable: this.executionsAvailable,
+    let fileResult: Pick<WorkResult, 'workspaceFiles' | 'fileAuthority'> = {};
+    if (this.fileSelection.kind === 'selected') {
+      const controller = new AbortController(); this.fileConnecting = controller;
+      const previousProjects = this.projects;
+      let files: ConnectedWorkspaceFiles | undefined;
+      let fileRpc: Rpc | undefined;
+      try {
+        fileRpc = this.fileOptions ? await this.fileOptions.connect(controller.signal) : this.rpc;
+        if (controller.signal.aborted || epoch !== this.epoch) throw new Error('The connected workspace opening was discarded.');
+        files = new ConnectedWorkspaceFiles(fileRpc, this.fileSelection, undefined, !!this.fileOptions);
+        this.fileOpening = files;
+        if (this.fileOptions) await fileRpc.call('morphir.session.initialize', { protocolVersion: 1, sessionId: this.fileSelection.sessionId });
+        fileResult = await files.open();
+        if (epoch !== this.epoch) throw new Error('The connected workspace opening was discarded.');
+        this.files = files;
+        this.projects = [];
+        this.workspaceMessage = undefined;
+        try { const local = await this.local.initialize?.(); if (local?.catalog) this.catalog = local.catalog; }
+        catch { this.catalog = { frontends: [], targets: [] }; this.workspaceMessage = 'Connected · files open; local compilation is unavailable'; }
+        if (epoch !== this.epoch) throw new Error('The connected workspace opening was discarded.');
+      } catch (cause) {
+        files?.dispose(); if (!files && this.fileOptions) fileRpc?.dispose?.();
+        if (this.files === files) this.files = undefined;
+        this.projects = previousProjects; fileResult = {};
+        this.workspaceMessage = 'Connected · read only: ' + workbenchError(cause).message;
+      } finally { if (this.fileOpening === files) this.fileOpening = undefined; if (this.fileConnecting === controller) this.fileConnecting = undefined; }
+    }
+    return { success: true, operation: 'initialize', connected: true, executionsAvailable: this.executionsAvailable, ...fileResult,
+      workspaceReadOnlyReason: this.files ? undefined : this.fileSelection.kind === 'read-only' ? this.fileSelection.message : this.workspaceMessage,
       capabilityEvaluator, capabilityRuntime: capabilityEvaluator ? 'connected' as const : undefined, catalog: this.catalog, projects: this.projects,
-      message: this.workspaceMessage || (this.catalog.frontends.length ? 'Connected · ready to compile' : 'Connected · no compiler is advertised') };
+      message: this.workspaceMessage || (this.files ? 'Connected · workspace files open; compilation uses the local worker' : this.catalog.frontends.length ? 'Connected · ready to compile' : 'Connected · no compiler is advertised') };
   }
   async execute(request: WorkRequest, progress?: Progress): Promise<WorkResult> {
     // Capture the entire caller-owned selection before any asynchronous host or
@@ -295,6 +372,7 @@ export class ConnectedAdapter {
     if (request.operation === 'resume-execution') return this.executions!.resume(progress);
     // Worksheets remain local even when compilation uses a connected host.
     if (request.operation === 'worksheet') return this.local.execute(request);
+    if (this.files && ['compile-workspace', 'run-project'].includes(request.operation)) return this.local.execute(request);
     if (request.operation === 'evaluate' && this.executionsAvailable) return this.executions!.execute(request, progress);
     this.artifactDownloads.clear();
     if (request.operation === 'inspect') return this.local.execute(request);
@@ -382,12 +460,19 @@ export class ConnectedAdapter {
     }
     return result;
   }
-  cancelModelOpen() { ++this.epoch; this.local.cancel(); /* Frozen v1 has no server cancellation. */ }
+  async saveWorkspace(grantId: string, workspace: NonNullable<WorkRequest['workspace']>) {
+    if (!this.files) throw new Error('This connected host has no writable workspace grant.');
+    return this.files.save(grantId, workspace);
+  }
+  async revokeWorkspace(grantId: string) { await this.files?.revoke(grantId); }
+  cancelModelOpen() { ++this.epoch; this.fileConnecting?.abort(); this.fileOpening?.dispose(); this.local.cancel(); /* Frozen v1 has no server cancellation. */ }
   cancel() {
     const active = this.activeArtifacts; this.activeArtifacts = null;
     const executionPending = this.executions?.active || (this.executions?.execution && this.executions.execution.state !== 'terminal');
     if (executionPending && !active) return this.executions!.cancel();
     ++this.epoch;
+    this.fileConnecting?.abort();
+    this.fileOpening?.dispose();
     if (!executionPending || active) this.local.cancel();
     const artifacts = active?.cancel();
     const execution = executionPending ? this.executions!.cancel() : undefined;
@@ -399,7 +484,7 @@ export class ConnectedAdapter {
     if (active) void active.cancel();
     this.artifactDownloads.clear();
   }
-  dispose() { ++this.epoch; this.local.cancel(); void this.activeArtifacts?.cancel(); this.activeArtifacts = null;
+  dispose() { ++this.epoch; this.fileConnecting?.abort(); this.fileOpening?.dispose(); this.files?.dispose(); this.local.cancel(); void this.activeArtifacts?.cancel(); this.activeArtifacts = null;
     this.artifactDownloads.clear(); this.rpc.dispose?.(); }
 }
 
@@ -425,6 +510,6 @@ export async function connect(location: Pick<Location, 'href' | 'protocol'>, loc
     } });
     return new ConnectedAdapter(rpc, manifest, local, executions, {
       connect: signal => openArtifactChannel(() => new Socket(url.href), signal), downloads: verifiedArtifactDownloads,
-    });
+    }, { connect: signal => openWorkspaceFilesRpc(() => new Socket(url.href), signal) });
   } catch (cause) { const error = workbenchError(cause); rpc.dispose(); throw error; }
 }

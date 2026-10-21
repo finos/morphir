@@ -11,13 +11,13 @@ test "restore accepts a valid project and refuses corrupt ones with a note" {
     s.expect(none, label="no note").to_equal("")
     s
     .expect(
-      ok.language_projects.get("elm").map(p => p.name.to_string()),
+      test_project_map(ok).get("elm").map(p => p.name.to_string()),
       label="restored",
     )
     .to_equal(Some("Workbench"))
     s
     .expect(
-      mismatch.language_projects.contains("elm"),
+      test_project_map(mismatch).contains("elm"),
       label="mismatch kept default",
     )
     .to_be_false()
@@ -34,7 +34,7 @@ test "restore accepts a valid project and refuses corrupt ones with a note" {
       .to_contain("Could not restore the saved elm project")
       s
       .expect(
-        kept.language_projects.contains("elm"),
+        test_project_map(kept).contains("elm"),
         label=text + " kept default",
       )
       .to_be_false()
@@ -42,7 +42,7 @@ test "restore accepts a valid project and refuses corrupt ones with a note" {
     let (empty, quiet) = restored(model, "elm", "")
     s.expect(quiet, label="nothing stored").to_equal("")
     s
-    .expect(empty.language_projects.contains("elm"), label="nothing restored")
+    .expect(test_project_map(empty).contains("elm"), label="nothing restored")
     .to_be_false()
   })
 }
@@ -55,7 +55,7 @@ test "restore is total over any stored text" {
     let text = String::from_array(chars)
     let (after, note) = restored(model, "elm", text)
     @expect.expect(
-      after.language_projects.contains("elm") || note != "" || text == "",
+      test_project_map(after).contains("elm") || note != "" || text == "",
       label="restored, noted or empty",
     ).to_be_true()
   })
@@ -64,11 +64,7 @@ test "restore is total over any stored text" {
 ///|
 test "a change saves once, for the current revision only, and a failed save shows Not saved" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let (edited, _) = update(model, Source("(define a 1)"), emit)
   let (stale, _) = update(edited, SaveProject(edited.revision - 1), emit)
   let (current, _) = update(edited, SaveProject(edited.revision), emit)
@@ -83,11 +79,7 @@ test "a change saves once, for the current revision only, and a failed save show
 ///|
 test "reset asks first, then restores the default project" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let (edited, _) = update(model, Source("(define a 1)"), emit)
   let (asked, _) = update(edited, RunCommand(ResetProject), emit)
   let (kept, _) = update(asked, CancelReset, emit)
@@ -107,27 +99,23 @@ test "reset asks first, then restores the default project" {
 ///|
 test "a language switch inside the debounce window still saves the earlier edit" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let (edited, _) = update(model, Source("(define a 1)"), emit)
   let (switched, _) = update(edited, Language("moonbit"), emit)
   let (typed, _) = update(switched, Source("pub fn x() -> Bool { true }"), emit)
   let (first, _) = update(typed, SaveProject(edited.revision), emit)
   let (second, _) = update(typed, SaveProject(typed.revision), emit)
   @expect.expect_all(s => {
-    s.expect(typed.dirty, label="both dirty").to_equal(["scheme", "moonbit"])
+    s.expect(typed.dirty, label="both dirty").to_equal(["workspace"])
     s
     .expect(first.save_attempts, label="stale save writes nothing")
     .to_equal([])
     s
     .expect(second.save_attempts, label="current save writes both")
-    .to_equal([legacy_key("scheme"), legacy_key("moonbit")])
+    .to_equal([workspace_prefix(second) + ".tree.v1"])
     s
     .expect(second.dirty, label="failed writes stay dirty")
-    .to_equal(["scheme", "moonbit"])
+    .to_equal(["workspace"])
     s.expect(second.storage_ok, label="not saved").to_be_false()
   })
 }
@@ -135,11 +123,7 @@ test "a language switch inside the debounce window still saves the earlier edit"
 ///|
 test "a language change closes the reset question" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let (asked, _) = update(model, RunCommand(ResetProject), emit)
   let (switched, _) = update(asked, Language("elm"), emit)
   @expect.expect(switched.reset_asking, label="closed").to_be_false()
@@ -148,25 +132,21 @@ test "a language change closes the reset question" {
 ///|
 test "a save scheduled for an unedited language still writes the dirty one" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let (edited, _) = update(model, Source("(define a 1)"), emit)
   let (switched, _) = update(edited, Language("elm"), emit)
   let (saved, _) = update(switched, SaveProject(switched.revision), emit)
   @expect.expect_all(s => {
     s
     .expect(saved.save_attempts, label="scheme attempted")
-    .to_equal([legacy_key("scheme")])
+    .to_equal([workspace_prefix(model) + ".tree.v1"])
   })
 }
 
 ///|
 test "moving the active file marks the language dirty without a revision change" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = { ..scope_model(), catalog: catalog_fixture(), language: "elm", }
+  let model = { ..source_model("elm"), }
   let (added, _) = update(model, Files(StartAdd(Some(Root))), emit)
   let (drafted, _) = update(
     added,
@@ -182,7 +162,7 @@ test "moving the active file marks the language dirty without a revision change"
   )
   @expect.expect_all(s => {
     s.expect(opened.revision, label="revision").to_equal(clean.revision)
-    s.expect(opened.dirty, label="dirty").to_equal(["elm"])
+    s.expect(opened.dirty, label="dirty").to_equal(["workspace"])
   })
 }
 
@@ -195,11 +175,7 @@ fn stored_moonbit_library(model : Model) -> String {
 ///|
 test "a restored profile survives the first visit to its language and is saved" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let stored = stored_moonbit_library(model)
   let loaded = restore_all_with(model, key => {
     if key == legacy_key("moonbit") {
@@ -227,13 +203,8 @@ test "a restored profile survives the first visit to its language and is saved" 
 }
 
 ///|
-test "a restored profile the catalog does not list is dropped with a note" {
-  let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+test "an unavailable saved profile is retained with a note" {
+  let model = { ..scope_model(), catalog: catalog_fixture(), }
   let stored = stored_moonbit_library(model).replace_all(
     old="moonbit-model-stable-v1",
     new="gone-profile-v1",
@@ -245,24 +216,16 @@ test "a restored profile the catalog does not list is dropped with a note" {
       ""
     }
   })
-  let (visited, _) = update(loaded, Language("moonbit"), emit)
-  @expect.expect_all(s => {
-    s
-    .expect(
-      loaded.panel.logs
-      .map(l => l.message)
-      .iter()
-      .any(m => m.contains("no longer available")),
-      label="note",
-    )
-    .to_be_true()
-    s
-    .expect(
-      active_project(visited).profile.map(p => p.to_string()),
-      label="default profile",
-    )
-    .to_equal(Some("moonbit-model-stable-v1"))
-  })
+  assert_eq(
+    test_project_map(loaded)
+    .get("moonbit")
+    .bind(p => p.profile)
+    .map(p => p.to_string()),
+    Some("gone-profile-v1"),
+  )
+  assert_true(
+    loaded.panel.logs.any(log => log.message.contains("no longer available")),
+  )
 }
 
 ///|
@@ -281,27 +244,26 @@ test "restore_all skips connected sessions and invalid languages" {
   )
   @expect.expect_all(s => {
     s
-    .expect(connected.language_projects.length(), label="connected")
-    .to_equal(0)
+    .expect(connected.workspace_files, label="connected unchanged")
+    .to_equal(scope_model().workspace_files)
     s
-    .expect(invalid.language_projects.length(), label="invalid language")
+    .expect(test_project_map(invalid).length(), label="invalid language")
     .to_equal(0)
   })
 }
 
 ///|
-test "reset removes the stored key of its language" {
+test "reset changes the current project files and keeps browser migration keys until a save" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let (asked, _) = update(model, RunCommand(ResetProject), emit)
   let (done, _) = update(asked, ConfirmReset, emit)
-  @expect.expect(done.removed_key, label="removed").to_equal(
-    legacy_key("scheme"),
+  assert_eq(done.removed_key, "")
+  assert_eq(
+    done.workspace_files.read("morphir.toml"),
+    model.workspace_files.read("morphir.toml"),
   )
+  assert_true(!done.reset_asking)
 }
 
 ///|
@@ -340,20 +302,17 @@ test "a folder picked while another execution runs is refused; a stale import re
 }
 
 ///|
-test "a reset inside another language's debounce still schedules that language's save" {
+test "resetting edited sources inside a debounce schedules the new file generation" {
   let sent : Array[Msg] = []
   let record = @cmd.Emit(fn(msg) {
     sent.push(msg)
     @cmd.none
   })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
-  let (edited, _) = update(model, Source("(define kept 1)"), record)
-  let (elm, _) = update(edited, Language("elm"), record)
-  let (asked, _) = update(elm, RunCommand(ResetProject), record)
+  let model = send(multiple_projects(), [
+    OpenWorkspaceFile("packages/two/src/main.scm"),
+  ])
+  let (edited, _) = update(model, Source("33"), record)
+  let (asked, _) = update(edited, RunCommand(ResetProject), record)
   sent.clear()
   let (reset, _) = update(asked, ConfirmReset, record)
   let scheduled = sent.filter_map(msg => {
@@ -365,16 +324,19 @@ test "a reset inside another language's debounce still schedules that language's
   })
   let (saved, _) = update(reset, SaveProject(reset.revision), record)
   @expect.expect_all(s => {
-    s.expect(reset.dirty, label="scheme still dirty").to_equal(["scheme"])
+    s.expect(reset.dirty, label="scheme still dirty").to_equal(["workspace"])
     s
     .expect(scheduled, label="save for the new revision")
     .to_equal([reset.revision])
     s
     .expect(saved.save_attempts, label="scheme written")
-    .to_contain_element(legacy_key("scheme"))
+    .to_contain_element(workspace_prefix(reset) + ".tree.v1")
     s
-    .expect(saved.save_attempts, label="reset language not written back")
-    .to_contain_none_of([legacy_key("elm")])
+    .expect(
+      saved.workspace_files.read("packages/one/src/main.scm"),
+      label="other project retained",
+    )
+    .to_equal(Some("11"))
   })
 }
 

@@ -1,5 +1,5 @@
 ///|
-/// Qualify native read-only grants against actual files and adversarial mutation.
+/// Qualify native file grants against actual files and adversarial mutation.
 import {
   "moonbitlang/async@0.22.4",
   "moonbitlang/async@0.22.4/fs",
@@ -10,6 +10,18 @@ import {
 
 ///|
 async fn main {
+  let tested = @process.run(
+    "moon",
+    [
+      "test", "--target", "native", "-p", "finos/morphir-workbench-native/workspace",
+      "finos/morphir-workbench-native/bridge",
+    ],
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if tested != 0 {
+    @sys.exit(if tested < 0 { 1 } else { tested })
+  }
   let built = @process.run(
     "moon",
     [

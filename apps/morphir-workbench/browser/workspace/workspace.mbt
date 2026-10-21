@@ -570,6 +570,16 @@ pub fn Registry::set_language(
 }
 
 ///|
+/// Cached summary only: the workspace files determine these contents on opening.
+pub fn Registry::set_contents(
+  self : Registry,
+  id : WorkspaceId,
+  contents : Array[Content],
+) -> Registry {
+  self.change(id, entry => { ..entry, contents: contents.copy(), })
+}
+
+///|
 /// Makes sure new workspaces get numbers above `number`, such as the highest number among keys this browser
 /// already holds, so a new workspace never reads another workspace's saved projects.
 pub fn Registry::reserve(self : Registry, number : Int32) -> Registry {

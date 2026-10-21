@@ -5,4 +5,6 @@ pkgtype(kind: "executable")
 import {
   "finos/morphir-workbench/executions",
   "finos/morphir-workbench/worksheet",
+  "finos/morphir-workbench-native-session/workspace-files" @files,
+  "moonbitlang/core/encoding/utf8",
 }

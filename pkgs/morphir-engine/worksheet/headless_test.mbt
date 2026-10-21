@@ -100,3 +100,30 @@ test "fixed form and runtime limits retain their meanings" {
     report.to_json(),
   )
 }
+
+///|
+test "host preparation shares the worksheet budget and cannot shift captured ranges" {
+  let captured = @worksheet.WorksheetRequest::decode(
+    request(";😀\r\n(+ project 2)"),
+  )
+  let report = captured.evaluate(prepare=runtime => {
+    ignore(runtime.eval("(define project 40)"))
+  })
+  assert_eq(report.observations()[0].preview(), "42")
+  assert_eq(report.observations()[0].expression(), "(+ project 2)")
+  let failed = captured.evaluate(prepare=runtime => {
+    ignore(runtime.eval("(let loop () (loop))"))
+  })
+  assert_false(failed.successful())
+  assert_eq(
+    @worksheet.WorksheetReport::decode(captured, failed.to_json().stringify()).to_json(),
+    failed.to_json(),
+  )
+  assert_eq(
+    @wire.field(
+      @wire.field(@wire.field(failed.to_json(), "completion"), "failure"),
+      "code",
+    ),
+    Json::string("worksheet.context_failed"),
+  )
+}

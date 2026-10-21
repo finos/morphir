@@ -19,7 +19,9 @@ frontend uses these same import and download paths.
 Packaged Proton also negotiates a page-bound desktop session. It
 uses browser workers for compilation and explicitly selected Local Scheme evaluation.
 On qualified macOS Apple Silicon packages, Typed invocation uses owned native
-workers. The explorer also offers read-only workspace grants. Explicit connected launches take precedence over this bootstrap.
+workers. The explorer also offers explicitly requested writable folder grants,
+with read-only model access on older hosts. Explicit connected launches take
+precedence over this bootstrap.
 
 `browser/execution-session.js` owns shared execution observation and receipt validation.
 `browser/execution-transport.js` carries bounded HTTP text frames; an injected transport
@@ -40,7 +42,8 @@ With no workspace open, **Getting started** offers four ways in:
 - **Try an idea**: Capture intent, Sketch a conceptual model or a Scratch worksheet.
   An idea does not need source code or an imported model.
 - **Open a workspace**: import a source folder (copied into the browser; nothing is
-  written back) or, on desktop builds with folder grants, open a folder read-only.
+  written back) or, on desktop builds with folder grants, open a workspace folder.
+  The native picker states whether it grants editing or read-only access.
   Saved workspaces are listed under **Recent workspaces**.
 - **Create a workspace**: a name and a starting point (empty, source project or
   sandbox). The location is this browser.
@@ -96,10 +99,17 @@ it is; dismissing it changes nothing. Selecting a generated file shows it read-o
 in the editor area.
 
 Storage is browser-local. The workspace list (`morphir-workbench.workspaces.v1`),
-source projects, the worksheet and the drafts are saved per workspace as you work.
-Projects saved before workspaces existed keep their keys and appear as **My
-project**. Models, generated files and execution state stay in the page; a reopened
-workspace asks for its model again. A page load shows Getting started rather than
+workspace files, the worksheet and the drafts are saved per workspace as you work.
+A save writes a new set of file records, then commits its manifest. Interrupted saves
+leave the previous manifest readable. Older per-language projects migrate into a real
+workspace tree; the most recently selected language becomes the root project, and other
+projects get named member folders. Legacy keys remain until the migrated tree saves.
+Imported models live under `models/` as byte-backed files, including BOMs, original
+line endings and binary sidecars. `.morphir/workbench-models.json` records an explicitly
+selected codec and the root of each captured YAML tree. Opening one of these files,
+or reopening a workspace whose last file was a model, inspects the saved originals.
+A colliding import gets a separate folder and retains its original filename.
+Generated files and execution state stay in the page; a reopened source workspace compiles again. A page load shows Getting started rather than
 reopening a workspace. Two tabs that edit one workspace overwrite each other's saves;
 there is no cross-tab synchronization. A connected host provides one workspace,
 **Connected host**, and nothing is stored locally for it.
@@ -166,9 +176,11 @@ Previews, diagnostics and typed projection enforce their budgets during
 traversal, including shared Scheme values that could otherwise expand enormously.
 
 The local worker compiles through `@engine.Engine` with the MoonBit and Elm providers: discover, plan and
-`execute_content`. Generation uses the engine backends `scheme`, `elm` and `moonbit`. A request carries `source`
-(one file) or `project` (`name`, `languageId`, `files[]`, optional `frontendProvider`, `frontendProfile`,
-`exposedModules`).
+`execute_content`. Generation uses the engine backends `scheme`, `elm` and `moonbit`.
+A `compile-workspace` request carries the real workspace files, including configuration.
+Discovery and planning read those files with the same rules as the CLI. Each project has
+its own results and diagnostics, so a failed project does not discard successful results.
+The worker also accepts the older `source` and `project` request shapes for compatibility.
 
 Choose **Elm** as the project's generation target (**Settings** › **Projects**, or
 **Set generation target…** in the command palette), or open the **Elm constant** sample, to generate
@@ -201,7 +213,7 @@ The example uses `(define answer 42)` with **Compile** to generate a library
 without an application entry point. Elm reserves `main` for Html, Svg or Program
 values, so Scheme's implicit numeric `main` must be renamed before Elm compilation.
 
-Choose **MoonBit** in Language, or open the **MoonBit Boolean** sample.
+Create a project with **MoonBit** as its language, or open the **MoonBit Boolean** sample.
 Stable accepts multiple typed Bool/String/Int32 functions, immutable bindings,
 Boolean operators, direct acyclic calls, String ordering, length, owned slices and
 the pinned `is_empty`, `contains`, `has_prefix` and `has_suffix` predicates.
@@ -210,7 +222,8 @@ Boolean inputs and evaluate through typed validation. **Evaluate in Explorer**
 in the build menu opens the model document, because the frontend does not create an
 implicit Scheme `main` entry. Private functions remain inspectable.
 
-The **Source profile** selector uses the local provider's capability descriptions.
+The **Source profile** selector in **Settings** › **Projects** uses the local provider's
+capability descriptions. Each project's **Profile details** disclosure lists its supported features and limits.
 Fresh local MoonBit projects select **Stable typed MoonBit library**,
 `moonbit-model-stable-v1`, which contains the promoted source capabilities. Select
 `moonbit-model-experimental-v1` explicitly for new numeric capabilities. Open **MoonBit library** for an example using Bool, String and Int32
@@ -232,7 +245,7 @@ language remain unsupported; installed qualification is tracked separately.
 
 Only stable and experimental are selectable. The Boolean seed and intermediate
 profiles are retired. Update saved choices to a channel ID; unavailable saved
-choices are reported and removed. Existing checkpoints keep their recorded
+choices are reported and retained in the project configuration. Existing checkpoints keep their recorded
 provenance. All built-in MoonBit samples use stable and can grow as capabilities
 are promoted after qualification.
 
@@ -241,12 +254,18 @@ Select a public function to evaluate with fields, JSON or Ion; zero-input functi
 require no arguments. Private helpers remain inspectable and are unavailable as
 entry points. The frontend does not infer a library entry point.
 
-Language and source-profile switches restore each draft and CodeMirror undo history.
-Profile selection uses the portable worker's provider descriptors and compiler
-callbacks. Connected protocol v1 retains its existing catalog and parameters;
-this selector is available locally until a host negotiates profile support.
-The Scheme worksheet has its own draft and runtime. It remains Scheme even
-when the compile view has MoonBit selected. Elm is a generation target only.
+Opening a file selects its owning project. Language, source profile and generation
+settings belong to that project and appear in **Settings** › **Projects**. Profile
+selection uses the portable worker's provider descriptors and compiler callbacks.
+Connected protocol v1 retains its existing catalog and parameters. The Scheme
+worksheet is a separate workspace file and remains Scheme when the current project
+uses another language. Each run compiles the current project into its fresh bounded
+runtime. Public functions are callable by canonical qualified name, such as
+`shop:main#identity`, or module name, such as `main.identity`. An unambiguous short
+name, such as `identity`, is also available when it does not shadow a Scheme builtin.
+Call a zero-argument value with parentheses too. Changing projects or source files
+marks an earlier worksheet report stale. A project compile failure stops the worksheet
+with a context diagnostic before executing its forms.
 
 The **MoonBit** Target produces `library.mbt`, `moon.mod`, `moon.pkg` and binary
 `symbols.10n`. Text files have read-only highlighting; file/ZIP downloads retain the exact bytes of binary files.
@@ -280,8 +299,9 @@ Imported JSON versions 1–4 are decoded and migrated explicitly to the current
 semantic model. Local export writes normalized v4 JSON. Source and model state
 are held in memory, so reloading starts a fresh session.
 
-Elm is in the Language picker. The single editor holds one Elm module: its header (`module A.B.C exposing (..)`)
-gives the package `A.B`, the file `src/A/B/C.elm` and the exposed module `C`. A frontend failure lists its
+Create an Elm project or open an Elm sample. The project's configuration gives its
+package name, source directory and exposed modules; its source files keep their module
+headers. Several Elm files compile together as one project. A frontend failure lists its
 problems in the bottom panel by file. The panel shows an Elm or Morphir source column as written, and a MoonBit
 parser column plus one, following the `coordinateProfile` of each problem
 (`elm-source-position-v1`, `moonbit-parser-position-v1`, `morphir-source-location-v1`).
@@ -545,11 +565,13 @@ A page that hosts the workbench can add `<meta name="morphir-site-home" content=
 to that URL. The project site does this at `/try/`;
 the desktop host and the development server do not.
 
-The source document keeps Language, Source profile and **Profile details** on
-demand on its tab row. While it is open, the header holds the segmented **Compile &
-inspect** | **Worksheet** picker and, beside it, **Compile** (or **Run worksheet**) as
-the primary action. **More build actions** lists Compile & run or Evaluate in Explorer
-with the command palette's availability and reasons. Cancel appears only while an
+The source document shows the current project's name and language. Project language,
+source profile and generation settings live in **Settings** › **Projects**. While the
+source is open, the header holds the segmented **Compile & inspect** | **Worksheet**
+picker and **Compile workspace**, or **Run worksheet**, as the primary action.
+**More build actions** also offers Compile current project, Compile & run and Evaluate
+in Explorer, with the command palette's availability and reasons. A workspace's
+`default_member` limits its default build selection; without it, all members compile. Cancel appears only while an
 operation runs. Side by side, the document tabs head the source pane and the output
 tabs head the output pane in one shared row, so line 1 of the source and of the
 output start at the same height. **Expand source** on the tab row gives the source the
@@ -615,7 +637,7 @@ limits. These limits are not a complete memory sandbox.
 filesystem or process APIs are imported by the UI. The desktop host packages
 the same frontend and worker without a second implementation of either view.
 The packaged desktop adds page-bound typed native commands for owned evaluation
-workers and read-only workspace grants on qualified macOS Apple Silicon builds.
+workers and folder grants on qualified macOS Apple Silicon builds.
 The explorer's **Open workspace** action uses the OS folder picker, discovers
 projects through the shared engine, and opens saved JSON or Ion checkpoints.
 **Original file** retains the exact imported bytes and version; **Export IR**
@@ -623,7 +645,56 @@ exports the normalized current IR. Rich Ion retains its logical unit identity,
 annotations, metadata and provenance. Browser-only runs continue to use file
 imports; connected launches use their host's workspace protocol.
 
+Writable folders use a separate page-bound file capability. Project creation,
+settings and source edits save to the selected folder; the status line reports
+pending, saved and blocked saves. A conflicting external edit is retained on
+disk, and the local draft remains available. Browser storage never retains a
+native grant: a reopened draft is labeled as detached until the folder is chosen
+again. See the [native file service](../../pkgs/morphir-workbench-native/workspace/README.md)
+for transfer bounds, confinement, rollback and recovery behavior.
+
 ## Connected host compatibility
+
+Workspace file editing is negotiated separately from the existing v1 compiler,
+model, execution and artifact capabilities. The MoonBit client supports the
+draft `morphir/workbench/workspace-files` `0.1.0-draft.1` profile when one available
+provider advertises it for one initial source. The host must also accept a
+session-bound file grant before any editing is enabled. Missing, incompatible
+or ambiguous offers keep the workspace read-only and show the reason.
+
+The proposed connected binding calls `morphir.workspace-files.exchange` with
+`{protocolVersion: 1, sessionId, source, frame}`. The session and complete source
+record are captured from the manifest before asynchronous work; `frame` is the
+raw bounded file-profile JSON string. `workspace.choose-write` selects that
+advertised root for editing. The host validates the authenticated session,
+connection, provider and source on every call; renderer locators do not supply
+filesystem authority. Its result is a raw file-profile reply string.
+
+File grants own a separate same-origin WebSocket, initialized through v1. Its
+complete JSON-RPC frames are bounded to 2 MiB plus 64 KiB for escaping and source
+metadata. Replies have closed `jsonrpc`, `id`, `result` or `error` envelopes;
+errors contain an integer `code` and bounded `message`. The compiled codec
+checks the pending call ID before the file client checks the inner operation,
+session, sequence and offset. Unsolicited or malformed replies close only the
+file connection. The host revokes its grants on connection closure.
+
+Uploads contain an immutable candidate inventory and the grant's expected
+baseline revision. The host owns the baseline, confines paths and links, stages
+the entire batch, and retains recovery data if rollback cannot be confirmed.
+Successful commits advance the grant revision by one and keep their terminal
+status so a lost reply can be queried without submitting another edit. The
+client retains the open draft after a refused or uncertain save. These wire
+and inventory bounds are shared with the
+[file boundary](../../pkgs/morphir-workbench-native-session/workspace-files/README.md).
+
+Editing connected files uses the same discovery, settings and scaffolding as
+local workspaces. Compilation and project-aware worksheets use the bundled
+worker's languages and backends; existing connected execution offers remain
+independent. Connected drafts and grants stay in the page rather than browser
+storage. The finos/morphir host implementation and protocol adoption are tracked
+separately in `morphir-ukvn.5.86.12`; the client is verified against a fixture
+provider backed by the real native file owner. This does not claim upstream host
+support for the proposed binding.
 
 Use `?mode=connected` only when the assets are served by the Morphir host that
 provides `/api/session` and `/rpc`. Authenticate through that host's `/launch`
@@ -818,44 +889,46 @@ shared MCK client qualification is also a separate gate.
 
 ## Projects
 
-The editor holds one project for each language. The pure model is the package
-`finos/morphir-workbench/project`.
+A workspace is a bounded file tree, including its `morphir.toml` configuration.
+The shared workspace engine discovers its projects. Project identity is the normalized
+path from the workspace root, with `.` naming a root project; two projects can use the
+same language. A virtual workspace can contain only members, while a root project can
+also have members. The innermost project owning the open file is current.
 
-- A project keeps its files under `src/`. Paths are relative and use `/` between folders.
-- A language that compiles one file at a time (Scheme, MoonBit) holds one file. "New file" is disabled and
-  the reason names `morphir-ukvn.5.22.14`, where projects of several files are planned.
-- An Elm project holds many files. A new Elm file starts with its module header.
-- An Elm package exposes modules relative to the package name: in package `Shop.Orders`, the file
-  `src/Shop/Orders/Api.elm` is module `Api`. Renaming a file moves its exposure; deleting a file drops it.
-- A project always keeps at least one file, and the active file always exists.
-- A folder is implied by the paths of its files. Renaming a folder moves each of its files under the rules of a file
-  rename; deleting a folder deletes its files, and is refused when it holds every file.
+Each project chooses its language, source profile and generation settings in its own
+configuration. Workspace defaults apply when a project has no override. Settings shows
+effective values and their origins; clearing an override restores inheritance. Legacy
+`morphir.json` projects stay readable and offer an explicit conversion to TOML before
+settings edits.
 
 ### Project explorer
 
-In a workspace with a source project, the Files section shows the project as a tree, as in a code editor (package
-`finos/morphir-workbench/browser/project-files`). Folders come from the paths and sort before files, by code unit;
-a chain of single folders shares one row (`src/Workbench`). Rows show an icon for the file type, the problems of the
-last compile (folders show the sum) and, for Elm, an arrow on exposed modules. The header holds the package name
-(select it to rename the package) and New file, Import folder, Collapse folders and More actions.
+The Files section has **Folders** and **Projects** views. Folders follows the workspace's
+paths and marks project roots. Projects groups discovered projects, shows their language
+and current state, and keeps files outside projects available. The view choice belongs to
+the application and persists across workspaces.
 
-- Right-click a row, or press Shift+F10 or the menu key, for its menu: Open, New file, Rename, Delete, Copy path,
-  Expose module or Stop exposing module, Show problems. More actions holds the project menu, with Reset project.
-- New file and Rename edit the name in place; Enter commits, Escape cancels, and a refusal shows under the input.
-  A name can hold `/` to make folders. Delete asks in the row; Enter deletes, Escape keeps.
-- The tree follows the WAI-ARIA tree pattern: arrows, Home, End, Enter (open and go to the editor), Space (open and
-  stay) and a letter to jump. F2 renames and Delete or ⌘⌫ deletes the focused row.
+**Add project** asks for its name, folder, language and optional source profile, then uses
+the engine's shared scaffolding to write its configuration and starter file. A project's
+actions offer Compile, Settings and Remove. Removal normally changes membership while
+keeping files; deleting its files requires the explicit checkbox. Root and nested-project
+deletion safeguards are shared with the CLI.
+
+**New file** accepts a confined workspace-relative path. Each file's actions offer
+**Rename or move** and **Delete**, including configuration and ordinary content files.
+Right-click a file or press Shift+F10 for its actions. F2 opens its rename dialog.
+Arrow keys navigate the tree and expand or collapse folders; Home and End jump to its ends.
+Scheme and MoonBit projects can contain multiple source files; each file compiles as its
+own unit. Elm files compile together. Renaming and deletion preserve unrelated files.
 
 ### Shortcuts and the command palette
 
-Mod is ⌘ on macOS and Ctrl elsewhere. Mod+P opens quick open over the project's files; Mod+Shift+P or F1 opens the
-command palette (a leading `>` in the same input lists commands); Mod+Enter compiles. These three work in the editor
-too; tree shortcuts work only on a focused row. The palette matches letters in order (fuzzy), marks the matched
-letters, lists recently run commands first, shows each command's shortcut and dims a command that cannot run now with
-its reason. Switch language, Set generation target and Open sample ask a second question in the same palette.
-The keymap is one table in `finos/morphir-workbench/browser/keys`; menus and the palette read it, so a shortcut is
-shown where it works. Fuzzy matching, filtering and the palette state are in
-`finos/morphir-workbench/browser/command-palette`.
+Mod is ⌘ on macOS and Ctrl elsewhere. Mod+P searches all workspace files;
+Mod+Shift+P or F1 opens the command palette; Mod+Enter compiles. These shortcuts work
+in the editor too. The palette uses fuzzy matching, lists recent commands first, and
+shows the reason when a command cannot run. Project language, source profile, generation
+target and samples have a second choice list. Menus and the palette read the shared
+keymap in `finos/morphir-workbench/browser/keys`.
 
 ## Samples
 
@@ -876,16 +949,15 @@ regenerate them; CI fails when the committed assets differ from its output.
 
 ## Folder import
 
-The local worker accepts `{"operation": "import-folder", "files": [{"path", "content"}]}` with the text files of a
-folder. A common leading folder (as `webkitdirectory` gives, `rentals/morphir.json`) is removed first. The
-folder's `morphir.json` is read with the CLI's discovery rules (`name`, `sourceDirectory`, `exposedModules`;
-`dependencies` give a warning). The reply is `{"success": true, "project": {"name", "languageId": "elm",
-"exposedModules", "files"}, "warnings", "skipped"}`: the `.elm` files under the source directory, re-rooted to
-`src/`, and the number of other files left out. The reply's project is a copy; nothing is written back.
+The local worker accepts `{"operation": "import-folder", "files": [{"path", "content"}]}`.
+It strips a common leading folder, retains the actual workspace and project configuration,
+and discovers `morphir.toml` workspaces and members using the CLI's rules. Legacy
+`morphir.json` projects remain supported. Import is a copy and does not write to the
+selected folder.
 
-A failure is `{"success": false, "message": "<code>: <text>"}` with one of `workbench.folder_without_morphir_json`,
-`workbench.folder_too_large` (more than 2,000 files or 16 MiB of text), `workbench.folder_configuration`
-(the manifest, the package name or a path is not valid) and `workbench.folder_without_sources`.
+The successful reply contains `workspace`, the real file tree, plus a legacy `project`
+projection, `warnings` and `skipped`. Invalid configuration, unsafe paths and folders
+over 2,000 files or 16 MiB fail with a structured diagnostic.
 
 ## Typed terminal outcomes
 
@@ -971,15 +1043,22 @@ cookie authentication, exact Decimal fields/JSON/Ion results, Result.Err, SDK
 errors, cancellation, disconnected-query reconciliation and stale-input output.
 They do not add an evaluation or cancellation method to connected JSON-RPC v1.
 
-## Projects in the browser
+## Workspace files in the browser
 
-Each language keeps one project (its files, package name and exposed modules) in this browser's `localStorage`, under
-`morphir-workbench.project.<language>.v1`. A change is saved 600 ms after the last edit. The workbench restores the
-saved projects when it starts in local mode; a saved project that no longer parses is ignored and the Logs say so.
-When the browser refuses the save (a private window, a full quota), "Not saved" shows under the project explorer and
-the project stays in the page. "Reset project" (in the explorer's More actions menu and the command palette) asks
-inline, then restores the default project of the language and removes the saved copy. Nothing leaves the browser: a folder import is a copy, and connected mode (a Morphir host) does not use
-this storage.
+Saved workspace files carry typed text or binary content. Binary records use base64
+at the JSON storage boundary and remain binary in the file model. They are not decoded
+or rewritten as text. The engine receives typed binary input when a frontend selects
+one, and a text-only frontend refuses it. Per-file records live under
+`morphir-workbench.workspace.<id>.files.<generation>.<index>` and a `.tree.v1` manifest.
+A change saves after a short delay. The manifest commits only after every file record
+has been written. A failed save retains the previous generation; after success, the
+writer collects only records named by its preceding manifest. It leaves another tab's
+pending generation alone. Concurrent tabs still use last-writer-wins semantics.
+
+When the browser refuses a save, the project stays in the page and the Workbench reports
+the failure. Invalid saved trees remain stored for recovery. Reset project restores
+starter sources for the current project while retaining its identity and settings.
+Folder imports are copies; connected workspaces do not use browser-local project storage.
 
 ## Breaking execution migration
 

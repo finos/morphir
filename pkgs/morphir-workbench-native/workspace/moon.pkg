@@ -2,6 +2,7 @@ supported_targets = "native"
 
 import {
   "finos/morphir-workbench-native-session/response" @reply,
+  "finos/morphir-workbench-native-session/workspace-files" @filewire,
   "finos/morphir-engine/workspace" @engine,
   "finos/morphir-workbench/executions",
   "moonbitlang/core/encoding/utf8",
@@ -11,3 +12,10 @@ import {
 options(
   "native-stub": [ "filesystem.c" ],
 )
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/core/env",
+} for "wbtest"

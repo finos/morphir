@@ -15,6 +15,10 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
     if operation == "import-folder" {
       return import_folder(request)
     }
+    if operation == "compile-workspace" || operation == "run-project" {
+      stage = "compile"
+      return compile_workspace(engine, request)
+    }
     if operation == "decode-ion" {
       stage = "decode"
       return decode_ion(request)
@@ -30,7 +34,7 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
       stage = "compile"
       let engine_run = run_engine(engine, project, target)
       stage = "reply"
-      let result = compile_reply(engine_run, project, target) catch {
+      let result = compile_reply(engine_run, project.language, target) catch {
         CompileFailed(reply) => return reply
         error => raise error
       }
@@ -68,7 +72,12 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
       if captured.source().text() != source {
         raise @protocol.Invalid("worksheet.source_mismatch")
       }
-      let report = captured.evaluate()
+      let report = captured.evaluate(prepare=runtime => {
+        prepare_worksheet_project(engine, request, runtime) catch {
+          @config.Invalid(message) => raise @scheme.Invalid(message)
+          error => raise error
+        }
+      })
       return @wire.obj([
         ("success", Json::boolean(true)),
         ("worksheetReport", Json::string(report.to_json().stringify())),

@@ -152,7 +152,7 @@ qualification; native negotiation never upgrades a connected host. No additional
 is enabled by this mapping.
 
 On macOS Apple Silicon, the `workspace` capability enables **Open workspace** in
-the explorer. The native OS picker grants one read-only root per page session.
+the explorer. The older native mapping grants one read-only root per page session.
 Only opaque project and transfer identities cross the page-bound native command bridge.
 The shared engine discovers canonical and legacy configuration and saved model
 checkpoints. JSON versions 1–4, Ion text and Ion binary are decoded by the compiled
@@ -170,14 +170,50 @@ Limits are 4,096 entries, 256 directories, depth 16, 128 project/model entries,
 16 MiB model captures. Captures transfer in 192 KiB chunks and are released before
 inspection. Revocation, navigation and shutdown close grants. The observation is
 bounded, not an atomic filesystem snapshot; mount latency remains external.
-Compilation, scripts, writes, watches and persistent grants are not offered.
+Compilation, scripts, writes, watches and persistent grants are not offered by
+that older read-only mapping.
+
+The separate `morphir/workbench/workspace-files` `0.1.0-draft.1` mapping adds an
+explicit **Open Morphir workspace for editing** picker. Its page-bound owner
+holds up to eight writable folders independently of execution and read-only
+grants. It snapshots original bytes, validates a full candidate inventory,
+checks disk contents against the host baseline and applies a staged batch with
+rollback. The UI saves through a separate lane, retains local drafts after a
+refused or unconfirmed save, and requires another picker grant after reload.
+See [workspace editing](../../pkgs/morphir-workbench-native/workspace/README.md#workspace-editing)
+for limits, confinement, recovery files and the Chromium-to-native filesystem test.
+Packaged OS picker qualification remains separate from that test host.
 
 `mise run test:workbench-native-workspaces` runs real filesystem and concurrent
-replacement acceptance without CEF. macOS packaged qualification additionally
+replacement acceptance, writer rollback/recovery and page-bound owner tests
+without CEF. The routine Workbench test task builds one debug native test owner
+for both `test:workspace-files` Chromium regressions, covering native and connected
+file grants against actual disposable folders. macOS packaged qualification additionally
 uses the real OS picker, cancellation, JSON/Ion inspection, byte-exact original
 export Blobs and the shared browser/native regression flows. Linux has CEF-free
 filesystem acceptance; Linux and Windows do not advertise packaged workspace
 grants until their GUI/lifecycle qualification is complete.
+
+The Workbench maintainer must qualify the editing picker on the exact packaged
+candidate before closing its packaged-editing acceptance or releasing that
+capability. Launch that package with a local `PROTON_REMOTE_DEBUGGING_PORT`, then
+run this command from the repository root. Supply an empty disposable folder and
+choose it in the real **Open Morphir workspace for editing** dialog:
+
+```sh
+MORPHIR_WORKBENCH_NATIVE_CDP=http://127.0.0.1:9347 \
+MORPHIR_WORKBENCH_NATIVE_FOLDER=/absolute/path/to/empty-test-folder \
+node --test apps/morphir-workbench/browser/workspace-files-packaged.test.ts
+```
+
+Retain the candidate commit, package digest, MoonBit and Proton pins, test output
+and normal shutdown/lifecycle result with the acceptance evidence. A failed,
+missing or wrong-candidate result leaves packaged editing unqualified; the
+maintainer must resolve it or record an explicit exception before release.
+The automatic `qualification-ok` receipt covers its declared matrix and does
+not prove that this manual picker check ran. The fixed-root test owner cannot
+replace the real picker check.
+
 `?mode=standalone` keeps the browser worker path without negotiating this session.
 Development HTTP entries also retain the worker path; they receive no native
 command grant. The framework, contract package, CLI and helpers remain pinned

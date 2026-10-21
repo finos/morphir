@@ -1,0 +1,16 @@
+import {
+  "finos/morphir-engine/workspace" @discovery,
+  "finos/morphir-engine/config",
+  "finos/morphir-engine/ids",
+  "finos/morphir-engine/data",
+  "finos/morphir-workbench/project",
+  "finos/morphir-toml-edit" @toml_edit,
+  "moonbitlang/core/json",
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
+}
+
+import {
+  "finos/morphir-workbench/workspace-projects" @projects,
+} for "test"

@@ -18,6 +18,8 @@ import {
 }
 
 // Values
+pub fn apply_workspace_edit(String, @workspace.Tree, @workspace.Edit) -> Unit raise
+
 pub fn configuration(Map[String, String]) -> (@config.Document, @config.Document) raise
 
 pub fn error_code(Error) -> String

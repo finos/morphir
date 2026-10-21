@@ -44,13 +44,7 @@ fn imported_folder() -> String {
 
 ///|
 test "a late reply changes the workspace that asked for it, not the active one" {
-  let source = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "elm",
-    busy: true,
-    request_id: 7,
-  }
+  let source = { ..source_model("elm"), busy: true, request_id: 7, }
   let origin = source.active.unwrap()
   let idea = run_all(source, [TryIdea(Intent), IntentText("Price orders")])
   let reply : Json = {
@@ -89,18 +83,14 @@ test "a late reply changes the workspace that asked for it, not the active one" 
     )
     .to_equal([
       (origin, false, [Problems(1)]),
-      (after.active.unwrap(), true, []),
+      (after.active.unwrap(), true, [NotSaved]),
     ])
   })
 }
 
 ///|
 test "switching workspaces keeps each workspace's source and drafts" {
-  let source = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let source = { ..source_model("scheme"), }
   let first = source.active.unwrap()
   let edited = run_all(source, [Source("(define kept 1)")])
   let idea = run_all(edited, [
@@ -151,11 +141,7 @@ test "a cancelled model import removes its provisional workspace" {
 
 ///|
 test "a failed acquisition returns to the workspace that was open" {
-  let source = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let source = { ..source_model("scheme"), }
   let first = source.active.unwrap()
   let edited = run_all(source, [Source("(define kept 2)")])
   let started = run_all(edited, [OpenFolder])
@@ -274,9 +260,7 @@ test "the saved workspace list is read back after a reload" {
 ///|
 test "generation completes with a notice and keeps the layout" {
   let source = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
+    ..source_model("scheme"),
     target: "scheme",
     busy: true,
     request_id: 7,
@@ -374,11 +358,7 @@ test "stopping a wait removes the provisional workspace" {
 
 ///|
 test "opening another workspace while one is pending keeps the earlier workspaces" {
-  let source = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let source = { ..source_model("scheme"), }
   let first = source.active.unwrap()
   let edited = run_all(source, [Source("(define kept 3)")])
   let idea = run_all(edited, [TryIdea(Intent), IntentText("Keep me")])
@@ -418,7 +398,7 @@ test "an example is saved under its own workspace and reopens on its language" {
   let entry = active_entry(opened).unwrap()
   @expect.expect_all(s => {
     s.expect(opened.language, label="language").to_equal("moonbit")
-    s.expect(opened.dirty.contains("moonbit"), label="to save").to_be_true()
+    s.expect(opened.dirty.contains("workspace"), label="to save").to_be_true()
     s
     .expect(entry.language.map(l => l.to_string()), label="kept")
     .to_equal(Some("moonbit"))

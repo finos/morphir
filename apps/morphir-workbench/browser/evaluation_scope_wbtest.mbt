@@ -24,6 +24,12 @@ fn scope_model() -> Model {
   )
   {
     ..base,
+    workspace_files: known(() => {
+      @workspace_files.migrate(
+        [default_project({ ..base, catalog: catalog_fixture(), }, "scheme")],
+        "scheme",
+      )
+    }),
     registry,
     active: Some(entry.id),
     screen: Workspace,
@@ -379,4 +385,24 @@ test "connected runtime selection refuses catalog evaluator claims without an au
     "executionsAvailable": false,
   }
   assert_true(capability_runtime(invalid) is Unavailable)
+}
+
+///|
+fn test_project_map(model : Model) -> Map[String, @project.Project] {
+  let projects : Map[String, @project.Project] = Map([])
+  for project in legacy_projection(model) {
+    projects[project.language.to_string()] = project
+  }
+  projects
+}
+
+///|
+fn source_model(language : String) -> Model {
+  let model = { ..scope_model(), catalog: catalog_fixture(), language, }
+  {
+    ..model,
+    workspace_files: known(() => {
+      @workspace_files.migrate([default_project(model, language)], language)
+    }),
+  }
 }

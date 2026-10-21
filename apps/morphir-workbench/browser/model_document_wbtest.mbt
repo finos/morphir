@@ -32,7 +32,7 @@ test "close model releases owned views while preserving editor and worksheet inp
   assert_eq(after.collapsed_modules, [])
   assert_true(after.history.is_empty())
   assert_eq(after.evaluation_result, Json::null())
-  assert_eq(after.language_projects, before.language_projects)
+  assert_eq(after.workspace_files, before.workspace_files)
   assert_eq(after.worksheet_source, before.worksheet_source)
   assert_true(after.worksheet_report == before.worksheet_report)
   assert_eq(after.host_execution, before.host_execution)

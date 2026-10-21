@@ -9,7 +9,7 @@ export interface FolderEntryFile {
   arrayBuffer(): Promise<ArrayBuffer>;
 }
 
-export interface FolderFile { path: string; content: string }
+export interface FolderFile { path: string; content: string | { encoding: 'base64'; content: string } }
 export type FolderRead = { ok: true; files: FolderFile[]; skipped: number } | { ok: false; message: string };
 export interface Limits { files: number; bytes: number }
 
@@ -40,40 +40,44 @@ export async function fetchText(path: string, receive: (reply: string) => void):
 }
 
 export const LIMITS: Limits = { files: 2000, bytes: 16 * 1024 * 1024 };
-const FILE_LIMIT = 1024 * 1024;
-const TOOL_FOLDERS = new Set(['.git', 'node_modules', 'elm-stuff', '_build']);
+const TOOL_FOLDERS = new Set(['.git', 'node_modules', 'elm-stuff', '_build', '.mooncakes', '.idea', '.vscode']);
 
 function inToolFolder(path: string): boolean {
+  if (path.startsWith('models/')) return false;
   return path.split('/').slice(0, -1).some(segment => TOOL_FOLDERS.has(segment));
 }
 
-/**
- * Reads the text files of a folder selection. Returns `{ ok: true, files: [{path, content}], skipped }` or
- * `{ ok: false, message }`. Files over 1 MiB, files that are not UTF-8 text and files in tool folders are skipped
- * and counted. Nothing is read once a limit would be crossed.
- */
+function base64(bytes: Uint8Array): string {
+  let text = '';
+  for (let i = 0; i < bytes.length; i += 8192) text += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  return btoa(text);
+}
+
+/** Copy a bounded folder inventory, preserving UTF-8/BOM text and opaque bytes. */
 export async function readFiles(fileList: ArrayLike<FolderEntryFile> | Iterable<FolderEntryFile>, limits: Limits = LIMITS): Promise<FolderRead> {
   const entries = Array.from(fileList).map(file => ({ file, path: file.webkitRelativePath || file.name }));
-  const candidates = entries.filter(entry => !inToolFolder(entry.path));
-  let skipped = entries.length - candidates.length;
-  if (candidates.length > limits.files) {
-    return { ok: false, message: `Select a folder with at most ${limits.files.toLocaleString('en-US')} files.` };
-  }
-  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const first = entries[0]?.path.split('/')[0];
+  const prefix = first && entries.every(entry => entry.path.startsWith(first + '/')) ? first + '/' : '';
+  const candidates = entries.filter(entry => !inToolFolder(entry.path.slice(prefix.length)));
+  const skipped = entries.length - candidates.length;
+  if (candidates.length > limits.files) return { ok: false, message: `Select a folder with at most ${limits.files.toLocaleString('en-US')} files.` };
+  const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
   const files: FolderFile[] = [];
   let total = 0;
   for (const { file, path } of candidates) {
-    if (file.size > FILE_LIMIT) { skipped++; continue; }
-    // The guard comes before the read, so no read crosses the limit; only text counts towards it.
-    if (total + file.size > limits.bytes) {
-      return { ok: false, message: `Select a folder with at most ${Math.round(limits.bytes / 1048576 * 100) / 100} MiB of text.` };
+    if (!Number.isSafeInteger(file.size) || file.size < 0 || path.length > 4096) return { ok: false, message: 'The folder contains an invalid file descriptor.' };
+    const pathBytes = new TextEncoder().encode(path).length;
+    if (pathBytes > limits.bytes - total || file.size > limits.bytes - total - pathBytes) {
+      return { ok: false, message: `Select a folder with at most ${Math.round(limits.bytes / 1048576 * 100) / 100} MiB of files and paths.` };
     }
-    try {
-      files.push({ path, content: decoder.decode(await file.arrayBuffer()) });
-      total += file.size;
-    } catch {
-      skipped++;
-    }
+    let bytes: Uint8Array;
+    try { bytes = new Uint8Array(await file.arrayBuffer()); }
+    catch { return { ok: false, message: `The file could not be read: ${path}` }; }
+    if (bytes.length !== file.size) return { ok: false, message: `The selected file changed while reading: ${path}` };
+    let content: FolderFile['content'];
+    try { content = decoder.decode(bytes); }
+    catch { content = { encoding: 'base64', content: base64(bytes) }; }
+    files.push({ path, content }); total += pathBytes + bytes.length;
   }
   return { ok: true, files, skipped };
 }
@@ -117,7 +121,7 @@ async function walk(entry: DroppedEntry, out: FolderEntryFile[], limits: Limits)
       name: file.name, webkitRelativePath: entry.fullPath.replace(/^\//, ''), size: file.size,
       arrayBuffer: () => file.arrayBuffer(),
     });
-  } else if (entry.isDirectory && !TOOL_FOLDERS.has(entry.name)) {
+  } else if (entry.isDirectory && (!TOOL_FOLDERS.has(entry.name) || entry.fullPath.split('/').filter(Boolean)[1] === 'models')) {
     for (const child of await readEntries(entry)) await walk(child, out, limits);
   }
 }

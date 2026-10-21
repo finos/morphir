@@ -70,3 +70,23 @@ test "worksheet receive rejects mismatched captures and cancel awaits owned term
   assert_eq(stopping.request_id, started.request_id)
   assert_true(stopping.worksheet_capture is Some(_))
 }
+
+///|
+test "worksheet follows the current project and source edits make its results stale" {
+  let selected = send(multiple_projects(), [
+    OpenWorkspaceFile("packages/two/src/main.scm"),
+    AddContent(Worksheet),
+    Request("worksheet"),
+  ])
+  let request = compile_request(selected, "worksheet")
+  assert_eq(text(request, "projectPath"), "packages/two")
+  let report = selected.worksheet_capture.unwrap().evaluate()
+  assert_true(worksheet_matches(selected, report.source()))
+  let switched = send(selected, [OpenWorkspaceFile("packages/one/src/main.scm")])
+  assert_false(worksheet_matches(switched, report.source()))
+  let edited = send(selected, [
+    OpenWorkspaceFile("packages/two/src/main.scm"),
+    Source("33"),
+  ])
+  assert_false(worksheet_matches(edited, report.source()))
+}

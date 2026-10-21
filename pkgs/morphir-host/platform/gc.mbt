@@ -160,6 +160,11 @@ pub fn rename(a : String, b : String) -> Unit raise {
 }
 
 ///|
+pub fn link_file_new(a : String, b : String) -> Unit raise {
+  ignore(call("link_file_new", a~, b~))
+}
+
+///|
 pub fn stderr(s : String) -> Unit {
   ignore(call("stderr", a=s)) catch {
     _ => ()

@@ -1,6 +1,6 @@
 ///|
 fn ready_model(language~ : String = "elm") -> Model {
-  { ..scope_model(), catalog: catalog_fixture(), language, available: true, }
+  { ..source_model(language), available: true, }
 }
 
 ///|
@@ -71,7 +71,9 @@ test "quick open shows the file in Try Morphir and opens its folders" {
     .to_equal("src/Workbench/Extra/Util.elm")
     s.expect(opened.doc, label="source document").to_equal(Source)
     s.expect(opened.layout.is_open(Primary), label="sidebar open").to_be_true()
-    s.expect(opened.files_edit.collapsed, label="revealed").to_be_empty()
+    s
+    .expect(opened.workspace_collapsed.is_empty(), label="revealed")
+    .to_be_true()
     s.expect(opened.palette.open, label="closed").to_be_false()
   })
 }
@@ -91,7 +93,12 @@ test "a command that cannot run now does nothing" {
   )
   @expect.expect_all(s => {
     s.expect(compiled.request_id, label="busy").to_equal(3)
-    s.expect(added.files_edit.edit, label="one-file language").to_equal(Idle)
+    s
+    .expect(
+      added.project_dialog is Some(FileChange(Create, _, _, _)),
+      label="multiple files allowed",
+    )
+    .to_be_true()
     s.expect(from_palette.busy, label="Compile in a worksheet").to_be_false()
     s
     .expect(
@@ -102,7 +109,7 @@ test "a command that cannot run now does nothing" {
       label="reason",
     )
     .unwrap_some()
-    .to_contain("morphir-ukvn.5.22.14")
+    .to_equal("")
   })
 }
 
@@ -133,17 +140,23 @@ test "file commands act on the open file and show it in the explorer" {
   let hidden = send(model, [RunCommand(ToggleExposed)])
   @expect.expect_all(s => {
     s
-    .expect(renaming.files_edit.edit, label="rename")
-    .to_equal(
-      Renaming(File(literal_path("src/Workbench/Extra/Util.elm")), "Util.elm"),
+    .expect(
+      renaming.project_dialog
+      is Some(FileChange(Rename, "src/Workbench/Extra/Util.elm", _, _)),
+      label="rename",
     )
+    .to_be_true()
     s.expect(renaming.doc, label="shown").to_equal(Source)
     s
-    .expect(deleting.files_edit.edit, label="delete")
-    .to_equal(Deleting(File(literal_path("src/Workbench/Extra/Util.elm"))))
+    .expect(
+      deleting.project_dialog
+      is Some(FileChange(Delete, "src/Workbench/Extra/Util.elm", _, _)),
+      label="delete",
+    )
+    .to_be_true()
     s
     .expect(
-      hidden.language_projects.get("elm").map(p => p.exposed.length()),
+      test_project_map(hidden).get("elm").map(p => p.exposed.length()),
       label="exposed",
     )
     .to_equal(Some(2))
@@ -281,8 +294,8 @@ test "samples open from the palette, the worksheet and the project menu" {
     .expect(active_text(elm_constant), label="text")
     .to_contain("(define answer 42)")
     s
-    .expect(pricing.worksheet_source, label="worksheet example")
-    .to_equal(worksheet_example)
+    .expect(pricing.worksheet_source, label="existing worksheet file retained")
+    .to_equal("(+ 1 1)")
     s.expect(from_menu.language, label="menu").to_equal("moonbit")
     s.expect(from_menu.files_edit.menu, label="menu closed").to_be_none()
     s.expect(busy.language, label="busy refuses").to_equal("scheme")
@@ -302,8 +315,8 @@ test "a built-in example chosen after an Elm sample drops that sample's reply" {
     .expect(builtin.sample_request, label="new request")
     .to_equal(asked.sample_request + 1)
     s
-    .expect(late.language_projects.get("elm"), label="Elm project kept")
-    .to_equal(builtin.language_projects.get("elm"))
+    .expect(test_project_map(late).get("elm"), label="Elm project kept")
+    .to_equal(test_project_map(builtin).get("elm"))
     s.expect(late.language, label="still MoonBit").to_equal("moonbit")
   })
 }

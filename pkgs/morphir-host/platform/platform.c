@@ -85,6 +85,17 @@ int morphir_host_rename(const char *a, const char *b) {
   return rename(a, b) ? errno : 0;
 #endif
 }
+int morphir_host_link_file_new(const char *a, const char *b) {
+#ifdef _WIN32
+  wchar_t *first = wide_path(a), *second = wide_path(b);
+  if (!first || !second) { free(first); free(second); return EINVAL; }
+  int result = CreateHardLinkW(second, first, NULL) ? 0 : (int)GetLastError();
+  free(first); free(second);
+  return result;
+#else
+  return link(a, b) ? errno : 0;
+#endif
+}
 void morphir_host_stderr(const char *text) { fputs(text, stderr); }
 void morphir_host_exit(int code) { exit(code); }
 int morphir_host_system(void) {

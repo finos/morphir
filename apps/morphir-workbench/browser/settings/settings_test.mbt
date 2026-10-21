@@ -46,6 +46,7 @@ test "settings round-trip through their saved text" {
         let settings : @settings.Settings = {
           theme,
           workspace_sidebar,
+          files_view: Projects,
           editor_layout: if theme is Dark {
             Tabs
           } else {
@@ -63,6 +64,7 @@ test "settings round-trip through their saved text" {
         {
           theme: Dark,
           workspace_sidebar: Collapsed,
+          files_view: Projects,
           editor_layout: SideBySide,
         } : @settings.Settings).encode(),
     )
@@ -73,6 +75,7 @@ test "settings round-trip through their saved text" {
         {
           theme: Light,
           workspace_sidebar: Expanded,
+          files_view: Projects,
           editor_layout: SideBySide,
         } : @settings.Settings).encode(),
     )
@@ -142,6 +145,7 @@ test "a missing or unknown workspace sidebar value is collapsed" {
     .to_equal({
       theme: System,
       workspace_sidebar: Expanded,
+      files_view: Projects,
       editor_layout: SideBySide,
     })
     s.expect(@settings.WorkspaceSidebar::Collapsed.toggle()).to_equal(Expanded)

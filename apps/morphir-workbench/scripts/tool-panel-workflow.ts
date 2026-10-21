@@ -2,7 +2,7 @@ import type { Outcome, Failure } from './execution-contracts.ts';
 import type { Page, Locator, Request, Response, WebSocket, Browser, BrowserContext } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
-import { openSample, setExplorer, setRightSidebar, showCompile, showGeneratedFiles, showModel } from './workbench-steps.ts';
+import { openSample, setExplorer, setRightSidebar, showCompile, showGeneratedFiles, showModel, build, buildAction, currentSourceProfile } from './workbench-steps.ts';
 
 // Shared by the browser and packaged Proton workflows. Content comes from real
 // operations in this session: compiles, a frontend refusal and an evaluation.
@@ -44,9 +44,9 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   if (await body.isVisible()) await page.getByRole('button', { name: 'Collapse panel', exact: true }).click();
   await openSample(page, 'MoonBit Boolean library');
   const source = page.getByRole('textbox', { name: 'Source editor', exact: true });
-  const compile = page.getByRole('button', { name: 'Compile', exact: true });
+  const compile = buildAction(page, 'Compile');
   await compile.click();
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   const collapsed = await geometry(page);
   assert.equal(await body.isVisible(), false, 'The panel starts as a compact bar');
   assert.ok(collapsed.panelBottom <= collapsed.viewport + 1 && collapsed.viewport - collapsed.panelTop <= 70, 'The collapsed bar stays at the bottom of the window');
@@ -79,7 +79,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await tab('Logs').click();
   await source.press('ControlOrMeta+z');
   await page.waitForFunction(text => document.querySelector<CodeEditor>('#source')?.value === text, library);
-  assert.equal(await page.getByRole('combobox', { name: 'Source profile', exact: true }).inputValue(), 'moonbit-model-stable-v1');
+  assert.equal(await currentSourceProfile(page), 'moonbit-model-stable-v1');
 
   // A real frontend refusal is a current diagnostic with code and location until the source changes.
   await source.fill(recursion);
@@ -96,10 +96,10 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await source.press('ControlOrMeta+End');
   await source.pressSequentially(' ');
   await body.locator('.tool-report.previous').filter({ hasText: 'recursive_call' }).waitFor();
-  assert.equal(await tab('Diagnostics').locator('.tool-count').isVisible(), false, 'Editing the source makes the report previous');
+  await tab('Diagnostics').locator('.tool-count').waitFor({ state: 'hidden' });
   await source.fill(library);
   await compile.click();
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   await body.locator('.tool-report.current').filter({ hasText: 'No problems reported.' }).first().waitFor();
 
   // Tab keys move focus and selection without scrolling the page or the workspace.
@@ -155,7 +155,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   assert.equal(await inputReport.locator('.tool-location').textContent(), 'eligible');
   await showCompile(page);
   await compile.click();
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   assert.equal(await inputReport.locator('.tool-badge').textContent(), 'Previous', 'A replaced model makes its input diagnostics previous');
   assert.equal(await tab('Diagnostics').locator('.tool-count').isVisible(), false, 'Previous input diagnostics are not current problems');
   await tab('Output').click();
@@ -187,7 +187,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   const collision = 'pub fn is_ready() -> Bool { true }\npub fn isReady() -> Bool { false }';
   await source.fill(collision);
   await compile.click();
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   await tab('Diagnostics').click();
   const recovered = body.locator('.tool-report.current .tool-diagnostic').filter({ hasText: 'moonbit_frontend.name_normalization_collision' });
   await recovered.waitFor();
@@ -206,8 +206,8 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   assert.match((await related.first().locator('span').last().getAttribute('title')!)!, /moonbit-parser-position-v1 2:7/);
   await page.getByRole('button', { name: 'Generated', exact: true }).click();
   await showGeneratedFiles(page);
-  await page.getByRole('navigation', { name: 'Generated files', exact: true }).getByRole('button', { name: 'library.mbt', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.dataset.document === 'generated|library.mbt');
+  await page.getByRole('navigation', { name: 'Generated files', exact: true }).getByRole('button', { name: 'root/library.mbt', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.dataset.document === 'generated|root/library.mbt');
   const generated = await page.locator('#output').evaluate(editor => (editor as CodeEditor).value);
   assert.match(generated, /fn isReady\(/, 'Readable backend allocation retains usable source spelling');
   assert.match(generated, /fn is_ready\(/, 'The distinct declaration keeps its own public name');
@@ -215,7 +215,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await source.fill(library);
   await recoveredReport.locator('.tool-badge').filter({ hasText: 'Previous' }).waitFor();
   await compile.click();
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   assert.equal(await tab('Diagnostics').locator('.tool-count').isVisible(), false);
   await page.getByRole('button', { name: 'Collapse panel', exact: true }).click();
   console.log(JSON.stringify({ toolPanel: true, namingWarnings: true, collapsedDefault: true, realLogs: true, scopedDiagnostics: true, output: true, keyboardTabs: true, preventsScroll: true, retainedAcrossDocuments: true, undoPreserved: true, resized: sizes.length > 0 }));
@@ -233,9 +233,9 @@ export async function terminalOutcomeWorkflow(page: Page, { resize = true, scree
   };
   await showCompile(page);
   await openSample(page, 'MoonBit Boolean library');
-  await page.getByRole('button', { name: 'Compile', exact: true }).click();
+  await build(page, 'Compile');
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await page.waitForFunction(() => document.querySelector<HTMLButtonElement>('.build-actions > button.primary')?.disabled === false && document.querySelector<HTMLElement>('.statusbar')?.textContent === 'Model ready');
+  await page.waitForFunction(() => document.querySelector<HTMLButtonElement>('.build-actions > button.primary')?.disabled === false && /Model ready|Compiled 1\/1 projects/.test(document.querySelector<HTMLElement>('.statusbar')?.textContent ?? ''));
   await showModel(page);
   await setExplorer(page, true);
   await page.locator('.model-tree .tree-item').filter({ hasText: 'eligible' }).click();

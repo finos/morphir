@@ -1,0 +1,12 @@
+pkgtype(kind: "executable")
+
+supported_targets = "native"
+
+import {
+  "finos/morphir-workbench-native/bridge",
+  "finos/morphir-workbench-native-session" @session,
+  "moonbitlang/async/stdio",
+  "moonbitlang/async",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+}

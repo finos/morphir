@@ -77,13 +77,17 @@ struct Slice {
   draft_revision : Int32
   notice : Notice?
   worksheet : Bool
-  language_projects : Map[String, @project.Project]
+  workspace_files : @workspace_files.Files
+  file_access : FileAccess
+  workspace_collapsed : Array[WorkspaceNode]
+  project_dialog : ProjectDialog?
+  project_menu : @discovery.ProjectPath?
   worksheet_source : String
   files_edit : @project_files.State
   problem_counts : Map[String, Int32]
   problem_marks : Map[String, String]
   sample_request : Int32
-  sample_base : @project.Project?
+  sample_base : @workspace_files.Files?
   storage_ok : Bool
   dirty : Array[String]
   removed_key : String
@@ -147,7 +151,11 @@ fn park(m : Model) -> Slice {
     draft_revision: m.draft_revision,
     notice: m.notice,
     worksheet: m.worksheet,
-    language_projects: m.language_projects,
+    workspace_files: m.workspace_files,
+    file_access: m.file_access,
+    workspace_collapsed: m.workspace_collapsed,
+    project_dialog: m.project_dialog,
+    project_menu: m.project_menu,
     worksheet_source: m.worksheet_source,
     files_edit: m.files_edit,
     problem_counts: m.problem_counts,
@@ -219,7 +227,11 @@ fn unpark(m : Model, s : Slice) -> Model {
     draft_revision: s.draft_revision,
     notice: s.notice,
     worksheet: s.worksheet,
-    language_projects: s.language_projects,
+    workspace_files: s.workspace_files,
+    file_access: s.file_access,
+    workspace_collapsed: s.workspace_collapsed,
+    project_dialog: s.project_dialog,
+    project_menu: s.project_menu,
     worksheet_source: s.worksheet_source,
     files_edit: s.files_edit,
     problem_counts: s.problem_counts,
@@ -308,7 +320,11 @@ fn fresh(
     draft_revision: 0,
     notice: None,
     worksheet: false,
-    language_projects: Map([]),
+    workspace_files: empty_workspace_files(),
+    file_access: Memory,
+    workspace_collapsed: [],
+    project_dialog: None,
+    project_menu: None,
     worksheet_source: worksheet_example,
     files_edit: @project_files.State::new(),
     problem_counts: Map([]),
@@ -386,6 +402,28 @@ fn active_entry(model : Model) -> @workspace.Entry? {
 ///|
 /// What the active workspace holds.
 fn held(model : Model) -> Array[@workspace.Content] {
+  if uses_file_projects(model) && model.active is Some(_) {
+    let contents : Array[@workspace.Content] = []
+    if !discovered_projects(model).is_empty() {
+      contents.push(SourceProject)
+    }
+    if model.workspace_files
+      .paths()
+      .any(p => p == "intent.md" || p.has_suffix("/intent.md")) {
+      contents.push(Intent)
+    }
+    if model.workspace_files.paths().any(p => p.has_suffix(".mfs")) {
+      contents.push(ConceptualModel)
+    }
+    if model.workspace_files.read("worksheet.scm") is Some(_) {
+      contents.push(Worksheet)
+    }
+    if model.workspace_files.paths().any(p => p.has_prefix("models/")) ||
+      model.document.original_inventory() is Some(_) {
+      contents.push(ModelDocument)
+    }
+    return contents
+  }
   match active_entry(model) {
     Some(entry) => entry.contents
     None => []
@@ -402,7 +440,11 @@ fn documents_of(model : Model) -> Array[@workspace.Document] {
   if model.mode is ConnectedOriginals {
     [Model]
   } else {
-    @workspace.documents(held(model), connected=model.connected)
+    let docs = @workspace.documents(held(model), connected=model.connected)
+    if !docs.contains(Source) {
+      docs.insert(0, Source)
+    }
+    docs
   }
 }
 
@@ -411,7 +453,11 @@ fn views_of(model : Model) -> Array[@shell.View] {
   if model.mode is ConnectedOriginals {
     [Models]
   } else {
-    @workspace.views(held(model), connected=model.connected)
+    let views = @workspace.views(held(model), connected=model.connected)
+    if !views.contains(Files) {
+      views.insert(0, Files)
+    }
+    views
   }
 }
 
@@ -550,7 +596,15 @@ fn adopt_legacy_projects(model : Model, load : (String) -> String) -> Model {
 ///|
 /// The document a workspace shows first: its source, else its model, else its first draft.
 fn first_document(model : Model) -> @workspace.Document {
-  match documents_of(model) {
+  if model.workspace_files.opened() is Some(path) {
+    if path == workspace_content_path(model, Intent) {
+      return IntentDraft
+    }
+    if path.has_suffix(".mfs") {
+      return ConceptDraft
+    }
+  }
+  match @workspace.documents(held(model), connected=model.connected) {
     [first, ..] => first
     [] => Source
   }
@@ -596,13 +650,6 @@ fn activate(model : Model, id : @workspace.WorkspaceId) -> Model {
         .unwrap_or(@shell.Layout::default(narrow=base.narrow)),
       })
       let opened = restore_drafts(restore_all(opened))
-      // The workspace reopens on the language it had selected.
-      let opened = match entry.bind(e => e.language) {
-        Some(language) if valid_language(language.to_string()) &&
-          language.to_string() != opened.language =>
-          with_language(opened, language.to_string())
-        _ => opened
-      }
       { ..opened, doc: first_document(opened), }
     }
   }
@@ -614,8 +661,11 @@ fn restore_drafts(model : Model) -> Model {
   guard active_entry(model) is Some(entry) && !model.connected else {
     return model
   }
+  if storage_stored(workspace_prefix(model) + ".tree.v1") {
+    return with_workspace_files(model, model.workspace_files)
+  }
   let worksheet = entry.draft_key(Worksheet)
-  {
+  let restored = {
     ..model,
     intent: storage_load(entry.draft_key(Intent)),
     concept: storage_load(entry.draft_key(ConceptualModel)),
@@ -625,6 +675,13 @@ fn restore_drafts(model : Model) -> Model {
     } else {
       model.worksheet_source
     },
+  }
+  let next = sync_workspace_drafts(model, restored, IntentText(restored.intent))
+  let next = sync_workspace_drafts(model, next, ConceptText(restored.concept))
+  if restored.worksheet {
+    sync_workspace_drafts(model, next, Source(restored.worksheet_source))
+  } else {
+    next
   }
 }
 
@@ -687,9 +744,10 @@ fn create(
     },
     fresh(model, panel~),
   )
+  let created = seed_workspace(created, contents)
   let created = { ..created, doc: first_document(created), }
   if saved {
-    persist_registry(created)
+    persist_registry(write_projects(created))
   } else {
     created
   }
@@ -737,9 +795,13 @@ fn acquired_name(model : Model, kind : Acquire) -> String {
       }
     SourceFolder => active_project(model).name.to_string()
     HostFolder =>
-      match model.projects {
-        [first, ..] if text(first, "name") != "" => text(first, "name")
-        _ => "Workspace folder"
+      if model.file_access is Writable(authority) {
+        authority.name
+      } else {
+        match model.projects {
+          [first, ..] if text(first, "name") != "" => text(first, "name")
+          _ => "Workspace folder"
+        }
       }
   }
   if base.trim() == "" {
@@ -772,7 +834,7 @@ fn settle(before : Model, msg : Msg, after : Model) -> Model {
       }
     HostFolder =>
       if !after.busy {
-        Some(!after.projects.is_empty())
+        Some(after.file_access is Writable(_) || !after.projects.is_empty())
       } else {
         None
       }
@@ -783,6 +845,7 @@ fn settle(before : Model, msg : Msg, after : Model) -> Model {
       let id = acquisition.workspace
       let content : @workspace.Content = match acquisition.kind {
         SourceFolder => SourceProject
+        HostFolder if after.file_access is Writable(_) => SourceProject
         ModelFile(_) | HostFolder => ModelDocument
       }
       let name = after.registry.unique_name(
@@ -972,10 +1035,15 @@ fn sync_registry(before : Model, msg : Msg, after : Model) -> Model {
     return after
   }
   let mut registry = after.registry
+  if uses_file_projects(after) && entry.contents != held(after) {
+    registry = registry.set_contents(id, held(after))
+  }
   if entry.layout != after.layout {
     registry = registry.set_layout(id, after.layout)
   }
-  if after.document.document() is Some(_) && !entry.holds(ModelDocument) {
+  if !uses_file_projects(after) &&
+    after.document.document() is Some(_) &&
+    !entry.holds(ModelDocument) {
     registry = registry.add(id, ModelDocument)
   }
   if after.worksheet && !entry.holds(Worksheet) {
@@ -1004,44 +1072,53 @@ fn sync_registry(before : Model, msg : Msg, after : Model) -> Model {
 /// Writes every source project changed since its last successful save, not only the one that scheduled the save.
 /// Languages that were not written stay dirty.
 fn write_projects(model : Model) -> Model {
-  let attempts : Array[String] = []
-  let still_dirty : Array[String] = []
-  for dirty_language in model.dirty {
-    match model.language_projects.get(dirty_language) {
-      Some(project) => {
-        attempts.push(storage_key(model, dirty_language))
-        if !storage_save(
-            storage_key(model, dirty_language),
-            project.to_json().stringify(),
-          ) {
-          still_dirty.push(dirty_language)
-        }
+  let prefix = workspace_prefix(model)
+  let generation = fresh_storage_generation()
+  let previous = items_of_file_manifest(
+    @json.parse(storage_load(prefix + ".tree.v1")) catch {
+      _ => Json::null()
+    },
+  )
+  let written : Array[String] = []
+  if model.file_access is Writable(authority) &&
+    !storage_save(prefix + ".folder-name.v1", authority.name) {
+    return { ..model, dirty: ["workspace"], storage_ok: false, }
+  }
+  let saved = model.workspace_files.save(
+    prefix,
+    generation,
+    key => if storage_stored(key) { Some(storage_load(key)) } else { None },
+    fn(key, value) {
+      let saved = storage_save(key, value)
+      if saved && key.has_prefix(prefix + ".files.") {
+        written.push(key)
       }
-      None => ()
+      saved
+    },
+  )
+  // A prefix scan could delete a generation being written by another tab.
+  let collect = if saved { previous } else { written }
+  for key in collect {
+    if key.has_prefix(prefix + ".files.") {
+      ignore(storage_remove(key))
     }
   }
   {
     ..model,
-    dirty: still_dirty,
-    save_attempts: attempts,
-    storage_ok: still_dirty.is_empty(),
+    dirty: if saved {
+      []
+    } else {
+      ["workspace"]
+    },
+    save_attempts: [prefix + ".tree.v1"],
+    storage_ok: saved,
   }
 }
 
 ///|
 /// Writes the drafts the workspace holds: its intent, conceptual model and worksheet. False when one was not written.
-fn write_drafts(model : Model, entry : @workspace.Entry) -> Bool {
-  [
-    (entry.draft_key(Intent), model.intent, entry.holds(Intent)),
-    (
-      entry.draft_key(ConceptualModel),
-      model.concept,
-      entry.holds(ConceptualModel),
-    ),
-    (entry.draft_key(Worksheet), model.worksheet_source, entry.holds(Worksheet)),
-  ]
-  .iter()
-  .all(draft => !draft.2 || storage_save(draft.0, draft.1))
+fn write_drafts(model : Model, _entry : @workspace.Entry) -> Bool {
+  write_projects(model).storage_ok
 }
 
 ///|
@@ -1065,6 +1142,15 @@ fn close_refusal(model : Model, view : Model) -> String? {
     return Some(
       "Resume or finish the retained host execution before closing " +
       entry.name.to_string(),
+    )
+  }
+  if view.file_access is Writable(authority) &&
+    (
+      authority.state is Saving(_) ||
+      (authority.state is Idle && authority.saved_revision != view.revision)
+    ) {
+    return Some(
+      "Wait for the folder save to finish; the local draft is retained",
     )
   }
   if !entry.saved {
@@ -1138,7 +1224,7 @@ fn most_recent_open(model : Model) -> @workspace.Entry? {
 /// Saves an open workspace's source projects and drafts, then drops its state from the page. It stays saved and
 /// listed under Recent workspaces. Closing the active workspace opens the most recently used workspace still open
 /// in the page, else getting started. A provisional workspace that still waits closes like Stop waiting.
-fn close_workspace(
+fn close_workspace_here(
   model : Model,
   id : @workspace.WorkspaceId,
   emit : @cmd.Emit[Msg],
@@ -1334,7 +1420,7 @@ fn update_workspaces(
           let preset = model.start.preset
           let contents : Array[@workspace.Content] = match preset {
             SourceProject => [SourceProject]
-            Sandbox => [Intent]
+            Sandbox => [SourceProject, Worksheet]
             ModelExploration => [ModelDocument]
             Empty => []
           }
@@ -1350,14 +1436,30 @@ fn update_workspaces(
           @cmd.none,
         )
       }
-      let created = create(model, Sandbox, contents=[content])
+      let contents : Array[@workspace.Content] = match content {
+        Intent => [SourceProject, Intent]
+        ConceptualModel => [SourceProject, Intent, ConceptualModel]
+        _ => [SourceProject, content]
+      }
+      let created = create(model, Sandbox, contents~)
+      let path = match content {
+        Intent => "intent.md"
+        ConceptualModel => "src/model.mfs"
+        _ => "worksheet.scm"
+      }
+      let created = with_workspace_files(
+        created,
+        created.workspace_files.open(path) catch {
+          _ => created.workspace_files
+        },
+      )
       let created = match content {
         Intent => { ..created, doc: IntentDraft, }
         ConceptualModel => { ..created, doc: ConceptDraft, }
         _ => { ..created, doc: Source, worksheet: true, }
       }
       (
-        created,
+        write_projects(created),
         focus_after_render(
           match content {
             Intent => "intent-text"
@@ -1385,7 +1487,7 @@ fn update_workspaces(
       let into = routed(created, emit)
       let (opened, cmd) = update_core(created, Sample(id), into)
       // A built-in example replaces the project at once: save it under the new workspace's keys.
-      let dirty = opened.language_projects.keys().collect()
+      let dirty = ["workspace"]
       (
         { ..opened, dirty, },
         @cmd.batch([cmd, @cmd.delay(into(SaveProject(opened.revision)), 600)]),
@@ -1428,6 +1530,16 @@ fn update_workspaces(
     OpenWorkspace(id) =>
       if model.registry.get(id) is Some(_) {
         let opened = activate(model, id)
+        if opened.document.document() is None &&
+          opened.workspace_files.opened() is Some(path) {
+          if open_model_file(opened, path, routed(opened, emit))
+            is Some((inspecting, cmd)) {
+            return (
+              persist_registry(inspecting),
+              @cmd.batch([cmd, focus_after_render("workspace-picker")]),
+            )
+          }
+        }
         (persist_registry(opened), focus_after_render("workspace-picker"))
       } else {
         (model, @cmd.none)
@@ -1466,7 +1578,17 @@ fn update_workspaces(
           let languages = items(field(model.catalog, "frontends")).map(f => {
             text(f, "languageId")
           })
-          for key in entry.keys(languages) {
+          for
+            key in entry.keys(languages) +
+            stored_keys(
+              "morphir-workbench.workspace." + entry.id.to_string() + ".files.",
+            ) +
+            [
+              "morphir-workbench.workspace." + entry.id.to_string() + ".tree.v1",
+              "morphir-workbench.workspace." +
+              entry.id.to_string() +
+              ".folder-name.v1",
+            ] {
             ignore(storage_remove(key))
           }
           let removed = persist_registry({
@@ -1487,9 +1609,12 @@ fn update_workspaces(
       }
     }
     AddContent(content) => {
+      if !workspace_writable(model) {
+        return (model, @cmd.none)
+      }
       guard model.active is Some(id) else { return (model, @cmd.none) }
       let registry = model.registry.add(id, content)
-      let added = { ..model, registry, }
+      let added = ensure_workspace_content({ ..model, registry, }, content)
       let added = if active_entry(added).map(e => e.saved).unwrap_or(false) {
         persist_registry(added)
       } else {
@@ -1533,13 +1658,8 @@ fn update_workspaces(
           ..model,
           doc,
           screen: Workspace,
-          worksheet: if doc == Source &&
-            !holds(model, SourceProject) &&
-            !model.connected {
-            true
-          } else {
-            model.worksheet
-          },
+          worksheet: model.worksheet &&
+          model.workspace_files.opened() == Some("worksheet.scm"),
         }),
         @cmd.none,
       )

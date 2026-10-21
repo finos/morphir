@@ -63,10 +63,11 @@ fn mount_document(value : Json?) -> @config.Document raise {
 }
 
 ///|
-/// Consume the upstream protocol-v1 request shape. Unsupported formats raise explicitly.
+/// Discovery protocol 0.1.0. Numeric v1 requests remain readable at this compatibility boundary.
 pub fn discover_request(request : Json) -> Workspace raise {
   let fields = object(request)
   match required(fields, "protocolVersion") {
+    String("0.1.0") => ()
     Number(n, ..) if n == 1 => ()
     _ => raise @config.Invalid("Unsupported workspace discovery protocol")
   }

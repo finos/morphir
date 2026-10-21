@@ -3,12 +3,18 @@ package "finos/morphir-engine/workspace"
 
 import {
   "finos/morphir-engine/config",
+  "finos/morphir-engine/ids",
+  "moonbitlang/core/debug",
 }
 
 // Values
+pub fn add_project(Workspace, Tree, ProjectPath, NewProject) -> Edit raise
+
 pub fn discover(Tree, root? : String, system? : @config.Document, global? : @config.Document, environment? : Map[String, String], overlay? : @config.Document) -> Workspace raise
 
 pub fn discover_request(Json) -> Workspace raise
+
+pub fn init_workspace(Tree, project? : NewProject?, members? : Array[String]) -> Edit raise
 
 pub fn join(String, String) -> String raise
 
@@ -20,11 +26,28 @@ pub fn parent(String) -> String
 
 pub fn primary_paths(String) -> Array[String] raise
 
+pub fn remove_project(Workspace, Tree, ProjectPath, delete_files? : Bool) -> Edit raise
+
 pub fn within(String, String) -> Bool
 
 // Errors
 
 // Types and methods
+pub(all) struct Edit {
+  writes : Map[String, String]
+  directories : Array[String]
+  deletes : Array[String]
+  warnings : Array[String]
+}
+pub fn Edit::apply(Self, Tree) -> Tree raise
+
+pub(all) struct NewProject {
+  name : @ids.SourcePackageName
+  language : @ids.LanguageId?
+  profile : @ids.ProfileId?
+  source_directory : String
+}
+
 pub(all) struct Project {
   root : String
   name : String
@@ -33,10 +56,27 @@ pub(all) struct Project {
   error : String?
 }
 
+pub struct ProjectPath(String) derive(Compare, Eq, Hash, @debug.Debug)
+pub fn ProjectPath::compare(Self, Self) -> Int
+pub fn ProjectPath::equal(Self, Self) -> Bool
+pub fn ProjectPath::hash(Self) -> Int
+pub fn ProjectPath::hash_combine(Self, Hasher) -> Unit
+pub fn ProjectPath::not_equal(Self, Self) -> Bool
+pub fn ProjectPath::op_ge(Self, Self) -> Bool
+pub fn ProjectPath::op_gt(Self, Self) -> Bool
+pub fn ProjectPath::op_le(Self, Self) -> Bool
+pub fn ProjectPath::op_lt(Self, Self) -> Bool
+pub fn ProjectPath::output(Self, &Logger) -> Unit
+pub fn ProjectPath::parse(String) -> Self raise
+pub fn ProjectPath::to_repr(Self) -> @debug.Repr
+pub fn ProjectPath::to_string(Self) -> String
+pub impl Show for ProjectPath
+
 pub(all) struct Tree {
   files : Map[String, String]
   directories : Array[String]
 }
+pub fn Tree::from_files(Map[String, String]) -> Self raise
 pub fn Tree::from_json(Json) -> Self raise
 
 pub(all) struct Workspace {

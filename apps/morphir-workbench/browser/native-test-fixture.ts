@@ -1,3 +1,9 @@
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { createInterface } from 'node:readline';
+import { resolve } from 'node:path';
+
+
 import type { Core, Json } from './contracts.ts';
 // Actual compiled production validation and receipt cursor, isolated per client.
 import { readFileSync } from 'node:fs';
@@ -27,5 +33,25 @@ export function bridge(handle: (frame: { operation: string; sessionId: string; p
     const frame = JSON.parse(source);
     const value = await handle(frame);
     return typeof value === 'string' ? value : success(frame.operation, value);
+  };
+}
+
+/** Test-only native owner: its parent supplies the fixed picker root. */
+export function nativeFileHost(root: string) {
+  const executable = resolve(import.meta.dirname, '../../../_build/native/debug/build/finos/morphir-workbench-native/files-acceptance/files-acceptance.exe');
+  const child = spawn(executable, [root], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const pending: { resolve(value: string): void; reject(error: Error): void }[] = [];
+  let stderr = '';
+  child.stderr.on('data', data => { stderr += data; });
+  const lines = createInterface({ input: child.stdout });
+  lines.on('line', line => pending.shift()?.resolve(line));
+  child.on('error', error => { for (const item of pending.splice(0)) item.reject(error); });
+  child.on('exit', () => { for (const item of pending.splice(0)) item.reject(new Error(`Native file test owner exited: ${stderr}`)); });
+  return {
+    exchange(source: string) { return new Promise<string>((resolve, reject) => { pending.push({ resolve, reject }); child.stdin.write(source + '\n'); }); },
+    async close() {
+      child.stdin.end(); if (child.exitCode === null) await once(child, 'exit'); lines.close();
+      if (child.exitCode !== 0) throw new Error(`Native file test owner failed (${child.exitCode}): ${stderr}`);
+    },
   };
 }

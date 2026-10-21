@@ -111,6 +111,19 @@ fn rename_ffi(
 
 ///|
 #unsafe_skip_stub_check
+#borrow(a, b)
+fn link_ffi(
+  fd : Int32,
+  flags : Int32,
+  a : FixedArray[Byte],
+  alen : Int32,
+  fd2 : Int32,
+  b : FixedArray[Byte],
+  blen : Int32,
+) -> Int32 = "wasi_snapshot_preview1" "path_link"
+
+///|
+#unsafe_skip_stub_check
 #borrow(buffer, result)
 fn readdir_ffi(
   fd : Int32,
@@ -300,6 +313,16 @@ pub fn rename(a : String, b : String) -> Unit raise {
   check(
     rename_ffi(3, first, first.length(), 3, second, second.length()),
     "rename",
+  )
+}
+
+///|
+pub fn link_file_new(a : String, b : String) -> Unit raise {
+  let first = encode(a)
+  let second = encode(b)
+  check(
+    link_ffi(3, 0, first, first.length(), 3, second, second.length()),
+    "link file without replacement",
   )
 }
 

@@ -78,3 +78,50 @@ test "workspace configuration edits preserve every unrelated byte through a sequ
   ])
   assert_eq(first.encode(), source)
 }
+
+///|
+test "dotted configuration edits keep dotted layout and agree with semantic reads" {
+  let source = "# project\nproject.name = 'Shop' # name\nfrontend.language='elm'\nfrontend.profile='stable'\n[extension]\noptions = { nested.key = 1, sibling = 2 }\n"
+  let doc = @edit.parse(source)
+  edited(
+    doc.set(["frontend", "language"], "'moonbit'"),
+    source.replace(old="'elm'", new="'moonbit'"),
+  )
+  let added = doc.set(["frontend", "provider"], "'moonbit'")
+  edited(
+    added,
+    source.replace(
+      old="frontend.profile='stable'\n",
+      new="frontend.profile='stable'\nfrontend.provider = 'moonbit'\n",
+    ),
+  )
+  assert_eq(
+    @config.parse(added.encode()).text("frontend.provider", ""),
+    "moonbit",
+  )
+  edited(
+    doc.remove(["frontend", "profile"]),
+    source.replace(old="frontend.profile='stable'", new=""),
+  )
+}
+
+///|
+test "indexed array-of-tables edits agree with independent semantic configuration reads" {
+  let source = "[project]\nname='Shop'\n[[extension.targets]]\nname='One'\n[extension.targets.options]\nx=1\n[[extension.targets]]\nname='Two'\n[other]\ny=3\n"
+  let doc = @edit.parse(source)
+  edited(
+    doc.element(["extension", "targets"], 1).set(["name"], "'Second'"),
+    source.replace(old="'Two'", new="'Second'"),
+  )
+  edited(
+    doc.append_table(["extension", "targets"], [(["name"], "'Three'")]),
+    source.replace(
+      old="[other]",
+      new="[[extension.targets]]\nname = 'Three'\n[other]",
+    ),
+  )
+  edited(
+    doc.element(["extension", "targets"], 0).delete(),
+    "[project]\nname='Shop'\n[[extension.targets]]\nname='Two'\n[other]\ny=3\n",
+  )
+}

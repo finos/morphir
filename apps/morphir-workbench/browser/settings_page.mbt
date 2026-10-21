@@ -357,83 +357,200 @@ fn settings_page(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 /// target is saved with it; Compile sends the current project's target.
 fn projects_settings(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   let body : Array[@html.Html] = []
-  if model.active is None || model.acquiring is Some(_) {
-    body.push(
-      @html.p(
-        class="settings-help",
-        "Open a workspace to see its projects' generation settings.",
-      ),
-    )
-  } else {
-    let languages = model.language_projects.keys().collect()
-    if !languages.contains(model.language) {
-      languages.push(model.language)
+  let snapshot = model.workspace_files.discover() catch {
+    _ => return @html.p("Fix morphir.toml to see project settings.")
+  }
+  let current = current_project_path(model).to_string()
+  for i, project in snapshot.projects {
+    let path = if project.root == snapshot.root {
+      ""
+    } else if snapshot.root == "" {
+      project.root
+    } else {
+      project.root[snapshot.root.length() + 1:].to_owned()
     }
-    for language in languages {
-      let project = active_project_of(model, language)
-      // A project without a saved target compiles with the Workbench target, so its select shows that one.
-      let current = match project.target {
-        Some(generation) => generation.id()
-        None => model.target
+    let key = known(() => @discovery.ProjectPath::parse(path))
+    let read_only = !workspace_writable(model) ||
+      !project.anchor.has_suffix(".toml")
+    let language = project.document.text("frontend.language", "scheme") catch {
+      _ => "scheme"
+    }
+    let controls : Array[@html.Html] = [
+      @html.div(class="project-setting-name", [
+        @html.strong(project.name),
+        @html.span(
+          class="settings-help",
+          (if path == "" { "." } else { path }) +
+          " · " +
+          language_name(model, language) +
+          (if path == current { " · current" } else { "" }),
+        ),
+      ]),
+    ]
+    for
+      (setting, label, offers) in [
+        (
+          @workspace_files.Language,
+          "Language",
+          items(field(model.catalog, "frontends")).map(f => {
+            (text(f, "languageId"), text(f, "displayName"))
+          }),
+        ),
+        (
+          @workspace_files.SourceProfile,
+          "Source profile",
+          items(field(frontend(model, language), "profiles")).map(p => {
+            (text(p, "id"), text(p, "id"))
+          }),
+        ),
+        (
+          @workspace_files.Generation,
+          "Generation target",
+          [("checkpoint", "No generation")] +
+          items(field(model.catalog, "targets")).map(t => {
+            (text(t, "target"), text(t, "displayName"))
+          }),
+        ),
+      ] {
+      let value = model.workspace_files.setting(key, setting) catch {
+        _ =>
+          @workspace_files.SettingValue::{
+            effective: None,
+            override_value: None,
+            origin: None,
+          }
       }
+      let chosen = value.override_value.unwrap_or("")
       let options = [
-        @html.option(value="", selected=current == "", "No generation"),
+        @html.option(value="", selected=chosen == "", "Use workspace value"),
       ]
-      for target in items(field(model.catalog, "targets")) {
+      if chosen != "" && !offers.any(offer => offer.0 == chosen) {
         options.push(
-          @html.option(
-            value=text(target, "target"),
-            selected=text(target, "target") == current,
-            text(target, "displayName"),
-          ),
+          @html.option(value=chosen, selected=true, chosen + " (unavailable)"),
         )
       }
-      let name = project.name.to_string()
-      let id = "project-target-" + language
-      body.push(
-        @html.div(class="project-setting", [
-          @html.div(class="project-setting-name", [
-            @html.strong(name),
-            @html.span(
-              class="settings-help",
-              language_name(model, language) +
-              (match project.profile {
-                Some(profile) => " · " + profile.to_string()
-                None => ""
-              }) +
-              (if language == model.language { " · current" } else { "" }),
-            ),
-          ]),
-          @html.label(class="project-setting-field", for_=id, [
-            @html.span("Generation target"),
-            @html.select(
-              id~,
-              disabled=model.busy,
-              on_change=emit.map(value => ProjectTarget(language, value)),
-              attrs=(if language == model.language {
-                  @html.Attrs::build().data_set("current-project", "true")
-                } else {
-                  @html.Attrs::build()
-                })
-                .aria_label("Generation target for " + name)
-                .value_prop(current),
-              options,
-            ),
-          ]),
+      for (id, name) in offers {
+        options.push(@html.option(value=id, selected=chosen == id, name))
+      }
+      controls.push(
+        @html.label(class="project-setting-field", [
+          @html.span(label),
+          @html.select(
+            disabled=model.busy || read_only,
+            attrs=@html.Attrs::build()
+              .aria_label(label + " for " + project.name)
+              .value_prop(chosen)
+              .data_set("project-path", path)
+              .data_set(
+                "current-project",
+                (path == current && setting is Generation).to_string(),
+              )
+              .data_set("effective", value.effective.unwrap_or("")),
+            on_change=emit.map(value => ProjectSetting(path, setting, value)),
+            options,
+          ),
+          @html.span(
+            class="settings-help",
+            if value.override_value is None {
+              "Inherited: " +
+              value.effective.unwrap_or("default") +
+              " from " +
+              value.origin.unwrap_or("defaults")
+            } else {
+              "Set in " + project.anchor
+            },
+          ),
         ]),
       )
     }
-    body.push(
-      @html.p(
-        class="settings-help",
-        if model.connected {
-          "The connected host provides these projects; a target chosen here lasts for this session."
-        } else {
-          "Each project keeps its target. Set target in the command palette changes the current project's target."
+    controls.push(
+      @source_selection.capabilities({
+        frontend: frontend(model, language),
+        profile: project.document.text(
+          "frontend.profile",
+          text(frontend(model, language), "defaultProfile"),
+        ) catch {
+          _ => ""
         },
+        busy: model.busy,
+      }),
+    )
+    if !project.anchor.has_suffix(".toml") {
+      controls.push(
+        @html.p(
+          class="settings-help",
+          "This morphir.json project is read-only until converted.",
+        ),
+      )
+      controls.push(
+        @html.button(
+          disabled=!workspace_writable(model) || model.busy,
+          on_click=emit(ConvertLegacyProject(path)),
+          "Convert to morphir.toml",
+        ),
+      )
+    }
+    controls.push(
+      @html.button(
+        class="ghost small",
+        on_click=emit(OpenWorkspaceFile(project.anchor)),
+        "Open " + project.anchor,
+      ),
+    )
+    body.push(
+      @html.div(
+        id="project-settings-" + i.to_string(),
+        class="project-setting",
+        controls,
       ),
     )
   }
+  let members = [@html.option(value="", "Every project")]
+  let selected = snapshot.document.text("workspace.default_member", "") catch {
+    _ => ""
+  }
+  for project in snapshot.projects {
+    let path = if project.root == snapshot.root {
+      "."
+    } else if snapshot.root == "" {
+      project.root
+    } else {
+      project.root[snapshot.root.length() + 1:].to_owned()
+    }
+    members.push(
+      @html.option(
+        value=path,
+        selected=selected == path,
+        project.name + " (" + path + ")",
+      ),
+    )
+  }
+  body.push(@html.h3("Workspace defaults"))
+  body.push(
+    @html.label(class="project-setting-field", [
+      @html.span("Compile workspace"),
+      @html.select(
+        disabled=!workspace_writable(model) || model.busy,
+        attrs=@html.Attrs::build()
+          .aria_label("Workspace default member")
+          .value_prop(selected),
+        on_change=emit.map(value => {
+          WorkspaceSetting(@workspace_files.DefaultMember, value)
+        }),
+        members,
+      ),
+    ]),
+  )
+  body.push(
+    @html.button(
+      class="ghost small",
+      on_click=emit(OpenWorkspaceFile(snapshot.anchor)),
+      "Edit workspace defaults in morphir.toml",
+    ),
+  )
+  body.push(
+    @html.p(class="settings-help", "Browser builds check sources only."),
+  )
   @html.section(
     class="settings-section",
     attrs=@html.Attrs::build().aria_labelledby("settings-projects"),

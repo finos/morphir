@@ -1,4 +1,5 @@
 import { npmCli } from '../../../tests/npm.ts';
+import { exerciseScaffolding } from './workspace-scaffolding.ts';
 import type { PipelineReport, Warning, FrontendInventory } from '../../../tests/cli-contracts.ts';
 import type { Json } from '../../../types/data.ts';
 import assert from "node:assert/strict";
@@ -97,7 +98,8 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("packages/core/src/nested/Other.scm", '41');
   put("packages/tools/lib/Main.scm", '"hello λ😀"');
   checkHelp(run([]).stdout);
-  assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "connected originals", "workspace", "project list", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec"]);
+  assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "connected originals", "workspace", "workspace init", "project list", "project add", "project remove", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec"]);
+  exerciseScaffolding(directory, run);
   assert.equal(lines(["--help"])[0].type, "help");
   for (const args of [["run", "--help"], ["workspace", "--help"], ["project", "list", "--help"]]) {
     assert.ok(JSON.parse(run([...args, "--json"]).stdout).options.includes("--json-lines"));

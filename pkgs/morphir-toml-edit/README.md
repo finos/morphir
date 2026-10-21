@@ -25,6 +25,9 @@ segment never acts as a path separator.
 | `add_table` | Append a standard table, quoting path segments as needed. |
 | `remove_table` | Remove a table and its descendants, including sections interleaved with unrelated tables. |
 | `append`, `remove_item` | Add or remove array items, retaining existing item text and comments. |
+| `element` | Select an array-of-tables element by zero-based index. Select nested arrays from the enclosing element. |
+| `append_table` | Append an element after the last element and its descendants, before an unrelated section. |
+| `TableElement` methods | Read, set, insert and remove keys, edit ordinary arrays and standard subtables, or `delete` the selected element. Edits return the complete document. |
 
 Edits return a new document. They validate the supplied TOML value, apply only
 local source patches, and parse the candidate again before returning it.
@@ -32,12 +35,31 @@ A rejected edit leaves the original document intact. A value argument must
 contain exactly one value, with no trailing comment or injected statement.
 Use TOML string syntax for string values, such as `"'app'"`.
 
-Tier 1 refuses edits affecting dotted-key definitions, including their
-intermediate tables, and arrays of tables, including their ancestors or
-children. It also refuses creating dotted keys inside supplied inline values.
-Unrelated entries in the same document remain editable. Dotted-key editing
-belongs to `morphir-ukvn.5.86.16`; array-of-tables editing belongs to
-`morphir-ukvn.5.86.17`. Use a value parser for semantic reads of these constructs.
+Dotted keys are edited in place, retaining their spelling. A new key under a
+table defined only by dotted keys is added beside those definitions in dotted
+form. This also works inside inline tables. Conflicting table declarations are
+rejected by the TOML parser. Paths without an element index refuse edits affecting arrays of tables, including
+their ancestors or children. Unrelated entries remain editable. An element selector
+captures every enclosing index; it never chooses an arbitrary element. Re-select
+from the returned document after an edit.
+
+```moonbit
+let doc = @edit.parse("[[projects]]\nname='One'\n[[projects]]\nname='Two'\n")
+let changed = doc.element(["projects"], 1).set(["name"], "'Second'")
+let appended = changed.append_table(["projects"], [(["name"], "'Third'")])
+let removed = appended.element(["projects"], 0).delete()
+```
+
+For nested arrays, use `doc.element(["fruits"], 0).element(["varieties"], 1)`.
+The `append_table` entries pair decoded key paths with TOML value spellings. New
+headers and keys are quoted when necessary; injected statements and conflicting
+definitions are refused.
+
+Deleting an element removes its descendant sections and their comments, including
+interleaved descendants, while preserving unrelated sections. A contiguous run of
+full comment lines and blank lines immediately before a header belongs to that
+header. End-of-line and trailing section comments belong to their section. Ordinary
+key and standard-table removal keep the trivia behavior described below.
 
 The editor preserves existing trivia rather than guessing its ownership.
 Removing an entry leaves its trailing comment as a standalone comment; removing

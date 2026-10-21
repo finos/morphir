@@ -1,9 +1,12 @@
 import {
   "finos/morphir-engine/config",
   "finos/morphir-engine/ids",
+  "finos/morphir-toml-edit" @toml_edit,
   "moonbitlang/core/json",
+  "moonbitlang/core/debug",
 }
 
 import {
   "finos/morphir-engine/workspace",
+  "finos/morphir-engine/ids",
 } for "test"

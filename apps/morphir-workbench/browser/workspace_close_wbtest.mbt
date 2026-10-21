@@ -74,13 +74,17 @@ test "closing saves the workspace's source project and drafts before it leaves t
     .to_be_true()
     s.expect(closed.intent, label="page memory cleared").to_equal("")
     s
-    .expect(storage_load(entry.draft_key(Intent)), label="draft saved")
+    .expect(
+      saved_workspace_files(entry).read("intent.md").unwrap_or(""),
+      label="draft saved",
+    )
     .to_equal("Price orders")
     s
     .expect(
-      storage_load(entry.project_key(source.language)).contains(
-        "(define closed 1)",
-      ),
+      saved_workspace_files(entry)
+      .read("src/main.scm")
+      .unwrap_or("")
+      .contains("(define closed 1)"),
       label="project saved",
     )
     .to_be_true()
@@ -144,7 +148,9 @@ test "a parked workspace closes in place" {
     .to_be_true()
     s
     .expect(
-      storage_load(closed.registry.get(first).unwrap().draft_key(Intent)),
+      saved_workspace_files(closed.registry.get(first).unwrap())
+      .read("intent.md")
+      .unwrap_or(""),
       label="saved",
     )
     .to_equal("First")
@@ -283,7 +289,12 @@ test "a closed workspace can be removed from this browser" {
     .to_equal("Close the workspace before you remove it from this browser")
     s.expect(removed.registry.get(id), label="removed").to_equal(None)
     s
-    .expect(storage_load(entry.draft_key(Intent)), label="keys gone")
+    .expect(
+      storage_load(
+        "morphir-workbench.workspace." + entry.id.to_string() + ".tree.v1",
+      ),
+      label="keys gone",
+    )
     .to_equal("")
     s
     .expect(removed.start.message, label="said")
@@ -340,5 +351,15 @@ test "a workspace whose entry the workspace list does not keep stays open" {
     s
     .expect(refused.status, label="reason")
     .to_equal("This browser did not save Sandbox, so it stays open")
+  })
+}
+
+///|
+fn saved_workspace_files(entry : @workspace.Entry) -> @workspace_files.Files {
+  known(() => {
+    @workspace_files.load(
+      "morphir-workbench.workspace." + entry.id.to_string(),
+      key => if storage_stored(key) { Some(storage_load(key)) } else { None },
+    ).unwrap()
   })
 }

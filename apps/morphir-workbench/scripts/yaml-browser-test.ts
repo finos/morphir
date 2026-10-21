@@ -8,7 +8,7 @@ import { unzipSync } from 'fflate';
 import type { AddressInfo } from 'node:net';
 import { chromium } from 'playwright';
 import { createWorkbenchServer } from './server.ts';
-import { gettingStarted } from './workbench-steps.ts';
+import { gettingStarted, setExplorer } from './workbench-steps.ts';
 
 const desktopAssets = process.argv.includes('--desktop');
 const server = createWorkbenchServer({ root: desktopAssets ? new URL('../../morphir-workbench-desktop/frontend/dist/', import.meta.url) : undefined });
@@ -59,7 +59,7 @@ try {
   }
   // Later imports replace the model in the workspace the first one opened; it holds a model and no source files.
   await page.getByRole('button', { name: 'Workspace: model.yaml', exact: true }).waitFor();
-  assert.equal(await page.locator('#section-files').count(), 0);
+  assert.equal(await page.locator('#section-files').count(), 1);
   // The shared inspector also accepts explicit raw IR, engine checkpoints and
   // MEP model envelopes. Keep their bytes separate from the normalized IR view.
   const expectation = JSON.parse(await readFile(new URL('../fixtures/headless-parity/v1/yaml/literal42-tree/expectation.json', import.meta.url), 'utf8'));
@@ -72,6 +72,7 @@ try {
     {name: 'engine-checkpoint.ion', codec: 'ion-text', bytes: Buffer.from('\ufeff// retained checkpoint\r\n' + checkpoint + '\r\n'), ir},
     {name: 'mep-model.ion', codec: 'ion-text', bytes: await readFile(new URL('../fixtures/headless-parity/v1/originals/model.ion', import.meta.url)), ir: mepIr},
     {name: 'mep-model.ionb', codec: 'ion-binary', bytes: await readFile(new URL('../fixtures/headless-parity/v1/originals/model.ionb', import.meta.url)), ir: mepIr},
+    {name: 'explicit.data', codec: 'ion-binary', bytes: await readFile(new URL('../fixtures/headless-parity/v1/originals/model.ionb', import.meta.url)), ir: mepIr},
   ];
   for (const input of compatibility) {
     await page.getByLabel('Model format', {exact: true}).selectOption(input.codec);
@@ -122,8 +123,34 @@ try {
   }
   assert.deepEqual(Buffer.from(archive['raw.bin']!), rawSidecar);
   assert.equal(Object.keys(archive).length, expectedFiles.length);
+  await page.waitForFunction(() => Object.keys(localStorage).filter(key => key.endsWith('.tree.v1')).some(key => {
+    const manifest = JSON.parse(localStorage.getItem(key)!);
+    const record = manifest.files['models/model/raw.bin'];
+    return record && JSON.parse(localStorage.getItem(record)!).content === 'AP+ADQo=';
+  }));
+  await page.reload();
+  await gettingStarted(page);
+  await page.getByRole('button', { name: 'Open model.yaml', exact: true }).click();
+  await page.getByRole('button', { name: 'Download captured original files', exact: true }).waitFor();
+  const reopenedDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download captured original files', exact: true }).click();
+  const reopened = unzipSync(await readFile((await (await reopenedDownload).path())!));
+  for (const [path, bytes] of Object.entries(archive)) assert.deepEqual(Buffer.from(reopened[path]!), Buffer.from(bytes), path);
+  assert.equal(Object.keys(reopened).length, Object.keys(archive).length);
+  await setExplorer(page, true);
+  if (await page.locator('#section-files').getAttribute('aria-expanded') !== 'true') await page.locator('#section-files').click();
+  for (const name of ['raw-ir.json', 'mep-model.ionb', 'explicit.data']) {
+    await page.locator(`button[title="models/${name}"]`).click();
+    const button = page.getByRole('button', { name: 'Download original file', exact: true });
+    await page.waitForFunction(name => document.querySelector<HTMLButtonElement>('button[aria-label="Download original file"]')?.title.startsWith('Download ' + name + ' ·'), name);
+    const pending = page.waitForEvent('download');
+    await button.click();
+    const file = await pending;
+    assert.equal(file.suggestedFilename(), name);
+    assert.deepEqual(await readFile((await file.path())!), compatibility.find(input => input.name === name)!.bytes);
+  }
   assert.deepEqual(errors, []);
-  console.log('YAML browser passed: real YAML/raw IR/checkpoint/MEP text and binary pickers, normalized projection labels, local worker, YAML preview and byte-exact file/ZIP originals including binary sidecars.');
+  console.log('YAML browser passed: real YAML/raw IR/checkpoint/MEP text and binary pickers, normalized projection labels, local worker, YAML preview and byte-exact file/ZIP originals including binary sidecars after a saved workspace reload.');
 } finally {
   await browser?.close();
   await rm(scratch, { recursive: true, force: true });

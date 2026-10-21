@@ -4,6 +4,7 @@ pkgtype(kind: "executable")
 
 import {
   "finos/morphir-workbench/capabilities",
+  "finos/morphir-workbench-native-session/workspace-files" @filewire,
   "finos/morphir-workbench/worksheet",
   "finos/morphir-workbench/browser/worksheet-view" @worksheet_view,
   "finos/morphir-workbench/outcomes",
@@ -14,28 +15,34 @@ import {
   "finos/morphir-workbench/browser/editor",
   "finos/morphir-workbench/browser/result",
   "finos/morphir-workbench/browser/generated",
-  "finos/morphir-workbench/browser/source-selection" @source_selection,
   "finos/morphir-workbench/browser/project-files" @project_files,
   "finos/morphir-workbench/browser/command-palette" @palette,
   "finos/morphir-workbench/browser/keys",
+  "finos/morphir-workbench/browser/source-selection" @source_selection,
   "finos/morphir-workbench/browser/context-menu" @context_menu,
   "finos/morphir-workbench/browser/shell",
   "finos/morphir-workbench/browser/workspace",
   "finos/morphir-workbench/browser/settings",
   "finos/morphir-workbench/project",
+  "finos/morphir-workbench/workspace-projects" @workspace_files,
+  "finos/morphir-engine/workspace" @discovery,
+  "finos/morphir-engine/config",
   "finos/morphir-workbench/model-document" @document,
   "finos/morphir-engine/ids",
   "finos/morphir-engine/data",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
   "moonbit-community/rabbita",
   "moonbit-community/rabbita/html",
   "moonbit-community/rabbita/cmd",
+  "moonbit-community/rabbita/dom",
   "moonbitlang/core/json",
   "moonbitlang/x/crypto",
 }
 
 import {
   "moonrockz/expect",
+  "finos/morphir-workbench" @pipeline,
   "moonbitlang/async",
   "moonbitlang/async/js_async",
 } for "wbtest"

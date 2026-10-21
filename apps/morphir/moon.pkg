@@ -19,6 +19,7 @@ import {
   "finos/morphir-engine/moonbit" @moonbit_frontend,
   "finos/morphir-engine/elm" @elm_frontend,
   "finos/morphir-engine/config",
+  "finos/morphir-engine/ids",
   "finos/morphir-engine/workspace",
   "finos/morphir-host" @host,
   "finos/morphir-host/metadata/grants" @metadata_grants,

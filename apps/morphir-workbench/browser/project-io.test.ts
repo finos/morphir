@@ -22,27 +22,21 @@ test('fetchText reports text, HTTP errors and network errors without throwing', 
 
 const LIMITS = { files: 2000, bytes: 16 * 1024 * 1024 };
 interface FakeFile { name: string; webkitRelativePath: string; size: number; reads: number; arrayBuffer(): Promise<ArrayBuffer> }
-const file = (path: string, bytes: number[]): FakeFile => ({
+const file = (path: string, bytes: ArrayLike<number>): FakeFile => ({
   name: path.split('/').pop() ?? path, webkitRelativePath: path, size: bytes.length, reads: 0,
   async arrayBuffer() { this.reads++; return Uint8Array.from(bytes).buffer; },
 });
 const text = (value: string) => [...new TextEncoder().encode(value)];
 
-test('readFiles reads text with its relative path and skips binary, large and tool folders', async () => {
-  const big = file('rentals/src/Big.elm', []);
-  big.size = 2 * 1024 * 1024;
+test('readFiles preserves binary and large files while omitting tool folders', async () => {
+  const big = file('rentals/src/Big.elm', new Uint8Array(2 * 1024 * 1024).fill(97));
   const vendored = file('rentals/node_modules/x/y.elm', text('module Y'));
-  const found = await readFiles([
-    file('rentals/morphir.json', text('{}')),
-    file('rentals/logo.png', [0xff, 0xfe, 0x00]),
-    big,
-    vendored,
-  ], LIMITS);
+  const found = await readFiles([file('rentals/morphir.json', text('{}')), file('rentals/logo.png', [0xff, 0xfe, 0x00]), big, vendored], LIMITS);
   assert.equal(found.ok, true);
-  assert.deepEqual(filesOf(found), [{ path: 'rentals/morphir.json', content: '{}' }]);
-  assert.equal(found.ok && found.skipped, 3);
-  assert.equal(big.reads, 0, 'A large file is not read');
-  assert.equal(vendored.reads, 0, 'A tool folder is not read');
+  const files = filesOf(found);
+  assert.deepEqual(files.slice(0, 2), [{ path: 'rentals/morphir.json', content: '{}' }, { path: 'rentals/logo.png', content: { encoding: 'base64', content: '//4A' } }]);
+  assert.equal(typeof files[2]!.content === 'string' && files[2]!.content.length, 2 * 1024 * 1024);
+  assert.equal(found.ok && found.skipped, 1); assert.equal(big.reads, 1); assert.equal(vendored.reads, 0);
 });
 
 test('readFiles stops past the file limit before reading more', async () => {
@@ -54,23 +48,29 @@ test('readFiles stops past the file limit before reading more', async () => {
 });
 
 test('readFiles stops past the byte limit before reading the file that crosses it', async () => {
-  const a = file('p/a.elm', text('a')), b = file('p/b.elm', text('b'));
-  a.size = 600 * 1024; b.size = 600 * 1024;
+  const a = file('p/a.elm', new Uint8Array(600 * 1024).fill(97)), b = file('p/b.elm', new Uint8Array(600 * 1024).fill(98));
   const found = await readFiles([a, b], { files: 2000, bytes: 1024 * 1024 });
-  assert.equal(found.ok, false);
-  assert.match(found.ok ? '' : found.message, /16 MiB|MiB/);
-  assert.equal(b.reads, 0);
+  assert.equal(found.ok, false); assert.match(found.ok ? '' : found.message, /MiB/); assert.equal(b.reads, 0);
 });
 
-test('readFiles counts only text towards the byte limit', async () => {
-  const binary = Array.from({ length: 12 }, (_, i) => file(`p/assets/b${i}.bin`, [0xff, 0xfe, 0x00]));
-  for (const b of binary) b.size = 100 * 1024;
+test('binary bytes and paths count towards the same aggregate quota', async () => {
+  const binary = Array.from({ length: 12 }, (_, i) => file(`p/assets/b${i}.bin`, new Uint8Array(100 * 1024).fill(255)));
   const source = file('p/src/Main.elm', text('module Main exposing (..)'));
-  source.size = 200 * 1024;
   const found = await readFiles([...binary, source], { files: 2000, bytes: 1024 * 1024 });
-  assert.equal(found.ok, true, 'Skipped binary files do not use up the limit');
-  assert.deepEqual(filesOf(found).map(f => f.path), ['p/src/Main.elm']);
-  assert.equal(found.ok && found.skipped, 12);
+  assert.equal(found.ok, false); assert.equal(source.reads, 0); assert.ok(binary.reduce((n, f) => n + f.reads, 0) < binary.length);
+});
+
+test('folder text retains BOM and CRLF and model sidecar tool names remain ordinary files', async () => {
+  const found = await readFiles([file('p/morphir.toml', [0xef, 0xbb, 0xbf, ...text('[workspace]\r\nmembers=[]\r\n')]),
+    file('p/models/node_modules/raw.bin', [0xff, 0x80])]);
+  assert.equal(found.ok, true);
+  assert.equal(filesOf(found)[0]?.content, '\ufeff[workspace]\r\nmembers=[]\r\n');
+  assert.deepEqual(filesOf(found)[1]?.content, { encoding: 'base64', content: '/4A=' });
+});
+
+test('unreadable or changed file data refuses the copy instead of silently dropping it', async () => {
+  const changed = file('p/value.bin', [1, 2]); changed.size = 1;
+  const found = await readFiles([changed]); assert.equal(found.ok, false); assert.match(found.ok ? '' : found.message, /changed/);
 });
 
 test('storage reports failure instead of throwing', () => {

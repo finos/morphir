@@ -26,6 +26,16 @@ globalThis.morphirWorkbench = {
   projectIo: { fetchText, pickFolder, storage, watchDrop },
   get runtimeLabel() { return mode === 'connected-originals' ? 'Connected originals' : adapter.runtimeLabel || 'Browser local'; },
   invalidateArtifacts() { adapter.invalidateArtifacts?.(); },
+  async revokeWorkspace(grantId) { await adapter.revokeWorkspace?.(grantId); },
+  async saveWorkspace(grantId, workspace, receive) {
+    try {
+      if (!adapter.saveWorkspace) throw new Error('This host does not offer workspace writes.');
+      const revision = await adapter.saveWorkspace(grantId, workspace);
+      receive(JSON.stringify({ success: true, revision }));
+    } catch (cause) {
+      receive(JSON.stringify({ success: false, message: workbenchError(cause).message || 'Workspace save could not be confirmed.' }));
+    }
+  },
   async request(request, receive) {
     const current = ++generation;
     activeRequest = { operation: request.operation, modelOpenAttempt: request.modelOpenAttempt };

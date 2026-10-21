@@ -166,10 +166,23 @@ pub fn EditorLayout::id(self : EditorLayout) -> String {
 
 ///|
 /// The Workbench settings.
+pub(all) enum FilesView {
+  Folders
+  Projects
+} derive(Eq, Debug)
+
+///|
+pub extend FilesView with Eq::{equal, not_equal}
+
+///|
+pub extend FilesView with @debug.Debug::{to_repr}
+
+///|
 pub(all) struct Settings {
   theme : ThemePreference
   workspace_sidebar : WorkspaceSidebar
   editor_layout : EditorLayout
+  files_view : FilesView
 } derive(Eq, Debug)
 
 ///|
@@ -180,7 +193,12 @@ pub extend Settings with @debug.Debug::{to_repr}
 
 ///|
 pub fn Settings::default() -> Settings {
-  { theme: System, workspace_sidebar: Collapsed, editor_layout: SideBySide, }
+  {
+    theme: System,
+    workspace_sidebar: Collapsed,
+    editor_layout: SideBySide,
+    files_view: Projects,
+  }
 }
 
 ///|
@@ -202,7 +220,13 @@ pub fn Settings::decode(text : String) -> Settings {
     Some(String("tabs")) => Tabs
     _ => SideBySide
   }
-  { theme, workspace_sidebar, editor_layout, }
+  let files_view : FilesView = if fields.get("filesView") ==
+    Some(Json::string("folders")) {
+    Folders
+  } else {
+    Projects
+  }
+  { theme, workspace_sidebar, editor_layout, files_view, }
 }
 
 ///|
@@ -215,6 +239,9 @@ pub fn Settings::encode(self : Settings) -> String {
   }
   if self.editor_layout is Tabs {
     value["editorLayout"] = Json::string("tabs")
+  }
+  if self.files_view is Folders {
+    value["filesView"] = Json::string("folders")
   }
   Json::object(value).stringify()
 }

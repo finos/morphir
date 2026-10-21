@@ -19,6 +19,8 @@ declare global {
     readonly runtimeLabel: string;
     invalidateArtifacts(): void;
     request(request: WorkRequest, receive: (source: string) => void): void | Promise<void>;
+    saveWorkspace(grantId: string, workspace: NonNullable<WorkRequest['workspace']>, receive: (source: string) => void): Promise<void>;
+    revokeWorkspace(grantId: string): Promise<void>;
     cancel(): void;
     importModelTree(attempt: string, receive: (source: string) => void): void;
     importModel(attempt: string, format: import('../apps/morphir-workbench/browser/contracts.ts').ModelCodec | '', receive: (source: string) => void): void;

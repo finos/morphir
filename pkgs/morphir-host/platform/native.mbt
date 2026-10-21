@@ -34,6 +34,18 @@ pub fn rename(a : String, b : String) -> Unit raise {
 
 ///|
 #borrow(a, b)
+extern "C" fn link_file_new_c(a : Bytes, b : Bytes) -> Int32 = "morphir_host_link_file_new"
+
+///|
+pub fn link_file_new(a : String, b : String) -> Unit raise {
+  check(
+    link_file_new_c(cstring(a), cstring(b)),
+    "link file without replacement",
+  )
+}
+
+///|
+#borrow(a, b)
 extern "C" fn rename_directory_new_c(a : Bytes, b : Bytes) -> Int32 = "morphir_host_rename_directory_new"
 
 ///|

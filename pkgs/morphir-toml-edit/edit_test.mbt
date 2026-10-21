@@ -115,35 +115,85 @@ fn kind(
 }
 
 ///|
-test "dotted key operations are refused while unrelated edits work" {
-  let doc = @edit.parse("a.b=1\nx=2\n[t]\nz = { a.b = 1, sibling=2 }\n")
-  for path in [["a"], ["a", "b"], ["a", "c"], ["t", "z"], ["t", "z", "a", "b"]] {
+test "dotted keys retain their form at root inside tables and inline tables" {
+  let source = "# keep\r\nfrontend . 'language' = 'elm' # language\r\nfrontend.profile='stable'\r\n[t]\r\n  a.b=1 # one\r\nz = { a.b = 1, sibling=2 } # inline\r\n"
+  let doc = @edit.parse(source)
+  assert_eq(
+    doc.set(["frontend", "language"], "'scheme'").encode(),
+    source.replace(old="'elm'", new="'scheme'"),
+  )
+  let added = doc.set(["frontend", "provider"], "'portable'")
+  assert_eq(
+    added.encode(),
+    source.replace(
+      old="frontend.profile='stable'\r\n",
+      new="frontend.profile='stable'\r\nfrontend.provider = 'portable'\r\n",
+    ),
+  )
+  assert_eq(
+    doc.set(["t", "a", "c"], "2").encode(),
+    source.replace(old=" # inline\r\n", new=" # inline\r\na.c = 2\r\n"),
+  )
+  assert_eq(
+    doc.remove(["t", "a", "b"]).encode(),
+    source.replace(old="a.b=1", new=""),
+  )
+  assert_eq(
+    doc.set(["t", "z", "a", "c"], "3").encode(),
+    source.replace(old="sibling=2", new="sibling=2, a.c = 3"),
+  )
+  assert_eq(
+    doc.remove(["t", "z", "a", "b"]).encode(),
+    source.replace(old="a.b = 1,", new=""),
+  )
+  assert_eq(doc.encode(), source)
+}
+
+///|
+test "removing the last dotted key or its implicit table leaves surrounding trivia" {
+  let source = "# lead\na.b=1 # keep\n[other]\nx=2\n"
+  assert_eq(
+    @edit.parse(source).remove(["a", "b"]).encode(),
+    "# lead\n # keep\n[other]\nx=2\n",
+  )
+  assert_eq(
+    @edit.parse(source).remove_table(["a"]).encode(),
+    "# lead\n # keep\n[other]\nx=2\n",
+  )
+  assert_eq(
+    @edit.parse("[t]\na.b=1\na.c=2\nx=3\n").remove_table(["t", "a"]).encode(),
+    "[t]\n\n\nx=3\n",
+  )
+}
+
+///|
+test "dotted edits follow TOML table redefinition rules" {
+  let source = "[a]\nx=1\n[a.child]\ny=2\n[other]\na.x=3\n"
+  let doc = @edit.parse(source)
+  assert_eq(
+    doc.set(["a", "x"], "4").encode(),
+    source.replace(old="x=1", new="x=4"),
+  )
+  assert_eq(
+    doc.set(["other", "a", "y"], "5").get(["other", "a", "y"]),
+    Some("5"),
+  )
+  for
+    invalid in [
+      "a.b=1\n[a]\nx=2", "[a]\nx=1\n[a.child]\nx=2\n[a]", "a.b=1\na.b=2",
+    ] {
     assert_eq(
-      kind(fn() raise @edit.Diagnostic { doc.set(path, "3") }),
-      Some(@edit.UnsupportedDottedKey),
-    )
-    assert_eq(
-      kind(fn() raise @edit.Diagnostic { doc.remove(path) }),
-      Some(@edit.UnsupportedDottedKey),
+      kind(fn() raise @edit.Diagnostic { @edit.parse(invalid) }),
+      Some(@edit.InvalidToml),
     )
   }
-  assert_eq(doc.set(["x"], "3").get(["x"]), Some("3"))
   assert_eq(
-    doc.set(["t", "z", "sibling"], "3").get(["t", "z", "sibling"]),
-    Some("3"),
+    kind(fn() raise @edit.Diagnostic { @edit.parse("a.b=1").add_table(["a"]) }),
+    Some(@edit.InvalidToml),
   )
   assert_eq(
-    kind(fn() raise @edit.Diagnostic { doc.remove_table(["a"]) }),
-    Some(@edit.UnsupportedDottedKey),
-  )
-  assert_eq(
-    kind(fn() raise @edit.Diagnostic { doc.add_table(["a", "c"]) }),
-    Some(@edit.UnsupportedDottedKey),
-  )
-  let nested = @edit.parse("a=[{b.c=1}]")
-  assert_eq(
-    kind(fn() raise @edit.Diagnostic { nested.append(["a"], "2") }),
-    Some(@edit.UnsupportedDottedKey),
+    kind(fn() raise @edit.Diagnostic { @edit.parse("a.b=1").set(["a"], "2") }),
+    Some(@edit.InvalidToml),
   )
 }
 
@@ -233,16 +283,10 @@ test "diagnostics give a bounded position and reason" {
 }
 
 ///|
-test "new dotted inline values require tier 2" {
+test "dotted inline values can be supplied without changing their spelling" {
   let doc = @edit.parse("x=1\na=[]")
-  assert_eq(
-    kind(fn() raise @edit.Diagnostic { doc.set(["x"], "{a.b=1}") }),
-    Some(@edit.UnsupportedDottedKey),
-  )
-  assert_eq(
-    kind(fn() raise @edit.Diagnostic { doc.append(["a"], "{a.b=1}") }),
-    Some(@edit.UnsupportedDottedKey),
-  )
+  assert_eq(doc.set(["x"], "{ a.b=1 }").get(["x", "a", "b"]), Some("1"))
+  assert_eq(doc.append(["a"], "{a.b=1}").get(["a"]), Some("[{a.b=1}]"))
 }
 
 ///|

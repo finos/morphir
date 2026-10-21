@@ -1,4 +1,5 @@
 import { basicSetup } from 'codemirror';
+import { toml } from '@codemirror/legacy-modes/mode/toml';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { DocumentText } from './document-text.ts';
@@ -59,6 +60,7 @@ const theme = EditorView.theme({
 function languageSupport(id: string) {
   switch (id.toLowerCase()) {
     case 'scheme': case 'scm': return StreamLanguage.define(scheme);
+    case 'toml': return StreamLanguage.define(toml);
     case 'scala': return StreamLanguage.define(scala);
     case 'elm': return StreamLanguage.define(elm);
     case 'json': return json();

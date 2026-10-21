@@ -105,6 +105,15 @@ pub fn rename(a : String, b : String) -> Unit raise {
 }
 
 ///|
+#module("node:fs")
+extern "js" fn link_sync(a : String, b : String) -> Unit = "linkSync"
+
+///|
+pub fn link_file_new(a : String, b : String) -> Unit raise {
+  check(rename_js(link_sync, a, b), "link file without replacement")
+}
+
+///|
 pub extern "js" fn stderr(text : String) -> Unit =
   #| text => process.stderr.write(text)
 

@@ -44,23 +44,126 @@ fn normalized_directory(text : String) -> String {
 /// Maps a folder with a morphir.json to an Elm project request, with the engine's discovery rules
 /// (`@workspace.discover`): name, sourceDirectory and exposedModules, and its warnings.
 fn import_folder(request : Json) -> Json raise {
-  let entries = @wire.array(@wire.field(request, "files")).map(f => {
-    (
-      @wire.string(@wire.field(f, "path")),
-      @wire.string(@wire.field(f, "content")),
+  let raw = @wire.array(@wire.field(request, "files"))
+  fn too_large() -> Json {
+    folder_failure(
+      "workbench.folder_too_large", "Select a project folder with at most 2000 files and 16 MiB of files and paths",
     )
-  })
-  let bytes = entries.fold(init=0, (n, e) => n + e.1.length())
-  if entries.length() > max_folder_files || bytes > max_folder_bytes {
-    return folder_failure(
-      "workbench.folder_too_large",
-      "Select a project folder with at most \{max_folder_files} files and 16 MiB of text",
-    )
+  }
+  if raw.length() > max_folder_files {
+    return too_large()
+  }
+  let entries : Array[(String, @data.Content)] = []
+  let mut remaining = max_folder_bytes
+  for file in raw {
+    let path = @wire.string(@wire.field(file, "path"))
+    remaining -= @utf8.encode(path).length()
+    if remaining < 0 {
+      return too_large()
+    }
+    let content = match @wire.field(file, "content") {
+      String(text) => {
+        if text.length() > remaining {
+          return too_large()
+        }
+        remaining -= @utf8.encode(text).length()
+        @data.Text(text)
+      }
+      Object(record) if record.length() == 2 &&
+        record.get("encoding") == Some(Json::string("base64")) &&
+        record.get("content") is Some(String(encoded)) => {
+        if encoded.length() > (remaining + 2) / 3 * 4 {
+          return too_large()
+        }
+        let bytes = @base64.decode(encoded) catch {
+          _ =>
+            return folder_failure(
+              "workbench.folder_configuration",
+              "Invalid binary folder entry: " + path,
+            )
+        }
+        if @base64.encode(bytes[:]) != encoded {
+          return folder_failure(
+            "workbench.folder_configuration",
+            "Invalid binary folder entry: " + path,
+          )
+        }
+        remaining -= bytes.length()
+        @data.Binary(bytes)
+      }
+      _ =>
+        return folder_failure(
+          "workbench.folder_configuration",
+          "Invalid folder entry content: " + path,
+        )
+    }
+    if remaining < 0 {
+      return too_large()
+    }
+    entries.push((path, content))
   }
   let prefix = common_folder(entries.map(e => e.0))
   let files : Map[String, String] = Map([])
+  let binary_files : Map[String, Bytes] = Map([])
+  let invalid_paths : Array[String] = []
   for entry in entries {
-    files[entry.0.unsafe_substring(start=prefix.length(), end=entry.0.length())] = entry.1
+    let path = entry.0.unsafe_substring(
+      start=prefix.length(),
+      end=entry.0.length(),
+    )
+    if (try
+        @workspace.normalize(entry.0) == entry.0 &&
+        @workspace.normalize(path) == path &&
+        path != "" &&
+        ({
+          ignore(@ids.SourcePath::parse(path))
+          true
+        })
+      catch {
+        _ => false
+      }) ==
+      false {
+      invalid_paths.push("Skipped " + path + ": not a valid source path")
+      continue
+    }
+    if files.contains(path) || binary_files.contains(path) {
+      return folder_failure(
+        "workbench.folder_configuration",
+        "Duplicate folder entry: " + path,
+      )
+    }
+    match entry.1 {
+      Text(text) => files[path] = text
+      Binary(bytes) => binary_files[path] = bytes
+    }
+  }
+  let workspace_files = @workspace_files.Files::new(files, binary_files~) catch {
+    @config.Invalid(message) =>
+      return folder_failure("workbench.folder_configuration", message)
+    error =>
+      return folder_failure("workbench.folder_configuration", error.to_string())
+  }
+  if @workspace.primary_paths("").any(path => files.contains(path)) ||
+    files.contains("morphir-workspace.json") {
+    let workspace = workspace_files.discover() catch {
+      @config.Invalid(message) =>
+        return folder_failure("workbench.folder_configuration", message)
+      error =>
+        return folder_failure(
+          "workbench.folder_configuration",
+          error.to_string(),
+        )
+    }
+    return @wire.obj([
+      ("success", Json::boolean(true)),
+      ("workspace", workspace_files.to_json()),
+      ("discovery", workspace.to_json()),
+      (
+        "warnings",
+        Json::array((workspace.warnings + invalid_paths).map(@wire.text)),
+      ),
+      ("skipped", Json::number(invalid_paths.length().to_double())),
+    ])
   }
   guard files.get("morphir.json") is Some(manifest_text) else {
     return folder_failure(
@@ -104,9 +207,9 @@ fn import_folder(request : Json) -> Json raise {
   } else {
     source + "/"
   }
-  let warnings = workspace.warnings.copy()
+  let warnings = workspace.warnings + invalid_paths
   let kept : Array[Json] = []
-  let mut skipped = 0
+  let mut skipped = invalid_paths.length()
   for path, content in files {
     if path == "morphir.json" {
       continue
@@ -143,6 +246,7 @@ fn import_folder(request : Json) -> Json raise {
   }
   @wire.obj([
     ("success", Json::boolean(true)),
+    ("workspace", workspace_files.to_json()),
     (
       "project",
       @wire.obj([

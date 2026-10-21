@@ -85,6 +85,7 @@ fn failure(error : Error) -> Json {
   let code = match error {
     Invalid(code) | @receipts.Invalid(code) | @owner.Invalid(code) => code
     @native_reply.Invalid(code) => code
+    @filewire.Invalid(code) => code
     @protocol.Invalid(code) | @wire.Invalid(code, _) =>
       code.split(":").next().unwrap_or(code).to_owned()
     _ => "workbench.host_admission"

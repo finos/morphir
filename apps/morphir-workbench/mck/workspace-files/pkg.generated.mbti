@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-workbench/mck/workspace-files"
+
+// Values
+pub const SUITE : String = "workbench-workspace-files"
+
+pub const VERSION : String = "0.1.0-draft.1"
+
+pub fn handle_line(String) -> Json?
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

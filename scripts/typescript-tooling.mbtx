@@ -66,6 +66,13 @@ async fn main {
         "test", "--target", "js", "-p", "finos/morphir-workbench", "finos/morphir-workbench/arguments",
       ])
       run("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"])
+      // Both grant browser tests share this native owner and the built app.
+      run("moon", [
+        "build", "pkgs/morphir-workbench-native/files-acceptance", "--target", "native",
+      ])
+      run("bun", [
+        "run", "--cwd", "apps/morphir-workbench", "test:workspace-files",
+      ])
       run("bun", [
         "run", "--cwd", "apps/morphir-workbench", "test:originals-opening",
       ])

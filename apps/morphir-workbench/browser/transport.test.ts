@@ -5,6 +5,36 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LocalAdapter, RpcClient, ConnectedAdapter, chooseVersion, validateManifest } from './transport.ts';
 
+test('workspace compilation captures files without a synthesized source or project', async () => {
+  let capture: WorkRequest | undefined;
+  const adapter = new LocalAdapter(() => {
+    const worker: WorkerPort = { terminate() {}, postMessage(message) {
+      capture = message.request;
+      queueMicrotask(() => worker.onmessage!({ data: { id: message.id, result: { success: true } } }));
+    } };
+    return worker;
+  });
+  const request: WorkRequest = { operation: 'compile-workspace', workspace: {
+    version: 1, files: { 'morphir.toml': '[workspace]\nmembers=[]\n' }, openFile: 'morphir.toml',
+  } };
+  const pending = adapter.execute(request);
+  request.workspace!.files['morphir.toml'] = 'changed later';
+  assert.equal((await pending).success, true);
+  assert.equal(capture?.workspace?.files['morphir.toml'], '[workspace]\nmembers=[]\n');
+  assert.equal(capture?.source, undefined);
+  assert.equal(capture?.project, undefined);
+});
+
+test('invalid workspace files are refused before starting a worker', async () => {
+  let workers = 0;
+  const adapter = new LocalAdapter(() => { workers++; throw new Error('Unexpected worker'); });
+  for (const workspace of [null, { version: 2, files: {} }, { version: 1, files: [] },
+    { version: 1, files: { 'morphir.toml': 5 } }, { version: 1, files: { ['x'.repeat(4097)]: '' } }]) {
+    await assert.rejects(adapter.execute(malformed({ operation: 'compile-workspace', workspace })), /workspace/i);
+  }
+  assert.equal(workers, 0);
+});
+
 test('tree path overflow refuses before request cloning or worker creation', async () => {
   const prefix = `${'p'.repeat(240)}/`.repeat(16);
   const files = Array.from({length: 256}, (_, i) => ({path: prefix + String(i).padStart(240, 'x'), contentBase64: ''}));
@@ -929,4 +959,22 @@ test('a disconnected checking client cannot reuse earlier UI capability discover
   connected = false;
   await assert.rejects(adapter.execute({ ...evaluationRequest, executionMode: 'capability' }), /does not offer/);
   assert.equal(calls, 0, 'Stale UI discovery never authorizes a submission');
+});
+
+test('workspace dispatch preserves typed binary records and bounds decoded bytes', async () => {
+  let captured: unknown;
+  const adapter = new LocalAdapter(() => {
+    const worker: WorkerPort = { terminate() {}, postMessage(message) {
+      captured = message;
+      queueMicrotask(() => worker.onmessage?.({ data: { id: (message as { id: number }).id, result: { success: true } } }));
+    } };
+    return worker;
+  });
+  await adapter.execute({ operation: 'compile-workspace', workspace: { version: 1, openFile: null,
+    files: { 'morphir.toml': '[workspace]\nmembers=[]', 'models/original.ionb': { encoding: 'base64', content: 'AP8=' } } } });
+  assert.match(JSON.stringify(captured), /AP8=/);
+  await assert.rejects(adapter.execute({ operation: 'compile-workspace', workspace: { version: 1, openFile: null,
+    files: { 'models/bad.ionb': { encoding: 'base64', content: 'YR==' } } } }), /binary file/);
+  await assert.rejects(adapter.execute({ operation: 'compile-workspace', workspace: { version: 1, openFile: null,
+    files: { '../escape': 'x' } } }), /confined/);
 });

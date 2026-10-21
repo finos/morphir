@@ -131,7 +131,11 @@ if (import.meta.main) {
       workersClosed++;
       resolve();
     }))));
-    const receipts = await worksheetWorkflow(page);
+    const receipts = await worksheetWorkflow(page).catch(async error => {
+      console.error((await page.locator('body').innerText()).slice(-8000));
+      console.error(await page.evaluate(() => (globalThis as unknown as { worksheetTestReceipts?: unknown[] }).worksheetTestReceipts));
+      throw error;
+    });
     let deadline: ReturnType<typeof setTimeout> | undefined;
     try {
       await Promise.race([Promise.all(closed), new Promise((_, reject) => {

@@ -1,0 +1,10 @@
+import {
+  "finos/morphir-workbench-native-session/workspace-files" @files,
+  "finos/morphir-ir/wire",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
+}
+
+import {
+  "finos/morphir-workbench/mck/workspace-files" @mck,
+} for "test"

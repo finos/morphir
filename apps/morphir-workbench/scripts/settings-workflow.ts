@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Browser, Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
-import { gettingStarted, createWorkspace, runCommand, build } from './workbench-steps.ts';
+import { gettingStarted, createWorkspace, runCommand, build, setTarget } from './workbench-steps.ts';
 
 const key = 'morphir-workbench.settings.v1';
 
@@ -191,8 +191,9 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
     assert.equal(await page.locator('#source').isVisible(), false, 'The Morphir IR tab shows the output alone');
     await page.locator('.document-tab[data-output="ir"][aria-pressed="true"]').waitFor();
     // A compile opens the selected generated file in its own tab; a file tab closes, and then the source shows.
+    await setTarget(page, 'scheme');
     await build(page, 'Compile');
-    await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+    await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
     const fileTab = page.locator('.document-tab[data-output-path]');
     assert.equal(await fileTab.count(), 1, 'One generated file opens as a tab');
     const generatedPath = (await fileTab.getAttribute('data-output-path'))!;

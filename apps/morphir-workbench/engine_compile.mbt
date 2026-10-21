@@ -244,7 +244,7 @@ fn generation_fields(
 ///|
 fn compile_reply(
   run : EngineRun,
-  project : ProjectRequest,
+  language : @ids.LanguageId,
   target : String,
 ) -> Array[(String, Json)] raise {
   // A rejected file fails the compile even when another file produced a unit.
@@ -257,7 +257,7 @@ fn compile_reply(
         } else {
           rejected
         },
-        project.language,
+        language,
       ),
     )
   }

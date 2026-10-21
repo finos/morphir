@@ -127,6 +127,7 @@ if (!imports.some(i => i.module === 'morphir_host_v1')) {
       case 'remove_file': return fs.unlinkSync(a);
       case 'remove_dir': return fs.rmdirSync(a);
       case 'rename': return fs.renameSync(a, b);
+      case 'link_file_new': return fs.linkSync(a, b);
       case 'stderr': return void process.stderr.write(a);
       case 'exit': return void (process.exitCode = Number(a));
       default: throw new Error(`Unsupported host operation: ${op}`);

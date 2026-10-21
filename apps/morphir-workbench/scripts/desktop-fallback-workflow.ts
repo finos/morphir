@@ -43,13 +43,13 @@ export async function fallbackWorkerWorkflow(page: Page, mode: 'native-fallback'
   const source = page.getByRole('textbox', { name: 'Source editor', exact: true });
   await source.fill('(+ 20 22)'); await paint(page);
   assert.equal(await page.locator('#source').evaluate(e => (e as CodeEditor).value), '(+ 20 22)');
-  await complete(page, 'run', () => build(page, 'Compile & run'));
+  await complete(page, 'run-project', () => build(page, 'Compile & run'));
   await page.waitForFunction(() => document.querySelector('.run-value strong')?.textContent === '42');
   await showModel(page); await paint(page);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
   await complete(page, 'inspect', async () => (await chooser).setFiles(fileURLToPath(new URL('../fixtures/typed-pricing.json', import.meta.url))));
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   await page.locator('.tree-item[title="pricing:quotes#total"]').click();
   await page.getByRole('button', { name: 'Typed invocation', exact: true }).click(); await paint(page);
   const policy = page.getByRole('combobox', { name: 'Capability checks', exact: true });

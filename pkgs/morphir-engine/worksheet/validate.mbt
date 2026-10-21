@@ -223,6 +223,11 @@ pub fn WorksheetReport::decode(
         None => if diagnostic is Some(_) { report_failure() }
       }
     }
+    Failed(failure) if failure.code == "worksheet.context_failed" &&
+      failure.stage is @execution.Evaluate =>
+      if !rows.is_empty() || !located(diagnostic, Project, None) {
+        report_failure()
+      }
     Failed(failure) if failure.code == "worksheet.output_limit" &&
       failure.stage is @execution.Evaluate =>
       if fatal is Some(_) ||

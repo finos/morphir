@@ -1,0 +1,77 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-workbench/workspace-projects"
+
+import {
+  "finos/morphir-engine/data",
+  "finos/morphir-engine/ids",
+  "finos/morphir-engine/workspace",
+  "finos/morphir-workbench/project",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn load(String, (String) -> String?) -> Files? raise
+
+pub fn migrate(Array[@project.Project], String, intent? : String?, concept? : String?, worksheet? : String?) -> Files raise
+
+// Errors
+
+// Types and methods
+pub struct Files {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn Files::add_project(Self, @workspace.ProjectPath, @workspace.NewProject) -> Self raise
+pub fn Files::apply(Self, @workspace.Edit) -> Self raise
+pub fn Files::configure(Self, @workspace.ProjectPath, Setting, String?) -> Self raise
+pub fn Files::configure_workspace(Self, Setting, String?) -> Self raise
+pub fn Files::content(Self, String) -> @data.Content?
+pub fn Files::convert_legacy(Self, @workspace.ProjectPath) -> Self raise
+pub fn Files::current(Self) -> @workspace.ProjectPath? raise
+pub fn Files::discover(Self) -> @workspace.Workspace raise
+pub fn Files::equal(Self, Self) -> Bool
+pub fn Files::from_json(Json) -> Self raise
+pub fn Files::new(Map[String, String], binary_files? : Map[String, Bytes], open_file? : String?, current_project? : @workspace.ProjectPath?) -> Self raise
+pub fn Files::not_equal(Self, Self) -> Bool
+pub fn Files::open(Self, String) -> Self raise
+pub fn Files::opened(Self) -> String?
+pub fn Files::paths(Self) -> Array[String]
+pub fn Files::project_at(Self, @workspace.ProjectPath, Array[@ids.FileExtension]) -> @project.Project? raise
+pub fn Files::read(Self, String) -> String?
+pub fn Files::remove(Self, String) -> Self raise
+pub fn Files::remove_project(Self, @workspace.ProjectPath, delete_files? : Bool) -> Self raise
+pub fn Files::replace_project(Self, @workspace.ProjectPath, @project.Project, Array[@ids.FileExtension]) -> Self raise
+pub fn Files::same_contents(Self, Self) -> Bool
+pub fn Files::save(Self, String, String, (String) -> String?, (String, String) -> Bool) -> Bool
+pub fn Files::setting(Self, @workspace.ProjectPath, Setting) -> SettingValue raise
+pub fn Files::to_json(Self) -> Json
+pub fn Files::to_repr(Self) -> @debug.Repr
+pub fn Files::tree(Self) -> @workspace.Tree raise
+pub fn Files::write(Self, String, String) -> Self raise
+pub fn Files::write_all(Self, Map[String, @data.Content]) -> Self raise
+pub fn Files::write_content(Self, String, @data.Content) -> Self raise
+
+pub(all) enum Setting {
+  Name
+  SourceDirectory
+  Language
+  SourceProfile
+  Provider
+  Generation
+  DefaultMember
+} derive(Eq, @debug.Debug)
+pub fn Setting::equal(Self, Self) -> Bool
+pub fn Setting::not_equal(Self, Self) -> Bool
+pub fn Setting::to_repr(Self) -> @debug.Repr
+
+pub(all) struct SettingValue {
+  effective : String?
+  override_value : String?
+  origin : String?
+} derive(Eq, @debug.Debug)
+pub fn SettingValue::equal(Self, Self) -> Bool
+pub fn SettingValue::not_equal(Self, Self) -> Bool
+pub fn SettingValue::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

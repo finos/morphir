@@ -60,10 +60,16 @@ pub fn locate(path : String) -> Location raise {
             if relative_project == "" ||
               (
                 members.any(pattern => {
-                  @workspace.matches(pattern, relative_project)
+                  @workspace.matches(
+                    @workspace.normalize(pattern),
+                    relative_project,
+                  )
                 }) &&
                 !excluded.any(pattern => {
-                  @workspace.matches(pattern, relative_project)
+                  @workspace.matches(
+                    @workspace.normalize(pattern),
+                    relative_project,
+                  )
                 })
               ) {
               root = cursor

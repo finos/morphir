@@ -174,7 +174,7 @@ test "originals-only Close retires inventory without resetting source panes" {
   assert_eq(closed.pane, retained.pane)
   assert_eq(closed.open_outputs, retained.open_outputs)
   assert_eq(closed.output, retained.output)
-  assert_eq(closed.language_projects, retained.language_projects)
+  assert_eq(closed.workspace_files, retained.workspace_files)
   assert_eq(closed.worksheet_source, retained.worksheet_source)
   assert_eq(closed.status, "Model closed")
 }

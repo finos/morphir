@@ -166,6 +166,7 @@ fn read_range(
 pub fn WorksheetRequest::evaluate(
   self : WorksheetRequest,
   interrupted~ : () -> WorkerTermination? = fn() { None },
+  prepare~ : (@scheme.Runtime) -> Unit raise = fn(_) {  },
 ) -> WorksheetReport raise {
   // Interruption is a host decision; the shared evaluator only polls it.
   // Keep the established transport contract, which has no streamed prefix.
@@ -209,6 +210,20 @@ pub fn WorksheetRequest::evaluate(
   let runtime = @scheme.Runtime::new()
   runtime.set_cancelled(fn() { poll() is Some(_) })
   runtime.with_budget(runtime => {
+    prepare(runtime) catch {
+      error => {
+        if termination is Some(reason) {
+          return self.terminated(reason)
+        }
+        return failure_report(
+          source,
+          "worksheet.context_failed",
+          @scheme.error_message(error),
+          Project,
+          None,
+        )
+      }
+    }
     for form in forms {
       if poll() is Some(reason) {
         return self.terminated(reason)

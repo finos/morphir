@@ -6,6 +6,7 @@ import {
   "finos/morphir-engine/data",
   "finos/morphir-ir/wire",
   "finos/morphir-workbench-native-session/response" @native_reply,
+  "finos/morphir-workbench-native-session/workspace-files" @filewire,
   "finos/morphir-ir/versioned/json" @versioned,
   "finos/morphir-ir/migration",
   "finos/morphir-ir/versions/v4/json" @codec,

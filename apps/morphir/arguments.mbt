@@ -89,11 +89,10 @@ fn command_schema(path : String) -> CliSchema {
       positional = true
     }
     "workspace" => {
-      flags = ["all", "dry-run", "file", "directory"]
-      options = pipeline_options
-      repeatable = pipeline_options
+      children = ["init"]
       positional = true
     }
+    "workspace init" => options = ["project", "language", "profile"]
     "execute" | "verify" => {
       flags = ["dry-run", "log"]
       options = execution_options
@@ -154,7 +153,15 @@ fn command_schema(path : String) -> CliSchema {
       options = model_options + ["output"]
       positional = true
     }
-    "project" => children = ["list"]
+    "project" => children = ["list", "add", "remove"]
+    "project add" => {
+      options = ["name", "language", "profile"]
+      positional = true
+    }
+    "project remove" => {
+      flags = ["delete"]
+      positional = true
+    }
     "project list" => {
       options = ["frontend", "target", "config"]
       repeatable = options
@@ -322,6 +329,11 @@ fn parse_cli(args : Array[String]) -> Cli raise {
     }
   }
   let schema = command_schema(command)
+  if command == "workspace init" && entries.contains("path") {
+    raise @config.Invalid(
+      "workspace init creates in the current directory; no path argument is accepted",
+    )
+  }
   for name, values in entries {
     if name == "path" {
       continue
@@ -351,7 +363,10 @@ fn parse_cli(args : Array[String]) -> Cli raise {
     None
   }
   let help = flags.contains("help") || command == ""
-  if !schema.children.is_empty() && command != "" && !help {
+  if !schema.children.is_empty() &&
+    command != "" &&
+    command != "workspace" &&
+    !help {
     raise @config.Invalid("A subcommand is required for " + command)
   }
   { command, flags, entries, forwarded, help, help_text: render_help(command), }

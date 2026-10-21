@@ -3,6 +3,7 @@ import type { Adapter, Core, CoreReply, Invoke, ExecutionOptions, NativeBridge, 
 // qualification remain separate from using the accepted wire contract here.
 import { ExecutionClient } from './execution-session.ts';
 import { NativeWorkspaceClient } from './native-workspace.ts';
+import { NativeFilesClient } from './workspace-files.ts';
 export const nativeBridgeVersion = '0.2.0-draft.1';
 export const nativePolicyBridgeVersion = '0.2.0-draft.2';
 export const nativeVersion = (mapping: NativeMapping) => mapping === 'capability-checks' ? nativePolicyBridgeVersion : nativeBridgeVersion;
@@ -120,6 +121,7 @@ export class NativeAdapter {
   executions?: ExecutionClient;
   executionsAvailable = false;
   workspace?: NativeWorkspaceClient;
+  files?: NativeFilesClient;
   constructor(local: Adapter, invoke: Invoke, timeout?: number, executionOptions: ExecutionOptions = {}) {
     this.local = local;
     this.session = new NativeSession(invoke, timeout, executionOptions.core, executionOptions.nativeMapping);
@@ -176,7 +178,22 @@ export class NativeAdapter {
       this.current(epoch);
       return result;
     }
+    if (request.operation === 'workspace') {
+      if (!this.files) {
+        const files = new NativeFilesClient(this.session.invoke, this.executionOptions.core);
+        try { await files.open(); this.current(epoch); this.files = files; }
+        catch { files.dispose(); this.current(epoch); }
+      }
+      if (this.files) {
+        this.current(epoch);
+        const opened = await this.files.choose(); this.current(epoch);
+        return opened ? { success: true, operation: 'workspace', workspaceFiles: opened.workspace,
+          fileAuthority: opened.authority, message: `Workspace opened · ${opened.authority.name}` }
+          : { success: true, operation: 'workspace', cancelled: true, message: 'Workspace selection cancelled' };
+      }
+    }
     if (request.operation === 'workspace' && this.workspace) {
+      this.current(epoch);
       const result = await this.workspace.choose(); this.current(epoch); return result;
     }
     if (request.operation === 'project' && this.workspace) {
@@ -189,14 +206,19 @@ export class NativeAdapter {
     this.current(epoch);
     return result;
   }
+  async saveWorkspace(grantId: string, workspace: NonNullable<WorkRequest['workspace']>) {
+    if (!this.files) throw new Error('The workspace file grant is unavailable. Reopen the folder.');
+    return this.files.save(grantId, workspace);
+  }
+  async revokeWorkspace(grantId: string) { await this.files?.revoke(grantId); }
   cancelModelOpen() {
-    ++this.epoch; this.local.cancel(); return this.workspace?.cancel();
+    ++this.epoch; this.local.cancel(); return this.files?.cancelPicker() ?? this.workspace?.cancel();
   }
   cancel() {
     if (this.executions?.active || (this.executions?.execution && this.executions.execution.state !== 'terminal')) return this.executions.cancel();
-    ++this.epoch; this.local.cancel(); return this.workspace?.cancel();
+    ++this.epoch; this.local.cancel(); return this.files?.cancelPicker() ?? this.workspace?.cancel();
   }
-  dispose() { this.disposed = true; ++this.epoch; this.workspace?.dispose(); this.local.cancel(); this.session.dispose(); }
+  dispose() { this.disposed = true; ++this.epoch; this.workspace?.dispose(); this.files?.dispose(); this.local.cancel(); this.session.dispose(); }
 }
 
 export function selectLocalAdapter(location: Pick<Location, 'href'>, local: Adapter, bridge: NativeBridge | null | undefined = globalThis.__MoonBit__) {

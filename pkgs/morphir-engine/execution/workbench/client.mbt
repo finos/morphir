@@ -127,6 +127,35 @@ pub fn Client::handle(self : Client, source : String) -> Json {
   try {
     let fields = command(source)
     let op = string(fields["op"])
+    if op == "workspace-files-rpc-response" {
+      ignore(closed(Json::object(fields), ["op", "source", "id"]))
+      guard fields["id"] is Number(id, ..) &&
+        id >= 1 &&
+        id <= 2147483647 &&
+        @wire.is_integral_number(fields["id"]) else {
+        raise Invalid("workspace_files.rpc_id")
+      }
+      return {
+        "ok": true,
+        "value": @filewire.decode_connected_reply(
+          id.to_int(),
+          @utf8.encode(string(fields["source"])),
+        ),
+      }
+    }
+    if op == "workspace-files-response" {
+      ignore(closed(Json::object(fields), ["op", "request", "source"]))
+      let request = @filewire.decode_request(
+        @utf8.encode(string(fields["request"])),
+      )
+      return {
+        "ok": true,
+        "value": @filewire.decode_reply(
+          request,
+          @utf8.encode(string(fields["source"])),
+        ).to_json(),
+      }
+    }
     if op == "decode" {
       ignore(closed(Json::object(fields), ["op", "source"]))
       return { "ok": true, "value": decode(string(fields["source"])) }

@@ -29,37 +29,6 @@ fn tail(path : Array[String], n : Int32) -> Array[String] {
 }
 
 ///|
-fn protected_value(
-  source : String,
-  value : Value,
-  path : Array[String],
-  target : Array[String],
-) -> Unit raise Diagnostic {
-  match value {
-    Atom(_) => ()
-    Sequence(_, items, _) =>
-      for item in items {
-        protected_value(source, item, path, target)
-      }
-    Inline(_, entries, _) =>
-      for entry in entries {
-        let full = joined(path, entry.keys)
-        // Dotted syntax defines every intermediate table below this value.
-        let dotted_root = joined(path, [entry.keys[0]])
-        if entry.keys.length() > 1 && related(dotted_root, target) {
-          raise problem(
-            source,
-            entry.start,
-            UnsupportedDottedKey,
-            "Dotted-key edits require tier 2",
-          )
-        }
-        protected_value(source, entry.value, full, target)
-      }
-  }
-}
-
-///|
 fn Document::check_edit(
   self : Document,
   path : Array[String],
@@ -71,21 +40,8 @@ fn Document::check_edit(
           self.source,
           span.start,
           UnsupportedArrayOfTables,
-          "Array-of-tables edits require tier 3",
+          "Select an array-of-tables element by index before editing it",
         )
-      Assignment(table, entry) => {
-        let full = joined(table, entry.keys)
-        let dotted_root = joined(table, [entry.keys[0]])
-        if entry.keys.length() > 1 && related(dotted_root, path) {
-          raise problem(
-            self.source,
-            entry.start,
-            UnsupportedDottedKey,
-            "Dotted-key edits require tier 2",
-          )
-        }
-        protected_value(self.source, entry.value, full, path)
-      }
       _ => ()
     }
   }
@@ -178,7 +134,6 @@ fn checked_value(text : String) -> String raise Diagnostic {
   let p = Parser::{ source: text, pos: 0, }
   p.spaces()
   let v = p.value()
-  protected_value(text, v, [], [])
   p.spaces()
   if p.peek() != -1 {
     p.bad("Expected exactly one TOML value")
@@ -283,6 +238,25 @@ pub fn Document::set(
   }
   let parent = path[:path.length() - 1].to_owned()
   let key = key_text(path[path.length() - 1])
+  // An inline table can define an implicit parent with dotted keys too.
+  for length = parent.length(); length >= 0; length = length - 1 {
+    let ancestor = parent[:length].to_owned()
+    if self.lookup(ancestor) is Some(Inline(span, entries, _)) {
+      let relative = tail(parent, length)
+      if relative.is_empty() || entries.any(e => prefix(relative, e.keys)) {
+        let at = if entries.is_empty() {
+          span.start + 1
+        } else {
+          entries[entries.length() - 1].value.span().end
+        }
+        let sep = if entries.is_empty() { "" } else { ", " }
+        return self.replace(
+          { start: at, end: at, },
+          sep + path_text(tail(path, length)) + " = " + value,
+        )
+      }
+    }
+  }
   match self.lookup(parent) {
     Some(Inline(span, entries, _)) => {
       let at = if entries.is_empty() {
@@ -320,6 +294,42 @@ pub fn Document::set(
         }
       }
       if !found {
+        // Dotted definitions own their implicit tables. Add a sibling dotted
+        // assignment in that same section instead of declaring a new table.
+        let dotted_owner = self.statements
+          .iter()
+          .find_first(statement => {
+            match statement {
+              Assignment(table, entry) =>
+                table.length() < parent.length() &&
+                prefix(table, parent) &&
+                prefix(parent, joined(table, entry.keys))
+              _ => false
+            }
+          })
+        if dotted_owner is Some(Assignment(table, _)) {
+          let relative = tail(path, table.length())
+          let mut at = 0
+          for statement in self.statements {
+            match statement {
+              Header(header, _, span) if header == table =>
+                at = self.line_end(span.end)
+              Assignment(owner, entry) if owner == table =>
+                at = self.line_end(entry.value.span().end)
+              _ => ()
+            }
+          }
+          let lead = if at > 0 &&
+            self.source.code_unit_at(at - 1).to_int() != 10 {
+            self.eol()
+          } else {
+            ""
+          }
+          return self.replace(
+            { start: at, end: at, },
+            lead + path_text(relative) + " = " + value + self.eol(),
+          )
+        }
         let implicit_parent = self.statements.any(fn(statement) {
           match statement {
             Header(table, Standard, _) => prefix(parent, table)
@@ -327,7 +337,26 @@ pub fn Document::set(
           }
         })
         if implicit_parent {
-          return self.add_table(parent).set(path, value)
+          let at = self.focus.map(f => f.end).unwrap_or(self.source.length())
+          let parent = joined(self.focus.map(f => f.keys).unwrap_or([]), parent)
+          let lead = if at > 0 &&
+            self.source.code_unit_at(at - 1).to_int() != 10 {
+            self.eol()
+          } else {
+            ""
+          }
+          return self.replace(
+            { start: at, end: at, },
+            lead +
+            "[" +
+            path_text(parent) +
+            "]" +
+            self.eol() +
+            key +
+            " = " +
+            value +
+            self.eol(),
+          )
         }
         raise problem(
           self.source,
@@ -350,6 +379,30 @@ pub fn Document::set(
 }
 
 ///|
+fn inline_removal(value : Value, path : Array[String]) -> Array[Patch]? {
+  guard value is Inline(_, entries, commas) else { return None }
+  for i, entry in entries {
+    if entry.keys == path {
+      let patches = [
+        { start: entry.start, end: entry.value.span().end, text: "", },
+      ]
+      if !commas.is_empty() {
+        let comma = if i < commas.length() { commas[i] } else { commas[i - 1] }
+        patches.push({ start: comma, end: comma + 1, text: "", })
+      }
+      return Some(patches)
+    }
+    if prefix(entry.keys, path) {
+      if inline_removal(entry.value, tail(path, entry.keys.length()))
+        is Some(patches) {
+        return Some(patches)
+      }
+    }
+  }
+  None
+}
+
+///|
 /// Remove only an entry and its required separator. Surrounding whitespace
 /// and comments remain intact, including a former end-of-line comment.
 pub fn Document::remove(
@@ -364,30 +417,16 @@ pub fn Document::remove(
       }
     }
   }
-  let parent = path[:path.length() - 1].to_owned()
-  match self.lookup(parent) {
-    Some(Inline(_, entries, commas)) => {
-      for i, entry in entries {
-        if entry.keys == [path[path.length() - 1]] {
-          let patches = [
-            { start: entry.start, end: value.span().end, text: "", },
-          ]
-          if !commas.is_empty() {
-            let comma = if i < commas.length() {
-              commas[i]
-            } else {
-              commas[i - 1]
-            }
-            patches.push({ start: comma, end: comma + 1, text: "", })
-          }
-          return self.patched(patches)
-        }
+  for statement in self.statements {
+    if statement is Assignment(table, entry) {
+      let full = joined(table, entry.keys)
+      if prefix(full, path) &&
+        inline_removal(entry.value, tail(path, full.length())) is Some(patches) {
+        return self.patched(patches)
       }
-      raise problem(self.source, 0, MissingPath, "No inline key")
     }
-    _ =>
-      raise problem(self.source, 0, WrongKind, "Parent is not an inline table")
   }
+  raise problem(self.source, 0, MissingPath, "No inline key")
 }
 
 ///|
@@ -400,7 +439,8 @@ pub fn Document::add_table(
     raise problem(self.source, 0, WrongKind, "The root table already exists")
   }
   self.check_edit(path)
-  let at = self.source.length()
+  let at = self.focus.map(f => f.end).unwrap_or(self.source.length())
+  let path = joined(self.focus.map(f => f.keys).unwrap_or([]), path)
   let lead = if at > 0 && self.source.code_unit_at(at - 1).to_int() != 10 {
     self.eol()
   } else {
@@ -433,8 +473,12 @@ pub fn Document::remove_table(
           patches.push({ start: span.start, end: span.end, text: "", })
         }
       }
-      Assignment(_, entry) =>
-        if prefix(path, current) {
+      Assignment(table, entry) =>
+        if prefix(path, current) ||
+          (
+            path.length() < table.length() + entry.keys.length() &&
+            prefix(path, joined(table, entry.keys))
+          ) {
           patches.push({
             start: entry.start,
             end: entry.value.span().end,

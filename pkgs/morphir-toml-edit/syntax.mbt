@@ -60,6 +60,7 @@ priv enum Statement {
 pub struct Document {
   priv source : String
   priv statements : Array[Statement]
+  priv focus : EditFocus?
 }
 
 ///|
@@ -478,7 +479,7 @@ pub fn parse(source : String) -> Document raise Diagnostic {
     p.trivia()
   }
   validate_document(source, statements)
-  { source, statements, }
+  { source, statements, focus: None, }
 }
 
 ///|

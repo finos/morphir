@@ -1,7 +1,7 @@
 import type { Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
-import { openSample, showCompile, showSource, showModel, setExplorer, setTarget, currentTarget } from './workbench-steps.ts';
+import { openSample, showCompile, showSource, showModel, setExplorer, setTarget, currentTarget, build, useSourceWorkspace, runCommand, forgetSourceWorkspace } from './workbench-steps.ts';
 
 // Real failures can be read in the tool panel: each failed execution and each diagnostic opens its details (code, stage,
 // location, message, execution context), copies a plain-text report and shows the reply without source or models.
@@ -19,11 +19,12 @@ export async function detailsWorkflow(page: Page) {
 
   await showCompile(page);
   await setExplorer(page, true);
-  await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
+  forgetSourceWorkspace(page, 'elm');
+  await useSourceWorkspace(page, 'elm');
   await page.locator('[data-document="source"] .document-tab-label').getByText('src/Workbench/Main.elm', { exact: true }).waitFor();
   // A real Elm syntax error.
   await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('module Workbench.Main exposing (..)\n\nbroken =');
-  await page.getByRole('button', { name: 'Compile', exact: true }).click();
+  await build(page, 'Compile');
   await page.waitForFunction(() => document.querySelector('.statusbar')?.textContent?.includes('elm.'));
 
   // Diagnostics: the row opens its code, severity, stage, location, message and execution; the location opens the file.
@@ -111,7 +112,7 @@ export async function detailsWorkflow(page: Page) {
   await openSample(page, 'Records (parity corpus)');
   await page.locator('[data-path="src/Parity/Records/Points.elm"]').first().waitFor();
   await setTarget(page, 'moonbit');
-  await page.getByRole('button', { name: 'Compile', exact: true }).click();
+  await build(page, 'Compile');
   await page.getByRole('status').filter({ hasText: 'moonbit.unsupported_type' }).waitFor();
   // The refused generation keeps its failure on the Diagnostics report. Clicking the open tab would collapse the panel.
   if (!(await body.isVisible() && await tab('Diagnostics').getAttribute('aria-selected') === 'true')) await tab('Diagnostics').click();
@@ -128,8 +129,7 @@ export async function detailsWorkflow(page: Page) {
   await setTarget(page, previousTarget);
 
   // Leave a clean Elm project and a closed panel.
-  await page.getByRole('button', { name: 'More actions', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Reset project…', exact: true }).click();
+  await runCommand(page, 'Reset project…');
   await page.getByRole('button', { name: 'Confirm reset', exact: true }).click();
   if (await body.isVisible()) await page.getByRole('button', { name: 'Collapse panel', exact: true }).click();
   console.log(JSON.stringify({ diagnosticDetails: true, logDetails: true, outputDetails: true, copyDetails: true, rawReply: true, revealFromDetails: true, invalidModelCode: true }));

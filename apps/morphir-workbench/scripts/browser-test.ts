@@ -21,7 +21,6 @@ import { elmWorkflow, moonbitWorkflow, libraryWorkflow, stringWorkflow, supporte
 import { toolPanelWorkflow, terminalOutcomeWorkflow } from './tool-panel-workflow.ts';
 import { explorerWorkflow } from './explorer-workflow.ts';
 import { detailsWorkflow } from './details-workflow.ts';
-import { unzipSync, strFromU8 } from 'fflate';
 import { openSample, createWorkspace, showSource, showModel, showCompile, build, buildAction, buildMenuEntries, setExplorer, setRightSidebar, showGeneratedFiles, gettingStarted, exploreModel, setTarget, targetChoices } from './workbench-steps.ts';
 import { capabilityWorkflow } from './capability-workflow.ts';
 import { connectedCapabilityWorkflow } from './connected-capability-workflow.ts';
@@ -134,7 +133,7 @@ async function liveHostWorkflow(binary: string) {
     await setTarget(page!, 'gleam');
     await page!.getByRole('textbox',{name:'Source editor',exact:true}).fill('pub type Currency { Currency }\n\npub fn identity(value: Int) -> Int { value }\n');
     await page!.getByRole('button',{name:'Compile',exact:true}).click();
-    await page!.getByRole('status').filter({hasText:'Model ready'}).waitFor();
+    await page!.getByRole('status').filter({hasText: /Model ready|Compiled 1\/1 projects/}).waitFor();
     const ir = JSON.parse(await page!.locator('#output').evaluate(editor => (editor as CodeEditor).value));
     assert.ok(ir.distribution, 'Rust frontend returned real Morphir IR');
     const compilation = replies.find(message => message.result?.ir);
@@ -154,7 +153,7 @@ async function liveHostWorkflow(binary: string) {
     ]);
     assert.ok(opened.result && !opened.error, 'Real host opened the workspace model');
     await page!.waitForFunction(() => [...document.querySelectorAll<HTMLButtonElement>('button')].some(button => button.textContent === 'Import model' && !button.disabled));
-    await page!.getByRole('status').filter({hasText:'Model ready'}).waitFor();
+    await page!.getByRole('status').filter({hasText: /Model ready|Compiled 1\/1 projects/}).waitFor();
     await page!.locator('.tree-item').filter({hasText:'Currency'}).click();
     await page!.getByRole('heading',{name:'Currency',exact:true}).waitFor();
     await page!.locator('.tree-item').filter({hasText:'identity'}).click();
@@ -230,7 +229,7 @@ try {
   assert.equal(await back.isEnabled(), false, 'Back consumes history without recording itself');
   assert.equal(await page.locator('.topbar .primary:visible').count(), 1, 'One primary action leads the source document, in the header');
   assert.equal(await page.locator('.document-tabs .primary').count(), 0, 'The document tabs hold no build action');
-  assert.deepEqual(await buildMenuEntries(page), ['Compile & run'], 'Running a local Scheme build is the other build action');
+  assert.deepEqual(await buildMenuEntries(page), ['Compile user', 'Compile & run (Scheme)'], 'The split menu offers the current project and local execution');
   await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value === '(+ 8 9)');
   assert.equal(await page.locator('#source').evaluate(editor => (editor as CodeEditor).value), '(+ 8 9)', 'Back retains source edits');
@@ -246,7 +245,7 @@ try {
   assert.ok(syntaxColors.includes('rgb(0, 114, 158)'), 'Scheme builtins are highlighted');
   assert.ok(await page.locator('#source .cm-line span').evaluateAll(tokens => tokens.some(token => getComputedStyle(token).fontStyle === 'italic')), 'Scheme comments are highlighted');
   await build(page, 'Compile & run');
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   assert.equal(await page.locator('.run-value strong').textContent(), '41');
   assert.match(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value), /formatVersion/);
   assert.equal(await page.getByRole('textbox', { name: 'Morphir IR', exact: true }).getAttribute('aria-readonly'), 'true');
@@ -304,7 +303,7 @@ try {
   await page.getByRole('textbox', { name: 'Source editor' }).press('ControlOrMeta+Shift+z');
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')!.value === '(+ 20 22) ');
   await build(page, 'Compile & run');
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   await page.waitForFunction(() => document.querySelector<HTMLElement>('.run-value strong')?.textContent === '42');
   await outputTab('Generated').click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.value.includes('morphir'));
@@ -312,11 +311,11 @@ try {
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
   const values = await page.locator('.worksheet-result .value').allTextContents();
-  assert.ok(values.includes('49')); assert.ok(values.includes('(1 4 9 16)')); assert.ok(values.includes('1'));
+  assert.deepEqual(values, ['17'], 'Opening a source sample preserves the existing worksheet file');
   await page.getByRole('button', { name: 'Compile & inspect', exact: true }).click();
   await page.waitForFunction(() => document.querySelector<HTMLElement>('.run-value strong')?.textContent === '42');
   await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
-  await page.waitForFunction(() => [...document.querySelectorAll<HTMLElement>('.worksheet-result .value')].some(node => node.textContent === '49'));
+  await page.waitForFunction(() => [...document.querySelectorAll<HTMLElement>('.worksheet-result .value')].some(node => node.textContent === '17'));
 
   await page.getByRole('textbox', { name: 'Source editor' }).fill('(let ((x 1))');
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
@@ -335,7 +334,7 @@ try {
   const chooserPromise = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
   await (await chooserPromise).setFiles(fileURLToPath(new URL('../../../pkgs/morphir-ir/conformance/fixtures/v3-greeting.json', import.meta.url)));
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   await back.click();
   await page.getByRole('button', { name: 'Run worksheet', exact: true }).waitFor();
   await showModel(page);
@@ -589,189 +588,59 @@ try {
   assert.equal(new URL(page.url()).search, '?mode=connected', 'The Connect link opens connected mode');
   await page.goto(`${url}/?mode=connected`);
   await page.getByRole('status').filter({ hasText: 'launch URL' }).waitFor();
-  assert.equal(await page.getByRole('button', { name: 'Compile', exact: true }).isEnabled(), false);
+  assert.equal(await buildAction(page, 'Compile').isEnabled(), false);
+  // Legacy v1 hosts remain readable without claiming file-write authority. The
+  // legacy compile/generate wire mappings have focused transport tests; granted
+  // editing has a real native-owner browser fixture in test:workspace-files.
   const rpcCalls: RpcCall[] = [];
-  let includeBinary = false;
-  const generatedFiles = [
-    {path:'src/Sample/Main.scala',content:'val answer = 41',binary:false},
-    {path:'src/Sample/Helpers.scala',content:'def identity(value: Int): Int = value',binary:false},
-    {path:'src/Other/Main.scala',content:'val answer = 42',binary:false},
-    {path:'src/Sample/VeryLongUnicode_雪_Module.scala',content:'val snow = "雪"',binary:false},
-    {path:'build.json',content:'{"name":"sample"}\n',binary:false},
-    {path:'empty.txt',content:'',binary:false},
-    {path:Array.from({length:20},(_,i)=>`level${i}`).join('/')+'/deep.txt',content:'deep host path',binary:false},
-  ];
+  const connectedSource = { providerId: 'fixture', locator: 'workspace://read-only', displayName: 'Read-only fixture' };
   await page.route('**/api/session', route => route.fulfill({ json: {
-    protocolVersion: 1, webSocketPath: '/rpc', sessionId: 'fixture-session', initialSources: [],
-    providers: [{ id: 'fixture', status: 'available', capabilities: ['catalog', 'compile', 'generate'].map(name => ({ name: `morphir/playground/${name}`, version: '1' })) }],
+    protocolVersion: 1, webSocketPath: '/rpc', sessionId: 'fixture-session', initialSources: [connectedSource],
+    providers: [{ id: 'fixture', status: 'available', capabilities: [
+      'morphir/playground/catalog', 'morphir/playground/compile', 'morphir/playground/generate',
+      'morphir/workspace/open', 'morphir/project-model/open',
+    ].map(name => ({ name, version: '1' })) }],
   } }));
   await page.routeWebSocket('**/rpc', socket => {
     socket.onMessage(raw => {
-      const request = JSON.parse(String(raw));
-      rpcCalls.push(request);
-      const result = request.method.endsWith('catalog') ? {
-        frontends: [
-          { languageId: 'scheme', displayName: 'Fixture Scheme', fileExtensions: ['.scm'], irVersions: ['4.0.0'], compile: true, providerId: 'fixture', defaultProfile: 'unnegotiated-profile', profiles: [{id:'unnegotiated-profile',displayName:'Unnegotiated profile'}] },
-          { languageId: 'gleam', displayName: 'Fixture Gleam', fileExtensions: ['.gleam'], irVersions: ['4.0.0'], compile: true },
-        ],
-        targets: [{ target: 'scala', displayName: 'Fixture Scala', irVersions: ['4.0.0'], generate: true }, { target: 'elm', displayName: 'Fixture Elm', irVersions: ['4.0.0'], generate: true }],
-      } : request.method.endsWith('compile') && request.params.documents[0].text.includes('type-error') ? { success: false, diagnostics: [{ severity: 'error', code: 'E-TYPE', message: 'Type mismatch',
-          location: { uri: 'file:///main.scm', range: { start: { line: 0, character: 4 }, end: { line: 0, character: 10 } } } }] }
-        : request.method.endsWith('compile') ? { success: true, ir: compiledIr, irVersion: '4.0.0', diagnostics: [], modules: ['Main'] }
-        : request.method.endsWith('generate') ? { success: true, artifacts: includeBinary ? [...generatedFiles,{path:'assets/example.bin',content:'opaque host payload',binary:true}] : generatedFiles, diagnostics: [] } : {};
+      const request = JSON.parse(String(raw)); rpcCalls.push(request);
+      let result: unknown = {};
+      if (request.method === 'morphir.playground.catalog') result = {
+        frontends: [{ languageId: 'scheme', displayName: 'Fixture Scheme', fileExtensions: ['.scm'], irVersions: ['4.0.0'], compile: true }],
+        targets: [{ target: 'scala', displayName: 'Fixture Scala', irVersions: ['4.0.0'], generate: true }],
+      };
+      else if (request.method === 'morphir.workspace.open') {
+        assert.deepEqual(request.params.source, connectedSource);
+        result = { snapshot: { projects: [{ id: 'project-1', name: 'Hosted project' }] } };
+      } else if (request.method === 'morphir.project-model.open') {
+        assert.deepEqual(request.params.source, connectedSource); assert.equal(request.params.projectId, 'project-1');
+        result = { content: JSON.stringify(compiledIr) };
+      } else assert.equal(request.method, 'morphir.session.initialize');
       socket.send(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }));
     });
   });
+  const beforeConnected = await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort()));
   await page.goto(`${url}/?mode=connected`);
   await page.getByRole('status').filter({ hasText: 'Connected · ready' }).waitFor();
   assert.equal(await back.isEnabled(), false, 'Connected session starts with empty history');
-  const callsBeforeNavigation = rpcCalls.length;
-  await showModel(page);
-  await back.click();
-  await page.getByRole('button', {name:'Compile',exact:true}).waitFor();
-  assert.equal(rpcCalls.length, callsBeforeNavigation, 'Back is local UI navigation and adds no RPC');
-  assert.equal(await page.getByRole('button', { name: 'Worksheet', exact: true }).isEnabled(), true);
-  assert.deepEqual(await buildMenuEntries(page), ['Evaluate in Explorer'], 'Connected v1 cannot run compiled Scheme');
-  const callsBeforeWorksheet = rpcCalls.length;
-  await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Source editor' }).fill('(+ 20 22)');
-  await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
-  await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
-  assert.deepEqual(await page.locator('.worksheet-result .value').allTextContents(), ['42']);
-  assert.equal(rpcCalls.length, callsBeforeWorksheet, 'Connected worksheets use the real local worker without new RPC');
-  await showCompile(page);
-  // An edit and a language switch in one render, before the page renders the edit: the edit stays with its document.
-  const editThenSwitch = (text: string, language: string) => page.evaluate(({ text, language }) => {
-    const view = document.querySelector<CodeEditor>('#source')!.view!;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, userEvent: 'input.type' });
-    const select = document.querySelector<HTMLSelectElement>('select[aria-label="Language"]')!;
-    select.value = language;
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-  }, { text, language });
-  assert.equal(await page.getByRole('combobox',{name:'Source profile',exact:true}).count(),0,'Connected v1 does not expose unnegotiated source profiles');
-  const connectedLanguage = page.getByRole('combobox', {name:'Language',exact:true});
-  assert.deepEqual(await connectedLanguage.locator('option').evaluateAll(options=>options.map(option=>(option as CodeEditor).value)),['scheme','gleam'],'Connected choices come only from the host catalog');
-  await editThenSwitch('(total 3)', 'gleam');
-  await page.getByText('src/main.gleam',{exact:true}).waitFor();
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '').catch(async error => {
-    console.error('Connected source draft state', await page.locator('#source').evaluate(e => ({value:(e as CodeEditor).value, language:e.dataset.language, document:e.dataset.document})), await connectedLanguage.inputValue());
-    throw error;
-  });
-  await editThenSwitch('// retained host-language draft', 'scheme');
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '(total 3)');
-  // The Scheme document kept the history of its edit across both switches.
-  await page.locator('#source .cm-content').focus();
-  await page.keyboard.press('ControlOrMeta+z');
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '');
-  await page.keyboard.press('ControlOrMeta+Shift+z');
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '(total 3)');
-  await connectedLanguage.selectOption('gleam');
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '// retained host-language draft');
-  await connectedLanguage.selectOption('scheme');
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#source')?.value === '(total 3)');
-  assert.equal(rpcCalls.length,2,'Language switching adds no connected RPC calls');
-  await setTarget(page, 'scala');
-  await page.getByRole('button', { name: 'Compile', exact: true }).click();
+  assert.equal(await buildAction(page, 'Compile').isDisabled(), true, 'A host without source files cannot offer workspace compilation');
+  assert.equal(await page.getByRole('button', { name: 'Add project…', exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { name: 'New file…', exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole('textbox', { name: 'Source editor', exact: true }).getAttribute('aria-readonly'), 'true');
+  assert.equal(await page.getByRole('combobox', { name: 'Language', exact: true }).count(), 0);
+  await page.getByRole('treeitem').filter({ hasText: 'Hosted project' }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
-  await outputTab('Generated').click();
-  await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.value.includes('val answer = 41'));
-  assert.deepEqual(rpcCalls.map(call => call.method), ['morphir.session.initialize', 'morphir.playground.catalog', 'morphir.playground.compile', 'morphir.playground.generate']);
-  assert.deepEqual(rpcCalls[2]!.params.package, { name: 'user' });
-  assert.equal(rpcCalls[2]!.params.documents![0]!.text, '(total 3)');
-  assert.equal('frontendProvider' in rpcCalls[2]!.params,false);
-  assert.equal('frontendProfile' in rpcCalls[2]!.params,false);
-  const generated = page.getByRole('textbox', { name: 'Generated output', exact: true });
-  assert.equal(await generated.getAttribute('aria-readonly'), 'true');
-  // The file's path, state and actions share one row with the output tabs, and that row shares one grid row with the
-  // document tabs, so generated code starts at the height of the source beside it.
-  const outputHeading = page.locator('.output-panel .panel-heading');
-  assert.equal(await outputHeading.locator('.artifact-breadcrumb').getAttribute('title'), generatedFiles[0]!.path);
-  assert.equal(await outputHeading.getByText('Read-only', { exact: true }).isVisible(), true);
-  for (const name of ['Download file', 'Generated files (7)', 'Expand generated files'])
-    assert.equal(await outputHeading.getByRole('button', { name, exact: true }).isVisible(), true, `${name} is in the output heading`);
-  const firstLines = await page.evaluate(() => ['source', 'output'].map(id => {
-    const line = document.getElementById(id)!.shadowRoot!.querySelector('.cm-line')!.getBoundingClientRect();
-    return { left: line.left, top: line.top, height: line.height };
-  }));
-  assert.ok(firstLines[1]!.left > firstLines[0]!.left && Math.abs(firstLines[1]!.top - firstLines[0]!.top) <= 1,
-    `The first generated line starts at the height of the first source line: ${JSON.stringify(firstLines)}`);
-  assert.ok(await page.locator('#output .cm-line span').count() > 0, 'Host Scala output is highlighted');
-  assert.equal(rpcCalls[2]!.params.irVersion, '4.0.0');
-  await showModel(page);
-  await page.locator('.tree-item[title="user:main#main"]').click();
-  await page.getByText('Evaluation is unavailable in connected protocol v1.', { exact: false }).waitFor();
+  await page.locator('.model-tree .tree-item[title="user:main#total"]').click();
+  await page.getByRole('heading', { name: 'total', exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Evaluate', exact: true }).count(), 0);
-  assert.equal(rpcCalls.length, 4);
-  await showSource(page);
-  // The count in the output heading shows the Generated explorer.
-  await page.getByRole('button', {name:'Generated files (7)',exact:true}).click();
-  const fileNavigation = page.locator('#sidebar-secondary').getByRole('navigation', {name:'Generated files',exact:true});
-  await fileNavigation.waitFor();
-  await page.waitForFunction(()=>document.activeElement?.id==='section-generated');
-  await showGeneratedFiles(page);
-  assert.equal(await fileNavigation.locator('.artifact-file').count(),7);
-  await fileNavigation.getByRole('button', {name:'src/Other/Main.scala',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value==='val answer = 42');
-  assert.equal(await page.locator('.artifact-breadcrumb').textContent(),'src/Other/Main.scala');
-  await setTarget(page, 'elm');
-  assert.equal(await page.locator('#output').getAttribute('data-language'),'scala','Current file highlighting follows its path until new output is generated');
-  assert.equal(rpcCalls.length,4,'Changing the target alone does not regenerate files');
-  await setTarget(page, 'scala');
-  await fileNavigation.getByRole('button', {name:'Collapse src/Sample/',exact:true}).click();
-  await fileNavigation.getByRole('button', {name:'Expand src/Sample/',exact:true}).waitFor();
-  assert.equal(await fileNavigation.getByRole('button', {name:'src/Sample/Main.scala',exact:true}).isVisible(),false);
-  assert.equal(await fileNavigation.getByRole('button', {name:'src/Other/Main.scala',exact:true}).isVisible(),true);
-  await fileNavigation.getByRole('button', {name:'Expand src/Sample/',exact:true}).click();
-  await fileNavigation.getByRole('button', {name:generatedFiles.at(-1)!.path,exact:true}).click();
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value==='deep host path');
-  const archiveDownload = page.waitForEvent('download');
-  await page.getByRole('button', {name:'Download project',exact:true}).click();
-  const archive = unzipSync(await readFile(await (await archiveDownload).path()));
-  assert.deepEqual(Object.keys(archive),generatedFiles.map(file=>file.path));
-  for(const file of generatedFiles) assert.equal(strFromU8(archive[file.path]!),file.content);
-  await page.getByRole('button', {name:'Expand generated files',exact:true}).click();
-  await page.locator('.editor-grid.output-expanded').waitFor();
-  await fileNavigation.getByRole('button', {name:'src/Other/Main.scala',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value==='val answer = 42');
-  if(process.env.MORPHIR_WORKBENCH_OUTPUT_MULTI_SCREENSHOT) await page.screenshot({path:process.env.MORPHIR_WORKBENCH_OUTPUT_MULTI_SCREENSHOT,fullPage:true});
-  includeBinary = true;
-  await page.getByRole('button', {name:'Compile',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'Model ready'}).waitFor();
-  await fileNavigation.getByRole('button', {name:'assets/example.bin',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.value==='Binary artifact: text preview unavailable');
-  assert.equal(await page.getByRole('button', {name:'Download file',exact:true}).isEnabled(),false);
-  assert.equal(await page.getByRole('button', {name:'Download project',exact:true}).isEnabled(),false);
-  await page.setViewportSize({width:390,height:844});
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Focused multi-file output fits mobile width');
-  await setRightSidebar(page, false);
-  assert.equal(await fileNavigation.isVisible(),false);
-  assert.equal(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value),'Binary artifact: text preview unavailable','Closing the file list keeps the preview');
-  await setRightSidebar(page, true);
-  await fileNavigation.waitFor();
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'The right sidebar fits mobile width');
-  await setRightSidebar(page, false);
-  await page.getByRole('button', {name:'Restore split view',exact:true}).click();
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  // A connected compile failure keeps the host's structured v1 diagnostics.
-  await page.getByRole('textbox', { name: 'Source editor' }).fill('(type-error)');
-  await page.getByRole('button', {name:'Compile',exact:true}).click();
-  await page.getByRole('status').filter({hasText:'Type mismatch'}).waitFor();
-  await page.getByRole('tab', {name:/^Diagnostics/}).click();
-  const hostReport = page.locator('.tool-report.current').filter({ hasText: 'E-TYPE' });
-  await hostReport.waitFor();
-  assert.equal(await hostReport.locator('.tool-location').textContent(), 'main.scm:1:5');
-  assert.equal(await hostReport.locator('.tool-location').getAttribute('title'), 'file:///main.scm 0:4–0:10');
-  assert.match((await hostReport.locator('.tool-severity').textContent()!)!, /^Error$/);
-  assert.ok(rpcCalls.every(call => /^morphir\.(session|playground)\./.test(call.method)), 'Diagnostics add no RPC method');
-  await page.getByRole('tab', {name:'Logs',exact:true}).click();
-  assert.match((await page.locator('.tool-log').filter({ hasText: 'Initialize' }).last().textContent()!)!, /Connecting to the same-origin Morphir host/);
-  await page.getByRole('button', {name:'Collapse panel',exact:true}).click();
+  assert.equal(await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort())), beforeConnected, 'Connected model inspection writes no browser drafts');
+  assert.deepEqual(rpcCalls.map(call => call.method), ['morphir.session.initialize', 'morphir.playground.catalog', 'morphir.workspace.open', 'morphir.project-model.open']);
   // The tagged mode uses the merged execution codec, including values that
   // cannot pass through ordinary JavaScript numbers or Unicode scalar strings.
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(url);
   await exploreModel(page, fileURLToPath(new URL('../fixtures/typed-pricing.json', import.meta.url)));
-  await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+  await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   await page.locator('.tree-item[title="pricing:quotes#total"]').click();
   await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
   await page.getByRole('textbox', { name: 'quote.price.coefficient', exact: true }).fill('125');
@@ -1048,7 +917,7 @@ try {
     assert.equal(await fallbackWorkerWorkflow(fallbackPage, 'standalone'), 'standalone:compile-fields-json-ion-unsupported-boundary');
   } finally { await fallbackPage.close(); }
   assert.deepEqual(errors, []);
-  console.log('Browser workflow passed: local compile/run, explorer, back navigation, context retention, typed evaluation, Ion conversion/highlighting/invalid drafts and controls (exact Decimal/Int, Float64 bits, UTF-16, Maybe/Result, constructors, records/lists/tuples), structured/JSON/printed results, stale replies, worksheet, cancellation, import/export, mobile, connection failure, connected-v1 compile/generate fixture and workspaces.');
+  console.log('Browser workflow passed: local compile/run, explorer, back navigation, context retention, typed evaluation, Ion conversion/highlighting/invalid drafts and controls (exact Decimal/Int, Float64 bits, UTF-16, Maybe/Result, constructors, records/lists/tuples), structured/JSON/printed results, stale replies, worksheet, cancellation, import/export, mobile, connection failure, read-only connected-v1 model inspection and workspaces.');
 
 } finally {
   await browser?.close();

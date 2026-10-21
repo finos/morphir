@@ -1,0 +1,159 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "finos/morphir-workbench/browser/workspace"
+
+import {
+  "finos/morphir-engine/ids",
+  "finos/morphir-workbench/browser/shell",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub let contents : Array[Content]
+
+pub fn documents(Array[Content], connected~ : Bool) -> Array[Document]
+
+pub let max_name_length : Int
+
+pub fn numbers_in_keys(Array[String]) -> Int
+
+pub let presets : Array[Preset]
+
+pub let registry_key : String
+
+pub fn slug_of(String) -> String
+
+pub fn views(Array[Content], connected~ : Bool) -> Array[@shell.View]
+
+// Errors
+
+// Types and methods
+pub(all) enum Content {
+  Intent
+  ConceptualModel
+  SourceProject
+  ModelDocument
+  Worksheet
+} derive(Eq, @debug.Debug)
+pub fn Content::equal(Self, Self) -> Bool
+pub fn Content::from_id(String) -> Self?
+pub fn Content::id(Self) -> String
+pub fn Content::label(Self) -> String
+pub fn Content::not_equal(Self, Self) -> Bool
+pub fn Content::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Document {
+  Source
+  Model
+  IntentDraft
+  ConceptDraft
+} derive(Eq, @debug.Debug)
+pub fn Document::equal(Self, Self) -> Bool
+pub fn Document::not_equal(Self, Self) -> Bool
+pub fn Document::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Entry {
+  id : WorkspaceId
+  name : WorkspaceName
+  preset : Preset
+  contents : Array[Content]
+  storage : Storage
+  opened : Int
+  saved : Bool
+  layout : @shell.Layout
+  language : @ids.LanguageId?
+  location : WorkspaceLocation
+} derive(Eq, @debug.Debug)
+pub fn Entry::draft_key(Self, Content) -> String
+pub fn Entry::equal(Self, Self) -> Bool
+pub fn Entry::holds(Self, Content) -> Bool
+pub fn Entry::keys(Self, Array[String]) -> Array[String]
+pub fn Entry::not_equal(Self, Self) -> Bool
+pub fn Entry::project_key(Self, String) -> String
+pub fn Entry::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Preset {
+  Empty
+  SourceProject
+  ModelExploration
+  Sandbox
+} derive(Eq, @debug.Debug)
+pub fn Preset::base_name(Self) -> String
+pub fn Preset::equal(Self, Self) -> Bool
+pub fn Preset::from_id(String) -> Self?
+pub fn Preset::id(Self) -> String
+pub fn Preset::label(Self) -> String
+pub fn Preset::not_equal(Self, Self) -> Bool
+pub fn Preset::to_repr(Self) -> @debug.Repr
+
+pub struct Registry {
+  entries : Array[Entry]
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn Registry::add(Self, WorkspaceId, Content) -> Self
+pub fn Registry::adopt_legacy(Self) -> (Self, Entry)
+pub fn Registry::create(Self, Preset, name? : WorkspaceName, contents? : Array[Content], saved? : Bool, storage? : Storage, layout? : @shell.Layout, location? : WorkspaceLocation) -> (Self, Entry)
+pub fn Registry::equal(Self, Self) -> Bool
+pub fn Registry::from_json(Json) -> (Self, Array[String])
+pub fn Registry::get(Self, WorkspaceId) -> Entry?
+pub fn Registry::merge(Self, Self, removed? : Array[WorkspaceId]) -> Self
+pub fn Registry::new() -> Self
+pub fn Registry::not_equal(Self, Self) -> Bool
+pub fn Registry::recents(Self, except? : WorkspaceId?) -> Array[Entry]
+pub fn Registry::remove(Self, WorkspaceId) -> Self
+pub fn Registry::rename(Self, WorkspaceId, WorkspaceName) -> Self
+pub fn Registry::reserve(Self, Int) -> Self
+pub fn Registry::save(Self, WorkspaceId) -> Self
+pub fn Registry::set_contents(Self, WorkspaceId, Array[Content]) -> Self
+pub fn Registry::set_language(Self, WorkspaceId, @ids.LanguageId) -> Self
+pub fn Registry::set_layout(Self, WorkspaceId, @shell.Layout) -> Self
+pub fn Registry::to_json(Self) -> Json
+pub fn Registry::to_repr(Self) -> @debug.Repr
+pub fn Registry::touch(Self, WorkspaceId) -> Self
+pub fn Registry::unique_location(Self, String) -> WorkspaceLocation
+pub fn Registry::unique_name(Self, String) -> WorkspaceName
+
+pub(all) enum Storage {
+  Legacy
+  Scoped
+} derive(Eq, @debug.Debug)
+pub fn Storage::equal(Self, Self) -> Bool
+pub fn Storage::not_equal(Self, Self) -> Bool
+pub fn Storage::to_repr(Self) -> @debug.Repr
+
+pub struct WorkspaceId {
+  // private fields
+} derive(Eq, Hash, @debug.Debug)
+pub fn WorkspaceId::equal(Self, Self) -> Bool
+pub fn WorkspaceId::hash(Self) -> Int
+pub fn WorkspaceId::hash_combine(Self, Hasher) -> Unit
+pub fn WorkspaceId::not_equal(Self, Self) -> Bool
+pub fn WorkspaceId::output(Self, &Logger) -> Unit
+pub fn WorkspaceId::parse(String) -> Self?
+pub fn WorkspaceId::to_repr(Self) -> @debug.Repr
+pub fn WorkspaceId::to_string(Self) -> String
+pub impl Show for WorkspaceId
+
+pub(all) enum WorkspaceLocation {
+  Memory(String)
+  Connected(String)
+} derive(Eq, @debug.Debug)
+pub fn WorkspaceLocation::equal(Self, Self) -> Bool
+pub fn WorkspaceLocation::not_equal(Self, Self) -> Bool
+pub fn WorkspaceLocation::parse_memory(String) -> Self?
+pub fn WorkspaceLocation::to_repr(Self) -> @debug.Repr
+pub fn WorkspaceLocation::to_uri(Self) -> String
+
+pub struct WorkspaceName {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn WorkspaceName::equal(Self, Self) -> Bool
+pub fn WorkspaceName::not_equal(Self, Self) -> Bool
+pub fn WorkspaceName::output(Self, &Logger) -> Unit
+pub fn WorkspaceName::parse(String) -> Result[Self, String]
+pub fn WorkspaceName::to_repr(Self) -> @debug.Repr
+pub fn WorkspaceName::to_string(Self) -> String
+pub impl Show for WorkspaceName
+
+// Type aliases
+
+// Traits

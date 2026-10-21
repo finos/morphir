@@ -3,6 +3,7 @@ package "finos/morphir-engine/worksheet"
 
 import {
   "finos/morphir-execution",
+  "finos/morphir-scheme",
   "moonbitlang/core/debug",
 }
 
@@ -100,7 +101,7 @@ pub struct WorksheetRequest {
 } derive(Eq)
 pub fn WorksheetRequest::decode(String) -> Self raise
 pub fn WorksheetRequest::equal(Self, Self) -> Bool
-pub fn WorksheetRequest::evaluate(Self, interrupted? : () -> WorkerTermination?) -> WorksheetReport raise
+pub fn WorksheetRequest::evaluate(Self, interrupted? : () -> WorkerTermination?, prepare? : (@morphir-scheme.Runtime) -> Unit raise) -> WorksheetReport raise
 pub fn WorksheetRequest::new(CapturedWorksheetSource) -> Self raise
 pub fn WorksheetRequest::not_equal(Self, Self) -> Bool
 pub fn WorksheetRequest::source(Self) -> CapturedWorksheetSource

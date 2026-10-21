@@ -274,7 +274,11 @@ struct Model {
   draft_revision : Int32
   notice : Notice?
   worksheet : Bool
-  language_projects : Map[String, @project.Project]
+  workspace_files : @workspace_files.Files
+  file_access : FileAccess
+  workspace_collapsed : Array[WorkspaceNode]
+  project_dialog : ProjectDialog?
+  project_menu : @discovery.ProjectPath?
   worksheet_source : String
   files_edit : @project_files.State
   palette : @palette.State
@@ -287,7 +291,7 @@ struct Model {
   /// The last sample asked for, and the Elm project when it was asked for. A reply for an earlier request, or one
   /// that arrives after the Elm project changed, is dropped.
   sample_request : Int32
-  sample_base : @project.Project?
+  sample_base : @workspace_files.Files?
   storage_ok : Bool
   dirty : Array[String]
   removed_key : String
@@ -401,6 +405,7 @@ enum Msg {
   FolderImported(Int32, Int32, String)
   SampleIndex(String)
   SaveProject(Int32)
+  FilesSaved(@filewire.GrantId, Int32, String)
   ConfirmReset
   CancelReset
   Sample(String)
@@ -428,7 +433,6 @@ enum Msg {
   SourceProfile(String)
   Target(String)
   /// The generation target of a workspace project, by its language, from the settings page.
-  ProjectTarget(String, String)
   Example
   ElmExample
   MoonBitExample
@@ -456,6 +460,25 @@ enum Msg {
   ReceiveModel(@document.OpenAttempt, Int32, Int32, String, String)
   Export
   Project(String)
+  ProjectSetting(String, @workspace_files.Setting, String)
+  WorkspaceSetting(@workspace_files.Setting, String)
+  ConvertLegacyProject(String)
+  OpenWorkspaceFile(String)
+  FilesView(@settings.FilesView)
+  ToggleWorkspaceNode(WorkspaceNode)
+  ProjectMenu(@discovery.ProjectPath?)
+  AddWorkspaceProject
+  EditNewProject(ProjectField, String)
+  CreateWorkspaceProject
+  AskRemoveProject(@discovery.ProjectPath)
+  RemoveWorkspaceProject
+  DeleteProjectFiles(Bool)
+  DismissProjectDialog
+  CompileWorkspaceProject(@discovery.ProjectPath)
+  WorkspaceFilter(String)
+  AskWorkspaceFile(WorkspaceFileAction, String)
+  WorkspaceFilePath(String)
+  CommitWorkspaceFile
   Panel(@bottom_panel.Action)
   /// Shows the settings page over the current screen. The id names the control that opened it, which takes the
   /// focus back when the page closes.
@@ -592,7 +615,11 @@ fn initial() -> Model {
     draft_revision: 0,
     notice: None,
     worksheet: false,
-    language_projects: Map([]),
+    workspace_files: empty_workspace_files(),
+    file_access: Memory,
+    workspace_collapsed: [],
+    project_dialog: None,
+    project_menu: None,
     worksheet_source: worksheet_example,
     files_edit: @project_files.State::new(),
     palette: @palette.State::new(),
@@ -858,7 +885,7 @@ fn[T] known(parsed : () -> T raise Error) -> T {
 /// Explicit project choices stay pinned. Fresh local MoonBit projects use the
 /// provider's stable default. Experimental requires an explicit choice.
 fn selected_profile(model : Model, language : String) -> String {
-  if model.connected {
+  if !uses_file_projects(model) {
     return ""
   }
   if model.profile_choices.get(language) is Some(profile) {
@@ -888,7 +915,7 @@ fn file_rules(model : Model, language : String) -> @project.FileRules {
         _ => None
       }
     }),
-    layout: if kind == "whole-project" {
+    layout: if kind == "whole-project" || !model.connected {
       ManyFiles
     } else {
       OneFile
@@ -980,15 +1007,13 @@ fn default_project(model : Model, language : String) -> @project.Project {
 
 ///|
 fn active_project(model : Model) -> @project.Project {
-  active_project_of(model, model.language)
+  match projected_project(model, current_project_path(model)) {
+    Some(project) if project.language.to_string() == model.language => project
+    _ => default_project(model, model.language)
+  }
 }
 
 ///|
-fn active_project_of(model : Model, language : String) -> @project.Project {
-  model.language_projects
-  .get(language)
-  .unwrap_or_else(() => default_project(model, language))
-}
 
 ///|
 /// After new output, generated file tabs whose files the generation no longer made close, with a note, and when no
@@ -1037,36 +1062,26 @@ fn follow_project_target(model : Model) -> Model {
 
 ///|
 fn active_text(model : Model) -> String {
-  active_project(model).active_file().content
+  if model.connected && !model.workspace_available && !uses_file_projects(model) {
+    return ""
+  }
+  model.workspace_files
+  .opened()
+  .bind(path => model.workspace_files.read(path))
+  .unwrap_or("")
 }
 
 ///|
 /// The path of the file in the editor.
 fn source_name(model : Model) -> String {
-  active_project(model).active.to_string()
+  model.workspace_files.opened().unwrap_or("morphir.toml")
 }
 
 ///|
 /// Stores `project` as its language's project. The revision changes only when what a request sends
 /// changes (files, name, exposure, provider, profile); moving the active file does not.
 fn with_project(model : Model, project : @project.Project) -> Model {
-  let before = active_project_of(model, project.language.to_string())
-  let language_projects = model.language_projects.copy()
-  language_projects[project.language.to_string()] = project
-  let changed = before.files != project.files ||
-    before.name != project.name ||
-    before.exposed != project.exposed ||
-    before.provider != project.provider ||
-    before.profile != project.profile
-  {
-    ..model,
-    language_projects,
-    revision: if changed {
-      model.revision + 1
-    } else {
-      model.revision
-    },
-  }
+  write_project_files(model, project)
 }
 
 ///|
@@ -1175,97 +1190,6 @@ fn with_defaults(model : Model, project : @project.Project) -> @project.Project 
 }
 
 ///|
-/// Puts the stored project of `language` into the model. Nothing stored changes nothing; text that is not a valid
-/// project of this language keeps the default and gives the note to show.
-fn restored(model : Model, language : String, text : String) -> (Model, String) {
-  if text == "" {
-    return (model, "")
-  }
-  let failure = "Could not restore the saved " + language + " project"
-  try {
-    let project = @project.Project::from_json(@json.parse(text))
-    if project.language.to_string() != language {
-      return (model, failure + ": it belongs to another language")
-    }
-    let language_projects = model.language_projects.copy()
-    language_projects[language] = project
-    ({ ..model, language_projects, }, "")
-  } catch {
-    @project.ProjectError(_, message) => (model, failure + ": " + message)
-    _ => (model, failure)
-  }
-}
-
-///|
-/// After `initialize`: the stored project of each catalog language, in local mode only.
-fn restore_all(model : Model) -> Model {
-  restore_all_with(model, storage_load)
-}
-
-///|
-/// `restore_all` with the storage read passed in, so tests need no browser. A restored profile that the catalog
-/// lists becomes the language's profile choice; one it does not list is dropped with a note.
-fn restore_all_with(model : Model, load : (String) -> String) -> Model {
-  if model.connected {
-    return model
-  }
-  let mut restored_model = model
-  for entry in items(field(model.catalog, "frontends")) {
-    let language = text(entry, "languageId")
-    if !valid_language(language) {
-      continue
-    }
-    let (next, message) = restored(
-      restored_model,
-      language,
-      load(storage_key(restored_model, language)),
-    )
-    restored_model = if message != "" {
-      note(next, "Restore", @bottom_panel.Warning, message)
-    } else {
-      match next.language_projects.get(language) {
-        Some({ profile: Some(profile), .. } as project) if next.language_projects.get(
-            language,
-          ) !=
-          restored_model.language_projects.get(language) => {
-          let id = profile.to_string()
-          if items(field(entry, "profiles"))
-            .iter()
-            .any(item => text(item, "id") == id) {
-            let profile_choices = next.profile_choices.copy()
-            profile_choices[language] = id
-            {
-              ..next,
-              profile_choices,
-              source_profile: if language == next.language {
-                id
-              } else {
-                next.source_profile
-              },
-            }
-          } else {
-            let language_projects = next.language_projects.copy()
-            language_projects[language] = { ..project, profile: None, }
-            note(
-              { ..next, language_projects, },
-              "Restore",
-              @bottom_panel.Warning,
-              "The saved " +
-              language +
-              " project used the profile " +
-              id +
-              ", which is no longer available; the default profile is used",
-            )
-          }
-        }
-        _ => next
-      }
-    }
-  }
-  restored_model
-}
-
-///|
 /// The text of a `fetchText` reply, or why there is none.
 fn reply_text(reply : String) -> Result[String, String] {
   let json = @json.parse(reply) catch {
@@ -1333,26 +1257,19 @@ fn sample_reason(model : Model) -> String {
 
 ///|
 /// True when `now` has the files, package name and exposure of `base`; opening another file does not count.
-fn same_sources(base : @project.Project?, now : @project.Project) -> Bool {
-  match base {
-    Some(base) =>
-      base.files == now.files &&
-      base.name == now.name &&
-      base.exposed == now.exposed
-    None => false
-  }
+fn same_sources(
+  base : @workspace_files.Files?,
+  now : @workspace_files.Files,
+) -> Bool {
+  base.map(files => files.same_contents(now)).unwrap_or(false)
 }
 
 ///|
-/// Replaces a language's project wholesale (an example, a sample, an import): the revision changes and the
+/// Replaces the current project wholesale (an example, a sample, an import): the revision changes and the
 /// per-file problems of the earlier project and any inline edit are dropped.
 fn replace_project(model : Model, project : @project.Project) -> Model {
-  let language_projects = model.language_projects.copy()
-  language_projects[project.language.to_string()] = project
   {
-    ..model,
-    language_projects,
-    revision: model.revision + 1,
+    ..write_project_files(model, project),
     problem_counts: Map([]),
     problem_marks: Map([]),
     reveal: "",
@@ -1363,8 +1280,16 @@ fn replace_project(model : Model, project : @project.Project) -> Model {
 ///|
 /// The editor language of a file, from its extension.
 fn editor_language(model : Model) -> String {
-  let path = active_project(model).active.to_string()
-  if path.has_suffix(".elm") {
+  let path = source_name(model)
+  if path.has_suffix(".json") {
+    "json"
+  } else if path.has_suffix(".yaml") || path.has_suffix(".yml") {
+    "yaml"
+  } else if path.has_suffix(".md") || path.has_suffix(".txt") {
+    "text"
+  } else if path.has_suffix(".toml") {
+    "toml"
+  } else if path.has_suffix(".elm") {
     "elm"
   } else if path.has_suffix(".mbt") {
     "moonbit"
@@ -1379,6 +1304,34 @@ fn editor_language(model : Model) -> String {
 /// The worker or host request of an operation. The local worker gets the active project; a
 /// Morphir host and the worksheet get the text of one source.
 fn compile_request(model : Model, operation : String) -> Json {
+  if uses_file_projects(model) &&
+    !model.worksheet &&
+    (
+      operation == "compile" ||
+      operation == "compile-project" ||
+      operation == "run"
+    ) {
+    let fields = [
+      (
+        "operation",
+        Json::string(
+          if operation == "run" {
+            "run-project"
+          } else {
+            "compile-workspace"
+          },
+        ),
+      ),
+      ("workspace", model.workspace_files.to_json()),
+    ]
+    if operation != "compile" {
+      let path = current_project_path(model).to_string()
+      fields.push(
+        ("projectPath", Json::string(if path == "" { "." } else { path })),
+      )
+    }
+    return object(fields)
+  }
   let fields : Array[(String, Json)] = [("operation", Json::string(operation))]
   if operation == "worksheet" {
     fields.push(
@@ -1390,7 +1343,7 @@ fn compile_request(model : Model, operation : String) -> Json {
               "profile": @worksheet.PROFILE,
               "contractVersion": @worksheet.CONTRACT_VERSION,
               "source": {
-                "id": "worksheet-source",
+                "id": worksheet_source_id(model),
                 "revision": model.worksheet_revision,
                 "text": model.worksheet_source,
               },
@@ -1398,6 +1351,24 @@ fn compile_request(model : Model, operation : String) -> Json {
         ),
       ),
     )
+  }
+  if operation == "worksheet" && uses_file_projects(model) {
+    fields.push(("workspace", model.workspace_files.to_json()))
+    let current = model.workspace_files.current() catch { _ => None }
+    if current is Some(path) {
+      fields.push(
+        (
+          "projectPath",
+          Json::string(
+            if path.to_string() == "" {
+              "."
+            } else {
+              path.to_string()
+            },
+          ),
+        ),
+      )
+    }
   }
   if model.worksheet || model.connected {
     fields.push(
@@ -1426,6 +1397,20 @@ fn compile_request(model : Model, operation : String) -> Json {
 }
 
 ///|
+fn worksheet_source_id(model : Model) -> String {
+  if !uses_file_projects(model) {
+    return "worksheet-source"
+  }
+  let hash = @crypto.SHA256::new()
+  hash.update(
+    @utf8.encode(
+      current_project_path(model).to_string() + ":" + model.revision.to_string(),
+    ),
+  )
+  "worksheet-source-" + @crypto.bytes_to_hex_string(hash.finalize())
+}
+
+///|
 fn worksheet_matches(
   model : Model,
   source : @worksheet.CapturedWorksheetSource,
@@ -1433,7 +1418,7 @@ fn worksheet_matches(
   source.to_json() ==
   (
     {
-      "id": "worksheet-source",
+      "id": worksheet_source_id(model),
       "revision": model.worksheet_revision,
       "text": model.worksheet_source,
     } : Json)
@@ -1446,35 +1431,47 @@ fn with_example(
   language : String,
   profile : String,
   content : String,
+  target~ : String? = None,
 ) -> Model {
   let selected = with_selection(model, language, profile)
-  let fresh = default_project(selected, language)
+  let fresh = {
+    ..default_project(selected, language),
+    target: target.bind(@project.Generation::parse),
+  }
   replace_project(selected, fresh.set_content(fresh.active, content))
 }
 
 ///|
 fn with_selection(model : Model, language : String, profile : String) -> Model {
-  let profile_choices = model.profile_choices.copy()
-  profile_choices[language] = profile
-  let language_projects = model.language_projects.copy()
-  if language_projects.get(language) is Some(project) {
-    language_projects[language] = {
-      ..project,
-      // A profile id that does not parse leaves the project's profile as it is.
-      profile: if profile == "" {
-        project.profile
-      } else {
-        Some(@ids.ProfileId::parse(profile)) catch {
-          _ => project.profile
-        }
-      },
+  let profile_id = if profile == "" {
+    None
+  } else {
+    Some(@ids.ProfileId::parse(profile)) catch {
+      _ =>
+        return note(
+          model,
+          "Project",
+          @bottom_panel.Warning,
+          "Invalid source profile: " + profile,
+        )
     }
   }
+  let profile_choices = model.profile_choices.copy()
+  profile_choices[language] = profile
+  let changed = if valid_language(language) {
+    let project = {
+      ..active_project(model),
+      language: known(() => @ids.LanguageId::parse(language)),
+      profile: profile_id,
+    }
+    write_project_files(model, project)
+  } else {
+    model
+  }
   {
-    ..model,
+    ..changed,
     language,
     source_profile: profile,
-    language_projects,
     profile_choices,
     revision: model.revision + 1,
     problem_counts: if language == model.language {
@@ -1686,7 +1683,26 @@ fn update_here(
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
   let (next, cmd) = update_saving(model, msg, routed(model, emit))
-  (sync_registry(model, msg, settle(model, msg, next)), cmd)
+  let next = sync_registry(model, msg, settle(model, msg, next))
+  if next.language == "elm" &&
+    !next.connected &&
+    !next.samples_requested &&
+    next.available &&
+    !(msg is SampleIndex(_)) {
+    (
+      { ..next, samples_requested: true, },
+      @cmd.batch([
+        cmd,
+        @cmd.custom_cmd(scheduler => {
+          fetch_text("samples/elm/index.json", reply => {
+            scheduler.add(emit(SampleIndex(reply)))
+          })
+        }),
+      ]),
+    )
+  } else {
+    (next, cmd)
+  }
 }
 
 ///|
@@ -1698,7 +1714,21 @@ fn update_saving(
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
   let (next, cmd) = update_core(model, msg, emit)
-  let next = follow_project_target(next) |> follow_outputs(model, _)
+  let next = capture_model_files(
+    model,
+    sync_workspace_drafts(model, next, msg),
+    msg,
+  )
+  let next = follow_outputs(model, follow_project_target(next))
+  let next = if next.file_access is Writable(authority) &&
+    authority.state is Idle &&
+    next.revision != model.revision &&
+    next.status == model.status &&
+    next.revision != authority.saved_revision {
+    { ..next, status: "Workspace folder has unsaved changes", }
+  } else {
+    next
+  }
   if next.active != model.active {
     return (next, cmd)
   }
@@ -1707,33 +1737,12 @@ fn update_saving(
   } else {
     cmd
   }
-  if next.connected || msg is SaveProject(_) {
+  if !workspace_writable(next) || msg is (SaveProject(_) | FilesSaved(_, _, _)) {
     return (next, cmd)
   }
-  // A reset removes its own language's stored copy, so it does not mark that language dirty. The revision it bumps
-  // makes every save already scheduled stale, so other dirty languages need a save for the new revision.
-  if msg is ConfirmReset {
-    return if next.dirty.is_empty() {
-      (next, cmd)
-    } else {
-      (
-        next,
-        @cmd.batch([cmd, @cmd.delay(emit(SaveProject(next.revision)), 600)]),
-      )
-    }
-  }
-  // Languages whose stored project changed (the active file included) stay dirty until a save writes them. A
-  // change schedules one debounced save; the save runs only if no later revision change followed.
-  let dirty = next.dirty.copy()
-  for language, project in next.language_projects {
-    if model.language_projects.get(language) != Some(project) &&
-      !dirty.contains(language) {
-      dirty.push(language)
-    }
-  }
-  if next.revision != model.revision || dirty.length() != next.dirty.length() {
+  if next.workspace_files != model.workspace_files {
     (
-      { ..next, dirty, },
+      { ..next, dirty: ["workspace"], },
       @cmd.batch([cmd, @cmd.delay(emit(SaveProject(next.revision)), 600)]),
     )
   } else {
@@ -1748,6 +1757,21 @@ fn update_core(
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
   match msg {
+    FilesView(_)
+    | ToggleWorkspaceNode(_)
+    | ProjectMenu(_)
+    | AddWorkspaceProject
+    | EditNewProject(_, _)
+    | CreateWorkspaceProject
+    | AskRemoveProject(_)
+    | RemoveWorkspaceProject
+    | DeleteProjectFiles(_)
+    | DismissProjectDialog
+    | CompileWorkspaceProject(_)
+    | WorkspaceFilter(_)
+    | AskWorkspaceFile(_, _)
+    | WorkspaceFilePath(_)
+    | CommitWorkspaceFile => update_workspace_explorer(model, msg, emit)
     OpenOriginals
     | OriginalsStarted(_, _)
     | OriginalsChanged(_, _)
@@ -1802,13 +1826,21 @@ fn update_core(
       }
     }
     Layout(worksheet) =>
-      if model.mode is ConnectedOriginals {
+      if model.mode is ConnectedOriginals ||
+        (worksheet && !workspace_writable(model) && !holds(model, Worksheet)) {
         (model, @cmd.none)
       } else {
-        (remember(model, { ..model, worksheet, }), @cmd.none)
+        let shown = if worksheet {
+          ensure_workspace_content(model, Worksheet)
+        } else {
+          model
+        }
+        (remember(model, { ..shown, worksheet, }), @cmd.none)
       }
     Source(source) =>
-      if model.worksheet {
+      if !workspace_writable(model) {
+        (model, @cmd.none)
+      } else if model.worksheet {
         // The worksheet is a workspace draft: it is saved with the intent and conceptual model.
         let draft_revision = model.draft_revision + 1
         (
@@ -1822,12 +1854,113 @@ fn update_core(
           @cmd.delay(emit(SaveDrafts(draft_revision)), 400),
         )
       } else {
-        let project = active_project(model)
-        (
-          with_project(model, project.set_content(project.active, source)),
-          @cmd.none,
-        )
+        let path = model.workspace_files.opened().unwrap_or("morphir.toml")
+        if model.workspace_files.content(path) is Some(@data.Binary(_)) {
+          return (
+            note(
+              model,
+              "File",
+              @bottom_panel.Warning,
+              "Binary file contents are preserved; open a supported model to inspect it.",
+            ),
+            @cmd.none,
+          )
+        }
+        let files = model.workspace_files.write(path, source) catch {
+          _ => return (model, @cmd.none)
+        }
+        (with_workspace_files(model, files), @cmd.none)
       }
+    OpenWorkspaceFile(path) => {
+      let files = model.workspace_files.open(path) catch {
+        _ => return (model, @cmd.none)
+      }
+      let shown = with_workspace_files(model, files)
+      if open_model_file(shown, path, emit) is Some(opened) {
+        return opened
+      }
+      let collapsed = model.workspace_collapsed.filter(node => {
+        match node {
+          Folder(folder) => !@discovery.within(folder, path)
+          Project(project) => project != current_project_path(shown)
+        }
+      })
+      (
+        {
+          ..shown,
+          workspace_collapsed: collapsed,
+          files_edit: { ..shown.files_edit, filter: "", },
+          doc: if path == workspace_content_path(shown, Intent) {
+            IntentDraft
+          } else if path.has_suffix(".mfs") {
+            ConceptDraft
+          } else {
+            Source
+          },
+          worksheet: path == "worksheet.scm",
+        },
+        @cmd.none,
+      )
+    }
+    ProjectSetting(path, setting, value) => {
+      if !workspace_writable(model) {
+        return (model, @cmd.none)
+      }
+      let files = model.workspace_files.configure(
+        known(() => @discovery.ProjectPath::parse(path)),
+        setting,
+        if value == "" {
+          None
+        } else {
+          Some(value)
+        },
+      ) catch {
+        @config.Invalid(message) =>
+          return (
+            note(model, "Settings", @bottom_panel.Warning, message),
+            @cmd.none,
+          )
+        _ => return (model, @cmd.none)
+      }
+      (with_workspace_files(model, files), @cmd.none)
+    }
+    WorkspaceSetting(setting, value) => {
+      if !workspace_writable(model) {
+        return (model, @cmd.none)
+      }
+      let files = model.workspace_files.configure_workspace(
+        setting,
+        if value == "" {
+          None
+        } else {
+          Some(value)
+        },
+      ) catch {
+        @config.Invalid(message) =>
+          return (
+            note(model, "Settings", @bottom_panel.Warning, message),
+            @cmd.none,
+          )
+        _ => return (model, @cmd.none)
+      }
+      (with_workspace_files(model, files), @cmd.none)
+    }
+    ConvertLegacyProject(path) => {
+      if !workspace_writable(model) {
+        return (model, @cmd.none)
+      }
+      let files = model.workspace_files.convert_legacy(
+        known(() => @discovery.ProjectPath::parse(path)),
+      ) catch {
+        @config.Invalid(message) =>
+          return (
+            note(model, "Settings", @bottom_panel.Warning, message),
+            @cmd.none,
+          )
+        _ => return (model, @cmd.none)
+      }
+      (with_workspace_files(model, files), @cmd.none)
+    }
     Files(action) => {
       let before = active_project(model)
       let (files_edit, project, effects) = @project_files.apply(
@@ -1880,9 +2013,12 @@ fn update_core(
         }
         Closed => (model, @cmd.custom_cmd(_ => restore_focus()))
         Opened(path) => {
-          let (opened, cmd) = in_project_view(
-            leave_settings(model),
-            Open(path),
+          let (opened, cmd) = update_core(
+            {
+              ..leave_settings(model),
+              layout: model.layout.apply(Reveal(Files)),
+            },
+            OpenWorkspaceFile(path.to_string()),
             emit,
           )
           (opened, @cmd.batch([cmd, @cmd.custom_cmd(_ => focus_editor())]))
@@ -2371,6 +2507,48 @@ fn update_core(
           },
         )
       }
+      if field(result, "workspace") != Json::null() {
+        let files = @workspace_files.Files::from_json(
+          field(result, "workspace"),
+        ) catch {
+          _ => return refuse("Invalid workspace files")
+        }
+        let first = files
+          .paths()
+          .iter()
+          .find_first(p => {
+            p.has_suffix(".scm") || p.has_suffix(".elm") || p.has_suffix(".mbt")
+          })
+          .unwrap_or("morphir.toml")
+        let files = files.open(first) catch { _ => files }
+        let mut loaded = with_workspace_files(model, files)
+        for warning in items(field(result, "warnings")) {
+          if warning is String(message) {
+            loaded = note(
+              loaded,
+              "Import folder",
+              @bottom_panel.Warning,
+              message,
+            )
+          }
+        }
+        if client_skipped > 0 {
+          loaded = note(
+            loaded,
+            "Import folder",
+            @bottom_panel.Info,
+            "Omitted " + client_skipped.to_string() + " files in tool folders",
+          )
+        }
+        return (
+          {
+            ..loaded,
+            status: "Workspace folder imported",
+            dirty: ["workspace"],
+          },
+          @cmd.none,
+        )
+      }
       let project = @project.Project::from_request(field(result, "project")) catch {
         @project.ProjectError(_, message) => return refuse(message)
       }
@@ -2413,26 +2591,33 @@ fn update_core(
       }
       ({ ..loaded, status: "Folder imported", }, @cmd.none)
     }
-    SaveProject(revision) =>
-      if revision != model.revision || model.connected || model.dirty.is_empty() {
-        (model, @cmd.none)
-      } else {
-        (write_projects(model), @cmd.none)
-      }
+    FilesSaved(grant, revision, reply) =>
+      files_saved(model, grant, revision, reply, emit)
+    SaveProject(revision) => save_files(model, revision, emit)
     CancelReset => ({ ..model, reset_asking: false, }, @cmd.none)
     ConfirmReset => {
-      let fresh = replace_project(model, default_project(model, model.language))
-      let removed = storage_remove(storage_key(model, model.language))
-      (
-        {
-          ..fresh,
-          reset_asking: false,
-          removed_key: storage_key(model, model.language),
-          dirty: fresh.dirty.filter(l => l != model.language),
-          storage_ok: removed && fresh.storage_ok,
-        },
-        @cmd.none,
-      )
+      if model.connected || model.busy {
+        return (model, @cmd.none)
+      }
+      let current = active_project(model)
+      let root = current_project_path(model).to_string()
+      let name = discovered_projects(model)
+        .iter()
+        .find_first(p => p.root == root)
+        .map(p => {
+          @ids.SourcePackageName::parse(p.name) catch {
+            _ => current.name
+          }
+        })
+        .unwrap_or(current.name)
+      let project = {
+        ..default_project(model, model.language),
+        name,
+        provider: current.provider,
+        profile: current.profile,
+        target: current.target,
+      }
+      ({ ..replace_project(model, project), reset_asking: false, }, @cmd.none)
     }
     SampleIndex(reply) =>
       match reply_text(reply).bind(text => parse_index(text)) {
@@ -2469,7 +2654,7 @@ fn update_core(
           if model.samples.iter().any(entry => entry.0 == id) {
             let request = model.sample_request
             (
-              { ..model, sample_base: Some(active_project_of(model, "elm")), },
+              { ..model, sample_base: Some(model.workspace_files), },
               @cmd.custom_cmd(scheduler => {
                 fetch_text("samples/elm/" + id + ".json", reply => {
                   scheduler.add(emit(SampleLoaded(request, id, reply)))
@@ -2495,7 +2680,7 @@ fn update_core(
       )
     SampleLoaded(_, id, _) if !same_sources(
         model.sample_base,
-        active_project_of(model, "elm"),
+        model.workspace_files,
       ) =>
       (
         {
@@ -2576,34 +2761,14 @@ fn update_core(
         }
         None => (model, @cmd.none)
       }
-    ProjectTarget(language, target) =>
-      if language == model.language {
-        update_core(model, Target(target), emit)
-      } else {
-        match @project.Generation::parse(target) {
-          Some(generation) =>
-            (
-              with_project(model, {
-                ..active_project_of(model, language),
-                target: Some(generation),
-              }),
-              @cmd.none,
-            )
-          None => (model, @cmd.none)
-        }
-      }
     Example =>
       (
-        {
-          ..with_example(
-            model,
-            "scheme",
-            selected_profile(model, "scheme"),
-            example,
-          ),
-          worksheet_source: worksheet_example,
-          worksheet_revision: model.worksheet_revision + 1,
-        },
+        with_example(
+          model,
+          "scheme",
+          selected_profile(model, "scheme"),
+          example,
+        ),
         @cmd.none,
       )
     ElmExample =>
@@ -2614,6 +2779,7 @@ fn update_core(
             "scheme",
             selected_profile(model, "scheme"),
             "; Generate an Elm library with Compile\n(define answer 42)",
+            target=Some("elm"),
           ),
           target: "elm",
         },
@@ -2623,7 +2789,11 @@ fn update_core(
       (
         {
           ..with_example(
-            model, "moonbit", "moonbit-model-stable-v1", moonbit_example,
+            model,
+            "moonbit",
+            "moonbit-model-stable-v1",
+            moonbit_example,
+            target=Some("moonbit"),
           ),
           target: "moonbit",
         },
@@ -2633,7 +2803,11 @@ fn update_core(
       (
         {
           ..with_example(
-            model, "moonbit", "moonbit-model-stable-v1", moonbit_library_example,
+            model,
+            "moonbit",
+            "moonbit-model-stable-v1",
+            moonbit_library_example,
+            target=Some("moonbit"),
           ),
           target: "moonbit",
         },
@@ -2643,7 +2817,11 @@ fn update_core(
       (
         {
           ..with_example(
-            model, "moonbit", "moonbit-model-stable-v1", moonbit_current_example,
+            model,
+            "moonbit",
+            "moonbit-model-stable-v1",
+            moonbit_current_example,
+            target=Some("moonbit"),
           ),
           target: "moonbit",
         },
@@ -2653,7 +2831,11 @@ fn update_core(
       (
         {
           ..with_example(
-            model, "moonbit", "moonbit-model-stable-v1", moonbit_string_example,
+            model,
+            "moonbit",
+            "moonbit-model-stable-v1",
+            moonbit_string_example,
+            target=Some("moonbit"),
           ),
           target: "moonbit",
         },
@@ -2918,6 +3100,9 @@ fn update_core(
             ("success", Json::boolean(false)),
             ("message", Json::string("Invalid host response")),
           ])
+      }
+      if operation == "compile-workspace" || operation == "run-project" {
+        return receive_workspace(model, request_id, revision, result, emit)
       }
       if operation == "worksheet" {
         let report = try {
@@ -3270,7 +3455,9 @@ fn update_core(
       } else {
         model
       }
-      if !succeeded {
+      if !succeeded &&
+        !((operation == "compile" || operation == "run") &&
+        field(result, "ir") != Json::null()) {
         let model = note(
           model,
           label,
@@ -3305,11 +3492,20 @@ fn update_core(
           @cmd.none,
         )
       }
+      if operation == "workspace" &&
+        field(result, "workspaceFiles") != Json::null() {
+        return open_file_workspace(model, result)
+      }
       if operation == "workspace" {
         return (
           {
             ..model,
             busy: false,
+            file_access: if field(result, "cancelled") == Json::boolean(true) {
+              model.file_access
+            } else {
+              ReadOnly("This host offers model reading only")
+            },
             projects: items(field(result, "projects")),
             status: text(result, "message"),
           },
@@ -3371,11 +3567,10 @@ fn update_core(
           catalog,
           language,
           // A host session starts with empty sources, as before projects.
-          language_projects: if field(result, "connected") ==
-            Json::boolean(true) {
-            Map([])
+          workspace_files: if field(result, "connected") == Json::boolean(true) {
+            known(() => @workspace_files.Files::new(Map([])))
           } else {
-            model.language_projects
+            model.workspace_files
           },
           target: if model.connected {
             ""
@@ -3385,7 +3580,26 @@ fn update_core(
           projects: items(field(result, "projects")),
           status: text(result, "message"),
         }
-        return (start_session(initialized), @cmd.none)
+        let started = start_session(initialized)
+        if field(result, "workspaceFiles") != Json::null() {
+          return open_file_workspace(started, result)
+        }
+        return (
+          if started.connected {
+            {
+              ..started,
+              file_access: ReadOnly(
+                match text(result, "workspaceReadOnlyReason") {
+                  "" => "This host offers model reading only"
+                  reason => reason
+                },
+              ),
+            }
+          } else {
+            started
+          },
+          @cmd.none,
+        )
       }
       let compiled = field(result, "ir") != Json::null()
       let document = if compiled {
@@ -4277,9 +4491,7 @@ fn project_storage(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           }),
         [
           @html.span(
-            "Reset the " +
-            language_name(model, model.language) +
-            " project to its starting file? Your changes are lost.",
+            "Reset the current project's sources to its starting file? Your source changes are lost.",
           ),
           @html.div(class="explorer-reset-actions", [
             @html.button(
@@ -4674,7 +4886,7 @@ fn in_project_view(
 
 ///|
 fn runnable(model : Model) -> Bool {
-  model.worksheet || (!model.connected && model.language == "scheme")
+  model.worksheet || (uses_file_projects(model) && model.language == "scheme")
 }
 
 ///|
@@ -4843,7 +5055,7 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
       "",
     )
   }
-  let projects = !model.connected && holds(model, SourceProject)
+  let projects = workspace_writable(model) && holds(model, SourceProject)
   let rules = file_rules(model, model.language)
   add(
     Compile,
@@ -4853,6 +5065,8 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
       "Switch to Compile & inspect to compile the project"
     } else if !model.available {
       "No language is available yet"
+    } else if model.connected && !uses_file_projects(model) {
+      "This host does not provide workspace source files"
     } else {
       busy
     },
@@ -4872,7 +5086,7 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
   if !model.worksheet {
     add(SetTarget, "Set generation target…", "Build", busy)
     add(SwitchLanguage, "Switch language…", "Project", busy)
-    if !model.connected &&
+    if uses_file_projects(model) &&
       !items(field(frontend(model, model.language), "profiles")).is_empty() {
       add(SelectProfile, "Select source profile…", "Project", busy)
       add(ShowProfileDetails, "Show source profile details", "Project", "")
@@ -4991,10 +5205,12 @@ fn palette_choices(model : Model) -> Array[@palette.Choice] {
 fn palette_entries(model : Model) -> Array[@palette.Entry] {
   @palette.entries(
     model.palette,
-    files=if model.connected {
+    files=if !uses_file_projects(model) {
       []
     } else {
-      active_project(model).files.map(f => f.path)
+      model.workspace_files
+      .paths()
+      .filter_map(path => Some(@ids.SourcePath::parse(path)) catch { _ => None })
     },
     commands=palette_commands(model),
     choices=palette_choices(model),
@@ -5080,9 +5296,25 @@ fn run_command(
         }
         None => (model, @cmd.none)
       }
-    NewFile => in_project_view(model, StartAdd(None), emit)
-    RenameFile => in_project_view(model, StartRename(File(active)), emit)
-    DeleteFile => in_project_view(model, StartDelete(File(active)), emit)
+    NewFile => update_core(model, AskWorkspaceFile(Create, ""), emit)
+    RenameFile =>
+      update_core(
+        model,
+        AskWorkspaceFile(
+          Rename,
+          model.workspace_files.opened().unwrap_or(active.to_string()),
+        ),
+        emit,
+      )
+    DeleteFile =>
+      update_core(
+        model,
+        AskWorkspaceFile(
+          Delete,
+          model.workspace_files.opened().unwrap_or(active.to_string()),
+        ),
+        emit,
+      )
     CopyPath =>
       (
         model,
@@ -5092,7 +5324,21 @@ fn run_command(
           })
         }),
       )
-    CollapseFolders => in_project_view(model, CollapseAll, emit)
+    CollapseFolders => {
+      let nodes = model.workspace_files
+        .paths()
+        .filter_map(path => {
+          path
+          .rev_find("/")
+          .map(i => WorkspaceNode::Folder(path[:i].to_owned()))
+        })
+      let snapshot = discovered_projects(model).map(p => {
+        WorkspaceNode::Project(
+          known(() => @discovery.ProjectPath::parse(p.root)),
+        )
+      })
+      ({ ..model, workspace_collapsed: nodes + snapshot, }, @cmd.none)
+    }
     ToggleExposed =>
       in_project_view(
         model,
@@ -5160,11 +5406,7 @@ fn run_command(
         emit,
         remember=!from_palette,
       )
-    ShowProfileDetails =>
-      (
-        { ..model, doc: Source, worksheet: false, },
-        @cmd.custom_cmd(_ => open_profile_details(), kind=@cmd.after_render),
-      )
+    ShowProfileDetails => update_settings(model, OpenSettings(None))
     ShowExplorer => {
       let (shown, cmd) = in_project_view(model, Focus(File(active)), emit)
       let row = match shown.files_edit.current(explorer_env(shown)) {
@@ -5222,11 +5464,6 @@ fn move_view(
   let (moved, cmd) = update_core(model, Shell(Move(view, side)), emit)
   ({ ..moved, layout: moved.layout.apply(Reveal(view)), }, cmd)
 }
-
-///|
-/// Opens the source profile details and moves the focus to them.
-extern "js" fn open_profile_details() =
-  #|() => { const d = document.querySelector('.profile-details details'); if (d) { d.open = true; d.querySelector('summary')?.focus(); } }
 
 // Failure details for the tool panel.
 
@@ -5324,7 +5561,9 @@ fn failure_detail(
     [first, ..] => text(first, "code")
     [] => ""
   }
-  let failed = field(result, "success") != Json::boolean(true)
+  let failed = field(result, "success") != Json::boolean(true) &&
+    !((operation == "compile" || operation == "run") &&
+    field(result, "ir") != Json::null())
   {
     request_id,
     operation: operation_label(operation),

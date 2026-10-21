@@ -33,32 +33,31 @@ fn catalog_fixture() -> Json {
 }
 
 ///|
-test "each language keeps its own project across language switches" {
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
-  let (edited, _) = update(
-    model,
-    Source("(define kept 1)"),
-    @cmd.Emit(fn(_) { @cmd.none }),
-  )
-  let (elm, _) = update(edited, Language("elm"), @cmd.Emit(fn(_) { @cmd.none }))
-  let (back, _) = update(
-    elm,
-    Language("scheme"),
-    @cmd.Emit(fn(_) { @cmd.none }),
-  )
-  @expect.expect_all(s => {
-    s
-    .expect(active_text(elm), label="elm default")
-    .to_contain("module Workbench.Main")
-    s
-    .expect(active_project(elm).active.to_string(), label="elm file")
-    .to_equal("src/Workbench/Main.elm")
-    s.expect(active_text(back), label="scheme kept").to_equal("(define kept 1)")
+test "same-language projects keep independent files and selection follows the open file" {
+  let model = { ..scope_model(), catalog: catalog_fixture(), }
+  let files = known(() => {
+    @workspace_files.Files::new(
+      Map([
+        ("morphir.toml", "[workspace]\nmembers=['one','two']\n"),
+        ("one/morphir.toml", "[project]\nname='One'\n"),
+        ("one/src/main.scm", "11"),
+        ("two/morphir.toml", "[project]\nname='Two'\n"),
+        ("two/src/main.scm", "22"),
+      ]),
+    )
   })
+  let initial = with_workspace_files(model, files)
+  let one = run_all(initial, [
+    OpenWorkspaceFile("one/src/main.scm"),
+    Source("33"),
+  ])
+  let two = run_all(one, [OpenWorkspaceFile("two/src/main.scm")])
+  assert_eq(active_text(two), "22")
+  assert_eq(current_project_path(two).to_string(), "two")
+  assert_eq(
+    active_text(run_all(two, [OpenWorkspaceFile("one/src/main.scm")])),
+    "33",
+  )
 }
 
 ///|
@@ -71,24 +70,15 @@ fn member_of(json : Json, key : String) -> Json? {
 
 ///|
 test "the offline request carries the project; connected mode carries source" {
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "elm",
-    connected: false,
-  }
+  let model = { ..source_model("elm"), connected: false, }
   let offline = compile_request(model, "compile")
   let connected = compile_request({ ..model, connected: true, }, "compile")
   @expect.expect_all(s => {
     s
     .expect(offline, label="offline")
     .to_contain_json({
-      "operation": "compile",
-      "project": {
-        "name": "Workbench",
-        "languageId": "elm",
-        "exposedModules": ["Main"],
-      },
+      "operation": "compile-workspace",
+      "workspace": { "version": 1 },
     })
     s.expect(member_of(offline, "source"), label="no source").to_be_none()
     s
@@ -109,7 +99,7 @@ test "file rules follow the selected profile and the defaults follow the languag
     s
     .expect(elm.extensions.map(e => e.to_string()), label="elm extensions")
     .to_equal([".elm"])
-    s.expect(moonbit.layout, label="moonbit layout").to_equal(OneFile)
+    s.expect(moonbit.layout, label="moonbit layout").to_equal(ManyFiles)
     s
     .expect(
       default_project(model, "moonbit").active.to_string(),
@@ -162,7 +152,7 @@ test "ids from the catalog that do not parse never abort" {
   let (refused, _) = update(model, Language("Bad Language"), emit)
   let (switched, _) = update(model, Language("odd"), emit)
   let (profiled, _) = update(
-    { ..switched, language_projects: Map([("odd", odd)]), },
+    write_project_files(switched, odd),
     SourceProfile("BAD PROFILE"),
     emit,
   )
@@ -231,11 +221,7 @@ fn hostile_catalog_invalid_only() -> Json {
 
 ///|
 test "a connected initialize drops the stored local projects" {
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let (edited, _) = update(
     model,
     Source("(define local 1)"),
@@ -256,14 +242,14 @@ test "a connected initialize drops the stored local projects" {
   })
   @expect.expect_all(s => {
     s
-    .expect(edited.language_projects.length(), label="stored before")
+    .expect(test_project_map(edited).length(), label="stored before")
     .to_equal(1)
     s
-    .expect(connected.language_projects.length(), label="gone when connected")
+    .expect(test_project_map(connected).length(), label="gone when connected")
     .to_equal(0)
     s.expect(active_text(connected), label="empty").to_equal("")
     s
-    .expect(kept.language_projects.length(), label="kept when local")
+    .expect(test_project_map(kept).length(), label="kept when local")
     .to_equal(1)
   })
 }
@@ -271,7 +257,7 @@ test "a connected initialize drops the stored local projects" {
 ///|
 test "file actions edit the active project and a stale entry does not crash" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = { ..scope_model(), catalog: catalog_fixture(), language: "elm", }
+  let model = { ..source_model("elm"), }
   let (added, _) = update(model, Files(StartAdd(Some(Root))), emit)
   let (drafted, _) = update(
     added,
@@ -300,7 +286,7 @@ test "file actions edit the active project and a stale entry does not crash" {
 
 ///|
 test "a compile reply sets the problem counts per file" {
-  let model = { ..scope_model(), catalog: catalog_fixture(), language: "elm", }
+  let model = { ..source_model("elm"), }
   let reply : Json = {
     "success": false,
     "operation": "compile",
@@ -331,7 +317,7 @@ fn initialized_compile(model : Model, reply : Json) -> Model {
 ///|
 test "the revision changes only when the project changes" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = { ..scope_model(), catalog: catalog_fixture(), language: "elm", }
+  let model = { ..source_model("elm"), }
   let (added, _) = update(model, Files(StartAdd(Some(Root))), emit)
   let (drafted, _) = update(
     added,
@@ -359,7 +345,7 @@ test "the revision changes only when the project changes" {
     s.expect(opened.revision, label="Open").to_equal(confirmed.revision)
     s
     .expect(
-      opened.language_projects.get("elm").map(p => p.active.to_string()),
+      test_project_map(opened).get("elm").map(p => p.active.to_string()),
       label="active moved",
     )
     .to_equal(Some("src/Workbench/Main.elm"))
@@ -373,7 +359,7 @@ test "the revision changes only when the project changes" {
 ///|
 test "revealing a problem opens its file without a revision change; a stale file is only noted" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = { ..scope_model(), catalog: catalog_fixture(), language: "elm", }
+  let model = { ..source_model("elm"), }
   let (added, _) = update(model, Files(StartAdd(Some(Root))), emit)
   let (drafted, _) = update(
     added,
@@ -461,9 +447,7 @@ fn sample_reply() -> String {
 test "a sample replaces the Elm project and clears the earlier problems; a failed one keeps it" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
   let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "elm",
+    ..source_model("elm"),
     problem_counts: Map([("src/Workbench/Main.elm", 1)]),
     reveal: "1:1:1",
     samples: [("tiny", "Tiny"), ("gone", "Gone"), ("bad", "Bad")],
@@ -530,11 +514,7 @@ test "a sample replaces the Elm project and clears the earlier problems; a faile
 ///|
 test "an imported folder replaces the Elm project and reports every note" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-  }
+  let model = { ..source_model("scheme"), }
   let reply : Json = {
     "success": true,
     "project": {
@@ -629,9 +609,7 @@ test "an imported folder replaces the Elm project and reports every note" {
 test "a sample reply for an earlier choice, or after an edit, does not replace the project" {
   let emit = @cmd.Emit(fn(_) { @cmd.none })
   let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "elm",
+    ..source_model("elm"),
     samples: [("tiny", "Tiny"), ("other", "Other")],
   }
   let (first, _) = update(model, Sample("tiny"), emit)
@@ -713,39 +691,44 @@ test "fresh MoonBit projects use stable and preserve an explicit experimental ch
 }
 
 ///|
-test "each project keeps its generation target, and the current one is what Compile sends" {
-  let model = {
-    ..scope_model(),
-    catalog: catalog_fixture(),
-    language: "scheme",
-    target: "scheme",
-  }
-  let elm_target = run_all(model, [Target("elm")])
-  let in_elm = run_all(elm_target, [Language("elm")])
-  let no_generation = run_all(in_elm, [
-    ProjectTarget("scheme", "moonbit"),
-    Target(""),
-  ])
-  let back = run_all(no_generation, [Language("scheme")])
-  @expect.expect_all(s => {
-    s
-    .expect(active_project(elm_target).target, label="saved on the project")
-    .to_equal(Some(Backend(@ids.BackendId::parse("elm"))))
-    s.expect(elm_target.dirty.contains("scheme"), label="saved").to_be_true()
-    s
-    .expect(in_elm.target, label="a project without a target keeps the default")
-    .to_equal("elm")
-    s
-    .expect(no_generation.target, label="current project's choice")
-    .to_equal("")
-    s
-    .expect(active_project(no_generation).target, label="no generation")
-    .to_equal(Some(NoGeneration))
-    s
-    .expect(back.target, label="the Scheme project's target, set from settings")
-    .to_equal("moonbit")
-    s
-    .expect(run_all(back, [Target("Not a backend!")]).target, label="refused")
-    .to_equal("moonbit")
+test "each project keeps generation settings in its real config" {
+  let initial = { ..scope_model(), catalog: catalog_fixture(), }
+  let files = known(() => {
+    @workspace_files.Files::new(
+      Map([
+        ("morphir.toml", "[workspace]\nmembers=['one','two']\n"),
+        ("one/morphir.toml", "[project]\nname='One'\n"),
+        ("one/src/main.scm", "11"),
+        ("two/morphir.toml", "[project]\nname='Two'\n"),
+        ("two/src/main.scm", "22"),
+      ]),
+    )
   })
+  let one = run_all(with_workspace_files(initial, files), [
+    OpenWorkspaceFile("one/src/main.scm"),
+    Target("elm"),
+  ])
+  let two = run_all(one, [
+    OpenWorkspaceFile("two/src/main.scm"),
+    Target("moonbit"),
+  ])
+  let back = run_all(two, [OpenWorkspaceFile("one/src/main.scm")])
+  assert_eq(back.target, "elm")
+  assert_eq(two.target, "moonbit")
+  assert_eq(
+    back.workspace_files.setting(
+      known(() => @discovery.ProjectPath::parse("one")),
+      @workspace_files.Generation,
+    ).effective,
+    Some("elm"),
+  )
+  assert_eq(
+    text(compile_request(back, "compile"), "operation"),
+    "compile-workspace",
+  )
+  assert_eq(
+    field(compile_request(back, "compile"), "workspace"),
+    back.workspace_files.to_json(),
+  )
+  assert_eq(run_all(back, [Target("Not a backend!")]).target, "elm")
 }

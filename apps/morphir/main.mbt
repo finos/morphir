@@ -9,9 +9,9 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
             [
               "run", "execute", "verify", "conform", "eval", "worksheet", "generate",
               "model inspect", "model export-original", "connected connect", "connected run",
-              "connected artifacts", "connected originals", "workspace", "project list",
-              "toolchain info", "toolchain setup", "toolchain build", "toolchain run",
-              "toolchain exec",
+              "connected artifacts", "connected originals", "workspace", "workspace init",
+              "project list", "project add", "project remove", "toolchain info",
+              "toolchain setup", "toolchain build", "toolchain run", "toolchain exec",
             ].map(Json::string),
           ),
         ),
@@ -36,7 +36,7 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
               "--checking-policy", "--source-id", "--source-revision", "--connection",
               "--connected-helper", "--build-target", "--backend-option", "--filename",
               "--overwrite", "--connection-scope", "--transfer-helper", "--originals-helper",
-              "--list",
+              "--list", "--name", "--language", "--profile", "--delete",
             ].map(Json::string),
           ),
         ),
@@ -115,6 +115,11 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
     cli.command == "verify" ||
     cli.command == "conform" {
     return execution_command(cli, mode)
+  }
+  if cli.command == "workspace init" ||
+    cli.command == "project add" ||
+    cli.command == "project remove" {
+    return scaffolding_command(cli, mode)
   }
   let project_list = cli.command == "project list"
   let path = value(cli, "path", fallback=".")

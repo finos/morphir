@@ -14,13 +14,13 @@ pub fn cwd() -> String
 
 pub fn environment() -> Map[String, String]
 
-pub fn exit(Int) -> Unit
+pub fn exit(Int32) -> Unit
 
-pub fn file_chunks(String, Int, (Bytes) -> Unit raise) -> Unit raise
+pub fn file_chunks(String, Int32, (Bytes) -> Unit raise) -> Unit raise
 
 pub fn file_chunks_supported() -> Bool
 
-pub fn flush_file(String, Bytes, Int, root? : String) -> Bool
+pub fn flush_file(String, Bytes, Int32, root? : String) -> Bool
 
 pub fn interruption_requested() -> Bool
 
@@ -30,11 +30,13 @@ pub fn interruption_stop() -> Unit
 
 pub fn interruption_supported() -> Bool
 
-pub fn kind(String) -> Int raise
+pub fn kind(String) -> Int32 raise
+
+pub fn link_file_new(String, String) -> Unit raise
 
 pub fn list(String) -> Array[String] raise
 
-pub fn list_bounded(String, Int) -> Array[String] raise
+pub fn list_bounded(String, Int32) -> Array[String] raise
 
 pub fn mkdir(String) -> Unit raise
 
@@ -42,7 +44,7 @@ pub fn monotonic_seconds() -> Double
 
 pub fn observation_id() -> String raise
 
-pub fn process(String, Array[String], String, String, Int) -> Json raise
+pub fn process(String, Array[String], String, String, Int32) -> Json raise
 
 pub fn process_supported() -> Bool
 
@@ -50,7 +52,7 @@ pub fn read(String) -> String raise
 
 pub fn read_bytes(String) -> Bytes raise
 
-pub fn read_input(String, Int) -> Bytes raise
+pub fn read_input(String, Int32) -> Bytes raise
 
 pub fn remove_dir(String) -> Unit raise
 

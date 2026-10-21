@@ -23,6 +23,7 @@ import {
   "finos/morphir-workbench-native-session@0.1.0",
   "finos/morphir-execution@0.1.0",
   "finos/morphir-engine@0.1.0",
+  "finos/morphir-toml-edit@0.1.0",
   "finos/morphir-moonbit@0.1.0",
   "finos/morphir-moonbit-frontend@0.1.0",
   "finos/morphir-elm@0.1.0",

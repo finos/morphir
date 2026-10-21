@@ -734,3 +734,28 @@ kbd.shortcut { display:inline-block; min-width:18px; padding:0 5px; border:1px s
 .source-document .artifact-preview { flex:1 1 0; }
 .output-panel .tabs .tab,.output-panel .panel-actions .ghost { white-space:nowrap; }
 .output-panel .panel-actions .compact-select > span { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+/* Workspace files share the Explorer's tree and focus treatment. */
+.workspace-files { min-width:0; }
+.workspace-file-views { display:flex; gap:4px; padding:4px 8px; border-bottom:1px solid var(--line); }
+.workspace-file-views button[aria-pressed="true"] { background:var(--selection); color:var(--link-strong); }
+.workspace-project-row { display:flex; align-items:center; min-width:0; }
+.workspace-project-row > .tree-item { flex:1; min-width:0; }
+.workspace-files .tree-item { display:flex; align-items:center; gap:6px; width:100%; text-align:left; min-width:0; }
+.workspace-files .tree-item > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.workspace-files .current-project { border-left:2px solid var(--brand-blue); }
+.workspace-files .tree-item.active { background:var(--selection); }
+.workspace-files .project-language { margin-left:auto; font-size:11px; color:var(--muted); }
+.workspace-project-actions { display:flex; flex-wrap:wrap; gap:4px; padding:4px 10px 6px; background:var(--surface-alt); }
+.workspace-project-dialog { display:flex; flex-direction:column; gap:8px; margin:8px; padding:12px; border:1px solid var(--line-strong); border-radius:var(--radius); background:var(--surface); }
+.workspace-project-dialog h3 { margin:0; font-size:14px; }
+.workspace-project-dialog label { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.workspace-project-dialog input,.workspace-project-dialog select { width:100%; min-width:0; box-sizing:border-box; }
+.workspace-project-dialog input[type="checkbox"] { width:auto; align-self:flex-start; }
+.workspace-project-dialog .error { color:var(--danger-ink); }
+.workspace-file-row { display:flex; min-width:0; align-items:center; }
+.workspace-file-row > .tree-item { flex:1; min-width:0; }
+.workspace-file-actions { position:relative; flex-shrink:0; }
+.workspace-file-actions > summary { cursor:pointer; list-style:none; display:flex; padding:4px; }
+.workspace-file-actions > summary::-webkit-details-marker { display:none; }
+.workspace-file-actions[open] > .workspace-project-actions { position:absolute; z-index:5; right:0; top:100%; width:180px; box-sizing:border-box; background:var(--surface); border:1px solid var(--line-strong); box-shadow:0 4px 12px var(--shadow); }

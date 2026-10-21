@@ -145,7 +145,28 @@ source_directory = "src"
 
 The CLI also finds `.morphir/morphir.toml` and `.config/morphir/config.toml`. Multiple primary candidates are errors. YAML candidates are detected and reported as unsupported. `morphir.json` is the morphir-elm project file and is read as an Elm project (see [Elm projects](#elm-projects)); other languages, Scheme included, use `morphir.toml`. `morphir-workspace.json` remains supported; canonical configuration takes precedence with a warning.
 
-Configuration layers are defaults, system, global user, workspace primary, member primary, workspace/member user overrides, environment and CLI. Global configuration and shared workspace defaults exclude project identity and workspace-root settings when applied to a member. Tables merge recursively and arrays replace. TOML encoding preserves unknown values semantically, without preserving comments or formatting.
+Configuration layers are defaults, system, global user, workspace primary, member primary, workspace/member user overrides, environment and CLI. Global configuration and shared workspace defaults exclude project identity and workspace-root settings when applied to a member. Tables merge recursively and arrays replace. Generic TOML encoding preserves unknown values semantically. Workspace scaffolding uses the lossless editor to preserve comments, formatting and untouched values.
+
+Create a workspace and add projects with the same scaffolding used by the Workbench:
+
+```shell
+morphir workspace init
+morphir project add packages/quotes --name Quotes --language scheme
+morphir project add packages/pricing --name Pricing --language scheme
+morphir run
+morphir run --project packages/quotes
+morphir project remove packages/pricing
+```
+
+`workspace init --project Quotes --language scheme` creates a root project as well as the workspace. Each project has its own configuration and starter source; multiple projects can use the same language. Elm project names use capitalized module segments, such as `Shop.Orders`. Omit `--language` on `project add` to inherit the workspace language. `--profile` chooses a source profile.
+
+At the workspace root, `run` builds every project, or `workspace.default_member` when set. From a member directory it builds the owning project. `--all` explicitly selects all projects; `--project .` selects the root project. A virtual workspace has no root project until `[project]` is added.
+
+`project remove PATH` removes membership and keeps the files. A glob-selected member is excluded. Add `--delete` to remove its folder too; deleting the workspace root is refused. Changes refuse symlinks, stale configurations and existing source files. An exclusive `.morphir-workspace-edit.lock` holds staging and backups until changes succeed; a rollback failure preserves it for manual recovery. TOML edits to dotted keys and arrays of tables currently return an explicit diagnostic.
+
+These commands support human, `--json` and `--json-lines` output. JSON Lines emits a `workspace-edit` result with `writes`, `directories`, `deletes` and `warnings`. `workspace` lists discovery results; build flags such as `--all` and `--dry-run` belong to `run` and are refused by `workspace`.
+
+Discovery responses use protocol version `"0.1.0"`, with warnings in `diagnostics`, including missing literal members and duplicate project names. The request decoder still accepts numeric version `1` for compatibility. The shared corpus is in `pkgs/morphir-engine/workspace/fixtures/upstream.json`.
 
 Workspace and project `morphir.config.scm` files supply pipeline configuration and transforms. An explicit `--config` script runs last; explicit CLI language/provider/profile/backend choices are reapplied afterward. Scripts cannot access filesystem, processes or network implicitly.
 
@@ -225,7 +246,7 @@ The provider publishes its supported profiles and configured validation budgets.
 A provider must offer the selected language and profile. Multiple providers for a
 language require `--frontend-provider`; planning does not guess by registration
 order or profile name. `--frontend-provider` and `--frontend-profile` apply to
-`run` and pipeline `workspace` commands. TOML configuration uses `frontend.provider`
+`run` commands. TOML configuration uses `frontend.provider`
 and `frontend.profile`; Scheme uses `(frontend-provider "...")` and
 `(frontend-profile "...")`. Explicit CLI choices win after scripts. `project list
 --frontend moonbit` remains a language filter. Source profile constraints do not

@@ -30,6 +30,8 @@ export interface WorkRequest {
   project?: string | ProjectPayload;
   /** The text files of an `import-folder` request. */
   files?: unknown;
+  workspace?: { version: number; files: Record<string, string | { encoding: 'base64'; content: string }>; openFile: string | null; currentProject?: string | null };
+  projectPath?: string;
   executionMode?: string;
   /** Historical wire key. Decode into a capability policy before making domain decisions. */
   admission?: Json;
@@ -45,6 +47,7 @@ export interface Language {
 export interface Target { target: string; irVersions: string[]; generate?: boolean; }
 export interface Catalog { frontends: Language[]; targets: Target[]; }
 export interface Project { id: string; name: string; projectId?: string; source?: InitialSource; available?: boolean; message?: string; }
+export interface WorkspaceFileAuthority { kind: 'native-write' | 'connected-write'; grantId: string; revision: number; name: string }
 export interface WorkResult {
   success: boolean;
   value?: Json;
@@ -67,6 +70,9 @@ export interface WorkResult {
   executionsAvailable?: boolean;
   workspaceAvailable?: boolean;
   nativeSession?: boolean;
+  workspaceFiles?: NonNullable<WorkRequest['workspace']>;
+  fileAuthority?: WorkspaceFileAuthority;
+  workspaceReadOnlyReason?: string;
   cancelled?: boolean;
   ir?: Json;
   irSource?: string;
@@ -99,6 +105,8 @@ export type Progress = (execution: Execution | null) => void;
 export interface Adapter {
   initialize(): Promise<WorkResult>;
   execute(request: WorkRequest, progress?: Progress): Promise<WorkResult>;
+  saveWorkspace?(grantId: string, workspace: NonNullable<WorkRequest['workspace']>): Promise<number>;
+  revokeWorkspace?(grantId: string): Promise<void>;
   cancel(): void | Promise<void>;
   /** Only model-opening work; never sends execution cancellation or revokes grants. */
   cancelModelOpen?(): void | Promise<void>;
@@ -116,7 +124,7 @@ export interface Manifest {
   providers: { id: string; status: string; capabilities: { name: string; version: string }[] }[];
   initialSources: InitialSource[];
 }
-export type Core = (command: string) => string;
+export type Core = ((command: string) => string) & { workspaceFiles?: (source: string) => string };
 export interface ExecutionDescriptor {
   capabilityChecks?: CapabilityCheckingOffer;
   profile: string;

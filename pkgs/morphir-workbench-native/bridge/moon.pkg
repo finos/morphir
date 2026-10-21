@@ -6,6 +6,8 @@ import {
   "finos/morphir-workbench-native-session" @session,
   "finos/morphir-workbench-native-session/request",
   "finos/morphir-workbench-native-session/response" @reply,
+  "finos/morphir-workbench-native-session/workspace-files" @filewire,
+  "finos/morphir-ir/wire",
   "moonbitlang/async",
   "moonbitlang/core/encoding/utf8",
 }

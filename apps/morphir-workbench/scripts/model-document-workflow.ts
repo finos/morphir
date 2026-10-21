@@ -64,9 +64,11 @@ export async function modelDocumentWorkflow(browser: Browser, url: string): Prom
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     assert.equal(await originalButton.count(), 0);
     assert.equal(await page.getByRole('button', { name: 'Close model', exact: true }).count(), 0);
-    assert.equal(await page.locator('.tree-item').count(), 0);
+    assert.equal(await page.locator('.model-tree .tree-item').count(), 0);
     // The model work leaves the same workspace's source as it was.
     await showSource(page);
+    await page.locator('[role="treeitem"][title="src/main.scm"]').click();
+    await page.waitForFunction(source => document.querySelector<CodeEditor>('#source')?.value === source, source);
     assert.equal(await page.locator('#source').evaluate(editor => (editor as CodeEditor).value), source);
     assert.equal(await page.getByRole('button', { name: 'Source unit', exact: true }).count(), 0);
     // Imported semantic inspection still supports exact UTF-16 evaluation, in a model workspace of its own.

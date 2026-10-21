@@ -213,8 +213,8 @@ pub fn discover(
   )
   root_effective.validate()
   let workspace_root = join(root, root_effective.text("workspace.root", ""))
-  let members = root_effective.strings("workspace.members")
-  let excludes = root_effective.strings("workspace.exclude")
+  let members = root_effective.strings("workspace.members").map(normalize)
+  let excludes = root_effective.strings("workspace.exclude").map(normalize)
   for pattern in members + excludes {
     ignore(matches(pattern, ""))
   }
@@ -224,7 +224,11 @@ pub fn discover(
   }
   for directory in tree.directories {
     let directory = normalize(directory)
-    if !within(workspace_root, directory) {
+    if directory == workspace_root || !within(workspace_root, directory) {
+      continue
+    }
+    // A hidden root config is not a second project in its containing directory.
+    if primary_paths(directory).any(p => p == anchor) {
       continue
     }
     let rel = suffix(workspace_root, directory)
@@ -238,9 +242,12 @@ pub fn discover(
       !pattern.contains("?") &&
       !pattern.contains("[") &&
       !pattern.contains("{") {
+      if excludes.any(excluded => matches(excluded, pattern)) {
+        continue
+      }
       let member_config = join(workspace_root, pattern)
-      if !tree.directories.contains(member_config) {
-        raise @config.Invalid("Missing workspace member: " + member_config)
+      if !tree.directories.any(d => normalize(d) == member_config) {
+        warnings.push("Missing workspace member: " + member_config)
       }
     }
   }
@@ -264,7 +271,10 @@ pub fn discover(
       _ => raise @config.Invalid("Invalid legacy workspace")
     }
   }
-  if roots.is_empty() && members.is_empty() {
+  if roots.is_empty() &&
+    members.is_empty() &&
+    anchor == "" &&
+    !tree.files.contains(legacy_workspace) {
     roots[workspace_root] = true
   }
   let paths = roots.keys().collect()
@@ -314,7 +324,7 @@ pub fn discover(
       ignore(normalize(effective.text("project.source_directory", "src")))
       let name = effective.text(
         "project.name",
-        if path == "" {
+        if path == workspace_root {
           "user"
         } else {
           suffix(workspace_root, path)
@@ -341,6 +351,27 @@ pub fn discover(
           error: Some(error.to_string()),
         })
       }
+    }
+  }
+  let names : Map[String, Array[String]] = Map([])
+  for project in projects {
+    let paths = names.get(project.name).unwrap_or([])
+    paths.push(
+      if project.root == workspace_root {
+        "."
+      } else {
+        suffix(workspace_root, project.root)
+      },
+    )
+    names[project.name] = paths
+  }
+  let sorted_names = names.keys().collect()
+  sorted_names.sort()
+  for name in sorted_names {
+    if names[name].length() > 1 {
+      warnings.push(
+        "Duplicate project name '" + name + "': " + names[name].join(", "),
+      )
     }
   }
   let default_member = root_effective.text("workspace.default_member", "")
@@ -374,9 +405,10 @@ pub fn Workspace::select(
     return self.projects.copy()
   }
   if selector != "" {
-    // Prefer an exact canonical member_config path over names.
+    // Paths take precedence over display names, including `.` for the root.
+    let canonical = normalize(selector)
     let by_path = self.projects.filter(p => {
-      suffix(self.root, p.root) == selector
+      suffix(self.root, p.root) == canonical
     })
     if by_path.length() == 1 {
       return by_path
@@ -398,21 +430,14 @@ pub fn Workspace::select(
   if default_member != "" {
     return self.projects.filter(p => p.root == join(self.root, default_member))
   }
-  let root = self.projects.filter(p => p.root == self.root)
-  if root.length() == 1 {
-    return root
-  }
-  if self.projects.length() == 1 {
-    return self.projects.copy()
-  }
-  raise @config.Invalid("Select --project <name-or-path> or --all")
+  self.projects.copy()
 }
 
 ///|
 pub fn Workspace::to_json(self : Workspace) -> Json raise {
   Json::object(
     Map::from_array([
-      ("protocolVersion", Json::number(1)),
+      ("protocolVersion", Json::string("0.1.0")),
       ("configAnchor", Json::string(self.anchor)),
       (
         "name",
@@ -431,7 +456,21 @@ pub fn Workspace::to_json(self : Workspace) -> Json raise {
           },
         ),
       ),
-      ("diagnostics", Json::array([])),
+      (
+        "diagnostics",
+        Json::array(
+          self.warnings.map(message => {
+            Json::object(
+              Map::from_array([
+                ("severity", Json::string("warning")),
+                ("code", Json::string("workspace.warning")),
+                ("message", Json::string(message)),
+                ("path", Json::string(self.anchor)),
+              ]),
+            )
+          }),
+        ),
+      ),
       (
         "projects",
         Json::array(
@@ -449,7 +488,13 @@ pub fn Workspace::to_json(self : Workspace) -> Json raise {
                 ),
                 (
                   "relativePath",
-                  Json::string(if p.root == "" { "." } else { p.root }),
+                  Json::string(
+                    if p.root == self.root {
+                      "."
+                    } else {
+                      suffix(self.root, p.root)
+                    },
+                  ),
                 ),
                 (
                   "configAnchor",
@@ -491,10 +536,10 @@ pub fn Workspace::to_json(self : Workspace) -> Json raise {
                               (
                                 "projectPath",
                                 Json::string(
-                                  if p.root == "" {
+                                  if p.root == self.root {
                                     "."
                                   } else {
-                                    p.root
+                                    suffix(self.root, p.root)
                                   },
                                 ),
                               ),

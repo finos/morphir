@@ -3,7 +3,7 @@ import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { createWorkspace, openLocal, openSample, showCompile, showModel, setTarget } from './workbench-steps.ts';
+import { createWorkspace, openLocal, openSample, showCompile, showModel, setTarget, build, useSourceWorkspace, currentSourceProfile } from './workbench-steps.ts';
 import { isRecord } from '../../../types/data.ts';
 
 type ControlledWindow = Window & { capabilityTest: { hold: boolean; release: (() => void) | null; completed: Record<string, number> } };
@@ -27,10 +27,10 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     await page.waitForFunction(({ operation, before }) => ((window as unknown as ControlledWindow).capabilityTest.completed[operation] ?? 0) > before, { operation, before });
     await paint();
   };
-  const compile = async (status = 'Model ready') => {
-    const before = await completed('compile');
-    await page.getByRole('button', { name: 'Compile', exact: true }).click();
-    await finish('compile', before);
+  const compile = async (status: string | RegExp = /Compiled 1\/1 projects/) => {
+    const before = await completed('compile-workspace');
+    await build(page, 'Compile');
+    await finish('compile-workspace', before);
     await page.getByRole('status').filter({ hasText: status }).waitFor();
   };
   const evaluate = async (status = 'Function evaluated') => {
@@ -42,6 +42,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     await paint();
     await page.getByRole('status').filter({ hasText: status }).waitFor();
     await page.waitForFunction(() => ![...document.querySelectorAll<HTMLButtonElement>('button')].find(e => e.textContent === 'Evaluate')?.disabled);
+    if (status === 'Function evaluated') await page.getByRole('button', { name: 'Result JSON', exact: true }).click();
   };
   const readInputs = () => page.locator('#evaluation-input').evaluate(e => (e as CodeEditor).value);
   const importModel = async (path: string, content?: string) => {
@@ -51,7 +52,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     await page.getByRole('button', { name: 'Import model', exact: true }).first().click();
     await (await chooser).setFiles(content === undefined ? path : { name: 'model.json', mimeType: 'application/json', buffer: Buffer.from(content) });
     await finish('inspect', before);
-    await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+    await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
   };
   try {
     // Hold delivery of a real worker reply, so edits/cancellation can race a
@@ -152,7 +153,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
 
     // Current dated source profile stays separate from checking policy in the source document.
     await showCompile(page);
-    await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
+    await useSourceWorkspace(page, 'elm');
     await paint();
     await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.dataset.language === 'elm');
     await setTarget(page, 'moonbit');
@@ -171,7 +172,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     await showCompile(page);
     await openSample(page, 'MoonBit library');
     await compile();
-    const sourceProfile = page.getByRole('combobox', { name: 'Source profile', exact: true });
+    const sourceProfile = { inputValue: () => currentSourceProfile(page) };
     assert.equal(await sourceProfile.inputValue(), 'moonbit-model-stable-v1');
     await showModel(page);
     await page.locator('.tree-item[title="user:main#welcome"]').click();
@@ -239,6 +240,10 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     if (process.env.MORPHIR_WORKBENCH_CAPABILITY_SCREENSHOT) await page.screenshot({ path: process.env.MORPHIR_WORKBENCH_CAPABILITY_SCREENSHOT, fullPage: true });
     assert.deepEqual(errors, []);
     console.log('Standalone capability workflow passed: strict default, opt-in, reached failure, unsupported boundary, captured policy, stale results, JSON/Ion drafts, source-profile separation, keyboard and responsive layout.');
+  } catch (error) {
+    console.error('Capability workflow state', await page.locator('.model-tree .tree-item').evaluateAll(items => items.map(item => item.getAttribute('title'))), await page.locator('.statusbar').textContent());
+    await page.screenshot({ path: '/tmp/morphir-capability-workflow-failed.png', fullPage: true });
+    throw error;
   } finally { await page.close(); }
 }
 
@@ -299,7 +304,7 @@ export async function desktopCapabilityWorkflow(page: import('playwright').Page)
     await (await chooser).setFiles({ name: 'capability-execution.json', mimeType: 'application/json', buffer: Buffer.from(content ?? uiFixture) });
     await page.waitForFunction(before => ((window as unknown as DesktopPolicyWindow).desktopPolicyTest.completed.inspect ?? 0) > before, before);
     await paint();
-    await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+    await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();
     await page.locator('.tree-item[title="selected:main#answer"]').click();
     await page.getByRole('button', { name: 'Typed invocation', exact: true }).click();
     await paint();

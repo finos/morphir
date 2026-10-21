@@ -412,12 +412,28 @@ async fn main {
   assert_true(over)
   // Actual concurrent namespace mutation in another OS process. Every accepted
   // read must contain authorized bytes, never the linked outside secret.
+  let writer = @workspace.WriteRoot::open(base + "/root")
+  defer writer.close()
+  let write_snapshot = writer.snapshot()
   @async.with_task_group(async fn(group) {
     let mut done : Int32? = None
+    let mut writer_uncertain = false
     group.spawn_bg(async fn() {
       done = Some(@process.run(args[0], ["race", base]))
     })
     for _ in 0..<350 {
+      if !writer_uncertain {
+        writer.apply(write_snapshot, {
+          writes: Map::from_array([("active/value", b"inside")]),
+          deletes: [],
+          directories: [],
+          remove_directories: [],
+        }) catch {
+          @workspace.Rejected(_) => ()
+          @workspace.Uncertain(_) => writer_uncertain = true
+          error => raise error
+        }
+      }
       assert_eq(root.read("active/value"), b"inside") catch {
         @workspace.Rejected(_) => ()
         error => raise error
@@ -431,6 +447,7 @@ async fn main {
       @async.sleep(5)
     }
     assert_eq(done, Some(0))
+    assert_eq(@fs.read_file(base + "/outside/value").binary(), b"SECRET")
   })
   @fs.rename(base + "/root", base + "/old-root")
   @fs.mkdir(base + "/root")
@@ -439,6 +456,6 @@ async fn main {
   root.close()
   denied(fn() raise { root.read("active/value") })
   println(
-    "{\"nativeWorkspace\":true,\"containment\":true,\"concurrentReplacement\":true,\"originalBytes\":true,\"revocation\":true,\"pickerCancellation\":true}",
+    "{\"nativeWorkspace\":true,\"containment\":true,\"concurrentReplacement\":true,\"concurrentWritesConfined\":true,\"originalBytes\":true,\"revocation\":true,\"pickerCancellation\":true}",
   )
 }

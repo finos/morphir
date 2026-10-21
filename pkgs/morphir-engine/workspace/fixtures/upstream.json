@@ -2,7 +2,7 @@
   {
     "name": "root-adjacent-toml",
     "request": {
-      "protocolVersion": 1,
+      "protocolVersion": "0.1.0",
       "developmentRoot": {
         "entries": {
           "morphir.toml": {
@@ -19,7 +19,7 @@
     "expected": {
       "status": "success",
       "snapshot": {
-        "protocolVersion": 1,
+        "protocolVersion": "0.1.0",
         "configAnchor": "morphir.toml",
         "name": null,
         "state": "open",
@@ -41,7 +41,7 @@
   {
     "name": "member-project-discovery",
     "request": {
-      "protocolVersion": 1,
+      "protocolVersion": "0.1.0",
       "developmentRoot": {
         "entries": {
           "morphir.toml": {
@@ -68,7 +68,7 @@
     "expected": {
       "status": "success",
       "snapshot": {
-        "protocolVersion": 1,
+        "protocolVersion": "0.1.0",
         "configAnchor": "morphir.toml",
         "name": null,
         "state": "open",
@@ -90,7 +90,7 @@
   {
     "name": "morphir-directory-toml",
     "request": {
-      "protocolVersion": 1,
+      "protocolVersion": "0.1.0",
       "developmentRoot": {
         "entries": {
           ".morphir": {
@@ -110,7 +110,7 @@
     "expected": {
       "status": "success",
       "snapshot": {
-        "protocolVersion": 1,
+        "protocolVersion": "0.1.0",
         "configAnchor": ".morphir/morphir.toml",
         "name": null,
         "state": "open",
@@ -132,7 +132,7 @@
   {
     "name": "dot-config-toml",
     "request": {
-      "protocolVersion": 1,
+      "protocolVersion": "0.1.0",
       "developmentRoot": {
         "entries": {
           ".config": {
@@ -155,7 +155,7 @@
     "expected": {
       "status": "success",
       "snapshot": {
-        "protocolVersion": 1,
+        "protocolVersion": "0.1.0",
         "configAnchor": ".config/morphir/config.toml",
         "name": null,
         "state": "open",
@@ -177,7 +177,7 @@
   {
     "name": "excluded-member-omitted",
     "request": {
-      "protocolVersion": 1,
+      "protocolVersion": "0.1.0",
       "developmentRoot": {
         "entries": {
           "morphir.toml": {
@@ -211,7 +211,7 @@
     "expected": {
       "status": "success",
       "snapshot": {
-        "protocolVersion": 1,
+        "protocolVersion": "0.1.0",
         "configAnchor": "morphir.toml",
         "name": null,
         "state": "open",
@@ -233,7 +233,7 @@
   {
     "name": "root-is-both-workspace-and-project",
     "request": {
-      "protocolVersion": 1,
+      "protocolVersion": "0.1.0",
       "developmentRoot": {
         "entries": {
           "morphir.toml": {
@@ -250,7 +250,7 @@
     "expected": {
       "status": "success",
       "snapshot": {
-        "protocolVersion": 1,
+        "protocolVersion": "0.1.0",
         "configAnchor": "morphir.toml",
         "name": null,
         "state": "open",
@@ -272,7 +272,7 @@
   {
     "name": "root-user-project-and-workspace-do-not-flow-to-member",
     "request": {
-      "protocolVersion": 1,
+      "protocolVersion": "0.1.0",
       "developmentRoot": {
         "entries": {
           "morphir.toml": {
@@ -307,7 +307,7 @@
     "expected": {
       "status": "success",
       "snapshot": {
-        "protocolVersion": 1,
+        "protocolVersion": "0.1.0",
         "configAnchor": "morphir.toml",
         "name": "root-user-workspace",
         "state": "open",
