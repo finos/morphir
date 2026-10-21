@@ -422,7 +422,11 @@ impl InstalledClientAdapter for StateProbe {
 fn exercise_state(which: StateExercise) {
     let kit = tempfile::tempdir().unwrap();
     std::fs::write(kit.path().join("cases.json"), CASES).unwrap();
-    let mut policy = foundation_policy();
+    let mut policy = funded_consumer_policy(Limits {
+        max_frame: 131072,
+        stderr_capture: 128,
+        ..Limits::DEFAULT
+    });
     policy["consumerObservation"] =
         serde_json::json!({"mode":"operation-port","version":"0.1.0-draft.1"});
     let mut probe = StateProbe {

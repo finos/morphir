@@ -54,12 +54,13 @@ enum Exercise {
     StorageRefusal,
     EmptyStorageRefusal,
 }
-struct Probe {
+struct Probe<'a> {
     exercise: Exercise,
     entered: bool,
     owner: std::sync::Arc<TestGateOwner>,
+    receiving_limits: &'a crate::workbench::configuration::InstalledObservationLimits,
 }
-impl InstalledClientAdapter for Probe {
+impl InstalledClientAdapter for Probe<'_> {
     fn observe(
         &mut self,
         mut run: InstalledClientRun<'_>,
@@ -257,7 +258,7 @@ impl InstalledClientAdapter for Probe {
                 assert_eq!(run.receiving.ready().err(), Some(&refused));
             }
             Exercise::StorageRefusal | Exercise::EmptyStorageRefusal => {
-                let limit = 16_777_216u64;
+                let limit = self.receiving_limits.retained_bytes();
                 let remaining = limit
                     .checked_sub(run.installed_observation_usage().retained_bytes())
                     .unwrap();
@@ -276,11 +277,11 @@ impl InstalledClientAdapter for Probe {
                     Err(ConsumerCodecError::Resource(
                         InstalledObservationError::Resource {
                             kind: InstalledObservationResource::RetainedBytes,
-                            limit: 16_777_216,
-                            used: 16_777_215,
+                            limit: actual_limit,
+                            used,
                             requested: 2..,
                         }
-                    ))
+                    )) if actual_limit == limit && used == limit - 1
                 ));
                 let decoder_after = run.decode.usage();
                 assert_eq!(decoder_after.literal, reader_before.literal);
@@ -405,22 +406,25 @@ impl InstalledClientAdapter for Probe {
 fn exercise(which: Exercise) {
     let kit = tempfile::tempdir().unwrap();
     std::fs::write(kit.path().join("cases.json"), CASES).unwrap();
-    let mut policy = foundation_policy();
+    let mut policy = funded_consumer_policy(Limits {
+        max_frame: 131072,
+        stderr_capture: 128,
+        ..Limits::DEFAULT
+    });
     policy["consumerObservation"] =
         serde_json::json!({"mode":"operation-port","version":"0.1.0-draft.1"});
+    let configuration = RunConfiguration::from_json(&policy.to_string()).unwrap();
     let mut probe = Probe {
         exercise: which,
         entered: false,
         owner: std::sync::Arc::new(TestGateOwner {
             gate: InvocationGate::dormant(),
         }),
+        receiving_limits: configuration.installed_observation_limits().unwrap(),
     };
-    let report = run_configured_with_installed_client_adapter(
-        kit.path(),
-        &RunConfiguration::from_json(&policy.to_string()).unwrap(),
-        &mut probe,
-    )
-    .unwrap();
+    let report =
+        run_configured_with_installed_client_adapter(kit.path(), &configuration, &mut probe)
+            .unwrap();
     assert!(probe.entered, "genuine complete24 callback required");
     assert!(!report.qualified());
 }

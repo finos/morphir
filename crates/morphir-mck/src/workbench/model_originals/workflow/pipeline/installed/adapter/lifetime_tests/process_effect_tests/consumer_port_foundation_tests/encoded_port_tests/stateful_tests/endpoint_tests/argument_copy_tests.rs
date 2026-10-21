@@ -96,7 +96,7 @@ fn exercise(case: Case) {
         case,
         entered: false,
     };
-    with_policy(&mut probe);
+    with_original_foundation_policy(&mut probe);
     assert!(probe.entered, "complete24 genuine callback required");
 }
 #[test]

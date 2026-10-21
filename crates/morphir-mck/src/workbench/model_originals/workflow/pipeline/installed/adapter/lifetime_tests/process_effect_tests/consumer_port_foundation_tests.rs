@@ -379,15 +379,22 @@ fn foundation_policy() -> serde_json::Value {
 /// additionally prepay the one full report destination and its bounded work.
 /// Other foundation callers keep their original, deliberately smaller policy.
 fn funded_operation_record_policy() -> serde_json::Value {
+    funded_consumer_policy(Limits {
+        max_frame: 65536,
+        stderr_capture: 64,
+        ..Limits::DEFAULT
+    })
+}
+fn funded_consumer_policy(limits: Limits) -> serde_json::Value {
     let mut policy = foundation_policy();
     let r = usize::try_from(policy["checker"]["decode"]["savedBytes"].as_u64().unwrap())
         .unwrap()
         .min(crate::workbench::MAX_REPORT_BYTES);
     let d = crate::json::strict::requested_serializer_io_storage_bound().unwrap();
     let retained = r.checked_add(d).unwrap();
-    // Existing operation-record callers use at most 65536 stdout / 64 stderr.
-    let work = 65536usize
-        .checked_add(64)
+    let work = limits
+        .max_frame
+        .checked_add(limits.stderr_capture)
         .unwrap()
         .checked_add(r.checked_mul(8).unwrap())
         .unwrap()
@@ -412,7 +419,19 @@ fn funded_operation_record_policy() -> serde_json::Value {
 fn exercise_foundation(scenario: Scenario) {
     let kit = tempfile::tempdir().unwrap();
     std::fs::write(kit.path().join("cases.json"), CASES).unwrap();
-    let mut policy = foundation_policy();
+    let mut policy = match scenario {
+        Scenario::RoundTrip
+        | Scenario::DropPrepared
+        | Scenario::SpawnFailure
+        | Scenario::CallbackRevoked
+        | Scenario::DropBeforeClaim
+        | Scenario::DropAfterClaim => funded_consumer_policy(Limits {
+            max_frame: 131072,
+            stderr_capture: 128,
+            ..Limits::DEFAULT
+        }),
+        _ => foundation_policy(),
+    };
     if !matches!(scenario, Scenario::LegacyDisabled) {
         policy["consumerObservation"] =
             serde_json::json!({"mode":"operation-port","version":"0.1.0-draft.1"});

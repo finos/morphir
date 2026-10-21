@@ -355,9 +355,21 @@ impl InstalledClientAdapter for ForeignProbe<'_> {
     }
 }
 fn with_policy(adapter: &mut impl InstalledClientAdapter) {
+    run_with_policy(
+        adapter,
+        funded_consumer_policy(Limits {
+            max_frame: 131072,
+            stderr_capture: 128,
+            ..Limits::DEFAULT
+        }),
+    );
+}
+fn with_original_foundation_policy(adapter: &mut impl InstalledClientAdapter) {
+    run_with_policy(adapter, foundation_policy());
+}
+fn run_with_policy(adapter: &mut impl InstalledClientAdapter, mut policy: serde_json::Value) {
     let kit = tempfile::tempdir().unwrap();
     std::fs::write(kit.path().join("cases.json"), CASES).unwrap();
-    let mut policy = foundation_policy();
     policy["consumerObservation"] =
         serde_json::json!({"mode":"operation-port","version":"0.1.0-draft.1"});
     let report = run_configured_with_installed_client_adapter(

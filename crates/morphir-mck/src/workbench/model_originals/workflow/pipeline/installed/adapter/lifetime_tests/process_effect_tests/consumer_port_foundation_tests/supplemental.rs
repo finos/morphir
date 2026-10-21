@@ -14,7 +14,11 @@ impl Kit {
         let held = tempfile::tempdir().unwrap();
         let directory = held.path().canonicalize().unwrap();
         std::fs::write(directory.join("cases.json"), CASES).unwrap();
-        let mut policy = foundation_policy();
+        let mut policy = funded_consumer_policy(Limits {
+            max_frame: 131072,
+            stderr_capture: 128,
+            ..Limits::DEFAULT
+        });
         policy["consumerObservation"] =
             serde_json::json!({"mode":"operation-port","version":"0.1.0-draft.1"});
         Self {
