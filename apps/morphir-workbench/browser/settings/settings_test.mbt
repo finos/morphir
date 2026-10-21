@@ -42,14 +42,41 @@ test "only Light and Dark set the data-theme attribute" {
 test "settings round-trip through their saved text" {
   @expect.expect_all(s => {
     for theme in @settings.themes {
-      let settings : @settings.Settings = { theme, }
-      s
-      .expect(@settings.Settings::decode(settings.encode()), label=theme.id())
-      .to_equal(settings)
+      for workspace_sidebar in [@settings.WorkspaceSidebar::Collapsed, Expanded] {
+        let settings : @settings.Settings = {
+          theme,
+          workspace_sidebar,
+          editor_layout: if theme is Dark {
+            Tabs
+          } else {
+            SideBySide
+          },
+        }
+        s
+        .expect(@settings.Settings::decode(settings.encode()), label=theme.id())
+        .to_equal(settings)
+      }
     }
     s
-    .expect(({ theme: Dark, } : @settings.Settings).encode())
+    .expect(
+      (
+        {
+          theme: Dark,
+          workspace_sidebar: Collapsed,
+          editor_layout: SideBySide,
+        } : @settings.Settings).encode(),
+    )
     .to_equal("{\"theme\":\"dark\"}")
+    s
+    .expect(
+      (
+        {
+          theme: Light,
+          workspace_sidebar: Expanded,
+          editor_layout: SideBySide,
+        } : @settings.Settings).encode(),
+    )
+    .to_equal("{\"theme\":\"light\",\"workspaceSidebar\":\"expanded\"}")
   })
 }
 
@@ -95,5 +122,51 @@ test "each theme has a label and a stored spelling that parses back" {
       .to_equal(Some(theme))
     }
     s.expect(@settings.ThemePreference::parse("auto")).to_equal(None)
+  })
+}
+
+///|
+test "a missing or unknown workspace sidebar value is collapsed" {
+  @expect.expect_all(s => {
+    for
+      text in [
+        "", "{}", "{\"workspaceSidebar\":\"Expanded\"}", "{\"workspaceSidebar\":true}",
+        "{\"theme\":\"dark\",\"workspaceSidebar\":\"wide\"}",
+      ] {
+      s
+      .expect(@settings.Settings::decode(text).workspace_sidebar, label=text)
+      .to_equal(Collapsed)
+    }
+    s
+    .expect(@settings.Settings::decode("{\"workspaceSidebar\":\"expanded\"}"))
+    .to_equal({
+      theme: System,
+      workspace_sidebar: Expanded,
+      editor_layout: SideBySide,
+    })
+    s.expect(@settings.WorkspaceSidebar::Collapsed.toggle()).to_equal(Expanded)
+    s.expect(@settings.WorkspaceSidebar::Expanded.toggle()).to_equal(Collapsed)
+  })
+}
+
+///|
+test "the editor layout is side by side unless tabs were saved" {
+  @expect.expect_all(s => {
+    for
+      text in ["", "{}", "{\"editorLayout\":\"Tabs\"}", "{\"editorLayout\":1}"] {
+      s
+      .expect(@settings.Settings::decode(text).editor_layout, label=text)
+      .to_equal(SideBySide)
+    }
+    let tabs = @settings.Settings::decode(
+      "{\"theme\":\"dark\",\"editorLayout\":\"tabs\"}",
+    )
+    s.expect(tabs.editor_layout, label="tabs").to_equal(Tabs)
+    s
+    .expect(tabs.encode(), label="saved")
+    .to_equal("{\"theme\":\"dark\",\"editorLayout\":\"tabs\"}")
+    s
+    .expect(@settings.editor_layouts.map(layout => layout.label()))
+    .to_equal(["Side by side", "Tabs"])
   })
 }

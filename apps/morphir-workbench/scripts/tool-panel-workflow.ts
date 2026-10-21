@@ -26,11 +26,12 @@ async function geometry(page: Page) {
   });
 }
 
-// A focusable control reached from the keyboard is inside the workspace and not under the panel.
-async function assertReachable(page: Page, locator: Locator, message: string) {
+// A focusable control reached from the keyboard is inside the workspace (or, like Compile, in the header above it) and
+// not under the panel.
+async function assertReachable(page: Page, locator: Locator, message: string, { header = false } = {}) {
   await locator.focus();
   const [control, layout] = [await locator.boundingBox(), await geometry(page)];
-  assert.ok(control!.y >= layout.workspaceTop - 1 && control!.y + control!.height <= layout.panelTop + 1, message);
+  assert.ok(control!.y >= (header ? 0 : layout.workspaceTop - 1) && control!.y + control!.height <= layout.panelTop + 1, message);
   assert.ok(layout.page <= layout.viewport + 1, `${message}: the page itself does not scroll`);
 }
 
@@ -66,7 +67,7 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   const open = await geometry(page);
   assert.ok(Math.abs(collapsed.source - open.source - open.body) <= 4, `Opening the panel takes its height from the code panes (${collapsed.source} → ${open.source}, panel ${open.body})`);
   assert.ok(open.panelBottom <= open.viewport + 1 && open.page <= open.viewport + 1, 'The open panel stays inside the window');
-  await assertReachable(page, compile, 'Compile stays reachable above the open panel');
+  await assertReachable(page, compile, 'Compile stays reachable in the header above the open panel', { header: true });
 
   // Panel changes do not remount editors: an edit made before them still undoes.
   const library = await page.locator('#source').evaluate(editor => (editor as CodeEditor).value);
@@ -165,16 +166,16 @@ export async function toolPanelWorkflow(page: Page, { resize = true } = {}) {
   await page.getByRole('button', { name: 'Maximize panel', exact: true }).click();
   const expanded = await geometry(page);
   assert.ok(expanded.body > restored.body + 100, 'Maximize gives the panel more height');
-  await assertReachable(page, compile, 'Compile scrolls into the workspace with a maximized panel');
+  await assertReachable(page, compile, 'Compile stays in the header with a maximized panel', { header: true });
   const sizes: [number, number, string][] = resize ? [[1440, 640, 'short window'], [390, 844, 'narrow window']] : [];
   const viewport = page.viewportSize();
   for (const [width, height, label] of sizes) {
     await page.setViewportSize({ width, height });
     const layout = await geometry(page);
     assert.ok(layout.panelBottom <= layout.viewport + 1 && layout.pageWidth <= layout.width, `The panel fits the ${label}`);
-    await assertReachable(page, compile, `Compile stays reachable in the ${label}`);
+    await assertReachable(page, compile, `Compile stays reachable in the ${label}`, { header: true });
     await page.getByRole('button', { name: 'Restore panel size', exact: true }).click();
-    await assertReachable(page, compile, `Compile stays reachable with a normal panel in the ${label}`);
+    await assertReachable(page, compile, `Compile stays reachable with a normal panel in the ${label}`, { header: true });
     await page.getByRole('button', { name: 'Maximize panel', exact: true }).click();
   }
   if (viewport && sizes.length) await page.setViewportSize(viewport);

@@ -235,3 +235,66 @@ test "a workspace's language is kept with it" {
     decoded.get(entry.id).unwrap().language.map(l => l.to_string()),
   ).to_equal(Some("elm"))
 }
+
+///|
+test "each workspace has a virtual path that survives a rename and a reload" {
+  let name = (text : String) => @workspace.WorkspaceName::parse(text).unwrap()
+  let (one, pricing) = @workspace.Registry::new().create(
+    SourceProject,
+    name=name("Pricing model"),
+  )
+  let (two, again) = one.create(Sandbox, name=name("pricing  MODEL!"))
+  let (three, blank) = two.create(Empty, name=name("…"))
+  let renamed = three.rename(pricing.id, name("Quotes"))
+  let (back, problems) = @workspace.Registry::from_json(renamed.to_json())
+  // A list saved before locations existed gets them from the names.
+  let legacy = renamed
+    .to_json()
+    .stringify()
+    .replace_all(
+      old="\"location\":\"memory://workspaces/pricing-model\"",
+      new="\"location\":\"elsewhere\"",
+    )
+  let (older, _) = @workspace.Registry::from_json(@json.parse(legacy))
+  @expect.expect_all(s => {
+    s
+    .expect(pricing.location.to_uri(), label="slug")
+    .to_equal("memory://workspaces/pricing-model")
+    s
+    .expect(again.location.to_uri(), label="numbered")
+    .to_equal("memory://workspaces/pricing-model-2")
+    s
+    .expect(blank.location.to_uri(), label="no letters")
+    .to_equal("memory://workspaces/workspace")
+    s
+    .expect(
+      renamed.get(pricing.id).map(e => e.location),
+      label="rename keeps it",
+    )
+    .to_equal(Some(pricing.location))
+    s.expect(problems, label="read").to_equal([])
+    s
+    .expect(back.entries.map(e => e.location.to_uri()), label="reloaded")
+    .to_equal([
+      "memory://workspaces/pricing-model", "memory://workspaces/pricing-model-2",
+      "memory://workspaces/workspace",
+    ])
+    s
+    .expect(
+      older.get(pricing.id).map(e => e.location.to_uri()),
+      label="from name",
+    )
+    .to_equal(Some("memory://workspaces/quotes"))
+    s
+    .expect(
+      @workspace.WorkspaceLocation::parse_memory("memory://workspaces/Bad Slug"),
+      label="bad slug",
+    )
+    .to_equal(None)
+    s
+    .expect(
+      @workspace.WorkspaceLocation::Connected("http://127.0.0.1:5173").to_uri(),
+    )
+    .to_equal("http://127.0.0.1:5173")
+  })
+}

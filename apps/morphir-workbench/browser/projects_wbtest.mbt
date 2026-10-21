@@ -711,3 +711,41 @@ test "fresh MoonBit projects use stable and preserve an explicit experimental ch
   ])
   assert_eq(selected_profile(model, "moonbit"), "moonbit-model-stable-v1")
 }
+
+///|
+test "each project keeps its generation target, and the current one is what Compile sends" {
+  let model = {
+    ..scope_model(),
+    catalog: catalog_fixture(),
+    language: "scheme",
+    target: "scheme",
+  }
+  let elm_target = run_all(model, [Target("elm")])
+  let in_elm = run_all(elm_target, [Language("elm")])
+  let no_generation = run_all(in_elm, [
+    ProjectTarget("scheme", "moonbit"),
+    Target(""),
+  ])
+  let back = run_all(no_generation, [Language("scheme")])
+  @expect.expect_all(s => {
+    s
+    .expect(active_project(elm_target).target, label="saved on the project")
+    .to_equal(Some(Backend(@ids.BackendId::parse("elm"))))
+    s.expect(elm_target.dirty.contains("scheme"), label="saved").to_be_true()
+    s
+    .expect(in_elm.target, label="a project without a target keeps the default")
+    .to_equal("elm")
+    s
+    .expect(no_generation.target, label="current project's choice")
+    .to_equal("")
+    s
+    .expect(active_project(no_generation).target, label="no generation")
+    .to_equal(Some(NoGeneration))
+    s
+    .expect(back.target, label="the Scheme project's target, set from settings")
+    .to_equal("moonbit")
+    s
+    .expect(run_all(back, [Target("Not a backend!")]).target, label="refused")
+    .to_equal("moonbit")
+  })
+}

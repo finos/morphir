@@ -1,7 +1,7 @@
 import type { Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
-import { openSample, showCompile, showSource, showModel, setExplorer } from './workbench-steps.ts';
+import { openSample, showCompile, showSource, showModel, setExplorer, setTarget, currentTarget } from './workbench-steps.ts';
 
 // Real failures can be read in the tool panel: each failed execution and each diagnostic opens its details (code, stage,
 // location, message, execution context), copies a plain-text report and shows the reply without source or models.
@@ -107,11 +107,10 @@ export async function detailsWorkflow(page: Page) {
   // A reply that carries source: the MoonBit refusal of Records holds the IR and the source unit, which both quote
   // the module's doc comment. The raw reply keeps their names and sizes and never the text.
   await showSource(page);
-  const targetBox = page.getByRole('combobox', { name: 'Target', exact: true });
-  const previousTarget = await targetBox.inputValue();
+  const previousTarget = await currentTarget(page);
   await openSample(page, 'Records (parity corpus)');
   await page.locator('[data-path="src/Parity/Records/Points.elm"]').first().waitFor();
-  await targetBox.selectOption('moonbit');
+  await setTarget(page, 'moonbit');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'moonbit.unsupported_type' }).waitFor();
   // The refused generation keeps its failure on the Diagnostics report. Clicking the open tab would collapse the panel.
@@ -126,7 +125,7 @@ export async function detailsWorkflow(page: Page) {
   assert.match(refusedRaw, /"irSource": "<omitted: \d+ characters>"/, 'The reply carried the IR');
   assert.match(refusedRaw, /"code": "moonbit\.unsupported_type"/, 'The raw reply keeps the code');
   assert.equal(refusedRaw.includes('Record literals, alias constructors'), false, 'The raw reply leaves out the source text');
-  await targetBox.selectOption(previousTarget);
+  await setTarget(page, previousTarget);
 
   // Leave a clean Elm project and a closed panel.
   await page.getByRole('button', { name: 'More actions', exact: true }).click();

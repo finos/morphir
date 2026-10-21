@@ -322,6 +322,10 @@ struct Model {
   document : @document.State
   generated : Bool
   generated_state : @generated.State
+  /// Which panes of the source document show: both, or one expanded to the full width.
+  pane : EditorPane
+  /// The generated files open as their own tabs, by path, in the order they opened.
+  open_outputs : Array[String]
   status : String
   busy : Bool
   request_id : Int32
@@ -411,11 +415,17 @@ enum Msg {
   Query(String)
   Select(String)
   OutputTab(Bool)
+  /// Shows both panes of the source document, or one at the full width.
+  Pane(EditorPane)
+  /// Closes the tab of a generated file.
+  CloseOutput(String)
   Generated(@generated.Action)
   DownloadGenerated(Bool)
   Language(String)
   SourceProfile(String)
   Target(String)
+  /// The generation target of a workspace project, by its language, from the settings page.
+  ProjectTarget(String, String)
   Example
   ElmExample
   MoonBitExample
@@ -444,6 +454,8 @@ enum Msg {
   /// An Escape that no control handled; it closes settings when nothing else is open.
   EscapeSettings
   Theme(@settings.ThemePreference)
+  WorkspaceSidebar(@settings.WorkspaceSidebar)
+  EditorLayout(@settings.EditorLayout)
   SystemAppearance(@settings.Appearance)
 }
 
@@ -614,6 +626,8 @@ fn initial() -> Model {
     document: @document.State::new(),
     generated: false,
     generated_state: @generated.State::new(),
+    pane: Both,
+    open_outputs: [],
     status: "Initializing…",
     busy: true,
     request_id: 0,
@@ -949,6 +963,51 @@ fn active_project_of(model : Model, language : String) -> @project.Project {
   model.language_projects
   .get(language)
   .unwrap_or_else(() => default_project(model, language))
+}
+
+///|
+/// After new output, generated file tabs whose files the generation no longer made close, with a note, and when no
+/// tab is open the selected file opens in one.
+fn follow_outputs(before : Model, model : Model) -> Model {
+  guard model.output != before.output else { return model }
+  let paths = @generated.artifacts(model.output).map(file => text(file, "path"))
+  let kept = model.open_outputs.filter(path => paths.contains(path))
+  let closed = model.open_outputs.length() - kept.length()
+  let model = if closed > 0 {
+    note(
+      model,
+      "Generated",
+      @bottom_panel.Info,
+      "Closed " +
+      closed.to_string() +
+      (if closed == 1 { " tab" } else { " tabs" }) +
+      " of files that the generation no longer made",
+    )
+  } else {
+    model
+  }
+  let open_outputs = if kept.is_empty() && !paths.is_empty() {
+    [
+      text(
+        @generated.selected(model.output, model.generated_state.selected),
+        "path",
+      ),
+    ]
+  } else {
+    kept
+  }
+  { ..model, open_outputs, }
+}
+
+///|
+/// The current project's saved generation target, when it has one, becomes the target that Compile sends. A
+/// project without one keeps the Workbench default.
+fn follow_project_target(model : Model) -> Model {
+  match active_project(model).target {
+    Some(generation) if generation.id() != model.target =>
+      { ..model, target: generation.id(), }
+    _ => model
+  }
 }
 
 ///|
@@ -1614,6 +1673,7 @@ fn update_saving(
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
   let (next, cmd) = update_core(model, msg, emit)
+  let next = follow_project_target(next) |> follow_outputs(model, _)
   if next.active != model.active {
     return (next, cmd)
   }
@@ -2136,7 +2196,34 @@ fn update_core(
         ),
       )
     }
-    OutputTab(generated) => ({ ..model, generated, }, @cmd.none)
+    OutputTab(generated) =>
+      ({ ..model, generated, pane: output_pane(model), }, @cmd.none)
+    Pane(pane) => ({ ..model, pane, }, @cmd.none)
+    CloseOutput(path) => {
+      let at = model.open_outputs.search(path).unwrap_or(-1)
+      let open_outputs = model.open_outputs.filter(p => p != path)
+      let shown = text(
+        @generated.selected(model.output, model.generated_state.selected),
+        "path",
+      )
+      let model = { ..model, open_outputs, }
+      if shown != path || !(model.pane is OutputOnly && model.generated) {
+        (model, @cmd.none)
+      } else {
+        // The tab beside the closed one shows; after the last one, the source does.
+        match open_outputs.get(if at > 0 { at - 1 } else { 0 }) {
+          Some(next) => update_core(model, Generated(Select(next)), emit)
+          None => ({ ..model, pane: Both, }, @cmd.none)
+        }
+      }
+    }
+    // The expand button of the Generated heading expands the output pane, or restores both.
+    Generated(ToggleExpanded) =>
+      update_core(
+        model,
+        Pane(if model.pane is OutputOnly { Both } else { OutputOnly }),
+        emit,
+      )
     Generated(action) => {
       let (generated_state, effects) = model.generated_state.apply(
         @generated.artifacts(model.output),
@@ -2150,6 +2237,12 @@ fn update_core(
           doc: Source,
           worksheet: false,
           generated: true,
+          pane: output_pane(model),
+          open_outputs: match action {
+            Select(path) if !model.open_outputs.contains(path) =>
+              [..model.open_outputs, path]
+            _ => model.open_outputs
+          },
         }
       } else {
         { ..model, generated_state, }
@@ -2433,8 +2526,35 @@ fn update_core(
       }
     SourceProfile(profile) =>
       (with_selection(model, model.language, profile), @cmd.none)
+    // The target belongs to the current project: it is saved with it, and Compile sends it.
+    // A target id that does not parse changes nothing.
     Target(target) =>
-      ({ ..model, target, revision: model.revision + 1, }, @cmd.none)
+      match @project.Generation::parse(target) {
+        Some(generation) => {
+          let model = with_project(model, {
+            ..active_project(model),
+            target: Some(generation),
+          })
+          ({ ..model, target, revision: model.revision + 1, }, @cmd.none)
+        }
+        None => (model, @cmd.none)
+      }
+    ProjectTarget(language, target) =>
+      if language == model.language {
+        update_core(model, Target(target), emit)
+      } else {
+        match @project.Generation::parse(target) {
+          Some(generation) =>
+            (
+              with_project(model, {
+                ..active_project_of(model, language),
+                target: Some(generation),
+              }),
+              @cmd.none,
+            )
+          None => (model, @cmd.none)
+        }
+      }
     Example =>
       (
         {
@@ -3731,6 +3851,8 @@ fn update_core(
     | CloseSettings
     | EscapeSettings
     | Theme(_)
+    | WorkspaceSidebar(_)
+    | EditorLayout(_)
     | SystemAppearance(_) => update_settings(model, msg)
     Panel(action) => {
       let (panel, focus) = model.panel.update(action)
@@ -3801,6 +3923,26 @@ fn update_core(
 }
 
 ///|
+/// The pane state that shows the output: as tabs, the output alone; side by side, both panes unless the output
+/// already fills the width.
+fn output_pane(model : Model) -> EditorPane {
+  match (model.settings.editor_layout, model.pane) {
+    (Tabs, _) => OutputOnly
+    (SideBySide, SourceOnly) => Both
+    (SideBySide, pane) => pane
+  }
+}
+
+///|
+/// Which panes of a source document show. Side by side, either pane can take the full width; as tabs, the source or
+/// the output shows, and `Both` shows the source.
+enum EditorPane {
+  Both
+  SourceOnly
+  OutputOnly
+} derive(Eq, Debug)
+
+///|
 fn action_icon(name : String) -> @html.Html {
   @html.span(
     class="action-icon icon-" + name,
@@ -3812,17 +3954,12 @@ fn action_icon(name : String) -> @html.Html {
 ///|
 fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   let output = model.output
-  let targets = [
-    @html.option(value="", selected=model.target == "", "No generation"),
-  ]
-  for target in items(field(model.catalog, "targets")) {
-    targets.push(
-      @html.option(
-        value=text(target, "target"),
-        selected=text(target, "target") == model.target,
-        text(target, "displayName"),
-      ),
-    )
+  let generated_props : @generated.Props = {
+    output,
+    // The pane state decides whether the output fills the width; the Generated heading's button shows it.
+    state: { ..model.generated_state, expanded: model.pane is OutputOnly, },
+    language: model.target,
+    mac: model.mac,
   }
   let body : Array[@html.Html] = []
   if !model.worksheet && text(output, "value") != "" {
@@ -3851,18 +3988,7 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       )
     }
   } else if model.generated {
-    body.push(
-      @generated.preview(
-        {
-          output,
-          state: model.generated_state,
-          language: model.target,
-          mac: model.mac,
-        },
-        emit.map(action => Generated(action)),
-        emit.map(project => DownloadGenerated(project)),
-      ),
-    )
+    body.push(@generated.preview(generated_props))
   } else {
     body.push(
       @editor.view({
@@ -3908,18 +4034,17 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           "Generated",
         ),
       ]),
+      if model.generated && !model.worksheet {
+        @generated.heading(
+          generated_props,
+          emit.map(action => Generated(action)),
+          emit.map(project => DownloadGenerated(project)),
+          emit.map(_ => ShowGenerated),
+        )
+      } else {
+        @html.nothing
+      },
       @html.div(class="panel-actions", [
-        @html.label(class="compact-select", hidden=model.worksheet, [
-          @html.span(class="small muted", "Target"),
-          @html.select(
-            disabled=model.busy,
-            on_change=emit.map(value => Target(value)),
-            attrs=@html.Attrs::build()
-              .aria_label("Target")
-              .value_prop(model.target),
-            targets,
-          ),
-        ]),
         @html.span(
           class="stale-badge",
           hidden=!stale,
@@ -4577,6 +4702,9 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
   add(UseLightTheme, "Theme: Light", "Settings", "")
   add(UseDarkTheme, "Theme: Dark", "Settings", "")
   add(ToggleTheme, "Toggle theme", "Settings", "")
+  add(ToggleWorkspaceSidebar, "Toggle workspace sidebar", "View", "")
+  add(UseSideBySide, "Editor layout: Side by side", "View", "")
+  add(UseTabs, "Editor layout: Tabs", "View", "")
   if !in_workspace {
     add(TogglePanel, "Toggle panel", "View", "")
     return commands
@@ -4659,6 +4787,18 @@ fn palette_commands(model : Model) -> Array[@palette.Command] {
   guard docs.contains(Source) else {
     add(TogglePanel, "Toggle panel", "View", "")
     return commands
+  }
+  if model.settings.editor_layout is SideBySide {
+    add(
+      ToggleSourceWidth,
+      if model.pane is SourceOnly {
+        "Restore split view"
+      } else {
+        "Expand source"
+      },
+      "View",
+      "",
+    )
   }
   let projects = !model.connected && holds(model, SourceProject)
   let rules = file_rules(model, model.language)
@@ -4996,6 +5136,19 @@ fn run_command(
     UseLightTheme => update_settings(model, Theme(Light))
     UseDarkTheme => update_settings(model, Theme(Dark))
     ToggleTheme => update_settings(model, Theme(model.settings.theme.next()))
+    UseSideBySide => update_settings(model, EditorLayout(SideBySide))
+    UseTabs => update_settings(model, EditorLayout(Tabs))
+    ToggleSourceWidth =>
+      update_core(
+        model,
+        Pane(if model.pane is SourceOnly { Both } else { SourceOnly }),
+        emit,
+      )
+    ToggleWorkspaceSidebar =>
+      update_settings(
+        model,
+        WorkspaceSidebar(model.settings.workspace_sidebar.toggle()),
+      )
   }
 }
 

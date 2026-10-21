@@ -223,67 +223,192 @@ fn topbar(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
       } else {
         @html.nothing
       },
+      if in_workspace && model.doc == Source {
+        build_controls(model, emit)
+      } else {
+        @html.nothing
+      },
       connection(model),
-      @html.button(
-        id="toggle-secondary",
-        class="sidebar-icon-button topbar-toggle",
-        hidden=!in_workspace,
-        title=if secondary {
-          "Hide right sidebar"
-        } else {
-          "Show right sidebar"
-        },
-        attrs=@html.Attrs::build()
-          .aria_label("Toggle right sidebar")
-          .aria_controls(@shell.sidebar_id(Secondary))
-          .aria_expanded(secondary.to_string()),
-        on_click=emit(Shell(Toggle(Secondary))),
-        icon_of("sidebar-right"),
-      ),
+      @html.div(class="topbar-actions", [
+        @html.button(
+          id="toggle-secondary",
+          class="sidebar-icon-button topbar-toggle",
+          hidden=!in_workspace,
+          title=if secondary {
+            "Hide right sidebar"
+          } else {
+            "Show right sidebar"
+          },
+          attrs=@html.Attrs::build()
+            .aria_label("Toggle right sidebar")
+            .aria_controls(@shell.sidebar_id(Secondary))
+            .aria_expanded(secondary.to_string()),
+          on_click=emit(Shell(Toggle(Secondary))),
+          icon_of("sidebar-right"),
+        ),
+        theme_toggle(model, emit),
+      ]),
     ]),
   ])
 }
 
 ///|
-/// The left rail stays visible when the sidebars close. Its explorer button toggles the left sidebar. The theme
-/// toggle and the settings button sit at its end.
+/// The id of the button that expands and collapses the workspace sidebar; it keeps the focus after a change.
+let workspace_sidebar_toggle_id : String = "workspace-sidebar-toggle"
+
+///|
+/// One open workspace in the workspace sidebar: a button that switches to it, showing initials when collapsed and
+/// the name, kind and state when expanded, and a button that closes it.
+fn workspace_card(
+  model : Model,
+  card : WorkspaceCard,
+  emit : @cmd.Emit[Msg],
+) -> @html.Html {
+  let name = card.name.to_string()
+  let details = [card.preset.label()]
+  for activity in card.activity {
+    details.push(activity.label())
+  }
+  let detail = details.join(" · ")
+  let path = card.location.to_uri()
+  let attrs = @html.Attrs::build()
+    .aria_label(name + ", " + detail)
+    .aria_description(path)
+    .data_set("tree-row", "item")
+  let attrs = if card.current { attrs.aria_current("page") } else { attrs }
+  @html.div(
+    class=if card.current { "workspace-card current" } else { "workspace-card" },
+    [
+      @html.button(
+        id="workspace-card-" + card.id.to_string(),
+        class="workspace-card-open",
+        title=name + " · " + detail + "\n" + path,
+        attrs~,
+        on_click=emit(OpenWorkspace(card.id)),
+        [
+          @html.span(
+            class="workspace-initials",
+            attrs=@html.Attrs::build().aria_hidden("true"),
+            [
+              @html.span(initials(name)),
+              match card.activity.get(0) {
+                Some(activity) =>
+                  @html.span(
+                    class="workspace-dot workspace-dot-" + activity.tone(),
+                    "",
+                  )
+                None => @html.nothing
+              },
+            ],
+          ),
+          @html.span(class="workspace-card-text", [
+            @html.span(class="workspace-card-name", name),
+            @html.span(class="workspace-card-detail", detail),
+            @html.span(class="workspace-card-path", path),
+          ]),
+        ],
+      ),
+      if model.connected {
+        @html.nothing
+      } else {
+        @html.button(
+          class="workspace-card-close",
+          title="Close " + name,
+          attrs=@html.Attrs::build().aria_label("Close " + name),
+          on_click=emit(CloseWorkspace(card.id)),
+          icon_of("close"),
+        )
+      },
+    ],
+  )
+}
+
+///|
+/// The left rail is the workspace sidebar. It stays visible when the sidebars close. Its explorer button toggles the
+/// left sidebar, the open workspaces follow as tiles or cards, and the expand button and settings button sit at its
+/// end.
 fn rail(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   let settings = model.page is Settings(_)
   let in_workspace = model.screen is Workspace && model.active is Some(_)
-  @html.nav(class="rail", attrs=@html.Attrs::build().aria_label("Workbench"), [
-    @shell.rail_button(
-      id="rail-start",
-      label="Getting started",
-      icon_name="home",
-      active=model.screen is GettingStarted && !settings,
-      on_click=emit(ShowStart),
-    ),
-    if model.active is Some(_) && model.acquiring is None {
+  let expanded = model.settings.workspace_sidebar is Expanded
+  let cards = workspace_cards(model)
+  let toggle = if expanded {
+    "Collapse workspace sidebar"
+  } else {
+    "Expand workspace sidebar"
+  }
+  @html.nav(
+    class=if expanded { "rail expanded" } else { "rail" },
+    attrs=@html.Attrs::build().aria_label("Workbench"),
+    [
       @shell.rail_button(
-        id="rail-explorer",
-        label="Explorer",
-        icon_name="explorer",
-        active=in_workspace && model.layout.is_open(Primary) && !settings,
-        controls=@shell.sidebar_id(Primary),
-        on_click=if in_workspace && settings {
-          @cmd.batch([emit(CloseSettings), emit(Shell(SetOpen(Primary, true)))])
-        } else if in_workspace {
-          emit(Shell(Toggle(Primary)))
-        } else {
-          match model.active {
-            Some(id) => emit(OpenWorkspace(id))
-            None => @cmd.none
-          }
-        },
-      )
-    } else {
-      @html.nothing
-    },
-    @html.div(class="rail-end", [
-      theme_toggle(model, emit),
-      settings_button(model, emit),
-    ]),
-  ])
+        id="rail-start",
+        label="Getting started",
+        icon_name="home",
+        active=model.screen is GettingStarted && !settings,
+        on_click=emit(ShowStart),
+      ),
+      if model.active is Some(_) && model.acquiring is None {
+        @shell.rail_button(
+          id="rail-explorer",
+          label="Explorer",
+          icon_name="explorer",
+          active=in_workspace && model.layout.is_open(Primary) && !settings,
+          controls=@shell.sidebar_id(Primary),
+          on_click=if in_workspace && settings {
+            @cmd.batch([
+              emit(CloseSettings),
+              emit(Shell(SetOpen(Primary, true))),
+            ])
+          } else if in_workspace {
+            emit(Shell(Toggle(Primary)))
+          } else {
+            match model.active {
+              Some(id) => emit(OpenWorkspace(id))
+              None => @cmd.none
+            }
+          },
+        )
+      } else {
+        @html.nothing
+      },
+      if cards.is_empty() {
+        @html.nothing
+      } else {
+        @html.div(
+          class="workspace-cards",
+          attrs=@html.Attrs::build()
+            .role("group")
+            .aria_label("Open workspaces")
+            .data_set("tree", "workspaces")
+            .on_keydown(@shell.on_tree_key),
+          [
+            @html.p(
+              class="workspace-cards-heading",
+              attrs=@html.Attrs::build().aria_hidden("true"),
+              "Open workspaces",
+            ),
+            ..cards.map(card => workspace_card(model, card, emit)),
+          ],
+        )
+      },
+      @html.div(class="rail-end", [
+        @html.button(
+          id=workspace_sidebar_toggle_id,
+          class="rail-button workspace-sidebar-toggle",
+          title=toggle,
+          attrs=@html.Attrs::build()
+            .aria_label(toggle)
+            .aria_expanded(expanded.to_string()),
+          on_click=emit(
+            WorkspaceSidebar(model.settings.workspace_sidebar.toggle()),
+          ),
+          [icon_of("chevron"), @html.span(class="rail-label", "Collapse")],
+        ),
+        settings_button(model, emit),
+      ]),
+    ],
+  )
 }
 
 ///|
@@ -511,6 +636,10 @@ fn sidebar_for(
     .map(view => section_for(model, view, emit)),
     sidebar_footer(model, side),
     emit.map(action => Shell(action)),
+    title=match (side, active_entry(model)) {
+      (Primary, Some(entry)) => entry.name.to_string()
+      _ => ""
+    },
   )
 }
 
@@ -558,15 +687,21 @@ fn document_tabs(
     @html.nav(
       class="document-tab-list",
       attrs=@html.Attrs::build().aria_label("Documents"),
-      docs.map(doc => {
-        let current = model.doc == doc
-        @html.button(
+      docs
+      .map(doc => {
+        let tabs = model.settings.editor_layout is Tabs && doc == Source
+        let current = model.doc == doc && !(tabs && output_expanded(model))
+        let tab = @html.button(
           class=if current { "document-tab selected" } else { "document-tab" },
           title=document_label(model, doc),
           attrs=@html.Attrs::build()
             .aria_pressed(current.to_string())
             .data_set("document", document_id(doc)),
-          on_click=emit(ShowDocument(doc)),
+          on_click=if tabs {
+            @cmd.batch([emit(ShowDocument(doc)), emit(Pane(Both))])
+          } else {
+            emit(ShowDocument(doc))
+          },
           [
             icon_of(
               match doc {
@@ -579,24 +714,117 @@ fn document_tabs(
             @html.span(class="document-tab-label", document_label(model, doc)),
           ],
         )
-      }),
+        if tabs {
+          [tab, ..output_tabs(model, emit)]
+        } else {
+          [tab]
+        }
+      })
+      .flatten(),
     ),
     actions,
   ])
 }
 
 ///|
-/// The source document's compact header: the file, its language and profile, the profile details on demand and the
-/// build actions. The build menu lists the other actions with the same availability as the palette.
-fn source_header(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
-  let languages = items(field(model.catalog, "frontends")).map(frontend => {
-    @html.option(
-      value=text(frontend, "languageId"),
-      selected=text(frontend, "languageId") ==
-        (if model.worksheet { "scheme" } else { model.language }),
-      text(frontend, "displayName"),
+/// As tabs, the source document's output views follow its source tab: Morphir IR (Results for a worksheet), then
+/// each generated file opened from the Generated explorer as its own closable tab. With generated files and none
+/// open, a Generated tab opens the selected one.
+fn output_tabs(model : Model, emit : @cmd.Emit[Msg]) -> Array[@html.Html] {
+  let shown = model.doc == Source && output_expanded(model)
+  let ir_current = shown && !model.generated
+  let tabs = [
+    @html.button(
+      class=if ir_current { "document-tab selected" } else { "document-tab" },
+      title=if model.worksheet { "Results" } else { "Morphir IR" },
+      attrs=@html.Attrs::build()
+        .aria_pressed(ir_current.to_string())
+        .data_set("output", "ir"),
+      on_click=@cmd.batch([emit(ShowDocument(Source)), emit(OutputTab(false))]),
+      [
+        icon_of("code"),
+        @html.span(
+          class="document-tab-label",
+          if model.worksheet {
+            "Results"
+          } else {
+            "Morphir IR"
+          },
+        ),
+      ],
+    ),
+  ]
+  if model.worksheet {
+    return tabs
+  }
+  let files = @generated.artifacts(model.output)
+  let selected = text(
+    @generated.selected(model.output, model.generated_state.selected),
+    "path",
+  )
+  if model.open_outputs.is_empty() {
+    if !files.is_empty() {
+      tabs.push(
+        @html.button(
+          class="document-tab",
+          title="Open the selected generated file",
+          attrs=@html.Attrs::build()
+            .aria_pressed("false")
+            .data_set("output", "generated"),
+          on_click=emit(Generated(Select(selected))),
+          [
+            icon_of("folder"),
+            @html.span(class="document-tab-label", "Generated"),
+            @html.span(class="artifact-count", files.length().to_string()),
+          ],
+        ),
+      )
+    }
+    return tabs
+  }
+  for path in model.open_outputs {
+    let current = shown && model.generated && selected == path
+    let name = path
+      .split("/")
+      .last()
+      .map(part => part.to_owned())
+      .unwrap_or(path)
+    tabs.push(
+      @html.div(
+        class=if current {
+          "document-tab-group selected"
+        } else {
+          "document-tab-group"
+        },
+        [
+          @html.button(
+            class=if current { "document-tab selected" } else { "document-tab" },
+            title=path,
+            attrs=@html.Attrs::build()
+              .aria_label("Generated: " + path)
+              .aria_pressed(current.to_string())
+              .data_set("output-path", path),
+            on_click=emit(Generated(Select(path))),
+            [icon_of("document"), @html.span(class="document-tab-label", name)],
+          ),
+          @html.button(
+            class="document-tab-close",
+            title="Close " + name,
+            attrs=@html.Attrs::build().aria_label("Close generated " + path),
+            on_click=emit(CloseOutput(path)),
+            icon_of("close"),
+          ),
+        ],
+      ),
     )
-  })
+  }
+  tabs
+}
+
+///|
+/// The build actions of the source document in the header: Cancel while a request runs, the primary action (Compile,
+/// or Run worksheet) and the build menu, which lists the other actions with the same availability as the palette.
+fn build_controls(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   let commands = palette_commands(model)
   let reason_of = fn(id : @keys.CommandId) -> String? {
     commands.iter().find_first(c => c.id == id).map(c => c.reason)
@@ -638,7 +866,48 @@ fn source_header(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   if model.busy && model.request_id != 0 {
     others.push(("Cancel", "", Cancel))
   }
+  @html.div(class="header-build", [
+    @html.button(
+      class="secondary small",
+      hidden=!model.busy || model.request_id == 0,
+      on_click=emit(Cancel),
+      if host_execution_pending(model) {
+        "Cancel"
+      } else if model.connected && !model.worksheet {
+        "Discard"
+      } else {
+        "Cancel"
+      },
+    ),
+    build_menu(model, emit, primary, primary_reason, others),
+  ])
+}
+
+///|
+/// The source document's compact controls beside its tabs: its language and source profile, and the profile details
+/// on demand. The build actions are in the header.
+fn source_header(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+  let languages = items(field(model.catalog, "frontends")).map(frontend => {
+    @html.option(
+      value=text(frontend, "languageId"),
+      selected=text(frontend, "languageId") ==
+        (if model.worksheet { "scheme" } else { model.language }),
+      text(frontend, "displayName"),
+    )
+  })
+  let expanded = model.pane is SourceOnly
+  let expand = if expanded { "Restore split view" } else { "Expand source" }
   @html.div(class="source-header", [
+    @html.button(
+      class="sidebar-icon-button source-expand",
+      hidden=model.settings.editor_layout is Tabs,
+      title=expand,
+      attrs=@html.Attrs::build()
+        .aria_label(expand)
+        .aria_pressed(expanded.to_string()),
+      on_click=emit(Pane(if expanded { Both } else { SourceOnly })),
+      icon_of(if expanded { "restore" } else { "expand" }),
+    ),
     @html.div(class="compact-controls", [
       @html.label(class="compact-select", hidden=model.worksheet, [
         @html.span(class="visually-hidden", "Language"),
@@ -681,117 +950,140 @@ fn source_header(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
           }),
         ],
       ),
-      @html.button(
-        class="secondary small",
-        hidden=!model.busy || model.request_id == 0,
-        on_click=emit(Cancel),
-        if host_execution_pending(model) {
-          "Cancel"
-        } else if model.connected && !model.worksheet {
-          "Discard"
-        } else {
-          "Cancel"
-        },
-      ),
-      @html.div(class="build-actions", [
-        @html.button(
-          class="primary small",
-          disabled=primary_reason != "",
-          title=primary_reason,
-          on_click=emit(RunCommand(primary.0)),
-          [
-            @html.span(
-              class="build-glyph",
-              attrs=@html.Attrs::build().aria_hidden("true"),
-              "▷",
-            ),
-            @html.span(primary.1),
-          ],
-        ),
-        @html.button(
-          id="build-menu-button",
-          class="build-menu-button",
-          title="More build actions",
-          attrs=@html.Attrs::build()
-            .aria_label("More build actions")
-            .aria_haspopup("menu")
-            .aria_expanded(model.build_menu.to_string()),
-          on_click=emit(BuildMenu(!model.build_menu)),
-          @html.span(
-            class="workspace-chevron",
-            attrs=@html.Attrs::build().aria_hidden("true"),
-            "⌄",
-          ),
-        ),
-        if model.build_menu {
-          @html.div(
-            class="picker-backdrop",
-            attrs=@html.Attrs::build().aria_hidden("true"),
-            on_click=emit(BuildMenu(false)),
-            "",
-          )
-        } else {
-          @html.nothing
-        },
-        if model.build_menu {
-          @html.div(
-            class="build-menu",
-            attrs=@html.Attrs::build()
-              .role("menu")
-              .aria_label("Build actions")
-              .on_keydown(event => {
-                if event.key() == "Escape" {
-                  event.prevent_default()
-                  @cmd.batch([
-                    emit(BuildMenu(false)),
-                    focus_after_render("build-menu-button"),
-                  ])
-                } else {
-                  @shell.on_tree_key(event)
-                }
-              }),
-            others.map(entry => {
-              @html.button(
-                class="picker-item",
-                disabled=entry.1 != "" && entry.0 != "Evaluate in Explorer",
-                title=entry.1,
-                attrs=@html.Attrs::build()
-                  .role("menuitem")
-                  .data_set("tree-row", "action")
-                  .data_set("level", "0"),
-                on_click=@cmd.batch([emit(BuildMenu(false)), emit(entry.2)]),
-                [
-                  @html.span(entry.0),
-                  @html.span(
-                    class="picker-detail",
-                    hidden=entry.1 == "",
-                    entry.1,
-                  ),
-                ],
-              )
-            }),
-          )
-        } else {
-          @html.nothing
-        },
-      ]),
     ]),
   ])
 }
 
 ///|
-fn source_document(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+/// The primary build button and the More build actions menu.
+fn build_menu(
+  model : Model,
+  emit : @cmd.Emit[Msg],
+  primary : (@keys.CommandId, String),
+  primary_reason : String,
+  others : Array[(String, String, Msg)],
+) -> @html.Html {
+  @html.div(class="build-actions", [
+    @html.button(
+      class="primary small",
+      disabled=primary_reason != "",
+      title=primary_reason,
+      on_click=emit(RunCommand(primary.0)),
+      [
+        @html.span(
+          class="build-glyph",
+          attrs=@html.Attrs::build().aria_hidden("true"),
+          "▷",
+        ),
+        @html.span(primary.1),
+      ],
+    ),
+    @html.button(
+      id="build-menu-button",
+      class="build-menu-button",
+      title="More build actions",
+      attrs=@html.Attrs::build()
+        .aria_label("More build actions")
+        .aria_haspopup("menu")
+        .aria_expanded(model.build_menu.to_string()),
+      on_click=emit(BuildMenu(!model.build_menu)),
+      @html.span(
+        class="workspace-chevron",
+        attrs=@html.Attrs::build().aria_hidden("true"),
+        "⌄",
+      ),
+    ),
+    if model.build_menu {
+      @html.div(
+        class="picker-backdrop",
+        attrs=@html.Attrs::build().aria_hidden("true"),
+        on_click=emit(BuildMenu(false)),
+        "",
+      )
+    } else {
+      @html.nothing
+    },
+    if model.build_menu {
+      @html.div(
+        class="build-menu",
+        attrs=@html.Attrs::build()
+          .role("menu")
+          .aria_label("Build actions")
+          .on_keydown(event => {
+            if event.key() == "Escape" {
+              event.prevent_default()
+              @cmd.batch([
+                emit(BuildMenu(false)),
+                focus_after_render("build-menu-button"),
+              ])
+            } else {
+              @shell.on_tree_key(event)
+            }
+          }),
+        others.map(entry => {
+          @html.button(
+            class="picker-item",
+            disabled=entry.1 != "" && entry.0 != "Evaluate in Explorer",
+            title=entry.1,
+            attrs=@html.Attrs::build()
+              .role("menuitem")
+              .data_set("tree-row", "action")
+              .data_set("level", "0"),
+            on_click=@cmd.batch([emit(BuildMenu(false)), emit(entry.2)]),
+            [
+              @html.span(entry.0),
+              @html.span(class="picker-detail", hidden=entry.1 == "", entry.1),
+            ],
+          )
+        }),
+      )
+    } else {
+      @html.nothing
+    },
+  ])
+}
+
+///|
+
+///|
+/// True when the output fills the documents area and the source pane hides: expanded side by side, or the Morphir IR
+/// or Generated tab as tabs.
+fn output_expanded(model : Model) -> Bool {
+  // Side by side, a worksheet has no expand button, so its results show beside it; as tabs, its Results tab shows
+  // them alone.
+  model.pane is OutputOnly &&
+  (model.settings.editor_layout is Tabs || !model.worksheet)
+}
+
+///|
+/// True when the source fills the documents area and the output pane hides: expanded side by side, or the source tab
+/// as tabs.
+fn source_expanded(model : Model) -> Bool {
+  match model.settings.editor_layout {
+    SideBySide => model.pane is SourceOnly
+    Tabs => !output_expanded(model)
+  }
+}
+
+///|
+/// The source document: the source pane, headed by `tabs` in the split view, beside the output pane.
+fn source_document(
+  model : Model,
+  emit : @cmd.Emit[Msg],
+  tabs : @html.Html,
+) -> @html.Html {
   @html.div(class="document source-document", [
     @html.div(
-      class=if model.generated &&
-        !model.worksheet &&
-        model.generated_state.expanded {
+      class=if output_expanded(model) {
         "editor-grid output-expanded"
+      } else if source_expanded(model) {
+        "editor-grid source-expanded"
       } else {
         "editor-grid"
       },
       [
         @html.section(class="panel source-panel", [
+          tabs,
           @html.div(class="source-body", [
             @editor.view(
               {
@@ -1130,28 +1422,50 @@ fn empty_document(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
 fn documents(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   let docs = documents_of(model)
   let doc = if docs.contains(model.doc) { Some(model.doc) } else { docs.get(0) }
-  @html.div(class="documents", [
-    if docs.is_empty() {
-      @html.nothing
+  // In a split source document the tabs head the source pane, beside the output pane's own header, so both
+  // editors start at the same height. Expanded generated output hides the source pane, so the tabs head the whole
+  // area then.
+  let tabs_in_source = doc == Some(Source) &&
+    model.settings.editor_layout is SideBySide &&
+    !output_expanded(model)
+  @html.div(
+    class=if model.settings.editor_layout is Tabs {
+      "documents layout-tabs"
     } else {
-      document_tabs(
-        model,
-        emit,
-        if doc == Some(Source) {
-          source_header(model, emit)
-        } else {
-          @html.nothing
-        },
-      )
+      "documents"
     },
-    match doc {
-      Some(Source) => source_document(model, emit)
-      Some(Model) => model_document(model, emit)
-      Some(IntentDraft as draft) | Some(ConceptDraft as draft) =>
-        draft_document(model, emit, draft)
-      None => empty_document(model, emit)
-    },
-  ])
+    [
+      if docs.is_empty() || tabs_in_source {
+        @html.nothing
+      } else {
+        document_tabs(
+          model,
+          emit,
+          if doc == Some(Source) {
+            source_header(model, emit)
+          } else {
+            @html.nothing
+          },
+        )
+      },
+      match doc {
+        Some(Source) =>
+          source_document(
+            model,
+            emit,
+            if tabs_in_source {
+              document_tabs(model, emit, source_header(model, emit))
+            } else {
+              @html.nothing
+            },
+          )
+        Some(Model) => model_document(model, emit)
+        Some(IntentDraft as draft) | Some(ConceptDraft as draft) =>
+          draft_document(model, emit, draft)
+        None => empty_document(model, emit)
+      },
+    ],
+  )
 }
 
 ///|
@@ -1214,6 +1528,11 @@ fn view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   @html.div(
     class="workbench" +
       (if in_workspace { " has-workspace" } else { " starting" }) +
+      (if model.settings.workspace_sidebar is Expanded {
+        " workspaces-expanded"
+      } else {
+        ""
+      }) +
       (if model.panel.size == @bottom_panel.Collapsed {
         ""
       } else {

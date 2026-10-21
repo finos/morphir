@@ -384,3 +384,65 @@ test "the generated records sample parses" {
     .to_equal(["Points"])
   })
 }
+
+///|
+test "a project saves its generation target and requests leave it out" {
+  let elm = {
+    ..shop(),
+    target: Some(@project.Generation::Backend(@ids.BackendId::parse("elm"))),
+  }
+  let none = { ..shop(), target: Some(@project.Generation::NoGeneration), }
+  @expect.expect_all(s => {
+    for project in [shop(), elm, none] {
+      s
+      .expect(
+        @project.Project::from_json(project.to_json()),
+        label="round trip",
+      )
+      .to_equal(project)
+    }
+    s
+    .expect(elm.to_json(), label="saved")
+    .to_contain_json({ "generationTarget": "elm" })
+    s
+    .expect(none.to_json(), label="none")
+    .to_contain_json({ "generationTarget": Json::null() })
+    // A backend whose id is `none` stays that backend.
+    let named_none = {
+      ..shop(),
+      target: Some(@project.Generation::Backend(@ids.BackendId::parse("none"))),
+    }
+    s
+    .expect(
+      @project.Project::from_json(named_none.to_json()),
+      label="none backend",
+    )
+    .to_equal(named_none)
+    s
+    .expect(
+      shop().to_json().stringify().contains("generationTarget"),
+      label="unset",
+    )
+    .to_be_false()
+    s
+    .expect(
+      elm.to_request().stringify().contains("generationTarget"),
+      label="request",
+    )
+    .to_be_false()
+    // A stored target that does not parse is dropped, so the project follows the Workbench default.
+    let saved = shop().to_json().stringify()
+    let odd = @json.parse(
+      saved.replace(
+        old="\"version\":1",
+        new="\"version\":1,\"generationTarget\":\"Not A Backend!\"",
+      ),
+    )
+    s
+    .expect(@project.Project::from_json(odd).target, label="unknown")
+    .to_be_none()
+    s
+    .expect(@project.Generation::parse(""), label="empty")
+    .to_equal(Some(NoGeneration))
+  })
+}

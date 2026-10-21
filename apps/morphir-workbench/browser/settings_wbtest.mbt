@@ -224,3 +224,88 @@ test "Escape closes settings from anywhere unless the palette or a header menu i
     s.expect(page == start, label="nothing without settings").to_be_true()
   })
 }
+
+///|
+test "side by side, each pane expands; as tabs, an output tab shows the output alone" {
+  let restore = storage_test_environment("")
+  defer restore()
+  let model = settings_workspace()
+  let source_wide = run_command(model, ToggleSourceWidth, quiet()).0
+  let restored = run_command(source_wide, ToggleSourceWidth, quiet()).0
+  let output_wide = run_all(model, [Generated(ToggleExpanded)])
+  let ir_from_source = run_all(source_wide, [OutputTab(false)])
+  let tabs = run_command(model, UseTabs, quiet()).0
+  let generated_tab = run_all(tabs, [OutputTab(true)])
+  let source_tab = run_all(generated_tab, [Pane(Both)])
+  @expect.expect_all(s => {
+    s.expect(source_wide.pane, label="source").to_equal(SourceOnly)
+    s.expect(restored.pane, label="restored").to_equal(Both)
+    s.expect(output_wide.pane, label="output").to_equal(OutputOnly)
+    s
+    .expect(ir_from_source.pane, label="an output tab shows both again")
+    .to_equal(Both)
+    s
+    .expect(tabs.settings.editor_layout, label="tabs")
+    .to_equal(@settings.EditorLayout::Tabs)
+    s
+    .expect(storage_load(@settings.storage_key), label="saved")
+    .to_equal("{\"theme\":\"system\",\"editorLayout\":\"tabs\"}")
+    s.expect(generated_tab.pane, label="generated tab").to_equal(OutputOnly)
+    s.expect(generated_tab.generated, label="generated").to_be_true()
+    s.expect(source_tab.pane, label="source tab").to_equal(Both)
+    // A worksheet's Results tab shows its results alone as tabs; side by side they stay beside the worksheet.
+    let worksheet_results = run_all(tabs, [Layout(true), OutputTab(false)])
+    s
+    .expect(output_expanded(worksheet_results), label="worksheet results tab")
+    .to_be_true()
+    s
+    .expect(
+      output_expanded({
+        ..worksheet_results,
+        settings: { ..worksheet_results.settings, editor_layout: SideBySide, },
+      }),
+      label="side by side",
+    )
+    .to_be_false()
+  })
+}
+
+///|
+test "generated files open as their own tabs, close, and follow a new generation" {
+  let restore = storage_test_environment("")
+  defer restore()
+  let output : Json = {
+    "artifacts": [
+      { "path": "src/A.elm", "content": "a" },
+      { "path": "elm.json", "content": "{}" },
+    ],
+  }
+  let tabs = run_command(settings_workspace(), UseTabs, quiet()).0
+  let generated = follow_outputs(tabs, { ..tabs, output, })
+  let both = run_all(generated, [Generated(Select("elm.json"))])
+  let again = run_all(both, [Generated(Select("elm.json"))])
+  let closed = run_all(both, [CloseOutput("elm.json")])
+  let last = run_all(closed, [CloseOutput("src/A.elm")])
+  let regenerated = follow_outputs(both, {
+    ..both,
+    output: { "artifacts": [{ "path": "src/A.elm", "content": "b" }] },
+  })
+  @expect.expect_all(s => {
+    s
+    .expect(generated.open_outputs, label="the selected file opens")
+    .to_equal(["src/A.elm"])
+    s
+    .expect(both.open_outputs, label="opened")
+    .to_equal(["src/A.elm", "elm.json"])
+    s.expect(both.pane, label="shown").to_equal(OutputOnly)
+    s.expect(again.open_outputs, label="once").to_equal(both.open_outputs)
+    s.expect(closed.open_outputs, label="closed").to_equal(["src/A.elm"])
+    s
+    .expect(closed.generated_state.selected, label="the tab beside shows")
+    .to_equal("src/A.elm")
+    s.expect(last.pane, label="then the source").to_equal(Both)
+    s
+    .expect(regenerated.open_outputs, label="gone files close")
+    .to_equal(["src/A.elm"])
+  })
+}

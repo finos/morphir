@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import type { Browser, Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
-import { gettingStarted, createWorkspace, runCommand } from './workbench-steps.ts';
+import { gettingStarted, createWorkspace, runCommand, build } from './workbench-steps.ts';
 
 const key = 'morphir-workbench.settings.v1';
 
@@ -37,10 +37,25 @@ async function themeIs(page: Page, theme: string): Promise<void> {
     document.getElementById('theme-toggle')?.getAttribute('aria-label')?.toLowerCase() === 'theme: ' + theme, theme);
 }
 
+/** Asserts that the theme toggle sits at the right end of the header, after every other header control, and not in the rail. */
+async function inHeader(page: Page): Promise<void> {
+  const place = await page.evaluate(() => {
+    const toggle = document.getElementById('theme-toggle'), end = toggle?.closest('.topbar-end');
+    return {
+      header: end !== null && end !== undefined,
+      last: [...end?.querySelectorAll('a, button, select') ?? []].at(-1) === toggle,
+      rail: document.querySelector('.rail #theme-toggle') !== null,
+      railEnd: [...document.querySelectorAll('.rail-end > *')].map(element => element.id),
+    };
+  });
+  assert.deepEqual(place, { header: true, last: true, rail: false, railEnd: ['workspace-sidebar-toggle', 'rail-settings'] },
+    'The theme toggle is the last control of the header, and the rail end holds the workspace sidebar toggle and the gear');
+}
+
 /**
  * Settings and the theme: the rail gear and the palette open the settings page, Escape, Close settings and the gear
  * return to the same screen and focus, navigation leaves it, and System, Light and Dark apply from the radio group,
- * the rail toggle and the palette, follow the system live and survive a reload without a light first paint.
+ * the header toggle and the palette, follow the system live and survive a reload without a light first paint.
  */
 export async function settingsWorkflow(browser: Browser, url: string): Promise<void> {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, colorScheme: 'light' });
@@ -56,7 +71,17 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
     assert.equal(await dataTheme(page), 'system');
     assert.equal(await toggle.getAttribute('aria-label'), 'Theme: System');
     assert.equal((await toggle.textContent())!.trim(), '', 'The theme toggle shows an icon, not text');
+    await inHeader(page);
     const light = await background(page);
+
+    // Keyboard only: Tab reaches the toggle in the header after the connection pill, and Enter moves the theme on.
+    await page.locator('.connection a').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await focused(page), 'theme-toggle', 'Tab moves from the connection pill to the theme toggle');
+    await page.keyboard.press('Enter');
+    await themeIs(page, 'light');
+    await runCommand(page, 'Theme: Use system setting');
+    await themeIs(page, 'system');
 
     // The gear opens settings over getting started; Escape returns there with the focus on the gear.
     await gear.focus();
@@ -77,9 +102,10 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
     await start.waitFor();
     await page.waitForFunction(() => document.activeElement?.id === 'start-heading');
 
-    // The radio group, the rail toggle and the palette set the same theme and agree.
+    // The radio group, the header toggle and the palette set the same theme and agree.
     await gear.click();
     await settingsShown(page);
+    await inHeader(page);
     const radio = (name: string) => page.getByRole('radio', { name, exact: true });
     assert.ok(await radio('System (currently light)').isChecked());
     await radio('Dark').check();
@@ -138,6 +164,7 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
     await page.keyboard.type('\n; kept across settings');
     const before = await text();
     assert.ok(before.endsWith('; kept across settings'), 'The edit reached the editor');
+    await inHeader(page);
     await gear.click();
     await settingsShown(page);
     assert.ok(await page.locator('.workspace-area').isHidden(), 'The workspace is hidden, not closed');
@@ -145,6 +172,46 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
     await page.locator('.workspace-area').waitFor();
     assert.equal(await focused(page), 'rail-settings', 'The gear closes settings and keeps the focus');
     assert.equal(await text(), before, 'The source text is kept');
+
+    // Source and output: side by side the source expands to the full width and restores; as tabs, the source, Morphir
+    // IR and Generated are tabs on the document row. The editor keeps its text and the choice is saved.
+    const outputPane = page.locator('.output-panel');
+    await page.getByRole('button', { name: 'Expand source', exact: true }).click();
+    await outputPane.waitFor({ state: 'hidden' });
+    assert.equal(await page.getByRole('button', { name: 'Restore split view', exact: true }).getAttribute('aria-pressed'), 'true');
+    await page.getByRole('button', { name: 'Restore split view', exact: true }).click();
+    await outputPane.waitFor();
+    await runCommand(page, 'Editor layout: Tabs');
+    await outputPane.waitFor({ state: 'hidden' });
+    assert.equal(await page.getByRole('button', { name: 'Expand source', exact: true }).isVisible(), false, 'Tabs need no expand button');
+    await page.locator('.document-tab[data-output="ir"]').click();
+    await page.locator('#output').waitFor();
+    assert.equal(await page.locator('#source').isVisible(), false, 'The Morphir IR tab shows the output alone');
+    await page.locator('.document-tab[data-output="ir"][aria-pressed="true"]').waitFor();
+    // A compile opens the selected generated file in its own tab; a file tab closes, and then the source shows.
+    await build(page, 'Compile');
+    await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
+    const fileTab = page.locator('.document-tab[data-output-path]');
+    assert.equal(await fileTab.count(), 1, 'One generated file opens as a tab');
+    const generatedPath = (await fileTab.getAttribute('data-output-path'))!;
+    await fileTab.click();
+    await page.locator('.document-tab[data-output-path][aria-pressed="true"]').waitFor();
+    assert.equal(await page.locator('.output-panel .artifact-breadcrumb').getAttribute('title'), generatedPath);
+    await page.getByRole('button', { name: 'Close generated ' + generatedPath, exact: true }).click();
+    await fileTab.waitFor({ state: 'detached' });
+    await page.locator('#source').waitFor();
+    await page.locator('.document-tab[data-output="generated"]').click();
+    await page.locator('.document-tab[data-output-path][aria-pressed="true"]').waitFor();
+    await page.locator('[data-document="source"]').click();
+    await page.locator('#source').waitFor();
+    assert.equal(await text(), before, 'Switching tabs keeps the source text');
+    assert.equal(JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!).editorLayout, 'tabs');
+    await gear.click();
+    await settingsShown(page);
+    await radio('Side by side').check();
+    await gear.click();
+    await outputPane.waitFor();
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), key), '{"theme":"dark"}', 'Side by side is the default and is not saved');
     // Escape closes settings wherever the focus is, after a header menu has closed first.
     await gear.click();
     await settingsShown(page);
@@ -162,13 +229,20 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
     await start.waitFor();
     assert.equal(await page.locator('#settings').count(), 0, 'Getting started leaves settings');
 
-    // Narrow windows: the gear and the toggle stay reachable and settings never scrolls sideways.
+    // Narrow windows: the gear and the header toggle stay reachable and settings never scrolls sideways.
     for (const width of [768, 390]) {
       await page.setViewportSize({ width, height: 844 });
       for (const control of [gear, toggle]) {
         const box = (await control.boundingBox())!;
-        assert.ok(box.x >= 0 && box.x + box.width <= width && box.y + box.height <= 844, `The rail control fits ${width}px`);
+        assert.ok(box.x >= 0 && box.x + box.width <= width && box.y + box.height <= 844, `The ${await control.getAttribute('id')} control fits ${width}px`);
       }
+      const header = (await page.locator('.topbar').boundingBox())!, box = (await toggle.boundingBox())!;
+      assert.ok(box.y >= header.y && box.y + box.height <= header.y + header.height, `The theme toggle stays in the wrapped header at ${width}px`);
+      assert.ok(await fits(page), `Getting started fits ${width}px`);
+      await runCommand(page, 'Theme: Light');
+      await themeIs(page, 'light');
+      await toggle.click();
+      await themeIs(page, 'dark');
       await gear.click();
       await settingsShown(page);
       assert.ok(await fits(page), `Settings fits ${width}px`);
@@ -178,7 +252,7 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
     await page.setViewportSize({ width: 1440, height: 1000 });
     await runCommand(page, 'Theme: Use system setting');
     assert.deepEqual(errors, []);
-    console.log('Settings workflow passed: gear and palette open settings, Escape, Close settings and the gear return focus, navigation leaves it, radio group, rail toggle and palette themes agree, System follows the system live, arrow keys, dark first paint after reload, workspace state kept, and narrow windows.');
+    console.log('Settings workflow passed: gear and palette open settings, Escape, Close settings and the gear return focus, navigation leaves it, toggle in the header, radio group, header toggle and palette themes agree, System follows the system live, arrow keys, dark first paint after reload, workspace state kept, source expansion and tabs, and narrow windows.');
   } finally { await context.close(); }
 }
 
@@ -190,9 +264,10 @@ export async function settingsWorkflow(browser: Browser, url: string): Promise<v
 export async function settingsSmoke(page: Page): Promise<'light' | 'dark'> {
   await gettingStarted(page);
   const gear = page.getByRole('button', { name: 'Settings', exact: true });
-  const toggle = page.locator('#theme-toggle');
+  const toggle = page.locator('.topbar #theme-toggle');
   const radio = (name: string) => page.getByRole('radio', { name, exact: true });
   await runCommand(page, 'Theme: Use system setting');
+  assert.equal(await page.locator('.rail #theme-toggle').count(), 0, 'The theme toggle is in the header, not the rail');
   const system = await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   await gear.click();
   await settingsShown(page);

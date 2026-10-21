@@ -12,7 +12,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from 'playwrig
 import { unzipSync } from 'fflate';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import { createWorkbenchServer } from './server.ts';
-import { showGeneratedFiles } from './workbench-steps.ts';
+import { showGeneratedFiles, setTarget } from './workbench-steps.ts';
 
 const binary = process.env.MORPHIR_WORKBENCH_ARTIFACT_FIXTURE_BIN;
 if (!binary) throw new Error('Set MORPHIR_WORKBENCH_ARTIFACT_FIXTURE_BIN to the qualified installed-process host fixture.');
@@ -146,7 +146,7 @@ try {
   else await page.goto(origin + launch.pathname + launch.search);
   await page.getByRole('status').filter({ hasText: 'Connected · ready to compile' }).waitFor();
   await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('gleam');
-  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption(descriptor.target);
+  await setTarget(page, descriptor.target);
   await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill(source);
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor({ timeout: 120000 });
@@ -201,7 +201,7 @@ try {
   assert.equal(staleDownloads, 0, 'A source edit invalidates old verified download references');
   page.off('download', unexpectedDownload);
   // The real built-in language backend is a separate probe from the deterministic byte target.
-  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('gleam');
+  await setTarget(page, 'gleam');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor({ timeout: 120000 });
   await page.getByRole('button', { name: 'Generated', exact: true }).click();

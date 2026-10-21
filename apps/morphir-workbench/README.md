@@ -68,7 +68,19 @@ browser storage refuses the save; the reason is shown. A reply for a closed
 workspace is ignored, also after it opens again. A connected host's workspace does
 not close, and a provisional workspace closes like Stop waiting.
 
-The left rail keeps **Getting started** and **Explorer** visible. Explorer, the
+The left rail is the workspace sidebar. It keeps **Getting started** and **Explorer**
+visible and shows each open workspace: collapsed (the default), a tile with its
+initials and a dot for its most urgent state; expanded, a card with its name, kind,
+state (Working…, Execution retained, Not saved, problems, generated files) and
+location, and a close button that follows the close rules above. A workspace that the
+Workbench keeps in the page and browser storage has a virtual path,
+`memory://workspaces/<slug>`: the slug comes from its name when it is created, stays
+when it is renamed and is saved in the workspace list as `location`. A connected
+host's workspace shows the host's origin. A tile or card switches to its
+workspace; Up, Down, Home and End move between them. The button above the gear, or
+**Toggle workspace sidebar** in the palette, expands and collapses it for the whole
+Workbench; the choice is saved with the theme. At 1050 px and narrower it shows tiles.
+The left sidebar's header names the open workspace. Explorer, the
 sidebar's own button and Ctrl/⌘+B toggle the left sidebar; the header's right
 button toggles the right sidebar. Each sidebar resizes by pointer or by keyboard on
 its edge (arrows move 16 px, Home and End jump to 200 and 560 px). Files, Models,
@@ -158,16 +170,22 @@ The local worker compiles through `@engine.Engine` with the MoonBit and Elm prov
 (one file) or `project` (`name`, `languageId`, `files[]`, optional `frontendProvider`, `frontendProfile`,
 `exposedModules`).
 
-Choose **Elm** in the Target dropdown, or open the **Elm constant** sample, to generate
+Choose **Elm** as the project's generation target (**Settings** › **Projects**, or
+**Set generation target…** in the command palette), or open the **Elm constant** sample, to generate
 an Elm package from the compiled IR using the pure `morphir-elm` backend.
-The **Generated** tab shows a folder/file navigator for each module, `elm.json`
-and `morphir.json`. The reusable `browser/generated` component puts a selected-file
-breadcrumb beside the read-only highlighted preview. Folders and the file list
+The Generated explorer shows a folder/file navigator for each module, `elm.json`
+and `morphir.json`. The **Generated** tab keeps the selected file's controls in one
+row with the output tabs, so generated code starts within one line of the source
+beside it: the file's path (only its name in a narrow pane; the title holds the full
+path, and the expanded pane shows the folders), Read-only or its binary view, the
+download icon, a button with the file count that shows the Generated explorer, and
+the expansion icon. The reusable `browser/generated` component renders that row
+(`heading`) and the read-only highlighted preview. Folders and the file list
 can collapse independently; keyboard Tab/Enter works for their controls. The
-corner expansion icon gives generated output the full editor width while keeping
+expansion icon gives generated output the full editor width while keeping
 the source editor and draft mounted. Restore split view returns to source/output
-editing. On narrow screens the file list stacks above the preview. The file-header
-download icon preserves the selected content;
+editing. Up to 650 px wide, the file's row wraps below the tabs. The download icon
+beside the path preserves the selected content;
 **Download project** exports a ZIP with every generated file and its relative path.
 Archive paths are validated before export. Binary artifacts from connected hosts
 remain opaque until the protocol defines their encoding.
@@ -503,11 +521,17 @@ the current screen. Close settings, Escape or the gear returns to the same scree
 Opening settings saves, parks and cancels nothing. Navigation from the rail, the header or the palette leaves settings
 for its own target. There is no keyboard shortcut: browsers keep Command or Control and comma for their own settings.
 
+**Projects** lists the projects of the open workspace with each one's language, source profile and **Generation
+target** (No generation or a catalog target). A project keeps its target: it is saved with the project as
+`generationTarget` (`null` for no generation), and Compile sends the current project's target. **Set generation
+target…** in the command palette changes the current project's target. A project without a saved target uses the
+Workbench default; a connected host's projects keep a chosen target for the session.
+
 The theme is **System** (the default), **Light** or **Dark**. System follows the operating system or browser
-appearance as it changes. Choose it under Appearance on the settings page, with the toggle above the gear (it cycles
-System, Light, Dark, like the site's toggle) or with the palette's Theme commands. The choice belongs to the whole
+appearance as it changes. Choose it under Appearance on the settings page, with the toggle in the upper-right corner of
+the header (it cycles System, Light, Dark, like the site's toggle) or with the palette's Theme commands. The choice belongs to the whole
 Workbench, not to a workspace, and is saved in browser storage under `morphir-workbench.settings.v1`, for example
-`{"theme":"dark"}`. A small script in the head of `index.html` applies a saved Light or Dark theme before the first
+`{"theme":"dark"}`; an expanded workspace sidebar adds `"workspaceSidebar":"expanded"`. A small script in the head of `index.html` applies a saved Light or Dark theme before the first
 paint; `scripts/theme-head.test.ts` checks that it agrees with the decoder in `browser/settings`. Light and Dark set
 `data-theme` on the root element; System removes it, so the stylesheet's `prefers-color-scheme` query decides. The
 `/try/` copy on the site keeps this key apart from the site's own `site-theme`.
@@ -521,18 +545,30 @@ A page that hosts the workbench can add `<meta name="morphir-site-home" content=
 to that URL. The project site does this at `/try/`;
 the desktop host and the development server do not.
 
-The source document keeps its controls on the tab row: Language, Source profile,
-**Profile details** on demand, and **Compile** (or **Run worksheet**) as the primary
-action. **More build actions** lists Compile & run or Evaluate in Explorer with the
-command palette's availability and reasons. The segmented **Compile & inspect** |
-**Worksheet** picker sits in the header beside the connection while the source
-document is open. Cancel appears only while an operation runs. Secondary actions, such as source-unit, project and IR downloads, use
+The source document keeps Language, Source profile and **Profile details** on
+demand on its tab row. While it is open, the header holds the segmented **Compile &
+inspect** | **Worksheet** picker and, beside it, **Compile** (or **Run worksheet**) as
+the primary action. **More build actions** lists Compile & run or Evaluate in Explorer
+with the command palette's availability and reasons. Cancel appears only while an
+operation runs. Side by side, the document tabs head the source pane and the output
+tabs head the output pane in one shared row, so line 1 of the source and of the
+output start at the same height. **Expand source** on the tab row gives the source the
+full width, as the Generated expand button does for output; **Restore split view**
+returns. **Settings** › **Source and output** (or **Editor layout: Tabs** in the
+palette) shows the source, **Morphir IR** and generated files as tabs on the document
+row instead, one at a time; side by side is the default. As tabs, each generated file
+that you choose in the Generated explorer opens in its own closable tab; choosing it
+again shows that tab. A compile opens the selected file when no file tab is open, and
+closes the tabs of files that the generation no longer made, with a note. With
+generated files and no tab open, a **Generated** tab opens the selected file. The choice is saved with the
+theme as `"editorLayout":"tabs"`. Secondary actions, such as source-unit, project and IR downloads, use
 quiet icon buttons. Input and result views are tabs, and the evaluation runtime
 is the only segmented switch inside an evaluation card. Profile details and
 input and output types stay behind disclosures until needed. Stale and failed results keep an orange or red accent and label.
 The source and output panes fill the documents area between the tabs and the tool
-panel and scroll inside their editors; below 1050 px they stack. Up to 650 px wide,
-the header wraps to two rows and getting started uses one column.
+panel and scroll inside their editors; below 1050 px they stack. In a workspace the
+header wraps to two rows up to 900 px wide (it also holds the mode switch and
+Compile), and everywhere up to 650 px, where getting started uses one column.
 
 The original Morphir vector logo and a cropped compact mark ship in `assets/`.
 The cube, code, sidebar, home, idea, plus, explorer, move and concept icons are workbench drawings. Assets load

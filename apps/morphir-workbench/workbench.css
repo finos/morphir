@@ -14,11 +14,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 a { color:var(--link); text-underline-offset:3px; }
 
 /* Shell: header, left rail, two sidebars around the documents, and the tool panel. */
-.workbench { display:grid; grid-template-columns:48px minmax(0,1fr); grid-template-rows:52px minmax(0,1fr); height:100vh; height:100dvh; }
+.workbench { display:grid; grid-template-columns:var(--rail-width,48px) minmax(0,1fr); grid-template-rows:52px minmax(0,1fr); height:100vh; height:100dvh; }
 .topbar { grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) auto minmax(max-content,1fr); align-items:center; gap:12px; height:52px; padding:0 12px 0 8px; border-bottom:1px solid var(--line); background:var(--paper); font-size:12px; }
 .topbar-start,.topbar-end { display:flex; align-items:center; gap:8px; min-width:0; }
 .topbar-end { justify-content:flex-end; gap:16px; }
 .topbar-end .mode-switch { margin-right:0; }
+.topbar-actions { display:flex; align-items:center; gap:4px; }
 .brand { display:flex; align-items:center; height:36px; flex:none; border-radius:var(--radius); }
 .brand-logo { display:none; }
 .brand-mark { display:block; width:28px; height:32px; flex:none; }
@@ -64,11 +65,55 @@ a.brand { border-radius:var(--radius); }
 .workspace-area { grid-row:2; display:flex; min-width:0; min-height:0; position:relative; overflow:hidden; }
 .start-area { grid-row:2; min-width:0; min-height:0; overflow:auto; background:var(--surface); }
 .rail-end { display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:auto; }
+/* The rail is the workspace sidebar: icons and a tile per open workspace, or, expanded, labels and a card each. */
+.rail-label,.workspace-cards-heading,.workspace-card-text,.workspace-card-close { display:none; }
+.workspace-cards { display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; min-height:0; overflow-y:auto; overflow-x:hidden; padding:6px 0 2px; border-top:1px solid var(--line); }
+.workspace-card { position:relative; display:flex; align-items:center; width:100%; justify-content:center; }
+.workspace-card-open { display:flex; align-items:center; gap:10px; padding:0; border-radius:8px; color:var(--ink); text-align:left; min-width:0; }
+.workspace-initials { position:relative; display:grid; place-items:center; width:32px; height:32px; flex:none; border:1px solid var(--line-strong); border-radius:8px; background:var(--surface); font-size:11px; font-weight:700; letter-spacing:.02em; color:var(--muted); }
+.workspace-card.current .workspace-initials { border-color:var(--brand-blue); color:var(--link-strong); background:var(--selection); }
+.workspace-card-open:hover .workspace-initials { border-color:var(--line-hover); color:var(--ink); }
+.workspace-dot { position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; border:2px solid var(--paper); background:var(--muted); }
+.workspace-dot-busy { background:var(--brand-blue); }
+.workspace-dot-ready { background:var(--link); }
+.workspace-dot-warning { background:var(--warn-ink); }
+.workspace-dot-error { background:var(--danger-ink); }
+.workspace-sidebar-toggle .icon-chevron { transform:rotate(90deg); }
+.workbench.workspaces-expanded { --rail-width:232px; }
+.rail.expanded { align-items:stretch; padding:10px 8px; }
+.rail.expanded .rail-button { display:flex; align-items:center; gap:10px; width:100%; padding:0 8px; justify-content:flex-start; }
+.rail.expanded .rail-label { display:inline; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rail.expanded .rail-end { align-items:stretch; }
+.rail.expanded .workspace-sidebar-toggle .icon-chevron { transform:rotate(-90deg); }
+.rail.expanded .workspace-cards { align-items:stretch; }
+.rail.expanded .workspace-cards-heading { display:block; margin:4px 8px 2px; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.rail.expanded .workspace-card-open { flex:1 1 auto; padding:6px; border:1px solid transparent; }
+.rail.expanded .workspace-card.current .workspace-card-open { border-color:var(--brand-blue); background:var(--selection); }
+.rail.expanded .workspace-card-open:hover { background:var(--hover); }
+.rail.expanded .workspace-card-text { display:flex; flex-direction:column; min-width:0; }
+.workspace-card-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.workspace-card-detail { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.workspace-card-path { font:11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--subtle); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rail.expanded .workspace-card-close { display:grid; place-items:center; position:absolute; right:6px; width:24px; height:24px; padding:0; border-radius:6px; color:var(--muted); opacity:0; }
+.rail.expanded .workspace-card-close .nav-icon { width:14px; height:14px; }
+.rail.expanded .workspace-card:hover .workspace-card-close,.rail.expanded .workspace-card-close:focus-visible { opacity:1; }
+.rail.expanded .workspace-card-close:hover { color:var(--ink); background:var(--hover); }
+@media (hover:none),(pointer:coarse) { .rail.expanded .workspace-card-close { opacity:1; } }
+/* At 1050 px and narrower the workspace level shows tiles whatever the setting. */
+@media (max-width:1050px) {
+  .workbench.workspaces-expanded { --rail-width:48px; }
+  .rail.expanded { align-items:center; padding:10px 0; }
+  .rail.expanded .rail-button { display:grid; place-items:center; width:36px; padding:0; }
+  .rail.expanded .rail-label,.rail.expanded .workspace-cards-heading,.rail.expanded .workspace-card-text,.rail.expanded .workspace-card-close,.workspace-sidebar-toggle { display:none !important; }
+  .rail.expanded .workspace-cards,.rail.expanded .rail-end { align-items:center; }
+  .rail.expanded .workspace-card-open { flex:none; padding:0; border:0; background:transparent !important; }
+}
 .document-area { flex:1 1 0; min-width:min(320px,100%); min-height:0; display:flex; flex-direction:column; background:var(--surface); }
 .sidebar { position:relative; flex:0 1 auto; min-width:180px; display:flex; flex-direction:column; min-height:0; max-width:calc(100vw - 120px); background:var(--paper); }
 .sidebar-primary { border-right:1px solid var(--line); }
 .sidebar-secondary { border-left:1px solid var(--line); order:3; }
 .sidebar-header { display:flex; justify-content:flex-end; align-items:center; gap:4px; height:36px; padding:0 8px; flex:none; }
+.sidebar-title { flex:1 1 auto; min-width:0; padding-left:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; font-weight:600; color:var(--ink); }
 .sidebar-secondary .sidebar-header { justify-content:flex-start; }
 .sidebar-sections { flex:1 1 0; min-height:0; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; }
 .sidebar-empty { margin:12px 14px; }
@@ -136,12 +181,17 @@ input,select { border:1px solid var(--line-strong); background:var(--surface); b
 .profile-details .source-capabilities { margin:0; }
 .profile-details .source-capabilities-grid { position:absolute; z-index:30; right:0; top:calc(100% + 6px); width:min(560px,calc(100vw - 40px)); box-shadow:0 12px 32px var(--shadow); }
 .build-actions { position:relative; display:inline-flex; align-items:center; }
+.header-build { display:flex; align-items:center; gap:6px; }
 .build-actions > .primary { border-radius:6px 0 0 6px; }
 .primary.small { min-height:28px; padding:2px 12px; font-size:12px; }
 .build-glyph { font-size:10px; }
 .build-menu-button { display:grid; place-items:center; min-height:28px; width:24px; padding:0; border-radius:0 6px 6px 0; background:var(--brand-orange); border-color:var(--brand-orange); border-left:1px solid var(--primary-divider); color:var(--on-primary); }
 .build-menu-button:hover:not(:disabled) { background:var(--primary-hover); }
-.source-document .editor-grid { flex:1 1 0; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr); gap:0; }
+.source-document .editor-grid { flex:1 1 0; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); gap:0; }
+/* Side by side, each pane's header (the document tabs, the output tabs) shares one grid row, so both editors start
+   at the same height whatever either header holds. */
+.source-document .editor-grid > .panel { grid-row:span 2; display:grid; grid-template-rows:subgrid; }
+.source-document .source-panel > .document-tabs { min-width:0; }
 .source-document .panel { display:flex; flex-direction:column; min-height:0; border:0; border-radius:0; }
 .source-document .output-panel { border-left:1px solid var(--line); }
 .source-document .source-panel morphir-code-editor { flex:1 1 0; min-height:0; --editor-height:auto; }
@@ -179,6 +229,12 @@ input,select { border:1px solid var(--line-strong); background:var(--surface); b
 .theme-choice { display:flex; align-items:center; gap:10px; width:min(360px,100%); min-height:36px; padding:6px 12px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-alt); cursor:pointer; }
 .theme-choice:has(input:checked) { border-color:var(--selection-line); background:var(--selection); color:var(--link-strong); font-weight:600; }
 .theme-choice input { margin:0; accent-color:var(--link); }
+.settings-section + .settings-section { margin-top:32px; }
+.project-setting { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; padding:10px 12px; margin-bottom:8px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-alt); }
+.project-setting-name { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.project-setting-name .settings-help { margin:0; }
+.project-setting-field { display:flex; align-items:center; gap:8px; font-size:13px; }
+.project-setting-field select { min-width:160px; }
 .settings-help { margin:4px 0 0; font-size:12px; color:var(--muted); }
 .start-message { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; margin:16px 0 0; padding:10px 14px; border-radius:var(--radius); background:var(--warn-bg); color:var(--warn-ink); }
 .start-columns { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:48px; margin-top:36px; }
@@ -267,6 +323,10 @@ pre { margin:0; padding:20px; font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,C
 /* Narrow windows: sidebars cover the documents beside the rail, and source and output stack. */
 @media (max-width:1050px) {
   .source-document .editor-grid { grid-template-columns:minmax(0,1fr); grid-template-rows:none; grid-auto-rows:minmax(260px,1fr); overflow:auto; }
+  .source-document .editor-grid > .panel { grid-row:auto; display:flex; }
+  /* Stacked, the source pane also holds the document tabs, so each editor keeps its own usable height. */
+  .source-document .editor-grid { grid-auto-rows:minmax(auto,1fr); }
+  .source-document .source-body,.source-document .output-body { min-height:260px; }
   .source-document .output-panel { border-left:0; border-top:1px solid var(--line); }
   .start-columns { gap:32px; }
 }
@@ -279,6 +339,13 @@ pre { margin:0; padding:20px; font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,C
   .sidebar-primary { left:0; }
   .sidebar-secondary { right:0; }
   .topbar-end .mode-switch .nav-icon { display:none; }
+}
+/* In a workspace the header also holds the mode switch and Compile, so it takes two rows from 900 px down. */
+@media (max-width:900px) {
+  .has-workspace .topbar { grid-template-columns:minmax(0,1fr) auto; height:auto; min-height:52px; padding:6px 8px; row-gap:6px; }
+  .workbench.has-workspace { grid-template-rows:auto minmax(0,1fr); }
+  .has-workspace .topbar-center { grid-column:2; grid-row:1; }
+  .has-workspace .topbar-end { grid-column:1 / -1; grid-row:2; justify-content:space-between; flex-wrap:wrap; gap:6px; }
 }
 @media (max-width:650px) {
   :root { --gutter:14px; }
@@ -309,7 +376,7 @@ pre { margin:0; padding:20px; font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,C
 /* Generated output. */
 .generated-output { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; }
 .artifact-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:6px 10px; border-bottom:1px solid var(--line); background:var(--surface-alt); }
-.artifact-toolbar-title,.artifact-toolbar-actions { display:flex; align-items:center; gap:6px; min-width:0; }
+.artifact-toolbar-title { display:flex; align-items:center; gap:6px; min-width:0; }
 .artifact-title { font-size:12px; font-weight:600; }
 .artifact-count { font-size:11px; background:var(--chip); border-radius:10px; padding:1px 7px; color:var(--muted); }
 .artifact-toolbar .ghost { font-size:12px; }
@@ -341,7 +408,20 @@ pre { margin:0; padding:20px; font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,C
 .artifact-chevron { font-size:17px; line-height:16px; width:8px; flex:none; transition:transform .12s; }
 .artifact-chevron.open { transform:rotate(90deg); }
 .artifact-preview { display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; }
-.artifact-file-heading { display:flex; align-items:center; gap:8px; padding:4px 6px 4px 12px; border-bottom:1px solid var(--line); min-width:0; }
+/* The selected file's path and actions share the output tabs' row, so generated code starts beside its source. */
+.artifact-heading { display:flex; align-items:center; gap:4px; flex:1 1 0; min-width:200px; }
+.artifact-heading-wide { order:3; flex-basis:100%; }
+.artifact-heading > button:first-of-type { margin-left:auto; }
+.artifact-heading .artifact-breadcrumb { flex:0 1 auto; flex-wrap:nowrap; gap:0; margin-right:4px; white-space:nowrap; overflow:hidden; }
+.artifact-path-folders { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.artifact-heading .artifact-path-separator { margin:0 4px; }
+.output-panel .panel-actions { flex:none; }
+.artifact-path-file { flex:none; }
+.artifact-heading .artifact-icon-button { width:28px; height:28px; padding:5px; }
+.artifact-files-button { display:inline-flex; align-items:center; gap:4px; height:28px; padding:0 6px; border-radius:6px; color:var(--muted); flex:none; }
+.source-document .output-panel .panel-heading { min-height:44px; gap:0 10px; flex-wrap:wrap; container-type:inline-size; }
+/* In a narrow pane the path shows only the file name; its title, the expanded pane and the explorer show the folders. */
+@container (max-width:720px) { .artifact-heading .artifact-path-folders,.artifact-heading .artifact-path-folders + .artifact-path-separator { display:none; } }
 .artifact-breadcrumb { display:flex; align-items:center; flex-wrap:wrap; gap:5px; min-width:0; flex:1; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
 .artifact-path-file { color:var(--ink); font-weight:600; }
 .artifact-path-separator { color:var(--separator); }
@@ -351,14 +431,25 @@ pre { margin:0; padding:20px; font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,C
 .generation-message { color:var(--warn-ink); overflow-wrap:anywhere; }
 .editor-grid.output-expanded { grid-template-columns:minmax(0,1fr); }
 .editor-grid.output-expanded > .source-panel { display:none; }
+.editor-grid.source-expanded { grid-template-columns:minmax(0,1fr); }
+.editor-grid.source-expanded > .output-panel { display:none; }
+/* As tabs, the output tabs sit on the document tab row, so the output pane drops its own tabs and expand button. */
+.layout-tabs .output-panel .panel-heading > .tabs,.layout-tabs .artifact-expand { display:none; }
+.source-expand { order:2; margin-left:4px; }
+.document-tab-group { position:relative; display:flex; align-items:stretch; }
+.document-tab-group .document-tab { padding-right:26px; }
+.document-tab-close { position:absolute; right:2px; top:50%; transform:translateY(-50%); display:grid; place-items:center; width:20px; height:20px; padding:0; border-radius:4px; color:var(--muted); }
+.document-tab-close .nav-icon { width:12px; height:12px; }
+.document-tab-close:hover { color:var(--ink); background:var(--hover); }
+.document-tab .artifact-count { margin-left:4px; }
+.theme-choices + .theme-choices { margin-top:20px; }
 .output-expanded .artifact-workspace { grid-template-columns:fit-content(min(260px,24%)) minmax(0,1fr); }
 .output-expanded .artifact-workspace.files-hidden { grid-template-columns:minmax(0,1fr); }
 @media (max-width:650px) {
-  .artifact-toolbar-actions { flex-wrap:wrap; }
+  .artifact-heading { order:3; flex-basis:100%; }
   .artifact-workspace,.output-expanded .artifact-workspace { display:flex; flex-direction:column; }
   .artifact-preview { flex:1 1 0; }
   .artifact-files { max-height:132px; border-right:0; border-bottom:1px solid var(--line); }
-  .artifact-file-heading { flex-wrap:wrap; }
 }
 
 /* Source profile details stay one quiet line until opened. */

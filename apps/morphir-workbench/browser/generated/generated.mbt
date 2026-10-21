@@ -689,25 +689,33 @@ fn file_tree(
 }
 
 ///|
+/// The selected file's full path on one line. The folders shrink to an ellipsis first, so the file name stays visible
+/// in a narrow pane; the title holds the full path.
 fn breadcrumb(path : String) -> @html.Html {
   let parts = path.split("/").collect()
-  let items : Array[@html.Html] = []
+  let last = parts.length() - 1
+  let folders : Array[@html.Html] = []
   for index, part in parts {
-    if index > 0 {
-      items.push(@html.span(class="artifact-path-separator", "/"))
+    if index > 0 && index < last {
+      folders.push(@html.span(class="artifact-path-separator", "/"))
     }
-    items.push(
-      @html.span(
-        class=if index == parts.length() - 1 {
-          "artifact-path-file"
-        } else {
-          ""
-        },
-        part.to_owned(),
-      ),
-    )
+    if index < last {
+      folders.push(@html.span(part.to_owned()))
+    }
   }
-  @html.div(class="artifact-breadcrumb", title=path, items)
+  @html.div(class="artifact-breadcrumb", title=path, [
+    if folders.is_empty() {
+      @html.nothing
+    } else {
+      @html.span(class="artifact-path-folders", folders)
+    },
+    if folders.is_empty() {
+      @html.nothing
+    } else {
+      @html.span(class="artifact-path-separator", "/")
+    },
+    @html.span(class="artifact-path-file", parts[last].to_owned()),
+  ])
 }
 
 ///|
@@ -831,54 +839,129 @@ pub fn explorer(
 }
 
 ///|
-/// The selected generated file in the editor area: its path, a read-only projection of its content, its binary
-/// views and its download. Generated source remains a set of files; the editor shows one of them.
-pub fn preview(
+/// How the preview shows the selected file: its decoded Ion text and value count, or true for its raw bytes.
+fn view_of(state : State, path : String) -> ((String, Int32)?, Bool) {
+  let decoded = match state.preview {
+    IonText(at, text, values) if at == path => Some((text, values))
+    _ => None
+  }
+  (decoded, state.preview is Hex(at) && at == path)
+}
+
+///|
+/// The Generated tab's controls, which share one row with the output tabs so that generated code starts close to the
+/// source beside it: the selected file's path, its read-only or binary state and views, its download, a button with
+/// the file count that shows the Generated explorer, and the expand button.
+pub fn heading(
   props : Props,
   emit : @cmd.Emit[Action],
   on_download : @cmd.Emit[Bool],
+  on_files : @cmd.Emit[Unit],
 ) -> @html.Html {
   let files = artifacts(props.output)
   let file = selected(props.output, props.state.selected)
   let path = text(file, "path")
   let binary = field(file, "binary") == Json::boolean(true)
-  let body : Array[@html.Html] = []
-  body.push(
-    @html.div(class="artifact-toolbar", [
-      @html.div(class="artifact-toolbar-title", [
-        @html.span(
-          class="artifact-title",
-          if files.is_empty() {
-            "Generated output"
-          } else {
-            "Generated files"
-          },
-        ),
-        @html.span(class="artifact-count", files.length().to_string()),
-      ]),
-      @html.div(class="artifact-toolbar-actions", [
+  let (decoded, hex) = view_of(props.state, path)
+  let items : Array[@html.Html] = []
+  if path != "" {
+    items.push(breadcrumb(path))
+    items.push(
+      @html.span(
+        class=if decoded is Some(_) || hex {
+          "artifact-readonly artifact-view"
+        } else {
+          "artifact-readonly"
+        },
+        hidden=!binary,
+        match decoded {
+          Some((_, values)) =>
+            "Decoded Ion text · " +
+            values.to_string() +
+            (if values == 1 { " value" } else { " values" })
+          None => if hex { "Raw bytes (hex)" } else { "Binary" }
+        },
+      ),
+    )
+    items.push(
+      @html.span(class="artifact-readonly", hidden=binary, "Read-only"),
+    )
+    if decoded is Some(_) || hex {
+      items.push(
         @html.button(
-          class="artifact-icon-button",
-          title=if props.state.expanded {
-            "Restore split view"
-          } else {
-            "Expand generated files"
-          },
-          attrs=@html.Attrs::build()
-            .aria_label(
-              if props.state.expanded {
-                "Restore split view"
-              } else {
-                "Expand generated files"
-              },
-            )
-            .aria_pressed(props.state.expanded.to_string()),
-          on_click=emit(ToggleExpanded),
-          icon(if props.state.expanded { "restore" } else { "expand" }),
+          class="ghost artifact-back",
+          on_click=emit(ShowSummary),
+          "Show binary summary",
         ),
-      ]),
-    ]),
+      )
+    } else if can_decode_ion(file) {
+      items.push(
+        @html.button(
+          class="ghost artifact-back",
+          on_click=emit(ViewIonTextOf(path)),
+          "View as Ion text",
+        ),
+      )
+    }
+    items.push(
+      @html.button(
+        class="artifact-icon-button",
+        disabled=!downloadable(file),
+        title="Download file",
+        attrs=@html.Attrs::build().aria_label("Download file"),
+        on_click=on_download(false),
+        icon("download"),
+      ),
+    )
+  }
+  if !files.is_empty() {
+    let count = files.length().to_string()
+    items.push(
+      @html.button(
+        class="artifact-files-button",
+        title="Show generated files in the explorer",
+        attrs=@html.Attrs::build().aria_label("Generated files (" + count + ")"),
+        on_click=on_files(()),
+        [icon("folder"), @html.span(class="artifact-count", count)],
+      ),
+    )
+  }
+  let expand = if props.state.expanded {
+    "Restore split view"
+  } else {
+    "Expand generated files"
+  }
+  items.push(
+    @html.button(
+      class="artifact-icon-button artifact-expand",
+      title=expand,
+      attrs=@html.Attrs::build()
+        .aria_label(expand)
+        .aria_pressed(props.state.expanded.to_string()),
+      on_click=emit(ToggleExpanded),
+      icon(if props.state.expanded { "restore" } else { "expand" }),
+    ),
   )
+  // A binary file's views need more room than the tabs' row leaves, so its controls take a row of their own.
+  @html.div(
+    class=if binary && path != "" {
+      "artifact-heading artifact-heading-wide"
+    } else {
+      "artifact-heading"
+    },
+    items,
+  )
+}
+
+///|
+/// The selected generated file in the editor area: its messages, a read-only projection of its content and its
+/// binary views. `heading` holds its path and actions. Generated source remains a set of files; the editor shows one
+/// of them.
+pub fn preview(props : Props) -> @html.Html {
+  let file = selected(props.output, props.state.selected)
+  let path = text(file, "path")
+  let binary = field(file, "binary") == Json::boolean(true)
+  let body : Array[@html.Html] = []
   let message = text(props.output, "generationMessage")
   if message != "" {
     body.push(@html.p(class="generation-message", message))
@@ -894,57 +977,7 @@ pub fn preview(
     _ => ()
   }
   let preview : Array[@html.Html] = []
-  let decoded = match props.state.preview {
-    IonText(at, text, values) if at == path => Some((text, values))
-    _ => None
-  }
-  let hex = props.state.preview is Hex(at) && at == path
-  if path != "" {
-    preview.push(
-      @html.div(class="artifact-file-heading", [
-        breadcrumb(path),
-        @html.span(
-          class=if decoded is Some(_) || hex {
-            "artifact-readonly artifact-view"
-          } else {
-            "artifact-readonly"
-          },
-          hidden=!binary,
-          match decoded {
-            Some((_, values)) =>
-              "Decoded Ion text · " +
-              values.to_string() +
-              (if values == 1 { " value" } else { " values" })
-            None => if hex { "Raw bytes (hex)" } else { "Binary" }
-          },
-        ),
-        @html.span(class="artifact-readonly", hidden=binary, "Read-only"),
-        if decoded is Some(_) || hex {
-          @html.button(
-            class="ghost artifact-back",
-            on_click=emit(ShowSummary),
-            "Show binary summary",
-          )
-        } else if can_decode_ion(file) {
-          @html.button(
-            class="ghost artifact-back",
-            on_click=emit(ViewIonTextOf(path)),
-            "View as Ion text",
-          )
-        } else {
-          @html.nothing
-        },
-        @html.button(
-          class="artifact-icon-button",
-          disabled=!downloadable(file),
-          title="Download file",
-          attrs=@html.Attrs::build().aria_label("Download file"),
-          on_click=on_download(false),
-          icon("download"),
-        ),
-      ]),
-    )
-  }
+  let (decoded, hex) = view_of(props.state, path)
   if text(file, "previewState") == "text-prefix" {
     preview.push(
       @html.div(

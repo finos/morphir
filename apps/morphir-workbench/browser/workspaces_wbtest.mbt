@@ -81,6 +81,16 @@ test "a late reply changes the workspace that asked for it, not the active one" 
     s
     .expect(parked.problem_counts.get("src/Workbench/Main.elm"), label="origin")
     .to_equal(Some(1))
+    // The workspace sidebar reports the parked workspace's problems on its own card.
+    s
+    .expect(
+      workspace_cards(after).map(card => (card.id, card.current, card.activity)),
+      label="cards",
+    )
+    .to_equal([
+      (origin, false, [Problems(1)]),
+      (after.active.unwrap(), true, []),
+    ])
   })
 }
 
@@ -431,5 +441,39 @@ test "a saved list of another version is kept aside, not read as empty without a
       label="backup named",
     )
     .to_be_true()
+  })
+}
+
+///|
+test "a workspace tile shows initials and a card names each activity" {
+  @expect.expect_all(s => {
+    s.expect(initials("Pricing model")).to_equal("PM")
+    s.expect(initials("orders")).to_equal("OR")
+    s.expect(initials("  Elm   sample app ")).to_equal("ES")
+    s.expect(initials("雪")).to_equal("雪")
+    s.expect(initials("")).to_equal("")
+    s
+    .expect(
+      [
+        Working,
+        ExecutionRetained,
+        NotSaved,
+        Problems(1),
+        Problems(3),
+        Generated(1),
+        Generated(2),
+      ].map(activity => activity.label()),
+    )
+    .to_equal([
+      "Working…", "Execution retained", "Not saved", "1 problem", "3 problems",
+      "Generated 1 file", "Generated 2 files",
+    ])
+    s
+    .expect(
+      [Working, ExecutionRetained, NotSaved, Problems(2), Generated(2)].map(activity => {
+        activity.tone()
+      }),
+    )
+    .to_equal(["busy", "warning", "warning", "error", "ready"])
   })
 }

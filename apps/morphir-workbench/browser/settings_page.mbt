@@ -106,7 +106,7 @@ fn update_settings(model : Model, msg : Msg) -> (Model, @cmd.Cmd) {
         close_settings(model)
       }
     Theme(theme) => {
-      let settings : @settings.Settings = { theme, }
+      let settings = { ..model.settings, theme, }
       let model = { ..model, settings, }
       let model = if storage_save(@settings.storage_key, settings.encode()) {
         model
@@ -119,6 +119,36 @@ fn update_settings(model : Model, msg : Msg) -> (Model, @cmd.Cmd) {
         )
       }
       (model, apply_theme(theme))
+    }
+    WorkspaceSidebar(workspace_sidebar) => {
+      let settings = { ..model.settings, workspace_sidebar, }
+      let model = { ..model, settings, }
+      let model = if storage_save(@settings.storage_key, settings.encode()) {
+        model
+      } else {
+        note(
+          model,
+          "Settings",
+          @bottom_panel.Warning,
+          "This browser did not keep the workspace sidebar choice; it applies in this page until you leave",
+        )
+      }
+      (model, focus_after_render(workspace_sidebar_toggle_id))
+    }
+    EditorLayout(editor_layout) => {
+      let settings = { ..model.settings, editor_layout, }
+      let model = { ..model, settings, }
+      let model = if storage_save(@settings.storage_key, settings.encode()) {
+        model
+      } else {
+        note(
+          model,
+          "Settings",
+          @bottom_panel.Warning,
+          "This browser did not keep the editor layout; it applies in this page until you leave",
+        )
+      }
+      (model, @cmd.none)
     }
     SystemAppearance(system_appearance) =>
       ({ ..model, system_appearance, }, @cmd.none)
@@ -184,6 +214,9 @@ fn keeps_settings(command : @keys.CommandId) -> Bool {
   | UseLightTheme
   | UseDarkTheme
   | ToggleTheme
+  | ToggleWorkspaceSidebar
+  | UseSideBySide
+  | UseTabs
   | ShowCommands
   | GoToFile
   | SwitchLanguage
@@ -194,13 +227,14 @@ fn keeps_settings(command : @keys.CommandId) -> Bool {
 }
 
 ///|
-/// The theme toggle of the left rail: an icon for the current theme, and a click moves to the next.
+/// The theme toggle in the upper-right corner of the header: an icon for the current theme, and a click moves to the
+/// next.
 fn theme_toggle(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
   let theme = model.settings.theme
   let label = "Theme: " + theme.label()
   @html.button(
     id="theme-toggle",
-    class="rail-button theme-toggle",
+    class="sidebar-icon-button topbar-toggle theme-toggle",
     title=label,
     attrs=@html.Attrs::build().aria_label(label),
     on_click=emit(Theme(theme.next())),
@@ -286,9 +320,123 @@ fn settings_page(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
                 ),
               ],
             ),
+            @html.fieldset(
+              class="theme-choices",
+              [
+                @html.legend("Source and output"),
+                ..@settings.editor_layouts.map(layout => {
+                  let id = "editor-layout-" + layout.id()
+                  @html.label(class="theme-choice", for_=id, [
+                    @html.input(
+                      input_type=Radio,
+                      name="editor-layout",
+                      value=layout.id(),
+                      id~,
+                      checked=layout == model.settings.editor_layout,
+                      on_change=emit.map(_ => EditorLayout(layout)),
+                    ),
+                    @html.span(layout.label()),
+                  ])
+                }),
+                @html.p(
+                  class="settings-help",
+                  "Side by side shows the source beside its Morphir IR or generated files; Tabs shows one at a time.",
+                ),
+              ],
+            ),
           ],
         ),
+        projects_settings(model, emit),
       ]),
     ],
+  )
+}
+
+///|
+/// The projects of the open workspace, each with its language, source profile and generation target. A project's
+/// target is saved with it; Compile sends the current project's target.
+fn projects_settings(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
+  let body : Array[@html.Html] = []
+  if model.active is None || model.acquiring is Some(_) {
+    body.push(
+      @html.p(
+        class="settings-help",
+        "Open a workspace to see its projects' generation settings.",
+      ),
+    )
+  } else {
+    let languages = model.language_projects.keys().collect()
+    if !languages.contains(model.language) {
+      languages.push(model.language)
+    }
+    for language in languages {
+      let project = active_project_of(model, language)
+      // A project without a saved target compiles with the Workbench target, so its select shows that one.
+      let current = match project.target {
+        Some(generation) => generation.id()
+        None => model.target
+      }
+      let options = [
+        @html.option(value="", selected=current == "", "No generation"),
+      ]
+      for target in items(field(model.catalog, "targets")) {
+        options.push(
+          @html.option(
+            value=text(target, "target"),
+            selected=text(target, "target") == current,
+            text(target, "displayName"),
+          ),
+        )
+      }
+      let name = project.name.to_string()
+      let id = "project-target-" + language
+      body.push(
+        @html.div(class="project-setting", [
+          @html.div(class="project-setting-name", [
+            @html.strong(name),
+            @html.span(
+              class="settings-help",
+              language_name(model, language) +
+              (match project.profile {
+                Some(profile) => " · " + profile.to_string()
+                None => ""
+              }) +
+              (if language == model.language { " · current" } else { "" }),
+            ),
+          ]),
+          @html.label(class="project-setting-field", for_=id, [
+            @html.span("Generation target"),
+            @html.select(
+              id~,
+              disabled=model.busy,
+              on_change=emit.map(value => ProjectTarget(language, value)),
+              attrs=(if language == model.language {
+                  @html.Attrs::build().data_set("current-project", "true")
+                } else {
+                  @html.Attrs::build()
+                })
+                .aria_label("Generation target for " + name)
+                .value_prop(current),
+              options,
+            ),
+          ]),
+        ]),
+      )
+    }
+    body.push(
+      @html.p(
+        class="settings-help",
+        if model.connected {
+          "The connected host provides these projects; a target chosen here lasts for this session."
+        } else {
+          "Each project keeps its target. Set target in the command palette changes the current project's target."
+        },
+      ),
+    )
+  }
+  @html.section(
+    class="settings-section",
+    attrs=@html.Attrs::build().aria_labelledby("settings-projects"),
+    [@html.h2(id="settings-projects", "Projects"), ..body],
   )
 }

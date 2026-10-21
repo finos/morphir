@@ -3,7 +3,7 @@ import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { createWorkspace, openLocal, openSample, showCompile, showModel } from './workbench-steps.ts';
+import { createWorkspace, openLocal, openSample, showCompile, showModel, setTarget } from './workbench-steps.ts';
 import { isRecord } from '../../../types/data.ts';
 
 type ControlledWindow = Window & { capabilityTest: { hold: boolean; release: (() => void) | null; completed: Record<string, number> } };
@@ -155,7 +155,7 @@ export async function capabilityWorkflow(browser: Browser, url: string) {
     await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
     await paint();
     await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.dataset.language === 'elm');
-    await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('moonbit');
+    await setTarget(page, 'moonbit');
     await paint();
     await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill(
       'module Workbench.Main exposing (answer, readX)\n\nanswer : Int\nanswer = 42\n\nreadX : { a | x : Int } -> Int\nreadX r = r.x\n');

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
-import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, createWorkspace } from './workbench-steps.ts';
+import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, createWorkspace, setTarget, currentTarget } from './workbench-steps.ts';
 
 /** The Generated tab of the source document's output panel; the right sidebar's Generated section has its own name. */
 const generatedTab = (page: Page) => page.locator('.output-panel .tabs').getByRole('button', { name: 'Generated', exact: true });
@@ -40,9 +40,7 @@ export async function elmWorkflow(page: Page, {
 } = {}) {
   await showCompile(page);
   await openSample(page, 'Elm constant');
-  await page.waitForFunction(() => document.querySelector<HTMLSelectElement>('select[aria-label="Target"]')?.value === 'elm');
-  const target = page.getByRole('combobox', { name: 'Target', exact: true });
-  assert.equal(await target.inputValue(), 'elm');
+  assert.equal(await currentTarget(page), 'elm', 'The Elm sample sets the project target');
   const inputs = await page.getByRole('combobox', { name: 'Language', exact: true }).locator('option').evaluateAll(items => items.map(item => (item as HTMLOptionElement).value));
   assert.ok(inputs.includes('elm'), 'The catalog offers the Elm frontend');
   await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('42');
@@ -119,9 +117,9 @@ export async function elmWorkflow(page: Page, {
       await writeFile(join(directory, path), unpacked[path]!);
     }
   }
-  await target.selectOption('scheme');
+  await setTarget(page, 'scheme');
   assert.equal(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value), artifacts[paths[0]!], 'Target changes retain the previous generated files');
-  await target.selectOption('elm');
+  await setTarget(page, 'elm');
   await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('9223372036854775808');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'elm.int_literal' }).waitFor();
@@ -194,7 +192,7 @@ export async function elmWorkflow(page: Page, {
   }
   await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('elm');
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value.includes('module Workbench.Main'));
-  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('moonbit');
+  await setTarget(page, 'moonbit');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await page.getByText('Source changed · rerun', {exact:true}).waitFor({state:'hidden'});
@@ -252,13 +250,13 @@ export async function elmWorkflow(page: Page, {
   await page.getByRole('button', { name: 'More actions', exact: true }).click();
   await page.getByRole('menuitem', { name: 'New from sample: Rentals tutorial (morphir-examples)', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('[role="tree"][aria-label="Project files"] .explorer-row.is-file').length === 6);
-  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('moonbit');
+  await setTarget(page, 'moonbit');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await page.getByText('Source changed · rerun', { exact: true }).waitFor({ state: 'hidden' });
   await page.getByRole('button', { name: 'Morphir IR', exact: true }).click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.value.includes('"distribution"'));
-  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('elm');
+  await setTarget(page, 'elm');
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   await page.getByText('Source changed · rerun', { exact: true }).waitFor({ state: 'hidden' });
@@ -312,7 +310,7 @@ export async function elmWorkflow(page: Page, {
   await page.getByRole('button', { name: 'Compile', exact: true }).click();
   await page.getByRole('status').filter({ hasText: 'Model ready' }).waitFor();
   for (const target of ['', 'elm', 'moonbit']) {
-    await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption(target);
+    await setTarget(page, target);
     await page.getByText('Source changed · rerun', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Compile', exact: true }).click();
     await page.getByText('Source changed · rerun', { exact: true }).waitFor({ state: 'hidden' });
@@ -326,7 +324,7 @@ export async function elmWorkflow(page: Page, {
   await page.getByRole('button', { name: 'Confirm reset', exact: true }).click();
   await row('src/Workbench/Main.elm').waitFor();
   await page.getByRole('combobox', { name: 'Language', exact: true }).selectOption('scheme');
-  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('elm');
+  await setTarget(page, 'elm');
   console.log(JSON.stringify({ elmTarget: true, elmInput: true, files: paths, fileWorkspace: true, keyboardSelection: true, independentNavigation: true, focusRetainsSource: true, exactFileAndZipBytes: true, nativeDownloads, refusalRetainsIR: true, schemeEvaluation: true }));
 }
 
@@ -335,7 +333,6 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await showCompile(page);
   await setExplorer(page, true);
   const language = page.getByRole('combobox', {name:'Language',exact:true});
-  const target = page.getByRole('combobox', {name:'Target',exact:true});
   const sourceEditor = page.getByRole('textbox', {name:'Source editor',exact:true});
   await language.selectOption('scheme');
   const schemeDraft = '; Retained Scheme draft\n(define answer 42)';
@@ -361,7 +358,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   await sourceEditor.press('ControlOrMeta+z');
   await page.waitForFunction(() => !document.querySelector<CodeEditor>('#source')?.value.includes('retained edit'));
   assert.ok(await page.locator('#source .cm-line span').count() > 0,'MoonBit input has highlighting');
-  await target.selectOption('moonbit');
+  await setTarget(page, 'moonbit');
   // Before a compile, Evaluate in Explorer says what it needs; it only shows the model document.
   const evaluateEntry = await buildMenuItem(page,'Evaluate in Explorer');
   assert.match(await evaluateEntry.getAttribute('title') ?? '',/^Compile, then select a public function/);
@@ -476,7 +473,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
   assert.equal(await language.inputValue(),'moonbit');
   await language.selectOption('scheme');
   await page.waitForFunction(expected=>document.querySelector<CodeEditor>('#source')?.value===expected,schemeDraft);
-  await target.selectOption('scheme');
+  await setTarget(page, 'scheme');
   if(process.env.MORPHIR_WORKBENCH_MOONBIT_SCREENSHOT){
     await openSample(page, 'MoonBit Boolean');
     await page.getByRole('button',{name:'Compile',exact:true}).click();
@@ -485,7 +482,7 @@ export async function moonbitWorkflow(page: Page, { nativeDownloads = true } = {
     await navigator.getByRole('button',{name:'library.mbt',exact:true}).click();
     await page.waitForFunction(()=>document.querySelector<CodeEditor>('#output')?.dataset.document==='generated|library.mbt');
     await page.screenshot({path:process.env.MORPHIR_WORKBENCH_MOONBIT_SCREENSHOT,fullPage:true});
-    await language.selectOption('scheme');await target.selectOption('scheme');
+    await language.selectOption('scheme');await setTarget(page, 'scheme');
   }
   // Replacing a MoonBit model selects the replacement model's runtime, even
   // when the prior model selected typed admission automatically or manually.

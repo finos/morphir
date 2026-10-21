@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import type { Browser, Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import { fileURLToPath } from 'node:url';
-import { gettingStarted, createWorkspace, reopenWorkspace, exploreModel, showSource, setExplorer, setRightSidebar, build, runCommand } from './workbench-steps.ts';
+import { gettingStarted, createWorkspace, reopenWorkspace, exploreModel, showSource, setExplorer, setRightSidebar, build, runCommand, setTarget, currentTarget } from './workbench-steps.ts';
 
 const entries = ['Try an idea', 'Open a workspace', 'Create a workspace', 'Explore a model'];
 
@@ -165,6 +165,47 @@ export async function workspaceWorkflow(browser: Browser, url: string): Promise<
     await pick('Orders');
     assert.equal(await source(page), '(+ 1 2) ; orders');
 
+    // The workspace sidebar: a tile per open workspace, and the primary sidebar's header names the open workspace.
+    const openWorkspaces = page.getByRole('group', { name: 'Open workspaces', exact: true });
+    const card = (workspace: string) => openWorkspaces.getByRole('button', { name: new RegExp('^' + workspace + ', ') });
+    const title = page.locator('#sidebar-primary .sidebar-title');
+    assert.equal(await title.textContent(), 'Orders', 'The primary sidebar names the open workspace');
+    assert.equal(await card('Orders').getAttribute('aria-current'), 'page');
+    assert.equal((await card('Orders').textContent())!.startsWith('OR'), true, 'A collapsed tile shows initials');
+    assert.equal(await card('Orders').locator('.workspace-card-name').isVisible(), false, 'A collapsed tile hides the name');
+    await card('Sandbox').click();
+    await page.getByRole('button', { name: 'Workspace: Sandbox', exact: true }).waitFor();
+    assert.equal(await page.locator('#intent-text').inputValue(), 'Orders are priced before fulfilment.', 'A tile switches to its workspace');
+    assert.equal(await card('Orders').getAttribute('aria-current'), null);
+    // Expanded, each card shows its name and kind; the choice is saved for the whole Workbench.
+    const expand = page.getByRole('button', { name: 'Expand workspace sidebar', exact: true });
+    await expand.click();
+    const collapse = page.getByRole('button', { name: 'Collapse workspace sidebar', exact: true });
+    assert.equal(await collapse.getAttribute('aria-expanded'), 'true');
+    await page.waitForFunction(() => document.activeElement?.id === 'workspace-sidebar-toggle');
+    assert.equal(await card('Orders').locator('.workspace-card-name').textContent(), 'Orders');
+    assert.match((await card('Orders').locator('.workspace-card-detail').textContent())!, /^Source project/);
+    assert.equal(JSON.parse((await page.evaluate(() => localStorage.getItem('morphir-workbench.settings.v1')))!).workspaceSidebar, 'expanded');
+    // Keyboard: arrows move between the cards and Enter switches.
+    const labels = await openWorkspaces.locator('.workspace-card-open').evaluateAll(cards => cards.map(card => card.getAttribute('aria-label')));
+    await openWorkspaces.locator('.workspace-card-open').first().focus();
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), labels[1], 'ArrowDown moves to the next card');
+    await page.keyboard.press('End');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), labels.at(-1), 'End moves to the last card');
+    await card('Orders').focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: 'Workspace: Orders', exact: true }).waitFor();
+    assert.equal(await title.textContent(), 'Orders');
+    // At 1050 px and narrower the expanded sidebar shows tiles, and the expand button hides.
+    await page.setViewportSize({ width: 1000, height: 900 });
+    assert.equal(await card('Orders').locator('.workspace-card-name').isVisible(), false, 'Narrow windows show tiles');
+    assert.equal(await collapse.isVisible(), false);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await runCommand(page, 'Toggle workspace sidebar');
+    await expand.waitFor();
+    assert.equal(await page.evaluate(() => localStorage.getItem('morphir-workbench.settings.v1')), '{"theme":"system"}');
+
     // The rail's Explorer and Ctrl+B close and reopen the left sidebar; the focus stays on the page.
     const left = page.locator('#sidebar-primary'), right = page.locator('#sidebar-secondary');
     const explorer = page.getByRole('button', { name: 'Explorer', exact: true });
@@ -233,7 +274,18 @@ export async function workspaceWorkflow(browser: Browser, url: string): Promise<
 
     // Generation: a notification that takes no focus and changes no layout until the person asks.
     await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('(define answer 42)');
-    await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('elm');
+    // The palette and Settings change the same target: the current project's.
+    await setTarget(page, 'moonbit');
+    await page.getByRole('button', { name: 'Command palette', exact: true }).click();
+    const palette = page.getByRole('dialog', { name: 'Command palette', exact: true });
+    await palette.getByRole('combobox').fill('>Set generation target…');
+    await page.waitForFunction(() => document.querySelector('#palette-list [role="option"][aria-selected="true"]')?.getAttribute('aria-label') === 'Set generation target…');
+    await palette.getByRole('combobox').press('Enter');
+    await palette.getByRole('combobox').fill('Elm');
+    await page.waitForFunction(() => document.querySelector('#palette-list [role="option"][aria-selected="true"]')?.getAttribute('aria-label')?.startsWith('Elm'));
+    await palette.getByRole('combobox').press('Enter');
+    await palette.waitFor({ state: 'detached' });
+    assert.equal(await currentTarget(page), 'elm', 'Settings shows the target that the palette chose');
     await page.getByRole('textbox', { name: 'Source editor', exact: true }).focus();
     const layout = await layoutOf(page);
     await build(page, 'Compile');
@@ -332,6 +384,6 @@ export async function workspaceWorkflow(browser: Browser, url: string): Promise<
     }
     await page.setViewportSize({ width: 1440, height: 1000 });
     assert.deepEqual(errors, []);
-    console.log('Workspace workflow passed: getting started entries, intent draft across reload, names, cancelled and failed models, cancelled folder, stopped wait, switching, sidebars, Ctrl+B, moves, resizing, generation notification, model-only workspace, close, reopen and remove, and narrow windows.');
+    console.log('Workspace workflow passed: getting started entries, intent draft across reload, names, cancelled and failed models, cancelled folder, stopped wait, switching, workspace sidebar tiles and cards, sidebars, Ctrl+B, moves, resizing, generation notification, model-only workspace, close, reopen and remove, and narrow windows.');
   } finally { await context.close(); }
 }

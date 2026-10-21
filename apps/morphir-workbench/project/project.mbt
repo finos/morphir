@@ -27,7 +27,43 @@ pub(all) suberror ProjectError {
 }
 
 ///|
+/// What a project generates after a compile: nothing, or the files of one backend, such as `scheme` or `elm`. A
+/// compile request sends it as the pipeline backend.
+pub(all) enum Generation {
+  NoGeneration
+  Backend(@ids.BackendId)
+} derive(Eq, Debug)
+
+///|
+pub extend Generation with Eq::{equal, not_equal}
+
+///|
+pub extend Generation with @debug.Debug::{to_repr}
+
+///|
+/// The stored and requested spelling: a backend id, or empty for no generation.
+pub fn Generation::id(self : Generation) -> String {
+  match self {
+    NoGeneration => ""
+    Backend(backend) => backend.to_string()
+  }
+}
+
+///|
+/// The generation that `id` spells, as `Generation::id` writes it. A backend id that does not parse gives `None`.
+pub fn Generation::parse(id : String) -> Generation? {
+  if id == "" {
+    Some(NoGeneration)
+  } else {
+    Some(Backend(@ids.BackendId::parse(id))) catch {
+      _ => None
+    }
+  }
+}
+
+///|
 /// The open project of one language. `name` keeps the configuration spelling; `active` is the file in the editor.
+/// `target` is the project's generation setting; `None` leaves the Workbench default.
 pub(all) struct Project {
   name : @ids.SourcePackageName
   language : @ids.LanguageId
@@ -36,6 +72,7 @@ pub(all) struct Project {
   files : Array[ProjectFile]
   exposed : Array[@ids.SourceModuleName]
   active : @ids.SourcePath
+  target : Generation?
 } derive(Eq, Debug)
 
 ///|
@@ -56,6 +93,7 @@ pub fn Project::single(
     files: [{ path, content, }],
     exposed,
     active: path,
+    target: None,
   }
 }
 

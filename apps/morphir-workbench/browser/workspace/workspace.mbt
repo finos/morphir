@@ -268,6 +268,71 @@ pub extend Storage with Eq::{equal, not_equal}
 pub extend Storage with @debug.Debug::{to_repr}
 
 ///|
+/// Where a workspace's files live, as a path people can read. The Workbench keeps in-memory and browser-stored
+/// workspaces at a virtual path, `memory://workspaces/<slug>`; a connected host's workspace is at the host.
+pub(all) enum WorkspaceLocation {
+  /// A virtual path under `memory://workspaces/`. The slug is chosen once, from the name, and stays when the
+  /// workspace is renamed.
+  Memory(String)
+  /// The origin of the connected host that provides the workspace.
+  Connected(String)
+} derive(Eq, Debug)
+
+///|
+pub extend WorkspaceLocation with Eq::{equal, not_equal}
+
+///|
+pub extend WorkspaceLocation with @debug.Debug::{to_repr}
+
+///|
+/// The prefix of every in-memory workspace path.
+let memory_root : String = "memory://workspaces/"
+
+///|
+/// The location as a URI, such as `memory://workspaces/pricing-model`.
+pub fn WorkspaceLocation::to_uri(self : WorkspaceLocation) -> String {
+  match self {
+    Memory(slug) => memory_root + slug
+    Connected(origin) => origin
+  }
+}
+
+///|
+/// The in-memory location that `uri` spells, or `None` for any other text.
+pub fn WorkspaceLocation::parse_memory(uri : String) -> WorkspaceLocation? {
+  guard uri.has_prefix(memory_root) else { return None }
+  let slug = uri.unsafe_substring(start=memory_root.length(), end=uri.length())
+  if slug != "" && slug_of(slug) == slug {
+    Some(Memory(slug))
+  } else {
+    None
+  }
+}
+
+///|
+/// A path segment for `name`: lower-case letters and digits, with single dashes between words. A name without
+/// either gives `workspace`.
+pub fn slug_of(name : String) -> String {
+  let out = StringBuilder()
+  let mut dash = false
+  for c in name.to_lower() {
+    if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') {
+      if dash && out.to_string() != "" {
+        out.write_char('-')
+      }
+      out.write_char(c)
+      dash = false
+    } else {
+      dash = true
+    }
+  }
+  match out.to_string() {
+    "" => "workspace"
+    slug => slug
+  }
+}
+
+///|
 /// One workspace: its identity, name, starting preset, contents, project storage, layout and when it was last
 /// opened. `saved` is false for a provisional workspace whose folder or model has not arrived yet, and for a
 /// connected host's workspace, which this browser does not keep.
@@ -282,6 +347,7 @@ pub(all) struct Entry {
   layout : @shell.Layout
   /// The source language the workspace had selected, so a reopened workspace shows the same project.
   language : @ids.LanguageId?
+  location : WorkspaceLocation
 } derive(Eq, Debug)
 
 ///|
@@ -386,6 +452,23 @@ pub fn Registry::unique_name(self : Registry, base : String) -> WorkspaceName {
 }
 
 ///|
+/// An in-memory location for `name` that no other workspace has: its slug, numbered when it is taken.
+pub fn Registry::unique_location(
+  self : Registry,
+  name : String,
+) -> WorkspaceLocation {
+  let base = slug_of(name)
+  let taken = self.entries.map(e => e.location)
+  let mut slug = base
+  let mut n = 2
+  while taken.contains(Memory(slug)) {
+    slug = base + "-" + n.to_string()
+    n += 1
+  }
+  Memory(slug)
+}
+
+///|
 /// Adds a workspace and opens it: it becomes the most recent one. Without `name`, it gets the preset's name,
 /// numbered when that name is taken. A provisional workspace (`saved=false`) is not listed or kept until `save`.
 pub fn Registry::create(
@@ -396,6 +479,7 @@ pub fn Registry::create(
   saved~ : Bool = true,
   storage~ : Storage = Scoped,
   layout~ : @shell.Layout = @shell.Layout::default(),
+  location? : WorkspaceLocation,
 ) -> (Registry, Entry) {
   let held : Array[Content] = []
   for content in contents {
@@ -403,9 +487,10 @@ pub fn Registry::create(
       held.push(content)
     }
   }
+  let name = name.unwrap_or(self.unique_name(preset.base_name()))
   let entry = {
     id: { value: self.next, },
-    name: name.unwrap_or(self.unique_name(preset.base_name())),
+    name,
     preset,
     contents: held,
     storage,
@@ -413,6 +498,7 @@ pub fn Registry::create(
     saved,
     layout,
     language: None,
+    location: location.unwrap_or(self.unique_location(name.to_string())),
   }
   (
     {
@@ -603,6 +689,7 @@ pub fn Registry::to_json(self : Registry) -> Json {
               Some(language) => Json::string(language.to_string())
               None => Json::null()
             },
+            "location": Json::string(e.location.to_uri()),
           } : Json)
       }),
     ),
@@ -680,6 +767,22 @@ pub fn Registry::from_json(value : Json) -> (Registry, Array[String]) {
               _ => None
             }
           _ => None
+        },
+        // Workspaces saved before locations existed get one from their name.
+        location: match e.get("location") {
+          Some(String(uri)) =>
+            match WorkspaceLocation::parse_memory(uri) {
+              Some(location) if !entries.iter().any(o => o.location == location) =>
+                location
+              _ =>
+                ({ entries, next: 0, clock: 0, } : Registry).unique_location(
+                  name_text,
+                )
+            }
+          _ =>
+            ({ entries, next: 0, clock: 0, } : Registry).unique_location(
+              name_text,
+            )
         },
       })
     } else {

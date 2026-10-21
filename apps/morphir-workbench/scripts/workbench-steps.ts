@@ -24,6 +24,38 @@ export async function runCommand(page: Page, name: string): Promise<void> {
 }
 
 /**
+ * Opens settings, runs `use` with the current project's generation target select, then closes settings again. The
+ * target belongs to the project and is chosen on the settings page (or with the palette's Set generation target).
+ */
+async function withTarget<T>(page: Page, use: (select: Locator) => Promise<T>): Promise<T> {
+  await runCommand(page, 'Open settings');
+  const select = page.locator('#settings select[data-current-project="true"]');
+  await select.waitFor();
+  const result = await use(select);
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click();
+  await page.locator('#settings').waitFor({ state: 'detached' });
+  return result;
+}
+
+/** Sets the current project's generation target, by its id (empty for no generation), on the settings page. */
+export async function setTarget(page: Page, target: string): Promise<void> {
+  await withTarget(page, async select => {
+    await select.selectOption(target);
+    await page.waitForFunction(target => document.querySelector<HTMLSelectElement>('#settings select[data-current-project="true"]')?.value === target, target);
+  });
+}
+
+/** The current project's generation target id, empty for no generation. */
+export async function currentTarget(page: Page): Promise<string> {
+  return withTarget(page, select => select.inputValue());
+}
+
+/** The generation target ids that the current project can choose, without no generation. */
+export async function targetChoices(page: Page): Promise<string[]> {
+  return withTarget(page, select => select.locator('option').evaluateAll(items => items.map(item => (item as HTMLOptionElement).value).filter(Boolean)));
+}
+
+/**
  * Waits until getting started accepts its entries: the page has its catalog and runs no work, so the examples are
  * enabled.
  */

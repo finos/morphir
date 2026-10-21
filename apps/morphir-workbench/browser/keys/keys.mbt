@@ -60,6 +60,14 @@ pub(all) enum CommandId {
   UseDarkTheme
   /// Moves to the next theme: System, Light, Dark, then System again.
   ToggleTheme
+  /// Expands or collapses the workspace sidebar at the left edge.
+  ToggleWorkspaceSidebar
+  /// Shows source and output side by side.
+  UseSideBySide
+  /// Shows source, Morphir IR and Generated as tabs.
+  UseTabs
+  /// Gives the source pane the full width, or restores both panes.
+  ToggleSourceWidth
 } derive(Eq, Debug)
 
 ///|

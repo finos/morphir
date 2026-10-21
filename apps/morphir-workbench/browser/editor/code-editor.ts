@@ -38,7 +38,7 @@ const theme = EditorView.theme({
   '&': { height: '100%', color: 'var(--ink)', backgroundColor: 'var(--surface)', fontSize: '13px' },
   '&.cm-focused': { outline: '2px solid var(--focus-ring)', outlineOffset: '-2px' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', lineHeight: '1.85' },
-  '.cm-content': { padding: '16px 0' },
+  '.cm-content': { padding: 'var(--editor-padding-top, 16px) 0 16px' },
   '.cm-line': { padding: '0 16px' },
   '.cm-gutters': { backgroundColor: 'var(--surface-alt)', color: 'var(--muted)', borderRight: '1px solid var(--line)' },
   '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'var(--selection)' },

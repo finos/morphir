@@ -87,7 +87,7 @@ pub fn on_tree_key(event : @dom.KeyboardEvent) -> @cmd.Cmd {
 
 ///|
 /// A button of the left rail. `pressed` is its state when it toggles something, such as the explorer. `current`
-/// marks the button of the page that shows.
+/// marks the button of the page that shows. Its label shows beside the icon only when the rail is expanded.
 pub fn rail_button(
   id~ : String,
   label~ : String,
@@ -110,7 +110,7 @@ pub fn rail_button(
       None => attrs
     },
     on_click~,
-    icon(icon_name),
+    [icon(icon_name), @html.span(class="rail-label", label)],
   )
 }
 
@@ -178,13 +178,15 @@ fn splitter(side : Side, width : Int32, emit : @cmd.Emit[Action]) -> @html.Html 
 
 ///|
 /// A sidebar of stacked sections. Its accessible name says which sidebar it is; no visible heading repeats it. The
-/// header keeps a compact collapse button; `footer` notes what the sidebar shows.
+/// header keeps a compact collapse button and, when `title` is not empty, shows it left aligned, such as the open
+/// workspace's name; `footer` notes what the sidebar shows.
 pub fn sidebar(
   side : Side,
   layout : Layout,
   sections : Array[@html.Html],
   footer : String,
   emit : @cmd.Emit[Action],
+  title~ : String = "",
 ) -> @html.Html {
   let current = layout.sidebar(side)
   let hide = "Hide " + side.label().to_lower()
@@ -197,6 +199,11 @@ pub fn sidebar(
       .style("width", current.width.to_string() + "px"),
     [
       @html.div(class="sidebar-header", [
+        if title == "" {
+          @html.nothing
+        } else {
+          @html.span(class="sidebar-title", title~, title)
+        },
         @html.button(
           class="sidebar-icon-button",
           title=hide,
