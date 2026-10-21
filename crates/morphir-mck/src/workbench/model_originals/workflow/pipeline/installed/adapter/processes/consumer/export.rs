@@ -1,15 +1,6 @@
 //! One cached OS-domain export. No claim about an arbitrary runtime's clock.
 use super::*;
 use wire::ConsumerCodecError as Error;
-unsafe extern "C" {
-    fn mach_continuous_time() -> u64;
-    fn mach_timebase_info(info: *mut MachTimebase) -> i32;
-}
-#[repr(C)]
-struct MachTimebase {
-    numer: u32,
-    denom: u32,
-}
 pub(super) enum PreparedClock {
     Unlaunched,
     Issued(deadline::DarwinContinuousDeadline),
@@ -29,16 +20,7 @@ impl PreparedClock {
     }
 }
 pub(super) fn sample() -> Result<(Instant, u64, Instant, deadline::Timebase), Error> {
-    let mut ratio = MachTimebase { numer: 0, denom: 0 };
-    // SDK C layout/calls; no allocation or pointer escape.
-    if unsafe { mach_timebase_info(&mut ratio) } != 0 {
-        return Err(Error::Deadline(deadline::DeadlineError::InvalidTimebase));
-    }
-    let timebase = deadline::Timebase::new(ratio.numer, ratio.denom).map_err(Error::Deadline)?;
-    let before = Instant::now();
-    let ticks = unsafe { mach_continuous_time() };
-    let after = Instant::now();
-    Ok((before, ticks, after, timebase))
+    crate::workbench::model_originals::workflow::pipeline::clock::sample().map_err(Error::Deadline)
 }
 impl InstalledClientRun<'_> {
     fn issue_consumer_deadline<'p>(

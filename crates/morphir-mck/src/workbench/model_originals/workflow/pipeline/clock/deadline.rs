@@ -14,12 +14,12 @@ pub(in crate::workbench::model_originals::workflow) enum DeadlineError {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) struct Timebase {
+pub(in crate::workbench::model_originals::workflow) struct Timebase {
     numerator: u32,
     denominator: u32,
 }
 impl Timebase {
-    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn new(
+    pub(in crate::workbench::model_originals::workflow) fn new(
         numerator: u32,
         denominator: u32,
     ) -> Result<Self, DeadlineError> {
@@ -31,19 +31,13 @@ impl Timebase {
             denominator,
         })
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn numerator(
-        &self,
-    ) -> u32 {
+    pub(in crate::workbench::model_originals::workflow) fn numerator(&self) -> u32 {
         self.numerator
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn denominator(
-        &self,
-    ) -> u32 {
+    pub(in crate::workbench::model_originals::workflow) fn denominator(&self) -> u32 {
         self.denominator
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn tick_guard_ns(
-        &self,
-    ) -> u64 {
+    pub(in crate::workbench::model_originals::workflow) fn tick_guard_ns(&self) -> u64 {
         // Both nonzero values originate in u32. Integer ceil cannot overflow
         // here and is never zero; no floating conversion or early truncation.
         let numerator = u64::from(self.numerator);
@@ -53,33 +47,26 @@ impl Timebase {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) struct DarwinContinuousDeadline
-{
+pub(in crate::workbench::model_originals::workflow) struct DarwinContinuousDeadline {
     calibrated_at_ns: u64,
     end_ns: u64,
     timebase: Timebase,
 }
 impl DarwinContinuousDeadline {
-    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn calibrated_at_ns(
-        &self,
-    ) -> u64 {
+    pub(in crate::workbench::model_originals::workflow) fn calibrated_at_ns(&self) -> u64 {
         self.calibrated_at_ns
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn end_ns(
-        &self,
-    ) -> u64 {
+    pub(in crate::workbench::model_originals::workflow) fn end_ns(&self) -> u64 {
         self.end_ns
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn timebase(
-        &self,
-    ) -> Timebase {
+    pub(in crate::workbench::model_originals::workflow) fn timebase(&self) -> Timebase {
         self.timebase
     }
 }
 
 /// Caller supplies the SAME original effective end and a genuine qualified
 /// bracket. This pure result cannot prove that those inputs were observed.
-pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter) fn export(
+pub(in crate::workbench::model_originals::workflow) fn export(
     original_end: Instant,
     before: Instant,
     sampled_ticks: u64,

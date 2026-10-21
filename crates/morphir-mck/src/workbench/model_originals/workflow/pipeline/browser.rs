@@ -1,5 +1,10 @@
 //! Private browser observation support. No browser execution or source grant.
 mod archive_download;
+#[cfg(target_os = "macos")]
+mod controller;
+#[cfg(all(test, target_os = "macos"))]
+#[path = "browser/controller/tests.rs"]
+mod controller_tests;
 mod inputs;
 
 use super::installed::observation::InstalledObservationOwner;

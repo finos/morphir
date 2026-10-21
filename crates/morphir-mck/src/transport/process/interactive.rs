@@ -87,6 +87,9 @@ pub(crate) struct InteractiveOutcome {
     first_fault: Option<InteractiveFault>,
 }
 impl InteractiveOutcome {
+    pub(crate) fn stdout_terminal(&self) -> ReadTerminal {
+        self.process.stdout_terminal
+    }
     pub(crate) fn process(&self) -> &ProcessOutcome {
         &self.process
     }
