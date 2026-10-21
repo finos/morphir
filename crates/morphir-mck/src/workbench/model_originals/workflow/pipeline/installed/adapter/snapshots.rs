@@ -83,7 +83,19 @@ impl InstalledClientRun<'_> {
         &mut self,
         length: usize,
     ) -> Result<Vec<u8>, InstalledAdapterError> {
-        let mut buffer = self.vector(length)?;
+        // Opaque bytes are one logical buffer, not `length` decoded operands.
+        // Fund its initialization work and actual backing storage separately.
+        self.work_ready()?;
+        let result = self.decode.slots(1);
+        self.decoded(result)?;
+        let result = self.decode.bytes(length);
+        self.decoded(result)?;
+        self.charge_storage(length, length)?;
+        let mut buffer = Vec::new();
+        buffer
+            .try_reserve_exact(length)
+            .map_err(|_| self.allocate_failure())?;
+        self.storage_excess(length, buffer.capacity())?;
         buffer.resize(length, 0);
         Ok(buffer)
     }

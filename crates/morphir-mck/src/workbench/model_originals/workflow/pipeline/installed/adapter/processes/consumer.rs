@@ -1,8 +1,23 @@
-//! Raw owned endpoints only. No encoded observations, producer, ACK or report.
+//! Owned endpoints and a private operation transport; no business report claim.
 use super::super::invocation::ConsumerWindow;
 use super::*;
 use crate::workbench::configuration::ConsumerObservationSelection;
 use std::time::Instant;
+#[cfg(target_os = "macos")]
+mod binding;
+#[cfg(target_os = "macos")]
+mod codec;
+#[cfg(target_os = "macos")]
+mod collector;
+pub(in crate::workbench::model_originals::workflow) mod deadline;
+#[cfg(target_os = "macos")]
+mod export;
+#[cfg(target_os = "macos")]
+mod launch;
+mod sdk;
+pub(in crate::workbench::model_originals::workflow) mod wire;
+pub use sdk::ConsumerTransportState;
+pub use wire::{ConsumerAckProgress, ConsumerPendingAck, ConsumerReceiveProgress};
 
 pub struct ConsumerProcessCommand<'a> {
     pub purpose: InstalledProcessPurpose,
@@ -31,6 +46,18 @@ pub struct InstalledConsumerPorts {
     _private: (),
     #[cfg(target_os = "macos")]
     control: std::sync::Arc<ConsumerPortControl>,
+    #[cfg(target_os = "macos")]
+    channels: [collector::Channel; 2],
+    #[cfg(target_os = "macos")]
+    helper_association: collector::HelperAssociation,
+}
+impl InstalledConsumerPorts {
+    /// Revoke these SAME owned peers after a delivery/process fault. Logical
+    /// revocation never proves producer cleanup or any task/process join.
+    pub fn revoke(&mut self) {
+        #[cfg(target_os = "macos")]
+        self.control.revoke();
+    }
 }
 
 impl InstalledClientRun<'_> {
@@ -103,7 +130,11 @@ pub(in crate::workbench::model_originals::workflow::pipeline::installed::adapter
     state: Mutex<PortState>,
     parents: OnceLock<[UnixStream; 2]>,
     // Actual capacities are funded before allocation and before socketpair.
-    _buffers: [Vec<u8>; 2],
+    binding: binding::ConsumerBinding,
+    end: Instant,
+    max_frame: usize,
+    invocation: std::sync::Weak<dyn InvocationGateSource>,
+    deadline: OnceLock<Result<deadline::DarwinContinuousDeadline, wire::ConsumerCodecError>>,
 }
 #[cfg(target_os = "macos")]
 impl ConsumerPortControl {
@@ -171,6 +202,21 @@ impl InstalledClientRun<'_> {
         caller_end: Instant,
     ) -> Result<(PreparedInstalledConsumerProcess, InstalledConsumerPorts), InstalledAdapterError>
     {
+        self.prepare_consumer_bound(
+            command,
+            caller_end,
+            binding::ConsumerBinding::Raw,
+            export::PreparedClock::Unlaunched,
+        )
+    }
+    fn prepare_consumer_bound(
+        &mut self,
+        command: ConsumerProcessCommand<'_>,
+        caller_end: Instant,
+        binding: binding::ConsumerBinding,
+        clock: export::PreparedClock,
+    ) -> Result<(PreparedInstalledConsumerProcess, InstalledConsumerPorts), InstalledAdapterError>
+    {
         let end = self.consumer_end(caller_end)?;
         let ConsumerProcessCommand {
             purpose,
@@ -194,8 +240,12 @@ impl InstalledClientRun<'_> {
             "MORPHIR_PRIVATE_CONSUMER_HELPER_FD",
         ];
         for (key, _) in environment {
-            self.visit_observation_bytes(key.len())?;
-            if KEYS.iter().any(|reserved| key == reserved) {
+            let visits = launch::RESERVED_KEYS
+                .iter()
+                .try_fold(key.len(), |count, key| count.checked_add(key.len()))
+                .ok_or_else(|| self.overflow_failure())?;
+            self.visit_observation_bytes(visits)?;
+            if launch::RESERVED_KEYS.iter().any(|reserved| key == reserved) {
                 return Err(self.observation_failure(InstalledObservationError::LayoutMismatch));
             }
         }
@@ -205,6 +255,7 @@ impl InstalledClientRun<'_> {
         let count = environment
             .len()
             .checked_add(2)
+            .and_then(|count| count.checked_add(clock.selector_count()))
             .ok_or_else(|| self.overflow_failure())?;
         let mut env = self.vector(count)?;
         for (key, value) in environment {
@@ -213,6 +264,7 @@ impl InstalledClientRun<'_> {
                 self.copy_command_operand(value)?,
             ));
         }
+        self.consumer_clock_environment(&mut env, &clock)?;
         for key in KEYS {
             env.push((
                 self.copy_command_operand(OsStr::new(key))?,
@@ -243,8 +295,8 @@ impl InstalledClientRun<'_> {
             }
         }
         let buffers = [
-            self.vector::<u8>(limits.max_frame)?,
-            self.vector::<u8>(limits.max_frame)?,
+            self.observation_read_buffer(limits.max_frame)?,
+            self.observation_read_buffer(limits.max_frame)?,
         ];
         // Arc's two atomic counters are fixed infrastructure, not RSS or a
         // promise about allocator bookkeeping. Same cumulative storage ledger.
@@ -259,11 +311,16 @@ impl InstalledClientRun<'_> {
             crate::transport::process::OwnedConsumerChildEnds::callback_storage()
                 .ok_or_else(|| self.overflow_failure())?;
         self.reserve_storage(callback_storage)?;
+        self.reserve_storage(std::mem::size_of::<InstalledConsumerPorts>())?;
         self.visit_observation_bytes(2 * (10 + KEYS[0].len() + KEYS[1].len()))?;
         let control = Arc::new(ConsumerPortControl {
             state: Mutex::new(PortState::Preparing),
             parents: OnceLock::new(),
-            _buffers: buffers,
+            binding,
+            end,
+            max_frame: limits.max_frame,
+            invocation: process.description.invocation.clone(),
+            deadline: clock.into_cache(),
         });
         self.revoker
             .register_consumer(Arc::downgrade(&control))
@@ -307,7 +364,9 @@ impl InstalledClientRun<'_> {
             },
             InstalledConsumerPorts {
                 _private: (),
+                helper_association: collector::HelperAssociation::new(&control.binding),
                 control,
+                channels: buffers.map(collector::Channel::new),
             },
         ))
     }

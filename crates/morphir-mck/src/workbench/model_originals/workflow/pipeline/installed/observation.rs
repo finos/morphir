@@ -41,10 +41,13 @@ pub enum ObservationBufferRole {
     CommandMetadata,
     ImplementationMetadata,
     AssociationContent,
+    ConsumerFrame,
+    ConsumerAck,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObservationRecordRole {
     ConsumerProducer,
+    ConsumerFrame,
     Mailbox,
     Invocation,
     Process,

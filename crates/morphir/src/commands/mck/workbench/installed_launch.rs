@@ -420,6 +420,102 @@ impl InstalledLaunch {
             limits,
         )
     }
+    pub(in crate::commands) fn spawn_observed_publish(
+        &self,
+        index: usize,
+        paths: &InstalledCommandPaths,
+        run: &mut morphir_mck::workbench::model_originals::installed::InstalledClientRun<'_>,
+        invocation: InstalledInvocationSettings<'_>,
+        implementation: &morphir_mck::workbench::model_originals::installed::data::ImplementationObservation,
+        end: std::time::Instant,
+    ) -> Result<
+        (
+            morphir_mck::workbench::model_originals::installed::RunningInstalledProcess,
+            morphir_mck::workbench::model_originals::installed::InstalledConsumerPorts,
+        ),
+        morphir_mck::workbench::model_originals::installed::InstalledAdapterError,
+    > {
+        use morphir_mck::workbench::model_originals::installed::{
+            ConsumerProcessCommand, InstalledAdapterError, InstalledProcessPurpose,
+        };
+        let InstalledInvocationSettings {
+            directory,
+            environment,
+            limits,
+        } = invocation;
+        let Destination::Confined {
+            directory: expected,
+            ..
+        } = &paths.destination
+        else {
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        };
+        run.visit_observation_bytes(
+            directory
+                .as_os_str()
+                .len()
+                .saturating_add(expected.as_path().as_os_str().len()),
+        )?;
+        if directory != expected.as_path() {
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        }
+        let Some(InstalledClientAction::Run {
+            command: InstalledCommand::Publish,
+            arguments,
+        }) = run.actions().nth(index)
+        else {
+            return Err(InstalledAdapterError::ObservationIncomplete);
+        };
+        // The same borrowed resolver validates every operand before allocation.
+        for argument in arguments {
+            paths
+                .borrowed_operand(argument.as_str(), self.node())
+                .map_err(|_| InstalledAdapterError::ObservationIncomplete)?;
+        }
+        let entry = match self {
+            Self::NodePackage { .. } => Some(run.command_path(self.package(), "bin/morphir.js")?),
+            Self::NativeExecutable { .. } => None,
+        };
+        let helper = run.command_path(self.package(), "build-provider/originals.mjs")?;
+        let prefix = usize::from(entry.is_some());
+        let values = (0..arguments.len() + prefix + 2).map(|position| {
+            if let Some(entry) = entry.as_ref().filter(|_| position == 0) {
+                return entry.as_os_str();
+            }
+            let offset = position - prefix;
+            if offset < arguments.len() {
+                paths
+                    .borrowed_operand(arguments[offset].as_str(), self.node())
+                    .expect("immutable source operand was validated before spec construction")
+            } else if offset == arguments.len() {
+                OsStr::new("--originals-helper")
+            } else {
+                helper.as_os_str()
+            }
+        });
+        let arguments = run.copy_command_arguments(values)?;
+        let program = match self {
+            Self::NodePackage { node, .. } => node.as_path(),
+            Self::NativeExecutable { program, .. } => program.as_path(),
+        };
+        let (prepared, ports) = run.prepare_consumer_operation(
+            ConsumerProcessCommand {
+                purpose: InstalledProcessPurpose::Canonical {
+                    action_index: index,
+                    command: InstalledCommand::Publish,
+                },
+                program,
+                arguments: &arguments,
+                directory,
+                environment,
+                limits,
+            },
+            end,
+            implementation,
+        )?;
+        let process = run.spawn_prepared_consumer_process(prepared)?;
+        Ok((process, ports))
+    }
     pub(super) fn command(
         &self,
         action: InstalledClientAction<'_>,

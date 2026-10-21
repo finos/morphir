@@ -118,10 +118,16 @@ enum RunFault {
     Installed(installed::adapter::InstalledAdapterError),
     InstalledObservation(installed::observation::InstalledObservationFault),
     InstalledProcessFault(crate::transport::process::ProcessFault),
+    InstalledConsumer(installed::adapter::processes::ConsumerCodecError),
 }
 impl RunFault {
     fn summary(&self) -> FailureSummary {
         let (phase, code, message) = match self {
+            Self::InstalledConsumer(error) => (
+                "installed-consumer",
+                error.code(),
+                "private consumer operation transport refused",
+            ),
             Self::InstalledProcessFault(error) => {
                 use crate::transport::process::ProcessFault;
                 let code = match error {

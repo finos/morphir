@@ -5,7 +5,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Number, Value};
 use std::fmt;
 
+mod requested_storage;
 mod work;
+pub(crate) use requested_storage::{
+    requested_codec_typed_storage_bound, requested_diagnostic_storage_bound,
+    requested_document_storage_bound, requested_raw_members_storage_bound,
+};
 #[cfg(test)]
 pub(crate) use work::ReadWorkResource;
 pub(crate) use work::{ReadWork, ReadWorkLimits, ReadWorkUsage, StrictReadError};

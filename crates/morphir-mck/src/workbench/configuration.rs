@@ -35,6 +35,13 @@ pub enum ConsumerObservationSelection {
 pub enum OperationPortRevision {
     Draft1,
 }
+impl OperationPortRevision {
+    pub(in crate::workbench) const fn wire(self) -> &'static str {
+        match self {
+            Self::Draft1 => "0.1.0-draft.1",
+        }
+    }
+}
 impl ConsumerObservationSelection {
     fn from_document(value: &Document) -> Result<Self, String> {
         use super::model_originals::workflow::pipeline::policy::{closed, get};

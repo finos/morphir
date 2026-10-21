@@ -5,6 +5,7 @@ use crate::commands::ui::installed_observation::{
     HostEventKind, InstalledCollectedTestDiagnostic, SendOutcome,
 };
 use futures_util::{SinkExt as _, StreamExt as _};
+use morphir_mck::workbench::model_originals::installed::RunningInstalledProcess;
 use morphir_mck::{
     transport::process::ProcessProgress,
     workbench::{

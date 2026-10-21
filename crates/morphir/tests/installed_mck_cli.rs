@@ -397,3 +397,6 @@ fn actual_installed_node_runs_canonical_three_commands_and_saved_replay_refuses_
 fn actual_installed_native_runs_canonical_three_commands_and_saved_replay_refuses_tamper() {
     qualify(Target::Native);
 }
+
+#[path = "installed_mck_cli/operation_port_tests.rs"]
+mod operation_port_tests;

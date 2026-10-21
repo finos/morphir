@@ -24,10 +24,10 @@ use morphir_common::config::observation::ReadLimits;
 use morphir_devkit::ConfigLoadOptions;
 use morphir_mck::{
     transport::Limits,
+    workbench::ConsumerObservationSelection,
     workbench::model_originals::installed::{
         InstalledAdapterError, InstalledClientAction, InstalledClientAdapter,
-        InstalledClientMeasurements, InstalledClientRun, InstalledSnapshot,
-        RunningInstalledProcess, data,
+        InstalledClientMeasurements, InstalledClientRun, InstalledSnapshot, data,
     },
 };
 use std::{
@@ -335,7 +335,11 @@ async fn observe(
         ),
     ];
     let mut host = None;
-    let mut pending: Option<RunningInstalledProcess> = None;
+    let mut pending: Option<processes::Command> = None;
+    let operation_mode = matches!(
+        run.consumer_observation(),
+        ConsumerObservationSelection::OperationPort(_)
+    );
     let mut implementation = None;
     let result = async {
         for (index, action) in run.actions().enumerate() {
@@ -344,6 +348,11 @@ async fn observe(
                 InstalledClientAction::PrepareFixture if index == 0 => {}
                 InstalledClientAction::StartObservedHost if index == 1 => {
                     host = Some(RunningHost::start(&mut run, &fixture, end, &interrupted).await?);
+                    if operation_mode {
+                        // UI owns this already-created whole-run end. Bind it
+                        // once on SAME active invocation, never a fresh window.
+                        run.bind_consumer_window(end.into_std())?;
+                    }
                     let active = host
                         .as_mut()
                         .ok_or(InstalledAdapterError::ObservationIncomplete)?;
@@ -378,21 +387,39 @@ async fn observe(
                             .ok_or(InstalledAdapterError::ObservationIncomplete)?,
                     );
                     check(command_end, &interrupted)?;
-                    pending = Some(launch.spawn(
-                        index,
-                        action,
-                        &fixture.paths,
-                        &mut run,
-                        InstalledInvocationSettings::new(&fixture.base, &environment, limits),
-                    )?);
-                    let finished = processes::execute(
-                        &mut run,
-                        &mut active.runtime.events,
-                        &mut pending,
-                        command_end,
-                        &interrupted,
-                    )
-                    .await?;
+                    let command_end = if operation_mode && index == 8 {
+                        let (process, ports) = launch.spawn_observed_publish(
+                            index,
+                            &fixture.paths,
+                            &mut run,
+                            InstalledInvocationSettings::new(&fixture.base, &environment, limits),
+                            implementation
+                                .as_ref()
+                                .ok_or(InstalledAdapterError::ObservationIncomplete)?,
+                            end.into_std(),
+                        )?;
+                        pending = Some(processes::Command::operation(process, ports));
+                        end
+                    } else {
+                        pending = Some(processes::Command::Ordinary(Some(launch.spawn(
+                            index,
+                            action,
+                            &fixture.paths,
+                            &mut run,
+                            InstalledInvocationSettings::new(&fixture.base, &environment, limits),
+                        )?)));
+                        command_end
+                    };
+                    let finished = pending
+                        .as_mut()
+                        .ok_or(InstalledAdapterError::ObservationIncomplete)?
+                        .execute(
+                            &mut run,
+                            &mut active.runtime.events,
+                            command_end,
+                            &interrupted,
+                        )
+                        .await?;
                     run.record_finished_process(finished)?;
                     if index == 8 {
                         snapshots::census(
@@ -444,13 +471,20 @@ async fn observe(
     }
     .await;
     if let Err(error) = result {
-        let cleanup_end = Instant::now()
-            .checked_add(limits.session_timeout)
-            .unwrap_or(end);
+        let cleanup_end = if operation_mode {
+            end
+        } else {
+            Instant::now()
+                .checked_add(limits.session_timeout)
+                .unwrap_or(end)
+        };
         if let Some(active) = host.as_mut() {
             active.runtime.events.close();
         }
-        let _process_cleanup = processes::terminate(&mut pending, cleanup_end).await;
+        let _process_cleanup = match pending.as_mut() {
+            Some(command) => command.terminate(cleanup_end).await,
+            None => Ok(()),
+        };
         let _host_cleanup = match host.as_mut() {
             Some(active) => active.stop(cleanup_end).await,
             None => Ok(()),

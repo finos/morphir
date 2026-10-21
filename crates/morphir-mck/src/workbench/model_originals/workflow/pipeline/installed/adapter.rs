@@ -44,9 +44,10 @@ use invocation::{InvocationObservationState, InvocationObservationView};
 use native::data::{Bytes, SourcePath, Text};
 use native::{FixtureAlias, PrivateRecordAdoption, PrivateRecordError, RecordRetentionUsage};
 pub use processes::{
-    ConsumerProcessCommand, ConsumerProducerRole, FinishedInstalledProcess, InstalledConsumerPorts,
-    InstalledMetadataQuery, InstalledProcessFinish, InstalledProcessPurpose,
-    PreparedInstalledConsumerProcess, RunningInstalledProcess,
+    ConsumerAckProgress, ConsumerPendingAck, ConsumerProcessCommand, ConsumerProducerRole,
+    ConsumerReceiveProgress, ConsumerTransportState, FinishedInstalledProcess,
+    InstalledConsumerPorts, InstalledMetadataQuery, InstalledProcessFinish,
+    InstalledProcessPurpose, PreparedInstalledConsumerProcess, RunningInstalledProcess,
 };
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstalledAdapterError {
@@ -74,6 +75,7 @@ pub struct InstalledClientRun<'a> {
     collected:
         crate::workbench::model_originals::workflow::installed_measurements::LiveMeasurements,
     next_process: u64,
+    consumer_cache: [Vec<processes::consumer::wire::DecodedConsumerEnvelope>; 2],
     destination: Option<
         crate::workbench::model_originals::workflow::installed_measurements::PostExitSnapshot,
     >,
@@ -114,6 +116,7 @@ impl<'a> InstalledClientRun<'a> {
             decode,
             collected: crate::workbench::model_originals::workflow::installed_measurements::LiveMeasurements::new(),
             next_process: 0,
+            consumer_cache:[Vec::new(),Vec::new()],
             destination:None,
             scratch:None,
         }

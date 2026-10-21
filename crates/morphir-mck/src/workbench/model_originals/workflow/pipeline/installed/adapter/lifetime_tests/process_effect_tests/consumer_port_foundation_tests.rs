@@ -452,6 +452,7 @@ fn consumer_ports_external_callback_revocation_reaches_owned_peers() {
 }
 
 // Additive independent refusal controls; original foundation bodies unchanged.
+mod encoded_port_tests;
 mod supplemental;
 #[test]
 fn collector_drop_before_claim_refuses_actual_spawn() {
@@ -461,3 +462,5 @@ fn collector_drop_before_claim_refuses_actual_spawn() {
 fn collector_drop_after_claim_preserves_actual_child_and_reader_joins() {
     exercise_foundation(Scenario::DropAfterClaim);
 }
+
+mod deadline_tests;
