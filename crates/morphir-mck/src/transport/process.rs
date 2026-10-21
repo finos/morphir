@@ -206,6 +206,17 @@ pub struct ProcessOutcome {
     _retained_tree: Option<ProcessTree>,
 }
 impl ProcessOutcome {
+    /// Move only the existing prefix buffers; this SAME outcome keeps its tree.
+    pub(crate) fn take_record_prefixes(&mut self) -> (Vec<u8>, Vec<u8>) {
+        (
+            std::mem::take(&mut self.stdout),
+            std::mem::take(&mut self.stderr),
+        )
+    }
+    #[cfg(test)]
+    pub(crate) fn test_prefix_capacities(&self) -> [usize; 2] {
+        [self.stdout.capacity(), self.stderr.capacity()]
+    }
     pub fn status(&self) -> ExitStatus {
         self.status
     }

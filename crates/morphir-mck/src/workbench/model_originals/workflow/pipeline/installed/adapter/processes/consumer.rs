@@ -14,6 +14,7 @@ pub(in crate::workbench::model_originals::workflow) mod deadline;
 mod export;
 #[cfg(target_os = "macos")]
 mod launch;
+pub(in crate::workbench::model_originals::workflow) mod projection;
 pub(in crate::workbench::model_originals::workflow) mod record;
 mod sdk;
 pub(in crate::workbench::model_originals::workflow) mod wire;
@@ -286,7 +287,7 @@ impl InstalledClientRun<'_> {
             &env,
             limits,
         )?;
-        let record_reservation = self.prepare_consumer_record()?;
+        let record_reservation = self.prepare_consumer_record(&process.description, limits)?;
         for _ in 0..2 {
             match self
                 .receiving

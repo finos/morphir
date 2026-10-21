@@ -18,19 +18,20 @@ pub(in crate::workbench::model_originals::workflow) enum ConsumerAckDelivery {
 /// Issued before endpoint effects. The destination is the one inline Option in
 /// LiveMeasurements; caches and actual process buffers move without conversion.
 pub(super) struct ConsumerRecordReservation {
-    _private: (),
+    pub(super) output: Option<super::projection::ReservedConsumerOutput>,
+    pub(super) process: super::projection::ProcessProjection,
 }
 
 /// Retains the SAME unique ports and joined process, with their already funded
 /// binding, issued clock, terminal phases, buffers and literal caches. There is
 /// deliberately no Serialize/Deserialize or accessor back to live ports here.
 pub(in crate::workbench::model_originals::workflow) struct ConsumerOperationRecord {
-    ports: InstalledConsumerPorts,
-    finished: FinishedInstalledProcess,
-    frames: [Vec<wire::DecodedConsumerEnvelope>; 2],
+    pub(super) ports: InstalledConsumerPorts,
+    pub(super) finished: FinishedInstalledProcess,
+    pub(super) frames: [Vec<wire::DecodedConsumerEnvelope>; 2],
     completion: ConsumerRecordCompletion,
     first_failure: Option<FailureSummary>,
-    _reservation: ConsumerRecordReservation,
+    pub(super) reservation: ConsumerRecordReservation,
 }
 
 pub struct ConsumerRecordRejected {
@@ -51,6 +52,8 @@ impl ConsumerRecordRejected {
 impl InstalledClientRun<'_> {
     pub(super) fn prepare_consumer_record(
         &mut self,
+        description: &ProcessDescription,
+        limits: Limits,
     ) -> Result<ConsumerRecordReservation, InstalledAdapterError> {
         self.reserve_storage(std::mem::size_of::<Option<ConsumerOperationRecord>>())?;
         let result = self.decode.slots(1);
@@ -61,7 +64,12 @@ impl InstalledClientRun<'_> {
             .map(|permission| permission.issue())
             .map_err(|error| *error);
         result.map_err(|error| self.observation_failure(error))?;
-        Ok(ConsumerRecordReservation { _private: () })
+        let output = self.prepare_consumer_output(limits)?;
+        let process = self.prepare_consumer_process_projection(description)?;
+        Ok(ConsumerRecordReservation {
+            output: Some(output),
+            process,
+        })
     }
 
     pub fn record_consumer_process(
@@ -158,7 +166,7 @@ impl InstalledClientRun<'_> {
             frames: std::mem::take(&mut self.consumer_cache),
             completion,
             first_failure,
-            _reservation: reservation,
+            reservation,
         });
         Ok(())
     }

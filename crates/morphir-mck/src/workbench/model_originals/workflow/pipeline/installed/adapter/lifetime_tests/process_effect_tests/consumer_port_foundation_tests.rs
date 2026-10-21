@@ -375,6 +375,40 @@ fn foundation_policy() -> serde_json::Value {
     });
     policy
 }
+/// Explicit operation-record scenarios retain their existing headroom and
+/// additionally prepay the one full report destination and its bounded work.
+/// Other foundation callers keep their original, deliberately smaller policy.
+fn funded_operation_record_policy() -> serde_json::Value {
+    let mut policy = foundation_policy();
+    let r = usize::try_from(policy["checker"]["decode"]["savedBytes"].as_u64().unwrap())
+        .unwrap()
+        .min(crate::workbench::MAX_REPORT_BYTES);
+    let d = crate::json::strict::requested_serializer_io_storage_bound().unwrap();
+    let retained = r.checked_add(d).unwrap();
+    // Existing operation-record callers use at most 65536 stdout / 64 stderr.
+    let work = 65536usize
+        .checked_add(64)
+        .unwrap()
+        .checked_add(r.checked_mul(8).unwrap())
+        .unwrap()
+        .checked_add(20)
+        .unwrap()
+        .checked_add(d)
+        .unwrap();
+    let retained = policy["installedObservation"]["retainedBytes"]
+        .as_u64()
+        .unwrap()
+        .checked_add(u64::try_from(retained).unwrap())
+        .unwrap();
+    let visits = policy["installedObservation"]["byteVisits"]
+        .as_u64()
+        .unwrap()
+        .checked_add(u64::try_from(work).unwrap())
+        .unwrap();
+    policy["installedObservation"]["retainedBytes"] = retained.into();
+    policy["installedObservation"]["byteVisits"] = visits.into();
+    policy
+}
 fn exercise_foundation(scenario: Scenario) {
     let kit = tempfile::tempdir().unwrap();
     std::fs::write(kit.path().join("cases.json"), CASES).unwrap();

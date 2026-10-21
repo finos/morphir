@@ -13,6 +13,7 @@ use std::{
     path::{Path, PathBuf},
 };
 pub(super) mod consumer;
+pub(in crate::workbench::model_originals::workflow) use consumer::projection::IssuedPrefixProjection;
 pub(in crate::workbench::model_originals::workflow) use consumer::record::ConsumerOperationRecord;
 pub(in crate::workbench::model_originals::workflow) use consumer::wire::{
     ConsumerCodecError, ConsumerFailureKind,

@@ -177,6 +177,11 @@ fn pinned_serde_error_impl_upper_layout() -> Option<Layout> {
     source_fields_upper_layout(&[code, Layout::new::<usize>(), Layout::new::<usize>()])
 }
 
+/// One simple-I/O serde serializer failure, with no owned message formatting.
+pub(crate) fn requested_serializer_io_storage_bound() -> Option<usize> {
+    Some(pinned_serde_error_impl_upper_layout()?.size())
+}
+
 /// Precharge reachable slice-reader diagnostics even for an empty payload.
 /// It covers a single terminal error, including the additional raw-members
 /// pass: `?` ends the operation at its first failure; recursion moves the same

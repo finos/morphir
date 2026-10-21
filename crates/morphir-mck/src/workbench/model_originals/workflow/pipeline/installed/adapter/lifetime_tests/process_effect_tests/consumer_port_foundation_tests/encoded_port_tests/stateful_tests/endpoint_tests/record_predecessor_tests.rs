@@ -245,8 +245,22 @@ fn exercise(case: Case) {
             gate: InvocationGate::dormant(),
         }),
     };
-    with_policy(&mut probe);
+    with_operation_record_policy(&mut probe);
     assert!(probe.entered, "actual full24 invocation required");
+}
+fn with_operation_record_policy(adapter: &mut impl InstalledClientAdapter) {
+    let kit = tempfile::tempdir().unwrap();
+    std::fs::write(kit.path().join("cases.json"), CASES).unwrap();
+    let mut policy = funded_operation_record_policy();
+    policy["consumerObservation"] =
+        serde_json::json!({"mode":"operation-port","version":"0.1.0-draft.1"});
+    let report = run_configured_with_installed_client_adapter(
+        kit.path(),
+        &RunConfiguration::from_json(&policy.to_string()).unwrap(),
+        adapter,
+    )
+    .unwrap();
+    assert!(!report.qualified());
 }
 #[test]
 fn matching_raw_finished_stdout_fault_precedes_healthy_drain_requirement() {
@@ -262,3 +276,5 @@ fn actual_public_revoke_precedes_healthy_drain_requirement() {
 }
 
 mod source_closure_tests;
+
+mod projection_resource_tests;

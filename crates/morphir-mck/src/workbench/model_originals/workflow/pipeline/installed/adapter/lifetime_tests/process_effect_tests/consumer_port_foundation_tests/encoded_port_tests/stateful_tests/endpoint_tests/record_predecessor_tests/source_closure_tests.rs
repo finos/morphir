@@ -116,6 +116,6 @@ fn same_source_gate_closure_is_interruption_before_healthy_drain() {
             gate: InvocationGate::dormant(),
         }),
     };
-    with_policy(&mut probe);
+    with_operation_record_policy(&mut probe);
     assert!(probe.entered, "genuine full24 callback required");
 }

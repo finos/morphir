@@ -55,6 +55,9 @@ pub(super) struct Decoder {
     fault: Option<DecodeError>,
 }
 impl Decoder {
+    pub(super) fn saved_limit(&self) -> usize {
+        self.limits.saved.get()
+    }
     pub(super) fn new(limits: DecodeLimits) -> Self {
         Self {
             limits,

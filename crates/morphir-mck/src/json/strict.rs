@@ -10,6 +10,7 @@ mod work;
 pub(crate) use requested_storage::{
     requested_codec_typed_storage_bound, requested_diagnostic_storage_bound,
     requested_document_storage_bound, requested_raw_members_storage_bound,
+    requested_serializer_io_storage_bound,
 };
 #[cfg(test)]
 pub(crate) use work::ReadWorkResource;

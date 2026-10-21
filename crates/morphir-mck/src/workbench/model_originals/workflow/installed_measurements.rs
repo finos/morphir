@@ -9,25 +9,109 @@ use crate::workbench::model_originals as protocol;
 pub(super) mod implementation;
 use implementation::{ImplementationObservation, OsOperand};
 
-#[derive(Debug)]
 pub struct ObservedBytes {
-    wire: input::Bytes,
-    bytes: Vec<u8>,
+    storage: ObservedByteStorage,
+}
+enum ObservedByteStorage {
+    Materialized { wire: input::Bytes, bytes: Vec<u8> },
+    MovedUtf8(String),
+    MovedHex(Vec<u8>),
+}
+struct PrefixHex<'a>(&'a [u8]);
+impl std::fmt::Display for PrefixHex<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const DIGITS: [&str; 16] = [
+            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f",
+        ];
+        for &byte in self.0 {
+            f.write_str(DIGITS[(byte >> 4) as usize])?;
+            f.write_str(DIGITS[(byte & 15) as usize])?;
+        }
+        Ok(())
+    }
+}
+impl serde::Serialize for PrefixHex<'_> {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.collect_str(self)
+    }
+}
+impl std::fmt::Debug for ObservedBytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        struct Wire<'a>(&'a ObservedByteStorage);
+        impl std::fmt::Debug for Wire<'_> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                struct Text<'a>(&'a str);
+                impl std::fmt::Debug for Text<'_> {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        f.debug_tuple("Text").field(&self.0).finish()
+                    }
+                }
+                struct Hex<'a>(&'a [u8]);
+                impl std::fmt::Debug for Hex<'_> {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        f.write_str("BytesHexHex(\"")?;
+                        std::fmt::Display::fmt(&PrefixHex(self.0), f)?;
+                        f.write_str("\")")
+                    }
+                }
+                match self.0 {
+                    ObservedByteStorage::Materialized { wire, .. } => std::fmt::Debug::fmt(wire, f),
+                    ObservedByteStorage::MovedUtf8(text) => {
+                        f.debug_struct("Utf8").field("text", &Text(text)).finish()
+                    }
+                    ObservedByteStorage::MovedHex(bytes) => {
+                        f.debug_struct("Hex").field("hex", &Hex(bytes)).finish()
+                    }
+                }
+            }
+        }
+        f.debug_struct("ObservedBytes")
+            .field("wire", &Wire(&self.storage))
+            .field("bytes", &self.as_bytes())
+            .finish()
+    }
 }
 impl ObservedBytes {
     pub(super) fn bytes(&self) -> &[u8] {
-        &self.bytes
+        self.as_bytes()
     }
     pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes
+        match &self.storage {
+            ObservedByteStorage::Materialized { bytes, .. }
+            | ObservedByteStorage::MovedHex(bytes) => bytes,
+            ObservedByteStorage::MovedUtf8(text) => text.as_bytes(),
+        }
     }
     fn utf8<'a>(&'a self, owner: &mut Decoder) -> Result<Option<&'a str>, DecodeError> {
-        match &self.wire {
-            input::Bytes::Utf8 { text } => Ok(Some(text.as_str())),
+        match &self.storage {
+            ObservedByteStorage::Materialized {
+                wire: input::Bytes::Utf8 { text },
+                ..
+            } => Ok(Some(text.as_str())),
+            ObservedByteStorage::MovedUtf8(text) => Ok(Some(text)),
             _ => {
-                owner.bytes(self.bytes.len())?;
-                Ok(std::str::from_utf8(&self.bytes).ok())
+                owner.bytes(self.as_bytes().len())?;
+                Ok(std::str::from_utf8(self.as_bytes()).ok())
             }
+        }
+    }
+    pub(in crate::workbench::model_originals::workflow) fn adopt_prefix(
+        bytes: Vec<u8>,
+        _permission: super::pipeline::installed::adapter::processes::IssuedPrefixProjection,
+    ) -> Self {
+        Self {
+            storage: match String::from_utf8(bytes) {
+                Ok(text) => ObservedByteStorage::MovedUtf8(text),
+                Err(error) => ObservedByteStorage::MovedHex(error.into_bytes()),
+            },
+        }
+    }
+    #[cfg(test)]
+    pub(in crate::workbench::model_originals::workflow) fn test_raw_capacity(&self) -> usize {
+        match &self.storage {
+            ObservedByteStorage::Materialized { bytes, .. }
+            | ObservedByteStorage::MovedHex(bytes) => bytes.capacity(),
+            ObservedByteStorage::MovedUtf8(text) => text.capacity(),
         }
     }
 }
@@ -42,7 +126,22 @@ impl<E> From<DecodeError> for ByteCacheError<E> {
 }
 impl serde::Serialize for ObservedBytes {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        self.wire.serialize(s)
+        use serde::ser::SerializeStruct;
+        match &self.storage {
+            ObservedByteStorage::Materialized { wire, .. } => wire.serialize(s),
+            ObservedByteStorage::MovedUtf8(text) => {
+                let mut value = s.serialize_struct("Bytes", 2)?;
+                value.serialize_field("kind", "utf8")?;
+                value.serialize_field("text", text)?;
+                value.end()
+            }
+            ObservedByteStorage::MovedHex(bytes) => {
+                let mut value = s.serialize_struct("Bytes", 2)?;
+                value.serialize_field("kind", "hex")?;
+                value.serialize_field("hex", &PrefixHex(bytes))?;
+                value.end()
+            }
+        }
     }
 }
 impl Decode for ObservedBytes {
@@ -114,7 +213,9 @@ impl ObservedBytes {
             }
             _ => return Err(DecodeError::Shape("observed literal").into()),
         }
-        Ok(Self { wire, bytes })
+        Ok(Self {
+            storage: ObservedByteStorage::Materialized { wire, bytes },
+        })
     }
 }
 macro_rules! ordinal {

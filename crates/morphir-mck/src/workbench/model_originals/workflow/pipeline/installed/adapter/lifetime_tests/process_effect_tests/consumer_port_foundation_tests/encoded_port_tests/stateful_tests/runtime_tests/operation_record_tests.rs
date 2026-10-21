@@ -383,7 +383,7 @@ fn exercise_record(case: RecordCase) {
     assert_eq!(before, (SELECTED_LENGTH, SELECTED_SHA));
     let kit = tempfile::tempdir().unwrap();
     std::fs::write(kit.path().join("cases.json"), CASES).unwrap();
-    let mut policy = foundation_policy();
+    let mut policy = funded_operation_record_policy();
     policy["consumerObservation"] =
         serde_json::json!({"mode":"operation-port","version":"0.1.0-draft.1"});
     let mut probe = RecordProbe {
