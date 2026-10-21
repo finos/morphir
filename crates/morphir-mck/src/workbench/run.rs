@@ -73,7 +73,9 @@ pub fn run_configured(
         Configuration::ModelOriginals(_) => {
             Session::spawn_mep(&options.adapter, &options.adapter_args, options.limits)
         }
-        Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. } => {
+        Configuration::NativeOriginals { .. }
+        | Configuration::InstalledOriginals { .. }
+        | Configuration::BrowserOriginals { .. } => {
             unreachable!("external dispatch rejects native configuration before factory")
         }
     })
@@ -88,6 +90,9 @@ pub fn run_configured_with_session_factory<F>(
 where
     F: FnOnce() -> Result<Session, crate::transport::TransportError>,
 {
+    if matches!(configuration.mode, Configuration::BrowserOriginals { .. }) {
+        return Err("browser configuration requires a maintained browser adapter".into());
+    }
     if matches!(
         configuration.mode,
         Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. }
@@ -122,6 +127,9 @@ where
         (CorpusStorage::Historical(_), Configuration::ModelOriginals(_)) => {
             Err("historical corpus requires historical checker policy".into())
         }
+        (_, Configuration::BrowserOriginals { .. }) => {
+            Err("browser configuration requires a maintained browser adapter".into())
+        }
         (_, Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. }) => {
             Err("native configuration requires explicit native adapter".into())
         }
@@ -144,6 +152,9 @@ pub fn run_with_session_configured(
     configuration: &RunConfiguration,
 ) -> Result<Report, String> {
     let mismatch = match (&corpus.storage, &configuration.mode) {
+        (_, Configuration::BrowserOriginals { .. }) => {
+            Some("browser configuration requires a maintained browser adapter")
+        }
         (_, Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. }) => {
             Some("native configuration requires explicit native adapter")
         }
@@ -179,6 +190,9 @@ pub fn check_report_configured(
     configuration: &RunConfiguration,
 ) -> Result<(), String> {
     match (&report.storage, &configuration.mode) {
+        (_, Configuration::BrowserOriginals { .. }) => {
+            Err("browser configuration has no report reader".into())
+        }
         (ReportStorage::Historical(report), Configuration::Historical) => {
             super::report::check_historical_report(root, report)
         }

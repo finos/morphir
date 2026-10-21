@@ -240,3 +240,6 @@ fn a_preexisting_closure_fault_is_checked_before_any_new_source_binding_work() {
     ));
     assert_eq!(compiler.usage(), before);
 }
+
+#[cfg(test)]
+mod owned_fault;

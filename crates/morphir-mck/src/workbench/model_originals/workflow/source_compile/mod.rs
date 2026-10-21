@@ -182,6 +182,10 @@ impl<'owner, 'policies, 'sources, 'supplied> CaseCompiler<'owner, 'policies, 'so
             None => Ok(()),
         }
     }
+    /// Consume the compiler and move its original latched cause without cloning.
+    pub(super) fn into_fault(self) -> Option<CompilationError> {
+        self.fault
+    }
     pub(super) fn usage(&self) -> CompilationUsage {
         CompilationUsage {
             decode: self.verifier.usage(),

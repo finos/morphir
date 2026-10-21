@@ -83,6 +83,7 @@ pub(super) enum WorkbenchLaunch<'a> {
         arguments: &'a [OsString],
     },
     NativeHost,
+    BrowserOriginals,
     InstalledClient(InstalledLaunch),
 }
 impl<'a> WorkbenchLaunch<'a> {
@@ -105,6 +106,10 @@ impl<'a> WorkbenchLaunch<'a> {
                 WorkbenchAdapter::External { program, arguments },
                 WorkbenchExecutionMode::Historical | WorkbenchExecutionMode::ModelOriginals,
             ) => Ok(Self::External { program, arguments }),
+            (
+                WorkbenchAdapter::BuiltinNativeWorkbench,
+                WorkbenchExecutionMode::BrowserOriginals,
+            ) => Ok(Self::BrowserOriginals),
             (WorkbenchAdapter::BuiltinNativeWorkbench, WorkbenchExecutionMode::NativeOriginals) => {
                 Ok(Self::NativeHost)
             }
