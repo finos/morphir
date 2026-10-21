@@ -7,6 +7,10 @@
 mod consumer_clock_tests;
 #[cfg(target_os = "macos")]
 mod consumer_handles;
+pub(crate) mod interactive;
+#[cfg(all(test, target_os = "macos"))]
+#[path = "process/interactive_tests.rs"]
+mod interactive_tests;
 #[cfg(target_os = "macos")]
 pub(crate) use consumer_handles::OwnedConsumerChildEnds;
 
@@ -14,7 +18,7 @@ use std::{
     ffi::{OsStr, OsString},
     io::{self, Read},
     path::PathBuf,
-    process::{Child, Command, ExitStatus, Stdio},
+    process::{Child, ChildStdin, Command, ExitStatus, Stdio},
     sync::{Arc, Mutex, MutexGuard},
     thread::{self, JoinHandle},
 };
@@ -199,6 +203,8 @@ pub struct ProcessOutcome {
     stderr_truncated: bool,
     first_fault: Option<ProcessFault>,
     descendants: DescendantEvidence,
+    stdout_terminal: ReadTerminal,
+    stderr_terminal: ReadTerminal,
     // Raw finish transfers this SAME tree lease. In particular, consuming the
     // process must not close a Windows kill-on-close job before returning its
     // Unobserved outcome. This private RAII field issues no authority or join
@@ -340,10 +346,32 @@ fn lock<T>(value: &Mutex<T>) -> MutexGuard<'_, T> {
 fn record(owner: &FaultOwner, fault: ProcessFault) {
     lock(owner).get_or_insert(fault);
 }
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ReadTerminal {
+    #[default]
+    Reading,
+    Eof,
+    Failed(ProcessFault),
+    Stopped(ProcessFault),
+}
 #[derive(Default)]
 struct OutputState {
     bytes: Vec<u8>,
     truncated: bool,
+    terminal: ReadTerminal,
+}
+#[derive(Clone, Copy)]
+enum CaptureGrowth {
+    Allowed,
+    Fixed,
+}
+enum CaptureBuffers {
+    Growing,
+    Fixed { stdout: Vec<u8>, stderr: Vec<u8> },
+}
+enum ProcessInput {
+    Null,
+    Piped,
 }
 enum ReaderThread {
     Running(JoinHandle<()>),
@@ -362,7 +390,36 @@ impl OutputReader {
         bound: usize,
         faults: &FaultOwner,
     ) -> Self {
-        let output = Arc::new(Mutex::new(OutputState::default()));
+        Self::start_with(
+            pipe,
+            stream,
+            bound,
+            Vec::new(),
+            CaptureGrowth::Allowed,
+            faults,
+        )
+    }
+    fn start_fixed(
+        pipe: impl Read + Send + 'static,
+        stream: OutputStream,
+        bound: usize,
+        bytes: Vec<u8>,
+        faults: &FaultOwner,
+    ) -> Self {
+        Self::start_with(pipe, stream, bound, bytes, CaptureGrowth::Fixed, faults)
+    }
+    fn start_with(
+        pipe: impl Read + Send + 'static,
+        stream: OutputStream,
+        bound: usize,
+        bytes: Vec<u8>,
+        growth: CaptureGrowth,
+        faults: &FaultOwner,
+    ) -> Self {
+        let output = Arc::new(Mutex::new(OutputState {
+            bytes,
+            ..OutputState::default()
+        }));
         let writer = output.clone();
         let errors = faults.clone();
         let spawned = thread::Builder::new()
@@ -373,11 +430,13 @@ impl OutputReader {
                 }
                 .into(),
             )
-            .spawn(move || read_output(pipe, stream, bound, &writer, &errors));
+            .spawn(move || read_output(pipe, stream, bound, growth, &writer, &errors));
         let thread = match spawned {
             Ok(thread) => ReaderThread::Running(thread),
             Err(error) => {
-                record(faults, ProcessFault::PipeThreadStart(stream, error.kind()));
+                let fault = ProcessFault::PipeThreadStart(stream, error.kind());
+                record(faults, fault);
+                lock(&output).terminal = ReadTerminal::Stopped(fault);
                 ReaderThread::NotCreated
             }
         };
@@ -396,7 +455,12 @@ impl OutputReader {
             };
             // is_finished is only readiness. This ACTUAL join resolves panic.
             if thread.join().is_err() {
-                record(faults, ProcessFault::ReaderPanicked(self.stream));
+                let fault = ProcessFault::ReaderPanicked(self.stream);
+                record(faults, fault);
+                let mut output = lock(&self.output);
+                if matches!(output.terminal, ReadTerminal::Reading) {
+                    output.terminal = ReadTerminal::Stopped(fault);
+                }
             }
         }
     }
@@ -408,17 +472,23 @@ fn read_output(
     mut pipe: impl Read,
     stream: OutputStream,
     bound: usize,
+    growth: CaptureGrowth,
     output: &Mutex<OutputState>,
     faults: &FaultOwner,
 ) {
     let mut block = [0u8; 8192];
     loop {
         let count = match pipe.read(&mut block) {
-            Ok(0) => return,
+            Ok(0) => {
+                lock(output).terminal = ReadTerminal::Eof;
+                return;
+            }
             Ok(count) => count,
             Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
             Err(error) => {
-                record(faults, ProcessFault::PipeRead(stream, error.kind()));
+                let fault = ProcessFault::PipeRead(stream, error.kind());
+                record(faults, fault);
+                lock(output).terminal = ReadTerminal::Failed(fault);
                 return;
             }
         };
@@ -432,7 +502,9 @@ fn read_output(
         }
         // Reserve before each retained payload growth/copy. Excess output is
         // drained without an unbounded queue, including a zero stderr prefix.
-        if state.bytes.try_reserve_exact(retain).is_err() {
+        if matches!(growth, CaptureGrowth::Allowed)
+            && state.bytes.try_reserve_exact(retain).is_err()
+        {
             record(faults, ProcessFault::OutputAllocation(stream));
             state.truncated = true;
             continue;
@@ -468,13 +540,26 @@ impl OneShotProcess {
     }
     #[cfg(any(target_os = "linux", target_os = "macos", windows))]
     pub fn spawn(spec: CommandSpec, limits: Limits) -> Result<Self, ProcessError> {
+        Self::spawn_with_io(spec, limits, ProcessInput::Null, CaptureBuffers::Growing)
+            .map(|(process, _)| process)
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos", windows))]
+    fn spawn_with_io(
+        spec: CommandSpec,
+        limits: Limits,
+        input: ProcessInput,
+        capture: CaptureBuffers,
+    ) -> Result<(Self, Option<ChildStdin>), ProcessError> {
         let mut command = Command::new(spec.program);
         command
             .args(spec.arguments)
             .current_dir(spec.directory)
             .env_clear()
             .envs(spec.environment)
-            .stdin(Stdio::null())
+            .stdin(match input {
+                ProcessInput::Null => Stdio::null(),
+                ProcessInput::Piped => Stdio::piped(),
+            })
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         tree::configure(&mut command);
@@ -490,6 +575,7 @@ impl OneShotProcess {
         #[cfg(target_os = "macos")]
         drop(child_handles);
         let mut child = spawned.map_err(ProcessError::Spawn)?;
+        let stdin = child.stdin.take();
         let id = child.id();
         let faults = Arc::new(Mutex::new(None));
         let tree = match ProcessTree::attach(&child) {
@@ -499,18 +585,35 @@ impl OneShotProcess {
                 None
             }
         };
-        let stdout = OutputReader::start(
-            child.stdout.take().expect("pipedstdout"),
-            OutputStream::Stdout,
-            limits.max_frame,
-            &faults,
-        );
-        let stderr = OutputReader::start(
-            child.stderr.take().expect("pipedstderr"),
-            OutputStream::Stderr,
-            limits.stderr_capture,
-            &faults,
-        );
+        let stdout_pipe = child.stdout.take().expect("pipedstdout");
+        let stderr_pipe = child.stderr.take().expect("pipedstderr");
+        let (stdout, stderr) = match capture {
+            CaptureBuffers::Growing => (
+                OutputReader::start(stdout_pipe, OutputStream::Stdout, limits.max_frame, &faults),
+                OutputReader::start(
+                    stderr_pipe,
+                    OutputStream::Stderr,
+                    limits.stderr_capture,
+                    &faults,
+                ),
+            ),
+            CaptureBuffers::Fixed { stdout, stderr } => (
+                OutputReader::start_fixed(
+                    stdout_pipe,
+                    OutputStream::Stdout,
+                    limits.max_frame,
+                    stdout,
+                    &faults,
+                ),
+                OutputReader::start_fixed(
+                    stderr_pipe,
+                    OutputStream::Stderr,
+                    limits.stderr_capture,
+                    stderr,
+                    &faults,
+                ),
+            ),
+        };
         let must_stop = tree.is_none()
             || matches!(&stdout.thread, ReaderThread::NotCreated)
             || matches!(&stderr.thread, ReaderThread::NotCreated);
@@ -535,7 +638,7 @@ impl OneShotProcess {
         if must_stop {
             let _ = owner.request_termination();
         }
-        Ok(owner)
+        Ok((owner, stdin))
     }
     pub fn id(&self) -> u32 {
         self.id
@@ -698,10 +801,17 @@ impl OneShotProcess {
                 && active.stdout.settled()
                 && active.stderr.settled()
             {
-                let stdout = std::mem::take(&mut lock(&active.stdout.output).bytes);
-                let (stderr, stderr_truncated) = {
+                let (stdout, stdout_terminal) = {
+                    let mut output = lock(&active.stdout.output);
+                    (std::mem::take(&mut output.bytes), output.terminal)
+                };
+                let (stderr, stderr_truncated, stderr_terminal) = {
                     let mut output = lock(&active.stderr.output);
-                    (std::mem::take(&mut output.bytes), output.truncated)
+                    (
+                        std::mem::take(&mut output.bytes),
+                        output.truncated,
+                        output.terminal,
+                    )
                 };
                 self.state = State::Finished(ProcessOutcome {
                     status,
@@ -711,6 +821,8 @@ impl OneShotProcess {
                     stderr_truncated,
                     first_fault: active.first_fault,
                     descendants: self.termination,
+                    stdout_terminal,
+                    stderr_terminal,
                     _retained_tree: None,
                 });
             }
