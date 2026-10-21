@@ -1,5 +1,6 @@
 //! One selected branch of the existing Workbench pipeline. The fixed reviewed
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
+mod browser;
 pub(super) mod installed;
 pub(in crate::workbench) mod policy;
 mod raw;

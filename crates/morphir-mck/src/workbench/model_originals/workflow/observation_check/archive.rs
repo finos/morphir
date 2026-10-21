@@ -4,7 +4,7 @@ use super::{CompareOwner, CompareResource, ObservationError};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum ZipStoreFault {
+pub(in crate::workbench::model_originals::workflow) enum ZipStoreFault {
     End,
     Offsets,
     Header,
@@ -29,17 +29,19 @@ struct Member<'bytes> {
     end: usize,
     kind: Kind,
 }
-pub(super) struct EntrySlot<'bytes>(Option<Member<'bytes>>);
+pub(in crate::workbench::model_originals::workflow) struct EntrySlot<'bytes>(
+    Option<Member<'bytes>>,
+);
 impl EntrySlot<'_> {
-    pub(super) const fn vacant() -> Self {
+    pub(in crate::workbench::model_originals::workflow) const fn vacant() -> Self {
         Self(None)
     }
     #[cfg(test)]
-    pub(super) fn is_vacant(&self) -> bool {
+    pub(in crate::workbench::model_originals::workflow) fn is_vacant(&self) -> bool {
         self.0.is_none()
     }
 }
-pub(super) enum ZipStoreMember<'bytes> {
+pub(in crate::workbench::model_originals::workflow) enum ZipStoreMember<'bytes> {
     File {
         name: &'bytes str,
         bytes: &'bytes [u8],
@@ -48,7 +50,7 @@ pub(super) enum ZipStoreMember<'bytes> {
         name: &'bytes str,
     },
 }
-pub(super) struct ZipStore<'bytes, 'scratch> {
+pub(in crate::workbench::model_originals::workflow) struct ZipStore<'bytes, 'scratch> {
     entries: &'scratch [EntrySlot<'bytes>],
 }
 impl std::fmt::Debug for ZipStore<'_, '_> {
@@ -59,10 +61,12 @@ impl std::fmt::Debug for ZipStore<'_, '_> {
     }
 }
 impl<'bytes> ZipStore<'bytes, '_> {
-    pub(super) fn len(&self) -> usize {
+    pub(in crate::workbench::model_originals::workflow) fn len(&self) -> usize {
         self.entries.len()
     }
-    pub(super) fn members(&self) -> impl ExactSizeIterator<Item = ZipStoreMember<'bytes>> + '_ {
+    pub(in crate::workbench::model_originals::workflow) fn members(
+        &self,
+    ) -> impl ExactSizeIterator<Item = ZipStoreMember<'bytes>> + '_ {
         self.entries.iter().map(|slot| {
             let member = slot.0.as_ref().expect("private validated occupied prefix");
             match member.kind {
@@ -403,7 +407,7 @@ enum SortKey {
     Offset,
     Name,
 }
-pub(super) fn read<'bytes, 'scratch>(
+pub(in crate::workbench::model_originals::workflow) fn read<'bytes, 'scratch>(
     actual: &'bytes [u8],
     scratch: &'scratch mut [EntrySlot<'bytes>],
     owner: &mut CompareOwner,
