@@ -81,11 +81,66 @@ impl InvocationObservation {
         InvocationObservationView(self.source.clone())
     }
 }
-#[derive(Default)]
 pub(in crate::workbench::model_originals::workflow::pipeline::installed) struct InvocationRevoker {
     source: Option<Weak<dyn InvocationGateSource>>,
+    pub(super) consumer_selection: crate::workbench::configuration::ConsumerObservationSelection,
+    pub(super) consumer_window: ConsumerWindow,
+    #[cfg(target_os = "macos")]
+    pub(super) consumer_ports: ConsumerRegistration,
+}
+pub(super) enum ConsumerWindow {
+    Unbound,
+    Bound(std::time::Instant),
+    Revoked,
+}
+#[cfg(target_os = "macos")]
+pub(super) enum ConsumerRegistration {
+    Unprepared,
+    Registered(Weak<super::processes::consumer::ConsumerPortControl>),
+}
+impl Default for InvocationRevoker {
+    fn default() -> Self {
+        Self::new(crate::workbench::configuration::ConsumerObservationSelection::Disabled)
+    }
 }
 impl InvocationRevoker {
+    pub(in crate::workbench::model_originals::workflow::pipeline::installed) fn new(
+        consumer_selection: crate::workbench::configuration::ConsumerObservationSelection,
+    ) -> Self {
+        Self {
+            source: None,
+            consumer_selection,
+            consumer_window: ConsumerWindow::Unbound,
+            #[cfg(target_os = "macos")]
+            consumer_ports: ConsumerRegistration::Unprepared,
+        }
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::installed) fn consumer_fault(
+        &self,
+    ) -> bool {
+        #[cfg(target_os = "macos")]
+        if let ConsumerRegistration::Registered(control) = &self.consumer_ports {
+            return control.upgrade().is_none_or(|control| control.revoked());
+        }
+        false
+    }
+    #[cfg(target_os = "macos")]
+    pub(super) fn register_consumer(
+        &mut self,
+        control: Weak<super::processes::consumer::ConsumerPortControl>,
+    ) -> Result<(), InvocationObservationError> {
+        if !matches!(self.consumer_ports, ConsumerRegistration::Unprepared) {
+            return Err(InvocationObservationError::Revoked);
+        }
+        let owner = self
+            .source
+            .as_ref()
+            .and_then(Weak::upgrade)
+            .ok_or(InvocationObservationError::Revoked)?;
+        owner.invocation_gate().while_open(|| {
+            self.consumer_ports = ConsumerRegistration::Registered(control);
+        })
+    }
     pub(super) fn active(&self) -> bool {
         self.source
             .as_ref()
@@ -120,9 +175,16 @@ impl InvocationRevoker {
 }
 impl Drop for InvocationRevoker {
     fn drop(&mut self) {
+        self.consumer_window = ConsumerWindow::Revoked;
         if let Some(owner) = self.source.as_ref().and_then(Weak::upgrade) {
             owner.invocation_gate().revoke();
             owner.wake_observers();
+        }
+        #[cfg(target_os = "macos")]
+        if let ConsumerRegistration::Registered(control) = &self.consumer_ports
+            && let Some(control) = control.upgrade()
+        {
+            control.revoke();
         }
     }
 }

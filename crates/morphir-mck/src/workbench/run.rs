@@ -258,6 +258,7 @@ pub fn run_configured_with_installed_client_adapter(
         observation,
         private_record,
         installed_observation,
+        consumer_observation,
     } = &configuration.mode
     else {
         return Err("installed adapter requires explicit installed configuration".into());
@@ -270,6 +271,7 @@ pub fn run_configured_with_installed_client_adapter(
             observation,
             private_record,
             installed_observation,
+            *consumer_observation,
             adapter,
         )
         .map(Report::selected),

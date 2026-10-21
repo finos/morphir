@@ -12,6 +12,11 @@ use std::{
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
 };
+pub(super) mod consumer;
+pub use consumer::{
+    ConsumerProcessCommand, ConsumerProducerRole, InstalledConsumerPorts,
+    PreparedInstalledConsumerProcess,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InstalledMetadataQuery {

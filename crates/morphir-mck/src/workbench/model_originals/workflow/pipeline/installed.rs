@@ -239,6 +239,7 @@ pub(in crate::workbench) fn execute_installed(
     limits: &crate::workbench::configuration::NativeObservationLimits,
     record_limits: &crate::workbench::configuration::RecordRetentionLimits,
     receiving_limits: &crate::workbench::configuration::InstalledObservationLimits,
+    consumer: crate::workbench::configuration::ConsumerObservationSelection,
     adapter: &mut dyn adapter::InstalledClientAdapter,
 ) -> Result<StoredReport, String> {
     let mut record_owner =
@@ -283,7 +284,7 @@ pub(in crate::workbench) fn execute_installed(
                             .current()
                             .filter(|current| current.installed().is_some())
                             .ok_or(RunFault::UnsupportedRole)?;
-                        let mut revoker = adapter::InvocationRevoker::default();
+                        let mut revoker = adapter::InvocationRevoker::new(consumer);
                         let result = adapter.observe(adapter::InstalledClientRun::from_prepared(
                             inventory.invocation(),
                             limits,
@@ -297,6 +298,11 @@ pub(in crate::workbench) fn execute_installed(
                                 decode: &mut owners.decode,
                             },
                         ));
+                        if revoker.consumer_fault() {
+                            attempt.fail(RunFault::InstalledObservation(
+                                observation::InstalledObservationFault::Abandoned,
+                            ));
+                        }
                         drop(revoker);
                         owners.comparison.ready().map_err(|error| {
                             RunFault::Record(WorkflowRecordError::Observation(error))

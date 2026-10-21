@@ -44,8 +44,9 @@ use invocation::{InvocationObservationState, InvocationObservationView};
 use native::data::{Bytes, SourcePath, Text};
 use native::{FixtureAlias, PrivateRecordAdoption, PrivateRecordError, RecordRetentionUsage};
 pub use processes::{
-    FinishedInstalledProcess, InstalledMetadataQuery, InstalledProcessFinish,
-    InstalledProcessPurpose, RunningInstalledProcess,
+    ConsumerProcessCommand, ConsumerProducerRole, FinishedInstalledProcess, InstalledConsumerPorts,
+    InstalledMetadataQuery, InstalledProcessFinish, InstalledProcessPurpose,
+    PreparedInstalledConsumerProcess, RunningInstalledProcess,
 };
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstalledAdapterError {
@@ -240,6 +241,12 @@ impl<'a> InstalledClientRun<'a> {
         Ok(())
     }
     fn work_ready(&mut self) -> Result<(), InstalledAdapterError> {
+        if self.revoker.consumer_fault() {
+            self.receiving.fail(InstalledObservationError::Abandoned);
+            self.attempt.fail(RunFault::InstalledObservation(
+                InstalledObservationError::Abandoned,
+            ));
+        }
         if let Err(error) = self.decode.ready() {
             self.attempt.fail(RunFault::Decode(error));
         }

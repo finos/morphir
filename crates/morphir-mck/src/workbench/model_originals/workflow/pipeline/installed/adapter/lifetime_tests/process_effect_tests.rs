@@ -2,6 +2,9 @@
 //! No installed-client behavior, Git metadata, source association or role credit.
 //! Child of existing installed::adapter::lifetime_tests, reusing its fixtures
 //! and genuine pre-existing TestGateOwner allocation/engine callback.
+#[cfg(target_os = "macos")]
+mod consumer_port_foundation_tests;
+
 use super::*;
 use crate::transport::{Limits, process::ProcessProgress};
 use std::{

@@ -1,6 +1,9 @@
 use super::model_originals::workflow::pipeline::Policy;
 use crate::json::strict::Document;
 
+#[cfg(test)]
+mod consumer_observation_tests;
+
 /// Explicit caller-owned checker configuration. No source, report or adapter
 /// supplies these limits, and no selected production default is installed.
 pub struct RunConfiguration {
@@ -22,6 +25,36 @@ pub enum AdapterProtocol {
     HistoricalNewline,
     ContentLength,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ConsumerObservationSelection {
+    #[default]
+    Disabled,
+    OperationPort(OperationPortRevision),
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OperationPortRevision {
+    Draft1,
+}
+impl ConsumerObservationSelection {
+    fn from_document(value: &Document) -> Result<Self, String> {
+        use super::model_originals::workflow::pipeline::policy::{closed, get};
+        let fields = closed(value, &["mode", "version"])?;
+        let (Document::String(mode), Document::String(version)) =
+            (get(fields, "mode")?, get(fields, "version")?)
+        else {
+            return Err("consumer observation mode/version requires strings".into());
+        };
+        let parsed = semver::Version::parse(version)
+            .map_err(|_| "consumer observation version requires canonical SemVer")?;
+        if mode != "operation-port"
+            || parsed.to_string() != *version
+            || parsed != semver::Version::parse("0.1.0-draft.1").expect("fixed SemVer")
+        {
+            return Err("unsupported consumer observation revision".into());
+        }
+        Ok(Self::OperationPort(OperationPortRevision::Draft1))
+    }
+}
 pub(super) enum Configuration {
     Historical,
     ModelOriginals(Box<Policy>),
@@ -35,6 +68,7 @@ pub(super) enum Configuration {
         observation: NativeObservationLimits,
         private_record: RecordRetentionLimits,
         installed_observation: InstalledObservationLimits,
+        consumer_observation: ConsumerObservationSelection,
     },
 }
 /// Explicit cumulative native-record Vec capacity, separate from all existing
@@ -209,6 +243,15 @@ impl NativeObservationLimits {
     }
 }
 impl RunConfiguration {
+    pub fn consumer_observation(&self) -> ConsumerObservationSelection {
+        match &self.mode {
+            Configuration::InstalledOriginals {
+                consumer_observation,
+                ..
+            } => *consumer_observation,
+            _ => ConsumerObservationSelection::Disabled,
+        }
+    }
     pub fn execution_mode(&self) -> WorkbenchExecutionMode {
         match &self.mode {
             Configuration::Historical => WorkbenchExecutionMode::Historical,
@@ -300,16 +343,29 @@ impl RunConfiguration {
             }
             Some(Document::String(kind)) if kind == "model-originals-installed-client" => {
                 use super::model_originals::workflow::pipeline::policy::{closed, get};
-                let fields = closed(
-                    &document,
+                let consumer = fields
+                    .iter()
+                    .find(|(key, _)| key == "consumerObservation")
+                    .map(|(_, value)| value);
+                let keys: &[&str] = if consumer.is_some() {
                     &[
                         "kind",
                         "checker",
                         "observation",
                         "privateRecord",
                         "installedObservation",
-                    ],
-                )?;
+                        "consumerObservation",
+                    ]
+                } else {
+                    &[
+                        "kind",
+                        "checker",
+                        "observation",
+                        "privateRecord",
+                        "installedObservation",
+                    ]
+                };
+                let fields = closed(&document, keys)?;
                 #[derive(serde::Deserialize)]
                 struct RawInstalled<'a> {
                     #[serde(borrow)]
@@ -322,6 +378,10 @@ impl RunConfiguration {
                 let raw: RawInstalled<'_> = serde_json::from_str(raw)
                     .map_err(|_| "installed observation policy is not JSON")?;
                 Configuration::InstalledOriginals {
+                    consumer_observation: consumer
+                        .map(ConsumerObservationSelection::from_document)
+                        .transpose()?
+                        .unwrap_or_default(),
                     checker: Box::new(Policy::from_document(get(fields, "checker")?)?),
                     observation: NativeObservationLimits::from_document(
                         &Document::parse_unsigned_counts(raw.observation.get().as_bytes())?,

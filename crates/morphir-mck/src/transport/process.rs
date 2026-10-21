@@ -2,6 +2,14 @@
 //!
 //! This module supplies no adapter protocol, source grant or cleanup inference.
 //! Retained output limits count payload bytes, not allocator capacity or RSS.
+#[cfg(all(test, target_os = "macos"))]
+#[path = "process_consumer_clock_tests.rs"]
+mod consumer_clock_tests;
+#[cfg(target_os = "macos")]
+mod consumer_handles;
+#[cfg(target_os = "macos")]
+pub(crate) use consumer_handles::OwnedConsumerChildEnds;
+
 use std::{
     ffi::{OsStr, OsString},
     io::{self, Read},
@@ -22,6 +30,8 @@ pub struct CommandSpec {
     arguments: Vec<OsString>,
     directory: PathBuf,
     environment: Vec<(OsString, OsString)>,
+    #[cfg(target_os = "macos")]
+    child_handles: consumer_handles::ChildHandles,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandSpecError {
@@ -31,6 +41,55 @@ pub enum CommandSpecError {
     DuplicateEnvironmentKey,
 }
 impl CommandSpec {
+    #[cfg(all(test, target_os = "macos"))]
+    pub(crate) fn test_consumer_child_handle(&self, helper: bool) -> std::os::fd::BorrowedFd<'_> {
+        match &self.child_handles {
+            consumer_handles::ChildHandles::Consumer(ends) => ends.test_handle(helper),
+            consumer_handles::ChildHandles::Ordinary => {
+                panic!("actual consumer child handles required")
+            }
+        }
+    }
+    #[cfg(target_os = "macos")]
+    pub(crate) fn with_consumer_handles(
+        mut self,
+        ends: OwnedConsumerChildEnds,
+    ) -> Result<Self, CommandSpecError> {
+        let start = self
+            .environment
+            .len()
+            .checked_sub(2)
+            .ok_or(CommandSpecError::InvalidEnvironment)?;
+        for ((key, value), (expected, fd)) in self.environment[start..].iter_mut().zip(
+            [
+                "MORPHIR_PRIVATE_CONSUMER_OUTER_FD",
+                "MORPHIR_PRIVATE_CONSUMER_HELPER_FD",
+            ]
+            .into_iter()
+            .zip(ends.descriptors()),
+        ) {
+            if key != expected || value.capacity() < 10 {
+                return Err(CommandSpecError::InvalidEnvironment);
+            }
+            // Positive i32 descriptors have at most ten decimal digits. The
+            // SAME funded placeholder capacity exists before socket creation.
+            let mut digits = [0u8; 10];
+            let mut next = fd as u32;
+            let mut offset = digits.len();
+            loop {
+                offset -= 1;
+                digits[offset] = b'0' + (next % 10) as u8;
+                next /= 10;
+                if next == 0 {
+                    break;
+                }
+            }
+            value.clear();
+            value.push(std::str::from_utf8(&digits[offset..]).expect("decimal ASCII"));
+        }
+        self.child_handles = consumer_handles::ChildHandles::Consumer(ends);
+        Ok(self)
+    }
     pub(crate) fn program(&self) -> &std::path::Path {
         &self.program
     }
@@ -70,6 +129,8 @@ impl CommandSpec {
             arguments,
             directory,
             environment,
+            #[cfg(target_os = "macos")]
+            child_handles: consumer_handles::ChildHandles::Ordinary,
         })
     }
 }
@@ -406,8 +467,18 @@ impl OneShotProcess {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         tree::configure(&mut command);
+        #[cfg(target_os = "macos")]
+        let child_handles = spec.child_handles;
+        #[cfg(target_os = "macos")]
+        child_handles.configure(&mut command);
         // Only a spawn failure returns Err: there is no returned actual child.
-        let mut child = command.spawn().map_err(ProcessError::Spawn)?;
+        let spawned = command.spawn();
+        // Captured owned child handles are retired on BOTH outcomes. They must
+        // not keep a child-side peer alive in the parent after successful exec.
+        drop(command);
+        #[cfg(target_os = "macos")]
+        drop(child_handles);
+        let mut child = spawned.map_err(ProcessError::Spawn)?;
         let id = child.id();
         let faults = Arc::new(Mutex::new(None));
         let tree = match ProcessTree::attach(&child) {

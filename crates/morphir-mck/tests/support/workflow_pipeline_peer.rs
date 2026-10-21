@@ -21,6 +21,75 @@ fn receive(input: &mut impl BufRead) -> Option<Vec<u8>> {
 }
 
 pub(super) fn adapter(mode: &str) -> bool {
+    #[cfg(target_os = "macos")]
+    if mode == "installed-consumer-port-foundation" {
+        use std::os::fd::FromRawFd as _;
+        use std::os::unix::net::UnixStream;
+        use std::time::{Duration, Instant};
+        let outer: i32 = std::env::var("MORPHIR_PRIVATE_CONSUMER_OUTER_FD")
+            .unwrap()
+            .parse()
+            .unwrap();
+        let helper: i32 = std::env::var("MORPHIR_PRIVATE_CONSUMER_HELPER_FD")
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert!(outer >= 3 && helper >= 3);
+        assert_ne!(outer, helper);
+        fn role(descriptor: i32, sent: u8, expected: u8) {
+            unsafe extern "C" {
+                fn fcntl(fd: i32, operation: i32, ...) -> i32;
+            }
+            let flags = unsafe { fcntl(descriptor, 1) };
+            let status = unsafe { fcntl(descriptor, 3) };
+            assert!(
+                flags >= 0 && flags & 1 == 0,
+                "only exact child endpoint must cross exec without CLOEXEC"
+            );
+            assert!(
+                status >= 0 && status & 4 != 0,
+                "actual inherited endpoint must remain nonblocking"
+            );
+            // SAFETY: the opt-in test process owns this explicitly transferred
+            // descriptor. Its selector names it; the selector creates nothing.
+            let mut socket = unsafe { UnixStream::from_raw_fd(descriptor) };
+            socket.set_nonblocking(true).unwrap();
+            let end = Instant::now() + Duration::from_secs(10);
+            loop {
+                match socket.write(&[sent]) {
+                    Ok(1) => break,
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+                        ) => {}
+                    result => panic!("actual role write: {result:?}"),
+                }
+                assert!(Instant::now() < end);
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            let mut byte = [0u8; 1];
+            loop {
+                match socket.read(&mut byte) {
+                    Ok(1) => break,
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+                        ) => {}
+                    result => panic!("actual role read: {result:?}"),
+                }
+                assert!(Instant::now() < end);
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            assert_eq!(byte, [expected]);
+        }
+        role(outer, b'O', b'o');
+        role(helper, b'H', b'h');
+        std::fs::write(std::env::args_os().nth(3).unwrap(), b"both-owned\n").unwrap();
+        println!("consumer-port-entry-v1");
+        return true;
+    }
     // Test-only ordinary process entry, no MEP request/expected DATA.
     if mode == "installed-process-effect-marker" {
         let marker = std::path::PathBuf::from(std::env::args_os().nth(3).unwrap());
