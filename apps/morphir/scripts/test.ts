@@ -35,6 +35,8 @@ function headlessAcceptance(target: string, binary: string, launcher?: string, i
     MORPHIR_CONNECTED_HELPER: join(appDirectory, 'build-provider/connected.mjs'),
     MORPHIR_TRANSFER_HELPER: join(appDirectory, 'build-provider/transfers.mjs'),
     MORPHIR_ORIGINALS_HELPER: join(appDirectory, 'build-provider/originals.mjs'),
+    MORPHIR_TEST_CONSUMER_OPERATION_PORT: process.platform === 'darwin' && process.arch === 'arm64' &&
+      (target === 'js' || target === 'native') && process.env.MORPHIR_MODEL_ORIGINALS_HOST ? '1' : '0',
     ...(launcher ? { MORPHIR_HEADLESS_LAUNCHER: launcher } : {}),
     ...(installedRoot ? {
       MORPHIR_GENERATION_HELPER: join(installedRoot, 'build-provider/library-build.mjs'),
@@ -43,6 +45,11 @@ function headlessAcceptance(target: string, binary: string, launcher?: string, i
       MORPHIR_ORIGINALS_HELPER: join(installedRoot, 'build-provider/originals.mjs'),
     } : {}),
   };
+  if (target === 'js' && !installedRoot) {
+    execFileSync(process.execPath, ['--test', join(workspaceDirectory, 'pkgs/morphir-host/model-originals-client/operation-port.test.ts')], {
+      cwd: workspaceDirectory, env, stdio: 'inherit', timeout: 15000,
+    });
+  }
   for (const script of [
     'test-headless-evaluation.ts',
     'test-headless-models.ts',

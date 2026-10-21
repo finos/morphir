@@ -143,6 +143,11 @@ pub fn process(
     cstring(home),
     timeout,
   )
+  decode_process(data)
+}
+
+///|
+fn decode_process(data : Bytes) -> Json raise {
   if data.length() < 8 {
     raise IOError("Invalid process response")
   }
@@ -160,6 +165,92 @@ pub fn process(
     word(0),
     @utf8.decode(data[8:8 + length]),
     @utf8.decode(data[8 + length:]),
+  )
+}
+
+///|
+#external
+pub type OriginalsObserver
+
+///|
+pub extern "C" fn originals_observer_start() -> OriginalsObserver = "morphir_originals_observer_start"
+
+///|
+#borrow(path)
+extern "C" fn originals_observer_commit_c(
+  owner : OriginalsObserver,
+  path : Bytes,
+  returned : Int32,
+) -> Unit = "morphir_originals_observer_commit"
+
+///|
+#borrow(path)
+extern "C" fn originals_observer_cleanup_c(
+  owner : OriginalsObserver,
+  path : Bytes,
+  returned : Int32,
+) -> Unit = "morphir_originals_observer_cleanup"
+
+///|
+pub fn OriginalsObserver::commit(
+  self : OriginalsObserver,
+  path : String,
+  returned : Bool,
+) -> Unit {
+  originals_observer_commit_c(self, cstring(path), if returned { 1 } else { 0 })
+}
+
+///|
+pub fn OriginalsObserver::cleanup(
+  self : OriginalsObserver,
+  path : String,
+  returned : Bool,
+) -> Unit {
+  originals_observer_cleanup_c(
+    self,
+    cstring(path),
+    if returned {
+      1
+    } else {
+      0
+    },
+  )
+}
+
+///|
+pub extern "C" fn OriginalsObserver::finish(self : OriginalsObserver) -> Unit = "morphir_originals_observer_finish"
+
+///|
+#borrow(program, args, cwd, home)
+extern "C" fn originals_observer_process_c(
+  owner : OriginalsObserver,
+  program : Bytes,
+  args : Bytes,
+  count : Int32,
+  cwd : Bytes,
+  home : Bytes,
+  timeout : Int32,
+) -> Bytes = "morphir_originals_observer_process"
+
+///|
+pub fn OriginalsObserver::process(
+  self : OriginalsObserver,
+  program : String,
+  args : Array[String],
+  cwd : String,
+  home : String,
+  timeout : Int32,
+) -> Json raise {
+  decode_process(
+    originals_observer_process_c(
+      self,
+      cstring(program),
+      cstring(args.join("\u0000")),
+      args.length(),
+      cstring(cwd),
+      cstring(home),
+      timeout,
+    ),
   )
 }
 

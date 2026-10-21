@@ -41,6 +41,15 @@ function prefix(value: ObjectValue): void {
   equal(value.get('profile'), ORIGINALS_PROFILE); equal(value.get('contractVersion'), ORIGINALS_VERSION);
 }
 export interface Binding {sessionId: string; source: {providerId: string; locator: string}; projectId: string;}
+/** A business boundary, after release validation and the final active check.
+ * The optional observer receives literal exchange bytes without transport or
+ * source authority. It cannot prevent application completion by throwing.
+ */
+export interface ReleaseAccepted {
+  readonly captureId: string;
+  readonly binding: Readonly<{sessionId:string;source:Readonly<{providerId:string;locator:string}>;projectId:string}>;
+  readonly exchange: ModelOriginalsCaptureExchange;
+}
 function binding(value: ExactJson | undefined, expected: Binding): void {
   const root = fields(value, ['sessionId','source','projectId']);
   const source = fields(root.get('source'), ['providerId','locator']);
@@ -189,7 +198,8 @@ function retained(value: ObjectValue, expected: Binding, capture: Capture): void
 }
 /** Verify every original on the owning connection, then require release before publication. */
 export async function receiveOriginals(session: ModelOriginalsSession, project: ModelOriginalsProject,
-  expected: Binding, sink: OriginalSink, makeHash:()=>Hasher, current:()=>boolean): Promise<{capture:Capture;entries:Entry[]}> {
+  expected: Binding, sink: OriginalSink, makeHash:()=>Hasher, current:()=>boolean,
+  accepted?:(value:ReleaseAccepted)=>void): Promise<{capture:Capture;entries:Entry[]}> {
   const active=()=>{if(!current())fail('originals.cancelled');};
   active();const capture=readCapture(await session.exchangeCapture(project,{scope:'complete',semantic:'none'}),expected);
   const entries:Entry[]=[];const pages:{start:number;length:number}[]=[];let metadata=0;
@@ -236,7 +246,16 @@ export async function receiveOriginals(session: ModelOriginalsSession, project: 
     }while(offset<item.byteLength);
     equal(hasher.hex(),item.sha256);sink.end();
   }
-  active();const released=result(await session.exchangeOriginals('release',{captureId:capture.captureId}));
+  active();const exchange=await session.exchangeOriginals('release',{captureId:capture.captureId});
+  const released=result(exchange);
   fields(released,['profile','contractVersion','captureId','status']);prefix(released);equal(released.get('captureId'),capture.captureId);equal(released.get('status'),'released');
-  active();return{capture,entries};
+  active();
+  if(accepted){
+    try{
+      accepted(Object.freeze({captureId:capture.captureId,
+        binding:Object.freeze({sessionId:expected.sessionId,source:Object.freeze({...expected.source}),projectId:expected.projectId}),
+        exchange:Object.freeze({...exchange})}));
+    }catch{/* Observation cannot change the accepted application result. */}
+  }
+  return{capture,entries};
 }

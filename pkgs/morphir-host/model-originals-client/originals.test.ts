@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {receiveOriginals,inventoryDigest,verifyInventory,type Capture,type Entry,type Hasher} from './originals.ts';
+import {receiveOriginals,inventoryDigest,verifyInventory,type Capture,type Entry,type Hasher,type ReleaseAccepted} from './originals.ts';
 import type {ModelOriginalsSession,ModelOriginalsCaptureExchange,ModelOriginalsProject} from './session.ts';
 const hash=():Hasher=>{const value=createHash('sha256');return{update(bytes){value.update(bytes);},hex(){return value.digest('hex');}};};
 const original=Buffer.from('\ufeff# original\r\nformatVersion: 4\r\n');
@@ -45,16 +45,36 @@ function peer(mutate:Mutate=()=>{}):ModelOriginalsSession{
    return exchange(method,{...shared,binding,captureId:capture.captureId,target:request.target,offset:request.offset,nextOffset:bytes.length,content:bytes.subarray(request.offset).toString('base64')});
   }};
 }
-async function receive(mutate?:Mutate){
+async function receive(mutate?:Mutate,accepted?:(value:ReleaseAccepted)=>void,current:()=>boolean=()=>true){
  const files:Buffer[][]=[];let index=-1,released=false;
  const session=peer((method,value,id)=>{if(method==='release')released=true;return mutate?.(method,value,id);});
  const result=await receiveOriginals(session,{} as ModelOriginalsProject,binding,{
   inventory(){},begin(i){index=i;files[index]=[];},write(bytes){files[index]!.push(Buffer.from(bytes));},end(){},
- },hash,()=>true);
+ },hash,current,accepted);
  return{result,files,released};
 }
 test('complete originals retain BOM/CRLF, opaque bytes and empty directories before confirmed release',async()=>{
  const value=await receive();assert.deepEqual(Buffer.concat(value.files[0]!),original);assert.deepEqual(Buffer.concat(value.files[3]!),opaque);assert.equal(value.released,true);assert.equal(value.result.entries[2]!.path,'notes/empty');
+});
+test('release acceptance observes the exact exchange only after semantic validation and final cancellation check',async()=>{
+ const accepted:ReleaseAccepted[]=[];
+ await receive(undefined,value=>accepted.push(value));
+ assert.equal(accepted.length,1);
+ assert.equal(accepted[0]!.captureId,capture.captureId);
+ assert.deepEqual(accepted[0]!.binding,binding);
+ assert.equal(JSON.parse(accepted[0]!.exchange.reply).result.status,'released');
+ assert.equal(accepted[0]!.exchange.requestId,'5');
+ assert.ok(Object.isFrozen(accepted[0]!.binding.source));
+ assert.ok(Object.isFrozen(accepted[0]!.exchange));
+ let called=false;
+ await assert.rejects(receive((method,value)=>{if(method==='release')value.captureId='foreign';},()=>{called=true;}));
+ assert.equal(called,false);
+ let cancelled=false;
+ await assert.rejects(receive(method=>{if(method==='release')cancelled=true;},()=>{called=true;},()=>!cancelled));
+ assert.equal(called,false);
+ // An observer cannot change a completed transfer into an application failure.
+ const value=await receive(undefined,()=>{throw new Error('observer failed');});
+ assert.equal(value.released,true);
 });
 for(const [name,mutate]of Object.entries<Mutate>({
  'wrong capture binding':(method,value)=>{if(method==='capture')value.binding={...binding,projectId:'foreign'};},

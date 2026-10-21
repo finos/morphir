@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
 import {openModelOriginalsSession,ModelOriginalsConnectionLimits,type ModelOriginalsSession} from '../../../pkgs/morphir-host/model-originals-client/session.ts';
 import {receiveOriginals,OriginalsFailure,type Hasher} from '../../../pkgs/morphir-host/model-originals-client/originals.ts';
+import {openConsumerOperationPort,type ConsumerOperationPort} from '../../../pkgs/morphir-host/model-originals-client/operation-port.ts';
 import {originalsConnectionDescriptor} from '../../../pkgs/morphir-host/model-originals-client/selection.mts';
 import {Refusal,refuse,closed,record,readBounded,decode,connection,context,authenticatedWebSocket} from '../../../pkgs/morphir-host/connection/node-session.mts';
 import type {Core} from '../../../pkgs/morphir-host/execution-client/contracts.mts';
@@ -21,7 +22,7 @@ function configuration(raw:unknown):Configuration {
   return value;
 }
 function hasher():Hasher {const hash=createHash('sha256');return {update(bytes){hash.update(bytes);},hex(){return hash.digest('hex');}};}
-async function acquire(config:Configuration,core:Core,interrupted:()=>boolean):Promise<{code:number;report:object}> {
+async function acquire(config:Configuration,core:Core,interrupted:()=>boolean,observer?:ConsumerOperationPort):Promise<{code:number;report:object}> {
   const request=decode(core,config.source);
   if(!closed(request,config.operation==='list'?['source']:['source','projectId'])||!record(request)||!closed(request.source,['providerId','locator'])||!record(request.source)||
       typeof request.source.providerId!=='string'||typeof request.source.locator!=='string'||config.operation==='originals'&&typeof request.projectId!=='string')refuse('originals.invalid_selection');
@@ -61,7 +62,13 @@ async function acquire(config:Configuration,core:Core,interrupted:()=>boolean):P
       begin(index){fd=openSync(join(config.scratch,'part-'+Math.floor(index/65536),'file-'+index),constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW||0),0o600);},
       write(bytes){let offset=0;while(offset<bytes.length){const count=writeSync(fd,bytes,offset,bytes.length-offset);if(!count)refuse('originals.local_write_failed');offset+=count;}},
       end(){closeSync(fd);fd=-1;},
-    },hasher,check);
+    },hasher,check,observer?accepted=>{
+      observer.emit(()=>({kind:'release-accepted',requestId:accepted.exchange.requestId,captureId:accepted.captureId,
+        binding:{sessionId:accepted.binding.sessionId,providerId:accepted.binding.source.providerId,
+          sourceLocator:accepted.binding.source.locator,projectId:accepted.binding.projectId},
+        requestSha256:createHash('sha256').update(accepted.exchange.request,'utf8').digest('hex'),
+        replySha256:createHash('sha256').update(accepted.exchange.reply,'utf8').digest('hex')}));
+    }:undefined);
     cleanup={kind:'released'};
     if(!check())refuse('originals.cancelled');
     // Recheck session/offer currentness after release and before local publication.
@@ -74,12 +81,18 @@ async function acquire(config:Configuration,core:Core,interrupted:()=>boolean):P
   }finally{if(fd>=0)closeSync(fd);clearInterval(watch);process.off('SIGINT',onInterrupt);session?.close();http.close();}
 }
 export async function originalsCommand(raw:unknown,suppliedCore?:Core,interrupted:()=>boolean=()=>false):Promise<{code:number;report:object}> {
+  let observer:ConsumerOperationPort|undefined;
   try {
     const config=configuration(raw);let core=suppliedCore;
+    if(config.operation==='originals')observer=openConsumerOperationPort('transfer-helper');
     if(!core){await import(new URL('../dist/connected-core.js',import.meta.url).href);core=(globalThis as typeof globalThis&{__morphirConnectedCore?:()=>Core}).__morphirConnectedCore?.();}
-    if(!core)refuse('connected.validation_core_unavailable');return await acquire(config,core,interrupted);
+    if(!core)refuse('connected.validation_core_unavailable');return await acquire(config,core,interrupted,observer);
   }catch(error){return{code:2,report:{profile,contractVersion,observation:'refused',cleanup:{kind:'not-connected'},error:error instanceof Refusal?error.code:'originals.invalid_command'}};}
+  finally{observer?.finish({kind:'not-applicable'});}
 }
+// Called only by the actual Node CLI canonical originals scope. The endpoint
+// carries observation delivery, never model/source execution authority.
+export function openOriginalsOuterObservation():ConsumerOperationPort|undefined{return openConsumerOperationPort('outer');}
 if(process.argv[1]&&pathToFileURL(process.argv[1]).href===import.meta.url){
   let value;try{if(process.argv[2]!=='--morphir-originals-v1'||!process.argv[3]||process.argv.length!==4)refuse('originals.invalid_command');value=await originalsCommand(JSON.parse(readBounded(process.argv[3],4194304)));}
   catch{value={code:2,report:{profile,contractVersion,observation:'refused',cleanup:{kind:'not-connected'},error:'originals.invalid_command'}};}

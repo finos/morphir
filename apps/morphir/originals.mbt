@@ -5,6 +5,12 @@ priv struct OriginalsControl {
 }
 
 ///|
+priv struct OriginalsObservation {
+  commit : (String, Bool) -> Unit
+  cleanup : (String, Bool) -> Unit
+}
+
+///|
 fn originals_check(control : OriginalsControl) -> Unit raise {
   if @platform.interruption_requested() ||
     (control.cancel_file != "" && @platform.kind(control.cancel_file) != 0) {
@@ -83,6 +89,7 @@ fn originals_publish(
   scratch : String,
   output : String,
   control : OriginalsControl,
+  observation : OriginalsObservation?,
 ) -> Json raise {
   originals_check(control)
   guard report is Object(fields) &&
@@ -184,7 +191,15 @@ fn originals_publish(
     })
   }
   originals_check(control)
-  (transaction.commit)(destination)
+  {
+    errdefer (if observation is Some(observer) {
+      (observer.commit)(destination, false)
+    })
+    (transaction.commit)(destination)
+  }
+  if observation is Some(observer) {
+    (observer.commit)(destination, true)
+  }
   fields["observation"] = Json::string("published")
   fields["publication"] = Json::string("cli")
   fields["representation"] = Json::string("original-bytes")
@@ -265,6 +280,7 @@ fn originals_finish(
   output : String,
   mode : OutputMode,
   control : OriginalsControl,
+  observation : OriginalsObservation?,
 ) -> Int32 {
   let mut status = code
   let mut cleanup : Json = Json::string("unknown")
@@ -283,7 +299,7 @@ fn originals_finish(
     }
     cleanup = fields.get("cleanup").unwrap_or(Json::string("unknown"))
     if code == 0 && fields.get("operation") == Some(Json::string("originals")) {
-      originals_publish(report, scratch, output, control)
+      originals_publish(report, scratch, output, control, observation)
     } else if code != 0 ||
       fields.get("observation") == Some(Json::string("discovered")) {
       report
@@ -304,8 +320,16 @@ fn originals_finish(
         } : Json)
     }
   }
-  originals_cleanup(scratch) catch {
+  try {
+    originals_cleanup(scratch)
+    if observation is Some(observer) {
+      (observer.cleanup)(scratch, true)
+    }
+  } catch {
     _ => {
+      if observation is Some(observer) {
+        (observer.cleanup)(scratch, false)
+      }
       status = 1
       report = {
         "profile": "morphir/cli/originals-command",
@@ -331,13 +355,26 @@ extern "js" fn originals_start(
   config : String,
   core : (String) -> String,
   interrupted : () -> Bool,
-  finish : (String, Int32) -> Int32,
+  finish : (String, Int32, (String, String, Bool) -> Unit) -> Int32,
 ) -> Unit =
   #| (helper,config,core,interrupted,finish)=>{
+  #|   const noop=()=>{};
   #|   import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
-  #|     .then(module=>module.originalsCommand(JSON.parse(config),core,interrupted))
-  #|     .then(({code,report})=>{process.exitCode=finish(JSON.stringify(report),code);})
-  #|     .catch(()=>{process.exitCode=finish('',1);});
+  #|     .then(async module=>{
+  #|       const input=JSON.parse(config);
+  #|       const owner=input.operation==='originals'?module.openOriginalsOuterObservation?.():undefined;
+  #|       const observe=(kind,path,returned)=>{try{
+  #|         owner?.emit(()=>{
+  #|           const fact={kind,path:{kind:'unix-bytes',bytes:{kind:'hex',hex:Buffer.from(path,'utf8').toString('hex')}},outcome:returned?'returned':'raised'};
+  #|           if(kind==='destination-commit-finished')fact.policy='create';
+  #|           return fact;
+  #|         });
+  #|       }catch{}};
+  #|       try{
+  #|         let value;try{value=await module.originalsCommand(input,core,interrupted);}catch{value={code:1,report:null};}
+  #|         process.exitCode=finish(value.report===null?'':JSON.stringify(value.report),value.code,observe);
+  #|       }finally{owner?.finish({kind:'in-process'});}
+  #|     }).catch(()=>{process.exitCode=finish('',1,noop);});
   #| }
 
 ///|
@@ -358,8 +395,23 @@ fn originals_dispatch(
     config.stringify(),
     source => core.handle(source).stringify(),
     @platform.interruption_requested,
-    (source, code) => {
-      originals_finish(source, code, scratch, output, mode, control)
+    (source, code, observe) => {
+      originals_finish(
+        source,
+        code,
+        scratch,
+        output,
+        mode,
+        control,
+        Some({
+          commit: (path, returned) => {
+            observe("destination-commit-finished", path, returned)
+          },
+          cleanup: (path, returned) => {
+            observe("scratch-cleanup-finished", path, returned)
+          },
+        }),
+      )
     },
   )
   0
@@ -377,16 +429,25 @@ fn originals_dispatch(
   mode : OutputMode,
   control : OriginalsControl,
 ) -> Int32 {
+  let owner = if config is { "operation": String("originals"), .. } {
+    Some(@platform.originals_observer_start())
+  } else {
+    None
+  }
+  defer (if owner is Some(observer) { observer.finish() })
+  let observation = owner.map(observer => OriginalsObservation::{
+    commit: (path, returned) => observer.commit(path, returned),
+    cleanup: (path, returned) => observer.cleanup(path, returned),
+  })
   let result = try {
     let path = scratch + "/command.json"
     @platform.write(path, config.stringify())
-    let result = @platform.process(
-      node,
-      [helper, "--morphir-originals-v1", path],
-      @platform.cwd(),
-      "",
-      timeout + 5000,
-    )
+    let args = [helper, "--morphir-originals-v1", path]
+    let result = match owner {
+      Some(observer) =>
+        observer.process(node, args, @platform.cwd(), "", timeout + 5000)
+      None => @platform.process(node, args, @platform.cwd(), "", timeout + 5000)
+    }
     guard result
       is { "stdout": String(source), "exitCode": Number(number, ..), .. } else {
       raise @config.Invalid("originals.helper_lost")
@@ -395,7 +456,15 @@ fn originals_dispatch(
   } catch {
     _ => ("", 1)
   }
-  originals_finish(result.0, result.1, scratch, output, mode, control)
+  originals_finish(
+    result.0,
+    result.1,
+    scratch,
+    output,
+    mode,
+    control,
+    observation,
+  )
 }
 
 ///|

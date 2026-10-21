@@ -13,7 +13,7 @@ import {
 } for "test"
 
 options(
-  "native-stub": [ "platform.c" ],
+  "native-stub": [ "platform.c", "originals_observer.c" ],
   targets: {
     "observation.mbt": [ "wasm", "wasm-gc" ],
     "desktop.mbt": [ "native", "js" ],

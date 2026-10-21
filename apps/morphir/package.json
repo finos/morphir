@@ -22,6 +22,7 @@
     "build": "bun --check scripts/build.ts",
     "start": "node bin/morphir.js",
     "test": "node scripts/test.ts",
+    "test:consumer-operation-port": "node --test ../../pkgs/morphir-host/model-originals-client/operation-port.test.ts",
     "prepack": "bun run build"
   },
   "repository": {

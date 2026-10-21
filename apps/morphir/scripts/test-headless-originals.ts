@@ -7,6 +7,7 @@ import {join,resolve,relative} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {headlessEnvironment} from './headless-environment.ts';
+import {runObservedOriginals} from './originals-operation-test.ts';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const target=process.argv[2]??'js';
 const hostBinary=process.env.MORPHIR_MODEL_ORIGINALS_HOST;
@@ -18,9 +19,12 @@ const executable=target==='native'?cliBinary:process.execPath;
 const prefix=target==='native'?[]:portable?[join(repo,'pkgs/morphir-host/runners/wasm.mjs'),cliBinary]:[launcher];
 let host:ChildProcess|undefined;
 function digest(bytes:Uint8Array){return createHash('sha256').update(bytes).digest('hex');}
+function cliEnvironment(cwd:string,helper?:string){return headlessEnvironment(join(cwd,'cli-environment'),{
+ MORPHIR_CONNECTED_HELPER:process.env.MORPHIR_CONNECTED_HELPER??join(repo,'apps/morphir/build-provider/connected.mjs'),
+ MORPHIR_ORIGINALS_HELPER:helper??process.env.MORPHIR_ORIGINALS_HELPER??join(repo,'apps/morphir/build-provider/originals.mjs'),
+ TMPDIR:join(root,'tmp'),TMP:join(root,'tmp'),TEMP:join(root,'tmp')});}
 async function cli(cwd:string,args:string[],helper?:string,interruptOnWrite=false){
- const child=spawn(executable,[...prefix,...args,'--provider','workbench-http','--json'],{cwd,env:headlessEnvironment(join(cwd,'cli-environment'),{
-  MORPHIR_CONNECTED_HELPER:process.env.MORPHIR_CONNECTED_HELPER??join(repo,'apps/morphir/build-provider/connected.mjs'),MORPHIR_ORIGINALS_HELPER:helper??process.env.MORPHIR_ORIGINALS_HELPER??join(repo,'apps/morphir/build-provider/originals.mjs'),TMPDIR:join(root,'tmp'),TMP:join(root,'tmp'),TEMP:join(root,'tmp')}),stdio:['ignore','pipe','pipe']});
+ const child=spawn(executable,[...prefix,...args,'--provider','workbench-http','--json'],{cwd,env:cliEnvironment(cwd,helper),stdio:['ignore','pipe','pipe']});
  let stdout='',stderr='';child.stdout.on('data',bytes=>stdout+=bytes);child.stderr.on('data',bytes=>stderr+=bytes);
  let timer:ReturnType<typeof setInterval>|undefined;
  if(interruptOnWrite)timer=setInterval(()=>{
@@ -104,6 +108,52 @@ try{
   for(const value of [connected,listed,result]){assert.ok(!value.stdout.includes(cookie)&&!value.stderr.includes(cookie));assert.ok(!value.stdout.includes(new URL(launch).searchParams.get('token')!));}
   assert.deepEqual(readdirSync(join(root,'tmp')),[],'All owned scratch removed');
   const duplicate=await cli(cwd,['connected','originals',selection,'--connection',connection,'--output','saved']);assert.equal(duplicate.code,2);assert.deepEqual(inventory(join(cwd,'saved/originals')),expected);
+  if(process.env.MORPHIR_TEST_CONSUMER_OPERATION_PORT==='1'&&layout==='single-file'&&representation==='yaml'){
+   for(const dropAckKind of [undefined,'destination-commit-finished','release-accepted'] as const){
+    const output='observed-'+(dropAckKind??'healthy');
+    const observed=await runObservedOriginals(executable,[...prefix,'connected','originals',selection,'--connection',connection,
+     '--output',output,'--timeout','10000','--provider','workbench-http','--json'],cwd,cliEnvironment(cwd),{
+      target:target as 'js'|'native',...(dropAckKind?{dropAckKind}:{}),
+     });
+    assert.equal(observed.code,0,observed.stdout+observed.stderr);
+    assert.equal(JSON.parse(observed.stdout).observation,'published');
+    assert.deepEqual(inventory(join(cwd,output,'originals')),expected);
+    assert.deepEqual(readdirSync(join(root,'tmp')),[],'Mandatory scratch cleanup after observer delivery');
+    const facts=observed.frames.map(frames=>frames.filter(frame=>frame.kind==='fact').map(frame=>frame.fact as Record<string,unknown>));
+    assert.equal(facts[1]!.length,1);
+    const accepted=facts[1]![0]!;
+    assert.equal(accepted.kind,'release-accepted');
+    assert.deepEqual(accepted.binding,{sessionId:JSON.parse(readFileSync(connection,'utf8')).sessionId,
+     providerId:source.providerId,sourceLocator:source.locator,projectId:listed.report.projects[0].projectId});
+    assert.match(String(accepted.requestSha256),/^[0-9a-f]{64}$/);assert.match(String(accepted.replySha256),/^[0-9a-f]{64}$/);
+    assert.deepEqual(facts[0]!.map(fact=>fact.kind),dropAckKind==='release-accepted'?[]:
+     dropAckKind==='destination-commit-finished'?['destination-commit-finished']:['destination-commit-finished','scratch-cleanup-finished']);
+    for(const fact of facts[0]!){assert.equal(fact.outcome,'returned');}
+    if(!dropAckKind){
+     assert.equal(observed.frames.flat().length,target==='native'?8:7);
+     assert.equal(observed.frames[1]!.at(-1)!.kind,'close');
+     const terminal=observed.frames[0]!.at(-1)!;assert.equal(terminal.kind,'close');
+     assert.equal(terminal.attemptedHooks,2);assert.equal(terminal.startedFactFrames,2);assert.equal(terminal.retainedBusinessFacts,2);
+     const helper=terminal.helper as {kind:string;wait?:{kind:string;rawStatus:string}};
+     assert.equal(helper.kind,target==='native'?'started':'in-process');
+     if(target==='native')assert.deepEqual(helper.wait,{kind:'waited',rawStatus:'0'});
+    }else{
+     assert.equal(observed.frames[0]!.some(frame=>frame.kind==='close'),false,'Faulted Outer never sends Close');
+     if(dropAckKind==='release-accepted')assert.equal(observed.frames[1]!.some(frame=>frame.kind==='close'),false);
+    }
+    if(process.env.MORPHIR_TEST_OPERATION_EVIDENCE){
+     const evidence=resolve(process.env.MORPHIR_TEST_OPERATION_EVIDENCE);mkdirSync(evidence,{recursive:true});
+     writeFileSync(join(evidence,`${target}-${dropAckKind??'healthy'}.json`),JSON.stringify({
+      target,mode:dropAckKind??'healthy',program:executable,programSha256:digest(readFileSync(executable)),
+      arguments:[...prefix,'connected','originals',selection,'--connection',connection,'--output',output,'--timeout','10000','--provider','workbench-http','--json'],
+      helperSha256:digest(readFileSync(cliEnvironment(cwd).MORPHIR_ORIGINALS_HELPER!)),
+      hostSha256:digest(readFileSync(hostBinary!)),observed,expectedDestination:expected,
+      scope:'Application-test observations only; not an independent saved report or full-profile qualification',
+     },null,2));
+    }
+    console.log(`${target}: actual operation-port ${dropAckKind??'healthy'} preserves publication and mandatory cleanup`);
+   }
+  }
   if(layout==='document-tree'&&format==='json'){
    const credential=readFileSync(connection,'utf8');
    for(const fault of ['session','profile']){
