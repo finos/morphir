@@ -99,6 +99,11 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
         Ok(selected) => selected,
         Err(error) => return finish(Outcome::Usage(error.to_string())),
     };
+    if matches!(adapter, WorkbenchLaunch::BrowserOriginals) {
+        return finish(Outcome::Usage(
+            "browser configuration requires a maintained browser adapter".into(),
+        ));
+    }
     let source = args.kit.join("cases.json");
     let same_source = if args.report.exists() {
         match same_file::is_same_file(&source, &args.report) {
@@ -125,6 +130,9 @@ pub async fn run(args: RunArgs) -> AppResult<miette::Report> {
     let mut interrupt = None;
     let interrupted = Arc::new(AtomicBool::new(false));
     let report = tokio::task::block_in_place(|| match adapter {
+        WorkbenchLaunch::BrowserOriginals => {
+            unreachable!("browser selection refuses before effects")
+        }
         WorkbenchLaunch::InstalledClient(launch) => {
             let cancellation = Arc::clone(&interrupted);
             interrupt = Some(tokio::spawn(async move {

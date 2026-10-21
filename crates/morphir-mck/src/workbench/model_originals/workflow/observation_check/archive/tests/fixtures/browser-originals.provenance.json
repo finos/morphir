@@ -1,0 +1,56 @@
+{
+  "kind": "actual connected browser archive, format-only retained test input",
+  "capture": {
+    "sourceCommit": "1e249ca6c3639a8808aef9ea347cd62cff5c32eb",
+    "sourceKind": "actual connected browser UI download using existing fixture host",
+    "archive": {
+      "path": "originals.zip",
+      "bytes": 174443,
+      "sha256": "bdd4a0fe793927912fd31661ff310efa6eee2cb29991fe029cce0027b95786a5"
+    },
+    "inventoryRevision": "1",
+    "loadedScripts": [
+      {
+        "url": "http://127.0.0.1:53503/bootstrap.js",
+        "bytes": 990783,
+        "sha256": "e3b8d90af1ebad5528c2a0f5a04529a7937f08fb519a1d2c0e5ab48173f18bd6"
+      },
+      {
+        "url": "http://127.0.0.1:53503/code-editor.js",
+        "bytes": 645938,
+        "sha256": "0c897795c1df13b0b1d765e6a871c071a977536824536937472dbddbe61ebd51"
+      },
+      {
+        "url": "http://127.0.0.1:53503/browser.js",
+        "bytes": 1562165,
+        "sha256": "3a763456ff9a229ae8536e437a2182335df8973cd6c30fb549107115a243d496"
+      }
+    ],
+    "original": {
+      "path": "model.yaml",
+      "hex": "efbbbf23206f726967696e616c0d0a666f726d617456657273696f6e3a20340d0a",
+      "sha256": "09f12112d1cd288e72b6e72d37c734c69fb513d259967852c0e0a05c105e11a8"
+    },
+    "expectedDirectoryCount": 1001,
+    "expectedFileCount": 1,
+    "limits": "Product-format component evidence only. No MCK host/source authority or full workflow/profile/platform qualification."
+  },
+  "receipt": {
+    "sourceCommit": "1e249ca6c3639a8808aef9ea347cd62cff5c32eb",
+    "trackedSourceUnchanged": true,
+    "originalTestSHA256": "bb03a73fddca71a6824fb284fb32a8611f6abedc31b131af215997160a831466",
+    "executedTestSHA256": "d73f902527d923c258876f70f779d399d5a139b58568246631293e9dce43e9bd",
+    "archiveSHA256": "bdd4a0fe793927912fd31661ff310efa6eee2cb29991fe029cce0027b95786a5",
+    "captureSHA256": "993c1482efb792e0914f23ef32798fb5119eeb14f12af8a6d4106fdaf5725b45",
+    "buildEvidence": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/campaign-completion/browser-product-archive-v1/build.json",
+    "buildEvidenceSHA256": "144d5804ac28aafd0ce6f8d7af2c374d969bc8d5b37d59a3d8ece15fc27e46fa",
+    "buildExit": 0,
+    "browserExit": 0,
+    "wrapper": "/Users/damian/orca/workspaces/morphir-moonbit/model-originals-archive/apps/morphir-workbench/.dev/archive-capture-v4.test.ts",
+    "qualification": "Actual producer/browser download format component only; no shared-checker or host/profile claim"
+  },
+  "receiptSha256": "8ac3eeaaaa812c86c203da051a24fa85500ae35e6f02c2fa208215307d464b74",
+  "captureSha256": "993c1482efb792e0914f23ef32798fb5119eeb14f12af8a6d4106fdaf5725b45",
+  "expectedMembershipSource": "1e249ca6c3639a8808aef9ea347cd62cff5c32eb:apps/morphir-workbench/browser/originals-archive-browser.test.ts:62-65",
+  "qualification": "Immutable test input provenance only. No authority flows from this JSON or embedded bytes. No original151/175 workflow, action, source or revision binding is established by the reader."
+}

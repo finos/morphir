@@ -17,6 +17,7 @@ pub enum WorkbenchExecutionMode {
     ModelOriginals,
     NativeOriginals,
     InstalledOriginals,
+    BrowserOriginals,
 }
 /// Existing adapter framing selected by a validated checker configuration.
 /// This is a pure choice; only the actual session factory starts a process.
@@ -62,9 +63,19 @@ impl ConsumerObservationSelection {
         Ok(Self::OperationPort(OperationPortRevision::Draft1))
     }
 }
+/// Closed implementation selection, not a browser process or source grant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum BrowserClient {
+    Chromium,
+}
 pub(super) enum Configuration {
     Historical,
     ModelOriginals(Box<Policy>),
+    BrowserOriginals {
+        checker: Box<Policy>,
+        receiving: InstalledObservationLimits,
+        client: BrowserClient,
+    },
     NativeOriginals {
         checker: Box<Policy>,
         observation: NativeObservationLimits,
@@ -118,21 +129,6 @@ impl InstalledObservationLimits {
     /// production default is introduced by this component-only parser.
     pub(super) fn from_document(value: &Document) -> Result<Self, String> {
         use super::model_originals::workflow::pipeline::policy::{closed, get};
-        fn count(value: &Document) -> Result<u64, String> {
-            let Document::Number(number) = value else {
-                return Err("installed observation count requires canonical u64".into());
-            };
-            let token = number.as_str();
-            if token.is_empty()
-                || !token.bytes().all(|byte| byte.is_ascii_digit())
-                || (token.len() > 1 && token.starts_with('0'))
-            {
-                return Err("installed observation count requires canonical u64".into());
-            }
-            token
-                .parse()
-                .map_err(|_| "installed observation count exceeds u64".into())
-        }
         let fields = closed(
             value,
             &[
@@ -148,6 +144,40 @@ impl InstalledObservationLimits {
         if !matches!(get(fields, "rpcFrames")?, Document::String(mode) if mode == "checker-capture")
         {
             return Err("installed observation requires checker-capture RPC permission".into());
+        }
+        Self::from_count_fields(fields)
+    }
+    fn from_receiving_document(value: &Document) -> Result<Self, String> {
+        use super::model_originals::workflow::pipeline::policy::closed;
+        let fields = closed(
+            value,
+            &[
+                "retainedBytes",
+                "stdoutPrefixBytes",
+                "stderrPrefixBytes",
+                "snapshotReadBytes",
+                "byteVisits",
+                "records",
+            ],
+        )?;
+        Self::from_count_fields(fields)
+    }
+    fn from_count_fields(fields: &[(String, Document)]) -> Result<Self, String> {
+        use super::model_originals::workflow::pipeline::policy::get;
+        fn count(value: &Document) -> Result<u64, String> {
+            let Document::Number(number) = value else {
+                return Err("installed observation count requires canonical u64".into());
+            };
+            let token = number.as_str();
+            if token.is_empty()
+                || !token.bytes().all(|byte| byte.is_ascii_digit())
+                || (token.len() > 1 && token.starts_with('0'))
+            {
+                return Err("installed observation count requires canonical u64".into());
+            }
+            token
+                .parse()
+                .map_err(|_| "installed observation count exceeds u64".into())
         }
         Ok(Self {
             retained_bytes: count(get(fields, "retainedBytes")?)?,
@@ -250,6 +280,18 @@ impl NativeObservationLimits {
     }
 }
 impl RunConfiguration {
+    pub(super) fn browser_client(&self) -> Option<BrowserClient> {
+        match &self.mode {
+            Configuration::BrowserOriginals { client, .. } => Some(*client),
+            _ => None,
+        }
+    }
+    pub(super) fn browser_receiving_limits(&self) -> Option<&InstalledObservationLimits> {
+        match &self.mode {
+            Configuration::BrowserOriginals { receiving, .. } => Some(receiving),
+            _ => None,
+        }
+    }
     pub fn consumer_observation(&self) -> ConsumerObservationSelection {
         match &self.mode {
             Configuration::InstalledOriginals {
@@ -265,6 +307,7 @@ impl RunConfiguration {
             Configuration::ModelOriginals(_) => WorkbenchExecutionMode::ModelOriginals,
             Configuration::NativeOriginals { .. } => WorkbenchExecutionMode::NativeOriginals,
             Configuration::InstalledOriginals { .. } => WorkbenchExecutionMode::InstalledOriginals,
+            Configuration::BrowserOriginals { .. } => WorkbenchExecutionMode::BrowserOriginals,
         }
     }
     pub fn installed_observation_limits(&self) -> Option<&InstalledObservationLimits> {
@@ -294,9 +337,9 @@ impl RunConfiguration {
         match self.mode {
             Configuration::Historical => AdapterProtocol::HistoricalNewline,
             Configuration::ModelOriginals(_) => AdapterProtocol::ContentLength,
-            Configuration::NativeOriginals { .. } | Configuration::InstalledOriginals { .. } => {
-                AdapterProtocol::ContentLength
-            }
+            Configuration::NativeOriginals { .. }
+            | Configuration::InstalledOriginals { .. }
+            | Configuration::BrowserOriginals { .. } => AdapterProtocol::ContentLength,
         }
     }
     pub fn from_json(raw: &str) -> Result<Self, String> {
@@ -319,6 +362,28 @@ impl RunConfiguration {
             }
             Some(Document::String(kind)) if kind == "model-originals" => {
                 Configuration::ModelOriginals(Box::new(Policy::from_document(&document)?))
+            }
+            Some(Document::String(kind)) if kind == "model-originals-browser" => {
+                use super::model_originals::workflow::pipeline::policy::{closed, get};
+                let fields = closed(&document, &["kind", "browser", "checker", "receiving"])?;
+                let client = match get(fields, "browser")? {
+                    Document::String(browser) if browser == "chromium" => BrowserClient::Chromium,
+                    _ => return Err("unsupported browser selection".into()),
+                };
+                #[derive(serde::Deserialize)]
+                struct RawReceiving<'a> {
+                    #[serde(borrow)]
+                    receiving: &'a serde_json::value::RawValue,
+                }
+                let raw: RawReceiving<'_> = serde_json::from_str(raw)
+                    .map_err(|_| "browser receiving policy is not JSON")?;
+                Configuration::BrowserOriginals {
+                    checker: Box::new(Policy::from_document(get(fields, "checker")?)?),
+                    receiving: InstalledObservationLimits::from_receiving_document(
+                        &Document::parse_unsigned_counts(raw.receiving.get().as_bytes())?,
+                    )?,
+                    client,
+                }
             }
             Some(Document::String(kind)) if kind == "model-originals-native" => {
                 use super::model_originals::workflow::pipeline::policy::{closed, get};

@@ -447,3 +447,7 @@ fn installed_spawn_rejects_wrong_directory_before_spec_allocation() {
     assert_eq!(adapter.callbacks, 1);
     assert!(!report.qualified());
 }
+
+#[cfg(test)]
+#[path = "tests/browser_selection_tests.rs"]
+mod browser_selection_tests;

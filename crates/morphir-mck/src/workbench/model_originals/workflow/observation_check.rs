@@ -5,6 +5,7 @@ use super::input::{self, ClientAction};
 use super::observed::{self, ClientCheckpoint};
 use super::pairing::{PairedRun, PairedWorkflow};
 use super::{FixtureAlias, Nullable, Presence};
+pub(super) mod archive;
 pub(super) mod installed;
 pub(super) mod server;
 mod workspace;

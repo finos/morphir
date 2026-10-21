@@ -1,5 +1,6 @@
 //! One selected branch of the existing Workbench pipeline. The fixed reviewed
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
+mod browser;
 pub(super) mod installed;
 pub(in crate::workbench) mod policy;
 mod raw;
@@ -58,40 +59,76 @@ impl Source {
     }
 }
 
+// Phase-specific owned causes; only the existing outer wrapper renders strings.
+#[derive(Debug)]
+enum PreparationFault<E> {
+    Ingress(super::ingress::IngressError),
+    InventoryWork(DecodeError),
+    InventoryAllocation(std::collections::TryReserveError),
+    Anchors(SourceError),
+    Compilation(CompilationError),
+    Callback(E),
+}
 // Preparation locals own every operand and compiled view for the whole action.
 // No self-reference or compiler/context borrow can escape the owned result R.
+fn prepared_typed<R, E>(
+    source: &Source,
+    policy: &Policy,
+    sources: ReviewedSources<'_>,
+    action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut Owners) -> Result<R, E>,
+) -> Result<R, PreparationFault<E>> {
+    let mut owners = policy.owners();
+    let bound = BoundCorpus::decode_selected(source.raw.text(), &mut owners.decode)
+        .map_err(PreparationFault::Ingress)?;
+    owners
+        .decode
+        .slots(bound.cases().len())
+        .map_err(PreparationFault::InventoryWork)?;
+    let mut compiled = Vec::new();
+    compiled
+        .try_reserve_exact(bound.cases().len())
+        .map_err(PreparationFault::InventoryAllocation)?;
+    let verifier =
+        SourceVerifier::new(&sources, &mut owners.decode).map_err(PreparationFault::Anchors)?;
+    let mut compiler = CaseCompiler::new(verifier, &mut owners.closure, &mut owners.expansion);
+    for case in bound.cases() {
+        match compiler.compile_execution(case) {
+            Ok(value) => compiled.push(value),
+            Err(_) => {
+                return Err(PreparationFault::Compilation(
+                    compiler
+                        .into_fault()
+                        .expect("failed compiler retains its cause"),
+                ));
+            }
+        }
+    }
+    if compiler.require_inventory(bound.cases()).is_err() {
+        return Err(PreparationFault::Compilation(
+            compiler
+                .into_fault()
+                .expect("failed inventory retains its cause"),
+        ));
+    }
+    drop(compiler);
+    action(&compiled, &mut owners).map_err(PreparationFault::Callback)
+}
 fn prepared<R>(
     source: &Source,
     policy: &Policy,
     sources: ReviewedSources<'_>,
     action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut Owners) -> Result<R, String>,
 ) -> Result<R, String> {
-    let mut owners = policy.owners();
-    let bound = BoundCorpus::decode_selected(source.raw.text(), &mut owners.decode)
-        .map_err(|_| "source corpus decode refused".to_owned())?;
-    owners
-        .decode
-        .slots(bound.cases().len())
-        .map_err(|_| "source prepared inventory work refused".to_owned())?;
-    let mut compiled = Vec::new();
-    compiled
-        .try_reserve_exact(bound.cases().len())
-        .map_err(|_| "source prepared inventory allocation refused".to_owned())?;
-    let verifier = SourceVerifier::new(&sources, &mut owners.decode)
-        .map_err(|_| "source anchors refused".to_owned())?;
-    let mut compiler = CaseCompiler::new(verifier, &mut owners.closure, &mut owners.expansion);
-    for case in bound.cases() {
-        compiled.push(
-            compiler
-                .compile_execution(case)
-                .map_err(compilation_message)?,
-        );
-    }
-    compiler
-        .require_inventory(bound.cases())
-        .map_err(compilation_message)?;
-    drop(compiler);
-    action(&compiled, &mut owners)
+    prepared_typed(source, policy, sources, action).map_err(|error| match error {
+        PreparationFault::Ingress(_) => "source corpus decode refused".to_owned(),
+        PreparationFault::InventoryWork(_) => "source prepared inventory work refused".to_owned(),
+        PreparationFault::InventoryAllocation(_) => {
+            "source prepared inventory allocation refused".to_owned()
+        }
+        PreparationFault::Anchors(_) => "source anchors refused".to_owned(),
+        PreparationFault::Compilation(error) => compilation_message(&error),
+        PreparationFault::Callback(error) => error,
+    })
 }
 fn compilation_message(error: &CompilationError) -> String {
     match error {
@@ -1162,3 +1199,6 @@ mod installed_client_tests;
 
 #[cfg(test)]
 mod installed_observation_tests;
+
+#[cfg(test)]
+mod typed_preparation_tests;

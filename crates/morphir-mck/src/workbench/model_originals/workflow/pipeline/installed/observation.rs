@@ -43,6 +43,8 @@ pub enum ObservationBufferRole {
     AssociationContent,
     ConsumerFrame,
     ConsumerAck,
+    ArchiveContent,
+    ArchiveEntryMetadata,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObservationRecordRole {
@@ -146,7 +148,10 @@ impl InstalledObservationOwner {
     ) -> InstalledObservationUsage {
         self.usage
     }
-    pub(super) fn fail(&mut self, fault: InstalledObservationFault) -> &InstalledObservationFault {
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn fail(
+        &mut self,
+        fault: InstalledObservationFault,
+    ) -> &InstalledObservationFault {
         self.fault.get_or_insert(fault)
     }
     pub(super) fn refuse_prior_fault(&mut self) -> &InstalledObservationFault {
@@ -177,7 +182,7 @@ impl InstalledObservationOwner {
         *self.usage.amount_mut(kind) = next;
         Ok(())
     }
-    pub(super) fn reserve_span(
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn reserve_span(
         &mut self,
         kind: InstalledObservationResource,
         requested: usize,
