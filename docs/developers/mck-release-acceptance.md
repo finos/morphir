@@ -54,6 +54,22 @@ snapshot digest and every ordered record with a run against the checked-out sour
 kit, excluding only the already documented volatile duration fields. It also checks
 that modifying a schema after acquisition fails manifest verification.
 
+Starting at beta.10, the same installed-executable check also exercises the exact
+Workbench `0.1.0-draft.29` local-model profile. It copies the canonical 32-case
+corpus, verifies its fixed SHA-256 and ordered inventory, runs an explicit native
+positive-control adapter, and independently checks the report. Five altered
+reports must fail checking. Mismatched observations, wrong response IDs, shutdown
+failure and oversized runner frames must leave independently checkable failure
+reports and nonzero exits. A one-MiB original-byte control must pass run and check.
+The runtime receipt and copied inputs are retained under `workbench/` in each
+target's evidence. The adapter returns authored expectations and is labelled
+`checker-positive-control-only`; it does not qualify a production implementation.
+MoonBit's real adapter qualification is separate, including its own three-MiB
+frame limit. The shared runner's frame limit is sixteen MiB.
+
+See [Prebuilt MCK backend](../getting-started/prebuilt-mck.md) for private backend
+installation, canonical Workbench corpus pins and explicit adapter commands.
+
 Starting at beta.3, the same runtime also runs all 80 package integrity and 78
 resolution cases. It copies `spec/package` from the checked-out tag into its
 temporary directory and supplies that explicit path to `morphir mck package run`.

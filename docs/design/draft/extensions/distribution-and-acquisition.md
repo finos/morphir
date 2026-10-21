@@ -354,8 +354,16 @@ a session starts.
 A session is compared with the installed claim set by the
 [agreement rule](./protocol.md#when-a-session-agrees-with-a-claim-set), not by
 equality: the session carries one negotiated protocol version and may offer less
-than the claim set. Publication and installation compare two claim sets, which
-must be equal.
+than the claim set. When publication or installation probes a process artifact
+through `describe`, the two complete claim sets must be equal as parsed values.
+Object key order and whitespace do not matter; array order does. No additional
+numeric normalization or canonical byte encoding is defined.
+
+As recorded on 2026-10-21 in the [beta.10 claims decision](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0008-beta10-claims-gate-dispositions.md),
+WASM publication and installation do not probe the guest and retain
+`claimCheck: unchecked`. WASM packaging describes a private snapshot of the exact
+guest bytes it ships. That check does not make a later publication or install
+record probed. Session agreement and artifact digest checks still apply.
 
 `extension install --no-probe` skips the install-time `describe`. It exists for
 users who do not accept that a `process` artifact runs at installation rather
@@ -468,9 +476,14 @@ independently built artifact through the production host boundary.
 4. Which signature or build-provenance policy establishes publisher authenticity?
 5. How does a host distinguish a daemon it owns from an endpoint it only connects to?
 6. Which yank and revocation behavior must work before the first public repository?
-7. What canonical form do two capability claim sets take before they are compared?
-8. Should publisher provenance or a signature cover each artifact's capability claim set?
-9. Can an install-time probe of a `process` artifact run under an operating-system sandbox where one is available?
+7. Resolved for beta.10 on 2026-10-21: compare parsed values, with ordered arrays and no additional numeric normalization. Reopen when cross-language mismatch evidence or signing requirements demand a canonical encoding.
+8. Formally postponed on 2026-10-21: decide claim signature coverage when question 4 defines publisher authenticity, signing subjects and verification policy.
+9. Formally postponed on 2026-10-21: qualify an operating-system sandbox in a separate platform-specific design. Current process probes retain the user's rights and existing launch controls.
+
+The [beta.10 claims decision](https://github.com/finos/morphir/blob/main/kb/bundles/morphir/morphir-extensions/decisions/0008-beta10-claims-gate-dispositions.md)
+records these dispositions and the corresponding #921 Q1-Q4 gates. Claims stay at
+`0.1.0-draft.2` and descriptor, index and catalog formats at `2.0.0-draft.2` until
+an explicit adoption and stability review.
 
 ## Non-goals
 

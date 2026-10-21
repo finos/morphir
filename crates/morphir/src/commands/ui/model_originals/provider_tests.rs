@@ -773,12 +773,65 @@ fn held_provider(
 }
 async fn effects_stopped(host: &HostModelCaptureCapacity) {
     tokio::time::timeout(Duration::from_secs(5), async {
-        while host.usage().active_workers() != 0 {
+        // Worker and capture credits return in separate RAII ledger updates.
+        // Complete cleanup requires every credit to return.
+        while host.usage() != ModelCaptureUsage::default() {
             tokio::time::sleep(Duration::from_millis(1)).await;
         }
     })
     .await
     .unwrap();
+}
+
+struct HoldFinalProviderCleanup {
+    before: Arc<HoldProvider>,
+    cleanup: Arc<HoldProvider>,
+}
+impl WorkerHooks for HoldFinalProviderCleanup {
+    fn before_capture(&self) {
+        self.before.block();
+    }
+}
+impl Drop for HoldFinalProviderCleanup {
+    fn drop(&mut self) {
+        self.cleanup.block();
+    }
+}
+
+#[tokio::test]
+async fn provider_cleanup_waits_for_capture_credit_after_worker_credit_returns() {
+    let (_temp, provider) = native_fixture();
+    let selection = selected(&provider, ".");
+    let host = HostModelCaptureCapacity::default();
+    let owner = ModelCaptureConnection::new(host.clone());
+    let (before, arrived, release_body) = held_provider(true);
+    let (cleanup, cleaning, release_cleanup) = held_provider(true);
+    let pending = owner
+        .start_provider_with(
+            OriginalsProvider::Native(provider),
+            selection,
+            CaptureScope::Primary,
+            CaptureControl::new(),
+            Arc::new(HoldFinalProviderCleanup { before, cleanup }),
+        )
+        .unwrap();
+    arrived.await.unwrap();
+    drop(pending);
+    release_body.send(()).unwrap();
+    cleaning.await.unwrap();
+    // Cancellation drops independent RAII credits in separate ledger updates.
+    // Hold final cleanup in the real worker to freeze the observed CI state.
+    assert_eq!(host.usage().active_workers(), 0);
+    assert_eq!(host.usage().captures(), 1);
+    assert!(
+        tokio::time::timeout(Duration::from_millis(10), effects_stopped(&host))
+            .await
+            .is_err(),
+        "cleanup must wait for the capture reservation too"
+    );
+    release_cleanup.send(()).unwrap();
+    effects_stopped(&host).await;
+    assert_eq!(host.usage(), ModelCaptureUsage::default());
 }
 
 #[tokio::test]

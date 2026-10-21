@@ -3,6 +3,10 @@
 This repository publishes the Morphir CLI as a prebuilt executable for Linux,
 macOS, and Windows. Both x86-64 and ARM64 packages are available.
 
+To use the CLI as a private compatibility-testing backend, see the
+[prebuilt MCK guide](docs/getting-started/prebuilt-mck.md) for pinned executables,
+canonical kits, explicit adapters and independent report checking.
+
 ## Install with mise
 
 [mise](https://mise.jdx.dev/) can download the correct executable from the
@@ -11,14 +15,14 @@ Morphir GitHub release for your operating system and processor.
 Install the current prerelease globally:
 
 ```shell
-mise use -g github:finos/morphir@0.4.0-beta.9
+mise use -g github:finos/morphir@0.4.0-beta.10
 ```
 
 To pin Morphir in a project's `mise.toml`, add:
 
 ```toml
 [tools]
-"github:finos/morphir" = "0.4.0-beta.9"
+"github:finos/morphir" = "0.4.0-beta.10"
 ```
 
 Run `mise install` after changing the configuration. Prereleases must be

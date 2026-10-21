@@ -22,6 +22,7 @@ Compile-time extensions to the Morphir CLI: frontend and process providers, thei
 * [Elm providers normalize explicit package names](/decisions/0005-elm-providers-normalize-explicit-package-names.md) - Every Elm workspace provider reads an explicit package name with both `.` and `/` as segment separators and reports one normal form, lowercase words joined by `-` and segments joined by `/`, which keeps the Morphir IR package path unchanged.
 * [The describe fallback reports only what a session reports](/decisions/0006-the-describe-fallback-reports-only-what-a-session-reports.md) - A refusal before initialize has its own MEP error code, -32014, and a statement the host builds from a fallback session holds only what that session reports, with no requires or critical members.
 * [Extensions make capability claims](/decisions/0007-extensions-make-capability-claims.md) - The document an extension authors about itself is a capability claim set made of claims, not a capability statement; the version-2 draft formats rename their members and move to the next draft, and readers still accept the draft.1 spelling.
+* [Beta.10 keeps the claims drafts and current probe boundaries](/decisions/0008-beta10-claims-gate-dispositions.md) - Beta.10 records parsed-value claim comparison and WASM probe limits, defers signatures and process sandboxing, and retains the draft formats.
 
 ## Design
 

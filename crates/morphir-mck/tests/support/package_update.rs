@@ -89,6 +89,7 @@ fn copy_tree(source: &Path, destination: &Path) {
 fn edit(path: &Path, mutate: impl FnOnce(&mut Value)) {
     let mut value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
     mutate(&mut value);
+    value.sort_all_objects();
     fs::write(path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
 }
 pub fn prepare(source: &Path, directory: &Path, case: &Case) -> Prepared {
