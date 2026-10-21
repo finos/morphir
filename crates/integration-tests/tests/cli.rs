@@ -37,15 +37,39 @@ impl LocalHttpSource {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
                         stream
+                            .set_nonblocking(false)
+                            .expect("configure blocking HTTP request stream");
+                        stream
                             .set_read_timeout(Some(Duration::from_secs(5)))
                             .expect("set HTTP read timeout");
                         let mut request_line = Vec::new();
-                        BufReader::new((&mut stream).take(4096))
+                        let mut request = BufReader::new((&mut stream).take(4096));
+                        request
                             .read_until(b'\n', &mut request_line)
                             .expect("read HTTP request line");
                         if !request_line.ends_with(b"\r\n")
                             || !request_line.starts_with(b"GET /greeting-example.json ")
                         {
+                            continue;
+                        }
+                        // Finish the bounded request before replying and closing:
+                        // headers may arrive separately from the request line.
+                        let mut header_line = Vec::new();
+                        let headers_complete = loop {
+                            header_line.clear();
+                            if request
+                                .read_until(b'\n', &mut header_line)
+                                .expect("read HTTP request headers")
+                                == 0
+                            {
+                                break false;
+                            }
+                            if header_line == b"\r\n" {
+                                break true;
+                            }
+                        };
+                        drop(request);
+                        if !headers_complete {
                             continue;
                         }
                         request_count.fetch_add(1, Ordering::Relaxed);

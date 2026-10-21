@@ -61,6 +61,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking**: notebook scenarios (`scenario.ipynb`) are no longer supported. Convert one to `scenarios.feature.md`; notebook support returns with the VFS work (#946).
 - **Breaking**: the workspace spelling `kind: notebook` is removed; write `kind: inline` (#946).
 
+### Fixed
+- Concurrent first-time cache state saves and mutation leases no longer fail
+  intermittently with a missing coordination file on macOS. The Rust dependency
+  pin includes atomic file creation with the existing no-follow checks and
+  shared/exclusive locking preserved (finos/morphir-rust#310).
+
 ## [0.4.0-beta.9] - 2026-09-25
 
 ### Added
