@@ -21,7 +21,7 @@ fail without silently choosing a different one. Managed roots use
 `MORPHIR_HOME/toolchains`, falling back to the user's `.morphir/toolchains`.
 
 Setup downloads official macOS arm64 or Linux x64 tools and matching core for
-`0.10.15+943464bfa`. Both archives have pinned SHA-256 values in `release.mbt`.
+`0.10.16+b1a0e846e`. Both archives have pinned SHA-256 values in `release.mbt`.
 Installation requires consent, uses an exclusive lock, bundles core in staging,
 validates it, then publishes by rename. Failed operations remove their own staging
 data. Existing directories are validated and reused; they are never overwritten.

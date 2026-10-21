@@ -167,8 +167,8 @@ async fn main {
   let kit_value = @fs.read_file(kit).json()
   let root = @fs.realpath(".")
   let compiler = checked("moon", ["version", "--all"])
-  guard compiler.contains("0.10.15+943464bfa") else {
-    fail("Pinned MoonBit0.10.15 required")
+  guard compiler.contains("0.10.16+b1a0e846e") else {
+    fail("Pinned MoonBit 0.10.16 required")
   }
   let artifacts = @fs.realpath(
     @env.get_env_var("MORPHIR_MEP_ARTIFACTS").unwrap_or(".dev/portable-mep") +

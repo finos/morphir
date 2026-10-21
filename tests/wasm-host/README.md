@@ -20,7 +20,7 @@ This task is not added to routine CLI CI or the installed qualification gate.
 
 | Tool | Pin |
 | --- | --- |
-| MoonBit | `0.10.15+943464bfa`, repository toolchain |
+| MoonBit | `0.10.16+b1a0e846e`, repository toolchain |
 | wit-bindgen | `0.63.0` |
 | wasm-tools | `1.259.0` |
 | Wasmtime | `49.0.3` |

@@ -26,7 +26,7 @@ uv = "latest"
 # as "%2B"), taken from https://cli.moonbitlang.com/binaries/<version>/.
 
 [tools."http:moonbit"]
-version = "0.10.15+943464bfa"
+version = "0.10.16+b1a0e846e"
 bin_path = "bin"
 # The archive alone has no core or moonx. Complete Unix installs the same way
 # locally and in CI, using the upstream installer and the exact mise version.
@@ -40,30 +40,27 @@ pwsh -NoProfile -File "{{config_root}}/tools/bootstrap-moonbit-windows.ps1"
 """
 
 [tools."http:moonbit".platforms]
-linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-linux-x86_64.tar.gz" }
-linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-linux-aarch64.tar.gz" }
-macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-darwin-aarch64.tar.gz" }
-windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.15%2B943464bfa/moonbit-windows-x86_64.zip", format = "zip" }
+linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-linux-x86_64.tar.gz" }
+linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-linux-aarch64.tar.gz" }
+macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-darwin-aarch64.tar.gz" }
+windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-windows-x86_64.zip", format = "zip" }
 
 [env]
 # Environment variables for the project
 _.path = ["./node_modules/.bin"]
 MOON_HOME = { value = "{{ tools['http:moonbit'].path }}", tools = true }
-MOON_CORE_OVERRIDE = "{{config_root}}/.dev/toolchains/moonbit-core-a951c067f909286603efada85c379197d589dc61/core"
 
 [tasks."setup:core"]
-description = "Verify and bundle the immutable corrected core in this workspace"
+description = "Verify the pinned MoonBit toolchain's own core (no override)"
 run = ["moon update", "moon run scripts/moonbit-core.mbtx setup"]
 run_windows = [
   'pwsh -NoProfile -File "{{config_root}}/tools/bootstrap-moonbit-windows.ps1" -ToolchainHome "{{ tools["http:moonbit"].path }}"',
   "moon update",
   "moon run scripts/moonbit-core.mbtx setup",
 ]
-# The setup script must compile before the workspace core exists.
-env = { MOON_CORE_OVERRIDE = false }
 
 [tasks."check:core"]
-description = "Verify actual corrected-core sources and decimal parsing"
+description = "Verify the toolchain core's source bytes and exact decimal parsing"
 run = ["moon run scripts/moonbit-core.mbtx check", "moon run scripts/moonbit-core.mbtx --self-test", "moon run tests/fixtures/core-pin/decimal.mbtx --target wasm-gc"]
 
 [tasks.check]

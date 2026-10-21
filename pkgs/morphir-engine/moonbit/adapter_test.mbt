@@ -1102,7 +1102,7 @@ test "pinned String predicates reach the engine evaluator with UTF-16 text" {
   let descriptor = plan(engine, snapshot).source_frontends()[0]
   assert_eq(
     descriptor.dependencies["moonbitlang/core/builtin"],
-    "0.10.15+943464bfa+tree:a951c067f909286603efada85c379197d589dc61",
+    "0.10.16+b1a0e846e+tree:1886b2f93eff7365ccdbaed2c13abd33858841f8",
   )
   let report = execute(engine, snapshot)
   assert_true(report.successful())
@@ -1173,7 +1173,7 @@ test "both channels advertise the promoted String predicates" {
     )
     assert_eq(
       profile.dependencies["moonbitlang/core/builtin"],
-      "0.10.15+943464bfa+tree:a951c067f909286603efada85c379197d589dc61",
+      "0.10.16+b1a0e846e+tree:1886b2f93eff7365ccdbaed2c13abd33858841f8",
     )
   }
 }

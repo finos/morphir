@@ -41,9 +41,9 @@ runs:
         if ($LASTEXITCODE -ne 0) { throw 'MoonBit bootstrap failed' }
         "MOON_HOME=$moonbitInstallRoot" >> $env:GITHUB_ENV
         "$moonbitInstallRoot/bin" >> $env:GITHUB_PATH
-    - name: Acquire the corrected workspace core
+    - name: Verify the pinned toolchain core
       shell: bash
       run: mise run setup:core
-    - name: Verify the corrected workspace core
+    - name: Check the toolchain core and decimal parsing
       shell: bash
       run: mise run check:core

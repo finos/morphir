@@ -31,9 +31,7 @@ const launcherDigest = createHash('sha256').update(readFileSync(runner)).digest(
 const fixtures = join(repo, 'apps/morphir/fixtures/generation/v1');
 const expected = JSON.parse(readFileSync(join(fixtures, 'expected.json'), 'utf8')) as { moduleName: string; expectedResult: string; checkpointUnitId: string; mepUnitId: string };
 const root = mkdtempSync(join(tmpdir(), 'morphir-generation-'));
-// The maintained process provider verifies this workspace's corrected compiler
-// core. It is an explicit toolchain fixture, separate from CLI configuration.
-const env = headlessEnvironment(root, { MOON_CORE_OVERRIDE: process.env.MOON_CORE_OVERRIDE });
+const env = headlessEnvironment(root);
 if (target === 'wasm' || target === 'wasm-gc') {
   try {
     const run = (args: string[], status: number) => {

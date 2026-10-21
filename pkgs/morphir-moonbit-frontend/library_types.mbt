@@ -577,10 +577,10 @@ pub fn PinnedSourceBindings::sdk_numeric_conversions(
 pub const MOONBIT_CORE_PACKAGE : String = "moonbitlang/core/builtin"
 
 ///|
-pub const MOONBIT_CORE_VERSION : String = "0.10.15+943464bfa"
+pub const MOONBIT_CORE_VERSION : String = "0.10.16+b1a0e846e"
 
 ///|
-pub const MOONBIT_CORE_TREE : String = "a951c067f909286603efada85c379197d589dc61"
+pub const MOONBIT_CORE_TREE : String = "1886b2f93eff7365ccdbaed2c13abd33858841f8"
 
 ///|
 /// The four pinned String predicates admitted by the reviewed specification.
@@ -870,7 +870,7 @@ fn LibraryTypeUse::to_ir(
             },
           ),
         ),
-        ("compiler", @ir.Data::Text("0.10.15+943464bfa")),
+        ("compiler", @ir.Data::Text("0.10.16+b1a0e846e")),
         ("profile", @ir.Data::Text(self.profile)),
       ])
       if self.scalar.is_floating() {

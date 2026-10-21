@@ -39,18 +39,18 @@ let serial=0;
 function run(patch: Record<string,unknown>={},expectedError?: RegExp) {
   const lease=join(root,'lease'+serial++);mkdirSync(lease);const path=join(lease,'request.json');
   writeFileSync(path,JSON.stringify({...base,...patch}));
-  const env={...process.env};if(patch.compilerHome)env.MOON_CORE_OVERRIDE=join(String(patch.compilerHome),'lib/core');
-  const result=spawnSync(process.execPath,[helper,path],{encoding:'utf8',env,timeout:180000,maxBuffer:2*1024*1024});
+  const result=spawnSync(process.execPath,[helper,path],{encoding:'utf8',timeout:180000,maxBuffer:2*1024*1024});
   assert.equal(result.error,undefined);
   assert.deepEqual(readdirSync(lease),['request.json'],'Provider leaked its workspace');
   if(expectedError) {assert.notEqual(result.status,0);assert.equal(result.stdout,'');assert.match(result.stderr,expectedError);}
   else {assert.equal(result.status,0,result.stderr);const evidence=JSON.parse(result.stdout);assert.equal(evidence.successful,true);assert.equal(evidence.sourceIdentity,base.sourceIdentity);assert.match(evidence.buildIdentity,/^[a-f0-9]{64}$/);return evidence;}
 }
-function fakeHome(behavior: string,version='0.1.0',compiler='0.10.15+943464bfa') {
+function fakeHome(behavior: string,version?: string,compiler='0.10.16+b1a0e846e') {
   const home=join(root,'home'+serial++);mkdirSync(join(home,'bin'),{recursive:true});mkdirSync(join(home,'lib/core'),{recursive:true});
-  assert.ok(process.env.MOON_CORE_OVERRIDE,'Supply the verified corrected core');
-  cpSync(process.env.MOON_CORE_OVERRIDE,join(home,'lib/core'),{recursive:true,filter:path=>!relative(process.env.MOON_CORE_OVERRIDE!,path).split(sep).includes('_build')});
-  if(version!=='0.1.0')writeFileSync(join(home,'lib/core/moon.mod'),`name="moonbitlang/core"\nversion="${version}"\n`);
+  assert.ok(process.env.MOON_HOME,'Supply the pinned MoonBit toolchain');
+  const core=join(process.env.MOON_HOME,'lib/core');
+  cpSync(core,join(home,'lib/core'),{recursive:true,verbatimSymlinks:true,filter:path=>!relative(core,path).split(sep).includes('_build')});
+  if(version)writeFileSync(join(home,'lib/core/moon.mod'),`name="moonbitlang/core"\nversion="${version}"\n`);
   const tools={moonc:`console.log('v${compiler} (test)')`,moon:behavior};
   for(const [name,body] of Object.entries(tools)) {const path=join(home,'bin',name);writeFileSync(path,'#!/usr/bin/env node\n'+body+'\n');chmodSync(path,0o755);}
   return home;
@@ -83,8 +83,8 @@ try {
   run({timeout:1},/build.deadline/);
   run({sourceIdentity:'0'.repeat(64)},/Source identity differs/);
   if(process.platform!=='win32') {
-    run({compilerHome:fakeHome('',undefined,'9.0.0')},/v0\\?\.10|did not match|match the regular expression/);
-    run({compilerHome:fakeHome('','9.0.0')},/Corrected core version required/);
+    run({compilerHome:fakeHome('',undefined,'9.0.0')},/execution\.compiler_version/);
+    run({compilerHome:fakeHome('','9.0.0')},/Matching core version required/);
     run({compilerHome:fakeHome(`process.stdout.write('x'.repeat(1048577))`)},/build.output_limit/);
     run({compilerHome:fakeHome('')},/No fresh compiler output/);
     run({compilerHome:fakeHome(fresh+`writeFileSync('generated/moon.mod','name="changed"');`)},/Generated source changed/);

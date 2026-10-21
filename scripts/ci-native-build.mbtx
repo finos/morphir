@@ -23,6 +23,27 @@ fn target_info(target : String) -> (String, String, String) raise {
 }
 
 ///|
+/// Zig's libc headers lack what MoonBit 0.10.16's C runtime expects from the
+/// native SDKs: musl's <dirent.h> does not declare NAME_MAX, and the bundled
+/// macOS headers have no <sys/vnode.h>. The shim follows system headers.
+fn target_flags(triple : String) -> String {
+  match triple {
+    "x86_64-linux-musl" => " -include limits.h"
+    "aarch64-macos" => " -idirafter \"$(dirname \"$0\")/include\""
+    _ => ""
+  }
+}
+
+///|
+/// The runtime uses only `enum vtype`; values follow XNU's bsd/sys/vnode.h.
+let vnode_shim : String =
+  #|#ifndef MORPHIR_ZIG_SYS_VNODE_H
+  #|#define MORPHIR_ZIG_SYS_VNODE_H
+  #|enum vtype { VNON, VREG, VDIR, VBLK, VCHR, VLNK, VSOCK, VFIFO, VBAD, VSTR, VCPLX };
+  #|#endif
+  #|
+
+///|
 fn cc_wrapper(triple : String) -> String {
   (
     #|#!/bin/sh
@@ -38,7 +59,9 @@ fn cc_wrapper(triple : String) -> String {
   ) +
   "exec zig cc -target " +
   triple +
-  " -D_CRT_RAND_S \"$@\"\n"
+  " -D_CRT_RAND_S" +
+  target_flags(triple) +
+  " \"$@\"\n"
 }
 
 ///|
@@ -80,6 +103,10 @@ async fn main {
     @fs.write_file(root + "/zig/" + name, content)
     @fs.chmod(root + "/zig/" + name, 0o755)
   }
+  if !@fs.exists(root + "/zig/include/sys") {
+    @fs.mkdir(root + "/zig/include/sys", recursive=true)
+  }
+  @fs.write_file(root + "/zig/include/sys/vnode.h", vnode_shim)
   let started = @async.now()
   let status = @process.run(
     "moon",
@@ -134,10 +161,16 @@ async fn self_test() -> Unit {
       extra_env~,
     )
     guard code == 0 else { fail("cc wrapper: " + err.text()) }
+    let flags = match target {
+      "linux-x64" => "-include\nlimits.h\n"
+      _ => "-idirafter\n" + dir + "/include\n"
+    }
     guard @fs.read_file(root + "/args").text() ==
       "cc\n-target\n" +
       triple +
-      "\n-D_CRT_RAND_S\n-I/include with spaces\nsource with spaces.c\n-O2\n" else {
+      "\n-D_CRT_RAND_S\n" +
+      flags +
+      "-I/include with spaces\nsource with spaces.c\n-O2\n" else {
       fail("Compiler wrapper changed arguments or retained host objects")
     }
   }

@@ -34,7 +34,7 @@
     "prepack": "bun run build"
   },
   "dependencies": {
-    "@moonbit/moonc-worker": "0.1.202610123"
+    "@moonbit/moonc-worker": "0.1.202610191"
   },
   "devDependencies": {
     "playwright": "1.64.1"

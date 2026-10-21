@@ -31,9 +31,9 @@ jobs:
         with:
           install_args: http:moonbit
           cache: false
-      - name: Acquire corrected core after a fresh install
+      - name: Verify the stock core after a fresh install
         run: mise run setup:core
-      - name: Verify corrected core selection after a fresh install
+      - name: Check the stock core and decimal parsing after a fresh install
         run: mise run check:core
       - name: Update Mooncakes registry for script dependencies
         run: mise exec -- moon update

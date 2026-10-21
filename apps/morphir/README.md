@@ -616,7 +616,7 @@ morphir verify model.json --suite calls.ion \
 ```
 
 Supply SDK and execution protocol 0.1.0, Ion 0.5.0, x 0.5.5 and async 0.22.4.
-The default compiler/core pin remains `0.10.15+943464bfa`; the C lane forces
+The default compiler/core pin is `0.10.16+b1a0e846e`; the C lane forces
 `MOONBIT_NEW_NATIVE=0`. Preparation copies and hashes
 these explicit dependencies into a frozen workspace; it does not fetch packages.
 The driver imports public generated exports and applies their curried arguments
@@ -666,8 +666,8 @@ mise run setup:core
 MOON_HOME=/path/to/pinned/moon-home mise exec -- node apps/morphir/scripts/test-execution.ts
 ```
 
-The ordinary stable provider requires `MOON_CORE_OVERRIDE` to select the verified
-workspace core. `mise exec` supplies it; an absent or empty selection rejects.
+The ordinary stable provider uses the toolchain's own core and verifies its source
+bytes against `tools/moonbit-core-pin.json`. A set `MOON_CORE_OVERRIDE` is rejected.
 
 For the LLVM lane, prepare an isolated compiler/core installation, bundle its
 LLVM core, and supply `--home` and `--toolchain-pin`. The explicit JSON pin

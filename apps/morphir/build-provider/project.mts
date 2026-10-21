@@ -19,11 +19,11 @@ const semanticPin='bc99af69a8b24d391311fae3822a87eafef3c334';
 const excluded=new Set(['.git','node_modules','.mooncakes','_build']);
 const deadline=Date.now()+request.timeout;
 const check=()=>{assert.ok(!request.cancelFile||!existsSync(request.cancelFile),'build.cancelled');assert.ok(Date.now()<deadline,'build.deadline');};
-const selectedCore=checkedCore(realpathSync(request.compilerHome),compilerVersion,request.toolchainPin?.targets.includes('llvm')?'compiler-home':'inherit-override',check);
+const selectedCore=checkedCore(realpathSync(request.compilerHome),compilerVersion,request.toolchainPin?.targets.includes('llvm')?'llvm-nightly':'stable',check);
 const hash=(value: BinaryLike)=>createHash('sha256').update(value).digest('hex');
 const tree=(root: string,options: TreeOptions={})=>treeIdentity(root,{...options,check});
 async function execute(program: string,args: string[],cwd: string,home: string) {
-  check();const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:home,MOON_CORE_OVERRIDE:selectedCore,MOONBIT_NEW_NATIVE:"0"};
+  check();const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:home,MOONBIT_NEW_NATIVE:"0"};
   delete env.MOON_WORK;
   for(const key of ['CC','CXX','CFLAGS','CPPFLAGS','LDFLAGS','MOONBIT_CC'])delete env[key];
   let result;
@@ -54,7 +54,7 @@ try {
   const moonc=join(home,'bin',process.platform==='win32'?'moonc.exe':'moonc');
   const actualVersion=await execute(moonc,['-v'],dirname(requestPath),home);
   if(capability)assert.ok(actualVersion.startsWith('v'+compilerVersion+' '),'execution.compiler_version');
-  else assert.match(actualVersion,/^v0\.10\.15\+943464bfa /);
+  else assert.ok(actualVersion.startsWith('v'+stableVersion+' '),'execution.compiler_version');
   if(capability) { assert.equal(capability.target,request.target);assertRuntime(capability); }
   const compilerIdentity=hash(Buffer.concat([readFileSync(moonc),readFileSync(moon)]));
   const coreIdentity=tree(selectedCore,{core:true});

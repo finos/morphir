@@ -6,7 +6,7 @@ import {capabilities} from '../build-provider/capabilities.mts';
 import {hash} from '../build-provider/identity.mts';
 
 const profile='moonbit-model-stable-v1';
-const corePin='0.10.15+943464bfa+tree:a951c067f909286603efada85c379197d589dc61';
+const corePin='0.10.16+b1a0e846e+tree:1886b2f93eff7365ccdbaed2c13abd33858841f8';
 
 // Every advertised stable String type, operator and SDK call appears in one library.
 const source=`/// Installed String qualification library. λ😀
@@ -115,7 +115,7 @@ export function testInstalledString({run,root,receipts,cli,helper,cwd,home,llvmH
   // Ion text carries the same source facts; checked Morphir JSON refuses to drop them.
   assert.equal(JSON.parse(sourceCall(['run','.','--checkpoint-format','ion-text','--json']).stdout).successful,true);
   const text=readFileSync(join(compileDir,'Main.ion'),'utf8');
-  for(const token of [profile,'well-formed-utf16','utf16-shortlex','moonbit-source-string-index-v1','moonbit-source-binding-v1','String::contains','String::has_prefix','String::has_suffix','String::is_empty','string-method','pinned-implicit-string-to-stringview','a951c067f909286603efada85c379197d589dc61','Installed String qualification library.'])assert.ok(text.includes(token),token);
+  for(const token of [profile,'well-formed-utf16','utf16-shortlex','moonbit-source-string-index-v1','moonbit-source-binding-v1','String::contains','String::has_prefix','String::has_suffix','String::is_empty','string-method','pinned-implicit-string-to-stringview','1886b2f93eff7365ccdbaed2c13abd33858841f8','Installed String qualification library.'])assert.ok(text.includes(token),token);
   const textCheckpoint=join(output,'Main.ion');writeFileSync(textCheckpoint,text);
   // A future fact beside the frontend provenance must not prevent replay.
   const future=join(output,'Main-future.ion');
@@ -172,7 +172,6 @@ export function testInstalledString({run,root,receipts,cli,helper,cwd,home,llvmH
     const capability=capabilities({compilerHome,toolchainPin,timeout:10000});
     assert.ok(capability.targets.some(t=>t.target===target),'Required original compiler lane unavailable: '+target);
     const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:compilerHome,MOONBIT_NEW_NATIVE:'0',PATH:join(compilerHome,'bin')+delimiter+process.env.PATH};delete env.MOON_WORK;
-    if(target==='llvm')delete env.MOON_CORE_OVERRIDE;
     const oracle=run(join(compilerHome,'bin/moon'),['test','--frozen','--target',target,...(mode==='release'?['--release']:[])],{cwd:original,env});
     assert.match(oracle.stdout,new RegExp(`Total tests: ${valueRows.length}, passed: ${valueRows.length}, failed: 0`));
     writeFileSync(join(output,id+'-original.log'),oracle.stdout+'\n'+oracle.stderr);

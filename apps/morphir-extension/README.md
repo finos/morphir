@@ -138,7 +138,7 @@ shutdown prevents further requests, and an exit notification terminates it.
 
 ## Build and qualify
 
-Use the repository's pinned MoonBit 0.10.15 toolchain:
+Use the repository's pinned MoonBit 0.10.16 toolchain:
 
 ```text
 mise run build:extension
@@ -212,7 +212,7 @@ mise run test:portable-mep
 node pkgs/morphir-host/embedding/node-mep-cli.mjs .dev/portable-mep/extension
 ```
 
-Use Node 24.22.0 and pinned MoonBit 0.10.15. Packaging uses Moon to acquire an
+Use Node 24.22.0 and pinned MoonBit 0.10.16. Packaging uses Moon to acquire an
 explicit build recipe and checked core, then the packaged compiler builds the
 complete graph with empty PATH and no MOON_HOME. Its build worker uses a 32 MiB
 stack for the upstream parser/compiler. Saved-artifact execution needs no

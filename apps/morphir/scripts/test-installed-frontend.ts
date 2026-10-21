@@ -19,7 +19,7 @@ export function testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llv
   const sourceDryLog=join(project,'.morphir/logs/frontend.ionb');
   const inventory: PipelineReport=JSON.parse(sourceCall(['run','.','--dry-run','--log','--json']).stdout);
   assert.ok(!existsSync(sourceDryLog));
-  assert.deepEqual(inventory.frontends.map(f => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))),[{source:'src/Main.mbt',unitId:'Main',frontend:'moonbit',profile:'moonbit-model-stable-v1',dependencies:{'moonbitlang/parser':'0.4.5','moonbitlang/lexer':'0.4.3','finos/morphir-sdk':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','finos/morphir-sdk/basics':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','moonbitlang/core/builtin':'0.10.15+943464bfa+tree:a951c067f909286603efada85c379197d589dc61'},outputContract:'ir-unit'}]);
+  assert.deepEqual(inventory.frontends.map(f => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))),[{source:'src/Main.mbt',unitId:'Main',frontend:'moonbit',profile:'moonbit-model-stable-v1',dependencies:{'moonbitlang/parser':'0.4.5','moonbitlang/lexer':'0.4.3','finos/morphir-sdk':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','finos/morphir-sdk/basics':'0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d','moonbitlang/core/builtin':'0.10.16+b1a0e846e+tree:1886b2f93eff7365ccdbaed2c13abd33858841f8'},outputContract:'ir-unit'}]);
   assert.equal(inventory.frontends[0]!.language,'moonbit');
   assert.equal(inventory.frontends[0]!.provider,'finos/morphir-moonbit-frontend');
   assert.equal(inventory.frontends[0]!.defaultProfile,true);
@@ -85,7 +85,6 @@ export function testInstalledFrontend({run,root,receipts,cli,helper,cwd,home,llv
     const capability=capabilities({compilerHome,toolchainPin,timeout:10000});
     assert.ok(capability.targets.some(t=>t.target===target),'Required original compiler lane unavailable: '+target);
     const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:compilerHome,MOONBIT_NEW_NATIVE:'0',PATH:join(compilerHome,'bin')+delimiter+process.env.PATH};delete env.MOON_WORK;
-    if(target==='llvm')delete env.MOON_CORE_OVERRIDE;
     const oracle=run(join(compilerHome,'bin/moon'),['test','--frozen','--target',target,...(mode==='release'?['--release']:[])],{cwd:original,env});
     assert.match(oracle.stdout,/Total tests: 4, passed: 4, failed: 0/);
     writeFileSync(join(output,id+'-original.log'),oracle.stdout+'\n'+oracle.stderr);

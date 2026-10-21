@@ -284,7 +284,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.ok(!existsSync(sourceDryLog));
   assert.ok(!existsSync(join(directory,"moon-model/.morphir/logs")));
   assert.deepEqual(modelPlan.sources, ["src/Main.mbt"]);
-  assert.deepEqual(modelPlan.frontends.map((f: FrontendInventory) => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))), [{source: "src/Main.mbt", unitId: "Main", frontend: "moonbit", profile: "moonbit-model-stable-v1", dependencies: {"moonbitlang/parser": "0.4.5", "moonbitlang/lexer": "0.4.3", "finos/morphir-sdk": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "finos/morphir-sdk/basics": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "moonbitlang/core/builtin": "0.10.15+943464bfa+tree:a951c067f909286603efada85c379197d589dc61"}, outputContract: "ir-unit"}]);
+  assert.deepEqual(modelPlan.frontends.map((f: FrontendInventory) => Object.fromEntries(['source','unitId','frontend','profile','dependencies','outputContract'].map(k => [k,f[k]]))), [{source: "src/Main.mbt", unitId: "Main", frontend: "moonbit", profile: "moonbit-model-stable-v1", dependencies: {"moonbitlang/parser": "0.4.5", "moonbitlang/lexer": "0.4.3", "finos/morphir-sdk": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "finos/morphir-sdk/basics": "0.1.0+tree:9c83a100383570236b3d781362524008f76dd56d", "moonbitlang/core/builtin": "0.10.16+b1a0e846e+tree:1886b2f93eff7365ccdbaed2c13abd33858841f8"}, outputContract: "ir-unit"}]);
   assert.equal(modelPlan.frontends[0].language,'moonbit');
   assert.equal(modelPlan.frontends[0].provider,'finos/morphir-moonbit-frontend');
   assert.equal(modelPlan.frontends[0].defaultProfile,true);
@@ -493,7 +493,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     if(name==='documented-library') { assert.ok(ion.includes('Choose by shortlex name order.')); assert.ok(generated.includes('/// Choose by shortlex name order.\n///\n/// Preserve the exact signed value. λ😀')); }
     if(name==='indexed-library') { assert.ok(ion.includes('moonbit-source-number-v1')); assert.ok(generated.includes('@source_int32.normalize')); assert.ok(generated.includes('@source_string.slice_owned')); }
     if(name==='supported-library'||name==='ordered-library'||name==='documented-library')assert.ok(ion.includes('well-formed-utf16'));
-    if(name==='string-sdk-library') { for(const token of ['String::contains','string-method','a951c067f909286603efada85c379197d589dc61'])assert.ok(ion.includes(token),token); for(const call of ['@string.contains(','@string.is_empty(','@string.starts_with(','@string.ends_with('])assert.ok(generated.includes(call),call); }
+    if(name==='string-sdk-library') { for(const token of ['String::contains','string-method','1886b2f93eff7365ccdbaed2c13abd33858841f8'])assert.ok(ion.includes(token),token); for(const call of ['@string.contains(','@string.is_empty(','@string.starts_with(','@string.ends_with('])assert.ok(generated.includes(call),call); }
     if(name==='string-basics'||name==='supported-library'||name==='ordered-library'||name==='documented-library'||name==='indexed-library')assert.ok(generated.includes('@source_string.require_valid'));
     if(target!=='wasm') {
       const built=JSON.parse(run([...args,'--backend','moonbit','--validation','required','--build-provider','process','--build-helper',buildHelper,'--build-node',process.execPath,'--home',tooling.home,'--sdk',join(workspaceDirectory,'pkgs/morphir-sdk'),'--target','wasm','--json']).stdout);

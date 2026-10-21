@@ -202,6 +202,8 @@ fn Scope::lookup_in(
 }
 
 ///|
+/// One lookup as data: `pick` compares the outcomes of several imports.
+#warnings("-result_error_return")
 fn Scope::attempt(
   self : Scope,
   module_name : Array[String],

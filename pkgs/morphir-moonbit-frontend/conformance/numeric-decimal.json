@@ -4,7 +4,7 @@
   "sourcePackage": "finos/morphir-sdk/decimal",
   "sourceVersion": "0.1.0",
   "sourceTree": "642fd13ea74bc46c3f5344844c9cca4ffbae368a",
-  "compiler": "0.10.15+943464bfa",
+  "compiler": "0.10.16+b1a0e846e",
   "types": [
     "@decimal.Decimal"
   ],

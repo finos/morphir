@@ -17,7 +17,7 @@ assert.ok(process.argv[3],'Supply the checked active core asset directory');
 const coreRoot=await realpath(process.argv[3]);
 const corePin=JSON.parse(await readFile(new URL('../../../../tools/moonbit-core-pin.json',import.meta.url),'utf8'));
 assert.equal(corePin.profile,'morphir/moonbit/core-pin');
-assert.equal(corePin.contractVersion,'0.1.0-draft.1');
+assert.equal(corePin.contractVersion,'0.2.0-draft.1');
 assert.equal(corePin.compilerVersion,compilerVersion);
 interface Generated {package:string;modules:number;modelIon:number[];symbols:{fqname:string;name:string}[];artifacts:{path:string;content:string|number[]}[];}
 interface CoreGraph {nodes:{module:string;version:string;rel:string}[];edges:{from:number;to:number;alias:string;kinds:string[]}[];}
@@ -52,7 +52,8 @@ for (const command of plan) {
 function imported(value:string):PackageImport {
   const separator=value.lastIndexOf(':');
   assert.ok(separator>0,`Expected aliased interface: ${value}`);
-  const path=value.slice(0,separator), name=value.slice(separator+1);
+  // Moon spells the toolchain's own core as $MOON_HOME/lib/core in recipes.
+  const path=value.slice(0,separator).replace(/^\$MOON_HOME\/lib\/core/,coreRoot), name=value.slice(separator+1);
   const corePath=relative(bundle,resolve(path));
   if (corePath && corePath !== '..' && !corePath.startsWith('..'+sep) && !isAbsolute(corePath)) {
     assert.ok(corePath.endsWith('.mi'),`Unexpected core interface: ${path}`);

@@ -1,6 +1,6 @@
 {
   "profile": "morphir-native-otel-dependencies-v1",
-  "compilerVersion": "0.10.15+943464bfa",
+  "compilerVersion": "0.10.16+b1a0e846e",
   "packages": [
     {
       "name": "moonbit-community/opentelemetry",

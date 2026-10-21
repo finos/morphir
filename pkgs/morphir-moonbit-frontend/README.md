@@ -160,8 +160,8 @@ and checked JSON export refuses their loss.
 Both channels admit four String methods from the pinned MoonBit core. They
 entered experimental first and were promoted to stable after the installed
 qualification below. The adapter
-supplies package `moonbitlang/core/builtin`, compiler/core `0.10.15+943464bfa`
-and core tree `a951c067f909286603efada85c379197d589dc61`. Another package,
+supplies package `moonbitlang/core/builtin`, compiler/core `0.10.16+b1a0e846e`
+and core tree `1886b2f93eff7365ccdbaed2c13abd33858841f8`. Another package,
 compiler or tree is refused, and source text cannot add a method.
 
 | Source call | Pinned signature | Canonical SDK value | Contract |
@@ -498,7 +498,7 @@ moon test -p finos/morphir-moonbit-frontend --target all
 source and generated libraries in a private workspace using supplied SDK source,
 then compares their Boolean truth tables with independent expectations and Scheme
 results on JS, native, Wasm and Wasm GC, in debug and release modes. It uses compiler
-and core `0.10.15+943464bfa` and the SDK's pinned semantic bindings. It performs no
+and core `0.10.16+b1a0e846e` and the SDK's pinned semantic bindings. It performs no
 registry acquisition in the external workspace. The acceptance executable is a
 test fixture, not an engine integration API.
 

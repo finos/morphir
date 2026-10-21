@@ -38,7 +38,7 @@ for (const [name, create] of [["in-process", createInProcessToolchain], ["Node w
     try {
       const info = await tools.request({operation: "info"});
       assert.equal(info.mode, "embedded");
-      assert.equal(info.compilerVersion, "0.10.15+943464bfa");
+      assert.equal(info.compilerVersion, "0.10.16+b1a0e846e");
       for (const target of ["wasm", "wasm-gc"] as const) {
         const result = await tools.request({...source(42), target});
         assert.equal(result.successful, true);

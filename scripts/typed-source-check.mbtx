@@ -58,7 +58,7 @@ async fn main {
   }
   @fs.mkdir(workspace)
   let compiler = command("moonc", ["-v"])
-  assert_true(compiler.has_prefix("v0.10.15+943464bfa"))
+  assert_true(compiler.has_prefix("v0.10.16+b1a0e846e"))
   let home = match @env.get_env_var("MOON_HOME") {
     Some(home) => home
     None => command("mise", ["where", "http:moonbit"]).trim().to_owned()
@@ -90,7 +90,11 @@ async fn main {
     .to_owned() ==
     "",
   )
-  assert_true(core_manifest.contains("version = \"0.1.0\""))
+  guard core_pin is Object(pin) &&
+    pin["sourceManifestVersion"] is String(version) else {
+    fail("Core pin lacks sourceManifestVersion")
+  }
+  assert_true(core_manifest.contains("version = \"\{version}\""))
   let output = @json.parse(
     command("moon", [
       "run", "pkgs/morphir-moonbit-frontend/typed-acceptance", "--target", "native",
@@ -809,8 +813,8 @@ async fn main {
       },
       "pinnedStringMethods": {
         "sourcePackage": "moonbitlang/core/builtin",
-        "sourceVersion": "0.10.15+943464bfa",
-        "sourceTree": "a951c067f909286603efada85c379197d589dc61",
+        "sourceVersion": "0.10.16+b1a0e846e",
+        "sourceTree": "1886b2f93eff7365ccdbaed2c13abd33858841f8",
         "methods": [
           {
             "source": "String::is_empty",

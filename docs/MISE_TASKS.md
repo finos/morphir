@@ -7,17 +7,23 @@ This document provides a reference for all available mise tasks in the Morphir M
 
 ## Pinned compiler and core
 
-The compiler remains `0.10.15+943464bfa`. The repository separately pins the official
-core commit `a951c067f909286603efada85c379197d589dc61`, which fixes incorrect parsing
-of long decimal integers on Wasm GC. The source archive, SHA-256 and complete source
-digest are recorded in [the core pin](../tools/moonbit-core-pin.json).
+The compiler is the stock `0.10.16+b1a0e846e` release, and every command uses the
+core that ships with it, as consumers of published modules do. That core is the
+upstream source commit `1886b2f93eff7365ccdbaed2c13abd33858841f8` and includes the
+fix for long decimal integers on Wasm GC (`moonbitlang/core#4345`). The release
+archives, their SHA-256 values and the complete source digest are recorded in
+[the core pin](../tools/moonbit-core-pin.json). Consumers need moonc 0.10.16 or later.
 
-`mise install` and entering an activated mise shell acquire and verify the corrected
-core under `.dev/toolchains/`. `MOON_CORE_OVERRIDE` selects it for ordinary `moon`
-and `moonx` commands. In a shell without mise activation, use `mise exec -- moon …`.
-The project selects mise's pinned compiler directory as `MOON_HOME`. Setup updates
-its Mooncakes registry before compiling the portable selector, including on a fresh
-installation. Windows first runs the minimal compiler/core bootstrap explicitly.
+`mise install` and entering an activated mise shell complete the toolchain and verify
+the source bytes of `$MOON_HOME/lib/core` against the pin. No core override is used:
+the checks refuse a set `MOON_CORE_OVERRIDE`. In a shell without mise activation, use
+`mise exec -- moon …`. The project selects mise's pinned compiler directory as
+`MOON_HOME`. Setup updates its Mooncakes registry before compiling the portable checker,
+including on a fresh installation. Windows first installs and bundles the stock core.
+
+From this toolchain, a successful `moon check` also rewrites each checked package's
+`pkg.generated.mbti`. Use `moon check --no-mbti` in this workspace: the SDK source
+tree is an audited identity, and generated interface changes would alter it.
 The setup does not replace the core in a shared `MOON_HOME`. An absent or altered
 workspace core fails validation. The separate LLVM qualification keeps its own
 compiler/core pair.
@@ -81,7 +87,7 @@ compiler/core pair.
 | Task | Description | Platform |
 |------|-------------|----------|
 | `mise run check` | Run all checks (lint + test + build) | All |
-| `mise run check:core` | Verify corrected-core source bytes, provenance and exact decimal parsing | All |
+| `mise run check:core` | Verify the toolchain core's source bytes and exact decimal parsing | All |
 | `mise run clean` | Clean build artifacts | All |
 | `mise run validate` | Run all validation checks | All |
 | `mise run validate:packages` | Verify package structure is valid | All |
@@ -92,7 +98,7 @@ compiler/core pair.
 | Task | Description | Platform |
 |------|-------------|----------|
 | `mise run setup:workbench` | Install workbench npm dependencies and Chromium; `--ci` adds Linux system dependencies | All |
-| `mise run setup:core` | Acquire, verify and bundle the immutable corrected core in this workspace | All |
+| `mise run setup:core` | Verify the pinned toolchain's own core (Windows: install and bundle it first) | All |
 | `mise run setup:wasm-hosts` | Install the optional component qualification dependencies and Chromium | Platforms supported by Playwright |
 | `mise run setup:hooks` | Install git hooks for pre-push validation (idempotent, auto-runs on directory entry) | All |
 
