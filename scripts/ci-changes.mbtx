@@ -168,26 +168,169 @@ fn requires_full(path : String) -> Bool {
 }
 
 ///|
-fn select(paths : Array[String]) -> Map[String, Bool] {
+/// `mise_selection_enforced` is false while the semantic mise selection runs
+/// in shadow mode: it is only logged, and the path rule decides. Task 8 of
+/// morphir-ukvn.5.62 sets it to true.
+let mise_selection_enforced : Bool = false
+
+///|
+let mise_config_path : String = ".config/mise/config.toml"
+
+///|
+/// The output names that a mise impact may select. Any other name selects
+/// full: an impact that names a check this script does not know fails closed.
+let check_names : Array[String] = [
+  "code", "site", "supervision", "embedding", "typescript", "elm-scheme", ..suites,
+]
+
+///|
+/// The impact that `ci-mise-impact.mbtx BASE HEAD` prints. `checks` keeps the
+/// output names of the wire format; `parse` accepts only `check_names`.
+/// Each reason is one line: `subject: effect (detail)`.
+struct MiseImpact {
+  full : Bool
+  checks : Array[String]
+  reasons : Array[String]
+  mise : String
+} derive(Eq, Debug)
+
+///|
+/// A full impact for a failure to get or read the impact.
+fn MiseImpact::full_because(detail : String) -> MiseImpact {
+  { full: true, checks: [], reasons: [detail], mise: "unknown", }
+}
+
+///|
+/// Read the last nonempty line of the child's stdout as the wire format. A
+/// check name that is not in `check_names` makes the impact full.
+fn MiseImpact::parse(text : String) -> MiseImpact raise {
+  let lines = text
+    .split("\n")
+    .map(line => line.trim().to_owned())
+    .filter(line => line != "")
+    .collect()
+  guard lines.last() is Some(line) else {
+    fail("ci-mise-impact printed nothing")
+  }
+  guard @json.parse(line) is Object(fields) else {
+    fail("impact is not a JSON object: \{line}")
+  }
+  let full = match fields.get("full") {
+    Some(True) => true
+    Some(False) => false
+    _ => fail("impact has no boolean full: \{line}")
+  }
+  guard fields.get("checks") is Some(Array(items)) &&
+    fields.get("reasons") is Some(Array(entries)) &&
+    fields.get("mise") is Some(String(mise)) else {
+    fail("impact has no checks, reasons or mise: \{line}")
+  }
+  let reasons = entries.map(entry => {
+    guard entry is Object(reason) &&
+      reason.get("subject") is Some(String(subject)) &&
+      reason.get("effect") is Some(String(effect)) &&
+      reason.get("detail") is Some(String(detail)) else {
+      fail("impact reason is not readable: \{entry.stringify()}")
+    }
+    "\{subject}: \{effect} (\{detail})"
+  })
+  let checks : Array[String] = []
+  let mut full = full
+  for item in items {
+    match item {
+      String(name) if check_names.contains(name) => checks.push(name)
+      _ => {
+        full = true
+        reasons.push("unknown check \{item.stringify()}: full")
+      }
+    }
+  }
+  { full, checks, reasons, mise, }
+}
+
+///|
+/// Select the checks for `paths`. With a mise impact, the config path is left
+/// out of the path rules, and the impact adds its checks. A full impact (or
+/// one with a check name this script does not know) selects every check.
+fn select(paths : Array[String], mise? : MiseImpact) -> Map[String, Bool] {
   let paths = paths.filter(p => p != "")
+  let all = paths.is_empty()
+  let paths = if mise is Some(_) {
+    paths.filter(p => p != mise_config_path)
+  } else {
+    paths
+  }
   let result : Map[String, Bool] = {
-    "code": paths.is_empty() || paths.iter().any(p => !is_docs_like(p)),
-    "site": paths.is_empty() || paths.iter().any(is_site_input),
-    "full": paths.is_empty() || paths.iter().any(requires_full),
+    "code": all || paths.iter().any(p => !is_docs_like(p)),
+    "site": all || paths.iter().any(is_site_input),
+    "full": all || paths.iter().any(requires_full),
   }
   for suite in suites {
-    result.set(
-      suite,
-      paths.is_empty() || paths.iter().any(p => affected(p).contains(suite)),
-    )
+    result.set(suite, all || paths.iter().any(p => affected(p).contains(suite)))
   }
   for job in ["supervision", "embedding", "typescript", "elm-scheme"] {
     result.set(
       job,
-      paths.is_empty() || paths.iter().any(p => baseline_jobs(p).contains(job)),
+      all || paths.iter().any(p => baseline_jobs(p).contains(job)),
     )
   }
+  if mise is Some(impact) {
+    if impact.full || impact.checks.iter().any(c => !check_names.contains(c)) {
+      for name in ["full", ..check_names] {
+        result.set(name, true)
+      }
+    }
+    for name in impact.checks {
+      if check_names.contains(name) {
+        result.set(name, true)
+      }
+    }
+  }
   result
+}
+
+///|
+/// The output names that `selection` selects, other than `full`.
+fn selected_checks(selection : Map[String, Bool]) -> String {
+  Json(check_names.filter(name => selection.get(name) == Some(true))).stringify()
+}
+
+///|
+/// Combine the path selection with the mise outcome, where `Err` is the
+/// table drift message of `ci-mise-impact.mbtx`. Return the selection and the
+/// diagnostic lines, without their prefix. In shadow mode the path rule
+/// decides and drift is only logged; when enforced, the impact decides and
+/// drift fails.
+fn mise_decision(
+  paths : Array[String],
+  outcome : Result[MiseImpact, String],
+  enforced~ : Bool,
+) -> (Map[String, Bool], Array[String]) raise {
+  match outcome {
+    Err(drift) => {
+      guard !enforced else { fail("mise task table drift: \{drift}") }
+      (
+        select(paths),
+        [
+          "table drift: \{drift}",
+          "shadow, not enforced; would fail on table drift",
+        ],
+      )
+    }
+    Ok(impact) => {
+      let semantic = select(paths, mise=impact)
+      let summary = "full=\{semantic.get("full") == Some(true)} checks=" +
+        selected_checks(semantic)
+      if enforced {
+        (semantic, [..impact.reasons, "enforced; selects " + summary])
+      } else {
+        (
+          select(paths),
+          [..impact.reasons, "shadow, not enforced; would select " + summary],
+        )
+      }
+    }
+  }
 }
 
 ///|
@@ -431,7 +574,189 @@ async fn self_test() -> Unit {
   println(
     "ci-changes: isolated, shared, unknown and combined baseline dependencies pass",
   )
+  mise_test()
+  timeout_test()
   diff_test()
+}
+
+///|
+/// A child that runs longer than the timeout is stopped, and the impact is
+/// full. The child is a script that sleeps in place of `ci-mise-impact.mbtx`.
+async fn timeout_test() -> Unit {
+  let root = @fs.tmpdir(prefix="morphir-ci-mise-timeout-")
+  defer @fs.rmdir(root, recursive=true)
+  @fs.mkdir(root + "/scripts")
+  @fs.write_file(
+    root + "/scripts/ci-mise-impact.mbtx",
+    (
+      #|import {
+      #|  "moonbitlang/async@0.22.1",
+      #|}
+      #|
+      #|///|
+      #|async fn main {
+      #|  @async.sleep(60000)
+      #|}
+    ),
+  )
+  let sha = "0123456789abcdef0123456789abcdef01234567"
+  let got = mise_impact(sha, sha, cwd=root, timeout=1)
+  guard got.full && got.reasons == ["child timed out after 1 s"] else {
+    fail("child_timeout_is_full: \{got.describe()}")
+  }
+  println("ci-changes: child crash, drift marker and child timeout pass")
+}
+
+///|
+/// The output keys that are true, for test messages.
+fn selected_names(selection : Map[String, Bool]) -> String {
+  selection.iter().filter(entry => entry.1).map(entry => entry.0).join(",")
+}
+
+///|
+fn MiseImpact::describe(self : MiseImpact) -> String {
+  "full=\{self.full} checks=\{self.checks.join(",")} mise=\{self.mise} reasons=" +
+  self.reasons.join(" | ")
+}
+
+///|
+/// The semantic mise selection and its shadow logs, without a child process.
+fn mise_test() -> Unit raise {
+  let empty : MiseImpact = {
+    full: false,
+    checks: [],
+    reasons: [],
+    mise: "test",
+  }
+  let config = [mise_config_path]
+  let empty_selection = select(config, mise=empty)
+  guard empty_selection.length() == 14 &&
+    empty_selection.values().all(on => !on) &&
+    required(empty_selection) ==
+    ["changes", "lint", "format-check", "validate-config"] else {
+    fail(
+      "select_with_empty_impact: \{selected_names(empty_selection)} " +
+      required(empty_selection).join(","),
+    )
+  }
+  let checks = select(config, mise={ ..empty, checks: ["code", "conformance"], })
+  guard selected_names(checks) == "code,conformance" &&
+    required(checks).contains("native-qualification") &&
+    checks.get("full") == Some(false) else {
+    fail("select_with_checks: \{selected_names(checks)}")
+  }
+  let full = select(config, mise={ ..empty, full: true, })
+  guard full.length() == 14 && full.values().all(on => on) else {
+    fail("select_with_full: \{selected_names(full)}")
+  }
+  let unknown = select(config, mise={ ..empty, checks: ["nightly"], })
+  guard unknown.values().all(on => on) else {
+    fail("select_unknown_check_is_full: \{selected_names(unknown)}")
+  }
+  let ir = ["pkgs/morphir-ir/ir.mbt"]
+  let union = select([..config, ..ir], mise=empty)
+  guard union == select(ir) else {
+    fail(
+      "select_union_with_paths: \{selected_names(union)} vs \{selected_names(select(ir))}",
+    )
+  }
+  let wire =
+    #|{"full":false,"checks":["code","conformance"],"mise":"2026.10.15","reasons":[{"subject":"task test:conformance","effect":"checks code, conformance","detail":"called by ci-native.yml"}]}
+  let parsed = MiseImpact::parse("compiling\n" + wire + "\n")
+  guard parsed ==
+    {
+      full: false,
+      checks: ["code", "conformance"],
+      reasons: [
+        "task test:conformance: checks code, conformance (called by ci-native.yml)",
+      ],
+      mise: "2026.10.15",
+    } else {
+    fail("parse_wire_format: \{parsed.describe()}")
+  }
+  let odd = MiseImpact::parse(
+    wire.replace(old="\"conformance\"]", new="\"nightly\"]"),
+  )
+  guard odd.full && odd.checks == ["code"] && odd.reasons.length() == 2 else {
+    fail("parse_unknown_check_is_full: \{odd.describe()}")
+  }
+  for bad in ["", "not json", "{\"full\":false}", "[]"] {
+    let refused = try {
+      ignore(MiseImpact::parse(bad))
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else { fail("parse_refuses: \{bad}") }
+  }
+  let (shadow, shadow_log) = mise_decision(config, Ok(empty), enforced=false)
+  guard shadow == select(config) &&
+    shadow_log == ["shadow, not enforced; would select full=false checks=[]"] else {
+    fail("decision_shadow: \{shadow_log.join(" | ")}")
+  }
+  let (enforced, enforced_log) = mise_decision(
+    config,
+    Ok({ ..empty, checks: ["code"], reasons: ["task x: checks code (y)"], }),
+    enforced=true,
+  )
+  guard enforced == select(config, mise={ ..empty, checks: ["code"], }) &&
+    enforced_log ==
+    [
+      "task x: checks code (y)", "enforced; selects full=false checks=[\"code\"]",
+    ] else {
+    fail("decision_enforced: \{enforced_log.join(" | ")}")
+  }
+  let (drift, drift_log) = mise_decision(
+    config,
+    Err("unmapped call"),
+    enforced=false,
+  )
+  guard drift == select(config) &&
+    drift_log ==
+    [
+      "table drift: unmapped call", "shadow, not enforced; would fail on table drift",
+    ] else {
+    fail("decision_shadow_drift: \{drift_log.join(" | ")}")
+  }
+  let drift_fails = try {
+    ignore(mise_decision(config, Err("unmapped call"), enforced=true))
+    false
+  } catch {
+    _ => true
+  }
+  guard drift_fails else { fail("decision_enforced_drift: did not fail") }
+  let crash_err = "Failure(ci-mise-impact.mbtx:1:1 FAILED: git exploded)\n"
+  let crash = MiseImpact::from_child(1, "", crash_err)
+  guard crash.full &&
+    crash.reasons == ["ci-mise-impact exited 1: " + crash_err.trim().to_owned()] else {
+    fail("child_crash_exit_1_is_full: \{crash.describe()}")
+  }
+  let (crash_shadow, _) = mise_decision(config, Ok(crash), enforced=false)
+  let (crash_enforced, _) = mise_decision(config, Ok(crash), enforced=true)
+  guard crash_shadow == select(config) && crash_enforced.values().all(on => on) else {
+    fail("child_crash_exit_1: shadow ignores it, enforced selects full")
+  }
+  let drift_err =
+    #|ci-mise-impact: .github/workflows/ci.yml:9 job check calls mise task build:x, which has no entry in task_table in scripts/ci-mise-impact.mbtx. Add it with the checks the task affects.
+    #|Failure(ci-mise-impact.mbtx:3050:11 FAILED: table drift)
+  let marked = try {
+    ignore(MiseImpact::from_child(1, "", drift_err))
+    ""
+  } catch {
+    MiseDrift(message) => message
+  }
+  guard marked == drift_err.trim().to_owned() else {
+    fail("child_drift_needs_marker: got \{marked}")
+  }
+  let other = MiseImpact::from_child(2, "", "killed")
+  guard other.full && other.reasons == ["ci-mise-impact exited 2: killed"] else {
+    fail("child_other_exit_is_full: \{other.describe()}")
+  }
+  let unreadable = MiseImpact::from_child(0, "not json", "")
+  guard unreadable.full else {
+    fail("child_unreadable_output_is_full: \{unreadable.describe()}")
+  }
+  println("ci-changes: semantic mise selection and shadow decisions pass")
 }
 
 ///|
@@ -585,6 +910,229 @@ async fn diff_test() -> Unit {
   println(
     "ci-changes: legacy automation additions/pushes refuse and removals pass",
   )
+  event_shadow_test(script, root)
+}
+
+///|
+/// A minimal mise world for `ci-mise-impact.mbtx`: the workflow calls only
+/// tasks of the config, by their real `task_table` names.
+let fixture_workflow : String =
+  #|name: CI
+  #|on: push
+  #|jobs:
+  #|  check:
+  #|    runs-on: ubuntu-latest
+  #|    steps:
+  #|      - run: mise run lint:yaml
+  #|      - run: mise run test:conformance
+
+///|
+let fixture_config : String =
+  #|[tasks."lint:yaml"]
+  #|run = "echo yaml"
+  #|
+  #|[tasks."test:conformance"]
+  #|run = "echo conformance"
+
+///|
+/// A pull request that only adds an opt-in task: the path rule still selects
+/// full, and the shadow log says that the impact would not. The fixture gets
+/// an untracked copy of `ci-mise-impact.mbtx`, which `ci-changes` runs from
+/// the repository root as it does in CI.
+async fn event_shadow_test(script : String, root : String) -> Unit {
+  @fs.mkdir(root + "/.config/mise", recursive=true)
+  @fs.mkdir(root + "/.github/workflows", recursive=true)
+  @fs.write_file(root + "/" + mise_config_path, fixture_config)
+  @fs.write_file(root + "/.github/workflows/ci.yml", fixture_workflow)
+  ignore(fixture_git(root, ["add", "."]))
+  ignore(fixture_git(root, ["commit", "-qm", "fixture mise world"]))
+  let world = fixture_git(root, ["rev-parse", "HEAD"])
+  @fs.write_file(
+    root + "/" + mise_config_path,
+    fixture_config + "\n[tasks.\"test:opt-in-only\"]\nrun = \"echo opt\"\n",
+  )
+  ignore(fixture_git(root, ["commit", "-qam", "fixture opt-in task"]))
+  let opt_in = fixture_git(root, ["rev-parse", "HEAD"])
+  @fs.mkdir(root + "/scripts", recursive=true)
+  @fs.write_file(
+    root + "/scripts/ci-mise-impact.mbtx",
+    @fs.read_file(@fs.realpath("scripts/ci-mise-impact.mbtx")).text(),
+  )
+  let destination = root + "/output"
+  @fs.write_file(destination, "existing=true\n")
+  let (status, out, err) = @process.collect_output(
+    "moonx",
+    [script, "--event"],
+    cwd=root,
+    extra_env={
+      "EVENT": "pull_request",
+      "PR_BASE": world,
+      "PR_HEAD": opt_in,
+      "GITHUB_OUTPUT": destination,
+    },
+  )
+  let path_only = changed(world, opt_in, cwd=root) |> select |> render
+  guard status == 0 &&
+    out.text().contains("\nfull=true\n") &&
+    out.text() == path_only &&
+    @fs.read_file(destination).text() == "existing=true\n" + path_only &&
+    shadow_log_in_order(err.text(), world, opt_in) else {
+    fail(
+      "event_shadow_logs: exit \{status}\nstdout:\n\{out.text()}\nstderr:\n\{err.text()}",
+    )
+  }
+  println("ci-changes: pull request shadow mise impact logs pass")
+}
+
+///|
+/// The shadow log on stderr: first the header with both revisions and a mise
+/// version, later the would-select line.
+fn shadow_log_in_order(err : String, base : String, head : String) -> Bool {
+  let header = "ci-changes: mise: \{mise_config_path} changed (base \{base}, head \{head}, mise "
+  let shadow = "ci-changes: mise: shadow, not enforced; would select full=false checks=[]\n"
+  match (err.find(header), err.find(shadow)) {
+    (Some(first), Some(later)) => {
+      let rest = err[first + header.length():].to_owned()
+      let version = match rest.find(")\n") {
+        Some(end) => rest[:end].to_owned()
+        None => ""
+      }
+      first < later && version != "" && !version.contains("\n")
+    }
+    _ => false
+  }
+}
+
+///|
+/// `ci-mise-impact.mbtx` exited 1: a workflow calls a task at head that its
+/// `task_table` does not map. The message is the child's stderr.
+suberror MiseDrift {
+  MiseDrift(String)
+} derive(Debug)
+
+///|
+/// Text that `ci-mise-impact.mbtx` prints on stderr for table drift. Exit 1
+/// without it is a crash, a compile failure or another uncaught error.
+let drift_marker : String = "which has no entry in task_table"
+
+///|
+/// Read one run of `ci-mise-impact.mbtx`. Exit 1 with `drift_marker` on stderr
+/// is table drift and raises `MiseDrift`. Any other nonzero exit, or stdout
+/// that is not the wire format, gives a full impact with a reason.
+fn MiseImpact::from_child(
+  status : Int32,
+  out : String,
+  err : String,
+) -> MiseImpact raise MiseDrift {
+  match status {
+    0 =>
+      MiseImpact::parse(out) catch {
+        error => MiseImpact::full_because("ci-mise-impact output: \{error}")
+      }
+    1 if err.contains(drift_marker) => raise MiseDrift(err.trim().to_owned())
+    _ =>
+      MiseImpact::full_because("ci-mise-impact exited \{status}: \{err.trim()}")
+  }
+}
+
+///|
+/// Run `ci-mise-impact.mbtx BASE HEAD` from the repository root `cwd`, for at
+/// most `timeout` seconds; `MiseImpact::from_child` reads the result. A child
+/// that does not run or does not end in time gives a full impact with a
+/// reason. On timeout `@process.run` stops the child (SIGTERM, then SIGKILL
+/// after 5 s) and returns only after it has ended.
+async fn mise_impact(
+  base : String,
+  head : String,
+  cwd~ : String = ".",
+  timeout~ : Int32 = 120,
+) -> MiseImpact {
+  let run = try {
+    let script = @fs.realpath(cwd + "/scripts/ci-mise-impact.mbtx")
+    @async.with_timeout_opt(timeout * 1000, () => {
+      @process.collect_output("moonx", [script, base, head], cwd~)
+    })
+  } catch {
+    err => return MiseImpact::full_because("ci-mise-impact did not run: \{err}")
+  }
+  match run {
+    None => MiseImpact::full_because("child timed out after \{timeout} s")
+    Some((status, out, err)) =>
+      MiseImpact::from_child(status, out.text(), err.text())
+  }
+}
+
+///|
+/// The `key=value` lines that `ci-changes` prints and appends to
+/// `GITHUB_OUTPUT` for `selection`.
+fn render(selection : Map[String, Bool]) -> String {
+  let lines = StringBuilder()
+  for
+    name in [
+      "code", "site", "full", "supervision", "embedding", "typescript", "elm-scheme",
+      ..suites,
+    ] {
+    lines.write_string("\{name}=\{selection.get(name) == Some(true)}\n")
+  }
+  let lanes = ["compiler", "frontend", "conformance"].filter(s => {
+    selection.get(s) == Some(true)
+  })
+  lines.write_string("acceptance-lanes=\{Json(lanes).stringify()}\n")
+  lines.write_string("required=\{Json(required(selection)).stringify()}\n")
+  lines.to_string()
+}
+
+///|
+/// Select from `paths`, which `changed(base, head, merge_base~)` gave. When
+/// the mise config is one of them, also get its impact from `base` (the merge
+/// base of `base` and `head` when `merge_base`) to `head` and log it on
+/// stderr, after a line with both revisions and the mise version of the
+/// child. `mise_decision` says which selection counts.
+async fn select_changes(
+  paths : Array[String],
+  base : String,
+  head : String,
+  merge_base~ : Bool = true,
+  cwd~ : String = ".",
+) -> Map[String, Bool] {
+  guard paths.contains(mise_config_path) else { return select(paths) }
+  let mut compared = base
+  let outcome : Result[MiseImpact, String] = try {
+    let from = if merge_base {
+      let (status, out, err) = @process.collect_output(
+        "git",
+        ["merge-base", base, head],
+        cwd~,
+      )
+      guard status == 0 else {
+        fail("git merge-base failed: \{err.text().trim()}")
+      }
+      out.text().trim().to_owned()
+    } else {
+      base
+    }
+    compared = from
+    Ok(mise_impact(from, head, cwd~))
+  } catch {
+    MiseDrift(message) => Err(message)
+    err => Ok(MiseImpact::full_because("mise impact failed: \{err}"))
+  }
+  let (selection, log) = mise_decision(
+    paths,
+    outcome,
+    enforced=mise_selection_enforced,
+  )
+  let version = match outcome {
+    Ok(impact) => impact.mise
+    Err(_) => "unknown"
+  }
+  let header = "\{mise_config_path} changed (base \{compared}, head \{head}, mise \{version})"
+  for entry in [header, ..log] {
+    for line in entry.split("\n") {
+      @stdio.stderr.write("ci-changes: mise: \{line}\n")
+    }
+  }
+  selection
 }
 
 ///|
@@ -602,42 +1150,44 @@ async fn main {
   let selection = match args {
     ["--event"] =>
       match environment("EVENT") {
-        "pull_request" =>
-          select(changed(environment("PR_BASE"), environment("PR_HEAD")))
-        "merge_group" =>
-          select(changed(environment("QUEUE_BASE"), environment("QUEUE_HEAD")))
+        "pull_request" => {
+          let (base, head) = (environment("PR_BASE"), environment("PR_HEAD"))
+          changed(base, head) |> select_changes(base, head)
+        }
+        "merge_group" => {
+          let (base, head) = (
+            environment("QUEUE_BASE"),
+            environment("QUEUE_HEAD"),
+          )
+          changed(base, head) |> select_changes(base, head)
+        }
         "push" => {
-          let before = environment("PUSH_BASE")
-          let selected = if valid_revision(before) {
-            select(changed(before, environment("GITHUB_SHA"), merge_base=false)) catch {
+          let (before, after) = (
+            environment("PUSH_BASE"),
+            environment("GITHUB_SHA"),
+          )
+          let paths : Array[String]? = if valid_revision(before) {
+            Some(changed(before, after, merge_base=false)) catch {
               LegacyAutomation(path) => raise LegacyAutomation(path)
-              _ => select([]) // An unreachable pre-force-push commit selects all.
+              _ => None // An unreachable pre-force-push commit selects all.
             }
           } else {
-            select([])
+            None
+          }
+          let selected = match paths {
+            Some(paths) =>
+              paths |> select_changes(before, after, merge_base=false)
+            None => select([])
           }
           selected.set("site", false) // Site workflow owns main deployment.
           selected
         }
         _ => select([])
       }
-    [base, head] => select(changed(base, head))
+    [base, head] => changed(base, head) |> select_changes(base, head)
     _ => fail("Usage: ci-changes.mbtx --event | BASE HEAD | --self-test")
   }
-  let lines = StringBuilder()
-  for
-    name in [
-      "code", "site", "full", "supervision", "embedding", "typescript", "elm-scheme",
-      ..suites,
-    ] {
-    lines.write_string("\{name}=\{selection.get(name) == Some(true)}\n")
-  }
-  let lanes = ["compiler", "frontend", "conformance"].filter(s => {
-    selection.get(s) == Some(true)
-  })
-  lines.write_string("acceptance-lanes=\{Json(lanes).stringify()}\n")
-  lines.write_string("required=\{Json(required(selection)).stringify()}\n")
-  let text = lines.to_string()
+  let text = render(selection)
   @stdio.stdout.write(text)
   if @env.get_env_var("GITHUB_OUTPUT") is Some(path) {
     @fs.write_file(path, @fs.read_file(path).text() + text)

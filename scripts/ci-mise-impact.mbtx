@@ -1,0 +1,3230 @@
+///|
+/// Decide which CI checks a `.config/mise/config.toml` change affects.
+///
+/// Classification rules for settings (every top-level section except `tasks`):
+/// - A key that is the same at both revisions has no effect. Comments, key
+///   order, key quoting and line endings are not part of a value.
+/// - `tools.http:moonbit`, `tools.zig`, `tools.bun`, `tools.node`, `tools.uv`,
+///   `env.MOON_HOME`, `env.MOON_CORE_OVERRIDE`, `env._` and every key in
+///   `hooks` and `settings` change the toolchain or the shell: Full.
+/// - `tools.yamllint` and `tools.actionlint` change only the always-run lint
+///   jobs: Always.
+/// - Any other key, in any section, is Full ("not in the setting table").
+///
+/// Classification rules for tasks: `task_table` gives the checks of each task
+/// that a workflow or action calls with `mise run`. A config task that a
+/// script or file task names and the table does not is a Full root; this
+/// script's own text is not read for names. A workflow
+/// call without a table entry, or an entry no call uses, is drift: the
+/// self-test fails on it.
+///
+/// Rules for two revisions (`BASE HEAD`): each revision's `.config/mise`,
+/// `.github` and `scripts` are read from a copy outside the checkout, with
+/// mise isolated from the developer's own config. A task is a CI root if it
+/// is one at either revision. A config file added at head makes every task
+/// new; a config file deleted at head, or absent at both, is Full. A task
+/// that CI reaches and that calls a name which is a task at neither revision
+/// is Full. Git reads the revisions from the top level of the work tree, so
+/// the result is the same from any directory in it. Any failure to read a
+/// revision (not a commit, git, TOML, mise or its JSON) is Full with a
+/// `config` reason. A head workflow call without a table entry is drift: the
+/// script exits 1 with the message on stderr. Otherwise it prints one JSON
+/// line on stdout. `--lenient BASE HEAD` reads head calls without a table
+/// entry as Full roots instead of drift. It is only for the replay of
+/// historical commits; CI never passes it.
+/// Use --self-test to check the rules.
+import {
+  "bobzhang/toml@0.4.3",
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+///|
+enum Check {
+  Code
+  Site
+  Supervision
+  Embedding
+  Typescript
+  ElmScheme
+  Compiler
+  Frontend
+  Conformance
+  Provider
+  Lifecycle
+  Telemetry
+  Workbench
+} derive(Eq, Hash, Compare, Debug)
+
+///|
+fn Check::output_name(self : Check) -> String {
+  match self {
+    Code => "code"
+    Site => "site"
+    Supervision => "supervision"
+    Embedding => "embedding"
+    Typescript => "typescript"
+    ElmScheme => "elm-scheme"
+    Compiler => "compiler"
+    Frontend => "frontend"
+    Conformance => "conformance"
+    Provider => "provider"
+    Lifecycle => "lifecycle"
+    Telemetry => "telemetry"
+    Workbench => "workbench"
+  }
+}
+
+///|
+let all_checks : Array[Check] = [
+  Code,
+  Site,
+  Supervision,
+  Embedding,
+  Typescript,
+  ElmScheme,
+  Compiler,
+  Frontend,
+  Conformance,
+  Provider,
+  Lifecycle,
+  Telemetry,
+  Workbench,
+]
+
+///|
+fn Check::parse(name : String) -> Check? {
+  all_checks.iter().find_first(check => check.output_name() == name)
+}
+
+///|
+struct TaskName(String) derive(Eq, Hash, Compare, Debug)
+
+///|
+struct SettingKey {
+  section : String
+  key : String
+} derive(Eq, Hash, Compare, Debug)
+
+///|
+enum Effect {
+  Always
+  Full
+  Checks(Array[Check])
+} derive(Eq, Debug)
+
+///|
+enum Subject {
+  Setting(SettingKey)
+  Task(TaskName)
+  Config
+} derive(Eq, Debug)
+
+///|
+struct Reason {
+  subject : Subject
+  effect : Effect
+  detail : String
+} derive(Eq, Debug)
+
+///|
+struct Impact {
+  full : Bool
+  checks : Array[Check]
+  reasons : Array[Reason]
+} derive(Eq, Debug)
+
+///|
+fn Subject::describe(self : Subject) -> String {
+  match self {
+    Setting({ section, key, }) => "setting \{section}.\{key}"
+    Task(TaskName(name)) => "task \{name}"
+    Config => "config"
+  }
+}
+
+///|
+fn Effect::describe(self : Effect) -> String {
+  match self {
+    Always => "always"
+    Full => "full"
+    Checks(checks) => "checks " + checks.map(Check::output_name).join(", ")
+  }
+}
+
+///|
+fn Impact::to_json(self : Impact, mise_version~ : String) -> Json {
+  let reasons = self.reasons.map(reason => {
+    "subject": reason.subject.describe(),
+    "effect": reason.effect.describe(),
+    "detail": reason.detail,
+  })
+  {
+    "full": self.full,
+    "checks": self.checks.map(Check::output_name),
+    "mise": mise_version,
+    "reasons": reasons,
+  }
+}
+
+///|
+fn Impact::merge(self : Impact, other : Impact) -> Impact {
+  let checks : Array[Check] = []
+  for check in self.checks {
+    if !checks.contains(check) {
+      checks.push(check)
+    }
+  }
+  for check in other.checks {
+    if !checks.contains(check) {
+      checks.push(check)
+    }
+  }
+  checks.sort()
+  {
+    full: self.full || other.full,
+    checks,
+    reasons: [..self.reasons, ..other.reasons],
+  }
+}
+
+///|
+/// Read every top-level section except `tasks`. A key whose value is a table
+/// (`tools."http:moonbit"`) is one value. A top-level scalar becomes a key with
+/// an empty name in a section of its own.
+fn parse_settings(text : String) -> Map[SettingKey, @toml.TomlValue] raise {
+  let settings : Map[SettingKey, @toml.TomlValue] = Map([])
+  guard @toml.parse(text) is TomlTable(document) else {
+    fail("mise config is not a TOML table")
+  }
+  for section, value in document {
+    if section == "tasks" {
+      continue
+    }
+    match value {
+      TomlTable(entries) =>
+        for key, entry in entries {
+          settings[{ section, key, }] = entry
+        }
+      scalar => settings[{ section, key: "", }] = scalar
+    }
+  }
+  settings
+}
+
+///|
+let full_tools : Array[String] = ["http:moonbit", "zig", "bun", "node", "uv"]
+
+///|
+let full_env : Array[String] = ["MOON_HOME", "MOON_CORE_OVERRIDE", "_"]
+
+///|
+let always_tools : Array[String] = ["yamllint", "actionlint"]
+
+///|
+fn setting_effect(key : SettingKey) -> Effect? {
+  match key.section {
+    "tools" if full_tools.contains(key.key) => Some(Full)
+    "tools" if always_tools.contains(key.key) => Some(Always)
+    "env" if full_env.contains(key.key) => Some(Full)
+    "hooks" | "settings" => Some(Full)
+    _ => None
+  }
+}
+
+///|
+fn setting_reason(key : SettingKey, how : String) -> Reason {
+  match setting_effect(key) {
+    Some(Always) =>
+      {
+        subject: Setting(key),
+        effect: Always,
+        detail: "\{how}; only the always-run lint jobs use it",
+      }
+    Some(effect) =>
+      {
+        subject: Setting(key),
+        effect,
+        detail: "\{how}; it sets the toolchain or shell",
+      }
+    None =>
+      {
+        subject: Setting(key),
+        effect: Full,
+        detail: "not in the setting table",
+      }
+  }
+}
+
+///|
+fn classify_settings(
+  base : Map[SettingKey, @toml.TomlValue],
+  head : Map[SettingKey, @toml.TomlValue],
+) -> Impact {
+  let reasons : Array[Reason] = []
+  for key, value in base {
+    match head.get(key) {
+      None => reasons.push(setting_reason(key, "removed"))
+      Some(other) if other != value =>
+        reasons.push(setting_reason(key, "changed"))
+      Some(_) => ()
+    }
+  }
+  for key, _ in head {
+    if !base.contains(key) {
+      reasons.push(setting_reason(key, "added"))
+    }
+  }
+  { full: reasons.iter().any(r => r.effect == Full), checks: [], reasons, }
+}
+
+///|
+fn impact_of(base : String, head : String) -> Impact raise {
+  classify_settings(parse_settings(base), parse_settings(head))
+}
+
+///|
+/// One task as `mise tasks ls --json` reports it, reduced to what decides a
+/// change: its names, where it comes from, the tasks it calls and the rest of
+/// its definition as `body`.
+struct TaskRecord {
+  name : TaskName
+  aliases : Array[TaskName]
+  from_config : Bool
+  calls : Array[TaskName]
+  patterns : Array[String]
+  unresolved : Array[String]
+  body : Json
+} derive(Eq, Debug)
+
+///|
+struct TaskGraph {
+  tasks : Map[TaskName, TaskRecord]
+}
+
+///|
+fn strip_quotes(text : String) -> String {
+  let chars = text.to_array()
+  let mut start = 0
+  let mut stop = chars.length()
+  while start < stop && (chars[start] == '"' || chars[start] == '\'') {
+    start += 1
+  }
+  while stop > start && (chars[stop - 1] == '"' || chars[stop - 1] == '\'') {
+    stop -= 1
+  }
+  String::from_array(chars[start:stop])
+}
+
+///|
+fn words(text : String) -> Array[String] {
+  let words : Array[String] = []
+  for
+    part in text
+    .replace(old="\t", new=" ")
+    .replace(old="\n", new=" ")
+    .split(" ") {
+    if part.length() > 0 {
+      words.push(part.to_owned())
+    }
+  }
+  words
+}
+
+///|
+/// Split a command line into words. `;`, `&` and `|` are kept as separator
+/// words; quotes, backticks, parentheses and the redirections `<` and `>`
+/// only separate, so `mise run helper>log` names `helper`. A backslash at the
+/// end of the line or before white space (a line continuation) is white space.
+fn shell_words(line : String) -> Array[String] {
+  let out = StringBuilder()
+  let chars = line.to_array()
+  for i, c in chars {
+    match c {
+      ';' | '&' | '|' => out.write_string(" ; ")
+      '(' | ')' | '"' | '\'' | '`' | '<' | '>' | '\t' | '\n' | '\r' =>
+        out.write_char(' ')
+      '\\' if i + 1 == chars.length() ||
+        chars[i + 1] is (' ' | '\t' | '\n' | '\r') => out.write_char(' ')
+      _ => out.write_char(c)
+    }
+  }
+  words(out.to_string())
+}
+
+///|
+let mise_flags : Array[String] = [
+  "-q", "--quiet", "-v", "-vv", "-vvv", "--verbose", "-y", "--yes", "--silent", "--no-config",
+  "--debug", "--trace", "--no-env", "--no-hooks",
+]
+
+///|
+let run_flags : Array[String] = [
+  "-q", "--quiet", "-f", "--force", "--no-deps", "--no-cache", "--no-timings", "--timings",
+  "--raw", "-r", "--silent", "-S", "-n", "--dry-run", "-k", "--continue-on-error",
+  "--skip-deps", "--fresh-env", "--",
+]
+
+///|
+fn is_dynamic(token : String) -> Bool {
+  token.contains("$") || token.contains("{{") || token.contains("}}")
+}
+
+///|
+/// Subcommands that never run a task. `exec` and `x` run a command that may
+/// call mise again; the scan reads that nested call as its own.
+let safe_subcommands : Array[String] = [
+  "exec", "x", "install", "i", "trust", "env", "e", "ls", "use", "u", "settings",
+  "config", "cfg", "version", "--version", "-V", "doctor", "which", "where", "current",
+  "plugins", "cache", "tool", "help", "--help", "-h", "upgrade", "up", "uninstall",
+  "prune", "reshim", "outdated", "registry", "activate", "hook-env", "set", "unset",
+  "latest", "ls-remote", "unuse", "alias", "completion", "bin-paths", "link", "implode",
+  "self-update",
+]
+
+///|
+let safe_task_subcommands : Array[String] = ["ls", "info", "deps", "edit"]
+
+///|
+fn is_mise_word(token : String) -> Bool {
+  token == "mise" || token.has_suffix("/mise")
+}
+
+///|
+/// Every `mise [global flags] run|r|tasks|t run <names>` call in one command
+/// line. A call that cannot be turned into concrete names (a dynamic name, an
+/// option with a value, `mise watch`) goes to `unresolved` instead.
+fn scan_run_line(
+  line : String,
+  calls : Array[String],
+  unresolved : Array[String],
+) -> Unit {
+  let tokens = shell_words(line)
+  let mut i = 0
+  while i < tokens.length() {
+    if !is_mise_word(tokens[i]) {
+      // `$MISE`, `{{ mise_bin }}`: a mise we cannot name.
+      if (is_dynamic(tokens[i]) || (i > 0 && tokens[i - 1] == "{{")) &&
+        tokens[i].to_lower().contains("mise") {
+        unresolved.push("dynamic mise command \{tokens[i]} in: \{line}")
+      }
+      i += 1
+      continue
+    }
+    i += 1
+    while i < tokens.length() && mise_flags.contains(tokens[i]) {
+      i += 1
+    }
+    if i >= tokens.length() {
+      break
+    }
+    let sub = tokens[i]
+    if sub == "watch" || sub == "w" {
+      unresolved.push("mise \{sub} in: \{line}")
+      continue
+    }
+    let next = if i + 1 < tokens.length() { tokens[i + 1] } else { ";" }
+    if (sub == "tasks" || sub == "t") && (next == "run" || next == "r") {
+      i += 2
+    } else if sub == "run" || sub == "r" {
+      i += 1
+    } else if sub == ";" || safe_subcommands.contains(sub) {
+      continue
+    } else if (sub == "tasks" || sub == "t") &&
+      (next == ";" || safe_task_subcommands.contains(next)) {
+      continue
+    } else {
+      // `mise build` runs a task; an unknown option or word may as well.
+      unresolved.push("mise \{sub} may run a task in: \{line}")
+      continue
+    }
+    // Flags of `run`, then names; ":::" starts another name.
+    let mut expecting = true
+    let mut stop = false
+    while i < tokens.length() && expecting && !stop {
+      let token = tokens[i]
+      if run_flags.contains(token) {
+        i += 1
+      } else if token.has_prefix("-") {
+        unresolved.push("run option \{token} in: \{line}")
+        stop = true
+      } else if token == ":::" {
+        i += 1
+      } else if token == ";" {
+        expecting = false
+      } else if is_dynamic(token) {
+        unresolved.push("dynamic task name \{token} in: \{line}")
+        stop = true
+      } else {
+        calls.push(token)
+        i += 1
+        if i >= tokens.length() || tokens[i] != ":::" {
+          expecting = false
+        }
+      }
+    }
+  }
+}
+
+///|
+/// Make a path that starts with the config root relative to it, so two
+/// revisions in different directories compare equal.
+fn relative_to(root : String, path : String) -> String {
+  let base = if root.has_suffix("/") { root } else { root + "/" }
+  if path + "/" == base {
+    "."
+  } else if path.has_prefix(base) {
+    path[base.length():].to_owned()
+  } else {
+    path
+  }
+}
+
+///|
+fn TaskRecord::parse(entry : Json, root~ : String) -> TaskRecord raise {
+  guard entry is Object(fields) else { fail("mise task is not an object") }
+  guard fields.get("name") is Some(String(name)) else {
+    fail("mise task has no name")
+  }
+  let body : Map[String, Json] = Map([])
+  for key, value in fields {
+    match (key, value) {
+      ("source", _) | ("config_sources", _) => ()
+      ("dir", String(dir)) | ("file", String(dir)) =>
+        body[key] = Json::string(relative_to(root, dir))
+      _ => body[key] = value
+    }
+  }
+  body["name"] = Json::string(strip_quotes(name))
+  let calls : Array[TaskName] = []
+  let patterns : Array[String] = []
+  let unresolved : Array[String] = []
+  let add = fn(call : String) {
+    if call.contains("*") {
+      patterns.push(call)
+    } else {
+      calls.push(TaskName(call))
+    }
+  }
+  // A dependency or structured entry is one task name, maybe with arguments.
+  let add_named = fn(entry : String, where_ : String) {
+    match words(entry) {
+      [first, ..] if is_dynamic(first) =>
+        unresolved.push("dynamic task name \{first} in \{where_}")
+      [first, ..] => add(strip_quotes(first))
+      [] => ()
+    }
+  }
+  for key in ["depends", "depends_post", "wait_for"] {
+    match fields.get(key) {
+      None | Some(Null) => ()
+      Some(Array(items)) =>
+        for item in items {
+          match item {
+            String(dep) => add_named(dep, key)
+            _ => unresolved.push("unknown \{key} entry: \{item.stringify()}")
+          }
+        }
+      Some(other) =>
+        unresolved.push("unknown \{key} value: \{other.stringify()}")
+    }
+  }
+  let aliases : Array[TaskName] = []
+  match fields.get("aliases") {
+    None | Some(Null) => ()
+    Some(Array(items)) =>
+      for item in items {
+        match item {
+          String(text) => aliases.push(TaskName(strip_quotes(text)))
+          _ => unresolved.push("unknown alias entry: \{item.stringify()}")
+        }
+      }
+    Some(other) =>
+      unresolved.push("unknown aliases value: \{other.stringify()}")
+  }
+  let run_calls : Array[String] = []
+  for key in ["run", "run_windows"] {
+    match fields.get(key) {
+      None | Some(Null) => ()
+      Some(String(line)) => scan_run_line(line, run_calls, unresolved)
+      Some(Array(items)) =>
+        for item in items {
+          match item {
+            String(line) => scan_run_line(line, run_calls, unresolved)
+            Object(entry) => {
+              let mut known = false
+              if entry.length() == 1 {
+                match (entry.get("task"), entry.get("tasks")) {
+                  (Some(String(task)), None) => {
+                    known = true
+                    add_named(task, key)
+                  }
+                  (None, Some(Array(tasks))) => {
+                    known = true
+                    for task in tasks {
+                      match task {
+                        String(name) => add_named(name, key)
+                        _ => known = false
+                      }
+                    }
+                  }
+                  _ => ()
+                }
+              }
+              if !known {
+                unresolved.push("unknown \{key} entry: \{item.stringify()}")
+              }
+            }
+            _ => unresolved.push("unknown \{key} entry: \{item.stringify()}")
+          }
+        }
+      Some(other) =>
+        unresolved.push("unknown \{key} value: \{other.stringify()}")
+    }
+  }
+  run_calls.each(add)
+  let from_config = match fields.get("source") {
+    Some(String(source)) => source.has_suffix(".config/mise/config.toml")
+    _ => false
+  }
+  {
+    name: TaskName(strip_quotes(name)),
+    aliases,
+    from_config,
+    calls,
+    patterns,
+    unresolved,
+    body: Json::object(body),
+  }
+}
+
+///|
+/// Read the output of `mise tasks ls --json`. `root` is the directory of the
+/// config; `mise` does not report `run_windows`, so it is only read when present.
+fn TaskGraph::parse(json : Json, root~ : String) -> TaskGraph raise {
+  guard json is Array(entries) else { fail("mise tasks is not an array") }
+  let tasks : Map[TaskName, TaskRecord] = Map([])
+  for entry in entries {
+    let record = TaskRecord::parse(entry, root~)
+    tasks[record.name] = record
+  }
+  { tasks, }
+}
+
+///|
+/// The canonical task name for a name or an alias.
+fn TaskGraph::resolve(self : TaskGraph, name : TaskName) -> TaskName? {
+  if self.tasks.contains(name) {
+    return Some(name)
+  }
+  for canonical, record in self.tasks {
+    if record.aliases.contains(name) {
+      return Some(canonical)
+    }
+  }
+  None
+}
+
+///|
+/// `*` matches any run of characters. Other glob characters are not supported.
+fn glob_matches(pattern : Array[Char], text : Array[Char]) -> Bool {
+  fn go(p : Int32, t : Int32) -> Bool {
+    if p == pattern.length() {
+      return t == text.length()
+    }
+    if pattern[p] == '*' {
+      for k = t; k <= text.length(); k = k + 1 {
+        if go(p + 1, k) {
+          return true
+        }
+      }
+      return false
+    }
+    t < text.length() && pattern[p] == text[t] && go(p + 1, t + 1)
+  }
+
+  go(0, 0)
+}
+
+///|
+fn has_unsupported_glob(pattern : String) -> Bool {
+  pattern
+  .to_array()
+  .iter()
+  .any(c => c == '?' || c == '[' || c == '{' || c == '!' || c == '\\')
+}
+
+///|
+fn TaskGraph::callees(self : TaskGraph, record : TaskRecord) -> Array[TaskName] {
+  let found : Array[TaskName] = []
+  for call in record.calls {
+    if self.resolve(call) is Some(task) {
+      found.push(task)
+    }
+  }
+  for pattern in record.patterns {
+    let glob = pattern.to_array()
+    for canonical, other in self.tasks {
+      let names = [canonical, ..other.aliases]
+      if names.iter().any(n => glob_matches(glob, n.0.to_array())) {
+        found.push(canonical)
+      }
+    }
+  }
+  found
+}
+
+///|
+/// For every task reached from a root (the root itself included), the roots
+/// that reach it. The walk is breadth-first and ends on cycles.
+fn TaskGraph::reach(
+  self : TaskGraph,
+  roots : Array[TaskName],
+) -> Map[TaskName, Array[TaskName]] {
+  let reached : Map[TaskName, Array[TaskName]] = Map([])
+  for root in roots {
+    guard self.resolve(root) is Some(start) else { continue }
+    let seen : Map[TaskName, Bool] = Map([])
+    let queue = [start]
+    seen[start] = true
+    let mut next = 0
+    while next < queue.length() {
+      let task = queue[next]
+      next += 1
+      reached.get_or_init(task, () => []).push(root)
+      for callee in self.callees(self.tasks[task]) {
+        if !seen.contains(callee) {
+          seen[callee] = true
+          queue.push(callee)
+        }
+      }
+    }
+  }
+  reached
+}
+
+///|
+fn roots_effect(
+  roots : Array[TaskName],
+  table : Map[TaskName, Effect],
+) -> Effect {
+  let checks : Array[Check] = []
+  let mut full = false
+  for root in roots {
+    match table.get(root) {
+      Some(Full) | None => full = true
+      Some(Always) => ()
+      Some(Checks(list)) =>
+        for check in list {
+          if !checks.contains(check) {
+            checks.push(check)
+          }
+        }
+    }
+  }
+  checks.sort()
+  if full {
+    Full
+  } else if checks.length() == 0 {
+    Always
+  } else {
+    Checks(checks)
+  }
+}
+
+///|
+fn names_of(roots : Array[TaskName]) -> String {
+  roots.map(r => r.0).join(", ")
+}
+
+///|
+/// Compare two revisions of the task graph. A changed task selects the checks
+/// of the roots that reach it, at either revision.
+fn classify_tasks(
+  base : TaskGraph,
+  head : TaskGraph,
+  roots : Map[TaskName, Effect],
+) -> Impact {
+  let root_names = roots.keys().collect()
+  let reached_base = base.reach(root_names)
+  let reached_head = head.reach(root_names)
+  // Changed task -> why. The order of insertion keeps the reasons stable.
+  let changed : Map[TaskName, String] = Map([])
+  let mark = fn(name : TaskName, why : String) {
+    if !changed.contains(name) {
+      changed[name] = why
+    }
+  }
+  for name, record in base.tasks {
+    match head.tasks.get(name) {
+      None => mark(name, "removed")
+      Some(other) if other != record => mark(name, "changed")
+      Some(_) => ()
+    }
+  }
+  for name, _ in head.tasks {
+    if !base.tasks.contains(name) {
+      mark(name, "added")
+    }
+  }
+  // A new name or alias takes over a name that a reached task answered to.
+  for name, record in head.tasks {
+    let before = base.tasks.get(name)
+    let names = [name, ..record.aliases]
+    for each in names {
+      let known = match before {
+        Some(old) => each == name || old.aliases.contains(each)
+        None => false
+      }
+      if !known && base.resolve(each) is Some(target) && target != name {
+        mark(target, "shadowed by a new name or alias \{each.0} on \{name.0}")
+      }
+    }
+  }
+  let reasons : Array[Reason] = []
+  // A pattern we cannot match could reach anything.
+  let unmatched : Map[TaskName, Bool] = Map([])
+  let flagged : Map[TaskName, Bool] = Map([])
+  for pair in [(base, reached_base), (head, reached_head)] {
+    let (graph, reached) = pair
+    for name, _ in reached {
+      if graph.tasks[name].unresolved.length() > 0 && !flagged.contains(name) {
+        flagged[name] = true
+        reasons.push({
+          subject: Task(name),
+          effect: Full,
+          detail: "unresolved entry: \{graph.tasks[name].unresolved[0]}",
+        })
+      }
+      // A call that names no task at either revision may be a misread name
+      // (`helper\`) for a task that CI does reach.
+      for call in graph.tasks[name].calls {
+        if base.resolve(call) is None &&
+          head.resolve(call) is None &&
+          !flagged.contains(name) {
+          flagged[name] = true
+          reasons.push({
+            subject: Task(name),
+            effect: Full,
+            detail: "calls \{call.0}, which is a task at neither revision",
+          })
+        }
+      }
+      for pattern in graph.tasks[name].patterns {
+        if has_unsupported_glob(pattern) && !unmatched.contains(name) {
+          unmatched[name] = true
+          reasons.push({
+            subject: Task(name),
+            effect: Full,
+            detail: "pattern \{pattern} cannot be matched",
+          })
+        }
+      }
+    }
+  }
+  for name, why in changed {
+    let reaching : Array[TaskName] = []
+    for reached in [reached_base, reached_head] {
+      for root in reached.get(name).unwrap_or([]) {
+        if !reaching.contains(root) {
+          reaching.push(root)
+        }
+      }
+    }
+    if reaching.length() == 0 {
+      reasons.push({
+        subject: Task(name),
+        effect: Always,
+        detail: "not reached by CI",
+      })
+    } else {
+      reasons.push({
+        subject: Task(name),
+        effect: roots_effect(reaching, roots),
+        detail: "\{why}; reached from \{names_of(reaching)}",
+      })
+    }
+  }
+  let checks : Array[Check] = []
+  let mut full = false
+  for reason in reasons {
+    match reason.effect {
+      Full => full = true
+      Always => ()
+      Checks(list) =>
+        for check in list {
+          if !checks.contains(check) {
+            checks.push(check)
+          }
+        }
+    }
+  }
+  checks.sort()
+  { full, checks, reasons, }
+}
+
+///|
+/// One `mise run` task name that a workflow or action step calls. `task` is a
+/// prefix template (it ends in `-`) when the name holds a `${{ }}` expression.
+struct WorkflowCall {
+  file : String
+  job : String
+  line : Int32
+  task : String
+} derive(Eq, Debug)
+
+///|
+suberror DriftError {
+  Unmapped(WorkflowCall)
+  Stale(String)
+} derive(Debug)
+
+///|
+fn DriftError::message(self : DriftError) -> String {
+  match self {
+    Unmapped({ file, job, line, task, }) =>
+      "ci-mise-impact: \{file}:\{line} job \{job} calls mise task \{task}, which has no entry in task_table in scripts/ci-mise-impact.mbtx. Add it with the checks the task affects."
+    Stale(entry) =>
+      "ci-mise-impact: task_table entry \{entry} is called by no workflow. Remove it."
+  }
+}
+
+///|
+/// What a base revision does with a workflow call that has no table entry.
+enum UnmappedPolicy {
+  Fail
+  SelectFull
+}
+
+///|
+/// The checks each CI task selects. An entry that ends in `-` is a prefix for
+/// a name built with a `${{ }}` expression. Each row was confirmed against the
+/// `if:` of the job that calls it: `test:moonbit-frontend` and
+/// `test:conformance` run only in their own `native-acceptance` lane (the
+/// compiler lane runs `moonx scripts/typescript-tooling.mbtx`, not a task),
+/// and every native job needs the `code` check. A step-level `if:` counts as
+/// well: a check is only right when the step that calls the task runs on the
+/// runner of the focused job (`ubuntu-24.04`). `setup:llvm` runs only
+/// `if: runner.os == 'macOS'`, and only full qualification uses macOS, so it
+/// is Full.
+let task_table : Array[(String, Effect)] = [
+  ("lint:yaml", Always),
+  ("lint:moonbit", Always),
+  ("list-tasks", Always),
+  ("validate:packages", Always),
+  ("test:ci", Full),
+  ("ci:changes", Full),
+  ("ci:gate", Full),
+  ("setup:core", Full),
+  ("check:core", Full),
+  ("build:workbench-packaged", Full),
+  ("check:workbench-package-pins", Full),
+  ("test:workbench-packaged", Full),
+  ("package:mep-extension", Checks([Embedding])),
+  ("test:portable-mep", Checks([Embedding])),
+  ("test:elm", Checks([ElmScheme])),
+  ("elm:parity-refresh", Checks([ElmScheme])),
+  ("workbench:samples", Checks([ElmScheme])),
+  ("e2e:scheme-moonbit", Checks([ElmScheme])),
+  ("e2e:scheme-elm", Checks([ElmScheme])),
+  ("e2e:elm-moonbit", Checks([ElmScheme])),
+  ("e2e:elm-elm", Checks([ElmScheme])),
+  ("sdk-spec:check", Checks([ElmScheme])),
+  ("scheme-docs:check", Checks([ElmScheme])),
+  ("build:ci-native", Checks([Code])),
+  ("test:mep-process", Checks([Code])),
+  ("test:moonbit-frontend", Checks([Code, Frontend])),
+  ("test:conformance", Checks([Code, Conformance])),
+  ("test:installed-provider", Checks([Code, Provider])),
+  ("setup:llvm", Full),
+  ("test:installed-lifecycle", Checks([Lifecycle])),
+  ("setup:native-otel", Checks([Telemetry])),
+  ("test:native-telemetry", Checks([Telemetry])),
+  ("test:workbench-native-", Checks([Workbench])),
+]
+
+///|
+fn is_template(entry : String) -> Bool {
+  entry.has_suffix("-")
+}
+
+///|
+fn entry_matches(entry : String, task : String) -> Bool {
+  if is_template(entry) {
+    task.has_prefix(entry)
+  } else {
+    task == entry
+  }
+}
+
+///|
+fn table_effect(task : String) -> Effect? {
+  for pair in task_table {
+    let (entry, effect) = pair
+    if entry_matches(entry, task) {
+      return Some(effect)
+    }
+  }
+  None
+}
+
+///|
+fn indent_of(line : String) -> Int32 {
+  let mut count = 0
+  for c in line {
+    if c == ' ' {
+      count += 1
+    } else {
+      break
+    }
+  }
+  count
+}
+
+///|
+/// Replace every `${{ ... }}` expression by one marker character, so a name
+/// built from an expression stays one word.
+fn replace_expressions(text : String) -> String {
+  let chars = text.to_array()
+  let out = StringBuilder()
+  let mut i = 0
+  while i < chars.length() {
+    if i + 2 < chars.length() &&
+      chars[i] == '$' &&
+      chars[i + 1] == '{' &&
+      chars[i + 2] == '{' {
+      let mut j = i + 3
+      let mut closed = false
+      while j + 1 < chars.length() {
+        if chars[j] == '}' && chars[j + 1] == '}' {
+          closed = true
+          break
+        }
+        j += 1
+      }
+      if closed {
+        out.write_char('\u{1}')
+        i = j + 2
+        continue
+      }
+    }
+    out.write_char(chars[i])
+    i += 1
+  }
+  out.to_string()
+}
+
+///|
+let leading_keywords : Array[String] = [
+  "if", "then", "else", "elif", "do", "while", "until", "time", "!", "{",
+]
+
+///|
+fn flush_segment(out : StringBuilder, raw : String, plain : String) -> Unit {
+  let found = words(raw).filter(w => !leading_keywords.contains(w))
+  if found.get(0) is Some("echo" | "printf") {
+    out.write_string(plain)
+  } else {
+    out.write_string(raw)
+  }
+}
+
+///|
+/// Remove quoted text from `echo` and `printf` commands: it is output, not a
+/// command. Other quoted text stays, as in `bash -c "mise run x"`.
+fn drop_echo_text(line : String) -> String {
+  let out = StringBuilder()
+  let mut raw = StringBuilder()
+  let mut plain = StringBuilder()
+  let mut quote : Char? = None
+  for c in line {
+    match quote {
+      Some(open) => {
+        raw.write_char(c)
+        if c == open {
+          quote = None
+        }
+      }
+      None =>
+        match c {
+          '"' | '\'' => {
+            quote = Some(c)
+            raw.write_char(c)
+            plain.write_char(' ')
+          }
+          ';' | '&' | '|' | '\n' => {
+            flush_segment(out, raw.to_string(), plain.to_string())
+            out.write_char(c)
+            raw = StringBuilder()
+            plain = StringBuilder()
+          }
+          _ => {
+            raw.write_char(c)
+            plain.write_char(c)
+          }
+        }
+    }
+  }
+  flush_segment(out, raw.to_string(), plain.to_string())
+  out.to_string()
+}
+
+///|
+fn scan_command(
+  file : String,
+  job : String,
+  line : Int32,
+  text : String,
+  calls : Array[WorkflowCall],
+) -> Unit {
+  let names : Array[String] = []
+  let unresolved : Array[String] = []
+  scan_run_line(drop_echo_text(replace_expressions(text)), names, unresolved)
+  for name in names {
+    let task = match name.find("\u{1}") {
+      Some(at) => name[:at].to_owned()
+      None => name
+    }
+    calls.push({ file, job, line, task, })
+  }
+  for reason in unresolved {
+    calls.push({ file, job, line, task: "<unresolved: \{reason}>", })
+  }
+}
+
+///|
+/// Every `mise run` call in the `run:` steps of one workflow or action file.
+/// A job is a key at two-space indent under `jobs:`; an action has the job
+/// `(action)`. `run:` text is shell, one line at a time.
+fn scan_workflow(file : String, text : String) -> Array[WorkflowCall] {
+  let calls : Array[WorkflowCall] = []
+  let is_action = file.has_suffix("action.yml") ||
+    file.has_suffix("action.yaml")
+  let mut job = if is_action { "(action)" } else { "" }
+  let mut in_jobs = false
+  let mut block_key = -1
+  let mut number = 0
+  // A command that ends in a backslash goes on in the next block line.
+  let mut pending = ""
+  let mut pending_line = 0
+  for raw in text.split("\n") {
+    number += 1
+    let line = raw.to_owned().replace(old="\r", new="")
+    let depth = indent_of(line)
+    let trimmed = line.trim().to_owned()
+    if block_key >= 0 {
+      if trimmed == "" {
+        continue
+      }
+      if depth > block_key {
+        if !trimmed.has_prefix("#") {
+          if pending == "" {
+            pending_line = number
+          }
+          if trimmed.has_suffix("\\") {
+            pending = pending + trimmed[:trimmed.length() - 1].to_owned() + " "
+          } else {
+            scan_command(file, job, pending_line, pending + trimmed, calls)
+            pending = ""
+          }
+        }
+        continue
+      }
+      if pending != "" {
+        scan_command(file, job, pending_line, pending, calls)
+        pending = ""
+      }
+      block_key = -1
+    }
+    if trimmed == "" || trimmed.has_prefix("#") {
+      continue
+    }
+    if !is_action {
+      if depth == 0 {
+        in_jobs = trimmed == "jobs:"
+      } else if in_jobs &&
+        depth == 2 &&
+        trimmed.has_suffix(":") &&
+        !trimmed.contains(" ") {
+        job = trimmed[:trimmed.length() - 1].to_owned()
+      }
+    }
+    let dashed = trimmed.has_prefix("- ")
+    let body = if dashed { trimmed[2:].to_owned() } else { trimmed }
+    let key_column = if dashed { depth + 2 + indent_of(body) } else { depth }
+    let body = body.trim().to_owned()
+    if body.has_prefix("run:") {
+      let value = body[4:].trim().to_owned()
+      if value.has_prefix("|") || value.has_prefix(">") {
+        block_key = key_column
+      } else if value != "" {
+        scan_command(file, job, number, value, calls)
+      }
+    }
+  }
+  if pending != "" {
+    scan_command(file, job, pending_line, pending, calls)
+  }
+  calls
+}
+
+///|
+fn is_name_char(c : Char) -> Bool {
+  (c >= 'a' && c <= 'z') ||
+  (c >= 'A' && c <= 'Z') ||
+  (c >= '0' && c <= '9') ||
+  c == ':' ||
+  c == '-' ||
+  c == '_' ||
+  c == '.'
+}
+
+///|
+/// The names from `names` that occur in `text` as a whole token. A token ends
+/// at any character that is not a letter, digit, `:`, `-`, `_` or `.`; a
+/// trailing `.` or `:` (end of a sentence) is also tried without itself.
+fn scan_mentions(text : String, names : Array[TaskName]) -> Array[TaskName] {
+  let known : Map[String, TaskName] = Map([])
+  for name in names {
+    known[name.0] = name
+  }
+  let found : Array[TaskName] = []
+  let note = fn(token : String) {
+    if known.get(token) is Some(name) && !found.contains(name) {
+      found.push(name)
+    }
+  }
+  let token = StringBuilder()
+  let finish = fn() {
+    let text = token.to_string()
+    if text != "" {
+      note(text)
+      let mut trimmed = text
+      while trimmed.has_suffix(".") || trimmed.has_suffix(":") {
+        trimmed = trimmed[:trimmed.length() - 1].to_owned()
+        note(trimmed)
+      }
+    }
+  }
+  for c in text {
+    if is_name_char(c) {
+      token.write_char(c)
+    } else {
+      finish()
+      token.reset()
+    }
+  }
+  finish()
+  found
+}
+
+///|
+/// Roots of the CI task graph: every task a workflow calls, with the effect
+/// of its table entry, and every config task that a script or file task names
+/// and the table does not (`Full`). A call without an entry raises under
+/// `Fail` and is a `Full` root under `SelectFull`, for a base revision whose
+/// old workflows call tasks that today's table no longer has.
+fn roots(
+  calls : Array[WorkflowCall],
+  mentions : Array[TaskName],
+  unmapped~ : UnmappedPolicy,
+) -> Map[TaskName, Effect] raise DriftError {
+  let found : Map[TaskName, Effect] = Map([])
+  for call in calls {
+    match table_effect(call.task) {
+      Some(effect) => found[TaskName(call.task)] = effect
+      None =>
+        match unmapped {
+          Fail => raise Unmapped(call)
+          SelectFull => found[TaskName(call.task)] = Full
+        }
+    }
+  }
+  for name in mentions {
+    if table_effect(name.0) is None && !found.contains(name) {
+      found[name] = Full
+    }
+  }
+  found
+}
+
+///|
+/// Table entries that no call matches.
+fn stale_entries(calls : Array[WorkflowCall]) -> Array[String] {
+  let stale : Array[String] = []
+  for pair in task_table {
+    let (entry, _) = pair
+    if !calls.iter().any(call => entry_matches(entry, call.task)) {
+      stale.push(entry)
+    }
+  }
+  stale
+}
+
+///|
+/// Fail on the first unmapped call, else on the first stale entry.
+fn drift_check(calls : Array[WorkflowCall]) -> Unit raise DriftError {
+  for call in calls {
+    if table_effect(call.task) is None {
+      raise Unmapped(call)
+    }
+  }
+  if stale_entries(calls) is [entry, ..] {
+    raise Stale(entry)
+  }
+}
+
+///|
+/// Replace a prefix root (a name template) by the tasks of the graphs that
+/// start with it. A template that matches no task is dropped.
+fn expand_templates(
+  roots : Map[TaskName, Effect],
+  graphs : Array[TaskGraph],
+) -> Map[TaskName, Effect] {
+  let expanded : Map[TaskName, Effect] = Map([])
+  for name, effect in roots {
+    if !is_template(name.0) {
+      expanded[name] = effect
+      continue
+    }
+    for graph in graphs {
+      for task, record in graph.tasks {
+        for each in [task, ..record.aliases] {
+          if each.0.has_prefix(name.0) {
+            expanded[each] = effect
+          }
+        }
+      }
+    }
+  }
+  expanded
+}
+
+///|
+async fn read_tree(
+  root : String,
+  relative : String,
+  files : Array[(String, String)],
+) -> Unit {
+  let dir = root + "/" + relative
+  if !@fs.exists(dir) {
+    return
+  }
+  let names = @fs.readdir(dir)
+  names.sort()
+  for name in names {
+    let path = relative + "/" + name
+    match @fs.kind(root + "/" + path) {
+      Directory => read_tree(root, path, files)
+      _ => files.push((path, @fs.read_file(root + "/" + path).text()))
+    }
+  }
+}
+
+///|
+/// The file name of this script under `scripts/`.
+let own_script : String = "ci-mise-impact.mbtx"
+
+///|
+/// Every workflow call under `root`, and the text of the files that may name
+/// a config task: `scripts/*.mbtx` except this script, and everything under
+/// `.config/mise/tasks/`.
+async fn scan_ci_files(root : String) -> (Array[WorkflowCall], Array[String]) {
+  let calls : Array[WorkflowCall] = []
+  let texts : Array[String] = []
+  let workflows : Array[(String, String)] = []
+  read_tree(root, ".github/workflows", workflows)
+  for pair in workflows {
+    let (path, text) = pair
+    if path.has_suffix(".yml") || path.has_suffix(".yaml") {
+      calls.append(scan_workflow(path, text))
+    }
+  }
+  let actions : Array[(String, String)] = []
+  read_tree(root, ".github/actions", actions)
+  for pair in actions {
+    let (path, text) = pair
+    if path.has_suffix("/action.yml") || path.has_suffix("/action.yaml") {
+      calls.append(scan_workflow(path, text))
+    }
+  }
+  // Only the scripts themselves: `scripts/_build` holds build output. This
+  // script is left out: its rules and test fixtures name tasks, not run them.
+  let scripts = if @fs.exists(root + "/scripts") {
+    @fs.readdir(root + "/scripts")
+  } else {
+    []
+  }
+  scripts.sort()
+  for name in scripts {
+    if name.has_suffix(".mbtx") && name != own_script {
+      texts.push(@fs.read_file(root + "/scripts/" + name).text())
+    }
+  }
+  let tasks : Array[(String, String)] = []
+  read_tree(root, ".config/mise/tasks", tasks)
+  for pair in tasks {
+    texts.push(pair.1)
+  }
+  (calls, texts)
+}
+
+///|
+/// The CI roots and the reasons that force a full run. A root that names no
+/// task of the graph cannot be classified, so it forces Full instead.
+struct CiInputs {
+  roots : Map[TaskName, Effect]
+  forced : Array[Reason]
+}
+
+///|
+fn forced_reason(task : String, detail : String) -> Reason {
+  { subject: Task(TaskName(task)), effect: Full, detail, }
+}
+
+///|
+/// Pure core of `load_ci_inputs`. `forced` holds a Full reason for every
+/// unresolved call under `SelectFull`, every root that names no task of
+/// `graph` (under either policy) and every template that matches no task.
+fn ci_inputs(
+  calls : Array[WorkflowCall],
+  mentions : Array[TaskName],
+  graph : TaskGraph,
+  unmapped~ : UnmappedPolicy,
+) -> CiInputs raise DriftError {
+  let found = roots(calls, mentions, unmapped~)
+  let forced : Array[Reason] = []
+  let origin : Map[String, String] = Map([])
+  for call in calls {
+    let where_ = "\{call.file}:\{call.line} job \{call.job}"
+    if call.task.has_prefix("<unresolved:") {
+      forced.push(
+        forced_reason(call.task, "\{where_} calls a task that cannot be read"),
+      )
+    }
+    if !origin.contains(call.task) {
+      origin[call.task] = where_
+    }
+  }
+  for name, _ in found {
+    if name.0.has_prefix("<unresolved:") {
+      continue
+    }
+    let where_ = match origin.get(name.0) {
+      Some(w) => "called at \{w}"
+      None => "named by a script or file task"
+    }
+    if is_template(name.0) {
+      let matches = expand_templates(Map([(name, Full)]), [graph])
+      if matches.length() == 0 {
+        forced.push(
+          forced_reason(name.0, "\{where_}; the name prefix matches no task"),
+        )
+      }
+    } else if graph.resolve(name) is None {
+      forced.push(
+        forced_reason(name.0, "\{where_}; no such task in the config"),
+      )
+    }
+  }
+  { roots: expand_templates(found, [graph]), forced, }
+}
+
+///|
+/// The roots of the CI task graph for the checkout at `root`, with the task
+/// names of `graph` for the mention scan.
+async fn load_ci_inputs(
+  root : String,
+  graph : TaskGraph,
+  unmapped~ : UnmappedPolicy,
+) -> CiInputs {
+  let (calls, texts) = scan_ci_files(root)
+  ci_inputs(calls, texts |> ci_mentions(graph), graph, unmapped~)
+}
+
+///|
+/// The task names of `graph` that a script or file task text names.
+fn ci_mentions(texts : Array[String], graph : TaskGraph) -> Array[TaskName] {
+  let names = graph.tasks.keys().collect()
+  let mentions : Array[TaskName] = []
+  for text in texts {
+    for name in scan_mentions(text, names) {
+      if !mentions.contains(name) {
+        mentions.push(name)
+      }
+    }
+  }
+  mentions
+}
+
+///|
+fn Effect::union(self : Effect, other : Effect) -> Effect {
+  match (self, other) {
+    (Full, _) | (_, Full) => Full
+    (Always, effect) | (effect, Always) => effect
+    (Checks(one), Checks(two)) => {
+      let checks = [..one]
+      for check in two {
+        if !checks.contains(check) {
+          checks.push(check)
+        }
+      }
+      checks.sort()
+      Checks(checks)
+    }
+  }
+}
+
+///|
+/// A task is a root if it is one at either revision, with both effects.
+fn merge_roots(
+  base : Map[TaskName, Effect],
+  head : Map[TaskName, Effect],
+) -> Map[TaskName, Effect] {
+  let merged : Map[TaskName, Effect] = Map([])
+  for name, effect in base {
+    merged[name] = effect
+  }
+  for name, effect in head {
+    merged[name] = match merged.get(name) {
+      Some(other) => other.union(effect)
+      None => effect
+    }
+  }
+  merged
+}
+
+///|
+fn valid_revision(value : String) -> Bool {
+  (value.length() == 40 || value.length() == 64) &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) &&
+  value.iter().any(c => c != '0')
+}
+
+///|
+/// The mise configuration of one revision, read from a copy outside the
+/// checkout. `settings` is None when the revision has no
+/// `.config/mise/config.toml`. The copy is removed once the revision is
+/// loaded, so its CI inputs are kept as read: `calls` (workflow and action
+/// calls) and `mentions` (graph tasks that a script or file task names).
+struct Revision {
+  settings : Map[SettingKey, @toml.TomlValue]?
+  graph : TaskGraph
+  calls : Array[WorkflowCall]
+  mentions : Array[TaskName]
+}
+
+///|
+fn Revision::ci_inputs(
+  self : Revision,
+  unmapped~ : UnmappedPolicy,
+) -> CiInputs raise DriftError {
+  ci_inputs(self.calls, self.mentions, self.graph, unmapped~)
+}
+
+///|
+/// What `load_revision` copies out of a revision.
+let revision_paths : Array[String] = [".config/mise", ".github", "scripts"]
+
+///|
+fn toml_json(value : @toml.TomlValue) -> Json {
+  match value {
+    TomlString(text) => Json::string(text)
+    TomlInteger(number) => Json::string(number.to_string())
+    TomlFloat(number) => Json::number(number)
+    TomlBoolean(flag) => Json::boolean(flag)
+    TomlArray(items) => Json::array(items.map(toml_json))
+    TomlTable(entries) => {
+      let fields : Map[String, Json] = Map([])
+      for key, entry in entries {
+        fields[key] = toml_json(entry)
+      }
+      Json::object(fields)
+    }
+    TomlDateTime(_) => Json::string(value.to_string())
+  }
+}
+
+///|
+/// The raw `[tasks]` tables of a config, keyed by task name. mise does not
+/// report every key (`run_windows` is null in its JSON), so each config
+/// task's table becomes part of its body.
+fn config_tasks(text : String) -> Map[TaskName, Json] raise {
+  let tasks : Map[TaskName, Json] = Map([])
+  guard @toml.parse(text) is TomlTable(document) else {
+    fail("mise config is not a TOML table")
+  }
+  if document.get("tasks") is Some(TomlTable(entries)) {
+    for name, entry in entries {
+      tasks[TaskName(strip_quotes(name))] = toml_json(entry)
+    }
+  }
+  tasks
+}
+
+///|
+/// Add the raw TOML table of each config task to its mise entry, and its
+/// `run_windows` when mise leaves it out.
+fn with_config_tasks(json : Json, tasks : Map[TaskName, Json]) -> Json {
+  guard json is Array(entries) else { return json }
+  Json::array(
+    entries.map(entry => {
+      guard entry is Object(fields) &&
+        fields.get("name") is Some(String(name)) &&
+        tasks.get(TaskName(strip_quotes(name))) is Some(raw) else {
+        return entry
+      }
+      let copy : Map[String, Json] = Map([])
+      for key, value in fields {
+        copy[key] = value
+      }
+      copy["toml"] = raw
+      if raw is Object(table) &&
+        table.get("run_windows") is Some(windows) &&
+        copy.get("run_windows") is (None | Some(Null)) {
+        copy["run_windows"] = windows
+      }
+      Json::object(copy)
+    }),
+  )
+}
+
+///|
+async fn git_step(step : String, args : Array[String], cwd~ : String) -> String {
+  let (status, out, err) = @process.collect_output("git", args, cwd~)
+  guard status == 0 else {
+    raise LoadError("\{step} failed (git exit \{status}): \{err.text().trim()}")
+  }
+  out.text()
+}
+
+///|
+/// Copy `.config/mise`, `.github` and `scripts` of `rev` into a new
+/// temporary directory and read its mise tasks there. mise runs with a
+/// trusted copy, an empty global and system config, an empty config
+/// directory, no `MISE_ENV`, `--local` and a ceiling above the copy, so
+/// nothing of the developer's own mise setup takes part. A path that the
+/// revision does not have is left out: `git ls-tree` on a commit that
+/// exists lists only the paths present, and any git failure raises. Git runs
+/// in the top level of the work tree that holds `cwd`, so the paths are the
+/// same from any subdirectory.
+async fn load_revision(rev : String, cwd~ : String = ".") -> Revision {
+  guard valid_revision(rev) else {
+    raise LoadError("revision \{rev} is not a full, nonzero commit SHA")
+  }
+  let cwd = git_step(
+      "finding the top level of the work tree",
+      ["rev-parse", "--show-toplevel"],
+      cwd~,
+    )
+    .trim()
+    .to_owned()
+  guard cwd != "" else {
+    raise LoadError("finding the top level of the work tree gave no path")
+  }
+  ignore(
+    git_step(
+      "finding revision \{rev}",
+      ["cat-file", "-e", rev + "^{commit}"],
+      cwd~,
+    ),
+  )
+  let listed = git_step(
+    "listing revision \{rev}",
+    ["ls-tree", "-z", "--full-tree", "--name-only", rev, "--", ..revision_paths],
+    cwd~,
+  )
+  let present = listed
+    .split("\u{0000}")
+    .map(p => p.to_owned())
+    .filter(p => revision_paths.contains(p))
+    .collect()
+  let scratch = @fs.realpath(@fs.tmpdir(prefix="ci-mise-impact-"))
+  defer @fs.rmdir(scratch, recursive=true)
+  let tree = scratch + "/tree"
+  @fs.mkdir(tree)
+  if present.length() > 0 {
+    let archive = scratch + "/revision.tar"
+    ignore(
+      git_step(
+        "git archive of \{rev}",
+        ["archive", "--format=tar", "-o", archive, rev, "--", ..present],
+        cwd~,
+      ),
+    )
+    let (status, _, err) = @process.collect_output(
+      "tar",
+      ["-xf", archive, "-C", tree],
+      cwd=scratch,
+    )
+    guard status == 0 else {
+      raise LoadError(
+        "extracting \{rev} failed (tar exit \{status}): \{err.text().trim()}",
+      )
+    }
+  }
+  ignore(git_step("git init of the copy", ["init", "-q"], cwd=tree))
+  let config = tree + "/.config/mise/config.toml"
+  let (settings, tasks) = if @fs.exists(config) {
+    let text = @fs.read_file(config).text()
+    let bad = fn(err : Error) -> Error {
+      LoadError(
+        "TOML parse of .config/mise/config.toml at \{rev}: \{error_text(err)}",
+      )
+    }
+    let settings = parse_settings(text) catch { err => raise bad(err) }
+    let tasks = config_tasks(text) catch { err => raise bad(err) }
+    (Some(settings), tasks)
+  } else {
+    (None, Map([]))
+  }
+  let empty = scratch + "/empty-global.toml"
+  @fs.write_file(empty, "")
+  @fs.mkdir(scratch + "/config")
+  let (status, out, err) = @process.collect_output(
+    "mise",
+    ["tasks", "ls", "--json", "--hidden", "--local"],
+    cwd=tree,
+    extra_env={
+      "MISE_TRUSTED_CONFIG_PATHS": tree,
+      "MISE_GLOBAL_CONFIG_FILE": empty,
+      "MISE_SYSTEM_CONFIG_FILE": empty,
+      "MISE_CONFIG_DIR": scratch + "/config",
+      "MISE_CEILING_PATHS": scratch,
+      "MISE_ENV": "",
+      "MISE_PROFILE": "",
+      "MISE_OVERRIDE_CONFIG_FILENAMES": "",
+      "MISE_DEFAULT_CONFIG_FILENAME": "",
+    },
+  )
+  guard status == 0 else {
+    raise LoadError(
+      "mise tasks ls at \{rev} failed (exit \{status}): \{err.text().trim()}",
+    )
+  }
+  let unreadable = fn(err : Error) -> Error {
+    LoadError("mise tasks JSON at \{rev} is not readable: \{error_text(err)}")
+  }
+  let json = @json.parse(out.text()) catch { err => raise unreadable(err) }
+  let graph = TaskGraph::parse(with_config_tasks(json, tasks), root=tree) catch {
+    err => raise unreadable(err)
+  }
+  let (calls, texts) = scan_ci_files(tree)
+  { settings, graph, calls, mentions: texts |> ci_mentions(graph), }
+}
+
+///|
+/// A step of `load_revision` that failed, with what it was doing.
+suberror LoadError {
+  LoadError(String)
+} derive(Debug)
+
+///|
+fn error_text(err : Error) -> String {
+  match err {
+    LoadError(message) => message
+    // `fail` puts its source location before the message.
+    Failure(message) =>
+      match message.find(" FAILED: ") {
+        Some(at) => message[at + 9:].to_owned()
+        None => message
+      }
+    other => other.to_string()
+  }
+}
+
+///|
+fn config_full(detail : String) -> Impact {
+  {
+    full: true,
+    checks: [],
+    reasons: [{ subject: Config, effect: Full, detail, }],
+  }
+}
+
+///|
+/// Compare the mise configuration of two revisions. Drift (a workflow call at
+/// head that `task_table` does not map) raises; every other failure gives a
+/// full impact with a `Config` reason that names the step. `lenient` reads
+/// head calls as a base does (`SelectFull`), to replay historical commits
+/// whose workflows call tasks that today's table no longer has.
+async fn impact(
+  base : String,
+  head : String,
+  cwd~ : String = ".",
+  lenient~ : Bool = false,
+) -> Impact raise DriftError {
+  let head_rev = load_revision(head, cwd~) catch {
+    err => return config_full("head: \{error_text(err)}")
+  }
+  let head_ci = head_rev.ci_inputs(
+    unmapped=if lenient { SelectFull } else { Fail },
+  )
+  let base_rev = load_revision(base, cwd~) catch {
+    err => return config_full("base: \{error_text(err)}")
+  }
+  let base_ci = base_rev.ci_inputs(unmapped=SelectFull)
+  let settings = match (base_rev.settings, head_rev.settings) {
+    (Some(before), Some(after)) => classify_settings(before, after)
+    (Some(_), None) =>
+      config_full(".config/mise/config.toml is deleted at head")
+    (None, Some(after)) => classify_settings(Map([]), after)
+    // `ci-changes` asks only when the config changed, so a read that finds it
+    // at neither revision went wrong.
+    (None, None) => config_full("config absent at base and head")
+  }
+  let forced = [..base_ci.forced, ..head_ci.forced]
+  settings
+  .merge(
+    classify_tasks(
+      base_rev.graph,
+      head_rev.graph,
+      merge_roots(base_ci.roots, head_ci.roots),
+    ),
+  )
+  .merge({ full: forced.length() > 0, checks: [], reasons: forced, })
+}
+
+///|
+/// The mise version, the first word of `mise --version`.
+async fn mise_version() -> String noraise {
+  try {
+    let (status, out, _) = @process.collect_output("mise", ["--version"])
+    let word = out.text().trim().split(" ").next().unwrap_or("").to_owned()
+    if status == 0 && word != "" {
+      word
+    } else {
+      "unknown"
+    }
+  } catch {
+    _ => "unknown"
+  }
+}
+
+///|
+let no_impact : Impact = { full: false, checks: [], reasons: [], }
+
+///|
+async fn self_test() -> Unit {
+  // Presentation-only changes select nothing.
+  let none_cases : Array[(String, String, String)] = [
+    (
+      "settings_comment_only", "[tools]\nbun = \"1.4.3\"\n", "# note\n[tools]\nbun = \"1.4.3\" # pinned\n",
+    ),
+    (
+      "settings_key_order_only", "[tools]\nbun = \"1.4.3\"\nzig = \"0.17.0\"\n[settings]\nexperimental = true\n",
+      "[settings]\nexperimental = true\n[tools]\nzig = \"0.17.0\"\nbun = \"1.4.3\"\n",
+    ),
+    (
+      "settings_quoting_only", "[tools]\nbun = \"1.4.3\"\n", "[tools]\n\"bun\" = '1.4.3'\n",
+    ),
+    (
+      "settings_crlf_only", "[tools]\nbun = \"1.4.3\"\n# c\n", "[tools]\r\nbun = \"1.4.3\"\r\n# c\r\n",
+    ),
+  ]
+  for case in none_cases {
+    let (name, base, head) = case
+    if impact_of(base, head) != no_impact {
+      fail("\{name}: expected no impact")
+    }
+  }
+
+  // Lint tools affect only the always-run jobs.
+  let lint = impact_of(
+    "[tools]\nactionlint = \"1.7.12\"\n", "[tools]\nactionlint = \"1.7.13\"\n",
+  )
+  if lint.full ||
+    lint.checks.length() != 0 ||
+    lint.reasons.length() != 1 ||
+    lint.reasons[0].effect != Always {
+    fail(
+      "settings_lint_tool: expected one Always reason, got \{lint.to_json(mise_version="").stringify()}",
+    )
+  }
+
+  // Every Full row: change, add and remove each give exactly one Full reason
+  // for that key. Add and remove use a bare section, so no filler key can
+  // make the result full on its own.
+  let full_rows : Array[(String, String, String, String)] = [
+    ("tools", "zig", "zig = \"a\"", "zig = \"b\""),
+    ("tools", "bun", "bun = \"a\"", "bun = \"b\""),
+    ("tools", "node", "node = \"a\"", "node = \"b\""),
+    ("tools", "uv", "uv = \"a\"", "uv = \"b\""),
+    (
+      "tools", "http:moonbit", "\"http:moonbit\" = { version = \"1\" }", "\"http:moonbit\" = { version = \"2\" }",
+    ),
+    ("env", "MOON_HOME", "MOON_HOME = \"a\"", "MOON_HOME = \"b\""),
+    (
+      "env", "MOON_CORE_OVERRIDE", "MOON_CORE_OVERRIDE = \"a\"", "MOON_CORE_OVERRIDE = \"b\"",
+    ),
+    ("env", "_", "_.path = [\"a\"]", "_.path = [\"b\"]"),
+    ("hooks", "enter", "enter = \"a\"", "enter = \"b\""),
+    ("settings", "experimental", "experimental = true", "experimental = false"),
+  ]
+  for row in full_rows {
+    let (section, key, one, two) = row
+    let bare = "[\{section}]\n"
+    let with_one = bare + one + "\n"
+    let with_two = bare + two + "\n"
+    let cases = [
+      ("change", with_one, with_two),
+      ("add", bare, with_one),
+      ("remove", with_one, bare),
+    ]
+    for case in cases {
+      let (how, base, head) = case
+      let impact = impact_of(base, head)
+      if !impact.full ||
+        impact.reasons.length() != 1 ||
+        impact.reasons[0].subject != Setting({ section, key, }) ||
+        impact.reasons[0].effect != Full ||
+        impact.reasons[0].detail == "not in the setting table" {
+        fail(
+          "settings_full_rows: \{how} of \{section}.\{key} is not one Full reason",
+        )
+      }
+    }
+  }
+  // A subtable compares as one value, whatever the order of its keys.
+  let moonbit_a = "[tools.\"http:moonbit\"]\nversion = \"1\"\nbin_path = \"bin\"\n[tools.\"http:moonbit\".platforms]\nlinux-x64 = { url = \"u\", format = \"zip\" }\n"
+  let moonbit_b = "[tools.\"http:moonbit\"]\nbin_path = \"bin\"\nversion = \"1\"\n[tools.\"http:moonbit\".platforms]\nlinux-x64 = { format = \"zip\", url = \"u\" }\n"
+  if impact_of(moonbit_a, moonbit_b) != no_impact {
+    fail("settings_subtable_key_order_only: expected no impact")
+  }
+
+  // Keys outside the table are full, in a known or a new section.
+  for
+    case in [
+      ("settings_unknown_key", "[tools]\n", "[tools]\ndeno = \"1\"\n"),
+      ("settings_unknown_section", "", "[task_config]\nincludes = [\"x\"]\n"),
+    ] {
+    let (name, base, head) = case
+    let impact = impact_of(base, head)
+    if !impact.full ||
+      impact.reasons.length() != 1 ||
+      impact.reasons[0].detail != "not in the setting table" {
+      fail(
+        "\{name}: expected full with the table detail, got \{impact.to_json(mise_version="").stringify()}",
+      )
+    }
+  }
+
+  // Bad TOML raises instead of selecting less.
+  let raised = try {
+    ignore(parse_settings("[tools]\nbad = \n"))
+    false
+  } catch {
+    _ => true
+  }
+  if !raised {
+    fail("settings_invalid_toml: expected an error")
+  }
+
+  // The checked-in config parses and every key has a table entry.
+  let real = parse_settings(@fs.read_file(".config/mise/config.toml").text())
+  if real.length() == 0 {
+    fail("settings_real_config: no settings")
+  }
+  for key, _ in real {
+    if !["tools", "env", "hooks", "settings"].contains(key.section) {
+      fail("settings_real_config: unexpected section \{key.section}")
+    }
+    if setting_effect(key) is None {
+      fail("settings_real_config: no table entry for \{key.section}.\{key.key}")
+    }
+  }
+
+  // Merge, check names and wire format.
+  let merged = { full: false, checks: [Workbench, Code], reasons: [], }.merge({
+    full: true,
+    checks: [Code, Site],
+    reasons: [{ subject: Config, effect: Full, detail: "x", }],
+  })
+  if merged.checks != [Code, Site, Workbench] ||
+    !merged.full ||
+    merged.reasons.length() != 1 {
+    fail(
+      "impact_merge: wrong merge, got \{merged.to_json(mise_version="").stringify()}",
+    )
+  }
+  for check in all_checks {
+    if Check::parse(check.output_name()) != Some(check) {
+      fail("check_names: no round trip for \{check.output_name()}")
+    }
+  }
+  if Check::parse("nope") is Some(_) {
+    fail("check_names: parsed an unknown name")
+  }
+  let wire = {
+      full: false,
+      checks: [Code, Conformance],
+      reasons: [
+        {
+          subject: Task(TaskName("test:conformance")),
+          effect: Checks([Code, Conformance]),
+          detail: "called by ci-native.yml",
+        },
+      ],
+    }
+    .to_json(mise_version="2026.10.15")
+    .stringify()
+  let expected = "{\"full\":false,\"checks\":[\"code\",\"conformance\"],\"mise\":\"2026.10.15\",\"reasons\":[{\"subject\":\"task test:conformance\",\"effect\":\"checks code, conformance\",\"detail\":\"called by ci-native.yml\"}]}"
+  if wire != expected {
+    fail("impact_wire: wrong JSON \{wire}")
+  }
+  println("ci-mise-impact: settings cases pass")
+}
+
+///|
+const TEST_ROOT : String = "/tmp/rev-a"
+
+///|
+/// One entry in the shape `mise tasks ls --json` prints.
+fn task_json(
+  name : String,
+  run~ : Array[String] = [],
+  depends~ : Array[String] = [],
+  depends_post~ : Array[String] = [],
+  wait_for~ : Array[String] = [],
+  aliases~ : Array[String] = [],
+  extra~ : Map[String, Json] = Map([]),
+  root~ : String = TEST_ROOT,
+) -> Json {
+  let fields : Map[String, Json] = Map([])
+  fields["name"] = Json::string(name)
+  fields["aliases"] = Json::array(aliases.map(Json::string))
+  fields["source"] = Json::string(root + "/.config/mise/config.toml")
+  fields["config_sources"] = [Json::string(root + "/.config/mise/config.toml")]
+  fields["depends"] = Json::array(depends.map(Json::string))
+  fields["depends_post"] = Json::array(depends_post.map(Json::string))
+  fields["wait_for"] = Json::array(wait_for.map(Json::string))
+  fields["run"] = Json::array(run.map(Json::string))
+  fields["env"] = []
+  fields["dir"] = Json::string(root)
+  fields["tools"] = {}
+  for key, value in extra {
+    fields[key] = value
+  }
+  Json::object(fields)
+}
+
+///|
+fn graph_of(
+  entries : Array[Json],
+  root~ : String = TEST_ROOT,
+) -> TaskGraph raise {
+  TaskGraph::parse(Json::array(entries), root~)
+}
+
+///|
+fn conformance_root() -> Map[TaskName, Effect] {
+  Map([(TaskName("ci:a"), Checks([Conformance]))])
+}
+
+///|
+fn task_impact(
+  base : Array[Json],
+  head : Array[Json],
+  roots~ : Map[TaskName, Effect] = conformance_root(),
+) -> Impact raise {
+  classify_tasks(graph_of(base), graph_of(head), roots)
+}
+
+///|
+fn expect_checks(
+  name : String,
+  impact : Impact,
+  checks : Array[Check],
+) -> Unit raise {
+  if impact.full || impact.checks != checks {
+    fail(
+      "\{name}: expected checks \{checks.map(Check::output_name).join(",")}, got \{impact.to_json(mise_version="").stringify()}",
+    )
+  }
+}
+
+///|
+fn task_self_test() -> Unit raise {
+  let a = task_json("ci:a", run=["mise run helper"])
+  let helper = task_json("helper", run=["echo 1"])
+  let base = [a, helper]
+
+  expect_checks(
+    "tasks_opt_in_added",
+    task_impact(base, [..base, task_json("test:fixture-opt-in-mck", run=["x"])]),
+    [],
+  )
+  expect_checks(
+    "tasks_root_changed",
+    task_impact(base, [
+      task_json("ci:a", run=["mise run helper", "echo"]),
+      helper,
+    ]),
+    [Conformance],
+  )
+  expect_checks(
+    "tasks_transitive_run_line",
+    task_impact(base, [a, task_json("helper", run=["echo 2"])]),
+    [Conformance],
+  )
+  // Through depends, depends_post and wait_for, with arguments and an alias.
+  for key in ["depends", "depends_post", "wait_for"] {
+    let caller = fn(dep : String) {
+      match key {
+        "depends" => task_json("ci:a", depends=[dep])
+        "depends_post" => task_json("ci:a", depends_post=[dep])
+        _ => task_json("ci:a", wait_for=[dep])
+      }
+    }
+    expect_checks(
+      "tasks_transitive_depends(\{key})",
+      task_impact([caller("helper"), helper], [
+        caller("helper"),
+        task_json("helper", run=["echo 2"]),
+      ]),
+      [Conformance],
+    )
+  }
+  expect_checks(
+    "tasks_transitive_depends(args)",
+    task_impact([task_json("ci:a", depends=["helper --flag"]), helper], [
+      task_json("ci:a", depends=["helper --flag"]),
+      task_json("helper", run=["echo 2"]),
+    ]),
+    [Conformance],
+  )
+  expect_checks(
+    "tasks_transitive_alias",
+    task_impact(
+      [task_json("ci:a", depends=["h"]), task_json("helper", aliases=["h"])],
+      [
+        task_json("ci:a", depends=["h"]),
+        task_json("helper", aliases=["h"], run=["echo"]),
+      ],
+    ),
+    [Conformance],
+  )
+  expect_checks(
+    "tasks_new_call_counts_as_caller_change",
+    task_impact([a, helper], [
+      task_json("ci:a", run=["mise run helper && mise run new"]),
+      helper,
+      task_json("new", run=["x"]),
+    ]),
+    [Conformance],
+  )
+  // Redirections and a trailing backslash do not hide the called task.
+  for
+    line in ["mise run helper>log", "mise run helper 2>&1", "mise run helper\\"] {
+    expect_checks(
+      "calls_redirection(\{line})",
+      task_impact([task_json("ci:a", run=[line]), helper], [
+        task_json("ci:a", run=[line]),
+        task_json("helper", run=["echo 2"]),
+      ]),
+      [Conformance],
+    )
+  }
+  // A reached task that calls a name which is a task at neither revision is
+  // full; an unreached one is not.
+  let lost = task_json("ci:a", run=["mise run nosuchtask"])
+  let lost_impact = task_impact([lost], [lost])
+  if !lost_impact.full ||
+    !lost_impact.reasons.iter().any(r => r.subject == Task(TaskName("ci:a"))) {
+    fail(
+      "calls_unknown_task_full: got \{lost_impact.to_json(mise_version="").stringify()}",
+    )
+  }
+  let lost_alone = task_json("lonely", run=["mise run nosuchtask"])
+  expect_checks(
+    "calls_unknown_task_unreached_safe",
+    task_impact([a, helper, lost_alone], [a, helper, lost_alone]),
+    [],
+  )
+  expect_checks("tasks_removed", task_impact(base, [a]), [Conformance])
+  expect_checks(
+    "tasks_renamed",
+    task_impact(base, [a, task_json("helper2", run=["echo 1"])]),
+    [Conformance],
+  )
+  // Shadowing by a name or an alias, with a different effect so a pass is not luck.
+  let lint_roots : Map[TaskName, Effect] = Map([
+    (TaskName("ci:lint"), Checks([Embedding])),
+  ])
+  let lint_base = [
+    task_json("ci:lint", run=["mise run lint:yaml"]),
+    task_json("lint:yaml", run=["x"], extra={
+      "source": "/tmp/rev-a/.config/mise/tasks/lint/yaml",
+    }),
+  ]
+  expect_checks(
+    "tasks_shadowing_name",
+    task_impact(
+      lint_base,
+      [lint_base[0], task_json("lint:yaml", run=["x"])],
+      roots=lint_roots,
+    ),
+    [Embedding],
+  )
+  expect_checks(
+    "tasks_shadowing_alias",
+    task_impact(
+      lint_base,
+      [..lint_base, task_json("other", aliases=["lint:yaml"], run=["y"])],
+      roots=lint_roots,
+    ),
+    [Embedding],
+  )
+  // Patterns reach tasks added at head; the pattern may also be unmatched.
+  let pattern_a = task_json("ci:a", run=["mise run test:*"])
+  expect_checks(
+    "tasks_pattern",
+    task_impact([pattern_a, task_json("test:old", run=["x"])], [
+      pattern_a,
+      task_json("test:old", run=["x"]),
+      task_json("test:new", run=["x"]),
+    ]),
+    [Conformance],
+  )
+  expect_checks(
+    "tasks_pattern_unrelated",
+    task_impact([pattern_a], [pattern_a, task_json("build:new", run=["x"])]),
+    [],
+  )
+  let odd = task_json("ci:a", run=["mise run test:[ab]*"])
+  let odd_impact = task_impact([odd], [odd])
+  if !odd_impact.full {
+    fail("tasks_pattern_unmatchable: expected full")
+  }
+  // A Full root, an Always root and two roots that share a task.
+  let full_roots : Map[TaskName, Effect] = Map([(TaskName("ci:a"), Full)])
+  if !task_impact(
+      base,
+      [a, task_json("helper", run=["echo 2"])],
+      roots=full_roots,
+    ).full {
+    fail("tasks_full_root: expected full")
+  }
+  let always_roots : Map[TaskName, Effect] = Map([(TaskName("ci:a"), Always)])
+  expect_checks(
+    "tasks_always_root",
+    task_impact(
+      base,
+      [a, task_json("helper", run=["echo 2"])],
+      roots=always_roots,
+    ),
+    [],
+  )
+  let two_roots : Map[TaskName, Effect] = Map([
+    (TaskName("ci:a"), Checks([Conformance])),
+    (TaskName("ci:b"), Checks([Code, Conformance])),
+  ])
+  let b = task_json("ci:b", run=["mise run helper"])
+  expect_checks(
+    "tasks_union_of_roots",
+    task_impact(
+      [a, b, helper],
+      [a, b, task_json("helper", run=["echo 2"])],
+      roots=two_roots,
+    ),
+    [Code, Conformance],
+  )
+  // A cycle ends.
+  let cycle_a = task_json("ci:a", run=["mise run helper"])
+  let cycle_helper = task_json("helper", run=["mise run ci:a"])
+  expect_checks(
+    "tasks_cycle",
+    task_impact([cycle_a, cycle_helper], [
+      cycle_a,
+      task_json("helper", run=["mise run ci:a", "x"]),
+    ]),
+    [Conformance],
+  )
+  // Quoted names and dotted or coloned names give one TaskName.
+  let quoted = graph_of([task_json("\"http:x\"", run=["x"])])
+  let plain = graph_of([task_json("http:x", run=["x"])])
+  if quoted.tasks.keys().collect() != plain.tasks.keys().collect() ||
+    classify_tasks(quoted, plain, conformance_root()) != no_impact {
+    fail("task_keys_quoted_and_unquoted: names differ")
+  }
+  // One opt-in add plus one root change selects only the root's checks.
+  expect_checks(
+    "tasks_mixed",
+    task_impact(base, [
+      task_json("ci:a", run=["mise run helper", "echo"]),
+      helper,
+      task_json("opt:in", run=["x"]),
+    ]),
+    [Conformance],
+  )
+  // Each body field alone is a change.
+  let fields : Array[(String, Json)] = [
+    ("env", ["A=1"]),
+    ("dir", "/tmp/rev-a/apps/site"),
+    ("tools", { "bun": "1" }),
+    ("run_windows", ["pwsh x"]),
+    ("sources", ["a.txt"]),
+  ]
+  for field in fields {
+    let (key, value) = field
+    expect_checks(
+      "tasks_body_fields(\{key})",
+      task_impact([a, helper], [
+        task_json("ci:a", run=["mise run helper"], extra=Map([(key, value)])),
+        helper,
+      ]),
+      [Conformance],
+    )
+  }
+  // The same graph in another directory, with file tasks, is no change.
+  let elsewhere = fn(root : String, parse_root : String) -> TaskGraph raise {
+    graph_of(
+      [
+        task_json("ci:a", run=["mise run helper"], root~),
+        task_json("helper", root~, extra={
+          "source": root + "/.config/mise/tasks/helper",
+          "file": root + "/.config/mise/tasks/helper",
+        }),
+      ],
+      root=parse_root,
+    )
+  }
+  if classify_tasks(
+      elsewhere("/tmp/rev-a", "/tmp/rev-a"),
+      elsewhere("/var/x/rev-b", "/var/x/rev-b/"),
+      conformance_root(),
+    ) !=
+    no_impact {
+    fail("tasks_root_independent: paths leaked into the comparison")
+  }
+  // run_windows calls count, and quoted echo text is read as a call only when it is one.
+  let win = task_json("ci:a", extra={ "run_windows": ["mise run -q -- helper"] })
+  expect_checks(
+    "tasks_run_windows_call",
+    task_impact([win, helper], [win, task_json("helper", run=["x"])]),
+    [Conformance],
+  )
+  // Unreached change is Always with a reason.
+  let unreached = task_impact([a, helper, task_json("x", run=["1"])], [
+    a,
+    helper,
+    task_json("x", run=["2"]),
+  ])
+  if unreached.reasons.length() != 1 ||
+    unreached.reasons[0].effect != Always ||
+    unreached.reasons[0].detail != "not reached by CI" {
+    fail("tasks_unreached: wrong reason")
+  }
+  // Calls next to shell syntax and global options are concrete.
+  let call_cases : Array[(String, String)] = [
+    ("calls_shell_syntax(;)", "mise run x; echo hi"),
+    ("calls_shell_syntax($())", "echo $(mise run x)"),
+    ("calls_shell_syntax(paren)", "(mise run x)"),
+    ("calls_shell_syntax(bash -c)", "bash -c \"mise run x\""),
+    ("calls_shell_syntax(&&)", "mise run x&&echo hi"),
+    ("calls_global_options(-q)", "mise -q run x"),
+    ("calls_global_options(tasks run)", "mise tasks run x"),
+    ("calls_global_options(r)", "mise r -q -- x"),
+  ]
+  for case in call_cases {
+    let (name, line) = case
+    let record = graph_of([task_json("t", run=[line])]).tasks[TaskName("t")]
+    if record.calls != [TaskName("x")] || record.unresolved.length() != 0 {
+      fail("\{name}: expected the call x, got \{record.calls.length()} calls")
+    }
+  }
+  let two = graph_of([task_json("t", run=["mise run a ::: b; mise run c"])]).tasks[TaskName(
+      "t",
+    )]
+  if two.calls != [TaskName("a"), TaskName("b"), TaskName("c")] {
+    fail("calls_multiple: wrong calls")
+  }
+  // What we cannot read is unresolved, never dropped.
+  let odd_lines = [
+    "mise run -j 4 x", "mise -C dir run x", "mise run $NAME", "mise run {{ vars.t }}",
+    "mise run $(pick)", "mise watch x",
+  ]
+  for line in odd_lines {
+    let record = graph_of([task_json("t", run=[line])]).tasks[TaskName("t")]
+    if record.unresolved.length() == 0 {
+      fail(
+        "calls_unknown_option_is_unresolved: \{line} has no unresolved entry",
+      )
+    }
+  }
+  let structured = graph_of([
+      task_json(
+        "t",
+        extra=Map([("run", [{ "task": "x" }, { "tasks": ["y", "z arg"] }])]),
+      ),
+    ]).tasks[TaskName("t")]
+  if structured.calls != [TaskName("x"), TaskName("y"), TaskName("z")] ||
+    structured.unresolved.length() != 0 {
+    fail("calls_structured_entry: wrong calls")
+  }
+  let strange = [
+    task_json("t", extra=Map([("run", [{ "script": "x" }])])),
+    task_json("t", extra=Map([("run", [7])])),
+    task_json("t", extra=Map([("run", { "a": 1 })])),
+    task_json("t", extra=Map([("depends", [{ "task": "x" }])])),
+    task_json("t", extra=Map([("depends", ["$X"])])),
+  ]
+  for entry in strange {
+    if graph_of([entry]).tasks[TaskName("t")].unresolved.length() == 0 {
+      fail("calls_unknown_shape: \{entry.stringify()} has no unresolved entry")
+    }
+  }
+  // A reached task with an unresolved entry is full; an unreached one is not.
+  let dynamic = task_json("ci:a", run=["mise run $NAME"])
+  let dyn_impact = task_impact([dynamic], [dynamic])
+  if !dyn_impact.full {
+    fail("calls_dynamic_target_full: expected full")
+  }
+  let hidden = task_json("lonely", run=["mise run $NAME"])
+  expect_checks(
+    "calls_unresolved_unreached_safe",
+    task_impact([a, helper, hidden], [a, helper, hidden]),
+    [],
+  )
+  if task_impact([a, helper, hidden], [a, helper, hidden]).reasons.length() != 0 {
+    fail("calls_unresolved_unreached_safe: expected no reasons")
+  }
+  // Shorthand, aliases, allowlist, variables and paths.
+  let shorthand = graph_of([task_json("t", run=["mise fixture-shorthand"])]).tasks[TaskName(
+      "t",
+    )]
+  if shorthand.unresolved.length() == 0 {
+    fail(
+      "calls_task_shorthand_unresolved: mise fixture-shorthand is not unresolved",
+    )
+  }
+  let t_alias = graph_of([task_json("t", run=["mise t run x"])]).tasks[TaskName(
+      "t",
+    )]
+  if t_alias.calls != [TaskName("x")] || t_alias.unresolved.length() != 0 {
+    fail("calls_tasks_alias: expected the call x")
+  }
+  for
+    line in [
+      "mise install", "mise exec -- moonx a.mbtx", "mise tasks ls", "mise -q x -- echo hi",
+    ] {
+    let record = graph_of([task_json("t", run=[line])]).tasks[TaskName("t")]
+    if record.calls.length() != 0 || record.unresolved.length() != 0 {
+      fail("calls_allowlisted_subcommand: \{line} is not quiet")
+    }
+  }
+  let nested = graph_of([task_json("t", run=["mise exec -- mise run x"])]).tasks[TaskName(
+      "t",
+    )]
+  if nested.calls != [TaskName("x")] || nested.unresolved.length() != 0 {
+    fail("calls_allowlisted_subcommand: nested call lost")
+  }
+  for line in ["$MISE run x", "{{ mise_bin }} run x"] {
+    let record = graph_of([task_json("t", run=[line])]).tasks[TaskName("t")]
+    if record.unresolved.length() == 0 {
+      fail("calls_mise_variable_unresolved: \{line} is not unresolved")
+    }
+  }
+  let by_path = graph_of([task_json("t", run=["/usr/bin/mise run x"])]).tasks[TaskName(
+      "t",
+    )]
+  if by_path.calls != [TaskName("x")] || by_path.unresolved.length() != 0 {
+    fail("calls_mise_path: expected the call x")
+  }
+  let odd_alias = graph_of([task_json("t", extra=Map([("aliases", [1])]))]).tasks[TaskName(
+      "t",
+    )]
+  if odd_alias.unresolved.length() == 0 {
+    fail("aliases_non_string_unresolved: expected an entry")
+  }
+  // Invalid input raises.
+  let raised = try {
+    ignore(TaskGraph::parse(@json.parse("{}"), root=TEST_ROOT))
+    false
+  } catch {
+    _ => true
+  }
+  if !raised {
+    fail("tasks_invalid_json: expected an error")
+  }
+  println("ci-mise-impact: task cases pass")
+}
+
+///|
+fn call_at(
+  file : String,
+  job : String,
+  line : Int32,
+  task : String,
+) -> WorkflowCall {
+  { file, job, line, task, }
+}
+
+///|
+fn drift_message(
+  calls : Array[WorkflowCall],
+  mentions : Array[TaskName],
+) -> String? {
+  ignore(roots(calls, mentions, unmapped=Fail)) catch {
+    err => return Some(err.message())
+  }
+  None
+}
+
+///|
+async fn workflow_self_test() -> Unit {
+  // Jobs and line numbers, a single line and a block scalar.
+  let two_jobs =
+    #|name: X
+    #|on: push
+    #|jobs:
+    #|  first:
+    #|    steps:
+    #|      - run: mise run lint:yaml
+    #|  second:
+    #|    steps:
+    #|      - name: Many
+    #|        run: |
+    #|          # mise run commented
+    #|          echo hi
+    #|          mise run test:elm
+    #|      - name: After
+    #|        run: echo done
+    #|        env:
+    #|          A: mise run not-a-run
+  let found = scan_workflow("w.yml", two_jobs)
+  if found !=
+    [
+      call_at("w.yml", "first", 6, "lint:yaml"),
+      call_at("w.yml", "second", 13, "test:elm"),
+    ] {
+    fail(
+      "scan_jobs_and_lines: wrong calls \{found.map(c => "\{c.job}:\{c.line}:\{c.task}").join(" ")}",
+    )
+  }
+  let in_action =
+    #|runs:
+    #|  using: composite
+    #|  steps:
+    #|    - shell: bash
+    #|      run: mise run setup:core
+  if scan_workflow(".github/actions/x/action.yml", in_action) !=
+    [call_at(".github/actions/x/action.yml", "(action)", 5, "setup:core")] {
+    fail("scan_jobs_and_lines: wrong action call")
+  }
+  // Several calls on one line, quoted echo text, templates and arguments.
+  let cases : Array[(String, String, Array[String])] = [
+    ("two calls", "mise run a && mise run b", ["a", "b"]),
+    ("echo quoted", "echo \"Run 'mise run x' and commit\"", []),
+    ("echo then call", "echo \"mise run x\"; mise run y", ["y"]),
+    ("bash -c", "bash -c \"mise run x\"", ["x"]),
+    ("dashes", "mise run -q -- x", ["x"]),
+    (
+      "template",
+      "mise run test:workbench-native-${{ matrix.kind }}",
+      ["test:workbench-native-"],
+    ),
+    ("argument template", "mise run x -- ${{ matrix.target }}", ["x"]),
+    ("xvfb", "xvfb-run -a mise run x -- ${{ matrix.target }}", ["x"]),
+  ]
+  for case in cases {
+    let (name, line, expected) = case
+    let got = scan_workflow(
+      "w.yml",
+      "jobs:\n  j:\n    steps:\n      - run: " + line,
+    ).map(c => c.task)
+    if got != expected {
+      fail("scan_multiple_and_quoted_calls(\{name}): got \{got.join(" ")}")
+    }
+  }
+  // A call we cannot read is never dropped.
+  if scan_workflow(
+      "w.yml", "jobs:\n  j:\n    steps:\n      - run: mise run $NAME\n",
+    ).length() !=
+    1 {
+    fail("scan_unresolved: call dropped")
+  }
+  // Drift: unmapped and stale, with the exact messages.
+  let unknown = call_at("ci.yml", "build", 9, "build:new")
+  if drift_message([unknown], []) !=
+    Some(
+      "ci-mise-impact: ci.yml:9 job build calls mise task build:new, which has no entry in task_table in scripts/ci-mise-impact.mbtx. Add it with the checks the task affects.",
+    ) {
+    fail("drift_unmapped: wrong message")
+  }
+  if roots([unknown], [], unmapped=SelectFull) !=
+    Map([(TaskName("build:new"), Full)]) {
+    fail("drift_unmapped: SelectFull is not a Full root")
+  }
+  let all_calls = task_table.map(pair => call_at("w.yml", "j", 1, pair.0))
+  drift_check(all_calls) catch {
+    err => fail("drift_stale: table not clean against itself: \{err.message()}")
+  }
+  let missing = all_calls.filter(c => c.task != "test:ci")
+  if stale_entries(missing) != ["test:ci"] {
+    fail("drift_stale: wrong stale entries")
+  }
+  // roots does not raise Stale; drift_check does.
+  ignore(roots(missing, [], unmapped=Fail))
+  let stale_message = try {
+    drift_check(missing)
+    "no error"
+  } catch {
+    err => err.message()
+  }
+  if stale_message !=
+    "ci-mise-impact: task_table entry test:ci is called by no workflow. Remove it." {
+    fail("drift_stale: wrong message \{stale_message}")
+  }
+  // Unmapped wins over stale.
+  let first = try {
+    drift_check([..missing, unknown])
+    None
+  } catch {
+    Unmapped(call) => Some(call)
+    _ => None
+  }
+  if first != Some(unknown) {
+    fail("drift_unmapped: drift_check did not report the call first")
+  }
+  // A template entry matches a built name.
+  if table_effect("test:workbench-native-workers") != Some(Checks([Workbench])) {
+    fail("table: template does not match a built name")
+  }
+  // A macOS-only step runs in no focused job.
+  if table_effect("setup:llvm") != Some(Full) {
+    fail("table_step_runner: setup:llvm is not Full")
+  }
+  // Whole-token mentions.
+  let names = [TaskName("check:core"), TaskName("opt:in")]
+  if scan_mentions("[\"mise\", \"run\", \"check:core\"]", names) !=
+    [TaskName("check:core")] {
+    fail("mentions_whole_token: array argument not found")
+  }
+  if scan_mentions("run check:core-extra and xcheck:core", names).length() != 0 {
+    fail("mentions_whole_token: partial token matched")
+  }
+  if scan_mentions("see opt:in.\ncheck:core", names).length() != 2 {
+    fail("mentions_whole_token: sentence end or line start missed")
+  }
+  // A task that only a script names is a Full root.
+  let mentioned = scan_mentions("let t = \"opt:in\"", names)
+  let found_roots = roots([], mentioned, unmapped=Fail)
+  let opt = fn(run : String) -> TaskGraph raise {
+    graph_of([task_json("opt:in", run=[run])])
+  }
+  if found_roots != Map([(TaskName("opt:in"), Full)]) ||
+    !classify_tasks(opt("a"), opt("b"), found_roots).full {
+    fail("mentions_root_full: expected a Full root and a full impact")
+  }
+  // A mention of a task in the table keeps the table effect.
+  if roots([], [TaskName("test:ci")], unmapped=Fail).length() != 0 {
+    fail("mentions_root_full: a table task became a root")
+  }
+  // A template root becomes the matching graph tasks.
+  let workers = graph_of([
+    task_json("test:workbench-native-workers", run=["x"]),
+    task_json("other", run=["x"]),
+  ])
+  let templated = Map([
+    (TaskName("test:workbench-native-"), Checks([Workbench])),
+  ])
+  if expand_templates(templated, [workers]) !=
+    Map([(TaskName("test:workbench-native-workers"), Checks([Workbench]))]) {
+    fail("expand_templates: wrong roots")
+  }
+  // The checkout: nothing unmapped, nothing stale.
+  let (calls, _) = scan_ci_files(".")
+  drift_check(calls) catch {
+    err => fail("drift_real_repository: \{err.message()}")
+  }
+  // load_ci_inputs on the checkout raises nothing; an empty graph forces full.
+  let loaded = load_ci_inputs(".", { tasks: Map([]), }, unmapped=Fail)
+  if loaded.forced.length() == 0 {
+    fail("drift_real_repository: an empty graph must force full")
+  }
+  // Line continuation in a block.
+  let continued =
+    #|jobs:
+    #|  j:
+    #|    steps:
+    #|      - run: |
+    #|          echo hi
+    #|          mise run \
+    #|            test:elm
+    #|          mise run lint:yaml
+  if scan_workflow("w.yml", continued) !=
+    [
+      call_at("w.yml", "j", 6, "test:elm"),
+      call_at("w.yml", "j", 8, "lint:yaml"),
+    ] {
+    fail("scan_line_continuation: wrong calls")
+  }
+  // Forced-full signals.
+  let graph_a = graph_of([task_json("known", run=["x"])])
+  let unresolved_inputs = ci_inputs(
+    [call_at("w.yml", "j", 3, "<unresolved: mise watch x>")],
+    [],
+    graph_a,
+    unmapped=SelectFull,
+  )
+  if unresolved_inputs.forced.length() != 1 ||
+    unresolved_inputs.forced[0].effect != Full {
+    fail("select_full_unresolved_forces_full: nothing forced")
+  }
+  for
+    case in [
+      ("build:new", UnmappedPolicy::SelectFull),
+      ("test:ci", UnmappedPolicy::Fail),
+    ] {
+    let (task, policy) = case
+    let absent = ci_inputs(
+      [call_at("w.yml", "j", 4, task)],
+      [],
+      graph_a,
+      unmapped=policy,
+    )
+    if absent.forced.length() != 1 || absent.forced[0].effect != Full {
+      fail("root_absent_from_graph_forces_full: \{task} not forced")
+    }
+  }
+  let template_inputs = ci_inputs(
+    [call_at("w.yml", "j", 6, "test:workbench-native-")],
+    [],
+    graph_a,
+    unmapped=Fail,
+  )
+  if template_inputs.forced.length() != 1 ||
+    template_inputs.forced[0].effect != Full {
+    fail("template_without_match_forces_full: nothing forced")
+  }
+  let clean_inputs = ci_inputs(
+    [call_at("w.yml", "j", 7, "lint:yaml")],
+    [],
+    graph_of([task_json("lint:yaml", run=["x"])]),
+    unmapped=Fail,
+  )
+  if clean_inputs.forced.length() != 0 || clean_inputs.roots.length() != 1 {
+    fail("forced: a present root was forced")
+  }
+  let from_forced = { full: false, checks: [], reasons: [], }.merge({
+    full: true,
+    checks: [],
+    reasons: unresolved_inputs.forced,
+  })
+  if !from_forced.full || from_forced.reasons.length() != 1 {
+    fail("forced_merge: Impact::merge of forced is not full")
+  }
+  println("ci-mise-impact: workflow table and drift pass")
+}
+
+///|
+async fn fixture_git(root : String, args : Array[String]) -> String {
+  let command = [
+    "-c",
+    "commit.gpgsign=false",
+    "-c",
+    "core.autocrlf=false",
+    "-c",
+    "user.name=CI fixture",
+    "-c",
+    "user.email=ci@example.invalid",
+    "-c",
+    "core.hooksPath=" + root + "/no-hooks",
+    ..args,
+  ]
+  let (status, out, err) = @process.collect_output("git", command, cwd=root)
+  guard status == 0 else { fail("Git fixture failed: " + err.text()) }
+  out.text().trim().to_owned()
+}
+
+///|
+/// The fixture workflow calls only tasks of the fixture config, by their
+/// real `task_table` names.
+let fixture_workflow : String =
+  #|name: CI
+  #|on: push
+  #|jobs:
+  #|  check:
+  #|    runs-on: ubuntu-latest
+  #|    steps:
+  #|      - run: mise run lint:yaml
+  #|      - run: mise run test:conformance
+  #|      - run: mise run test:elm
+
+///|
+let fixture_config : String =
+  #|[tools]
+  #|yamllint = "1.37.1"
+  #|
+  #|[tasks."test:conformance"]
+  #|run = "mise run helper"
+  #|
+  #|[tasks.helper]
+  #|run = "echo helper"
+  #|
+  #|[tasks."test:elm"]
+  #|run = "echo elm"
+  #|
+  #|[tasks."test:ci"]
+  #|run = "echo ci"
+
+///|
+let fixture_file_task : String =
+  #|#!/usr/bin/env bash
+  #|#MISE description="Lint YAML"
+  #|echo yaml
+
+///|
+/// Commit one state of the fixture: the config with its file task (or no
+/// `.config/mise` at all) and the workflow (or no `.github`).
+async fn fixture_commit(
+  root : String,
+  config : String?,
+  workflow : String?,
+  message : String,
+) -> String {
+  for dir in [".config", ".github"] {
+    if @fs.exists(root + "/" + dir) {
+      @fs.rmdir(root + "/" + dir, recursive=true)
+    }
+  }
+  if config is Some(text) {
+    @fs.mkdir(root + "/.config/mise/tasks/lint", recursive=true)
+    @fs.write_file(root + "/.config/mise/config.toml", text)
+    @fs.write_file(
+      root + "/.config/mise/tasks/lint/yaml",
+      fixture_file_task,
+      permission=0o755,
+    )
+  }
+  if workflow is Some(text) {
+    @fs.mkdir(root + "/.github/workflows", recursive=true)
+    @fs.write_file(root + "/.github/workflows/ci.yml", text)
+  }
+  ignore(fixture_git(root, ["add", "-A", "."]))
+  ignore(fixture_git(root, ["commit", "-q", "--allow-empty", "-m", message]))
+  fixture_git(root, ["rev-parse", "HEAD"])
+}
+
+///|
+fn has_config_reason(impact : Impact) -> Bool {
+  impact.reasons.iter().any(r => r.subject == Config && r.effect == Full)
+}
+
+///|
+fn show_impact(impact : Impact) -> String {
+  impact.to_json(mise_version="").stringify()
+}
+
+///|
+/// Real revisions in a temporary repository: `impact` extracts each one and
+/// runs mise on it in isolation.
+async fn revision_self_test() -> Unit {
+  let script = @fs.realpath("scripts/ci-mise-impact.mbtx")
+  let root = @fs.tmpdir(prefix="morphir-ci-mise-impact-")
+  defer @fs.rmdir(root, recursive=true)
+  ignore(fixture_git(root, ["init", "-q"]))
+  @fs.write_file(root + "/README.md", "fixture\n")
+  let none = fixture_commit(root, None, None, "fixture without config")
+  let base = fixture_commit(
+    root,
+    Some(fixture_config),
+    Some(fixture_workflow),
+    "fixture base",
+  )
+  let opt_in = fixture_commit(
+    root,
+    Some(
+      fixture_config +
+      "\n[tasks.\"test:workbench-capability-job-mck\"]\nrun = \"echo opt\"\n",
+    ),
+    Some(fixture_workflow),
+    "fixture opt-in task",
+  )
+  let comment = fixture_commit(
+    root,
+    Some(
+      "# Tasks for the fixture\n" +
+      fixture_config.replace(old="\"echo elm\"", new="\"echo elm\" # elm"),
+    ),
+    Some(fixture_workflow),
+    "fixture comment",
+  )
+  let invalid = fixture_commit(
+    root,
+    Some("[tools\nbad = \n"),
+    Some(fixture_workflow),
+    "fixture invalid TOML",
+  )
+  let shadow = fixture_commit(
+    root,
+    Some(fixture_config + "\n[tasks.\"lint:yaml\"]\nrun = \"echo config\"\n"),
+    Some(fixture_workflow),
+    "fixture shadow file task",
+  )
+  let windows = fixture_commit(
+    root,
+    Some(
+      fixture_config.replace(
+        old="run = \"echo elm\"",
+        new="run = \"echo elm\"\nrun_windows = \"echo elm on windows\"",
+      ),
+    ),
+    Some(fixture_workflow),
+    "fixture run_windows",
+  )
+  let deleted = fixture_commit(
+    root,
+    None,
+    Some(fixture_workflow),
+    "fixture config deleted",
+  )
+  let drift = fixture_commit(
+    root,
+    Some(fixture_config + "\n[tasks.\"build:unmapped\"]\nrun = \"echo x\"\n"),
+    Some(fixture_workflow + "\n      - run: mise run build:unmapped\n"),
+    "fixture unmapped call",
+  )
+  let opt_in_impact = impact(base, opt_in, cwd=root)
+  if opt_in_impact.full || opt_in_impact.checks.length() != 0 {
+    fail("fixture_pr128_shape: got \{show_impact(opt_in_impact)}")
+  }
+  let comment_impact = impact(base, comment, cwd=root)
+  if comment_impact != no_impact {
+    fail("fixture_comment_only: got \{show_impact(comment_impact)}")
+  }
+  for
+    case in [
+      ("fixture_invalid_toml_base", invalid, base),
+      ("fixture_invalid_toml_head", base, invalid),
+      (
+        "fixture_missing_revision", base, "0123456789abcdef0123456789abcdef01234567",
+      ),
+      ("fixture_short_revision", base, "HEAD"),
+    ] {
+    let (name, from, to) = case
+    let got = impact(from, to, cwd=root)
+    if !got.full || !has_config_reason(got) {
+      fail(
+        "\{name}: expected full with a config reason, got \{show_impact(got)}",
+      )
+    }
+  }
+  // Review focus 3: an added config makes every task new; a deleted one is full.
+  let added = impact(none, base, cwd=root)
+  if added.full ||
+    added.checks != [Code, ElmScheme, Conformance] ||
+    !added.reasons
+    .iter()
+    .any(r => {
+      r.subject == Task(TaskName("test:conformance")) &&
+      r.detail.has_prefix("added")
+    }) {
+    fail("fixture_config_added_and_deleted: add gave \{show_impact(added)}")
+  }
+  let removed = impact(base, deleted, cwd=root)
+  if !removed.full || !has_config_reason(removed) {
+    fail(
+      "fixture_config_added_and_deleted: delete gave \{show_impact(removed)}",
+    )
+  }
+  let shadowed = impact(base, shadow, cwd=root)
+  if !shadowed.reasons.iter().any(r => r.subject == Task(TaskName("lint:yaml"))) {
+    fail(
+      "fixture_shadow_file_task: no lint:yaml reason in \{show_impact(shadowed)}",
+    )
+  }
+  let windows_impact = impact(base, windows, cwd=root)
+  if windows_impact.full || windows_impact.checks != [ElmScheme] {
+    fail("fixture_run_windows_only: got \{show_impact(windows_impact)}")
+  }
+  // A subdirectory of the work tree gives the same result as its top level.
+  @fs.mkdir(root + "/sub/dir", recursive=true)
+  for
+    case in [
+      ("windows", base, windows, windows_impact),
+      ("added", none, base, added),
+    ] {
+    let (name, from, to, expected) = case
+    let nested = impact(from, to, cwd=root + "/sub/dir")
+    if nested != expected {
+      fail(
+        "fixture_subdirectory(\{name}): got \{show_impact(nested)}, expected \{show_impact(expected)}",
+      )
+    }
+  }
+  // No config at either revision is a read that went wrong.
+  let absent = impact(none, none, cwd=root)
+  if !absent.full ||
+    !absent.reasons
+    .iter()
+    .any(r => {
+      r.subject == Config && r.detail == "config absent at base and head"
+    }) {
+    fail("fixture_config_absent_at_both: got \{show_impact(absent)}")
+  }
+  // Drift is checked at head only.
+  let head_drift = try {
+    ignore(impact(base, drift, cwd=root))
+    None
+  } catch {
+    Unmapped(call) => Some(call.task)
+    _ => None
+  }
+  if head_drift != Some("build:unmapped") {
+    fail("fixture_drift_at_head_only: head call did not raise")
+  }
+  if !impact(drift, base, cwd=root).full {
+    fail("fixture_drift_at_head_only: base call is not full")
+  }
+  // A global config that defines repository tasks, and inherited mise
+  // variables that pick other config files, change nothing. Without
+  // isolation the global test:elm would answer the head workflow's call.
+  let global = root + "/global.toml"
+  @fs.write_file(
+    global, "[tasks.\"test:ci\"]\nrun = \"echo global\"\n[tasks.\"test:elm\"]\nrun = \"echo global\"\n",
+  )
+  let inherited : Array[(String, String)] = [
+    ("MISE_GLOBAL_CONFIG_FILE", global),
+    ("MISE_PROFILE", "fixture"),
+    ("MISE_OVERRIDE_CONFIG_FILENAMES", "other.toml"),
+    ("MISE_DEFAULT_CONFIG_FILENAME", "other.toml"),
+  ]
+  let saved = inherited.map(pair => (pair.0, @env.get_env_var(pair.0)))
+  for pair in inherited {
+    @env.set_env_var(pair.0, pair.1)
+  }
+  let with_global = impact(base, deleted, cwd=root)
+  let with_global_shadow = impact(base, shadow, cwd=root)
+  for pair in saved {
+    match pair.1 {
+      Some(value) => @env.set_env_var(pair.0, value)
+      None => @env.unset_env_var(pair.0)
+    }
+  }
+  if with_global_shadow != shadowed {
+    fail(
+      "fixture_ignores_global_config: got \{show_impact(with_global_shadow)}, expected \{show_impact(shadowed)}",
+    )
+  }
+  if with_global != removed {
+    fail(
+      "fixture_ignores_global_config: got \{show_impact(with_global)}, expected \{show_impact(removed)}",
+    )
+  }
+  // The CLI prints one JSON line, and exits 1 on drift with the message.
+  let (status, out, err) = @process.collect_output(
+    "moonx",
+    [script, base, windows],
+    cwd=root,
+  )
+  let text = out.text()
+  guard status == 0 && text.has_suffix("\n") && !text.trim().contains("\n") else {
+    fail("cli_json_shape: status \{status}, output \{text}\{err.text()}")
+  }
+  guard @json.parse(text) is Object(fields) &&
+    fields.keys().collect().length() == 4 &&
+    ["full", "checks", "mise", "reasons"].iter().all(k => fields.contains(k)) &&
+    fields.get("checks") is Some(Array([String("elm-scheme")])) else {
+    fail("cli_json_shape: wrong JSON \{text}")
+  }
+  let (status, _, err) = @process.collect_output(
+    "moonx",
+    [script, base, drift],
+    cwd=root,
+  )
+  guard status == 1 &&
+    err.text().contains("calls mise task build:unmapped, which has no entry") else {
+    fail("cli_drift_exit: status \{status}, stderr \{err.text()}")
+  }
+  // The replay flag turns the same drift into a full result.
+  let (status, out, err) = @process.collect_output(
+    "moonx",
+    [script, "--lenient", base, drift],
+    cwd=root,
+  )
+  guard status == 0 &&
+    @json.parse(out.text()) is Object(fields) &&
+    fields.get("full") is Some(True) else {
+    fail(
+      "cli_lenient_no_drift: status \{status}, output \{out.text()}\{err.text()}",
+    )
+  }
+  println("ci-mise-impact: revision fixtures pass")
+}
+
+///|
+/// `record` with a change that `classify_tasks` must see: " # mutation" on the
+/// first `run` entry, or a new body field when the task has no such entry.
+fn mutate_record(record : TaskRecord) -> TaskRecord {
+  let body : Map[String, Json] = Map([])
+  if record.body is Object(fields) {
+    for key, value in fields {
+      body[key] = value
+    }
+  }
+  match body.get("run") {
+    Some(Array(items)) if items.length() > 0 && items[0] is String(_) => {
+      let first = match items[0] {
+        String(line) => line + " # mutation"
+        _ => ""
+      }
+      body["run"] = Json::array([Json::string(first), ..items[1:]])
+    }
+    Some(String(line)) => body["run"] = Json::string(line + " # mutation")
+    _ => body["mutation"] = Json::boolean(true)
+  }
+  { ..record, body: Json::object(body), }
+}
+
+///|
+/// For every task that a Full or Checks CI root of the checkout at `root`
+/// reaches, change the task and require the impact to keep the checks of
+/// every root that reaches it, or to be full when one of them is Full.
+async fn mutation_test(root : String) -> Unit {
+  let (status, out, err) = @process.collect_output(
+    "git",
+    ["rev-parse", "HEAD"],
+    cwd=root,
+  )
+  guard status == 0 else {
+    fail("mutation_test: git rev-parse HEAD failed: \{err.text().trim()}")
+  }
+  let revision = load_revision(out.text().trim().to_owned(), cwd=root) catch {
+    err => fail("mutation_test: \{error_text(err)}")
+  }
+  let inputs = revision.ci_inputs(unmapped=Fail) catch {
+    err => fail("mutation_test: \{err.message()}")
+  }
+  if inputs.forced.length() > 0 {
+    let reasons = inputs.forced.map(r => r.detail).join("; ")
+    fail("mutation_test: the checkout forces a full run: \{reasons}")
+  }
+  let table = inputs.roots
+  let checked : Array[TaskName] = []
+  for name, effect in table {
+    if effect != Always {
+      checked.push(name)
+    }
+  }
+  let reached = revision.graph.reach(checked)
+  let mut count = 0
+  for task, reaching in reached {
+    let mutated : Map[TaskName, TaskRecord] = Map([])
+    for name, record in revision.graph.tasks {
+      mutated[name] = if name == task { mutate_record(record) } else { record }
+    }
+    let impact = classify_tasks(revision.graph, { tasks: mutated, }, table)
+    count += 1
+    for reaching_root in reaching {
+      match table[reaching_root] {
+        Full =>
+          if !impact.full {
+            fail("mutation of \{task.0} lost full (root \{reaching_root.0})")
+          }
+        Checks(list) =>
+          for check in list {
+            if !impact.full && !impact.checks.contains(check) {
+              fail(
+                "mutation of \{task.0} lost \{check.output_name()} (root \{reaching_root.0})",
+              )
+            }
+          }
+        Always => ()
+      }
+    }
+  }
+  if count == 0 {
+    fail("mutation_test: no CI-reached task to mutate")
+  }
+  println("ci-mise-impact: \{count} task mutations keep their checks")
+  opt_in_test(revision, table)
+}
+
+///|
+/// An opt-in task (a config task that no CI root reaches, Always roots
+/// included) selects nothing at the checkout: a new one, and a run-line edit
+/// of each existing one. `test:codec-adapter-mck` (PR #148) must be one of
+/// them while the config has it.
+fn opt_in_test(
+  revision : Revision,
+  table : Map[TaskName, Effect],
+) -> Unit raise {
+  let graph = revision.graph
+  let reached = graph.reach(table.keys().collect())
+  let expect_none = fn(name : String, impact : Impact) raise {
+    if impact.full || impact.checks.length() != 0 {
+      fail("opt_in_real_config(\{name}): got \{show_impact(impact)}")
+    }
+  }
+  let added = TaskName("test:fixture-opt-in-mck")
+  if graph.tasks.contains(added) {
+    fail("opt_in_real_config: the config has the fixture name \{added.0}")
+  }
+  let with_added : Map[TaskName, TaskRecord] = Map([])
+  for name, record in graph.tasks {
+    with_added[name] = record
+  }
+  with_added[added] = {
+    name: added,
+    aliases: [],
+    from_config: true,
+    calls: [],
+    patterns: [],
+    unresolved: [],
+    body: { "name": added.0, "run": ["echo opt-in"] },
+  }
+  expect_none("added", classify_tasks(graph, { tasks: with_added, }, table))
+  let codec = TaskName("test:codec-adapter-mck")
+  if graph.tasks.contains(codec) && reached.contains(codec) {
+    fail("opt_in_real_config: CI reaches \{codec.0}")
+  }
+  let mut count = 0
+  for task, record in graph.tasks {
+    if !record.from_config || reached.contains(task) {
+      continue
+    }
+    let mutated : Map[TaskName, TaskRecord] = Map([])
+    for name, other in graph.tasks {
+      mutated[name] = if name == task { mutate_record(other) } else { other }
+    }
+    expect_none(task.0, classify_tasks(graph, { tasks: mutated, }, table))
+    count += 1
+  }
+  if count == 0 {
+    fail("opt_in_real_config: the config has no opt-in task")
+  }
+  println(
+    "ci-mise-impact: \{count} opt-in task edits and one add select nothing",
+  )
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  match args {
+    ["--self-test"] => {
+      self_test()
+      task_self_test()
+      workflow_self_test()
+      revision_self_test()
+      mutation_test(".")
+    }
+    [base, head] | ["--lenient", base, head] => {
+      let lenient = args[0] == "--lenient"
+      let result = impact(base, head, lenient~) catch {
+        err => {
+          @stdio.stderr.write(err.message() + "\n")
+          fail("table drift")
+        }
+      }
+      println(result.to_json(mise_version=mise_version()).stringify())
+    }
+    _ => fail("Usage: ci-mise-impact.mbtx [--lenient] BASE HEAD | --self-test")
+  }
+}
