@@ -39,6 +39,19 @@ mise install
 cd website && npm install
 ```
 
+For MoonBit work, mise installs the same pinned toolchain as
+`finos/morphir-moonbit`, including its matching core library and `moonx`. To
+install only MoonBit and its bootstrap dependency:
+
+```bash
+mise install bun http:moonbit
+mise exec -- moon version --all
+```
+
+This supports Linux x64/ARM64, macOS Apple Silicon and Windows x64. Mise sets
+`MOON_HOME` to its own installation directory. Use `mise exec -- <command>` if
+your shell does not activate mise automatically.
+
 ### 3. Verify Your Setup
 
 ```bash
