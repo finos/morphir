@@ -345,6 +345,13 @@ pub extend InventoryRevision with Eq::{equal, not_equal}
 pub extend InventoryRevision with @debug.Debug::{to_repr}
 
 ///|
+/// Readonly rendered identity, never a revision constructor or authority grant.
+pub fn InventoryRevision::to_string(self : InventoryRevision) -> String {
+  let InventoryRevision(value) = self
+  value.to_string()
+}
+
+///|
 pub fn OpenAttempt::to_string(self : OpenAttempt) -> String {
   let OpenAttempt(value) = self
   value.to_string()

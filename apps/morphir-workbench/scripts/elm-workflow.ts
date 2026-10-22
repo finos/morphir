@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
-import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, setTarget, currentTarget, useSourceWorkspace, currentSourceProfile, setSourceProfile, runCommand, forgetSourceWorkspace } from './workbench-steps.ts';
+import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, setTarget, currentTarget, useSourceWorkspace, currentSourceProfile, setSourceProfile, runCommand, forgetSourceWorkspace, replaceSourceDocument } from './workbench-steps.ts';
 
 /** The Generated tab of the source document's output panel; the right sidebar's Generated section has its own name. */
 const generatedTab = (page: Page) => page.locator('.output-panel .tabs').getByRole('button', { name: 'Generated', exact: true });
@@ -210,7 +210,10 @@ export async function elmWorkflow(page: Page, {
   await build(page, 'Compile');
   await page.getByRole('status').filter({ hasText: 'Compiled 2/2 projects' }).waitFor();
   await row('packages/core/src/main.scm').click();
-  await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('(');
+  // A lone opener wraps a CodeMirror selection. Keep this a failed-compilation
+  // and exact-save test with a multi-character incomplete form instead.
+  const invalidCoreSource = '(define broken';
+  await replaceSourceDocument(page, invalidCoreSource, 'packages/core/src/main.scm');
   await build(page, 'Compile');
   await page.getByRole('status').filter({ hasText: 'Compiled 1/2 projects' }).waitFor();
   await row('packages/utils/src/main.scm').click();
@@ -225,12 +228,12 @@ export async function elmWorkflow(page: Page, {
   await row('packages/core/src/main.scm').waitFor();
   await row('models/original.bin').waitFor();
   await row('packages/core/src/main.scm').click();
-  await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value === '(');
+  await page.waitForFunction(expected => document.querySelector<CodeEditor>('#source')?.value === expected, invalidCoreSource);
   await row('packages/utils/src/main.scm').click();
   // A failed browser save keeps the edited files in memory and reports the failure.
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new Error('quota'); }; });
   try {
-    await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('(define kept 42)');
+    await replaceSourceDocument(page, '(define kept 42)', 'packages/utils/src/main.scm');
     await page.getByText('Not saved', { exact: true }).waitFor();
   } finally {
     await reloadWorkspace(page);

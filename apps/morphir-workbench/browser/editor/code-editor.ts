@@ -138,6 +138,10 @@ export class CodeEditor extends HTMLElement {
     return EditorState.create({ doc: this.text.current, extensions: [
       basicSetup, theme, syntaxHighlighting(highlighting),
       this.configuration.of(this.extensions()),
+      // Synchronize focus before a browser selection replaces the current caret.
+      // Otherwise CodeMirror's delayed focus update can restore that old caret
+      // between select-all and text insertion, leaving the old document behind.
+      EditorView.domEventHandlers({ focus: (_event, view) => { view.dispatch({}); return false; } }),
       EditorView.updateListener.of(update => {
         const component = (update.view.dom.getRootNode() as ShadowRoot).host as CodeEditor;
         if (!update.docChanged || component.readOnly) return;

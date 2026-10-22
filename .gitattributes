@@ -3,6 +3,8 @@
 *.mbt text eol=lf
 # Original-model fixtures include BOM/CRLF and must survive checkout byte-exactly.
 apps/morphir-workbench/fixtures/headless-parity/v1/originals/** -text whitespace=cr-at-eol
+# The pinned dependency license is verified and packaged byte-for-byte.
+apps/morphir-workbench/licenses/zip.js-LICENSE.txt -text
 apps/morphir-workbench/assets/morphir-mark.svg text eol=lf
 apps/morphir-workbench-desktop/assets/morphir-icon.json text eol=lf
 tools/packaged-targets-pin.json text eol=lf

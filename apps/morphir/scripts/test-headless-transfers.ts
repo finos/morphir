@@ -76,6 +76,8 @@ try{
   const selected=process.env.MORPHIR_TRANSFER_SCENARIO;
   for(const scenario of scenarios){
    if(selected&&selected!==scenario)continue;
+   let diagnosticResult:Awaited<ReturnType<typeof launch>['done']>|undefined;
+   try {
    const output='saved-'+scenario;const options=scenario==='timeout'?{fixtureMode:'hang'}:scenario==='cancel'?{fixtureMode:'binary'}:scenario==='producer-lost'?{fixtureMode:'lost'}:{fixtureMode:['binary','nul-text'].includes(scenario)?scenario:'download'};
    writeFileSync(input,JSON.stringify({...request,options}));let selectedHelper=helper;
    if(scenario==='timeout-before-generation'){
@@ -102,7 +104,7 @@ try{
    if(scenario==='cancel'){
     const deadline=Date.now()+15000;while(events().filter(e=>e.startsWith('generate ')).length===before){assert.ok(Date.now()<deadline,'Generation starts before interrupt');await new Promise(r=>setTimeout(r,20));}interruptedAt=Date.now();invocation.child.kill('SIGINT');
    }
-   const result=await invocation.done;if(interruptedAt)assert.ok(Date.now()-interruptedAt<5000,'Interrupted CLI owns and closes its socket before deadline');assert.equal(result.signal,null);assertClean(result);const report=JSON.parse(result.stdout);
+   const result=await invocation.done;diagnosticResult=result;if(interruptedAt)assert.ok(Date.now()-interruptedAt<5000,'Interrupted CLI owns and closes its socket before deadline');assert.equal(result.signal,null);assertClean(result);const report=JSON.parse(result.stdout);
    if(['download','binary','nul-text'].includes(scenario)){
     assert.equal(result.code,0,result.stdout+result.stderr);assert.equal(report.observation,'published');assert.equal(report.publication,'cli');assert.equal(report.cleanup.kind,'released');
     const directory=join(root,output,'artifacts');
@@ -131,6 +133,38 @@ try{
     const end=Date.now()+5000;for(const pid of pids){for(;;){let alive=true;try{process.kill(pid,0);}catch{alive=false;}if(!alive)break;assert.ok(Date.now()<end,'Owned producer process joined after connection close');await new Promise(r=>setTimeout(r,20));}}
    }
    console.log(`${target} connected artifacts ${scenario}: passed`);
+   } catch (error) {
+    if (scenario==='timeout') {
+     // Failure-only summary before the existing finally disposes this fixture.
+     // No raw command output, credentials, request bodies or generation IDs.
+     try {
+      const object=(value:unknown):Record<string,unknown>|undefined=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:undefined;
+      const selected=(value:unknown,allowed:readonly string[])=>typeof value==='string'&&allowed.includes(value)?value:value===undefined?'absent':'unrecognized';
+      let raw:Record<string,unknown>|undefined;
+      if(diagnosticResult&&diagnosticResult.stdout.length<=1048576){try{raw=object(JSON.parse(diagnosticResult.stdout));}catch{}}
+      const cleanup=object(raw?.cleanup);
+      const recorded=events(),tail=recorded.slice(-64);
+      const eventCounts=Object.fromEntries(['start','generate','shutdown','exit'].map(kind=>[kind,tail.filter(line=>new RegExp('^'+kind+' [0-9]+$').test(line)).length]));
+      let safeStderr=diagnostic;
+      for(const secret of secrets)if(secret)safeStderr=safeStderr.split(secret).join('[redacted]');
+      safeStderr=safeStderr.replace(/https?:\/\/[^\s"'<>]+/gi,'[redacted-url]')
+       .replace(/\b(?:authorization|cookie|set-cookie)\b\s*[:=][^\r\n]*/gi,'[redacted-header]')
+       .replace(/morphir_session_[A-Za-z0-9_-]{1,128}=[A-Za-z0-9_-]+/g,'[redacted-cookie]')
+       .replace(/[A-Za-z0-9_-]{16,}/g,'[redacted-long-token]').slice(-4096);
+      console.error(JSON.stringify({diagnostic:'headless-transfer-timeout-v1',scenario,target,timeoutMs:5000,
+       result:diagnosticResult?{code:diagnosticResult.code,signal:diagnosticResult.signal,stdoutCharacters:diagnosticResult.stdout.length,stderrCharacters:diagnosticResult.stderr.length}:{kind:'not-settled'},
+       report:{observation:selected(raw?.observation,['not-published','discarded','generation-failed','verified','published','refused','helper-lost','cleanup-unconfirmed']),
+        stopReason:selected(raw?.stopReason,['sigint','timeout','cancel-file']),
+        error:selected(raw?.error,['transfer.transport_unavailable','transfer.invalid_request','transfer.provider_changed','transfer.profile_unavailable','transfer.verification_failed','transfer.producer_failed','connected.session_changed','connected.offer_changed','transfer.scratch_cleanup_failed']),
+        cleanup:{kind:selected(cleanup?.kind,['not-connected','not-retained','released','connection-closed']),reason:selected(cleanup?.reason,['pending-exchange','unknown-retention','release-failed']),
+         generationId:cleanup&&Object.hasOwn(cleanup,'generationId')?cleanup.generationId===null?'null':typeof cleanup.generationId==='string'?'present':'unrecognized':'absent'}},
+       events:{totalLines:recorded.length,inspectedLast:tail.length,counts:eventCounts,unrecognizedInTail:tail.filter(line=>!/^(start|generate|shutdown|exit) [0-9]+$/.test(line)).length},
+       timing:{kind:'stage-timings-not-captured-by-existing-fixture'},
+       host:{exitCode:host!.exitCode,signal:host!.signalCode,stderrTail:safeStderr}}));
+     } catch {try{console.error('{"diagnostic":"headless-transfer-timeout-v1","summary":"unavailable"}');}catch{}}
+    }
+    throw error;
+   }
   }
   console.log(JSON.stringify({producerHost:fixture,sha256:digest(readFileSync(fixture)),target}));
  }

@@ -326,6 +326,7 @@ struct Model {
   worksheet_reveal : String
   document : @document.State
   originals : OriginalsPanel
+  originals_archive : OriginalsArchive
   originals_page : OriginalsPage
   generated : Bool
   generated_state : @generated.State
@@ -457,6 +458,8 @@ enum Msg {
   ChooseOriginalSource(@document.OpenAttempt, ConnectedOpening, Int32)
   ChooseOriginalProject(@document.OpenAttempt, ConnectedOpening, Int32)
   DownloadInventoryFile(@document.InventoryRevision, @document.OriginalPath)
+  DownloadInventoryArchive(@document.InventoryRevision)
+  InventoryArchiveChanged(@document.InventoryRevision, OriginalArchiveEvent)
   ReceiveModel(@document.OpenAttempt, Int32, Int32, String, String)
   Export
   Project(String)
@@ -664,6 +667,7 @@ fn initial() -> Model {
     worksheet_reveal: "",
     document: @document.State::new(),
     originals: NoOriginalOpening,
+    originals_archive: NoArchive,
     originals_page: OriginalsPage::first(),
     generated: false,
     generated_state: @generated.State::new(),
@@ -1683,7 +1687,10 @@ fn update_here(
   emit : @cmd.Emit[Msg],
 ) -> (Model, @cmd.Cmd) {
   let (next, cmd) = update_saving(model, msg, routed(model, emit))
-  let next = sync_registry(model, msg, settle(model, msg, next))
+  let next = follow_original_archive(
+    model,
+    sync_registry(model, msg, settle(model, msg, next)),
+  )
   if next.language == "elm" &&
     !next.connected &&
     !next.samples_requested &&
@@ -1772,6 +1779,8 @@ fn update_core(
     | AskWorkspaceFile(_, _)
     | WorkspaceFilePath(_)
     | CommitWorkspaceFile => update_workspace_explorer(model, msg, emit)
+    DownloadInventoryArchive(_) | InventoryArchiveChanged(_, _) =>
+      update_original_archive(model, msg, emit)
     OpenOriginals
     | OriginalsStarted(_, _)
     | OriginalsChanged(_, _)

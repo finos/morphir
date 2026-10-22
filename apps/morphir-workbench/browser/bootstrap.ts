@@ -4,6 +4,7 @@ import { workbenchError } from '../../../types/data.ts';
 import { LocalAdapter, connect } from './transport.ts';
 import { selectLocalAdapter } from './native-session.ts';
 import { downloadArtifacts } from './artifact-download.ts';
+import {createOriginalsArchive, prepareOriginalsArchive} from './originals-archive.ts';
 import { fetchText, pickFolder, storage, watchDrop } from './project-io.ts';
 import { ModelImporter, captureOriginalRequest } from './model-import.ts';
 import { selectWorkbenchMode } from './session-mode.ts';
@@ -111,6 +112,8 @@ globalThis.morphirWorkbench = {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   },
   downloadArtifacts,
+  createOriginalsArchive,
+  prepareOriginalsArchive,
 };
 window.addEventListener('pagehide', () => { ++generation; originalsOpening?.dispose(); originalsOpening = undefined; importer.dispose(); adapter.dispose?.(); local.cancel(); });
 await import(new URL('./browser.js', import.meta.url).href);

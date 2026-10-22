@@ -1,0 +1,11 @@
+{
+  "name": "@zip.js/zip.js",
+  "version": "2.24.0",
+  "license": "BSD-3-Clause",
+  "licenseSha256": "1b7ebc8d7889ed25491484ab2b102370742ca6c0b26650a0c62cc2269b579b84",
+  "archive": "https://registry.npmjs.org/@zip.js/zip.js/-/zip.js-2.24.0.tgz",
+  "integrity": "sha512-WlaVKzdqBK+RF3bdiXZWbdCnvGB6PdO4IHC1mn/2Yfl3bASgqUNegnU3+PNg61iecwoPfUi5BgLUPqBukXpyWw==",
+  "use": "Connected originals complete archive, fixed STORE/ZIP64 recipe. Library owns format; no workers/compression/encryption/custom extras/globalconfigure.",
+  "local": "Existing Local fflate path unchanged.",
+  "boundaries": "Dependency identity and notices, not source/authenticity/MCK qualification or browser/platform completion."
+}

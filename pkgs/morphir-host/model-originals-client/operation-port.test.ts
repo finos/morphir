@@ -44,7 +44,7 @@ async function actualNonblockingLauncher():Promise<string>{
  return join(launcherDirectory,'exec');
 }
 after(async()=>{if(launcherDirectory)await rm(launcherDirectory,{recursive:true});});
-async function socketRun(body:string,options:{ack?:(frame:Record<string,unknown>,role:number)=>Buffer|null; timeoutMs?:number; env?:Record<string,string>;fragmentAck?:boolean;pauseReadMs?:number;closeOnKind?:string}={}){
+async function socketRun(body:string,options:{ack?:(frame:Record<string,unknown>,role:number)=>Buffer|null; timeoutMs?:number; deadlineStart?:'before-spawn'|'after-module-import'; env?:Record<string,string>;fragmentAck?:boolean;pauseReadMs?:number;closeOnKind?:string}={}){
  const launcher=await actualNonblockingLauncher();
  const dir=await mkdtemp(join(tmpdir(),'morphir-port-')),path=join(dir,'socket');
  const server=createServer();await new Promise<void>(resolve=>server.listen(path,resolve));
@@ -77,7 +77,13 @@ async function socketRun(body:string,options:{ack?:(frame:Record<string,unknown>
   MORPHIR_PRIVATE_CONSUMER_CLOCK_DOMAIN:'darwin-mach-continuous-nanoseconds',MORPHIR_PRIVATE_CONSUMER_CLOCK_AT_NS:String(now),
   MORPHIR_PRIVATE_CONSUMER_END_NS:String(now+BigInt(options.timeoutMs??2000)*1000000n),
   MORPHIR_PRIVATE_CONSUMER_TIMEBASE_NUMER:'125',MORPHIR_PRIVATE_CONSUMER_TIMEBASE_DENOM:'3',...options.env};
- const child=spawn(launcher,[process.execPath,'--input-type=module','-e',`import {openConsumerOperationPort} from ${JSON.stringify(moduleUrl)};${body}`],{env,stdio:['ignore','pipe','pipe',producer[0]!,producer[1]!]});
+ // The short withheld-ACK control starts its one deadline after loading the
+ // test module, before the factory sees either endpoint. Process startup and
+ // TypeScript parsing must not decide whether this I/O control reaches Open.
+ // No opened producer is extended and both roles still receive the SAME end.
+ const deadlineSetup=options.deadlineStart==='after-module-import'
+  ? `const at=process.hrtime.bigint();process.env.MORPHIR_PRIVATE_CONSUMER_CLOCK_AT_NS=String(at);process.env.MORPHIR_PRIVATE_CONSUMER_END_NS=String(at+${BigInt(options.timeoutMs??2000)*1000000n}n);`:'';
+ const child=spawn(launcher,[process.execPath,'--input-type=module','-e',`import {openConsumerOperationPort} from ${JSON.stringify(moduleUrl)};${deadlineSetup}${body}`],{env,stdio:['ignore','pipe','pipe',producer[0]!,producer[1]!]});
  for(const socket of producer)socket.destroy();
  let stdout='',stderr='';child.stdout!.setEncoding('utf8').on('data',text=>{stdout+=text;});child.stderr!.setEncoding('utf8').on('data',text=>{stderr+=text;});
  const timer=setTimeout(()=>child.kill('SIGKILL'),5000);
@@ -120,7 +126,7 @@ test('wrong-role and repeated business hooks poison before another frame and fin
 
 test('withheld ACK expires at the original end; later hooks and finish perform no further protocol IO',{skip:process.platform!=='darwin'||process.arch!=='arm64'},async()=>{
  const started=performance.now();
- const result=await socketRun(`const owner=openConsumerOperationPort('outer');const t=process.hrtime.bigint();console.log(owner.emit({kind:'scratch-cleanup-finished',path:{kind:'unix-bytes',bytes:{kind:'utf8',text:'/s'}},outcome:'returned'}),owner.finish({kind:'in-process'}),String(process.hrtime.bigint()-t));`,{ack:()=>null,timeoutMs:150});
+ const result=await socketRun(`const owner=openConsumerOperationPort('outer');const t=process.hrtime.bigint();console.log(owner.emit({kind:'scratch-cleanup-finished',path:{kind:'unix-bytes',bytes:{kind:'utf8',text:'/s'}},outcome:'returned'}),owner.finish({kind:'in-process'}),String(process.hrtime.bigint()-t));`,{ack:()=>null,timeoutMs:150,deadlineStart:'after-module-import'});
  assert.equal(result.code,0,result.stderr);const [first,second,elapsed]=result.stdout.trim().split(' ');
  assert.equal(first,'faulted');assert.equal(second,'faulted');assert.ok(BigInt(elapsed!)<10000000n,'poisoned calls must not wait again');
  assert.ok(performance.now()-started<1500);assert.deepEqual(result.frames[0]!.map(frame=>frame.kind),['open']);

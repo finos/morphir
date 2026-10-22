@@ -179,6 +179,17 @@ pub fn OriginalInventory::entry_count(self : OriginalInventory) -> Int32 {
 }
 
 ///|
+/// Readonly length metadata for preflight; this does not copy or expose bytes.
+pub fn OriginalInventory::file_byte_length(
+  self : OriginalInventory,
+  path : OriginalPath,
+) -> UInt64? {
+  self.storage.files
+  .get(path.to_string())
+  .map(bytes => bytes.length().to_uint64())
+}
+
+///|
 /// Constant-time access to the immutable index; an entry grants no download authority.
 pub fn OriginalInventory::entry(
   self : OriginalInventory,
@@ -221,4 +232,95 @@ pub fn OriginalInventory::download_file(
 /// Existing archive adapter representation, from the same retained byte owner.
 pub fn OriginalInventory::download(self : OriginalInventory) -> Json {
   self.storage.download()
+}
+
+///|
+/// Validated aggregate metadata from this inventory, without byte-buffer copies.
+/// No constructor or raw backing is exposed across the application boundary.
+pub struct OriginalArchiveSizes {
+  priv count : UInt64
+  priv raw : UInt64
+  priv names : UInt64
+}
+
+///|
+pub fn OriginalArchiveSizes::entry_count(self : OriginalArchiveSizes) -> UInt64 {
+  self.count
+}
+
+///|
+pub fn OriginalArchiveSizes::file_bytes(self : OriginalArchiveSizes) -> UInt64 {
+  self.raw
+}
+
+///|
+pub fn OriginalArchiveSizes::archive_name_bytes(
+  self : OriginalArchiveSizes,
+) -> UInt64 {
+  self.names
+}
+
+///|
+fn archive_size_add(
+  left : UInt64,
+  right : UInt64,
+) -> UInt64 raise DocumentError {
+  if right > 18446744073709551615UL - left {
+    raise TooLarge
+  }
+  left + right
+}
+
+///|
+fn archive_utf8_size(path : String) -> UInt64 raise DocumentError {
+  let units = path.code_units()
+  let mut result = 0UL
+  let mut index = 0
+  while index < units.length() {
+    let unit = units[index].to_int()
+    let width = if unit >= 0xD800 && unit <= 0xDBFF {
+      index += 1
+      if index >= units.length() ||
+        units[index].to_int() < 0xDC00 ||
+        units[index].to_int() > 0xDFFF {
+        raise InvalidFilename
+      }
+      4UL
+    } else if unit >= 0xDC00 && unit <= 0xDFFF {
+      raise InvalidFilename
+    } else if unit < 0x80 {
+      1UL
+    } else if unit < 0x800 {
+      2UL
+    } else {
+      3UL
+    }
+    result = archive_size_add(result, width)
+    index += 1
+  }
+  result
+}
+
+///|
+/// Scalar-only pass over SAME private storage. Directory slash bytes are emitted
+/// by the archive, while implicit ancestors contribute neither entry nor name.
+pub fn OriginalInventory::archive_sizes(
+  self : OriginalInventory,
+) -> OriginalArchiveSizes raise DocumentError {
+  let mut count = 0UL
+  let mut raw = 0UL
+  let mut names = 0UL
+  for path, bytes in self.storage.files {
+    count = archive_size_add(count, 1UL)
+    raw = archive_size_add(raw, bytes.length().to_uint64())
+    names = archive_size_add(names, archive_utf8_size(path))
+  }
+  for path in self.storage.directories {
+    count = archive_size_add(count, 1UL)
+    names = archive_size_add(
+      names,
+      archive_size_add(archive_utf8_size(path), 1UL),
+    )
+  }
+  { count, raw, names, }
 }

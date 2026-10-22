@@ -71,12 +71,20 @@ pub struct InventoryRevision(Int) derive(Eq, @debug.Debug)
 pub fn InventoryRevision::equal(Self, Self) -> Bool
 pub fn InventoryRevision::not_equal(Self, Self) -> Bool
 pub fn InventoryRevision::to_repr(Self) -> @debug.Repr
+pub fn InventoryRevision::to_string(Self) -> String
 
 pub struct OpenAttempt(Int) derive(Eq, @debug.Debug)
 pub fn OpenAttempt::equal(Self, Self) -> Bool
 pub fn OpenAttempt::not_equal(Self, Self) -> Bool
 pub fn OpenAttempt::to_repr(Self) -> @debug.Repr
 pub fn OpenAttempt::to_string(Self) -> String
+
+pub struct OriginalArchiveSizes {
+  // private fields
+}
+pub fn OriginalArchiveSizes::archive_name_bytes(Self) -> UInt64
+pub fn OriginalArchiveSizes::entry_count(Self) -> UInt64
+pub fn OriginalArchiveSizes::file_bytes(Self) -> UInt64
 
 pub struct OriginalFile {
   filename : OriginalFilename
@@ -103,6 +111,7 @@ pub struct OriginalInventory {
   source_header : OriginalSourceHeader
   // private fields
 } derive(Eq, @debug.Debug)
+pub fn OriginalInventory::archive_sizes(Self) -> OriginalArchiveSizes raise DocumentError
 pub fn OriginalInventory::copy_files(Self) -> Map[String, Bytes]
 pub fn OriginalInventory::directory_paths(Self) -> Array[String]
 pub fn OriginalInventory::download(Self) -> Json
@@ -110,6 +119,7 @@ pub fn OriginalInventory::download_file(Self, OriginalPath) -> Json raise Docume
 pub fn OriginalInventory::entry(Self, Int) -> OriginalInventoryEntry?
 pub fn OriginalInventory::entry_count(Self) -> Int
 pub fn OriginalInventory::equal(Self, Self) -> Bool
+pub fn OriginalInventory::file_byte_length(Self, OriginalPath) -> UInt64?
 pub fn OriginalInventory::file_paths(Self) -> Array[String]
 pub fn OriginalInventory::from_connected(Map[String, Bytes], Array[String], OriginalSourceHeader) -> Self raise DocumentError
 pub fn OriginalInventory::not_equal(Self, Self) -> Bool

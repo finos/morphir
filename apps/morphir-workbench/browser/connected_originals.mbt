@@ -488,50 +488,69 @@ fn originals_inventory_view(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html 
           None => ()
         }
       }
-      @html.div(class="original-files", [
-        @html.h3("Original files"),
-        @html.p(
-          match inventory.source_header {
-            NotReported => "Original IR version not reported"
-            Reported(release) => "Original IR " + release.to_release_string()
-          },
+      @html.div(
+        class="original-files",
+        attrs=@html.Attrs::build().data_set(
+          "inventory-revision",
+          revision.to_string(),
         ),
-        @html.ul(entries),
-        @html.div(
-          class="evaluation-actions",
-          attrs=@html.Attrs::build()
-            .role("group")
-            .aria_label("Original files pagination"),
-          [
-            @html.button(
-              class="ghost small",
-              disabled=page.previous() is None,
-              attrs=@html.Attrs::build().aria_label("Previous originals page"),
-              on_click=emit(
-                OriginalsPageChanged(revision, page.previous().unwrap_or(page)),
+        [
+          @html.h3("Original files"),
+          @html.button(
+            class="secondary",
+            disabled=model.originals_archive != NoArchive,
+            on_click=emit(DownloadInventoryArchive(revision)),
+            "Download originals archive",
+          ),
+          @html.p(
+            match inventory.source_header {
+              NotReported => "Original IR version not reported"
+              Reported(release) => "Original IR " + release.to_release_string()
+            },
+          ),
+          @html.ul(entries),
+          @html.div(
+            class="evaluation-actions",
+            attrs=@html.Attrs::build()
+              .role("group")
+              .aria_label("Original files pagination"),
+            [
+              @html.button(
+                class="ghost small",
+                disabled=page.previous() is None,
+                attrs=@html.Attrs::build().aria_label("Previous originals page"),
+                on_click=emit(
+                  OriginalsPageChanged(
+                    revision,
+                    page.previous().unwrap_or(page),
+                  ),
+                ),
+                "Previous",
               ),
-              "Previous",
-            ),
-            @html.span(
-              "Entries " +
-              (page.start() + 1).to_string() +
-              " to " +
-              finish.to_string() +
-              " of " +
-              total.to_string(),
-            ),
-            @html.button(
-              class="ghost small",
-              disabled=page.next(total) is None,
-              attrs=@html.Attrs::build().aria_label("Next originals page"),
-              on_click=emit(
-                OriginalsPageChanged(revision, page.next(total).unwrap_or(page)),
+              @html.span(
+                "Entries " +
+                (page.start() + 1).to_string() +
+                " to " +
+                finish.to_string() +
+                " of " +
+                total.to_string(),
               ),
-              "Next",
-            ),
-          ],
-        ),
-      ])
+              @html.button(
+                class="ghost small",
+                disabled=page.next(total) is None,
+                attrs=@html.Attrs::build().aria_label("Next originals page"),
+                on_click=emit(
+                  OriginalsPageChanged(
+                    revision,
+                    page.next(total).unwrap_or(page),
+                  ),
+                ),
+                "Next",
+              ),
+            ],
+          ),
+        ],
+      )
     }
     _ => @html.nothing
   }
