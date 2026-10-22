@@ -149,6 +149,28 @@ struct Record {
     data: BrowserDocumentFrameData,
     bytes: std::ops::Range<usize>,
 }
+enum Retention {
+    Local { raw: Vec<u8>, records: Vec<Record> },
+    Engine { bytes: usize, records: usize },
+}
+impl Retention {
+    fn records(&self) -> usize {
+        match self {
+            Self::Local { records, .. } => records.len(),
+            Self::Engine { records, .. } => *records,
+        }
+    }
+    fn bytes(&self) -> usize {
+        match self {
+            Self::Local { raw, .. } => raw.len(),
+            Self::Engine { bytes, .. } => *bytes,
+        }
+    }
+}
+enum DocumentStorage {
+    Local,
+    Engine,
+}
 enum Incoming {
     Vacant(Vec<u8>),
     Staged(Vec<u8>),
@@ -181,8 +203,7 @@ enum Stop {
 struct IngressState {
     bootstrap: BootstrapState,
     requests: usize,
-    raw: Vec<u8>,
-    records: Vec<Record>,
+    retention: Retention,
     incoming: Incoming,
     first: Option<DocumentIngressFault>,
     decode_error: Option<BrowserDocumentError>,
@@ -205,6 +226,7 @@ impl DocumentIngress {
         stimulus: &ControlledHostStimulus,
         loans: &mut BrowserLoans<'_, '_>,
         limits: DocumentIngressLimits,
+        storage: DocumentStorage,
         end: Instant,
     ) -> Result<Self, DocumentSetupFault> {
         loans
@@ -221,10 +243,14 @@ impl DocumentIngress {
         }
         // Named native buffers have immutable requested dimensions. Neither
         // allocator spare nor a producer mirror enlarges the stream bound.
+        let (journal_bytes, journal_records) = match storage {
+            DocumentStorage::Local => (limits.journal_bytes, limits.records),
+            DocumentStorage::Engine => (0, 0),
+        };
         let native = add(
-            add(limits.journal_bytes, limits.frame_bytes)?,
+            add(journal_bytes, limits.frame_bytes)?,
             add(
-                mul(limits.records, std::mem::size_of::<Record>())?,
+                mul(journal_records, std::mem::size_of::<Record>())?,
                 std::mem::size_of::<Self>(),
             )?,
         )?;
@@ -232,14 +258,14 @@ impl DocumentIngress {
         // addition to requested record backing/initialization. Parser result
         // construction and token-span arithmetic use the SAME parser loans.
         let typed_handoff = mul(
-            limits.records,
+            journal_records,
             std::mem::size_of::<BrowserDocumentFrameData>(),
         )?;
         loans
             .reserve_application_storage(
                 &source,
                 native,
-                add(limits.records, 3)?,
+                add(journal_records, 3)?,
                 add(native, typed_handoff)?,
             )
             .map_err(ControlledHostSetupFault::Funding)?;
@@ -279,12 +305,19 @@ impl DocumentIngress {
                 )?,
             )
             .map_err(ControlledHostSetupFault::Funding)?;
-        let raw = assets::allocate::<u8>(limits.journal_bytes, loans, &source, end)
+        let raw = assets::allocate::<u8>(journal_bytes, loans, &source, end)
             .map_err(DocumentSetupFault::Assets)?;
         let staging = assets::allocate::<u8>(limits.frame_bytes, loans, &source, end)
             .map_err(DocumentSetupFault::Assets)?;
-        let records = assets::allocate::<Record>(limits.records, loans, &source, end)
+        let records = assets::allocate::<Record>(journal_records, loans, &source, end)
             .map_err(DocumentSetupFault::Assets)?;
+        let retention = match storage {
+            DocumentStorage::Local => Retention::Local { raw, records },
+            DocumentStorage::Engine => Retention::Engine {
+                bytes: 0,
+                records: 0,
+            },
+        };
         let (auth, credential, unused_cookie) =
             SessionAuth::generate_prepaid_scoped(loans, "model-originals-document", &source, end)
                 .map_err(ControlledHostSetupFault::Auth)?
@@ -336,8 +369,7 @@ impl DocumentIngress {
             state: Mutex::new(IngressState {
                 bootstrap: BootstrapState::Prepared { body, headers },
                 requests,
-                raw,
-                records,
+                retention,
                 incoming: Incoming::Vacant(staging),
                 first: None,
                 decode_error: None,
@@ -423,6 +455,38 @@ impl BoundControlledUiHost {
         limits: DocumentIngressLimits,
         end: Instant,
     ) -> Result<Self, DocumentSetupFault> {
+        Self::bind_document_destination(stimulus, assets, loans, limits, None, end).await
+    }
+    /// The endpoint was issued by the canonical compiled row. Its journal is
+    /// retained by that engine row before this host adopts it or binds TCP.
+    pub(super) async fn bind_engine_document(
+        stimulus: ControlledHostStimulus,
+        assets: Option<assets::HostAssets>,
+        loans: &mut BrowserLoans<'_, '_>,
+        limits: DocumentIngressLimits,
+        producer: morphir_mck::workbench::BrowserDocumentProducer,
+        end: Instant,
+    ) -> Result<Self, DocumentSetupFault> {
+        producer
+            .validate_host(loans, &stimulus)
+            .map_err(ControlledHostSetupFault::Funding)?;
+        let bounds = producer.bounds();
+        if bounds.records() != limits.records
+            || bounds.journal_bytes() != limits.journal_bytes
+            || bounds.frame_bytes() != limits.frame_bytes
+        {
+            return Err(ControlledHostSetupFault::DocumentLimits.into());
+        }
+        Self::bind_document_destination(stimulus, assets, loans, limits, Some(producer), end).await
+    }
+    async fn bind_document_destination(
+        stimulus: ControlledHostStimulus,
+        assets: Option<assets::HostAssets>,
+        loans: &mut BrowserLoans<'_, '_>,
+        limits: DocumentIngressLimits,
+        producer: Option<morphir_mck::workbench::BrowserDocumentProducer>,
+        end: Instant,
+    ) -> Result<Self, DocumentSetupFault> {
         let slots = limits.socket_tasks;
         // Prepay every possible ACK and one STOP owner before binding. bytes'
         // from_owner stores repr(C) AtomicUsize followed by the16-byte owner.
@@ -453,17 +517,28 @@ impl BoundControlledUiHost {
                 mul(add(limits.records, 1)?, HEADER_BYTES)?,
             )?,
         )?;
-        let decode_source = loans
-            .prepare_application_source()
-            .map_err(ControlledHostSetupFault::Funding)?;
-        let decoder = loans
-            .prepare_document_decoder(&decode_source, limits.records, limits.frame_bytes)
-            .map_err(ControlledHostSetupFault::Funding)?;
-        let document = DocumentIngress::prepare(&stimulus, loans, limits, end)?;
+        let decoder = if producer.is_none() {
+            let decode_source = loans
+                .prepare_application_source()
+                .map_err(ControlledHostSetupFault::Funding)?;
+            let decoder = loans
+                .prepare_document_decoder(&decode_source, limits.records, limits.frame_bytes)
+                .map_err(ControlledHostSetupFault::Funding)?;
+            Some(decoder)
+        } else {
+            None
+        };
+        let storage = if producer.is_some() {
+            DocumentStorage::Engine
+        } else {
+            DocumentStorage::Local
+        };
+        let document = DocumentIngress::prepare(&stimulus, loans, limits, storage, end)?;
         let mut host = Self::bind_inner(stimulus, assets, Some(document), slots, loans, end)
             .await
             .map_err(DocumentSetupFault::Host)?;
-        host.document_decoder = Some(decoder);
+        host.document_decoder = decoder;
+        host.document_producer = producer;
         Ok(host)
     }
 }
@@ -612,6 +687,34 @@ fn decode_kind(cause: &BrowserDocumentError) -> DocumentIngressFault {
         }
     }
 }
+fn collection_kind(cause: morphir_mck::workbench::BrowserCollectionFault) -> DocumentIngressFault {
+    use morphir_mck::workbench::BrowserCollectionFault as Fault;
+    match cause {
+        Fault::Source => DocumentIngressFault::Source,
+        Fault::End => DocumentIngressFault::End,
+        Fault::Capacity | Fault::Bounds | Fault::Allocation | Fault::Funding => {
+            DocumentIngressFault::Capacity
+        }
+        Fault::Framing => DocumentIngressFault::Framing,
+        Fault::Order => DocumentIngressFault::Order,
+        Fault::Poisoned => DocumentIngressFault::Poisoned,
+        Fault::ProducerIncomplete => DocumentIngressFault::ProducerIncomplete,
+        Fault::Decode(kind) => match kind {
+            BrowserDocumentErrorKind::Funding | BrowserDocumentErrorKind::Capacity => {
+                DocumentIngressFault::Capacity
+            }
+            BrowserDocumentErrorKind::Source => DocumentIngressFault::Source,
+            BrowserDocumentErrorKind::End => DocumentIngressFault::End,
+            BrowserDocumentErrorKind::Order => DocumentIngressFault::Order,
+            BrowserDocumentErrorKind::ProducerIncomplete => {
+                DocumentIngressFault::ProducerIncomplete
+            }
+            BrowserDocumentErrorKind::Json | BrowserDocumentErrorKind::Shape => {
+                DocumentIngressFault::Shape
+            }
+        },
+    }
+}
 struct CheckingFrame<'a> {
     document: &'a DocumentIngress,
     bytes: Option<Vec<u8>>,
@@ -703,11 +806,11 @@ impl DocumentIngress {
         let bytes = frame.bytes.as_ref().ok_or(DocumentIngressFault::Order)?;
         let (kind, sequence) = (data.kind(), data.sequence().get());
         let finish = state
-            .raw
-            .len()
+            .retention
+            .bytes()
             .checked_add(bytes.len())
             .ok_or(DocumentIngressFault::SizeOverflow)?;
-        if finish > self.limits.journal_bytes || state.records.len() >= self.limits.records {
+        if finish > self.limits.journal_bytes || state.retention.records() >= self.limits.records {
             return Err(DocumentIngressFault::Capacity);
         }
         if sequence
@@ -718,12 +821,66 @@ impl DocumentIngress {
         {
             return Err(DocumentIngressFault::Order);
         }
-        let start = state.raw.len();
-        state.raw.extend_from_slice(bytes);
-        state.records.push(Record {
+        let Retention::Local { raw, records } = &mut state.retention else {
+            return Err(DocumentIngressFault::Order);
+        };
+        let start = raw.len();
+        raw.extend_from_slice(bytes);
+        records.push(Record {
             data,
             bytes: start..finish,
         });
+        if kind == 1 {
+            state.last_fact = sequence;
+        }
+        state.incoming = Incoming::Retained {
+            buffer: frame.bytes.take().ok_or(DocumentIngressFault::Order)?,
+            kind,
+            sequence,
+        };
+        drop(state);
+        self.send.notify_one();
+        Ok(())
+    }
+    fn retain_engine(
+        &self,
+        mut frame: CheckingFrame<'_>,
+        retained: morphir_mck::workbench::BrowserRetainedDocumentFrame,
+    ) -> Result<(), DocumentIngressFault> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| DocumentIngressFault::Poisoned)?;
+        if let Some(first) = state.first {
+            return Err(first);
+        }
+        if !matches!(state.incoming, Incoming::Checking) {
+            return Err(DocumentIngressFault::Order);
+        }
+        let bytes = frame.bytes.as_ref().ok_or(DocumentIngressFault::Order)?;
+        let (kind, sequence) = (retained.kind(), retained.sequence());
+        let next = state
+            .last_fact
+            .checked_add(1)
+            .ok_or(DocumentIngressFault::SizeOverflow)?;
+        if sequence != next {
+            return Err(DocumentIngressFault::Order);
+        }
+        let Retention::Engine {
+            bytes: used,
+            records,
+        } = &mut state.retention
+        else {
+            return Err(DocumentIngressFault::Order);
+        };
+        let finish = used
+            .checked_add(bytes.len())
+            .ok_or(DocumentIngressFault::SizeOverflow)?;
+        if finish > self.limits.journal_bytes || *records >= self.limits.records {
+            return Err(DocumentIngressFault::Capacity);
+        }
+        *used = finish;
+        *records += 1;
         if kind == 1 {
             state.last_fact = sequence;
         }
@@ -750,7 +907,7 @@ impl DocumentIngress {
         if bytes.len() > self.limits.frame_bytes || bytes.len() < HEADER_BYTES {
             return Err(DocumentIngressFault::Framing);
         }
-        if state.records.len() >= self.limits.records {
+        if state.retention.records() >= self.limits.records {
             return Err(DocumentIngressFault::Capacity);
         }
         match std::mem::replace(&mut state.incoming, Incoming::Checking) {
@@ -819,9 +976,14 @@ impl BoundControlledUiHost {
                 document.first().unwrap_or(DocumentIngressFault::Source),
             );
         }
-        let Some(permission) = self.document_decoder.as_mut() else {
+        if self.document_decoder.is_none() && self.document_producer.is_none() {
             return DocumentCollectOutcome::Incomplete(DocumentIngressFault::ForeignDocument);
-        };
+        }
+        if let Some(producer) = self.document_producer.as_ref() {
+            if producer.validate_host(loans, &host.source).is_err() {
+                return DocumentCollectOutcome::Incomplete(DocumentIngressFault::Source);
+            }
+        }
         let result = async {
             loop {
                 let notified = document.changed.notified();
@@ -850,6 +1012,24 @@ impl BoundControlledUiHost {
                     if sequence != expected {
                         return Err(DocumentIngressFault::Order);
                     }
+                    if let Some(producer) = self.document_producer.as_mut() {
+                        let retained = producer
+                            .record_frame(loans, bytes, host.end)
+                            .map_err(collection_kind)?;
+                        host.source
+                            .while_source_active(|| {
+                                if Instant::now() >= host.end {
+                                    return Err(DocumentIngressFault::End);
+                                }
+                                document.retain_engine(frame, retained)
+                            })
+                            .map_err(|_| DocumentIngressFault::Source)??;
+                        continue;
+                    }
+                    let permission = self
+                        .document_decoder
+                        .as_mut()
+                        .ok_or(DocumentIngressFault::ForeignDocument)?;
                     let data = match loans.decode_document_frame_data(
                         &document.source,
                         permission,
@@ -899,6 +1079,10 @@ impl BoundControlledUiHost {
         match result {
             Ok(()) => DocumentCollectOutcome::Drained,
             Err(cause) => {
+                if let Some(producer) = self.document_producer.as_mut() {
+                    producer
+                        .refuse(morphir_mck::workbench::BrowserCollectionFault::ProducerIncomplete);
+                }
                 document.fault(cause);
                 host.fault(ControlledHostFault::Document(cause));
                 let _ = loans.refuse_application(&document.source);
@@ -1114,4 +1298,39 @@ async fn serve(mut socket: WebSocket, state: Arc<HostState>) {
         document.fault(cause);
         state.fault(ControlledHostFault::Document(cause));
     }
+}
+
+/// Test observation of actual staging only. It changes no producer, budget,
+/// frame, source relation or ACK ordering in the production implementation.
+#[cfg(test)]
+pub(super) async fn await_staged_frame_for_test(
+    host: &BoundControlledUiHost,
+    expected: &[u8],
+    end: Instant,
+) -> Result<(), DocumentIngressFault> {
+    let document = host
+        .state
+        .document
+        .as_ref()
+        .ok_or(DocumentIngressFault::Order)?;
+    tokio::time::timeout_at(end.into(), async {
+        loop {
+            let changed = document.changed.notified();
+            {
+                let state = document
+                    .state
+                    .lock()
+                    .map_err(|_| DocumentIngressFault::Poisoned)?;
+                if let Some(first) = state.first {
+                    return Err(first);
+                }
+                if matches!(&state.incoming, Incoming::Staged(bytes) if bytes == expected) {
+                    return Ok(());
+                }
+            }
+            changed.await;
+        }
+    })
+    .await
+    .map_err(|_| DocumentIngressFault::End)?
 }

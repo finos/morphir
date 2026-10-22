@@ -133,9 +133,9 @@ async fn reject_literal(
             .and_then(|document| document.state.lock().ok())
         {
             Some(inner) => (
-                inner.raw.is_empty() && inner.records.is_empty(),
-                inner.raw.len(),
-                inner.records.len(),
+                inner.retention.bytes() == 0 && inner.retention.records() == 0,
+                inner.retention.bytes(),
+                inner.retention.records(),
             ),
             None => (false, usize::MAX, usize::MAX),
         }

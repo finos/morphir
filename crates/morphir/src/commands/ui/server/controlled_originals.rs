@@ -1,9 +1,16 @@
 //! Source-selected literal client stimulus over the ordinary authenticated host
 //! transport. No provider, server implementation or client qualification claim.
 mod assets;
+mod joined;
+pub(in crate::commands::ui) use joined::{
+    ControlledHostFinish, ControlledHostFinishRefusal, ControlledHostJoined,
+};
 #[cfg(test)]
 #[path = "controlled_originals/end_tests.rs"]
 mod end_tests;
+#[cfg(test)]
+#[path = "controlled_originals/engine_tests.rs"]
+mod engine_tests;
 mod ingress;
 use super::*;
 use crate::commands::ui::{
@@ -144,6 +151,7 @@ pub(in crate::commands::ui) struct BoundControlledUiHost {
     base: String,
     launch: String,
     document_decoder: Option<morphir_mck::workbench::BrowserDocumentDecoder>,
+    document_producer: Option<morphir_mck::workbench::BrowserDocumentProducer>,
 }
 fn arc_layout<T>() -> Result<Layout, ControlledHostSetupFault> {
     let count = Layout::new::<std::sync::atomic::AtomicUsize>();
@@ -331,6 +339,7 @@ impl BoundControlledUiHost {
             base,
             launch,
             document_decoder: None,
+            document_producer: None,
         })
     }
     pub(in crate::commands::ui) fn address(&self) -> SocketAddr {

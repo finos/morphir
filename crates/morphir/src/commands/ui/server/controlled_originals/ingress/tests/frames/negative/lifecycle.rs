@@ -21,7 +21,10 @@ fn owner_snapshot(host: &BoundControlledUiHost) -> OwnerSnapshot {
         .document
         .as_ref()
         .and_then(|document| document.state.lock().ok())
-        .map(|inner| inner.raw.as_ptr() as usize);
+        .and_then(|inner| match &inner.retention {
+            super::super::super::super::Retention::Local { raw, .. } => Some(raw.as_ptr() as usize),
+            super::super::super::super::Retention::Engine { .. } => None,
+        });
     OwnerSnapshot {
         task: host.cleanup.actual_task_id(),
         retained: host.cleanup.retained_tasks(),

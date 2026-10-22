@@ -10,10 +10,21 @@ pub use browser::{
     BrowserVisitError, with_prepared_browser_clients,
 };
 pub use browser::{
+    BrowserAdapterCompletion, BrowserExecutionInventory, BrowserExecutionPreparationError,
+    BrowserExecutionRow, BrowserRowAttempt, BrowserRowSetupFailure, BrowserRowState,
+    with_executed_browser_originals,
+};
+pub use browser::{
     BrowserArchiveData, BrowserDocumentContent, BrowserDocumentFactData, BrowserDocumentFrameData,
     BrowserDownloadOutcomeData, BrowserDownloadResultData, BrowserInventoryData,
     BrowserJsonStringSpan, BrowserOpeningData, BrowserProjectSelectionData,
     BrowserReadyArchiveData, BrowserSourceSelectionData, BrowserVisitData,
+};
+pub use browser::{
+    BrowserCollectionFault, BrowserCollectionTerminal, BrowserDocumentBounds,
+    BrowserDocumentProducer, BrowserDocumentRecord, BrowserDocumentSnapshot,
+    BrowserExecutionOpening, BrowserRetainedDocumentFrame, BrowserRowCollection,
+    BrowserRowProducer, PreparedBrowserClientRun,
 };
 pub use browser::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,

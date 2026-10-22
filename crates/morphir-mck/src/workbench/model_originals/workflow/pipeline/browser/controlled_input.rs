@@ -568,6 +568,12 @@ impl ControlledHostStimulus {
     pub fn admit(&self) -> Result<(), ScopeFault> {
         self.binding.while_active(|| ())
     }
+    /// Bookkeeping after the actual native owner has settled its covered work.
+    /// This consumes only the exact binding, not a claim or proof of a join.
+    /// Repeated retirement and later admission/validation return Revoked.
+    pub fn retire_after_join_in_place(&mut self) -> Result<(), ScopeFault> {
+        self.binding.retire_after_join_in_place()
+    }
     /// Only synchronous source-lifetime admission. A returned unpolled future
     /// does not attest scheduling or a send. No guard may survive an await.
     pub fn while_source_active<R>(&self, action: impl FnOnce() -> R) -> Result<R, ScopeFault> {

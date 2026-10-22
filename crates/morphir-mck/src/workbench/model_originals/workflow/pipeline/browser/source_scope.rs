@@ -224,32 +224,39 @@ impl Drop for BrowserSourceScope {
 }
 impl BrowserSourceBinding {
     pub(super) fn validate_scope(&self, scope: &BrowserSourceScope) -> Result<(), ScopeFault> {
-        match self.control.as_ref().expect("live binding") {
-            BindingControl::Global(control) if Arc::ptr_eq(control, &scope.control) => Ok(()),
+        match self.control.as_ref() {
+            Some(BindingControl::Global(control)) if Arc::ptr_eq(control, &scope.control) => Ok(()),
             // An invocation cannot be downgraded into an application grant.
-            BindingControl::Global(_) | BindingControl::Invocation { .. } => {
+            Some(BindingControl::Global(_) | BindingControl::Invocation { .. }) => {
                 Err(ScopeFault::ForeignSource)
             }
+            None => Err(ScopeFault::Revoked),
         }
     }
     /// Synchronous admission/send linearizes with revocation under this lock.
     /// No physical work may be scheduled by this callback after it returns.
     pub(super) fn while_active<R>(&self, action: impl FnOnce() -> R) -> Result<R, ScopeFault> {
-        match self.control.as_ref().expect("live binding") {
-            BindingControl::Global(control) => {
+        match self.control.as_ref() {
+            Some(BindingControl::Global(control)) => {
                 let state = control.lock();
                 state.active()?;
                 Ok(action())
             }
-            BindingControl::Invocation { parent, child } => {
+            Some(BindingControl::Invocation { parent, child }) => {
                 invocation::while_active(parent, child, action)
             }
+            None => Err(ScopeFault::Revoked),
         }
     }
     /// Bookkeeping only, never proof of a physical join. The actual caller must
     /// first settle every covered owner. Drop is deliberately not this operation.
     pub(super) fn retire_after_join(mut self) -> Result<(), ScopeFault> {
-        let control = self.control.take().expect("consumed exactly once");
+        self.retire_after_join_in_place()
+    }
+    /// Native owners can retire in place after proving exclusive ownership.
+    /// Keeping an inert wrapper permits safe field access during final Drop.
+    pub(super) fn retire_after_join_in_place(&mut self) -> Result<(), ScopeFault> {
+        let control = self.control.take().ok_or(ScopeFault::Revoked)?;
         let control = match control {
             BindingControl::Global(control) => control,
             BindingControl::Invocation { parent, child } => {

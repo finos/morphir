@@ -42,12 +42,18 @@ pub use contract::{
 };
 pub use corpus::{Corpus, load};
 pub use model_originals::{
-    BrowserAction, BrowserActionKind, BrowserApplicationRead, BrowserApplicationSource,
-    BrowserCallbackOutcome, BrowserClient, BrowserClients, BrowserDocumentDecoder,
-    BrowserDocumentError, BrowserDocumentErrorKind, BrowserDownloadTarget, BrowserInputError,
-    BrowserLoans, BrowserPreparationError, BrowserPreparationErrorKind, BrowserScope,
-    BrowserSemantic, BrowserSourceFault, BrowserSourceIdentity, BrowserSourceTerminal,
-    BrowserVisitError, with_prepared_browser_clients,
+    BrowserAction, BrowserActionKind, BrowserAdapterCompletion, BrowserApplicationRead,
+    BrowserApplicationSource, BrowserCallbackOutcome, BrowserClient, BrowserClients,
+    BrowserCollectionFault, BrowserCollectionTerminal, BrowserDocumentBounds,
+    BrowserDocumentDecoder, BrowserDocumentError, BrowserDocumentErrorKind,
+    BrowserDocumentProducer, BrowserDocumentRecord, BrowserDocumentSnapshot, BrowserDownloadTarget,
+    BrowserExecutionInventory, BrowserExecutionOpening, BrowserExecutionPreparationError,
+    BrowserExecutionRow, BrowserInputError, BrowserLoans, BrowserPreparationError,
+    BrowserPreparationErrorKind, BrowserRetainedDocumentFrame, BrowserRowAttempt,
+    BrowserRowCollection, BrowserRowProducer, BrowserRowSetupFailure, BrowserRowState,
+    BrowserScope, BrowserSemantic, BrowserSourceFault, BrowserSourceIdentity,
+    BrowserSourceTerminal, BrowserVisitError, PreparedBrowserClientRun,
+    with_executed_browser_originals, with_prepared_browser_clients,
 };
 pub use model_originals::{
     BrowserArchiveData, BrowserDocumentContent, BrowserDocumentFactData, BrowserDocumentFrameData,

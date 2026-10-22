@@ -10,10 +10,21 @@ pub use pipeline::{
     BrowserVisitError, with_prepared_browser_clients,
 };
 pub use pipeline::{
+    BrowserAdapterCompletion, BrowserExecutionInventory, BrowserExecutionPreparationError,
+    BrowserExecutionRow, BrowserRowAttempt, BrowserRowSetupFailure, BrowserRowState,
+    with_executed_browser_originals,
+};
+pub use pipeline::{
     BrowserArchiveData, BrowserDocumentContent, BrowserDocumentFactData, BrowserDocumentFrameData,
     BrowserDownloadOutcomeData, BrowserDownloadResultData, BrowserInventoryData,
     BrowserJsonStringSpan, BrowserOpeningData, BrowserProjectSelectionData,
     BrowserReadyArchiveData, BrowserSourceSelectionData, BrowserVisitData,
+};
+pub use pipeline::{
+    BrowserCollectionFault, BrowserCollectionTerminal, BrowserDocumentBounds,
+    BrowserDocumentProducer, BrowserDocumentRecord, BrowserDocumentSnapshot,
+    BrowserExecutionOpening, BrowserRetainedDocumentFrame, BrowserRowCollection,
+    BrowserRowProducer, PreparedBrowserClientRun,
 };
 pub use pipeline::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,

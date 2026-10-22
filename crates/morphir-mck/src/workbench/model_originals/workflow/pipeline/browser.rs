@@ -1,19 +1,32 @@
 //! Private browser observation support. No browser execution or source grant.
 mod adapter;
 mod archive_download;
+mod collection;
 mod controlled_input;
 #[cfg(target_os = "macos")]
 mod controller;
 #[cfg(all(test, target_os = "macos"))]
 #[path = "browser/controller/tests.rs"]
 mod controller_tests;
+mod execution;
 mod funded_workflow;
 #[cfg(test)]
 #[path = "browser/funded_workflow/tests.rs"]
 mod funded_workflow_tests;
 mod inputs;
 mod source_scope;
+pub use adapter::execution_loans::{BrowserExecutionOpening, PreparedBrowserClientRun};
 pub use adapter::*;
+pub use collection::{
+    BrowserCollectionFault, BrowserCollectionTerminal, BrowserDocumentBounds,
+    BrowserDocumentProducer, BrowserDocumentRecord, BrowserDocumentSnapshot,
+    BrowserRetainedDocumentFrame, BrowserRowCollection, BrowserRowProducer,
+};
+pub use execution::{
+    BrowserAdapterCompletion, BrowserExecutionInventory, BrowserExecutionPreparationError,
+    BrowserExecutionRow, BrowserRowAttempt, BrowserRowSetupFailure, BrowserRowState,
+    with_executed_browser_originals,
+};
 
 use super::installed::observation::InstalledObservationOwner;
 use super::{PreparationFault, Source, prepared_typed};

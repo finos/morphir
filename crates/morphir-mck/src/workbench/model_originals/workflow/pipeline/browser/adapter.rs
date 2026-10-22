@@ -24,6 +24,14 @@ use execution_loans::LoanRelation;
 pub struct BrowserInputError {
     cause: inputs::BrowserInputFault,
 }
+impl BrowserInputError {
+    pub(super) fn source_cause(&self) -> Option<BrowserSourceFault> {
+        match self.cause {
+            inputs::BrowserInputFault::Source(cause) => Some(cause),
+            _ => None,
+        }
+    }
+}
 impl From<inputs::BrowserInputFault> for BrowserInputError {
     fn from(cause: inputs::BrowserInputFault) -> Self {
         Self { cause }

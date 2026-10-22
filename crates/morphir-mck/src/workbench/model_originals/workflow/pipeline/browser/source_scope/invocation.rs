@@ -220,16 +220,17 @@ impl BrowserSourceBinding {
         &self,
         identity: &BrowserInvocationIdentity,
     ) -> Result<(), ScopeFault> {
-        match self.control.as_ref().expect("live binding") {
-            BindingControl::Invocation { parent, child }
+        match self.control.as_ref() {
+            Some(BindingControl::Invocation { parent, child })
                 if Arc::as_ptr(parent) == identity.parent.as_ptr()
                     && Arc::as_ptr(child) == identity.child.as_ptr() =>
             {
                 while_active(parent, child, || ())
             }
-            BindingControl::Global(_) | BindingControl::Invocation { .. } => {
+            Some(BindingControl::Global(_) | BindingControl::Invocation { .. }) => {
                 Err(ScopeFault::ForeignSource)
             }
+            None => Err(ScopeFault::Revoked),
         }
     }
 }

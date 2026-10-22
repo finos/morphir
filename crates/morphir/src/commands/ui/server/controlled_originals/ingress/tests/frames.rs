@@ -41,14 +41,17 @@ fn retained_tokens_at_ack(
     let Ok(inner) = document.state.lock() else {
         return (false, 0, 0);
     };
-    let Some(first) = inner.records.first() else {
-        return (false, inner.raw.len(), 0);
+    let super::super::Retention::Local { raw, records } = &inner.retention else {
+        return (false, 0, 0);
+    };
+    let Some(first) = records.first() else {
+        return (false, raw.len(), 0);
     };
     let typed_fact = match first.data.content() {
         morphir_mck::workbench::BrowserDocumentContent::Fact(
             morphir_mck::workbench::BrowserDocumentFactData::ModelClosed(actual),
         ) => {
-            let payload = inner.raw.get(first.bytes.start + 16..first.bytes.end);
+            let payload = raw.get(first.bytes.start + 16..first.bytes.end);
             actual.opening().get() == 0
                 && payload.and_then(|bytes| bytes.get(actual.workspace().range()))
                     == Some(workspace_token)
@@ -59,16 +62,16 @@ fn retained_tokens_at_ack(
         && first.data.kind() == 1
         && first.data.sequence().get() == 1
         && first.bytes == (0..fact.len())
-        && inner.raw.get(first.bytes.clone()) == Some(fact);
+        && raw.get(first.bytes.clone()) == Some(fact);
     match end {
         None => (
-            first_ok && inner.records.len() == 1 && inner.raw.len() == fact.len(),
-            inner.raw.len(),
-            inner.records.len(),
+            first_ok && records.len() == 1 && raw.len() == fact.len(),
+            raw.len(),
+            records.len(),
         ),
         Some(end) => {
-            let Some(second) = inner.records.get(1) else {
-                return (false, inner.raw.len(), inner.records.len());
+            let Some(second) = records.get(1) else {
+                return (false, raw.len(), records.len());
             };
             let finish = fact.len() + end.len();
             let typed_end = matches!(second.data.content(),
@@ -77,11 +80,11 @@ fn retained_tokens_at_ack(
                 && second.data.kind() == 2
                 && second.data.sequence().get() == 2
                 && second.bytes == (fact.len()..finish)
-                && inner.raw.get(second.bytes.clone()) == Some(end);
+                && raw.get(second.bytes.clone()) == Some(end);
             (
-                first_ok && second_ok && inner.records.len() == 2 && inner.raw.len() == finish,
-                inner.raw.len(),
-                inner.records.len(),
+                first_ok && second_ok && records.len() == 2 && raw.len() == finish,
+                raw.len(),
+                records.len(),
             )
         }
     }

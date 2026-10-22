@@ -24,6 +24,26 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Ex
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct BrowserLoanStamp {
     relation: OwnedRelation,
 }
+impl BrowserLoanStamp {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn while_active<R>(
+        &self,
+        action: impl FnOnce() -> R,
+    ) -> Result<R, BrowserSourceFault> {
+        match &self.relation {
+            OwnedRelation::Application(global) => global.while_active(action),
+            OwnedRelation::Execution { child, .. } => child.while_active(action),
+        }
+    }
+}
+#[derive(Debug, PartialEq, Eq)]
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct BrowserOpeningPosition(
+    usize,
+);
+impl BrowserOpeningPosition {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn get(&self) -> usize {
+        self.0
+    }
+}
 enum OwnedRelation {
     Application(ApplicationSourceIdentity),
     Execution {
@@ -104,6 +124,17 @@ impl ExecutionChild {
     }
 }
 impl<'a, 'owners> BrowserLoans<'a, 'owners> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn fail_collection(
+        &mut self,
+        fault: InstalledObservationFault,
+    ) -> BrowserInputError {
+        match self.inner.physical_owners() {
+            Ok((_, receiving, _)) => {
+                inputs::BrowserInputFault::Receiving(*receiving.fail(fault)).into()
+            }
+            Err(cause) => cause.into(),
+        }
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn application(
         inner: &'a mut inputs::BrowserOwnerLoans<'owners>,
         global: &'a BrowserSourceScope,
@@ -208,28 +239,13 @@ impl<'a, 'owners> BrowserLoans<'a, 'owners> {
 }
 /// Borrows the actual current compiler row; the engine retains its full inventory
 /// and row/report context outside this adapter input view.
-pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct PreparedBrowserClientRun<
-    'compiled,
-    'run,
-    'case,
-    'sources,
-    'raw,
-    'supplied,
-> {
+pub struct PreparedBrowserClientRun<'compiled, 'run, 'case, 'sources, 'raw, 'supplied> {
     core: &'compiled CompiledSourceCase<'case, 'sources, 'raw, 'supplied>,
     input: inputs::BrowserExecutionInput<'compiled, 'case, 'sources, 'raw, 'supplied>,
     global: &'run BrowserSourceScope,
     child: &'run ExecutionChild,
 }
-pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct BrowserExecutionOpening<
-    'a,
-    'compiled,
-    'run,
-    'case,
-    'sources,
-    'raw,
-    'supplied,
-> {
+pub struct BrowserExecutionOpening<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied> {
     owner: &'a PreparedBrowserClientRun<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
     action: inputs::BrowserActionInput<'case>,
 }
@@ -305,7 +321,7 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             child,
         })
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn openings<'a>(
+    pub fn openings<'a>(
         &'a self,
         loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<
@@ -323,7 +339,7 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             })
             .map_err(source)?
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare_controlled_host(
+    pub fn prepare_controlled_host(
         &self,
         opening: &BrowserExecutionOpening<'_, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
         loans: &mut BrowserLoans<'_, '_>,
@@ -346,6 +362,17 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
         // Issue debt only after every fallible input copy; no nested source lock.
         let binding = self.child.scope.bind(loans.inner).map_err(issue)?;
         Ok(prepared.finish(binding))
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_opening(
+        &self,
+        opening: &BrowserExecutionOpening<'_, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<BrowserOpeningPosition, BrowserInputError> {
+        loans.ready_for_run(self.global, self.child)?;
+        if !std::ptr::eq(opening.owner, self) {
+            return Err(source(BrowserSourceFault::ForeignSource));
+        }
+        Ok(BrowserOpeningPosition(opening.action.position()))
     }
 }
 #[cfg(test)]
