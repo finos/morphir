@@ -70,6 +70,17 @@ Use the [rich-designs skill](.agents/skills/rich-designs/SKILL.md) for creating,
 these artifacts. The installed [Anthropic frontend-design skill](.agents/skills/frontend-design/SKILL.md) supports
 visual choices within the approved template and the user's brief; it does not override the template requirements.
 
+Write connected narrative prose for users and contributors. Explain the reader's goal, walk through a concrete
+example, and describe how the parts work together before presenting implementation details. Use complementary
+diagrams for architecture, data movement, call order and lifecycle when they help explain the subject. Introduce
+each diagram in prose and explain its implications; diagrams and task lists do not replace the explanation.
+
+Use Mermaid for concise, editable flow and sequence sources, accessible SVG for diagrams rendered in the docs,
+and the installed [Archify skill](.agents/skills/archify/SKILL.md) for richer diagrams with source evidence and
+rendering checks. Keep Mermaid sources when used, provide a rendered result, and follow
+[repository diagram guidance](.agents/skills/rich-designs/references/repository.md) for output, verification and
+storage. Archify's standalone viewer must not replace the approved document template or add scripts to it.
+
 Write superpowers specs, implementation plans and other documents a person reviews as HTML pages, not Markdown.
 Thariq Shihipar of Anthropic's Claude Code team makes the case in "Using Claude Code: The Unreasonable
 Effectiveness of HTML" (May 2026; examples at <https://thariqs.github.io/html-effectiveness>) and on the How I AI

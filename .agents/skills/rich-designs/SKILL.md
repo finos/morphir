@@ -20,6 +20,11 @@ revisions and primary references where they support a claim. A passing scalar ex
 library pipeline, a portable artifact does not qualify every host, and successful execution does not establish
 MEP or MCK compatibility. Apply those distinctions to the subject actually being designed.
 
+Write connected narrative prose for both users and contributors. Start with what the reader wants to do and a
+concrete example, then explain how the parts cooperate and why their boundaries matter. Introduce each diagram
+with the question it answers and follow it with the consequence for the reader. Add contributor details after
+the user journey, with links to the code and contracts. A diagram, table or task checklist does not replace prose.
+
 ## Build the document
 
 - Start with the existing template or documentation site. Preserve its approved head, CSS, theme and navigation.
@@ -27,10 +32,15 @@ MEP or MCK compatibility. Apply those distinctions to the subject actually being
   supporting evidence. Keep the main argument readable without opening every detail.
 - Use tables for genuine comparisons, code blocks for concrete contracts/examples, and diagrams where they
   explain relationships or sequence better than prose. Avoid repeated card grids and walls of dependency text.
-- Prefer inline SVG for portable diagrams. Include sequence diagrams when call order, callbacks, ownership or
-  failure handling matters. Retain Mermaid source when useful, and provide an actual rendered diagram.
-- If Archify is available, use its schema, evidence and rendering checks. Otherwise use the repository's supported
-  renderer or author accessible SVG. Do not introduce a runtime dependency just to decorate a document.
+- Use Mermaid for concise flow and sequence sources, accessible SVG for portable rendered diagrams, and
+  [Archify](../archify/SKILL.md) for richer diagrams with schema, source-evidence and rendering checks. Choose
+  complementary views when one diagram cannot explain the subject. Include sequence diagrams when call order,
+  callbacks, ownership or failure handling matters. Retain Mermaid source when used and provide an actual
+  rendered diagram; Mermaid source alone is not a rendered result.
+- Follow [repository diagram guidance](references/repository.md) for the installed Archify CLI, output and storage.
+  Validate Archify candidates and their artifacts through its delivery gates. Give SVG a responsive viewBox,
+  readable labels, an accessible title/description and a prose equivalent. Do not introduce a client-side renderer
+  dependency or replace the document template to display a diagram.
 - Use [frontend-design](../frontend-design/SKILL.md) for intentional visual choices within the brief. Repository
   templates, design tokens and accessibility requirements take precedence over introducing a new visual identity.
 - Keep the document usable without optional scripts. Follow the repository's external-resource policy. A linked

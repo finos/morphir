@@ -8,3 +8,6 @@ apps/morphir-workbench/licenses/zip.js-LICENSE.txt -text
 apps/morphir-workbench/assets/morphir-mark.svg text eol=lf
 apps/morphir-workbench-desktop/assets/morphir-icon.json text eol=lf
 tools/packaged-targets-pin.json text eol=lf
+# Keep the complete pinned Archify package byte-exact and collapsed in code review.
+.agents/skills/archify/** -text linguist-vendored
+.agents/skills/archify/UPSTREAM.md text eol=lf linguist-vendored=false

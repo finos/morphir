@@ -6,9 +6,10 @@ import { checkedBuild } from './build.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 // Check source coverage independently of imports, so a new isolated script cannot
-// silently escape all four projects. Generated JavaScript is ignored by git.
+// silently escape all four projects. Generated JavaScript is ignored by git;
+// the pinned, unmodified Archify vendor package is not handwritten project code.
 const inventory = Bun.spawnSync(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '--',
-  '*.ts', '*.mts', '*.cts', '*.js', '*.mjs', '*.cjs'], { cwd: root });
+  '*.ts', '*.mts', '*.cts', '*.js', '*.mjs', '*.cjs', ':(exclude).agents/skills/archify/**'], { cwd: root });
 assert.equal(inventory.exitCode, 0, inventory.stderr.toString());
 const sources = inventory.stdout.toString().trim().split(/\r?\n/).filter(Boolean);
 assert.deepEqual(sources.filter(path => /\.(?:js|mjs|cjs)$/.test(path)), [], 'Handwritten JavaScript must be TypeScript');

@@ -19,6 +19,45 @@ Their instructions use ordinary file access, terminal commands, and available tr
 
 Canonical files live under `.agents/skills/`; `.github/skills/` and `.claude/skills/` expose the same definitions.
 
+### Archify across agents
+
+[Archify](archify/SKILL.md) creates validated architecture, workflow, sequence, data-flow and lifecycle diagrams.
+The complete package is vendored in `.agents/skills/archify/`, including its renderers, schemas, references,
+examples, viewer assets and licenses. [Pinned upstream source](archify/UPSTREAM.md) records version 3.2.0 and
+the exact revision. No global skill or npm installation is needed to run the renderer.
+
+Use [rich-designs](rich-designs/SKILL.md) to combine diagrams with explanatory prose and integrate them into
+the existing docs site. Mermaid keeps small diagrams editable, SVG provides accessible rendered content, and
+Archify supplies richer diagrams and verification. Follow the
+[repository diagram workflow](rich-designs/references/repository.md#narrative-and-diagram-workflow), including
+its `.dev/` output and beads recovery rules. The upstream standalone viewer does not replace the docs template.
+
+| Agent | Project discovery path | Provider documentation |
+|---|---|---|
+| Codex | `.agents/skills/archify/` | [Skills](https://learn.chatgpt.com/docs/build-skills) |
+| Claude Code | `.claude/skills/archify/` | [Skills](https://code.claude.com/docs/en/skills) |
+| GitHub Copilot | `.github/skills/archify/` | [Skills](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills) |
+| Cursor | `.agents/skills/archify/` | [Skills](https://cursor.com/docs/skills) |
+| Gemini CLI | `.gemini/skills/archify/` | [Skills](https://geminicli.com/docs/cli/using-agent-skills/) |
+| Google Antigravity | `.agents/skills/archify/` | [Skills](https://www.antigravity.google/docs/skills) |
+| Grok | `.grok/skills/archify/` | [Skills](https://docs.x.ai/build/features/skills-plugins-marketplaces) |
+| Muse Code | `.agents/skills/archify/` | [Skills](https://meta-models.github.io/muse-code-sdk/next/guides/extend/skills/) |
+| Devin CLI and Desktop | `.devin/skills/archify/` | [CLI skills](https://docs.devin.ai/cli/extensibility/skills/overview), [Desktop skills](https://docs.devin.ai/desktop/cascade/skills) |
+| Windsurf | `.windsurf/skills/archify/` | [Skills](https://docs.devin.ai/desktop/cascade/skills) |
+
+Every alias links to the whole canonical directory so the renderer and relative resources remain available.
+Checkouts must preserve Git symlinks. Where symlinks or native skill discovery are unavailable, use:
+
+```text
+Read .agents/skills/archify/SKILL.md and .agents/skills/rich-designs/references/repository.md.
+Use the installed Archify CLI to diagram the requested subject, retain source evidence,
+and integrate accessible SVG with narrative prose in the approved docs layout.
+```
+
+Native invocation can use `$archify`, `/archify` or the client's skill picker. Discovery depends on the client
+version, workspace trust and enabled skill support; reload skills or start a new session after checkout updates.
+Resolved paths and CLI checks do not prove that every proprietary client has loaded the skill.
+
 ### beads-companion
 
 Preserve rich HTML designs, capture reusable discoveries and handoff notes, and sync the shared Morphir tracker.

@@ -43,6 +43,20 @@ handoff prompt. The repository contains the complete skill and persona; personal
 
 Both skills have discovery links under `.github/skills` and `.claude/skills`, with canonical sources in `.agents/skills`.
 
+### Archify and explanatory diagrams
+
+Read [Archify](../.agents/skills/archify/SKILL.md) for validated architecture, workflow, sequence, data-flow and
+lifecycle diagrams. The complete upstream package, licenses and pinned provenance are installed in
+`.agents/skills/archify/`; no personal installation is required. The
+[skill catalog](skills/README.md#archify-across-agents) lists discovery paths for the supported agents and a
+direct-file fallback.
+
+Use connected narrative prose to explain the user's goal, a concrete example and the responsibilities of each
+part. Pair it with Mermaid sources, accessible SVG and Archify diagrams as appropriate. Follow the
+[rich-designs repository guidance](../.agents/skills/rich-designs/references/repository.md) for rendering,
+evidence, storage and integration with the existing docs site. Keep the approved document head, CSS and script
+policy; standalone Archify pages are separate review artifacts.
+
 ### Beads companion
 
 **Location**: [.agents/skills/beads-companion/SKILL.md](../.agents/skills/beads-companion/SKILL.md)
