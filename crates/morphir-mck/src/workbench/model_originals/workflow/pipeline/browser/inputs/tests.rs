@@ -94,6 +94,14 @@ fn browser_inputs_01_full_preparation_then_same_borrowed_inputs_and_alias_filter
                 assert_eq!(view.position(), position);
                 assert!(std::ptr::eq(view.input, input));
                 match (view.kind(), input) {
+                    (BrowserActionKind::BeginConnectedOpening { attempt, pending, project_id, source, transfer_limits, .. },
+                        crate::workbench::model_originals::workflow::input::ClientAction::BeginConnectedOpening { attempt: actual_attempt, pending: actual_pending, project_id: actual_project, source: actual_source, transfer_limits: actual_limits, .. }) => {
+                        assert!(std::ptr::eq(attempt, actual_attempt));
+                        assert!(std::ptr::eq(pending, actual_pending));
+                        assert!(std::ptr::eq(project_id, actual_project));
+                        assert!(std::ptr::eq(source, actual_source));
+                        assert!(std::ptr::eq(transfer_limits, actual_limits));
+                    }
                     (BrowserActionKind::StartConnected { attempt, .. },
                         crate::workbench::model_originals::workflow::input::ClientAction::StartConnected { attempt: actual, .. }) => assert!(std::ptr::eq(attempt, actual)),
                     (BrowserActionKind::BindModelOwner { model, .. },
@@ -108,6 +116,7 @@ fn browser_inputs_01_full_preparation_then_same_borrowed_inputs_and_alias_filter
                     | (BrowserActionKind::Checkpoint { .. }, crate::workbench::model_originals::workflow::input::ClientAction::Checkpoint { .. }) => {},
                     (BrowserActionKind::Unsupported, input) => assert!(!matches!(input,
                         crate::workbench::model_originals::workflow::input::ClientAction::StartConnected { .. }
+                        | crate::workbench::model_originals::workflow::input::ClientAction::BeginConnectedOpening { .. }
                         | crate::workbench::model_originals::workflow::input::ClientAction::BindModelOwner { .. }
                         | crate::workbench::model_originals::workflow::input::ClientAction::DownloadOriginal { .. }
                         | crate::workbench::model_originals::workflow::input::ClientAction::DownloadArchive { .. }
@@ -391,4 +400,6 @@ fn browser_inputs_07_callback_error_is_retained_as_its_closed_type() {
     assert_eq!(calls.get(), 1);
 }
 
+mod controlled_input;
 mod projections;
+mod public_bridge;

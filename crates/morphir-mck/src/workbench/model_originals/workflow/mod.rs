@@ -1,6 +1,16 @@
 //! Private workflow operand compiler, not registered capability or authority.
 mod decode;
 use decode::*;
+pub use pipeline::{
+    BrowserAction, BrowserActionKind, BrowserCallbackOutcome, BrowserClient, BrowserClients,
+    BrowserDownloadTarget, BrowserInputError, BrowserLoans, BrowserPreparationError,
+    BrowserPreparationErrorKind, BrowserScope, BrowserSemantic, BrowserSourceFault,
+    BrowserSourceIdentity, BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
+};
+pub use pipeline::{
+    ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
+    ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
+};
 #[macro_use]
 mod macros;
 mod compile;

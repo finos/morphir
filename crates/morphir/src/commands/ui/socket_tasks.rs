@@ -143,12 +143,17 @@ enum TaskSlot {
 struct SocketTaskState {
     acceptance: Acceptance,
     slots: Vec<TaskSlot>,
+    table: TableCapacity,
     fault: Option<SocketCleanupError>,
     capacity: HostModelCaptureCapacity,
     _infrastructure_credit: RetainedEvidenceCredit,
     table_credit: Option<RetainedEvidenceCredit>,
     #[cfg(test)]
     panic_trigger: Arc<tokio::sync::Notify>,
+}
+enum TableCapacity {
+    Dynamic,
+    Fixed,
 }
 impl SocketTaskState {
     fn fail(&mut self, fault: SocketCleanupError) {
@@ -164,6 +169,9 @@ impl SocketTaskState {
             .position(|slot| matches!(slot, TaskSlot::Vacant))
         {
             return Ok(index);
+        }
+        if matches!(self.table, TableCapacity::Fixed) {
+            return Err(SocketCleanupError::Capacity);
         }
         if self.slots.len() == self.slots.capacity() {
             let old = self.slots.capacity();
@@ -207,7 +215,110 @@ impl SocketTaskState {
 
 #[derive(Clone)]
 pub(in crate::commands::ui) struct SocketTaskRegistry(Arc<Mutex<SocketTaskState>>);
+#[derive(Debug)]
+pub(in crate::commands::ui) enum FixedSocketSetupFault {
+    Funding(morphir_mck::workbench::BrowserInputError),
+    Registry(SocketCleanupError),
+}
 impl SocketTaskRegistry {
+    fn arc_layout<T>() -> Result<std::alloc::Layout, SocketCleanupError> {
+        use std::{alloc::Layout, sync::atomic::AtomicUsize};
+        let counter = Layout::new::<AtomicUsize>();
+        let header = counter
+            .extend(counter)
+            .map_err(|_| SocketCleanupError::SizeOverflow)?
+            .0;
+        Ok(header
+            .extend(Layout::new::<T>())
+            .map_err(|_| SocketCleanupError::SizeOverflow)?
+            .0
+            .pad_to_align())
+    }
+    fn fixed_infrastructure_bytes() -> Result<usize, SocketCleanupError> {
+        let bytes = Self::arc_layout::<Mutex<SocketTaskState>>()?.size();
+        #[cfg(test)]
+        let bytes = bytes
+            .checked_add(Self::arc_layout::<tokio::sync::Notify>()?.size())
+            .ok_or(SocketCleanupError::SizeOverflow)?;
+        Ok(bytes)
+    }
+    pub(in crate::commands::ui) fn fixed_requested_bytes(
+        slots: usize,
+    ) -> Result<usize, SocketCleanupError> {
+        if slots == 0 {
+            return Err(SocketCleanupError::Capacity);
+        }
+        let table = std::alloc::Layout::array::<TaskSlot>(slots)
+            .map_err(|_| SocketCleanupError::SizeOverflow)?;
+        Self::fixed_infrastructure_bytes()?
+            .checked_add(table.size())
+            .ok_or(SocketCleanupError::SizeOverflow)
+    }
+    pub(in crate::commands::ui) fn new_fixed(
+        capacity: &HostModelCaptureCapacity,
+        count: usize,
+        loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
+    ) -> Result<(Self, HostSocketCleanupOwner), FixedSocketSetupFault> {
+        // Earliest scope/owner refusal precedes layout work. Zero charges do
+        // not obtain another grant or reset any cumulative permission.
+        loans
+            .reserve_controlled_host_storage(0, 0, 0)
+            .map_err(FixedSocketSetupFault::Funding)?;
+        let requested =
+            Self::fixed_requested_bytes(count).map_err(FixedSocketSetupFault::Registry)?;
+        let infrastructure =
+            Self::fixed_infrastructure_bytes().map_err(FixedSocketSetupFault::Registry)?;
+        let table =
+            requested
+                .checked_sub(infrastructure)
+                .ok_or(FixedSocketSetupFault::Registry(
+                    SocketCleanupError::SizeOverflow,
+                ))?;
+        loans
+            .reserve_controlled_host_storage(requested, count, table)
+            .map_err(FixedSocketSetupFault::Funding)?;
+        let infrastructure_credit = capacity
+            .reserve_evidence(infrastructure)
+            .map_err(|_| FixedSocketSetupFault::Registry(SocketCleanupError::Capacity))?;
+        let mut table_credit = capacity
+            .reserve_evidence(table)
+            .map_err(|_| FixedSocketSetupFault::Registry(SocketCleanupError::Capacity))?;
+        let mut slots = Vec::new();
+        slots
+            .try_reserve_exact(count)
+            .map_err(|_| FixedSocketSetupFault::Registry(SocketCleanupError::Allocation))?;
+        let excess = slots
+            .capacity()
+            .checked_sub(count)
+            .and_then(|extra| extra.checked_mul(std::mem::size_of::<TaskSlot>()))
+            .ok_or(FixedSocketSetupFault::Registry(
+                SocketCleanupError::SizeOverflow,
+            ))?;
+        // Actual spare is paid before initialization. The Vec length remains
+        // exactly the requested entry bound, so spare cannot admit another task.
+        loans
+            .reserve_controlled_host_storage(excess, 0, 0)
+            .map_err(FixedSocketSetupFault::Funding)?;
+        table_credit
+            .grow(excess)
+            .map_err(|_| FixedSocketSetupFault::Registry(SocketCleanupError::Capacity))?;
+        slots.resize_with(count, || TaskSlot::Vacant);
+        let registry = Self(Arc::new(Mutex::new(SocketTaskState {
+            acceptance: Acceptance::Open,
+            slots,
+            table: TableCapacity::Fixed,
+            fault: None,
+            capacity: capacity.clone(),
+            _infrastructure_credit: infrastructure_credit,
+            table_credit: Some(table_credit),
+            #[cfg(test)]
+            panic_trigger: Arc::new(tokio::sync::Notify::new()),
+        })));
+        let owner = HostSocketCleanupOwner {
+            registry: registry.clone(),
+        };
+        Ok((registry, owner))
+    }
     pub(in crate::commands::ui) fn new(
         capacity: &HostModelCaptureCapacity,
     ) -> Result<(Self, HostSocketCleanupOwner), SocketCleanupError> {
@@ -220,6 +331,7 @@ impl SocketTaskRegistry {
         let registry = Self(Arc::new(Mutex::new(SocketTaskState {
             acceptance: Acceptance::Open,
             slots: Vec::new(),
+            table: TableCapacity::Dynamic,
             fault: None,
             capacity: capacity.clone(),
             _infrastructure_credit: credit,
@@ -542,6 +654,7 @@ impl PendingSocketDrain<'_> {
 
 #[cfg(test)]
 mod tests {
+    mod fixed;
     use super::*;
     use crate::commands::ui::model_originals::HostModelCaptureCapacity;
     use std::sync::Arc;

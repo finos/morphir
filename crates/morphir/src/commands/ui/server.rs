@@ -1,4 +1,8 @@
 //! Strict loopback HTTP boundary for the connected Morphir web app.
+mod controlled_originals;
+#[cfg(test)]
+#[path = "server/controlled_originals_tests.rs"]
+mod controlled_originals_tests;
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -546,9 +550,24 @@ impl BoundUiHost {
 /// Keep the whole HTTP connection future in the same funded registry as its
 /// upgrades. Listener completion alone cannot establish connection completion.
 async fn serve_connections<L>(
+    listener: L,
+    router: Router,
+    tasks: super::socket_tasks::SocketTaskRegistry,
+) -> Result<(), CliError>
+where
+    L: axum::serve::Listener,
+    L::Addr: std::fmt::Debug,
+{
+    serve_connections_with_source(listener, router, tasks, None).await
+}
+async fn serve_connections_with_source<L>(
     mut listener: L,
     router: Router,
     tasks: super::socket_tasks::SocketTaskRegistry,
+    source: Option<(
+        Arc<morphir_mck::workbench::ControlledHostStimulus>,
+        std::time::Instant,
+    )>,
 ) -> Result<(), CliError>
 where
     L: axum::serve::Listener,
@@ -569,7 +588,7 @@ where
         // This is Router's same make-service state conversion and generic
         // request-body mapping; no additional parser or handshake is involved.
         let service = TowerToHyperService::new(router.clone().with_state(()));
-        let spawned = tasks.spawn_http_driver(async move {
+        let actual = async move {
             let builder = Builder::new(TokioExecutor::new());
             // The current dependency graph enables HTTP/1. If HTTP/2 is
             // enabled later, its executor tasks need explicit ownership too.
@@ -579,7 +598,21 @@ where
             {
                 tracing::trace!(%error, "UI HTTP connection ended with an error");
             }
-        });
+        };
+        let spawned = if let Some((source, end)) = &source {
+            match source.while_source_active(|| {
+                if std::time::Instant::now() >= *end {
+                    Err(SocketCleanupError::Closed)
+                } else {
+                    tasks.spawn_http_driver(actual)
+                }
+            }) {
+                Ok(result) => result,
+                Err(_) => return Ok(()),
+            }
+        } else {
+            tasks.spawn_http_driver(actual)
+        };
         match spawned {
             Ok(()) => {}
             Err(

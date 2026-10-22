@@ -26,7 +26,7 @@ use super::{
     server::{HostObservationBinding, UiHostState, authenticated, unauthorized},
 };
 
-const MAX_INBOUND_MESSAGE_BYTES: usize = 1024 * 1024;
+pub(in crate::commands::ui) const MAX_INBOUND_MESSAGE_BYTES: usize = 1024 * 1024;
 
 fn selects_originals(raw: &str) -> bool {
     struct MethodEvidence<'a>(&'a mut bool);

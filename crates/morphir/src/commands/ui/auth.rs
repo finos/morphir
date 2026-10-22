@@ -16,7 +16,125 @@ pub struct SessionAuth {
     session_secret: [u8; SECRET_BYTES],
 }
 
+#[derive(Debug)]
+pub(in crate::commands::ui) enum PrepaidAuthFault {
+    Funding(morphir_mck::workbench::BrowserInputError),
+    SizeOverflow,
+    Allocation(std::collections::TryReserveError),
+    Random(getrandom::Error),
+    Encoding(base64::EncodeSliceError),
+}
+pub(in crate::commands::ui) struct PrepaidSessionAuth {
+    auth: SessionAuth,
+    launch_token: String,
+    cookie: String,
+}
+impl PrepaidSessionAuth {
+    pub(in crate::commands::ui) fn into_parts(self) -> (SessionAuth, String, String) {
+        (self.auth, self.launch_token, self.cookie)
+    }
+}
+struct AuthDimensions {
+    name: usize,
+    cookie: usize,
+}
+const ENCODED_SECRET_BYTES: usize = 43;
+const COOKIE_ATTRIBUTES: &str = "; HttpOnly; SameSite=Strict; Path=/";
+
 impl SessionAuth {
+    fn prepaid_dimensions(identity_bytes: usize) -> Result<AuthDimensions, PrepaidAuthFault> {
+        let name = SESSION_COOKIE_PREFIX
+            .len()
+            .checked_add(identity_bytes)
+            .ok_or(PrepaidAuthFault::SizeOverflow)?;
+        let cookie = name
+            .checked_add(1)
+            .and_then(|n| n.checked_add(ENCODED_SECRET_BYTES))
+            .and_then(|n| n.checked_add(COOKIE_ATTRIBUTES.len()))
+            .ok_or(PrepaidAuthFault::SizeOverflow)?;
+        Ok(AuthDimensions { name, cookie })
+    }
+    pub(in crate::commands::ui) fn generate_prepaid(
+        loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
+        identity: &str,
+    ) -> Result<PrepaidSessionAuth, PrepaidAuthFault> {
+        Self::prepaid_with_entropy(loans, identity, getrandom::fill)
+    }
+    fn prepaid_with_entropy(
+        loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
+        identity: &str,
+        mut entropy: impl FnMut(&mut [u8]) -> Result<(), getrandom::Error>,
+    ) -> Result<PrepaidSessionAuth, PrepaidAuthFault> {
+        loans
+            .reserve_controlled_host_storage(0, 0, 0)
+            .map_err(PrepaidAuthFault::Funding)?;
+        let dimensions = Self::prepaid_dimensions(identity.len())?;
+        let storage = dimensions
+            .name
+            .checked_add(dimensions.cookie)
+            .and_then(|n| n.checked_add(ENCODED_SECRET_BYTES))
+            .and_then(|n| n.checked_add(std::mem::size_of::<PrepaidSessionAuth>()))
+            .ok_or(PrepaidAuthFault::SizeOverflow)?;
+        // Name copy, two base64 encodes and cookie fill; all actual buffers are
+        // reserved and any spare is charged before either entropy acquisition.
+        let work = storage
+            .checked_add(2 * SECRET_BYTES)
+            .ok_or(PrepaidAuthFault::SizeOverflow)?;
+        loans
+            .reserve_controlled_host_storage(storage, 3, work)
+            .map_err(PrepaidAuthFault::Funding)?;
+        fn buffer(
+            loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
+            requested: usize,
+        ) -> Result<String, PrepaidAuthFault> {
+            let mut result = String::new();
+            result
+                .try_reserve_exact(requested)
+                .map_err(PrepaidAuthFault::Allocation)?;
+            let excess = result
+                .capacity()
+                .checked_sub(requested)
+                .ok_or(PrepaidAuthFault::SizeOverflow)?;
+            loans
+                .reserve_controlled_host_storage(excess, 0, 0)
+                .map_err(PrepaidAuthFault::Funding)?;
+            Ok(result)
+        }
+        let mut name = buffer(loans, dimensions.name)?;
+        let mut token = buffer(loans, ENCODED_SECRET_BYTES)?;
+        let mut cookie = buffer(loans, dimensions.cookie)?;
+        let mut launch_secret = [0; SECRET_BYTES];
+        let mut session_secret = [0; SECRET_BYTES];
+        entropy(&mut launch_secret).map_err(PrepaidAuthFault::Random)?;
+        entropy(&mut session_secret).map_err(PrepaidAuthFault::Random)?;
+        name.push_str(SESSION_COOKIE_PREFIX);
+        name.push_str(identity);
+        let mut encoded = [0; ENCODED_SECRET_BYTES];
+        URL_SAFE_NO_PAD
+            .encode_slice(launch_secret, &mut encoded)
+            .map_err(PrepaidAuthFault::Encoding)?;
+        for byte in encoded {
+            token.push(char::from(byte));
+        }
+        URL_SAFE_NO_PAD
+            .encode_slice(session_secret, &mut encoded)
+            .map_err(PrepaidAuthFault::Encoding)?;
+        cookie.push_str(&name);
+        cookie.push('=');
+        for byte in encoded {
+            cookie.push(char::from(byte));
+        }
+        cookie.push_str(COOKIE_ATTRIBUTES);
+        Ok(PrepaidSessionAuth {
+            auth: Self {
+                cookie_name: name,
+                launch_secret: Mutex::new(Some(launch_secret)),
+                session_secret,
+            },
+            launch_token: token,
+            cookie,
+        })
+    }
     pub fn generate(session_id: &str) -> Result<(Self, String), CliError> {
         let mut launch_secret = [0_u8; SECRET_BYTES];
         let mut session_secret = [0_u8; SECRET_BYTES];
@@ -104,6 +222,9 @@ fn decode_secret(encoded: &str) -> Result<[u8; SECRET_BYTES], ()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[path = "prepaid_tests.rs"]
+    mod prepaid;
 
     #[test]
     fn launch_token_is_single_use_and_wrong_values_do_not_consume_it() {

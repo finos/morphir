@@ -18,6 +18,7 @@ use crate::workbench::model_originals::workflow::{
 };
 #[derive(Debug)]
 pub(super) enum BrowserInputFault {
+    Source(super::source_scope::ScopeFault),
     Decode(DecodeError),
     Closure(ClosureError),
     Expansion(ExpansionError),
@@ -29,6 +30,25 @@ pub(super) struct BrowserOwnerLoans<'owners> {
     receiving: &'owners mut InstalledObservationOwner,
 }
 impl<'owners> BrowserOwnerLoans<'owners> {
+    /// Reborrow the SAME parent-stack cumulative owners. This gives no browser,
+    /// path, source, process or action permission and cannot reset any domain.
+    pub(super) fn physical_owners(
+        &mut self,
+    ) -> Result<
+        (
+            &mut crate::workbench::model_originals::workflow::Decoder,
+            &mut InstalledObservationOwner,
+            &mut crate::workbench::model_originals::workflow::observation_check::CompareOwner,
+        ),
+        BrowserInputFault,
+    > {
+        self.ready()?;
+        Ok((
+            &mut self.owners.decode,
+            self.receiving,
+            &mut self.owners.comparison,
+        ))
+    }
     pub(super) fn new(
         owners: &'owners mut Owners,
         receiving: &'owners mut InstalledObservationOwner,
@@ -57,16 +77,41 @@ impl<'owners> BrowserOwnerLoans<'owners> {
             .ready()
             .map_err(|fault| BrowserInputFault::Receiving(*fault))
     }
-    fn visits(&mut self, count: usize) -> Result<(), BrowserInputFault> {
+    pub(super) fn visits(&mut self, count: usize) -> Result<(), BrowserInputFault> {
         self.ready()?;
         self.owners
             .closure
             .charge(Resource::StructuralVisits, count)
             .map_err(BrowserInputFault::Closure)
     }
+    pub(super) fn refuse_selection<T>(
+        &mut self,
+        cause: ClosureError,
+    ) -> Result<T, BrowserInputFault> {
+        self.ready()?;
+        self.owners
+            .closure
+            .refuse(cause)
+            .map_err(BrowserInputFault::Closure)
+    }
+    pub(super) fn same_alias(
+        &mut self,
+        first: &FixtureAlias,
+        second: &FixtureAlias,
+    ) -> Result<bool, BrowserInputFault> {
+        self.ready()?;
+        self.owners
+            .closure
+            .same_alias(first, second)
+            .map_err(BrowserInputFault::Closure)
+    }
 }
 pub(super) struct BorrowedOriginalClients<'compiled, 'case, 'sources, 'raw, 'supplied> {
     compiled: &'compiled [CompiledExecution<'case, 'sources, 'raw, 'supplied>],
+}
+pub(super) enum ClientVisitFault<E> {
+    Input(BrowserInputFault),
+    Callback(E),
 }
 impl<'compiled, 'case, 'sources, 'raw, 'supplied>
     BorrowedOriginalClients<'compiled, 'case, 'sources, 'raw, 'supplied>
@@ -82,18 +127,32 @@ impl<'compiled, 'case, 'sources, 'raw, 'supplied>
     pub(super) fn visit_clients(
         &self,
         loans: &mut BrowserOwnerLoans<'_>,
-        mut visit: impl FnMut(
+        visit: impl FnMut(
             BrowserClientInput<'compiled, 'case, 'sources, 'raw, 'supplied>,
             &mut BrowserOwnerLoans<'_>,
         ) -> Result<(), BrowserInputFault>,
     ) -> Result<(), BrowserInputFault> {
-        loans.ready()?;
+        self.try_visit_clients(loans, visit)
+            .map_err(|fault| match fault {
+                ClientVisitFault::Input(fault) | ClientVisitFault::Callback(fault) => fault,
+            })
+    }
+    pub(super) fn try_visit_clients<E>(
+        &self,
+        loans: &mut BrowserOwnerLoans<'_>,
+        mut visit: impl FnMut(
+            BrowserClientInput<'compiled, 'case, 'sources, 'raw, 'supplied>,
+            &mut BrowserOwnerLoans<'_>,
+        ) -> Result<(), E>,
+    ) -> Result<(), ClientVisitFault<E>> {
+        loans.ready().map_err(ClientVisitFault::Input)?;
         for (case_index, execution) in self.compiled.iter().enumerate() {
-            loans.visits(1)?;
+            loans.visits(1).map_err(ClientVisitFault::Input)?;
             if let CompiledExecution::Current(core) = execution
                 && matches!(core.source().paired().run(), PairedRun::Client { .. })
             {
-                visit(BrowserClientInput { core, case_index }, loans)?;
+                visit(BrowserClientInput { core, case_index }, loans)
+                    .map_err(ClientVisitFault::Callback)?;
             }
         }
         Ok(())
@@ -171,6 +230,15 @@ pub(super) struct BrowserActionInput<'case> {
 }
 #[derive(Clone, Copy)]
 pub(super) enum BrowserActionKind<'case> {
+    BeginConnectedOpening {
+        attempt: &'case FixtureAlias,
+        pending: &'case FixtureAlias,
+        project_id: &'case Text<0, 12288>,
+        scope: &'case input::ClientActionBeginConnectedOpeningScope,
+        semantic: &'case input::ClientActionBeginConnectedOpeningSemantic,
+        source: &'case input::SourceIdentity,
+        transfer_limits: &'case input::ConnectedTransferLimits,
+    },
     StartConnected {
         attempt: &'case FixtureAlias,
         project_id: &'case Text<0, 12288>,
@@ -208,6 +276,23 @@ impl<'case> BrowserActionInput<'case> {
 }
 fn project_action(input: &ClientAction) -> BrowserActionKind<'_> {
     match input {
+        ClientAction::BeginConnectedOpening {
+            attempt,
+            pending,
+            project_id,
+            scope,
+            semantic,
+            source,
+            transfer_limits,
+        } => BrowserActionKind::BeginConnectedOpening {
+            attempt,
+            pending,
+            project_id,
+            scope,
+            semantic,
+            source,
+            transfer_limits,
+        },
         ClientAction::StartConnected {
             attempt,
             project_id,

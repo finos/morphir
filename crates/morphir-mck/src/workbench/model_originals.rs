@@ -49,6 +49,16 @@ pub use transcript::{
 };
 pub use workflow::installed;
 pub use workflow::native;
+pub use workflow::{
+    BrowserAction, BrowserActionKind, BrowserCallbackOutcome, BrowserClient, BrowserClients,
+    BrowserDownloadTarget, BrowserInputError, BrowserLoans, BrowserPreparationError,
+    BrowserPreparationErrorKind, BrowserScope, BrowserSemantic, BrowserSourceFault,
+    BrowserSourceIdentity, BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
+};
+pub use workflow::{
+    ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
+    ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
+};
 
 /// Inclusive bound on the complete JSON-RPC request, before parsing.
 pub const MAX_REQUEST_BYTES: usize = 16 * 1024;

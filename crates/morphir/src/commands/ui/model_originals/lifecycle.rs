@@ -114,6 +114,31 @@ impl Default for HostModelCaptureCapacity {
     }
 }
 impl HostModelCaptureCapacity {
+    pub(in crate::commands::ui) fn metadata_only(
+        loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
+        metadata: usize,
+    ) -> Result<Self, MetadataOnlyCapacityFault> {
+        use std::{alloc::Layout, sync::atomic::AtomicUsize};
+        // Actual pinned alloc::sync::ArcInner repr(C): strong, weak, data.
+        let counter = Layout::new::<AtomicUsize>();
+        let header = counter
+            .extend(counter)
+            .map_err(|_| MetadataOnlyCapacityFault::SizeOverflow)?
+            .0;
+        let backing = header
+            .extend(Layout::new::<Mutex<Capacity>>())
+            .map_err(|_| MetadataOnlyCapacityFault::SizeOverflow)?
+            .0
+            .pad_to_align();
+        loans
+            .reserve_controlled_host_storage(backing.size(), 1, std::mem::size_of::<Capacity>())
+            .map_err(MetadataOnlyCapacityFault::Funding)?;
+        Ok(Self::with_limits(HostLimits {
+            bytes: 0,
+            metadata,
+            captures: 0,
+        }))
+    }
     pub fn observer(&self) -> ModelCaptureUsageObserver {
         ModelCaptureUsageObserver(self.clone())
     }
@@ -166,6 +191,11 @@ impl HostModelCaptureCapacity {
             },
         ))
     }
+}
+#[derive(Debug)]
+pub(in crate::commands::ui) enum MetadataOnlyCapacityFault {
+    Funding(morphir_mck::workbench::BrowserInputError),
+    SizeOverflow,
 }
 pub(in crate::commands::ui) struct RetainedEvidenceCredit {
     host: HostModelCaptureCapacity,

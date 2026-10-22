@@ -41,6 +41,16 @@ pub use contract::{
     SELECTED_SCHEME_VERSION, VERSION, WORKSHEET_PROFILE_VERSION, WORKSHEET_VERSION,
 };
 pub use corpus::{Corpus, load};
+pub use model_originals::{
+    BrowserAction, BrowserActionKind, BrowserCallbackOutcome, BrowserClient, BrowserClients,
+    BrowserDownloadTarget, BrowserInputError, BrowserLoans, BrowserPreparationError,
+    BrowserPreparationErrorKind, BrowserScope, BrowserSemantic, BrowserSourceFault,
+    BrowserSourceIdentity, BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
+};
+pub use model_originals::{
+    ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
+    ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
+};
 pub use report::{
     Failure, HistoricalReport, MAX_OBSERVATION_BYTES, MAX_REPORT_BYTES, Phase, Record, ResultKind,
 };

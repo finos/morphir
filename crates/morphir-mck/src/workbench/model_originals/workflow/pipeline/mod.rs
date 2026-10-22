@@ -1,6 +1,16 @@
 //! One selected branch of the existing Workbench pipeline. The fixed reviewed
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
 mod browser;
+pub use browser::{
+    BrowserAction, BrowserActionKind, BrowserCallbackOutcome, BrowserClient, BrowserClients,
+    BrowserDownloadTarget, BrowserInputError, BrowserLoans, BrowserPreparationError,
+    BrowserPreparationErrorKind, BrowserScope, BrowserSemantic, BrowserSourceFault,
+    BrowserSourceIdentity, BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
+};
+pub use browser::{
+    ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
+    ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
+};
 mod clock;
 pub(super) mod installed;
 pub(in crate::workbench) mod policy;

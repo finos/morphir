@@ -1,15 +1,25 @@
 //! Private browser observation support. No browser execution or source grant.
+mod adapter;
 mod archive_download;
+mod controlled_input;
 #[cfg(target_os = "macos")]
 mod controller;
 #[cfg(all(test, target_os = "macos"))]
 #[path = "browser/controller/tests.rs"]
 mod controller_tests;
+mod funded_workflow;
+#[cfg(test)]
+#[path = "browser/funded_workflow/tests.rs"]
+mod funded_workflow_tests;
 mod inputs;
+mod source_scope;
+pub use adapter::*;
 
 use super::installed::observation::InstalledObservationOwner;
 use super::{PreparationFault, Source, prepared_typed};
-use crate::workbench::configuration::{BrowserClient, Configuration, RunConfiguration};
+use crate::workbench::configuration::{
+    BrowserClient as ConfiguredBrowserClient, Configuration, RunConfiguration,
+};
 use crate::workbench::model_originals::workflow::reviewed_sources::ReviewedSources;
 use inputs::{BorrowedOriginalClients, BrowserOwnerLoans};
 
@@ -30,7 +40,7 @@ fn prepared_browser_originals<R, E>(
     let Configuration::BrowserOriginals {
         checker,
         receiving,
-        client: BrowserClient::Chromium,
+        client: ConfiguredBrowserClient::Chromium,
     } = &configuration.mode
     else {
         return Err(BrowserPreparationFault::WrongConfiguration);
