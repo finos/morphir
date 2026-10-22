@@ -1,0 +1,34 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "repository": "finos/morphir",
+  "tag": "v0.4.0-beta.10",
+  "runnerVersion": "0.4.0-beta.10",
+  "sourceRevision": "477e3ce7d86ad447c85fc2bfcb64832b387a4be7",
+  "fixtureRevision": "477e3ce7d86ad447c85fc2bfcb64832b387a4be7",
+  "assets": {
+    "x86_64-unknown-linux-gnu": {
+      "filename": "morphir-0.4.0-beta.10-x86_64-unknown-linux-gnu.tgz",
+      "sha256": "3f6dc0559e7570d9cdb9c95761333552593da6bc8c788b9da3bb4a1d93101923"
+    },
+    "aarch64-unknown-linux-gnu": {
+      "filename": "morphir-0.4.0-beta.10-aarch64-unknown-linux-gnu.tgz",
+      "sha256": "76a92a11030cd254d2283e98363cf203f86aaecd583fa480bdf6f508c86710f6"
+    },
+    "x86_64-apple-darwin": {
+      "filename": "morphir-0.4.0-beta.10-x86_64-apple-darwin.tgz",
+      "sha256": "4080dcfb04f6e1c902bce2780756c6af44320ac0dd6ff6bd953ca74a0da8e128"
+    },
+    "aarch64-apple-darwin": {
+      "filename": "morphir-0.4.0-beta.10-aarch64-apple-darwin.tgz",
+      "sha256": "98635ec74fbdc3c2cef1d4ae184bb1c5ed9e2960575f3d8abb4b97e0e4da363f"
+    },
+    "aarch64-pc-windows-msvc": {
+      "filename": "morphir-0.4.0-beta.10-aarch64-pc-windows-msvc.zip",
+      "sha256": "f3634261a8ccf55d5a8b862cc7d7ecf683b5237bf4f3a47119b46d1e5b93210f"
+    },
+    "x86_64-pc-windows-msvc": {
+      "filename": "morphir-0.4.0-beta.10-x86_64-pc-windows-msvc.zip",
+      "sha256": "c178002d570f4cb8c9ceed4bf7b51f04d4ebec2458765935839c90ac1cc01176"
+    }
+  }
+}

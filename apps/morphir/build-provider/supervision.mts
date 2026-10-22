@@ -17,10 +17,11 @@ export function supervisedBytes(program: string,args: string[],{cwd,env,timeout,
   return supervise(program,args,{cwd,env,timeout,cancelFile,input},true) as Promise<SupervisedResult<Buffer>>;
 }
 
-async function supervise(program: string,args: string[],{cwd,env,timeout,cancelFile='',limit=1048576,input}: SuperviseOptions,binary: boolean) {
+async function supervise(program: string,args: string[],{cwd,env,timeout,cancelFile='',cancelled,interruptGraceMs=0,limit=1048576,input}: SuperviseOptions,binary: boolean) {
   if(!Number.isInteger(timeout)||timeout<1||timeout>600000||!Number.isInteger(limit)||limit<1||limit>1048576)throw Error('execution.supervision_limit');
   if(input!==undefined&&(!Buffer.isBuffer(input)||input.length>4194304))throw Error('execution.input_limit');
-  if(cancelFile && existsSync(cancelFile))throw Error('execution.cancelled');
+  if(!Number.isInteger(interruptGraceMs)||interruptGraceMs<0||interruptGraceMs>5000)throw Error('execution.supervision_limit');
+  if(cancelled?.() || (cancelFile && existsSync(cancelFile)))throw Error('execution.cancelled');
   const job=process.platform==='win32'?windowsJob(program,args,{cwd,env,timeout}):null;
   const child=spawn(job?.program||program,job?.args||args,{cwd,env:job?.env||env,detached:process.platform!=='win32',stdio:[input===undefined?'ignore':'pipe','pipe','pipe'],windowsHide:true});
   type Closed = [number | null, NodeJS.Signals | null];
@@ -38,8 +39,18 @@ async function supervise(program: string,args: string[],{cwd,env,timeout,cancelF
         clearTimeout(timer);
       })();
     } else {
-      try {process.kill(-child.pid!,'SIGKILL');}catch(cause){const e=workbenchError(cause);if(e.code!=='ESRCH'&&e.code!=='EPERM')treeError ||= 'execution.tree_termination_failed';}
       termination=(async()=>{
+        // Canonical MCK owns adapter groups of its own. Give its cancellation
+        // handler time to close those sessions before reclaiming our group.
+        // An expired grace is an unknown descendant outcome, never success.
+        if(interruptGraceMs&&reason) {
+          try {process.kill(child.pid!,'SIGINT');}catch(cause){const e=workbenchError(cause);if(e.code!=='ESRCH')treeError ||= 'execution.tree_termination_failed';}
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const finished=await Promise.race([closed.then(()=>true),new Promise<boolean>(resolve=>{timer=setTimeout(()=>resolve(false),interruptGraceMs);})]);
+          clearTimeout(timer);
+          if(!finished)treeError ||= 'execution.tree_termination_unconfirmed';
+        }
+        try {process.kill(-child.pid!,'SIGKILL');}catch(cause){const e=workbenchError(cause);if(e.code!=='ESRCH'&&e.code!=='EPERM')treeError ||= 'execution.tree_termination_failed';}
         // `close` only awaits the direct child. Confirm the owned process group
         // is gone before callers may dispose files still used by descendants.
         const deadline=performance.now()+500;
@@ -71,7 +82,7 @@ async function supervise(program: string,args: string[],{cwd,env,timeout,cancelF
   const signal=()=>stop('execution.cancelled');
   process.on('SIGTERM',signal);process.on('SIGINT',signal);
   const timer=setTimeout(()=>stop('execution.deadline'),timeout);
-  const poll=cancelFile?setInterval(()=>{if(existsSync(cancelFile))stop('execution.cancelled');},10):null;
+  const poll=cancelFile||cancelled?setInterval(()=>{if(cancelled?.() || (cancelFile && existsSync(cancelFile)))stop('execution.cancelled');},10):null;
   const collect=(destination: Buffer[],data: Buffer)=>{
     if(binary) {
       if(destination===out) {

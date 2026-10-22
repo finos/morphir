@@ -1,12 +1,13 @@
 import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
+import { exerciseMck, exerciseMckCancellation, exerciseMckTransport } from './mck-acceptance.ts';
 import type { PipelineReport, Warning, FrontendInventory } from '../../../tests/cli-contracts.ts';
 import type { Json } from '../../../types/data.ts';
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, cpSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const appDirectory = fileURLToPath(new URL("../", import.meta.url));
@@ -25,7 +26,34 @@ function checkHelp(output: string) {
   assert.match(output, /--json-lines/);
 }
 
-function headlessAcceptance(target: string, binary: string, launcher?: string, installedRoot?: string) {
+async function headlessAcceptance(target: string, binary: string, launcher?: string, installedRoot?: string) {
+  const mckSupported = target === 'js' || (target === 'native' && process.platform !== 'win32');
+  const helper = join(installedRoot ?? appDirectory, 'build-provider/mck.mjs');
+  const invocation = target === 'js' ? { command: process.execPath, prefix: [launcher ?? binary] } : { command: binary, prefix: [] };
+  let evidence: string | undefined;
+  if (mckSupported) {
+    const root = resolve(workspaceDirectory, process.env.MORPHIR_MODEL_MCK_EVIDENCE ?? '.dev/headless-model-mck-evidence');
+    mkdirSync(root, { recursive: true });
+    evidence = mkdtempSync(join(root, `mck-${installedRoot ? 'installed-' : ''}${target}-`));
+    exerciseMckTransport(invocation, join(evidence, 'transport'), helper);
+  }
+  if (process.env.MORPHIR_MCK_REQUIRED === '1' &&
+      mckSupported) {
+    assert.ok(process.env.MORPHIR_MCK_PIN && process.env.MORPHIR_MCK_SOURCE && process.env.MORPHIR_MCK_FIXTURE_REVISION,
+      'Required MCK qualification needs the released runner pin and exact canonical fixture revision');
+  }
+  if (process.env.MORPHIR_MCK_PIN && process.env.MORPHIR_MCK_SOURCE && evidence) {
+    exerciseMck(invocation, join(evidence, 'acceptance'), process.env.MORPHIR_MCK_PIN,
+      process.env.MORPHIR_MCK_SOURCE, helper);
+    await exerciseMckCancellation(invocation, join(evidence, 'cancellation'), process.env.MORPHIR_MCK_PIN,
+      process.env.MORPHIR_MCK_SOURCE, helper);
+    execFileSync(process.execPath, [join(appDirectory, 'scripts/test-headless-model-mck.ts'), target], {
+      cwd: workspaceDirectory, stdio: 'inherit', timeout: 180000,
+      env: { ...process.env, MORPHIR_HEADLESS_BINARY: binary, MORPHIR_HEADLESS_PROFILE: 'release',
+        MORPHIR_HEADLESS_LAUNCHER: launcher ?? binary, MORPHIR_MCK_HELPER: helper,
+        MORPHIR_MCK_DELEGATE: '1', MORPHIR_MODEL_MCK_EVIDENCE: join(evidence, 'workbench') },
+    });
+  }
   const env = {
     ...process.env,
     MORPHIR_HEADLESS_BUILD: join(workspaceDirectory, '_build'),
@@ -98,7 +126,12 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("packages/core/src/nested/Other.scm", '41');
   put("packages/tools/lib/Main.scm", '"hello λ😀"');
   checkHelp(run([]).stdout);
-  assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "connected originals", "workspace", "workspace init", "project list", "project add", "project remove", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec"]);
+  assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "connected originals", "workspace", "workspace init", "project list", "project add", "project remove", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec", "mck"]);
+  assert.match(run(['mck', '--help']).stdout, /explicitly pinned canonical MCK runner/);
+  assert.match(JSON.parse(run(['mck', '--help', '--json']).stdout).usage, /report check\/render\/compare/);
+  if (target === 'wasm' || target === 'wasm-gc' || (target === 'native' && process.platform === 'win32')) {
+    assert.match(JSON.parse(run(['--json', 'mck', 'check', 'kit'], 2).stdout).error, /mck.runtime_unavailable/);
+  }
   exerciseScaffolding(directory, run);
   assert.equal(lines(["--help"])[0].type, "help");
   for (const args of [["run", "--help"], ["workspace", "--help"], ["project", "list", "--help"]]) {
@@ -746,7 +779,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
 
 if (selected.some(target => target === 'js' || target === 'native')) {
   execFileSync(process.execPath, ['--experimental-transform-types', '--test',
-    join(appDirectory, 'scripts/test-connected-session.ts')], {
+    join(appDirectory, 'scripts/test-connected-session.ts'), join(appDirectory, 'scripts/test-mck-provider.ts')], {
     cwd: workspaceDirectory, stdio: 'inherit', timeout: 30000,
   });
 }
@@ -799,7 +832,7 @@ for (const target of selected) {
       const workerHost = pathToFileURL(join(workspaceDirectory, 'pkgs/morphir-host/runners/terminal-worker.mjs')).href;
       writeFileSync(headlessLauncher, `import {terminalWorker} from ${JSON.stringify(workerHost)};\nif (!terminalWorker(new URL(import.meta.url),process.argv.slice(2))) await import(${JSON.stringify(pathToFileURL(binary).href)});\n`);
     }
-    headlessAcceptance(target, binary, headlessLauncher);
+    await headlessAcceptance(target, binary, headlessLauncher);
   } finally { rmSync(directory, {recursive:true,force:true}); }
 }
 
@@ -820,7 +853,7 @@ if (selected.includes("js")) {
     mkdirSync(fixture);
     if (!headlessOnly) exercise(process.execPath,[installed],fixture,"npm",join(directory,"node_modules/@morphir/morphir/build-provider/library-build.mjs"));
     const installedRoot = join(directory, 'node_modules/@morphir/morphir');
-    headlessAcceptance('js', join(installedRoot, 'dist/morphir.js'), installed, installedRoot);
+    await headlessAcceptance('js', join(installedRoot, 'dist/morphir.js'), installed, installedRoot);
     console.log("Installed npm package integration passed");
   } finally { rmSync(directory,{recursive:true,force:true}); }
 }

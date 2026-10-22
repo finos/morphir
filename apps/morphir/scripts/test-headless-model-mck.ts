@@ -11,7 +11,9 @@ import { headlessEnvironment } from './headless-environment.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const target = process.argv[2] ?? 'js'; assert.ok(['js', 'native'].includes(target));
-const runner = process.env.MORPHIR_MCK_BIN;
+const delegate = process.env.MORPHIR_MCK_DELEGATE === '1';
+const pin = delegate ? JSON.parse(readFileSync(process.env.MORPHIR_MCK_PIN!, 'utf8')) : undefined;
+const runner = pin?.executable ?? process.env.MORPHIR_MCK_BIN;
 assert.ok(runner, 'Set MORPHIR_MCK_BIN to the maintained upstream Rust executable');
 const cliBuild = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? '.dev/build-model-cli');
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
@@ -49,12 +51,22 @@ const started = new Date().toISOString();
 const report = join(evidence, `primary-cli-${target}-draft29.json`);
 const raw = join(evidence, `primary-cli-${target}-raw.jsonl`); writeFileSync(raw, '');
 const env = headlessEnvironment(join(evidence, `${target}-environment`), {
+  MORPHIR_LOG_FILE: 'false',
   MORPHIR_HEADLESS_TARGET: target, MORPHIR_HEADLESS_BINARY: binary,
   MORPHIR_HEADLESS_LAUNCHER: launcher, MORPHIR_WORKBENCH_MCK_JSON: framing, MORPHIR_MODEL_MCK_RAW: raw,
 });
-const run = checked(runner, ['--no-banner', 'mck', 'workbench', 'run', '--kit', kit, '--report', report,
-  '--adapter', process.execPath, '--adapter-arg', adapter, '--timeout', '35000', '--session-timeout', '180000'], env);
+function mck(args: string[], succeeds = true) {
+  if (!delegate) return checked(runner, ['--no-banner', 'mck', ...args], env, succeeds);
+  assert.ok(process.env.MORPHIR_MCK_PIN && process.env.MORPHIR_MCK_HELPER);
+  return checked(target === 'js' ? process.execPath : binary,
+    [...(target === 'js' ? [launcher] : []), 'mck', '--runner-pin', process.env.MORPHIR_MCK_PIN,
+      '--mck-helper', process.env.MORPHIR_MCK_HELPER, '--node', process.execPath, ...args],
+    { ...env, PATH: '' }, succeeds);
+}
+const run = mck(['workbench', 'run', '--kit', kit, '--report', report,
+  '--adapter', process.execPath, '--adapter-arg', adapter, '--timeout', '35000', '--session-timeout', '180000']);
 const accepted = checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', kit, '--report', report], env);
+assert.deepEqual(mck(['workbench', 'check', '--kit', kit, '--report', report]), accepted);
 interface RecordEvidence {
   caseId: string; observed?: { status: string; value?: Record<string, unknown> };
 }
@@ -75,7 +87,13 @@ const mutations: [string, (value: SavedReport) => void][] = [
 for (const [name, mutate] of mutations) {
   const altered = structuredClone(original); mutate(altered);
   const path = join(evidence, `${target}-${name}.json`); writeFileSync(path, JSON.stringify(altered) + '\n');
-  refusals.push({ name, ...checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', kit, '--report', path], env, false) });
+  const args = ['workbench', 'check', '--kit', kit, '--report', path];
+  const refusal = mck(args, false);
+  const direct = checked(runner, ['--no-banner', 'mck', ...args], env, false);
+  const stable = (result: typeof direct) => ({ ...result,
+    stderr: result.stderr.replace(/^Operation ID: op-[a-f0-9-]+$/gm, 'Operation ID: <per-invocation>') });
+  assert.deepEqual(stable(refusal), stable(direct));
+  refusals.push({ name, ...refusal });
 }
 // Author a source-bound positive boundary before observing the adapter. The
 // existing JSON model plus trailing spaces is still the same valid model.
@@ -95,8 +113,8 @@ const boundaryCorpus = {
 };
 writeFileSync(join(boundaryKit, 'cases.json'), JSON.stringify(boundaryCorpus) + '\n');
 const boundaryReport = join(evidence, `${target}-source-boundary.json`);
-checked(runner, ['--no-banner', 'mck', 'workbench', 'run', '--kit', boundaryKit, '--report', boundaryReport,
-  '--adapter', process.execPath, '--adapter-arg', adapter, '--timeout', '35000', '--session-timeout', '180000'], env);
+mck(['workbench', 'run', '--kit', boundaryKit, '--report', boundaryReport,
+  '--adapter', process.execPath, '--adapter-arg', adapter, '--timeout', '35000', '--session-timeout', '180000']);
 checked(runner, ['--no-banner', 'mck', 'workbench', 'check', '--kit', boundaryKit, '--report', boundaryReport], env);
 const overflow = spawnSync(process.execPath, [adapter], { cwd: repo, env, encoding: 'utf8',
   input: ' '.repeat(3 * 1024 * 1024 + 1) + '\n', timeout: 30_000, maxBuffer: 4 * 1024 * 1024 });
@@ -111,6 +129,7 @@ writeFileSync(join(evidence, `${target}-provenance.json`), JSON.stringify({
   started, completed: new Date().toISOString(), target,
   gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim(),
   source: sourceBefore,
+  ...(delegate ? { runnerPin: pin, delegatedThroughMoonBitCli: true, runnerPath: '' } : {}),
   inputsAndTools: before, report: { path: report, sha256: hash(report) }, raw: { path: raw, sha256: hash(raw) },
   run, accepted, refusals,
   sourceBoundary: { sourceBytes: boundaryBytes.length, corpusSha256: hash(join(boundaryKit, 'cases.json')),

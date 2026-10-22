@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,readFileSync,writeFileSync,existsSync,rmSync,realpathSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,dirname} from 'node:path';
-import {spawn} from 'node:child_process';
+import {spawn,spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {supervised} from './supervision.mjs';
@@ -78,6 +78,17 @@ try {
       const minimal=await supervised(process.execPath,['-e','process.stdout.write(process.env.MORPHIR_TEST_HOST_ONLY||"minimal environment")'],{env:{PATH:process.env.PATH},timeout:allowance});
       assert.equal(minimal.code,0);assert.equal(minimal.stdout,'minimal environment');
     } finally {delete process.env.MORPHIR_TEST_HOST_ONLY;}
+    // A host without PSModulePath, ProgramFiles or a real profile still starts a job quickly, and the model
+    // environment receives no module path. Module autoloading here took about 22 s per job on Windows CI.
+    const stripped=mkdtempSync(join(root,'stripped-host-'));
+    const probe=`import(${JSON.stringify(new URL('./supervision.mjs',import.meta.url).href)}).then(async ({supervised})=>{const started=performance.now();`+
+      `const result=await supervised(process.execPath,['-e','process.stdout.write(process.env.PSModulePath??"absent")'],{env:{PATH:''},timeout:60000});`+
+      `process.stdout.write(JSON.stringify({elapsed:performance.now()-started,code:result.code,stdout:result.stdout}));});`;
+    const host=spawnSync(process.execPath,['-e',probe],{env:{PATH:'',HOME:stripped,USERPROFILE:stripped,TMP:stripped,TEMP:stripped,SystemRoot:process.env.SystemRoot},encoding:'utf8',timeout:120000});
+    assert.equal(host.status,0,host.stderr);
+    const started=JSON.parse(host.stdout) as {elapsed:number;code:number;stdout:string};
+    assert.equal(started.code,0);assert.equal(started.stdout,'absent');
+    assert.ok(started.elapsed<8000,`A stripped host started a job in ${Math.round(started.elapsed)} ms`);
   }
   if(process.platform!=='win32') {
     const pidFile=join(root,'denied.pid'),kill=process.kill;

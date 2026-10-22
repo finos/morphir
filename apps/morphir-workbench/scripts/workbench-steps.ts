@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import type { Locator, Page } from 'playwright';
 
 /**
@@ -98,9 +99,7 @@ export async function useSourceWorkspace(page: Page, language: 'scheme' | 'elm' 
     name = 'Browser ' + language + ' ' + ++sourceWorkspaceSequence;
     await createWorkspace(page, { preset: 'Empty workspace', name });
     await page.getByRole('button', { name: 'Add project…', exact: true }).click();
-    await page.getByRole('textbox', { name: 'Project name', exact: true }).fill(language === 'elm' ? 'Workbench' : 'user');
-    await page.getByRole('textbox', { name: 'Project folder', exact: true }).fill('.');
-    await page.getByRole('combobox', { name: 'Project language', exact: true }).selectOption(language);
+    await fillNewProject(page, language === 'elm' ? 'Workbench' : 'user', '.', language);
     await page.getByRole('button', { name: 'Create project', exact: true }).click();
     await page.getByRole('dialog', { name: 'Project changes', exact: true }).waitFor({ state: 'detached' });
     workspaces.set(language, name);
@@ -132,6 +131,19 @@ export async function gettingStarted(page: Page): Promise<void> {
     const examples = [...document.querySelectorAll<HTMLButtonElement>('.example-link')];
     return examples.length > 0 && examples.every(example => !example.disabled);
   });
+}
+
+/**
+ * Fills the open Add project dialog. The folder follows the name in a later render, so the folder is typed only after
+ * that render: otherwise the derived folder can arrive between fill's select-all and insert and join the typed text.
+ */
+export async function fillNewProject(page: Page, name: string, folder: string, language: string): Promise<void> {
+  await page.getByRole('textbox', { name: 'Project name', exact: true }).fill(name);
+  const folderField = page.getByRole('textbox', { name: 'Project folder', exact: true });
+  await page.waitForFunction(field => (field as HTMLInputElement).value !== '', await folderField.elementHandle());
+  await folderField.fill(folder);
+  assert.equal(await folderField.inputValue(), folder, 'The project folder holds exactly the typed folder');
+  await page.getByRole('combobox', { name: 'Project language', exact: true }).selectOption(language);
 }
 
 /**

@@ -9,7 +9,7 @@ import { createInterface } from 'node:readline';
 import { chromium } from 'playwright';
 import type { AddressInfo } from 'node:net';
 import { createWorkbenchServer } from '../scripts/server.ts';
-import { gettingStarted } from '../scripts/workbench-steps.ts';
+import { fillNewProject, gettingStarted } from '../scripts/workbench-steps.ts';
 import type { CodeEditor } from './editor/code-editor.ts';
 
 async function savedText(path: string, expected: string) {
@@ -65,14 +65,14 @@ test('browser workspace edits reach the real native owner and stale saves retain
     await page.getByRole('button', { name: 'Open a workspace folder…', exact: true }).click();
     await page.getByRole('button', { name: 'Add project…', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Add project…', exact: true }).click();
-    await page.getByRole('textbox', { name: 'Project name', exact: true }).fill('Quotes');
-    await page.getByRole('textbox', { name: 'Project folder', exact: true }).fill('packages/quotes');
-    await page.getByRole('combobox', { name: 'Project language', exact: true }).selectOption('scheme');
+    await fillNewProject(page, 'Quotes', 'packages/quotes', 'scheme');
     await page.getByRole('button', { name: 'Create project', exact: true }).click();
     await page.getByRole('status').filter({ hasText: 'Workspace folder saved' }).waitFor();
-    assert.match(await readFile(join(root, 'morphir.toml'), 'utf8'), /packages\/quotes/);
+    assert.match(await readFile(join(root, 'morphir.toml'), 'utf8'), /members = \["packages\/quotes"\]/);
     assert.match(await readFile(join(root, 'packages/quotes/morphir.toml'), 'utf8'), /Quotes/);
     await page.locator('button[role="treeitem"][title="packages/quotes/src/main.scm"]').click();
+    // Fill only once the editor shows the opened file: a later switch would replace the selection and keep the typed text.
+    await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value === '(define (identity value) value)\n');
     await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('(+ 20 22)');
     await savedText(join(root, 'packages/quotes/src/main.scm'), '(+ 20 22)');
     await page.getByRole('status').filter({ hasText: 'Workspace folder saved' }).waitFor();

@@ -24,7 +24,7 @@ const runner=process.env.MORPHIR_HEADLESS_WASM_RUNNER??join(repo,'pkgs/morphir-h
 const executable=target==='native'?binary:node;
 const prefix=target==='native'?[]:target==='js'?[launcher]:[runner,binary];
 const digest=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
-const scenarios=['download','binary','nul-text','digest','length','profile','stale-session','collision','cancel','cancel-after-release','timeout','producer-lost'] as const;
+const scenarios=['download','binary','nul-text','digest','length','profile','stale-session','collision','cancel','cancel-after-release','timeout','timeout-before-generation','producer-lost'] as const;
 const root=mkdtempSync(join(tmpdir(),'morphir-connected-transfers-'));
 mkdirSync(join(root,'tmp'));
 let host:ChildProcess|undefined;
@@ -78,6 +78,12 @@ try{
    if(selected&&selected!==scenario)continue;
    const output='saved-'+scenario;const options=scenario==='timeout'?{fixtureMode:'hang'}:scenario==='cancel'?{fixtureMode:'binary'}:scenario==='producer-lost'?{fixtureMode:'lost'}:{fixtureMode:['binary','nul-text'].includes(scenario)?scenario:'download'};
    writeFileSync(input,JSON.stringify({...request,options}));let selectedHelper=helper;
+   if(scenario==='timeout-before-generation'){
+    selectedHelper=join(root,'slow-manifest-helper.mjs');
+    // Exercise the real deadline before dispatch, independently of host speed.
+    // The real fetch still observes the command's aborted signal.
+    writeFileSync(selectedHelper,`import{readFileSync}from'node:fs';import{setTimeout}from'node:timers/promises';import{transferCommand as actualTransfer}from ${JSON.stringify(pathToFileURL(helper).href)};const fetch=globalThis.fetch;globalThis.fetch=async(...args)=>{await setTimeout(200);return fetch(...args);};export const transferCommand=actualTransfer;if(process.argv[2]==='--morphir-transfer-v1'){const result=await actualTransfer(JSON.parse(readFileSync(process.argv[3],'utf8')));console.log(JSON.stringify(result.report));process.exitCode=result.code;}`);
+   }
    if(scenario==='digest'||scenario==='length'||scenario==='cancel-after-release'){
     selectedHelper=join(root,scenario+'-helper.mjs');
     const mutation=scenario==='digest'?"report.files.at(-1).sha256='0'.repeat(64)":scenario==='length'?"report.files.at(-1).byteLength++":'';
@@ -91,7 +97,7 @@ try{
    }
    if(scenario==='collision'){mkdirSync(join(root,output,'artifacts'),{recursive:true});writeFileSync(join(root,output,'artifacts','keep.txt'),'existing');}
    const before=events().filter(e=>e.startsWith('generate ')).length;
-   const invocation=launch(['connected','artifacts',scenario==='download'?'-':input,'--connection',connection,'--output',output,'--timeout',scenario==='timeout'?'5000':'120000'],scenario==='download'?JSON.stringify({...request,options}):undefined,selectedHelper);
+   const invocation=launch(['connected','artifacts',scenario==='download'?'-':input,'--connection',connection,'--output',output,'--timeout',scenario==='timeout-before-generation'?'100':scenario==='timeout'?'5000':'120000'],scenario==='download'?JSON.stringify({...request,options}):undefined,selectedHelper);
    let interruptedAt=0;
    if(scenario==='cancel'){
     const deadline=Date.now()+15000;while(events().filter(e=>e.startsWith('generate ')).length===before){assert.ok(Date.now()<deadline,'Generation starts before interrupt');await new Promise(r=>setTimeout(r,20));}interruptedAt=Date.now();invocation.child.kill('SIGINT');
@@ -110,8 +116,12 @@ try{
      else{assert.equal(bytes.length,16777216);if(scenario==='nul-text')assert.equal(bytes.some(b=>b!==0),false);else{const hashes=['728f52a85b49e21b090f8aab42eac87b30f1c82bdb3a3890627bc244de6756b0','d42312f945214c8f55c283c08415efdddb975c664bc7ae4b129a6c37b79b87c8','75e9210fb9b010ccd02fc3b824d482d6f1646aa3a5765baba3034423eb1550f7','d5f3e8e4c2a22852ec5d5aa01c92f7ad149031ea896fd3fd70887f425fc30d27'];assert.equal(digest(bytes),hashes[index]);}}
     }
    }else if(scenario==='collision'){assert.equal(result.code,2);assert.equal(readFileSync(join(root,output,'artifacts','keep.txt'),'utf8'),'existing');}
-   else{assert.notEqual(result.code,0,result.stdout);assert.ok(!existsSync(join(root,output,'artifacts')),'Failure cannot publish a prefix');if(['digest','length'].includes(scenario))assert.equal(report.cleanup.kind,'released','Local publication refusal preserves confirmed remote release');if(scenario==='cancel')assert.equal(result.code,130);if(scenario==='cancel-after-release'){assert.equal(result.code,130);assert.equal(report.stopReason,'sigint');assert.equal(report.cleanup.kind,'released');}if(scenario==='timeout'){assert.equal(result.code,1);assert.equal(report.stopReason,'timeout');}}
-   const after=events().filter(e=>e.startsWith('generate ')).length;assert.equal(after-before,['collision','profile','stale-session'].includes(scenario)?0:1,'At most one real producer invocation');writeFileSync(connection,credential);
+   else{assert.notEqual(result.code,0,result.stdout);assert.ok(!existsSync(join(root,output,'artifacts')),'Failure cannot publish a prefix');if(['digest','length'].includes(scenario))assert.equal(report.cleanup.kind,'released','Local publication refusal preserves confirmed remote release');if(scenario==='cancel')assert.equal(result.code,130);if(scenario==='cancel-after-release'){assert.equal(result.code,130);assert.equal(report.stopReason,'sigint');assert.equal(report.cleanup.kind,'released');}if(scenario==='timeout'||scenario==='timeout-before-generation'){assert.equal(result.code,1);assert.equal(report.stopReason,'timeout');}}
+   const after=events().filter(e=>e.startsWith('generate ')).length;
+   if(scenario==='timeout')assert.ok(after-before<=1,'A deadline may expire before dispatch, but cannot duplicate generation');
+   else assert.equal(after-before,['collision','profile','stale-session','timeout-before-generation'].includes(scenario)?0:1,'Expected real producer invocation count');
+   if(scenario==='timeout-before-generation')assert.equal(report.cleanup.kind,'not-connected');
+   writeFileSync(connection,credential);
    if(scenario==='cancel'){
     assert.equal(report.cleanup.kind,'connection-closed','A lost in-flight generation has no confirmed release');
     assert.equal(report.cleanup.reason,'pending-exchange');

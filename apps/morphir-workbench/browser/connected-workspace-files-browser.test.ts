@@ -8,6 +8,7 @@ import { chromium } from 'playwright';
 import type { AddressInfo } from 'node:net';
 import type { CodeEditor } from './editor/code-editor.ts';
 import { createWorkbenchServer } from '../scripts/server.ts';
+import { fillNewProject } from '../scripts/workbench-steps.ts';
 import { nativeFileHost } from './native-test-fixture.ts';
 import { workspaceFilesProfile as profile, workspaceFilesVersion as version } from './workspace-files.ts';
 
@@ -53,21 +54,27 @@ test('negotiated connected files create a project on the provider and compile or
     await page.goto(`http://127.0.0.1:${(server.address() as AddressInfo).port}/?mode=connected`);
     await page.getByRole('button', { name: 'Add project…', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Add project…', exact: true }).click();
-    await page.getByRole('textbox', { name: 'Project name', exact: true }).fill('Quotes');
-    await page.getByRole('textbox', { name: 'Project folder', exact: true }).fill('packages/quotes');
-    await page.getByRole('combobox', { name: 'Project language', exact: true }).selectOption('scheme');
+    await fillNewProject(page, 'Quotes', 'packages/quotes', 'scheme');
     await page.getByRole('button', { name: 'Create project', exact: true }).click();
     await page.getByRole('status').filter({ hasText: 'Workspace folder saved' }).waitFor();
-    assert.match(await readFile(join(root, 'morphir.toml'), 'utf8'), /packages\/quotes/);
+    assert.match(await readFile(join(root, 'morphir.toml'), 'utf8'), /members = \["packages\/quotes"\]/);
     await page.getByRole('button', { name: 'Compile workspace', exact: true }).click();
     await page.getByRole('status').filter({ hasText: 'Compiled 1/1 projects' }).waitFor();
     await page.getByRole('button', { name: 'Worksheet', exact: true }).click();
+    // Fill only once the editor shows the worksheet: a later switch would replace the selection and keep the typed text.
+    await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value.includes('(square 7)'));
     await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('(identity 42)');
     await page.getByRole('button', { name: 'Run worksheet', exact: true }).click();
-    await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
-    await page.locator('.worksheet-observation pre.value').filter({ hasText: '42' }).waitFor();
+    // Autosave can replace the shared status after the worksheet finishes.
+    // Wait for the disk effect first, then assert the retained worksheet result.
     await savedText(join(root, 'worksheet.scm'), '(identity 42)');
+    await page.locator('.worksheet-observation pre.value').filter({ hasText: /^42$/ }).waitFor();
+    assert.deepEqual(await page.locator('.worksheet-observation pre.value').allTextContents(), ['42']);
+    assert.equal(await page.locator('.worksheet-expression code').textContent(), '(identity 42)');
+    assert.equal(await page.locator('.worksheet-completion').count(), 0);
     await page.locator('button[role="treeitem"][title="packages/quotes/src/main.scm"]').click();
+    // As with the worksheet, fill only once the editor shows the opened file.
+    await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value === '(define (identity value) value)\n');
     await writeFile(join(root, 'packages/quotes/src/main.scm'), 'external edit');
     await page.getByRole('textbox', { name: 'Source editor', exact: true }).fill('33');
     await page.getByRole('status').filter({ hasText: 'workspace request was refused' }).waitFor();

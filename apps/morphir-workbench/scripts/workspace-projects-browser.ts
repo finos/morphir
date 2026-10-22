@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import type { AddressInfo } from 'node:net';
 import { chromium } from 'playwright';
 import { createWorkbenchServer } from './server.ts';
-import { createWorkspace, gettingStarted, setExplorer } from './workbench-steps.ts';
+import { createWorkspace, fillNewProject, gettingStarted, setExplorer } from './workbench-steps.ts';
 
 const server = createWorkbenchServer();
 server.listen(0, '127.0.0.1');
@@ -20,9 +20,7 @@ try {
   await page.getByRole('button', { name: 'Add project…', exact: true }).waitFor();
   for (const name of ['Quotes', 'Pricing']) {
     await page.getByRole('button', { name: 'Add project…', exact: true }).click();
-    await page.getByRole('textbox', { name: 'Project name', exact: true }).fill(name);
-    await page.getByRole('textbox', { name: 'Project folder', exact: true }).fill(`packages/${name.toLowerCase()}`);
-    await page.getByRole('combobox', { name: 'Project language', exact: true }).selectOption('scheme');
+    await fillNewProject(page, name, `packages/${name.toLowerCase()}`, 'scheme');
     await page.getByRole('button', { name: 'Create project', exact: true }).click();
     await page.getByRole('dialog', { name: 'Project changes', exact: true }).waitFor({ state: 'detached' });
   }

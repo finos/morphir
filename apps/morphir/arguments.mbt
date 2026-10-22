@@ -77,7 +77,7 @@ fn command_schema(path : String) -> CliSchema {
     "" =>
       children = [
         "run", "workspace", "execute", "verify", "conform", "eval", "worksheet",
-        "generate", "model", "connected", "project", "toolchain",
+        "generate", "model", "connected", "project", "toolchain", "mck",
       ]
     "run" => {
       flags = ["all", "dry-run", "file", "directory", "log"]
@@ -144,6 +144,8 @@ fn command_schema(path : String) -> CliSchema {
       positional = true
     }
     "model" => children = ["inspect", "export-original"]
+    "mck" =>
+      options = ["runner-pin", "mck-helper", "node", "timeout", "cancel-file"]
     "model inspect" => {
       options = model_options
       positional = true
@@ -218,6 +220,16 @@ fn render_help(path : String) -> String {
     text += "Invocation suite codecs are selected separately with --suite-format.\n"
   } else if path == "worksheet" {
     text += "\nEvaluate Scheme expressions with shared definitions and typed source ranges.\n"
+  } else if path == "mck" {
+    text += "\nDelegate to an explicitly pinned canonical MCK runner.\n"
+    text += "Place runner controls before the canonical MCK command; all later arguments are opaque.\n"
+    text += "Commands: check, coverage, schema check, kit status/vendor/update, run,\n"
+    text += "  report check/render/compare, package, workbench, node-address.\n"
+    text += "Canonical report compare covers IR reports; suite-specific checks retain their own contracts.\n"
+    text += "Coverage is a vocabulary-presence heuristic: pending cases count.\n"
+    text += "It does not see members nested under entry-point documents.\n"
+    text += "No runner, interpreter or kit is acquired automatically.\n"
+    text += "\nExample: morphir mck --runner-pin runner.json workbench check --kit KIT --report REPORT\n"
   }
   if !schema.children.is_empty() {
     text += "\nCommands:\n  " + schema.children.join("\n  ") + "\n"
@@ -303,6 +315,14 @@ fn command_spec(path : String, name : String) -> @argparse.Command {
 
 ///|
 fn parse_cli(args : Array[String]) -> Cli raise {
+  if mck_cli(args) is Some(cli) {
+    return cli
+  }
+  parse_cli_local(args)
+}
+
+///|
+fn parse_cli_local(args : Array[String]) -> Cli raise {
   let head = option_args(args)
   let matches = command_spec("", "morphir").parse(argv=head, env=Map([])) catch {
     error => raise @config.Invalid(error.to_string())

@@ -1,5 +1,13 @@
 $ErrorActionPreference = 'Stop'
 try {
+    # Load the two built-in modules this script uses from PowerShell's own
+    # directory and never search PSModulePath. Command autoloading reached the
+    # all-users Program Files modules under a stripped host environment, which
+    # cost about 22 seconds per job on Windows CI.
+    $PSModuleAutoLoadingPreference = 'None'
+    foreach ($module in 'Microsoft.PowerShell.Management', 'Microsoft.PowerShell.Utility') {
+        Import-Module -Name ([IO.Path]::Combine($PSHOME, 'Modules', $module, "$module.psd1"))
+    }
     $requestPath = $args[0]
     $file = Get-Item -LiteralPath $requestPath
     if ($file.Length -gt 131072) { throw 'Invalid job request' }

@@ -38,6 +38,10 @@ node apps/morphir/bin/morphir.js run path/to/workspace --all
 
 The package is named `@morphir/morphir`. After installing a packed or published package, invoke `morphir`. Installation does not require the MoonBit toolchain.
 
+`morphir mck` delegates kit inspection, offline checks, suite execution and report
+commands to an explicitly pinned prebuilt canonical backend. See the
+[MCK guide](docs/mck.md) for provisioning, supported hosts, output and cancellation.
+
 ## WASM and WASM-GC
 
 ```sh

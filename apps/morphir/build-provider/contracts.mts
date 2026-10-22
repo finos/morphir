@@ -37,6 +37,6 @@ export interface BuildEvidence {
 }
 export interface TreeOptions { core?: boolean; includeBuild?: boolean; check?: () => void; }
 export interface SuperviseOptions {
-  cwd?: string; env?: NodeJS.ProcessEnv; timeout: number; cancelFile?: string; limit?: number; input?: Buffer;
+  cwd?: string; env?: NodeJS.ProcessEnv; timeout: number; cancelFile?: string; cancelled?: () => boolean; interruptGraceMs?: number; limit?: number; input?: Buffer;
 }
 export interface SupervisedResult<T = string> { code: number | null; signal: NodeJS.Signals | null; stdout: T; stderr: string; }

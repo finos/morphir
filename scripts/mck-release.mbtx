@@ -1,0 +1,274 @@
+///|
+/// Explicitly acquire the pinned released MCK backend and canonical fixtures.
+/// This setup step has network access. CLI check/run commands never call it.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+fn text(value : Json, key : String) -> String raise {
+  guard value is Object(fields) && fields.get(key) is Some(String(value)) else {
+    fail("Missing release field: " + key)
+  }
+  value
+}
+
+///|
+fn hex(value : String, length : Int32) -> Bool {
+  value.length() == length &&
+  value.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn target(platform : String, arch : String) -> String raise {
+  match (platform, arch) {
+    ("linux", "x64") => "x86_64-unknown-linux-gnu"
+    ("linux", "arm64") => "aarch64-unknown-linux-gnu"
+    ("darwin", "x64") => "x86_64-apple-darwin"
+    ("darwin", "arm64") => "aarch64-apple-darwin"
+    ("win32", "x64") => "x86_64-pc-windows-msvc"
+    ("win32", "arm64") => "aarch64-pc-windows-msvc"
+    _ => fail("Unsupported released MCK host")
+  }
+}
+
+///|
+fn selected(pin : Json, target : String) -> Json raise {
+  guard text(pin, "contractVersion") == "0.1.0-draft.1" &&
+    text(pin, "repository") == "finos/morphir" &&
+    text(pin, "runnerVersion") == "0.4.0-beta.10" &&
+    text(pin, "tag") == "v0.4.0-beta.10" &&
+    hex(text(pin, "sourceRevision"), 40) &&
+    hex(text(pin, "fixtureRevision"), 40) &&
+    pin is { "assets": Object(assets), .. } &&
+    assets.get(target) is Some(asset) else {
+    fail("Unsupported MCK release or missing host asset")
+  }
+  let windows = target.has_suffix("-windows-msvc")
+  let name = "morphir-0.4.0-beta.10-" +
+    target +
+    (if windows { ".zip" } else { ".tgz" })
+  guard text(asset, "filename") == name && hex(text(asset, "sha256"), 64) else {
+    fail("Invalid released MCK asset pin")
+  }
+  asset
+}
+
+///|
+async fn output(program : String, args : Array[String]) -> String {
+  let (code, stdout, stderr) = @process.collect_output(program, args)
+  guard code == 0 else { fail(program + ": " + stderr.text() + stdout.text()) }
+  stdout.text().trim().to_owned()
+}
+
+///|
+async fn digest(path : String) -> String {
+  guard @fs.kind(path, follow_symlink=false) is Regular &&
+    @fs.file_size(path) <= 128L * 1024L * 1024L else {
+    fail("Bounded regular release file required")
+  }
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+fn archive_inventory(
+  names : String,
+  details : String,
+  executable : String,
+) -> Unit raise {
+  guard names == executable &&
+    details.has_prefix("-") &&
+    details.split("\n").count() == 1 else {
+    fail("Release archive must contain one regular executable")
+  }
+}
+
+///|
+fn self_test() -> Unit raise {
+  let asset : Json = {
+    "filename": "morphir-0.4.0-beta.10-aarch64-apple-darwin.tgz",
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  }
+  let pin : Json = {
+    "contractVersion": "0.1.0-draft.1",
+    "repository": "finos/morphir",
+    "tag": "v0.4.0-beta.10",
+    "runnerVersion": "0.4.0-beta.10",
+    "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+    "fixtureRevision": "abcdef0123456789abcdef0123456789abcdef01",
+    "assets": { "aarch64-apple-darwin": asset },
+  }
+  guard selected(pin, target("darwin", "arm64")) == asset else {
+    fail("Exact release selection failed")
+  }
+  for
+    (key, replacement) in [
+      ("runnerVersion", "0.4.0-beta.9"),
+      ("sourceRevision", "main"),
+      ("fixtureRevision", "HEAD"),
+      ("repository", "other/morphir"),
+      ("tag", "latest"),
+    ] {
+    guard @json.parse(pin.stringify()) is Object(fields) else {
+      fail("fixture")
+    }
+    fields.set(key, Json::string(replacement))
+    ignore(selected(Json::object(fields), "aarch64-apple-darwin")) catch {
+      _ => continue
+    }
+    fail("Invalid release pin accepted: " + key)
+  }
+  for names in ["../morphir", "morphir\nextra", "/morphir"] {
+    archive_inventory(names, "-rwxr-xr-x morphir", "morphir") catch {
+      _ => continue
+    }
+    fail("Unsafe archive inventory accepted")
+  }
+  archive_inventory("morphir", "lrwxr-xr-x morphir -> other", "morphir") catch {
+    _ => {
+      println("MCK release selection and archive guards passed")
+      return
+    }
+  }
+  fail("Archive symlink accepted")
+}
+
+///|
+async fn main {
+  let args = @env.args()[1:].to_owned()
+  if args == ["--self-test"] {
+    self_test()
+    return
+  }
+  guard args is [manifest, destination] else {
+    fail("Usage: mck-release.mbtx MANIFEST NEW_DESTINATION | --self-test")
+  }
+  let pin = @json.parse(@fs.read_file(manifest).text())
+  let host = @json.parse(
+    output("node", [
+      "-p", "JSON.stringify({platform:process.platform,arch:process.arch})",
+    ]),
+  )
+  let windows = text(host, "platform") == "win32"
+  let triple = target(text(host, "platform"), text(host, "arch"))
+  let asset = selected(pin, triple)
+  guard !@fs.exists(destination) else {
+    fail("Use a fresh release destination")
+  }
+  @fs.mkdir(destination, recursive=true)
+  let root = @fs.realpath(destination)
+  let filename = text(asset, "filename")
+  let archive = root + "/" + filename
+  let url = "https://github.com/finos/morphir/releases/download/" +
+    text(pin, "tag") +
+    "/" +
+    filename
+  ignore(
+    output("curl", [
+      "--fail", "--location", "--retry", "3", "--connect-timeout", "30", "--max-time",
+      "180", "--max-filesize", "134217728", "--silent", "--show-error", "--proto",
+      "=https", "--proto-redir", "=https", "--output", archive, url,
+    ]),
+  )
+  guard digest(archive) == text(asset, "sha256") else {
+    fail("Released MCK archive SHA-256 mismatch")
+  }
+  let executable = if windows { "morphir.exe" } else { "morphir" }
+  archive_inventory(
+    output("tar", ["-tf", archive]),
+    output("tar", ["-tvf", archive]),
+    executable,
+  )
+  ignore(output("tar", ["-xf", archive, "-C", root, executable]))
+  let binary = root + "/" + executable
+  let sha256 = digest(binary)
+  if !windows {
+    @fs.chmod(binary, 0o755)
+  }
+  guard output(binary, ["--no-banner", "--version"]) ==
+    "morphir " + text(pin, "runnerVersion") else {
+    fail("Released MCK executable version mismatch")
+  }
+  let embedded = @json.parse(
+    output(binary, ["--no-banner", "mck", "kit", "status", "--json"]),
+  )
+  guard text(embedded, "revision") == text(pin, "sourceRevision") else {
+    fail("Released MCK embedded source revision mismatch")
+  }
+  let runner : Json = {
+    "contractVersion": "0.1.0-draft.1",
+    "runnerVersion": text(pin, "runnerVersion"),
+    "sourceRevision": text(pin, "sourceRevision"),
+    "executable": binary,
+    "sha256": sha256,
+    "origin": url + "#sha256=" + text(asset, "sha256"),
+  }
+  // Fixture source is independent of the backend's embedded kit revision.
+  // Only spec/ is materialized; there is no compiler, submodule or Cargo step.
+  let source = root + "/fixtures"
+  ignore(output("git", ["init", "-q", source]))
+  let git_prefix = [
+    "-C", source, "-c", "core.autocrlf=false", "-c", "core.hooksPath=/dev/null",
+  ]
+  ignore(
+    output(
+      "git",
+      git_prefix +
+      ["remote", "add", "origin", "https://github.com/finos/morphir.git"],
+    ),
+  )
+  ignore(output("git", git_prefix + ["sparse-checkout", "set", "spec"]))
+  ignore(
+    output(
+      "git",
+      git_prefix +
+      [
+        "fetch",
+        "--depth=1",
+        "--filter=blob:none",
+        "origin",
+        text(pin, "fixtureRevision"),
+      ],
+    ),
+  )
+  ignore(
+    output("git", git_prefix + ["checkout", "--detach", "-q", "FETCH_HEAD"]),
+  )
+  guard output("git", git_prefix + ["rev-parse", "HEAD"]) ==
+    text(pin, "fixtureRevision") else {
+    fail("Canonical fixture source mismatch")
+  }
+  @fs.write_file(root + "/runner.json", runner.stringify() + "\n")
+  let receipt : Json = {
+    "kind": "released-mck-acquisition",
+    "manifest": pin,
+    "runner": runner,
+    "embeddedKit": embedded,
+    "fixtureRevision": text(pin, "fixtureRevision"),
+    "target": triple,
+    "sourceCompilation": false,
+  }
+  @fs.write_file(root + "/receipt.json", receipt.stringify() + "\n")
+  let bindings = "MORPHIR_MCK_PIN=" +
+    root +
+    "/runner.json\n" +
+    "MORPHIR_MCK_SOURCE=" +
+    source +
+    "\n" +
+    "MORPHIR_MCK_FIXTURE_REVISION=" +
+    text(pin, "fixtureRevision") +
+    "\n"
+  guard !root.contains("\n") && !root.contains("\r") else {
+    fail("Single-line release destination required")
+  }
+  @stdio.stdout.write(bindings)
+  if @env.get_env_var("GITHUB_ENV") is Some(path) {
+    @fs.write_file(path, @fs.read_file(path).text() + bindings)
+  }
+}

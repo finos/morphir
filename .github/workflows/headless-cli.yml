@@ -17,6 +17,7 @@ on:
       - 'tests/npm.ts'
       - 'tests/cli-contracts.ts'
       - 'scripts/headless-host.mbtx'
+      - 'scripts/mck-release.mbtx'
       - 'scripts/moonbit-core.mbtx'
       - '.github/actions/**'
       - '.github/workflows/headless-cli.yml'
@@ -40,6 +41,7 @@ jobs:
         os: [ubuntu-24.04, macos-15, windows-latest]
     env:
       MORPHIR_HEADLESS_ONLY: '1'
+      MORPHIR_MCK_REQUIRED: '1'
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-moonbit
@@ -55,6 +57,11 @@ jobs:
         run: bun install --frozen-lockfile --cwd pkgs/morphir-elm/scripts
       - name: Check structured host artifact selection
         run: moonx scripts/headless-host.mbtx --self-test
+      - name: Check released MCK selection
+        run: moonx scripts/mck-release.mbtx --self-test
+      - name: Acquire pinned prebuilt MCK and canonical fixture sources
+        timeout-minutes: 10
+        run: moonx scripts/mck-release.mbtx apps/morphir/fixtures/mck/release.json .dev/mck-release
       - name: Checkout exact authenticated host and installed producer sources
         if: runner.os != 'Windows'
         uses: actions/checkout@v6
@@ -77,10 +84,13 @@ jobs:
       - name: Qualify release native CLI
         run: bun run --cwd apps/morphir test native
       - name: Retain independent model reports and source receipts
-        if: always() && runner.os != 'Windows'
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: headless-model-reports-${{ matrix.os }}
-          path: .dev/headless-model-mck-evidence/
+          path: |
+            .dev/headless-model-mck-evidence/
+            .dev/mck-release/receipt.json
+            .dev/mck-release/runner.json
           include-hidden-files: true
           if-no-files-found: warn

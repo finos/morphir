@@ -300,7 +300,9 @@ try {
   await page.getByRole('textbox', { name: 'Source editor' }).press('ControlOrMeta+z');
   // CodeMirror may group nearby edits; verify undo/redo without depending on timing.
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')!.value !== '(+ 20 22) ');
-  await page.getByRole('textbox', { name: 'Source editor' }).press('ControlOrMeta+Shift+z');
+  // A real keyboard reports Shift+Z as key "Z". Key "z" with Shift held matches CodeMirror's Ctrl-z undo on Linux
+  // whenever there is still history to undo, so the redo would undo again.
+  await page.getByRole('textbox', { name: 'Source editor' }).press('ControlOrMeta+Shift+Z');
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')!.value === '(+ 20 22) ');
   await build(page, 'Compile & run');
   await page.getByRole('status').filter({ hasText: /Model ready|Compiled 1\/1 projects/ }).waitFor();

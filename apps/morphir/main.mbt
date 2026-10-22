@@ -12,6 +12,7 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
               "connected artifacts", "connected originals", "workspace", "workspace init",
               "project list", "project add", "project remove", "toolchain info",
               "toolchain setup", "toolchain build", "toolchain run", "toolchain exec",
+              "mck",
             ].map(Json::string),
           ),
         ),
@@ -36,7 +37,8 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
               "--checking-policy", "--source-id", "--source-revision", "--connection",
               "--connected-helper", "--build-target", "--backend-option", "--filename",
               "--overwrite", "--connection-scope", "--transfer-helper", "--originals-helper",
-              "--list", "--name", "--language", "--profile", "--delete",
+              "--list", "--name", "--language", "--profile", "--delete", "--runner-pin",
+              "--mck-helper",
             ].map(Json::string),
           ),
         ),
@@ -89,6 +91,9 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
   }
   if cli.command.has_prefix("toolchain ") {
     return toolchain_command(cli, mode)
+  }
+  if cli.command == "mck" {
+    return mck_command(cli, mode)
   }
   if cli.command == "eval" {
     return evaluation_command(cli, mode)
