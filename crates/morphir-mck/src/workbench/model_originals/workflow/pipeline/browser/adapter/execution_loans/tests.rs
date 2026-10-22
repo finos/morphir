@@ -25,6 +25,42 @@ pub(super) fn with_compiled_limits(
     limits: &[u8],
     action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut inputs::BrowserOwnerLoans<'_>),
 ) {
+    with_compiled_fixture(limits, CompiledControlPolicy::Standard, action)
+}
+
+// Explicit actual-archive controls only. This does not alter the ordinary
+// one-GiB fixture, configured production policy or its permanent refusal test.
+pub(super) fn with_compiled_artifact_control(
+    action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut inputs::BrowserOwnerLoans<'_>),
+) {
+    with_compiled_fixture(
+        br#"{"rpcFrames":"checker-capture","retainedBytes":67108864,"stdoutPrefixBytes":4096,"stderrPrefixBytes":4096,"snapshotReadBytes":33554432,"byteVisits":34359738368,"records":0}"#,
+        CompiledControlPolicy::ArtifactControl,
+        action,
+    )
+}
+pub(super) fn with_compiled_cleanup_control(
+    action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut inputs::BrowserOwnerLoans<'_>),
+) {
+    // Measured Darwin EntryCell=1088; ordinary eight-MiB input funds1474
+    // cleanup slots. This retained input funds532, one below the selected
+    // source's conservative533-entry obligation. It is not a default limit.
+    with_compiled_fixture(
+        br#"{"rpcFrames":"checker-capture","retainedBytes":7363712,"stdoutPrefixBytes":4096,"stderrPrefixBytes":4096,"snapshotReadBytes":33554432,"byteVisits":34359738368,"records":0}"#,
+        CompiledControlPolicy::ArtifactControl,
+        action,
+    )
+}
+#[derive(Clone, Copy)]
+enum CompiledControlPolicy {
+    Standard,
+    ArtifactControl,
+}
+fn with_compiled_fixture(
+    limits: &[u8],
+    policy: CompiledControlPolicy,
+    action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut inputs::BrowserOwnerLoans<'_>),
+) {
     let root = tempfile::tempdir().unwrap();
     std::fs::write(
         root.path().join("cases.json"),
@@ -35,14 +71,15 @@ pub(super) fn with_compiled_limits(
     )
     .unwrap();
     let source = Source::new(CorpusSource::load(root.path()).unwrap()).unwrap();
-    let checker = Policy::from_document(
-        &Document::parse_unsigned_counts(include_bytes!(concat!(
+    let checker_bytes: &[u8] = match policy {
+        CompiledControlPolicy::Standard => include_bytes!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/src/workbench/model_originals/workflow/pipeline_controls/explicit-test-policy.json"
-        )))
-        .unwrap(),
-    )
-    .unwrap();
+        )),
+        CompiledControlPolicy::ArtifactControl => br#"{"kind":"model-originals","decode":{"savedBytes":16777216,"literalBytes":1073741824,"literalValues":4000000,"byteVisits":34359738368,"slots":4000000},"savedRead":{"bytes":16777216,"values":4000000},"closure":{"definitions":1000000,"references":1000000,"lookupBytes":100000000,"structuralVisits":100000000},"expansion":{"recipeBytes":1073741824,"frameBytes":1073741824,"literalStorageBytes":1073741824,"entries":1000000,"visits":10000000,"readRows":1000000,"readWindowBytes":4294967296,"readWireBytes":8589934592,"readObserverBytes":8589934592},"comparison":{"structuralVisits":100000,"comparisonBytes":1000000,"checks":100000},"capture":{"requestBytes":16777216,"replyBytes":16777216,"aggregateBytes":16777216}}"#,
+    };
+    let checker =
+        Policy::from_document(&Document::parse_unsigned_counts(checker_bytes).unwrap()).unwrap();
     let mut receiving =
         super::super::super::super::installed::observation::InstalledObservationOwner::new(
             &InstalledObservationLimits::from_document(

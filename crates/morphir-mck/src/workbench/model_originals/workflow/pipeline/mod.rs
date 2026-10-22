@@ -2,7 +2,7 @@
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
 pub use browser::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
-    BrowserExecutionAction,
+    BrowserConnectedOpening, BrowserExecutionAction,
 };
 pub use browser::{
     BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,

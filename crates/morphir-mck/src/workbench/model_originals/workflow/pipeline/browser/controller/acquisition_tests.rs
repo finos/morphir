@@ -257,7 +257,7 @@ fn source_acquisition_07_revocation_after_funding_refuses_before_actual_open() {
             let failure = prepared.acquire().err().expect("actual SAME child revoked");
             assert!(matches!(
                 failure.fault(),
-                ControllerAcquisitionFault::Source(_)
+                ControllerAcquisitionFault::Input(error) if matches!(error.source_cause(),Some(super::super::adapter::BrowserSourceFault::Revoked))
             ));
             assert_eq!(failure.held_files(), 0);
             assert_eq!(failure.read_bytes(), 0);

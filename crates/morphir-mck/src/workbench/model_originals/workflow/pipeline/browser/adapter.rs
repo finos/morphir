@@ -25,7 +25,28 @@ pub use inputs::BrowserUnsupportedActionKind;
 pub struct BrowserInputError {
     cause: inputs::BrowserInputFault,
 }
+/// A precise source-business cause, independent of owner-budget/source faults.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) enum BrowserActivityFault {
+    OriginalEnd,
+    DocumentClosed,
+    Host(super::collection::BrowserHostTranscriptFault),
+    Collection(super::collection::BrowserCollectionFault),
+}
 impl BrowserInputError {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn activity_cause(
+        &self,
+    ) -> Option<BrowserActivityFault> {
+        match self.cause {
+            inputs::BrowserInputFault::OriginalEnd => Some(BrowserActivityFault::OriginalEnd),
+            inputs::BrowserInputFault::DocumentClosed => Some(BrowserActivityFault::DocumentClosed),
+            inputs::BrowserInputFault::Host(cause) => Some(BrowserActivityFault::Host(cause)),
+            inputs::BrowserInputFault::Collection(cause) => {
+                Some(BrowserActivityFault::Collection(cause))
+            }
+            _ => None,
+        }
+    }
     pub(super) fn source_cause(&self) -> Option<BrowserSourceFault> {
         match self.cause {
             inputs::BrowserInputFault::Source(cause) => Some(cause),

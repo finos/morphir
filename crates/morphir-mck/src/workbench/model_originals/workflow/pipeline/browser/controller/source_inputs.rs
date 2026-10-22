@@ -5,7 +5,9 @@
 //! finos/morphir-moonbit a42427debd0f5b3d484446e22670d2527469a538:bun.lock
 //! (whole source blob SHA256 c54a910631ae483db57d93b937f87069c094fd88c43f9c23c6847ee77bfdad1c).
 //! No caller-supplied expected digest, package name, or program is accepted.
-use super::super::adapter::execution_loans::{BrowserLoanStamp, SourceControllerLifetime};
+use super::super::adapter::execution_loans::{
+    BrowserActivityFault, SourceControllerActivity, SourceControllerLifetime,
+};
 use super::super::adapter::{BrowserInputError, BrowserLoans, BrowserSourceFault};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sha2::{Digest, Sha256, Sha512};
@@ -13,7 +15,6 @@ use std::{
     io::{self, Read},
     mem::size_of,
     ops::Range,
-    time::Instant,
 };
 
 const ARCHIVE_BYTES: usize = 3_172_161;
@@ -22,14 +23,13 @@ const FILE_BYTES: u64 = 13_656_167;
 const FILES: usize = 115;
 const NAME_BYTES: usize = 4_185;
 const MAX_NAME: usize = 72;
+const COMPONENTS: usize = 417;
 const WINDOW: usize = 65_536;
 const INTEGRITY: &str = include_str!("source_inputs/playwright-core-1.64.1.sri");
 
 #[derive(Debug)]
 pub(super) enum RuntimeAssociationFault {
     Input(BrowserInputError),
-    Source(BrowserSourceFault),
-    End,
     ArchiveLength { expected: usize, actual: usize },
     Integrity,
     ArchiveFormat(io::ErrorKind),
@@ -42,17 +42,23 @@ pub(super) enum RuntimeAssociationFault {
 }
 fn active<R>(
     lifetime: &SourceControllerLifetime,
+    loans: &mut BrowserLoans<'_, '_>,
     f: impl FnOnce() -> Result<R, RuntimeAssociationFault>,
 ) -> Result<R, RuntimeAssociationFault> {
     lifetime
-        .while_active(|| {
-            if Instant::now() >= lifetime.end() {
-                Err(RuntimeAssociationFault::End)
-            } else {
-                f()
-            }
-        })
-        .map_err(RuntimeAssociationFault::Source)?
+        .validate(loans)
+        .map_err(RuntimeAssociationFault::Input)?;
+    // The initial artifact pass still owns mutable loans, before residual
+    // cleanup/FS effects. Charge each actual validation and guarded operation
+    // outside the source lock. This never refunds or reuses earlier credit.
+    let validation = SourceControllerActivity::validation_work_upper()
+        .ok_or(RuntimeAssociationFault::Overflow)?;
+    loans
+        .reserve_controlled_host_storage(0, 0, mul(2, validation)?)
+        .map_err(RuntimeAssociationFault::Input)?;
+    lifetime
+        .while_business_active(f)
+        .map_err(RuntimeAssociationFault::Input)?
 }
 fn add(a: usize, b: usize) -> Result<usize, RuntimeAssociationFault> {
     a.checked_add(b).ok_or(RuntimeAssociationFault::Overflow)
@@ -87,7 +93,7 @@ fn allocate<T>(
     lifetime: &SourceControllerLifetime,
     loans: &mut BrowserLoans<'_, '_>,
 ) -> Result<Vec<T>, RuntimeAssociationFault> {
-    let vector = active(lifetime, || {
+    let vector = active(lifetime, loans, || {
         let mut vector = Vec::new();
         vector
             .try_reserve_exact(n)
@@ -107,7 +113,22 @@ struct RuntimeFile {
     name: Range<usize>,
     bytes: u64,
     digest: [u8; 32],
-    mode: u32,
+    mode: RuntimePackageMode,
+}
+/// Only the two modes actually authenticated by the selected package are
+/// admitted. The numeric projection describes output mode, not execute rights.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum RuntimePackageMode {
+    Regular,
+    Executable,
+}
+impl RuntimePackageMode {
+    pub(super) fn unix_mode(self) -> u32 {
+        match self {
+            Self::Regular => 0o644,
+            Self::Executable => 0o755,
+        }
+    }
 }
 /// A read-only descriptor of authenticated package DATA, not a filesystem grant.
 pub(super) struct RuntimePackageFile<'a> {
@@ -124,7 +145,7 @@ impl RuntimePackageFile<'_> {
     pub(super) fn sha256(&self) -> &[u8; 32] {
         &self.file.digest
     }
-    pub(super) fn mode(&self) -> u32 {
+    pub(super) fn mode(&self) -> RuntimePackageMode {
         self.file.mode
     }
 }
@@ -134,10 +155,32 @@ pub(super) struct SelectedRuntimePackage {
     archive: Vec<u8>,
     names: Vec<u8>,
     files: Vec<RuntimeFile>,
-    stamp: BrowserLoanStamp,
-    end: Instant,
+    activity: SourceControllerActivity,
+}
+/// Dimensions of the single SRI-authenticated selected package, not a quota.
+#[derive(Clone, Copy)]
+pub(super) struct RuntimePackageDimensions;
+impl RuntimePackageDimensions {
+    pub(super) fn file_count(self) -> usize {
+        FILES
+    }
+    pub(super) fn total_file_bytes(self) -> u64 {
+        FILE_BYTES
+    }
+    pub(super) fn total_name_bytes(self) -> usize {
+        NAME_BYTES
+    }
+    pub(super) fn max_path_bytes(self) -> usize {
+        MAX_NAME
+    }
+    pub(super) fn component_count(self) -> usize {
+        COMPONENTS
+    }
 }
 impl SelectedRuntimePackage {
+    pub(super) fn dimensions(&self) -> RuntimePackageDimensions {
+        RuntimePackageDimensions
+    }
     pub(super) fn prepare(
         raw: &[u8],
         lifetime: &SourceControllerLifetime,
@@ -147,7 +190,7 @@ impl SelectedRuntimePackage {
         lifetime
             .validate(loans)
             .map_err(RuntimeAssociationFault::Input)?;
-        active(lifetime, || Ok(()))?;
+        active(lifetime, loans, || Ok(()))?;
         if raw.len() != ARCHIVE_BYTES {
             return Err(RuntimeAssociationFault::ArchiveLength {
                 expected: ARCHIVE_BYTES,
@@ -161,7 +204,7 @@ impl SelectedRuntimePackage {
                 add(raw.len(), 3 * 64)?,
             )
             .map_err(RuntimeAssociationFault::Input)?;
-        active(lifetime, || {
+        active(lifetime, loans, || {
             let mut expected = [0; 64];
             let text = INTEGRITY.strip_suffix('\n').unwrap_or(INTEGRITY);
             let text = text
@@ -222,26 +265,26 @@ impl SelectedRuntimePackage {
         loans
             .reserve_controlled_host_storage(backing, add(FILES, add(FILES, 7)?)?, work)
             .map_err(RuntimeAssociationFault::Input)?;
-        let stamp = loans
-            .prepare_relation_stamp()
+        let activity = lifetime
+            .prepare_activity(loans)
             .map_err(RuntimeAssociationFault::Input)?;
         let mut archive = allocate::<u8>(ARCHIVE_BYTES, lifetime, loans)?;
         let mut names = allocate::<u8>(NAME_BYTES, lifetime, loans)?;
         let mut files = allocate::<RuntimeFile>(FILES, lifetime, loans)?;
-        active(lifetime, || {
+        active(lifetime, loans, || {
             archive.extend_from_slice(raw);
             Ok(())
         })?;
         let mut window = allocate::<u8>(WINDOW, lifetime, loans)?;
-        active(lifetime, || {
+        active(lifetime, loans, || {
             window.resize(WINDOW, 0);
             Ok(())
         })?;
-        let decoder = active(lifetime, || Ok(flate2::bufread::GzDecoder::new(raw)))?;
+        let decoder = active(lifetime, loans, || Ok(flate2::bufread::GzDecoder::new(raw)))?;
         let mut tar = tar::Archive::new(decoder.take((TAR_BYTES as u64) + 1));
         let mut total = 0u64;
         {
-            let mut entries = active(lifetime, || {
+            let mut entries = active(lifetime, loans, || {
                 tar.entries()
                     .map(|entries| entries.raw(true))
                     .map_err(|error| RuntimeAssociationFault::ArchiveFormat(error.kind()))
@@ -249,7 +292,7 @@ impl SelectedRuntimePackage {
             loop {
                 // Advancing tar performs reads/decompression; it must remain
                 // under the SAME child/end gate just like an explicit read.
-                let entry = active(lifetime, || {
+                let entry = active(lifetime, loans, || {
                     entries
                         .next()
                         .transpose()
@@ -258,7 +301,7 @@ impl SelectedRuntimePackage {
                 let Some(mut entry) = entry else {
                     break;
                 };
-                active(lifetime, || {
+                active(lifetime, loans, || {
                     if files.len() == FILES {
                         return Err(RuntimeAssociationFault::Inventory);
                     }
@@ -289,9 +332,11 @@ impl SelectedRuntimePackage {
                         .header()
                         .mode()
                         .map_err(|error| RuntimeAssociationFault::ArchiveFormat(error.kind()))?;
-                    if !matches!(mode, 0o644 | 0o755) {
-                        return Err(RuntimeAssociationFault::UnsupportedEntry);
-                    }
+                    let mode = match mode {
+                        0o644 => RuntimePackageMode::Regular,
+                        0o755 => RuntimePackageMode::Executable,
+                        _ => return Err(RuntimeAssociationFault::UnsupportedEntry),
+                    };
                     let start = names.len();
                     names.extend_from_slice(name.as_bytes());
                     files.push(RuntimeFile {
@@ -305,7 +350,7 @@ impl SelectedRuntimePackage {
                 let mut hash = Sha256::new();
                 let mut read_bytes = 0u64;
                 loop {
-                    let count = active(lifetime, || {
+                    let count = active(lifetime, loans, || {
                         entry
                             .read(&mut window)
                             .map_err(|error| RuntimeAssociationFault::ArchiveFormat(error.kind()))
@@ -313,7 +358,7 @@ impl SelectedRuntimePackage {
                     if count == 0 {
                         break;
                     }
-                    active(lifetime, || {
+                    active(lifetime, loans, || {
                         hash.update(&window[..count]);
                         Ok(())
                     })?;
@@ -321,7 +366,7 @@ impl SelectedRuntimePackage {
                         .checked_add(count as u64)
                         .ok_or(RuntimeAssociationFault::Overflow)?;
                 }
-                active(lifetime, || {
+                active(lifetime, loans, || {
                     let file = files.last_mut().ok_or(RuntimeAssociationFault::Inventory)?;
                     if read_bytes != file.bytes {
                         return Err(RuntimeAssociationFault::Inventory);
@@ -335,7 +380,7 @@ impl SelectedRuntimePackage {
         // authenticated single member must expand to exactly the selected size.
         let mut remaining = tar.into_inner();
         loop {
-            let count = active(lifetime, || {
+            let count = active(lifetime, loans, || {
                 remaining
                     .read(&mut window)
                     .map_err(|error| RuntimeAssociationFault::ArchiveFormat(error.kind()))
@@ -344,7 +389,7 @@ impl SelectedRuntimePackage {
                 break;
             }
         }
-        active(lifetime, || {
+        active(lifetime, loans, || {
             if remaining.limit() != 1
                 || files.len() != FILES
                 || total != FILE_BYTES
@@ -356,8 +401,7 @@ impl SelectedRuntimePackage {
                 archive,
                 names,
                 files,
-                stamp,
-                end: lifetime.end(),
+                activity,
             })
         })
     }
@@ -366,19 +410,9 @@ impl SelectedRuntimePackage {
         lifetime: &SourceControllerLifetime,
         loans: &BrowserLoans<'_, '_>,
     ) -> Result<(), RuntimeAssociationFault> {
-        lifetime
-            .validate(loans)
-            .map_err(RuntimeAssociationFault::Input)?;
-        loans
-            .validate_relation_stamp(&self.stamp)
-            .map_err(RuntimeAssociationFault::Input)?;
-        active(lifetime, || {
-            if self.end == lifetime.end() {
-                Ok(())
-            } else {
-                Err(RuntimeAssociationFault::Inventory)
-            }
-        })
+        self.activity
+            .validate(lifetime, loans)
+            .map_err(RuntimeAssociationFault::Input)
     }
     pub(super) fn files(&self) -> impl ExactSizeIterator<Item = RuntimePackageFile<'_>> {
         self.files.iter().map(|file| RuntimePackageFile {
@@ -392,6 +426,8 @@ impl SelectedRuntimePackage {
         &self.archive
     }
 }
+mod materialization;
+pub(super) use materialization::*;
 fn package_relative(raw: &[u8]) -> Result<&str, RuntimeAssociationFault> {
     let relative = raw
         .strip_prefix(b"package/")
@@ -407,5 +443,7 @@ fn package_relative(raw: &[u8]) -> Result<&str, RuntimeAssociationFault> {
         .map_err(|_| RuntimeAssociationFault::UnsafePath)?;
     Ok(relative)
 }
+#[cfg(test)]
+mod materialization_tests;
 #[cfg(test)]
 mod tests;

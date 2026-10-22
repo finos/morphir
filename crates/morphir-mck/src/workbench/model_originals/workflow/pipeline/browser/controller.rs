@@ -31,7 +31,7 @@ mod acquisition;
 mod source_inputs;
 pub(super) use acquisition::{
     AcquiredControllerTarget, ControllerFileInput, ControllerTargetInput,
-    FundedControllerAcquisition,
+    FundedControllerAcquisition, MaterializedControllerTarget, SelectedControllerTargetInput,
 };
 #[cfg(test)]
 #[path = "controller/acquisition_tests.rs"]
@@ -672,7 +672,12 @@ impl BrowserController {
             self.target.node.path.clone(),
             arguments,
             self.target.root.clone(),
-            vec![],
+            match &self.variant {
+                ControllerVariant::SourceObserved { .. } => {
+                    source_operation::source_driver_environment()
+                }
+                _ => vec![],
+            },
         )
         .map_err(|_| ControllerFault::Acquisition)?;
         let stdout = Vec::with_capacity(self.limits.max_frame);

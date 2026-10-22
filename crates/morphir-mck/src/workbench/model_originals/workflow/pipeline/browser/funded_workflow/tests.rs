@@ -210,3 +210,29 @@ fn funded_browser_04_cumulative_storage_not_refunded_and_prior_work_refusal_stic
     );
     assert_eq!((owner.decode.usage(), receiving.usage()), used);
 }
+
+#[test]
+fn funded_browser_08_same_actual_end_between_allocations_refuses_later_effect() {
+    let (mut owner, mut receiving) = owners(10000, 100, 1000);
+    let mut loans = BrowserOwnerLoans::new(&mut owner, &mut receiving);
+    let end = std::time::Instant::now() + std::time::Duration::from_millis(25);
+    let mut effects = 0;
+    let failure =
+        BrowserPhysicalBuffers::prepare_with_effect_guard(&mut loans, limits(), WINDOW, || {
+            effects += 1;
+            // First actual allocation is permitted. Before the second allocation,
+            // let the SAME real end expire without replacing it or minting a grant.
+            if effects == 2 {
+                std::thread::sleep(end.saturating_duration_since(std::time::Instant::now()));
+            }
+            if std::time::Instant::now() >= end {
+                Err(BrowserInputFault::OriginalEnd)
+            } else {
+                Ok(())
+            }
+        })
+        .err()
+        .expect("no later allocation after original end");
+    assert!(matches!(failure, BrowserInputFault::OriginalEnd));
+    assert_eq!(effects, 2);
+}

@@ -295,3 +295,22 @@ impl Drop for BrowserSourceBinding {
         }
     }
 }
+
+/// Requested logical metadata work for one complete parent/child identity
+/// traversal, including pointer checks, guard wrappers, temporary Arc counters
+/// and the repeated State checks/propagation. This is not CPU time or private
+/// mutex/allocator/kernel work. A global-only traversal is bounded by this too.
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn invocation_gate_work_upper()
+-> Option<usize> {
+    let layouts = [
+        std::mem::size_of::<ApplicationSourceIdentity>(),
+        std::mem::size_of::<BrowserInvocationIdentity>(),
+        std::mem::size_of::<BrowserInvocationScope>(),
+        std::mem::size_of::<Control>(),
+        std::mem::size_of::<InvocationControl>(),
+        std::mem::size_of::<State>().checked_mul(4)?,
+        std::mem::size_of::<AtomicUsize>().checked_mul(4)?,
+        std::mem::size_of::<MutexGuard<'_, State>>().checked_mul(2)?,
+    ];
+    layouts.into_iter().try_fold(0usize, usize::checked_add)
+}

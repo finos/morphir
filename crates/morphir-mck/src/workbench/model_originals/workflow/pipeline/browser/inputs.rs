@@ -18,6 +18,11 @@ use crate::workbench::model_originals::workflow::{
 };
 #[derive(Debug)]
 pub(super) enum BrowserInputFault {
+    /// The source-issued host's immutable original business end was reached.
+    OriginalEnd,
+    Host(super::collection::BrowserHostTranscriptFault),
+    Collection(super::collection::BrowserCollectionFault),
+    DocumentClosed,
     Source(super::source_scope::ScopeFault),
     Decode(DecodeError),
     Closure(ClosureError),

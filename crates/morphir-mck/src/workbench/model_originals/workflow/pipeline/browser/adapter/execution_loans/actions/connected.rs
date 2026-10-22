@@ -5,6 +5,9 @@ use crate::workbench::model_originals::workflow::pipeline::browser::{
     BrowserDocumentProducer, BrowserHostTranscript, ControlledHostStimulus,
 };
 use std::time::Instant;
+#[path = "connected/activity.rs"]
+mod activity;
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use activity::SourceControllerActivity;
 
 #[derive(Clone, Copy)]
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct ConnectedChoiceFunding
@@ -42,6 +45,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct So
     end: Instant,
     binding: crate::workbench::model_originals::workflow::pipeline::browser::source_scope::BrowserSourceBinding,
     operation: SourceControllerOperationShape,
+    association: crate::workbench::model_originals::workflow::pipeline::browser::collection::BrowserSourceHostAssociation,
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct SourceControllerOperationShape
@@ -57,7 +61,7 @@ impl SourceControllerLifetime {
         loans: &BrowserLoans<'_, '_>,
     ) -> Result<(), BrowserInputError> {
         loans.validate_relation_stamp(&self.stamp)?;
-        self.binding.while_active(|| ()).map_err(source)
+        self.while_business_active(|| ())
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn end(
         &self,
@@ -76,6 +80,19 @@ impl SourceControllerLifetime {
         // The binding already checks SAME parent→child once. Nesting the
         // retained stamp gate here would recursively acquire those locks.
         self.binding.while_active(action)
+    }
+    /// Source-specific business preparation and allocation use the original
+    /// end inside the SAME source gate. This is separate from cleanup authority.
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn while_business_active<
+        R,
+    >(
+        &self,
+        action: impl FnOnce() -> R,
+    ) -> Result<R, BrowserInputError> {
+        self.binding
+            .while_active(|| self.association.while_current(action))
+            .map_err(source)?
+            .map_err(activity::activity_error)
     }
     /// Bookkeeping only: private actual owner finish must consume its covered
     /// processes/readers/files first. It remains usable after end/revocation.
@@ -126,6 +143,9 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Pr
 impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
     PreparedConnectedOpening<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
 {
+    // Operand-only allocation is a component fixture, not a production source
+    // factory. Actual source preparation must bind its original host end first.
+    #[cfg(test)]
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare(
         run: &'a PreparedBrowserClientRun<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
         action: BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
@@ -385,11 +405,10 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
         BrowserActionIssueError,
     > {
         self.action.owner.validate_action(&self.action, loans)?;
-        let end = transcript.source_controller_end(producer, stimulus, self.position(), loans)
-            .map_err(|error| match error {
-                super::super::super::super::collection::BrowserHostTranscriptPrepareError::Input(error) => BrowserActionIssueError::Input(error),
-                super::super::super::super::collection::BrowserHostTranscriptPrepareError::Transcript(error) => BrowserActionIssueError::Host(error),
-            })?;
+        let association = transcript
+            .source_controller_association(producer, stimulus, self.position(), loans)
+            .map_err(super::borrowed::association_error)?;
+        let end = association.end();
         let choices = *self.prepare_choice_funding(stimulus, loans)?;
         // Inspect the genuine next source operand without issuing it early.
         // This first fixed path supports begin→inspection-boundary only; the
@@ -471,6 +490,7 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
                 end,
                 binding,
                 operation,
+                association,
             },
         ))
     }

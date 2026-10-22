@@ -18,6 +18,102 @@ mod cleanup;
 use super::source_operation::SourceOperationPrepayment;
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use cleanup::CleanupFault;
 use cleanup::CleanupPlan;
+#[path = "acquisition/runtime_sink.rs"]
+mod runtime_sink;
+use super::source_inputs::{
+    ConsumedRuntimePackage, PreparedRuntimeMaterialization, RuntimeArchiveReadTerminal,
+    RuntimeMaterializationPreparationFailure, RuntimePackageDimensions, RuntimePackageFile,
+    RuntimeSinkTerminal, SelectedRuntimePackage,
+};
+use runtime_sink::{RuntimeSink, RuntimeSinkFault};
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct SelectedControllerTargetInput<
+    'a,
+> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) chromium:
+        ControllerFileInput<'a>,
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) node:
+        ControllerFileInput<'a>,
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) root: &'a Path,
+}
+enum RuntimeReaderState {
+    NotSelected,
+    Package(SelectedRuntimePackage),
+    Prepared(PreparedRuntimeMaterialization<RuntimeSinkFault>),
+    PreparationFailed(RuntimeMaterializationPreparationFailure),
+    Observed {
+        package: ConsumedRuntimePackage,
+        read: RuntimeArchiveReadTerminal,
+        sink: RuntimeSinkTerminal<RuntimeSinkFault>,
+    },
+    Moving,
+}
+enum RuntimeSetup {
+    Pending,
+    Prepared,
+    Started,
+    Faulted(RuntimeSinkFault),
+}
+struct RuntimeAcquisition {
+    setup: RuntimeSetup,
+    reader: RuntimeReaderState,
+    sink: RuntimeSink,
+}
+impl RuntimeAcquisition {
+    fn component() -> Self {
+        Self {
+            setup: RuntimeSetup::Pending,
+            reader: RuntimeReaderState::NotSelected,
+            sink: RuntimeSink::empty(),
+        }
+    }
+    fn prepare(
+        &mut self,
+        lifetime: &SourceControllerLifetime,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<(), ControllerAcquisitionFault> {
+        let RuntimeReaderState::Package(package) =
+            std::mem::replace(&mut self.reader, RuntimeReaderState::Moving)
+        else {
+            self.reader = RuntimeReaderState::NotSelected;
+            return Ok(());
+        };
+        let dimensions = package.dimensions();
+        self.reader = match package.prepare_materialization::<RuntimeSinkFault>(lifetime, loans) {
+            Ok(reader) => RuntimeReaderState::Prepared(reader),
+            Err(failure) => {
+                self.reader = RuntimeReaderState::PreparationFailed(failure);
+                return Err(ControllerAcquisitionFault::Runtime);
+            }
+        };
+        if let Err(error) = self.sink.prepare(dimensions, lifetime, loans) {
+            self.setup = RuntimeSetup::Faulted(error);
+            return Err(ControllerAcquisitionFault::Runtime);
+        }
+        self.setup = RuntimeSetup::Prepared;
+        Ok(())
+    }
+    fn selected(&self) -> bool {
+        !matches!(self.reader, RuntimeReaderState::NotSelected)
+    }
+    pub(super) fn outputs(
+        &self,
+    ) -> impl ExactSizeIterator<Item = runtime_sink::RuntimeOutputView<'_>> {
+        self.sink.outputs()
+    }
+    pub(super) fn completed_files(&self) -> usize {
+        self.sink.completed_files()
+    }
+    pub(super) fn observed_eofs(&self) -> usize {
+        self.sink.observed_eofs()
+    }
+    pub(super) fn files(&self) -> impl Iterator<Item = RuntimePackageFile<'_>> {
+        let RuntimeReaderState::Observed { package, .. } = &self.reader else {
+            unreachable!("actual materialization result")
+        };
+        package.files()
+    }
+}
+
 #[cfg(test)]
 pub(super) use cleanup::{DirectoryOpen as CleanupDirectoryOpen, Kind as CleanupEntryKind};
 
@@ -67,6 +163,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) enum Cont
     Allocation,
     Overflow,
     Cleanup(CleanupFault),
+    Runtime,
 }
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct ControllerLaunchLayout
 {
@@ -140,13 +237,13 @@ fn active<R>(
     action: impl FnOnce() -> Result<R, ControllerAcquisitionFault>,
 ) -> Result<R, ControllerAcquisitionFault> {
     lifetime
-        .while_active(|| {
+        .while_business_active(|| {
             if Instant::now() >= lifetime.end() {
                 return Err(ControllerAcquisitionFault::End);
             }
             action()
         })
-        .map_err(ControllerAcquisitionFault::Source)?
+        .map_err(ControllerAcquisitionFault::Input)?
 }
 #[derive(Clone, Copy)]
 struct Identity {
@@ -198,6 +295,7 @@ struct PartialAcquisition {
     cleanup: [EntryCleanup; 3],
     read_bytes: u64,
     eofs: usize,
+    driver_written: u64,
 }
 impl PartialAcquisition {
     fn empty() -> Self {
@@ -212,6 +310,7 @@ impl PartialAcquisition {
             }; 3],
             read_bytes: 0,
             eofs: 0,
+            driver_written: 0,
         }
     }
     fn held_files(&self) -> usize {
@@ -231,6 +330,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Fu
     scratch: Option<Vec<u8>>,
     descendants: Option<CleanupPlan>,
     prepayment: Option<SourceOperationPrepayment>,
+    runtime: RuntimeAcquisition,
 }
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct ControllerAcquisitionFailure
 {
@@ -249,6 +349,13 @@ impl AcquisitionCleanup {
     }
 }
 impl ControllerAcquisitionFailure {
+    pub(super) fn runtime_materialization(&self) -> Option<&RuntimeAcquisition> {
+        matches!(
+            self.retained.runtime.reader,
+            RuntimeReaderState::Observed { .. }
+        )
+        .then_some(&self.retained.runtime)
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn fault(
         &self,
     ) -> &ControllerAcquisitionFault {
@@ -267,7 +374,7 @@ impl ControllerAcquisitionFailure {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn held_files(
         &self,
     ) -> usize {
-        self.retained.partial.held_files()
+        self.retained.partial.held_files() + self.retained.runtime.sink.held_files()
     }
     /// One prepaid cleanup attempt per actually created entry, even after source
     /// revocation/end. This is identity-check followed by unlinkat, not an atomic
@@ -317,7 +424,9 @@ impl ControllerAcquisitionFailure {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn finish_cleanup(
         mut self,
     ) -> Result<CleanedAcquisitionFailure, Self> {
-        if !self.cleanup_owned_entries().is_complete() {
+        if !self.cleanup_owned_entries().is_complete()
+            || self.retained.runtime.sink.disposal_uncertain()
+        {
             return Err(self);
         }
         let Self { first, retained } = self;
@@ -325,13 +434,16 @@ impl ControllerAcquisitionFailure {
             lifetime,
             partial,
             mut descendants,
+            runtime,
             ..
         } = retained;
-        let held = partial.held_files();
+        let mut runtime = runtime;
+        let held = partial.held_files() + runtime.sink.release_handles();
         let descendant_handles = descendants.as_mut().map_or(0, CleanupPlan::release_handles);
         let cleanup = partial.cleanup;
         let read_bytes = partial.read_bytes;
         let eofs = partial.eofs;
+        let driver_written = partial.driver_written;
         drop(partial);
         Ok(CleanedAcquisitionFailure {
             first,
@@ -340,9 +452,11 @@ impl ControllerAcquisitionFailure {
             descendants,
             read_bytes,
             eofs,
+            driver_written,
             release: SourceFileRelease::HandlesReleasedUnverified {
                 handles: held + descendant_handles,
             },
+            runtime,
         })
     }
 }
@@ -354,7 +468,9 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Cl
     descendants: Option<CleanupPlan>,
     read_bytes: u64,
     eofs: usize,
+    driver_written: u64,
     release: SourceFileRelease,
+    runtime: RuntimeAcquisition,
 }
 impl CleanedAcquisitionFailure {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn fault(
@@ -377,7 +493,9 @@ impl CleanedAcquisitionFailure {
             descendants,
             read_bytes,
             eofs,
+            driver_written,
             release,
+            runtime,
         } = self;
         (
             lifetime,
@@ -387,7 +505,9 @@ impl CleanedAcquisitionFailure {
                 descendants,
                 read_bytes,
                 eofs,
+                driver_written,
                 release,
+                runtime,
             },
         )
     }
@@ -399,7 +519,9 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Ac
     descendants: Option<CleanupPlan>,
     read_bytes: u64,
     eofs: usize,
+    driver_written: u64,
     release: SourceFileRelease,
+    runtime: RuntimeAcquisition,
 }
 impl AcquisitionFailureCleanupEvidence {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn fault(
@@ -493,6 +615,8 @@ pub(super) struct SourceAcquiredOwnership {
     _digests: [[u8; 32]; 4],
     _actual_read_bytes: u64,
     _actual_eofs: usize,
+    _driver_written: u64,
+    runtime: RuntimeAcquisition,
 }
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct AcquiredControllerTarget
 {
@@ -500,6 +624,23 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Ac
     buffers: BrowserPhysicalBuffers,
     lifetime: SourceControllerLifetime,
     prepayment: SourceOperationPrepayment,
+}
+/// Actual complete selected runtime outputs with their retained filesystem and
+/// source owners. This is not a host association, launch grant or BrowserRun.
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct MaterializedControllerTarget(
+    AcquiredControllerTarget,
+);
+impl MaterializedControllerTarget {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn into_parts(
+        self,
+    ) -> (
+        AcquiredTarget,
+        BrowserPhysicalParts,
+        SourceControllerLifetime,
+        SourceOperationPrepayment,
+    ) {
+        self.0.into_parts()
+    }
 }
 impl AcquiredControllerTarget {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn into_parts(
@@ -532,6 +673,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct So
     cleanup: [EntryCleanup; 3],
     release: SourceFileRelease,
     descendants: CleanupPlan,
+    runtime: RuntimeAcquisition,
 }
 impl SourceControllerFileOutcome {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn descendant_cleanup(
@@ -588,7 +730,8 @@ impl ControllerOutcome {
             [profile_id, artifacts_id],
         );
         cleanup_entries(&self.0.target._root, &mut owned.entries, &mut owned.cleanup);
-        if !cleanup_report(&owned.entries).is_complete() {
+        if !cleanup_report(&owned.entries).is_complete() || owned.runtime.sink.disposal_uncertain()
+        {
             self.0
                 .first_fault
                 .get_or_insert(ControllerFault::Acquisition);
@@ -617,9 +760,12 @@ impl ControllerOutcome {
             _artifacts,
             _driver,
             mut descendants,
+            runtime,
             ..
         } = target._source_owned.take().expect("same source owner");
         let descendant_handles = descendants.release_handles();
+        let mut runtime = runtime;
+        let runtime_handles = runtime.sink.release_handles();
         drop((_core, _artifacts, _driver));
         drop(target);
         Ok(SourceControllerFileOutcome {
@@ -628,10 +774,37 @@ impl ControllerOutcome {
             first_fault,
             cleanup,
             release: SourceFileRelease::HandlesReleasedUnverified {
-                handles: 8 + descendant_handles,
+                handles: 8 + descendant_handles + runtime_handles,
             },
             descendants,
+            runtime,
         })
+    }
+}
+const FILE_WINDOW: usize = 65536;
+fn file_windows(bytes: usize) -> Result<usize, ControllerAcquisitionFault> {
+    Ok(checked_add(bytes, FILE_WINDOW - 1)? / FILE_WINDOW)
+}
+fn file_partial_work() -> Result<usize, ControllerAcquisitionFault> {
+    // Actual original-end samples, positions/counts, borrowed I/O span and return
+    // value. This bounds source-visible work, not compiler stack or VM copies.
+    checked_add(
+        checked_add(
+            2 * size_of::<Instant>(),
+            size_of::<u64>() + 2 * size_of::<usize>(),
+        )?,
+        size_of::<io::Result<usize>>() + size_of::<&mut [u8]>(),
+    )
+}
+fn file_guard_work() -> Result<usize, ControllerAcquisitionFault> {
+    super::super::adapter::execution_loans::SourceControllerActivity::validation_work_upper()
+        .ok_or(ControllerAcquisitionFault::Overflow)
+}
+fn check_file_end(lifetime: &SourceControllerLifetime) -> Result<(), ControllerAcquisitionFault> {
+    if Instant::now() >= lifetime.end() {
+        Err(ControllerAcquisitionFault::End)
+    } else {
+        Ok(())
     }
 }
 fn checked_add(a: usize, b: usize) -> Result<usize, ControllerAcquisitionFault> {
@@ -689,6 +862,21 @@ impl FundedControllerAcquisition {
         lifetime: SourceControllerLifetime,
         loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<Self, ControllerAcquisitionFailure> {
+        Self::prepare_with_runtime(
+            input,
+            limits,
+            lifetime,
+            loans,
+            RuntimeAcquisition::component(),
+        )
+    }
+    fn prepare_with_runtime(
+        input: ControllerTargetInput<'_>,
+        limits: Limits,
+        lifetime: SourceControllerLifetime,
+        loans: &mut BrowserLoans<'_, '_>,
+        runtime: RuntimeAcquisition,
+    ) -> Result<Self, ControllerAcquisitionFailure> {
         // Failure itself retains the exact lifetime and any physical ownership.
         // No path copy, scan, allocation or syscall precedes relation validation.
         let mut prepared = Self {
@@ -706,6 +894,7 @@ impl FundedControllerAcquisition {
             scratch: None,
             descendants: None,
             prepayment: None,
+            runtime,
         };
         let result = (|| {
             prepared
@@ -808,6 +997,62 @@ impl FundedControllerAcquisition {
                     .checked_mul(size_of::<fs::Metadata>())
                     .ok_or(ControllerAcquisitionFault::Overflow)?,
             )?;
+            let windows = prepared
+                .lengths
+                .into_iter()
+                .try_fold(0usize, |sum, length| {
+                    checked_add(
+                        sum,
+                        file_windows(
+                            usize::try_from(length)
+                                .map_err(|_| ControllerAcquisitionFault::Overflow)?,
+                        )?,
+                    )
+                })?;
+            let partial_calls = prepared.lengths.into_iter().try_fold(
+                checked_add(DRIVER.len(), 1)?,
+                |sum, length| {
+                    checked_add(
+                        sum,
+                        checked_add(
+                            usize::try_from(length)
+                                .map_err(|_| ControllerAcquisitionFault::Overflow)?,
+                            1,
+                        )?,
+                    )
+                },
+            )?;
+            // Explicit preparation, held path/metadata, create, two guards per
+            // hash window, actual EOF and driver-write window boundaries.
+            let fixed_guards = checked_add(
+                checked_add(
+                    2 * source_paths.len() + 2 * NAMES.len() + 2 + 2,
+                    source_paths.len() * 2 + 3 * 2 + 2 + 4 + 3 + 3,
+                )?,
+                file_windows(DRIVER.len())?,
+            )?;
+            let guard_calls = checked_add(
+                checked_add(fixed_guards, components)?,
+                windows
+                    .checked_mul(2)
+                    .ok_or(ControllerAcquisitionFault::Overflow)?,
+            )?;
+            let guard_work = guard_calls
+                .checked_mul(file_guard_work()?)
+                .ok_or(ControllerAcquisitionFault::Overflow)?;
+            let partial_work = partial_calls
+                .checked_mul(file_partial_work()?)
+                .ok_or(ControllerAcquisitionFault::Overflow)?;
+            let io_work = checked_add(guard_work, partial_work)?;
+            #[cfg(test)]
+            eprintln!(
+                "source filesystem work: guards={guard_calls},guard_bytes={},partials={partial_calls},partial_bytes={},total={io_work}",
+                file_guard_work()?,
+                file_partial_work()?
+            );
+            loans
+                .reserve_controlled_host_storage(0, 0, io_work)
+                .map_err(ControllerAcquisitionFault::Input)?;
             loans
                 .reserve_controlled_host_storage(0, 0, metadata_work)
                 .map_err(ControllerAcquisitionFault::Input)?;
@@ -845,7 +1090,15 @@ impl FundedControllerAcquisition {
             // Callers must already have prepared their actual runtime/UI input
             // association and source owner work. The known fixed conversation
             // prepayment above precedes this SAME-owner residual selection.
+            prepared.runtime.prepare(&prepared.lifetime, loans)?;
             prepared.descendants = Some(CleanupPlan::prepare(&prepared.lifetime, loans)?);
+            if let RuntimeReaderState::Prepared(reader) = &prepared.runtime.reader {
+                prepared
+                    .descendants
+                    .as_ref()
+                    .expect("retained cleanup plan")
+                    .require_runtime_capacity(reader.dimensions())?;
+            }
             active(&prepared.lifetime, || Ok(()))?;
             Ok(())
         })();
@@ -969,19 +1222,30 @@ impl FundedControllerAcquisition {
         }
         self.partial.created[index] = CreatedEntry::Held(Identity::from(&metadata));
         if index == 2 {
-            let mut offset = 0;
-            while offset < DRIVER.len() {
-                let count = active(&self.lifetime, || {
-                    self.partial.created_files[index]
-                        .as_ref()
-                        .unwrap()
-                        .write_at(&DRIVER[offset..], offset as u64)
-                        .map_err(|e| ControllerAcquisitionFault::Io(e.kind()))
+            while self.partial.driver_written < DRIVER.len() as u64 {
+                let request = ((DRIVER.len() as u64 - self.partial.driver_written)
+                    .min(FILE_WINDOW as u64)) as usize;
+                let base = self.partial.driver_written;
+                active(&self.lifetime, || {
+                    let mut filled = 0;
+                    while filled < request {
+                        check_file_end(&self.lifetime)?;
+                        let count = self.partial.created_files[index]
+                            .as_ref()
+                            .unwrap()
+                            .write_at(
+                                &DRIVER[base as usize + filled..base as usize + request],
+                                base + filled as u64,
+                            )
+                            .map_err(|e| ControllerAcquisitionFault::Io(e.kind()))?;
+                        self.partial.driver_written += count as u64;
+                        if count == 0 {
+                            return Err(ControllerAcquisitionFault::Io(io::ErrorKind::WriteZero));
+                        }
+                        filled += count;
+                    }
+                    Ok(())
                 })?;
-                if count == 0 {
-                    return Err(ControllerAcquisitionFault::Io(io::ErrorKind::WriteZero));
-                }
-                offset += count;
             }
         }
         Ok(())
@@ -995,17 +1259,24 @@ impl FundedControllerAcquisition {
                 .map_err(|_| ControllerAcquisitionFault::Overflow)?;
             let file = self.partial.files[index].as_ref().unwrap();
             let count = active(&self.lifetime, || {
-                file.read_at(&mut scratch[..request], offset)
-                    .map_err(|e| ControllerAcquisitionFault::Io(e.kind()))
+                let mut filled = 0;
+                while filled < request {
+                    check_file_end(&self.lifetime)?;
+                    let count = file
+                        .read_at(&mut scratch[filled..request], offset + filled as u64)
+                        .map_err(|e| ControllerAcquisitionFault::Io(e.kind()))?;
+                    self.partial.read_bytes += count as u64;
+                    if count == 0 {
+                        self.partial.eofs += 1;
+                        return Err(ControllerAcquisitionFault::Length {
+                            declared: self.lengths[index],
+                            actual: offset + filled as u64,
+                        });
+                    }
+                    filled += count;
+                }
+                Ok(filled)
             })?;
-            self.partial.read_bytes += count as u64;
-            if count == 0 {
-                self.partial.eofs += 1;
-                return Err(ControllerAcquisitionFault::Length {
-                    declared: self.lengths[index],
-                    actual: offset,
-                });
-            }
             active(&self.lifetime, || {
                 digest.update(&scratch[..count]);
                 Ok(())
@@ -1035,6 +1306,9 @@ impl FundedControllerAcquisition {
         mut self,
     ) -> Result<AcquiredControllerTarget, ControllerAcquisitionFailure> {
         let result = (|| {
+            if self.runtime.selected() {
+                return Err(ControllerAcquisitionFault::Shape);
+            }
             // Metadata/length checks precede every hash read. Root is borrowed.
             for index in [4, 0, 1, 2, 3] {
                 self.walk(index)?;
@@ -1064,6 +1338,9 @@ impl FundedControllerAcquisition {
                 });
             }
         };
+        Ok(self.into_acquired(digests))
+    }
+    fn into_acquired(mut self, digests: [[u8; 32]; 4]) -> AcquiredControllerTarget {
         let [chromium_path, node_path, _core_path, entry, root] = self.paths;
         let [profile, artifacts, driver] = self.created_paths;
         let target = AcquiredTarget {
@@ -1093,9 +1370,11 @@ impl FundedControllerAcquisition {
                 _digests: digests,
                 _actual_read_bytes: self.partial.read_bytes,
                 _actual_eofs: self.partial.eofs,
+                _driver_written: self.partial.driver_written,
+                runtime: self.runtime,
             }),
         };
-        Ok(AcquiredControllerTarget {
+        AcquiredControllerTarget {
             target,
             buffers: self.buffers.take().unwrap(),
             lifetime: self.lifetime,
@@ -1103,6 +1382,214 @@ impl FundedControllerAcquisition {
                 .prepayment
                 .take()
                 .expect("same known-operation prepayment"),
-        })
+        }
     }
 }
+
+#[cfg(test)]
+#[path = "acquisition/runtime_tests.rs"]
+mod runtime_tests;
+
+impl FundedControllerAcquisition {
+    pub(super) fn prepare_selected(
+        input: SelectedControllerTargetInput<'_>,
+        limits: Limits,
+        lifetime: SourceControllerLifetime,
+        package: SelectedRuntimePackage,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<Self, ControllerAcquisitionFailure> {
+        // Only validated SAME source/End may pay/copy paths. Derived fixed paths are
+        // ordinary DATA until held no-follow acquisition/materialization observes them.
+        let paths = (|| {
+            lifetime
+                .validate(loans)
+                .map_err(ControllerAcquisitionFault::Input)?;
+            package
+                .validate(&lifetime, loans)
+                .map_err(|_| ControllerAcquisitionFault::Runtime)?;
+            let d = package.dimensions();
+            let paths = checked_add(
+                input
+                    .root
+                    .as_os_str()
+                    .len()
+                    .checked_mul(2)
+                    .ok_or(ControllerAcquisitionFault::Overflow)?,
+                "/artifacts/runtime/lib/coreBundle.js".len() + "/artifacts/runtime/index.mjs".len(),
+            )?;
+            let scan = d
+                .file_count()
+                .checked_mul(checked_add(
+                    d.max_path_bytes()
+                        .checked_mul(2)
+                        .ok_or(ControllerAcquisitionFault::Overflow)?,
+                    size_of::<RuntimePackageFile<'_>>(),
+                )?)
+                .ok_or(ControllerAcquisitionFault::Overflow)?;
+            loans
+                .reserve_controlled_host_storage(
+                    checked_add(paths, 2 * size_of::<PathBuf>() + size_of::<Self>())?,
+                    2,
+                    checked_add(paths, scan)?,
+                )
+                .map_err(ControllerAcquisitionFault::Input)?;
+            if !valid_path(input.root) {
+                return Err(ControllerAcquisitionFault::Shape);
+            }
+            let core = copy_path(
+                input.root,
+                Some("artifacts/runtime/lib/coreBundle.js"),
+                &lifetime,
+                loans,
+            )?;
+            let entry = copy_path(
+                input.root,
+                Some("artifacts/runtime/index.mjs"),
+                &lifetime,
+                loans,
+            )?;
+            let core_length = package
+                .files()
+                .find(|f| f.path() == "lib/coreBundle.js")
+                .ok_or(ControllerAcquisitionFault::Package)?
+                .byte_length();
+            let entry_length = package
+                .files()
+                .find(|f| f.path() == "index.mjs")
+                .ok_or(ControllerAcquisitionFault::Package)?
+                .byte_length();
+            Ok((core, entry, core_length, entry_length))
+        })();
+        let runtime = RuntimeAcquisition {
+            setup: RuntimeSetup::Pending,
+            reader: RuntimeReaderState::Package(package),
+            sink: RuntimeSink::empty(),
+        };
+        let (core, entry, core_length, entry_length) = match paths {
+            Ok(paths) => paths,
+            Err(first) => {
+                return Err(ControllerAcquisitionFailure {
+                    first,
+                    retained: Self {
+                        lifetime,
+                        paths: std::array::from_fn(|_| PathBuf::new()),
+                        created_paths: std::array::from_fn(|_| PathBuf::new()),
+                        lengths: [0; 4],
+                        buffers: None,
+                        partial: PartialAcquisition::empty(),
+                        scratch: None,
+                        descendants: None,
+                        prepayment: None,
+                        runtime,
+                    },
+                });
+            }
+        };
+        Self::prepare_with_runtime(
+            ControllerTargetInput {
+                chromium: input.chromium,
+                node: input.node,
+                core_bundle: ControllerFileInput {
+                    path: &core,
+                    byte_length: core_length,
+                },
+                entry: ControllerFileInput {
+                    path: &entry,
+                    byte_length: entry_length,
+                },
+                root: input.root,
+            },
+            limits,
+            lifetime,
+            loans,
+            runtime,
+        )
+    }
+    pub(super) fn acquire_selected(
+        mut self,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<MaterializedControllerTarget, ControllerAcquisitionFailure> {
+        let result = (|| {
+            self.lifetime
+                .validate(loans)
+                .map_err(ControllerAcquisitionFault::Input)?;
+            if !matches!(self.runtime.reader, RuntimeReaderState::Prepared(_)) {
+                return Err(ControllerAcquisitionFault::Shape);
+            }
+            for index in [4, 0, 1] {
+                self.walk(index)?;
+            }
+            self.create(0)?;
+            self.create(1)?;
+            let node = self.digest(1)?;
+            if node != NODE {
+                return Err(ControllerAcquisitionFault::Clock);
+            }
+            let chromium = self.digest(0)?;
+            if let Err(error) = self.runtime.sink.start(
+                self.partial.created_files[1].as_ref().unwrap(),
+                &self.lifetime,
+            ) {
+                self.runtime.setup = RuntimeSetup::Faulted(error);
+                return Err(ControllerAcquisitionFault::Runtime);
+            }
+            self.runtime.setup = RuntimeSetup::Started;
+            let RuntimeReaderState::Prepared(reader) =
+                std::mem::replace(&mut self.runtime.reader, RuntimeReaderState::Moving)
+            else {
+                unreachable!()
+            };
+            let result = reader.materialize(loans, |file, source| {
+                self.runtime.sink.write_entry(file, source, &self.lifetime)
+            });
+            let (package, read, sink) = result.into_parts();
+            let expected = package.dimensions().file_count();
+            let complete = matches!(&read,RuntimeArchiveReadTerminal::Complete{files,..} if *files==expected)
+                && matches!(&sink,RuntimeSinkTerminal::Returned{entries} if *entries==expected);
+            self.runtime.reader = RuntimeReaderState::Observed {
+                package,
+                read,
+                sink,
+            };
+            if !complete || self.runtime.sink.disposal_uncertain() {
+                return Err(ControllerAcquisitionFault::Runtime);
+            }
+            let core = self
+                .runtime
+                .sink
+                .verified_digest("lib/coreBundle.js")
+                .ok_or(ControllerAcquisitionFault::Runtime)?;
+            let entry = self
+                .runtime
+                .sink
+                .verified_digest("index.mjs")
+                .ok_or(ControllerAcquisitionFault::Runtime)?;
+            self.partial.files[2] = Some(
+                self.runtime
+                    .sink
+                    .take_verified("lib/coreBundle.js")
+                    .map_err(|_| ControllerAcquisitionFault::Runtime)?,
+            );
+            self.partial.files[3] = Some(
+                self.runtime
+                    .sink
+                    .take_verified("index.mjs")
+                    .map_err(|_| ControllerAcquisitionFault::Runtime)?,
+            );
+            self.create(2)?;
+            active(&self.lifetime, || Ok(()))?;
+            Ok([chromium, node, core, entry])
+        })();
+        match result {
+            Ok(digests) => Ok(MaterializedControllerTarget(self.into_acquired(digests))),
+            Err(first) => Err(ControllerAcquisitionFailure {
+                first,
+                retained: self,
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "acquisition/runtime_canary_tests.rs"]
+mod runtime_canary_tests;

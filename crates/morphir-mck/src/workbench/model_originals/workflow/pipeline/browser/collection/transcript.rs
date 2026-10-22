@@ -850,3 +850,221 @@ impl BrowserReplyPending {
 #[cfg(test)]
 #[path = "transcript/tests.rs"]
 mod tests;
+
+/// Borrowed source-business refusal. These independent DATA families preserve
+/// their own actual faults; this ordering is not a chronological-first claim.
+#[derive(Debug)]
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) enum BrowserSourceHostAssociationError
+{
+    Input(BrowserInputError),
+    Host(BrowserHostTranscriptFault),
+    Collection(BrowserCollectionFault),
+    DocumentClosed,
+}
+impl From<BrowserInputError> for BrowserSourceHostAssociationError {
+    fn from(error: BrowserInputError) -> Self {
+        Self::Input(error)
+    }
+}
+impl From<BrowserHostTranscriptPrepareError> for BrowserSourceHostAssociationError {
+    fn from(error: BrowserHostTranscriptPrepareError) -> Self {
+        match error {
+            BrowserHostTranscriptPrepareError::Input(error) => Self::Input(error),
+            BrowserHostTranscriptPrepareError::Transcript(error) => Self::Host(error),
+        }
+    }
+}
+fn available_source_document(journal: &Journal) -> Result<(), BrowserSourceHostAssociationError> {
+    match journal.stream {
+        Stream::Open => Ok(()),
+        Stream::Faulted(first) => Err(BrowserSourceHostAssociationError::Collection(first)),
+        Stream::Ended => Err(BrowserSourceHostAssociationError::DocumentClosed),
+    }
+}
+/// Existing-journal relation retained by a borrowed source0 SDK. Weak retention
+/// neither owns a host/process nor retires physical source debt.
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct BrowserSourceHostAssociation
+{
+    journal: std::sync::Weak<Mutex<Journal>>,
+    end: Instant,
+    opening: usize,
+}
+impl BrowserSourceHostAssociation {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validation_work_upper()
+    -> Option<usize> {
+        // Full inline journal/header metadata bounds stream/host selectors,
+        // counters and scalar checks; no pointed-to raw payload is inspected.
+        [
+            size_of::<Self>(),
+            size_of::<Journal>(),
+            size_of::<Arc<Mutex<Journal>>>(),
+            size_of::<AtomicUsize>().checked_mul(2)?,
+            size_of::<MutexGuard<'_, Journal>>(),
+            size_of::<Instant>(),
+        ]
+        .into_iter()
+        .try_fold(0usize, usize::checked_add)
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn same_relation(
+        &self,
+        other: &Self,
+    ) -> bool {
+        self.journal.ptr_eq(&other.journal)
+            && self.end == other.end
+            && self.opening == other.opening
+    }
+    /// Caller paid the wrapper/counter work and holds SAME source+journal gate.
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn duplicate_after_funding(
+        &self,
+    ) -> Self {
+        Self {
+            journal: self.journal.clone(),
+            end: self.end,
+            opening: self.opening,
+        }
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn end(
+        &self,
+    ) -> Instant {
+        self.end
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare_validation(
+        &self,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserInputError> {
+        // One temporary Arc upgrade/drop, journal guard and checked scalar reads.
+        // Repeated facade calls pay repeatedly instead of assuming a call count.
+        let work = size_of::<Arc<Mutex<Journal>>>()
+            + 2 * size_of::<AtomicUsize>()
+            + size_of::<BrowserHostTranscriptFault>()
+            + size_of::<Instant>()
+            + size_of::<Stream>();
+        loans.reserve_controlled_host_storage(0, 0, work)
+    }
+    /// Caller must already hold the genuine source token's parent→child gate.
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn while_current<R>(
+        &self,
+        operation: impl FnOnce() -> R,
+    ) -> Result<R, BrowserSourceHostAssociationError> {
+        self.with_current_journal(|_| operation())
+    }
+    fn with_current_journal<R>(
+        &self,
+        operation: impl FnOnce(&Arc<Mutex<Journal>>) -> R,
+    ) -> Result<R, BrowserSourceHostAssociationError> {
+        let owner = self
+            .journal
+            .upgrade()
+            .ok_or(BrowserSourceHostAssociationError::Host(
+                BrowserHostTranscriptFault::Source,
+            ))?;
+        let mut journal = owner.lock().map_err(|_| {
+            BrowserSourceHostAssociationError::Host(BrowserHostTranscriptFault::Poisoned)
+        })?;
+        available_source_document(&journal)?;
+        let HostSlot::Issued(cache) = &mut journal.host else {
+            return Err(BrowserSourceHostAssociationError::Host(
+                BrowserHostTranscriptFault::Order,
+            ));
+        };
+        if let Some(first) = cache.first {
+            return Err(BrowserSourceHostAssociationError::Host(first));
+        }
+        if Instant::now() >= self.end {
+            return Err(BrowserSourceHostAssociationError::Host(
+                cache.fault(BrowserHostTranscriptFault::End),
+            ));
+        }
+        Ok(operation(&owner))
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_host(
+        &self,
+        producer: &BrowserDocumentProducer,
+        transcript: &BrowserHostTranscript,
+        stimulus: &ControlledHostStimulus,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<Instant, BrowserSourceHostAssociationError> {
+        producer.validate_host(loans, stimulus)?;
+        loans.validate_relation_stamp(&transcript.relation)?;
+        // Reject foreign owners before spending or inspecting/poisoning the
+        // original journal. Movable wrapper addresses are never identities.
+        if self.journal.as_ptr() != Arc::as_ptr(&producer.journal)
+            || self.journal.as_ptr() != Arc::as_ptr(&transcript.journal)
+            || self.opening != producer.opening
+            || self.end != transcript.end
+        {
+            return Err(BrowserSourceHostAssociationError::Input(
+                inputs::BrowserInputFault::Source(BrowserSourceFault::ForeignSource).into(),
+            ));
+        }
+        self.prepare_validation(loans)?;
+        transcript
+            .relation
+            .while_active(|| {
+                self.with_current_journal(|owner| {
+                    if Arc::ptr_eq(owner, &producer.journal)
+                        && Arc::ptr_eq(owner, &transcript.journal)
+                    {
+                        Ok(self.end)
+                    } else {
+                        Err(BrowserSourceHostAssociationError::Host(
+                            BrowserHostTranscriptFault::Source,
+                        ))
+                    }
+                })
+                .and_then(|result| result)
+            })
+            .map_err(|_| {
+                BrowserSourceHostAssociationError::Host(BrowserHostTranscriptFault::Source)
+            })?
+    }
+}
+impl BrowserHostTranscript {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn source_controller_association(
+        &self,
+        producer: &BrowserDocumentProducer,
+        stimulus: &ControlledHostStimulus,
+        opening: usize,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<BrowserSourceHostAssociation, BrowserSourceHostAssociationError> {
+        let end = self.source_controller_end(producer, stimulus, opening, loans)?;
+        let wrapper = size_of::<BrowserSourceHostAssociation>();
+        loans.reserve_controlled_host_storage(
+            wrapper,
+            1,
+            wrapper
+                + 2 * size_of::<AtomicUsize>()
+                + size_of::<Instant>()
+                + size_of::<BrowserHostTranscriptFault>()
+                + size_of::<Stream>(),
+        )?;
+        self.relation
+            .while_active(|| {
+                let journal = self.journal.lock().map_err(|_| {
+                    BrowserSourceHostAssociationError::Host(BrowserHostTranscriptFault::Poisoned)
+                })?;
+                available_source_document(&journal)?;
+                let HostSlot::Issued(cache) = &journal.host else {
+                    return Err(BrowserSourceHostAssociationError::Host(
+                        BrowserHostTranscriptFault::Order,
+                    ));
+                };
+                if let Some(first) = cache.first {
+                    return Err(BrowserSourceHostAssociationError::Host(first));
+                }
+                if Instant::now() >= end {
+                    return Err(BrowserSourceHostAssociationError::Host(
+                        BrowserHostTranscriptFault::End,
+                    ));
+                }
+                Ok(BrowserSourceHostAssociation {
+                    journal: Arc::downgrade(&self.journal),
+                    end,
+                    opening,
+                })
+            })
+            .map_err(|_| {
+                BrowserSourceHostAssociationError::Host(BrowserHostTranscriptFault::Source)
+            })?
+    }
+}

@@ -61,18 +61,47 @@ impl SourceOperationPrepayment {
                 .checked_add(variant)?;
             // Source-owned description and actual OS argv copies plus NULs.
             let extra_copies = extra_payload.checked_mul(2)?.checked_add(5)?;
+            // SAME actual source-only environment vector, literal payloads and
+            // public CommandSpec/OS argument copies. No inherited environment,
+            // stdlib-private allocator or VM/kernel accounting is claimed.
+            let environment_payload = SOURCE_NODE_ENVIRONMENT
+                .iter()
+                .try_fold(0usize, |n, (key, value)| {
+                    n.checked_add(key.len())?.checked_add(value.len())
+                })?;
+            let environment_copies = environment_payload
+                .checked_mul(2)?
+                .checked_add(SOURCE_NODE_ENVIRONMENT.len().checked_mul(2)?)?;
+            let environment_backing =
+                SOURCE_NODE_ENVIRONMENT
+                    .len()
+                    .checked_mul(size_of::<(OsString, OsString)>())?;
+            let environment_bytes = environment_copies.checked_add(environment_backing)?;
+            let environment_slots = SOURCE_NODE_ENVIRONMENT
+                .len()
+                .checked_mul(3)?
+                .checked_add(1)?;
+            let environment_work = environment_copies
+                .checked_mul(4)?
+                .checked_add(environment_backing)?;
             let bytes = layout
                 .bytes
+                .checked_add(environment_bytes)?
                 .checked_add(argument_backing)?
                 .checked_add(extra_copies)?
                 .checked_add(size_of::<Self>())?;
-            let slots = layout.slots.checked_add(argument_slots)?.checked_add(1)?;
+            let slots = layout
+                .slots
+                .checked_add(argument_slots)?
+                .checked_add(1)?
+                .checked_add(environment_slots)?;
             // Each bounded stdout position can be examined once during the fixed
             // protocol and compared against every closed literal. Malformed bytes
             // get the same payment; a successful short reply is not the bound.
             let reply_visits = limits.max_frame.checked_mul(32)?;
             let visits = layout
                 .visits
+                .checked_add(environment_work)?
                 .checked_add(argument_backing)?
                 .checked_add(extra_copies)?
                 .checked_add(size_of::<Self>())?
@@ -113,6 +142,18 @@ impl SourceOperationPrepayment {
 }
 fn overflow(loans: &mut BrowserLoans<'_, '_>) -> BrowserInputError {
     loans.fail_collection(InstalledObservationFault::SizeOverflow)
+}
+
+// Exact maintained ws optional-accelerator branches in the selected package.
+// The ordinary process launcher still clears inherited environment first.
+const SOURCE_NODE_ENVIRONMENT: [(&str, &str); 2] =
+    [("WS_NO_BUFFER_UTIL", "1"), ("WS_NO_UTF_8_VALIDATE", "1")];
+pub(super) fn source_driver_environment() -> Vec<(OsString, OsString)> {
+    let mut environment = Vec::with_capacity(SOURCE_NODE_ENVIRONMENT.len());
+    for (key, value) in SOURCE_NODE_ENVIRONMENT {
+        environment.push((key.into(), value.into()));
+    }
+    environment
 }
 
 #[cfg(test)]

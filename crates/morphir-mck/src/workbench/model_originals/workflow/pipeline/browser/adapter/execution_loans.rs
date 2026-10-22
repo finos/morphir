@@ -2,6 +2,7 @@
 use super::super::source_scope::{
     ApplicationSourceIdentity, BrowserInvocationIdentity, BrowserInvocationScope, ScopeIssueFault,
 };
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use super::BrowserActivityFault;
 use super::*;
 use crate::workbench::model_originals::workflow::{
     pipeline::installed::observation::{InstalledObservationFault, InstalledObservationResource},
@@ -394,16 +395,19 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
 mod actions;
 pub use actions::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
-    BrowserExecutionAction,
+    BrowserConnectedOpening, BrowserExecutionAction,
 };
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::{
-    ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerLifetime,
-    SourceControllerOperationShape,
+    ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerActivity,
+    SourceControllerLifetime, SourceControllerOperationShape,
 };
 #[cfg(test)]
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::{
     with_foreign_source_controller_lifetime, with_revoked_source_controller_lifetime,
-    with_source_controller_lifetime, with_source_controller_limits,
+    with_source_controller_artifact_control, with_source_controller_artifact_endpoint,
+    with_source_controller_cleanup_control, with_source_controller_end,
+    with_source_controller_endpoint, with_source_controller_lifetime,
+    with_source_controller_limits,
 };
 impl BrowserLoans<'_, '_> {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare_controller_buffers(
@@ -413,12 +417,11 @@ impl BrowserLoans<'_, '_> {
     ) -> Result<super::super::funded_workflow::BrowserPhysicalBuffers, BrowserInputError> {
         lifetime.validate(self)?;
         lifetime
-            .while_active(|| {
-                super::super::funded_workflow::BrowserPhysicalBuffers::prepare(
-                    self.inner, limits, 0,
+            .while_business_active(|| {
+                super::super::funded_workflow::BrowserPhysicalBuffers::prepare_for_controller(
+                    self.inner, limits, lifetime,
                 )
-            })
-            .map_err(source)?
+            })?
             .map_err(BrowserInputError::from)
     }
 }

@@ -1,11 +1,14 @@
 //! Source-selected monotone action input. No physical execution or verdict.
 use super::*;
 use std::sync::{Mutex, MutexGuard};
+#[path = "actions/borrowed.rs"]
+mod borrowed;
 #[path = "actions/connected.rs"]
 mod connected;
+pub use borrowed::BrowserConnectedOpening;
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use connected::{
-    ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerLifetime,
-    SourceControllerOperationShape,
+    ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerActivity,
+    SourceControllerLifetime, SourceControllerOperationShape,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +25,9 @@ pub enum BrowserActionIssueError {
     Input(BrowserInputError),
     Cursor(BrowserActionCursorFault),
     Host(super::super::super::collection::BrowserHostTranscriptFault),
+    Collection(super::super::super::collection::BrowserCollectionFault),
+    /// A normal document END is unavailable for new business, not a fault.
+    DocumentClosed,
 }
 impl From<BrowserInputError> for BrowserActionIssueError {
     fn from(error: BrowserInputError) -> Self {
@@ -270,5 +276,8 @@ mod tests;
 #[cfg(test)]
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use tests::{
     with_foreign_source_controller_lifetime, with_revoked_source_controller_lifetime,
-    with_source_controller_lifetime, with_source_controller_limits,
+    with_source_controller_artifact_control, with_source_controller_artifact_endpoint,
+    with_source_controller_cleanup_control, with_source_controller_end,
+    with_source_controller_endpoint, with_source_controller_lifetime,
+    with_source_controller_limits,
 };

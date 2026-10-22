@@ -101,7 +101,7 @@ fn browser_runtime_inputs_06_actual_locked_archive_complete_inventory_and_owned_
             assert_eq!(selected.files().map(|file| file.byte_length()).sum::<u64>(), FILE_BYTES);
             let entry = selected.files().find(|file| file.path() == "index.mjs").unwrap();
             assert_eq!(entry.byte_length(), 1063);
-            assert_eq!(entry.mode(), 0o644);
+            assert_eq!(entry.mode(), RuntimePackageMode::Regular);
             let core = selected.files().find(|file| file.path() == "lib/coreBundle.js").unwrap();
             assert_eq!(core.byte_length(), 3_585_406);
             let actual = core.sha256().iter().map(|byte| format!("{byte:02x}")).collect::<String>();

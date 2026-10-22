@@ -211,6 +211,23 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Cl
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) unlink: CleanupUnlink,
 }
 impl CleanupPlan {
+    pub(super) fn require_runtime_capacity(
+        &self,
+        dimensions: RuntimePackageDimensions,
+    ) -> Result<(), ControllerAcquisitionFault> {
+        // Every authenticated file and an upper bound for its parent components,
+        // plus the private runtime directory. Repeated parents deliberately
+        // overcount. The caller-root profile/artifacts/driver entries have their
+        // separate fixed three-entry owner; they are not descendant records.
+        let required = checked_add(
+            checked_add(dimensions.component_count(), dimensions.file_count())?,
+            1,
+        )?;
+        if self.capacity < required {
+            return Err(ControllerAcquisitionFault::Cleanup(CleanupFault::Capacity));
+        }
+        Ok(())
+    }
     #[cfg(test)]
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn capacity(
         &self,
@@ -252,7 +269,14 @@ impl CleanupPlan {
             .remaining_cleanup_resources(lifetime)
             .map_err(ControllerAcquisitionFault::Input)?;
         let fixed_bytes = checked_add(size_of::<Self>(), SCRATCH_BYTES)?;
-        let fixed_work = checked_add(fixed_bytes, 2 * SCRATCH_BYTES)?;
+        // The residual query, two distinct allocation effects and scratch
+        // initialization each traverse the SAME source/document relation.
+        let fixed_work = checked_add(
+            checked_add(fixed_bytes, 2 * SCRATCH_BYTES)?,
+            file_guard_work()?
+                .checked_mul(4)
+                .ok_or(ControllerAcquisitionFault::Overflow)?,
+        )?;
         let per_bytes = size_of::<Descendant>();
         // One initialized record/name; one metadata batch+validation; discovery,
         // held-directory and final identity observations; one final name visit.
@@ -284,19 +308,27 @@ impl CleanupPlan {
                 .checked_mul(per_work)
                 .ok_or(ControllerAcquisitionFault::Overflow)?,
         )?;
+        #[cfg(test)]
+        eprintln!(
+            "source cleanup plan: remaining_retained={},remaining_receiving_work={},remaining_decode_work={},fixed_bytes={fixed_bytes},entry_bytes={per_bytes},capacity={capacity},requested_bytes={requested},work={work}",
+            available.retained_bytes, available.receiving_visits, available.decode_visits
+        );
         loans
             .reserve_controlled_host_storage(requested, checked_add(capacity, 1)?, work)
             .map_err(ControllerAcquisitionFault::Input)?;
-        let (records, mut scratch) = active(lifetime, || {
+        let records = active(lifetime, || {
             let mut records = Vec::new();
             records
                 .try_reserve_exact(capacity)
                 .map_err(|_| ControllerAcquisitionFault::Allocation)?;
+            Ok(records)
+        })?;
+        let mut scratch = active(lifetime, || {
             let mut scratch = Vec::new();
             scratch
                 .try_reserve_exact(SCRATCH_BYTES)
                 .map_err(|_| ControllerAcquisitionFault::Allocation)?;
-            Ok((records, scratch))
+            Ok(scratch)
         })?;
         let extra = checked_add(
             records

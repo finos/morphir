@@ -42,6 +42,39 @@ impl BrowserPhysicalBuffers {
         limits: Limits,
         window: usize,
     ) -> Result<Self, BrowserInputFault> {
+        Self::prepare_checked(loans, limits, window, || Ok(()))
+    }
+    /// Called only within the SAME lifetime's already-held business gate. No
+    /// nested source/loan gate is entered. Each actual storage effect rechecks
+    /// the immutable original end; this does not issue or renew a lifetime.
+    pub(super) fn prepare_for_controller(
+        loans: &mut BrowserOwnerLoans<'_>,
+        limits: Limits,
+        lifetime: &super::adapter::execution_loans::SourceControllerLifetime,
+    ) -> Result<Self, BrowserInputFault> {
+        Self::prepare_checked(loans, limits, 0, || {
+            if std::time::Instant::now() >= lifetime.end() {
+                Err(BrowserInputFault::OriginalEnd)
+            } else {
+                Ok(())
+            }
+        })
+    }
+    #[cfg(test)]
+    pub(super) fn prepare_with_effect_guard(
+        loans: &mut BrowserOwnerLoans<'_>,
+        limits: Limits,
+        window: usize,
+        guard: impl FnMut() -> Result<(), BrowserInputFault>,
+    ) -> Result<Self, BrowserInputFault> {
+        Self::prepare_checked(loans, limits, window, guard)
+    }
+    fn prepare_checked(
+        loans: &mut BrowserOwnerLoans<'_>,
+        limits: Limits,
+        window: usize,
+        mut guard: impl FnMut() -> Result<(), BrowserInputFault>,
+    ) -> Result<Self, BrowserInputFault> {
         // A prior fault dominates even requested layout/overflow validation.
         let (decode, receiving, _) = loans.physical_owners()?;
         let preparation =
@@ -93,7 +126,9 @@ impl BrowserPhysicalBuffers {
                 fn allocate(
                     receiving: &mut InstalledObservationOwner,
                     requested: usize,
+                    guard: &mut impl FnMut() -> Result<(), BrowserInputFault>,
                 ) -> Result<Vec<u8>, BrowserInputFault> {
+                    guard()?;
                     let mut bytes = Vec::new();
                     bytes.try_reserve_exact(requested).map_err(|_| {
                         BrowserInputFault::Receiving(InstalledObservationFault::Allocation)
@@ -108,13 +143,15 @@ impl BrowserPhysicalBuffers {
                         .map_err(BrowserInputFault::Receiving)?;
                     Ok(bytes)
                 }
-                let chromium_stdout = allocate(receiving, limits.max_frame)?;
-                let chromium_stderr = allocate(receiving, limits.stderr_capture)?;
-                let driver_stdout = allocate(receiving, limits.max_frame)?;
-                let driver_stderr = allocate(receiving, limits.stderr_capture)?;
-                let mut control_prefix = allocate(receiving, limits.max_frame)?;
-                let mut download_window = allocate(receiving, window)?;
+                let chromium_stdout = allocate(receiving, limits.max_frame, &mut guard)?;
+                let chromium_stderr = allocate(receiving, limits.stderr_capture, &mut guard)?;
+                let driver_stdout = allocate(receiving, limits.max_frame, &mut guard)?;
+                let driver_stderr = allocate(receiving, limits.stderr_capture, &mut guard)?;
+                let mut control_prefix = allocate(receiving, limits.max_frame, &mut guard)?;
+                let mut download_window = allocate(receiving, window, &mut guard)?;
+                guard()?;
                 control_prefix.resize(limits.max_frame, 0);
+                guard()?;
                 download_window.resize(window, 0);
                 Ok(Self {
                     limits,

@@ -1,5 +1,6 @@
 //! Immutable acquired application DATA, paid once per preparation. This is not
 //! a BrowserRun, a document ingress or evidence of browser/body completion.
+mod selected_source;
 #[cfg(test)]
 #[path = "assets/tests.rs"]
 mod tests;
@@ -823,6 +824,26 @@ impl HostAssets {
     }
 }
 impl BoundControlledUiHost {
+    /// SAME immutable assets and canonical engine document endpoint. As with
+    /// the existing engine bind, setup refusal consumes its inputs and leaves
+    /// their unsettled source debt in the canonical engine cache. It does not
+    /// fabricate a joined host or a recoverable endpoint on that old API.
+    pub(super) async fn bind_with_engine_observed_document(
+        stimulus: ControlledHostStimulus,
+        application: &RunObservedApplication,
+        loans: &mut BrowserLoans<'_, '_>,
+        limits: ingress::DocumentIngressLimits,
+        producer: morphir_mck::workbench::BrowserDocumentProducer,
+        end: Instant,
+    ) -> Result<Self, ingress::DocumentSetupFault> {
+        // Clamp exactly once, before preparing either transport owner. The
+        // transcript derives its original end from this SAME value.
+        let end = end.min(application.end);
+        let assets = HostAssets::prepare_observed_document(application, &stimulus, loans, end)
+            .map_err(ingress::DocumentSetupFault::Assets)?;
+        Self::bind_engine_document(stimulus, Some(assets), loans, limits, producer, end).await
+    }
+
     pub(super) async fn bind_with_observed_document(
         stimulus: ControlledHostStimulus,
         application: &RunObservedApplication,
