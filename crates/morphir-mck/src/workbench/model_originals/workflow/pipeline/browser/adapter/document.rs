@@ -1,9 +1,15 @@
 //! Closed document-frame DATA only. No physical document or factual authority.
+#[path = "document/data.rs"]
+mod data;
+#[cfg(test)]
+#[path = "document/data_tests.rs"]
+mod data_tests;
 use super::*;
 use crate::json::strict::{self, Document};
 use crate::workbench::model_originals::workflow::{
     Decoder, decode::DecodeError, pipeline::installed::observation::InstalledObservationFault,
 };
+pub use data::*;
 use serde_json::value::RawValue;
 use std::time::Instant;
 
@@ -14,6 +20,11 @@ const SCHEMA_NAME_BYTES: usize = 32;
 // Thirteen FACT tags, at most thirteen owner-shape alternatives, the
 // download-result branch, two outcome tags and three returned-result tags.
 const SCHEMA_TAG_COMPARISONS: usize = 13 + 13 + 1 + 2 + 3;
+// At most six opaque tokens. Each span performs <=6 checked address/range
+// operations. Eight whole-result spans conservatively cover nested owner,
+// fact and frame construction/copies, without assuming compiler elision.
+const PROJECTION_TOKEN_SPANS: usize = 6;
+const PROJECTION_VALUE_MOVES: usize = 8;
 pub struct BrowserDocumentDecoder {
     source: BrowserApplicationSource,
     remaining: usize,
@@ -108,8 +119,12 @@ impl BrowserLoans<'_, '_> {
                 )?,
                 strict::requested_diagnostic_storage_bound(frame_bytes)?,
             )?;
+            let projection = mul(
+                PROJECTION_VALUE_MOVES,
+                std::mem::size_of::<BrowserDocumentFrameData>(),
+            )?;
             let requested = add(
-                mul(records, temporary)?,
+                add(mul(records, temporary)?, projection)?,
                 std::mem::size_of::<BrowserDocumentDecoder>(),
             )?;
             let pairs = mul(
@@ -130,8 +145,17 @@ impl BrowserLoans<'_, '_> {
             let scans = mul(
                 records,
                 add(
-                    mul(12, frame_bytes)?,
-                    mul(SCHEMA_TAG_COMPARISONS, SCHEMA_NAME_BYTES)?,
+                    add(
+                        mul(12, frame_bytes)?,
+                        mul(SCHEMA_TAG_COMPARISONS, SCHEMA_NAME_BYTES)?,
+                    )?,
+                    add(
+                        projection,
+                        mul(
+                            mul(PROJECTION_TOKEN_SPANS, 6)?,
+                            std::mem::size_of::<usize>(),
+                        )?,
+                    )?,
                 )?,
             )?;
             Some((
@@ -169,6 +193,21 @@ impl BrowserLoans<'_, '_> {
         payload: &[u8],
         end: Instant,
     ) -> Result<(), BrowserDocumentError> {
+        self.decode_document_frame_data(source, permission, kind, sequence, payload, end)
+            .map(|_| ())
+    }
+    /// Return literal DATA from the SAME strict parse. The actual receiver
+    /// must retain it inseparably with this original payload before ACK. This
+    /// supplies no run, physical-document, action or Download association.
+    pub fn decode_document_frame_data(
+        &mut self,
+        source: &BrowserApplicationSource,
+        permission: &mut BrowserDocumentDecoder,
+        kind: u8,
+        sequence: u64,
+        payload: &[u8],
+        end: Instant,
+    ) -> Result<BrowserDocumentFrameData, BrowserDocumentError> {
         self.validate_application_source(source)?;
         self.validate_application_source(&permission.source)?;
         if permission.remaining == 0
@@ -198,7 +237,7 @@ impl BrowserLoans<'_, '_> {
                 // value tokens remain untouched, including escaped UTF16 units.
                 std::str::from_utf8(payload).map_err(|_| fault(BrowserDocumentErrorKind::Shape))?;
                 let raw = decode.raw_literal(payload)?;
-                validate(decode, kind, sequence, raw)
+                decode_frame_data(decode, kind, sequence, payload, raw)
             })
             .map_err(|_| fault(BrowserDocumentErrorKind::Source))?;
         if result.is_err() {
@@ -247,6 +286,23 @@ impl<'a> Object<'a> {
         }
         Ok(())
     }
+    fn span(
+        &self,
+        name: &str,
+        payload: &[u8],
+    ) -> Result<BrowserJsonStringSpan, BrowserDocumentError> {
+        BrowserJsonStringSpan::from_raw(payload, self.field(name)?)
+    }
+    fn natural<const MIN: u64>(
+        &self,
+        name: &str,
+    ) -> Result<
+        crate::workbench::model_originals::workflow::Natural<MIN, MAX_SAFE>,
+        BrowserDocumentError,
+    > {
+        crate::workbench::model_originals::workflow::Natural::new(self.number(name, MIN > 0)?)
+            .map_err(|_| fault(BrowserDocumentErrorKind::Shape))
+    }
     fn number(&self, name: &str, positive: bool) -> Result<u64, BrowserDocumentError> {
         let token = self.field(name)?.get();
         if token.is_empty()
@@ -271,17 +327,18 @@ impl<'a> Object<'a> {
         }
     }
 }
-fn validate(
+fn decode_frame_data(
     decode: &mut Decoder,
     kind: u8,
     sequence: u64,
+    payload: &[u8],
     raw: &RawValue,
-) -> Result<(), BrowserDocumentError> {
+) -> Result<BrowserDocumentFrameData, BrowserDocumentError> {
     if sequence == 0 || sequence > MAX_SAFE {
         return Err(fault(BrowserDocumentErrorKind::Order));
     }
     let root = Object::read(decode, raw)?;
-    if kind == 2 {
+    let content = if kind == 2 {
         root.exact(&["lastSequence", "observer"])?;
         let last = root.number("lastSequence", false)?;
         if last.checked_add(1) != Some(sequence) {
@@ -290,10 +347,16 @@ fn validate(
         let observer = Object::read(decode, root.field("observer")?)?;
         let tag = observer.tag(decode, "kind")?;
         match tag.as_str() {
-            "closed" => observer.exact(&["kind"]),
+            "closed" => {
+                observer.exact(&["kind"])?;
+                BrowserDocumentContent::End {
+                    last_sequence: crate::workbench::model_originals::workflow::Natural::new(last)
+                        .map_err(|_| fault(BrowserDocumentErrorKind::Shape))?,
+                }
+            }
             "active" | "unobserved" => {
                 observer.exact(&["kind"])?;
-                Err(fault(BrowserDocumentErrorKind::ProducerIncomplete))
+                return Err(fault(BrowserDocumentErrorKind::ProducerIncomplete));
             }
             "incomplete" => {
                 observer.exact(&["kind", "cause"])?;
@@ -304,111 +367,149 @@ fn validate(
                 ) {
                     return shape();
                 }
-                Err(fault(BrowserDocumentErrorKind::ProducerIncomplete))
+                return Err(fault(BrowserDocumentErrorKind::ProducerIncomplete));
             }
-            _ => shape(),
+            _ => return shape(),
         }
     } else if kind == 1 {
-        let tag = root.tag(decode, "kind")?;
-        let fields: &[&str] = match tag.as_str() {
-            "source-selected" => &[
-                "kind",
-                "actual",
-                "sequence",
-                "sessionId",
-                "providerId",
-                "locator",
-            ],
-            "project-selected" | "transfer-verified" => &[
-                "kind",
-                "actual",
-                "sequence",
-                "sessionId",
-                "providerId",
-                "locator",
-                "projectId",
-            ],
-            "download-result" => &["kind", "actual", "sequence", "outcome"],
-            "opening-stored"
-            | "inventory-adopted"
-            | "archive-stored"
-            | "archive-retirement-requested"
-            | "archive-settled-retired"
-            | "archive-ready"
-            | "download-will-request"
-            | "model-closed"
-            | "workspace-closed" => &["kind", "actual", "sequence"],
-            _ => return shape(),
-        };
-        root.exact(fields)?;
+        let tag = data::FactTag::parse(&root.tag(decode, "kind")?)?;
+        root.exact(tag.fields())?;
         if root.number("sequence", true)? != sequence {
             return Err(fault(BrowserDocumentErrorKind::Order));
         }
-        for field in fields {
-            if matches!(*field, "sessionId" | "providerId" | "locator" | "projectId") {
-                root.string(field)?;
-            }
-        }
         let actual = Object::read(decode, root.field("actual")?)?;
-        let owner_fields: &[&str] = match tag.as_str() {
-            "model-closed" | "workspace-closed" => &["workspace", "opening"],
-            "opening-stored" | "source-selected" | "project-selected" | "transfer-verified" => {
-                &["workspace", "opening", "attempt", "openingOrdinal"]
-            }
-            "inventory-adopted" => &[
-                "workspace",
-                "opening",
-                "attempt",
-                "openingOrdinal",
-                "inventoryRevision",
-            ],
-            "archive-stored" | "archive-retirement-requested" | "archive-settled-retired" => &[
-                "workspace",
-                "opening",
-                "attempt",
-                "openingOrdinal",
-                "inventoryRevision",
-                "operationOrdinal",
-            ],
-            _ => &[
-                "workspace",
-                "opening",
-                "attempt",
-                "openingOrdinal",
-                "inventoryRevision",
-                "operationOrdinal",
-                "readyOrdinal",
-            ],
-        };
-        actual.exact(owner_fields)?;
-        for field in owner_fields {
-            if matches!(
-                *field,
-                "opening" | "openingOrdinal" | "operationOrdinal" | "readyOrdinal"
-            ) {
-                actual.number(field, *field != "opening")?;
-            } else {
-                actual.string(field)?;
-            }
-        }
-        if tag == "download-result" {
-            let outcome = Object::read(decode, root.field("outcome")?)?;
-            match outcome.tag(decode, "kind")?.as_str() {
-                "raised" => outcome.exact(&["kind"])?,
-                "returned" => {
-                    outcome.exact(&["kind", "result"])?;
-                    if !matches!(
-                        outcome.tag(decode, "result")?.as_str(),
-                        "download-requested" | "retired" | "failed"
-                    ) {
-                        return shape();
-                    }
-                }
-                _ => return shape(),
-            }
-        }
-        Ok(())
+        actual.exact(tag.owner_fields())?;
+        BrowserDocumentContent::Fact(project_fact(tag, &root, &actual, payload, decode)?)
     } else {
-        shape()
-    }
+        return shape();
+    };
+    Ok(BrowserDocumentFrameData {
+        sequence: crate::workbench::model_originals::workflow::Natural::new(sequence)
+            .map_err(|_| fault(BrowserDocumentErrorKind::Shape))?,
+        content,
+    })
+}
+
+fn visit(actual: &Object<'_>, payload: &[u8]) -> Result<BrowserVisitData, BrowserDocumentError> {
+    Ok(BrowserVisitData {
+        workspace: actual.span("workspace", payload)?,
+        opening: actual.natural("opening")?,
+    })
+}
+fn opening(
+    actual: &Object<'_>,
+    payload: &[u8],
+) -> Result<BrowserOpeningData, BrowserDocumentError> {
+    Ok(BrowserOpeningData {
+        visit: visit(actual, payload)?,
+        attempt: actual.span("attempt", payload)?,
+        opening_ordinal: actual.natural("openingOrdinal")?,
+    })
+}
+fn inventory(
+    actual: &Object<'_>,
+    payload: &[u8],
+) -> Result<BrowserInventoryData, BrowserDocumentError> {
+    Ok(BrowserInventoryData {
+        opening: opening(actual, payload)?,
+        inventory_revision: actual.span("inventoryRevision", payload)?,
+    })
+}
+fn archive(
+    actual: &Object<'_>,
+    payload: &[u8],
+) -> Result<BrowserArchiveData, BrowserDocumentError> {
+    Ok(BrowserArchiveData {
+        inventory: inventory(actual, payload)?,
+        operation_ordinal: actual.natural("operationOrdinal")?,
+    })
+}
+fn ready(
+    actual: &Object<'_>,
+    payload: &[u8],
+) -> Result<BrowserReadyArchiveData, BrowserDocumentError> {
+    Ok(BrowserReadyArchiveData {
+        archive: archive(actual, payload)?,
+        ready_ordinal: actual.natural("readyOrdinal")?,
+    })
+}
+fn selection(
+    root: &Object<'_>,
+    payload: &[u8],
+) -> Result<BrowserSourceSelectionData, BrowserDocumentError> {
+    Ok(BrowserSourceSelectionData {
+        session_id: root.span("sessionId", payload)?,
+        provider_id: root.span("providerId", payload)?,
+        locator: root.span("locator", payload)?,
+    })
+}
+fn project(
+    root: &Object<'_>,
+    payload: &[u8],
+) -> Result<BrowserProjectSelectionData, BrowserDocumentError> {
+    Ok(BrowserProjectSelectionData {
+        source: selection(root, payload)?,
+        project_id: root.span("projectId", payload)?,
+    })
+}
+fn outcome(
+    root: &Object<'_>,
+    decode: &mut Decoder,
+) -> Result<BrowserDownloadOutcomeData, BrowserDocumentError> {
+    let outcome = Object::read(decode, root.field("outcome")?)?;
+    Ok(match outcome.tag(decode, "kind")?.as_str() {
+        "raised" => {
+            outcome.exact(&["kind"])?;
+            BrowserDownloadOutcomeData::Raised
+        }
+        "returned" => {
+            outcome.exact(&["kind", "result"])?;
+            BrowserDownloadOutcomeData::Returned(match outcome.tag(decode, "result")?.as_str() {
+                "download-requested" => BrowserDownloadResultData::DownloadRequested,
+                "retired" => BrowserDownloadResultData::Retired,
+                "failed" => BrowserDownloadResultData::Failed,
+                _ => return shape(),
+            })
+        }
+        _ => return shape(),
+    })
+}
+fn project_fact(
+    tag: data::FactTag,
+    root: &Object<'_>,
+    actual: &Object<'_>,
+    payload: &[u8],
+    decode: &mut Decoder,
+) -> Result<BrowserDocumentFactData, BrowserDocumentError> {
+    use BrowserDocumentFactData as Fact;
+    use data::FactTag as Tag;
+    Ok(match tag {
+        Tag::OpeningStored => Fact::OpeningStored(opening(actual, payload)?),
+        Tag::SourceSelected => Fact::SourceSelected {
+            actual: opening(actual, payload)?,
+            selection: selection(root, payload)?,
+        },
+        Tag::ProjectSelected => Fact::ProjectSelected {
+            actual: opening(actual, payload)?,
+            selection: project(root, payload)?,
+        },
+        Tag::TransferVerified => Fact::TransferVerified {
+            actual: opening(actual, payload)?,
+            selection: project(root, payload)?,
+        },
+        Tag::InventoryAdopted => Fact::InventoryAdopted(inventory(actual, payload)?),
+        Tag::ArchiveStored => Fact::ArchiveStored(archive(actual, payload)?),
+        Tag::ArchiveRetirementRequested => {
+            Fact::ArchiveRetirementRequested(archive(actual, payload)?)
+        }
+        Tag::ArchiveSettledRetired => Fact::ArchiveSettledRetired(archive(actual, payload)?),
+        Tag::ArchiveReady => Fact::ArchiveReady(ready(actual, payload)?),
+        Tag::DownloadWillRequest => Fact::DownloadWillRequest(ready(actual, payload)?),
+        Tag::DownloadResult => Fact::DownloadResult {
+            actual: ready(actual, payload)?,
+            outcome: outcome(root, decode)?,
+        },
+        Tag::ModelClosed => Fact::ModelClosed(visit(actual, payload)?),
+        Tag::WorkspaceClosed => Fact::WorkspaceClosed(visit(actual, payload)?),
+    })
 }

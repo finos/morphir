@@ -10,6 +10,12 @@ pub use pipeline::{
     BrowserVisitError, with_prepared_browser_clients,
 };
 pub use pipeline::{
+    BrowserArchiveData, BrowserDocumentContent, BrowserDocumentFactData, BrowserDocumentFrameData,
+    BrowserDownloadOutcomeData, BrowserDownloadResultData, BrowserInventoryData,
+    BrowserJsonStringSpan, BrowserOpeningData, BrowserProjectSelectionData,
+    BrowserReadyArchiveData, BrowserSourceSelectionData, BrowserVisitData,
+};
+pub use pipeline::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
     ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
 };

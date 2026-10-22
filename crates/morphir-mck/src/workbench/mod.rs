@@ -50,6 +50,12 @@ pub use model_originals::{
     BrowserVisitError, with_prepared_browser_clients,
 };
 pub use model_originals::{
+    BrowserArchiveData, BrowserDocumentContent, BrowserDocumentFactData, BrowserDocumentFrameData,
+    BrowserDownloadOutcomeData, BrowserDownloadResultData, BrowserInventoryData,
+    BrowserJsonStringSpan, BrowserOpeningData, BrowserProjectSelectionData,
+    BrowserReadyArchiveData, BrowserSourceSelectionData, BrowserVisitData,
+};
+pub use model_originals::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
     ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
 };

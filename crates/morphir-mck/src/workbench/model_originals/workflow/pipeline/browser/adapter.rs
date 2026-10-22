@@ -15,7 +15,7 @@ use crate::workbench::model_originals::workflow::{input, pipeline::PreparationFa
 use crate::workbench::{
     Corpus, RunConfiguration, configuration::Configuration, corpus::CorpusStorage,
 };
-pub use document::{BrowserDocumentDecoder, BrowserDocumentError, BrowserDocumentErrorKind};
+pub use document::*;
 
 #[derive(Debug)]
 pub struct BrowserInputError {

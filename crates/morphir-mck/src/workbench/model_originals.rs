@@ -58,6 +58,12 @@ pub use workflow::{
     BrowserVisitError, with_prepared_browser_clients,
 };
 pub use workflow::{
+    BrowserArchiveData, BrowserDocumentContent, BrowserDocumentFactData, BrowserDocumentFrameData,
+    BrowserDownloadOutcomeData, BrowserDownloadResultData, BrowserInventoryData,
+    BrowserJsonStringSpan, BrowserOpeningData, BrowserProjectSelectionData,
+    BrowserReadyArchiveData, BrowserSourceSelectionData, BrowserVisitData,
+};
+pub use workflow::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
     ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
 };

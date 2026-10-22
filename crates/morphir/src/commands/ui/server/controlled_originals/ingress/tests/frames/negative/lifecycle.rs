@@ -116,11 +116,12 @@ fn browser_document_ingress_lifecycle_01_pending_borrow_drop_retains_actual_owne
                 let (observed, collected) = match setup {
                     Ok(upgraded) => {
                         let (observed, collected) = tokio::join!(
-                            send_literals(
+                            send_literals_with_tokens(
                                 &mut peers,
                                 &actual_state,
                                 &fact,
                                 &terminal_frame,
+                                br#""\ud800""#,
                                 upgraded,
                                 end
                             ),

@@ -27,6 +27,14 @@ fn retained_at_ack(
     fact: &[u8],
     end: Option<&[u8]>,
 ) -> (bool, usize, usize) {
+    retained_tokens_at_ack(state, fact, end, br#""unit""#)
+}
+fn retained_tokens_at_ack(
+    state: &Arc<HostState>,
+    fact: &[u8],
+    end: Option<&[u8]>,
+    workspace_token: &[u8],
+) -> (bool, usize, usize) {
     let Some(document) = state.document.as_ref() else {
         return (false, 0, 0);
     };
@@ -36,8 +44,20 @@ fn retained_at_ack(
     let Some(first) = inner.records.first() else {
         return (false, inner.raw.len(), 0);
     };
-    let first_ok = first.kind == 1
-        && first.sequence == 1
+    let typed_fact = match first.data.content() {
+        morphir_mck::workbench::BrowserDocumentContent::Fact(
+            morphir_mck::workbench::BrowserDocumentFactData::ModelClosed(actual),
+        ) => {
+            let payload = inner.raw.get(first.bytes.start + 16..first.bytes.end);
+            actual.opening().get() == 0
+                && payload.and_then(|bytes| bytes.get(actual.workspace().range()))
+                    == Some(workspace_token)
+        }
+        _ => false,
+    };
+    let first_ok = typed_fact
+        && first.data.kind() == 1
+        && first.data.sequence().get() == 1
         && first.bytes == (0..fact.len())
         && inner.raw.get(first.bytes.clone()) == Some(fact);
     match end {
@@ -51,8 +71,11 @@ fn retained_at_ack(
                 return (false, inner.raw.len(), inner.records.len());
             };
             let finish = fact.len() + end.len();
-            let second_ok = second.kind == 2
-                && second.sequence == 2
+            let typed_end = matches!(second.data.content(),
+                morphir_mck::workbench::BrowserDocumentContent::End { last_sequence } if last_sequence.get()==1);
+            let second_ok = typed_end
+                && second.data.kind() == 2
+                && second.data.sequence().get() == 2
                 && second.bytes == (fact.len()..finish)
                 && inner.raw.get(second.bytes.clone()) == Some(end);
             (
@@ -138,6 +161,17 @@ async fn send_literals(
     upgraded: (u16, Option<String>),
     end: Instant,
 ) -> Result<FrameObservation, Error> {
+    send_literals_with_tokens(peers, state, fact, terminal, br#""unit""#, upgraded, end).await
+}
+async fn send_literals_with_tokens(
+    peers: &mut [Peer],
+    state: &Arc<HostState>,
+    fact: &[u8],
+    terminal: &[u8],
+    workspace_token: &[u8],
+    upgraded: (u16, Option<String>),
+    end: Instant,
+) -> Result<FrameObservation, Error> {
     let peer = peers
         .first_mut()
         .ok_or_else(|| failure("actual document upgrade missing"))?;
@@ -147,14 +181,14 @@ async fn send_literals(
     )
     .await??;
     let first_ack = binary_reply(peer, end).await?;
-    let first_cache = retained_at_ack(state, fact, None);
+    let first_cache = retained_tokens_at_ack(state, fact, None, workspace_token);
     tokio::time::timeout_at(
         end.into(),
         peer.send(PeerMessage::Binary(terminal.to_vec().into())),
     )
     .await??;
     let second_ack = binary_reply(peer, end).await?;
-    let second_cache = retained_at_ack(state, fact, Some(terminal));
+    let second_cache = retained_tokens_at_ack(state, fact, Some(terminal), workspace_token);
     // A healthy END is still not physical channel EOF. Exercise the actual
     // close handshake and stream exhaustion while the collector is borrowed.
     let peer_close = tokio::time::timeout_at(end.into(), peer.close(None)).await?;
@@ -180,9 +214,18 @@ async fn send_literals(
 
 #[test]
 fn browser_document_ingress_02_literal_fact_and_end_retained_before_exact_ack_then_channel_drain() {
+    assert_literal_journey(FACT_BODY, br#""unit""#);
+}
+
+#[test]
+fn browser_document_ingress_typed_utf16_token_and_whitespace_survive_actual_journal_before_ack() {
+    assert_literal_journey(b" \r\n {\"sequence\":1,\"kind\":\"model-closed\",\"actual\":{\"workspace\":\"w\\ud800\",\"opening\":0}} ", br#""w\ud800""#);
+}
+
+fn assert_literal_journey(body: &[u8], workspace_token: &[u8]) {
     // Literal source-free inputs test the codec/transport only. "unit" is not
     // a source observation or evidence that a physical product model closed.
-    let fact = literal_frame(1, 1, FACT_BODY);
+    let fact = literal_frame(1, 1, body);
     let terminal_frame = literal_frame(2, 2, END_BODY);
     let expected_first_ack = literal_frame(3, 1, &[]);
     let expected_second_ack = literal_frame(3, 2, &[]);
@@ -217,11 +260,12 @@ fn browser_document_ingress_02_literal_fact_and_end_retained_before_exact_ack_th
                 let (observed, collected) = match setup {
                     Ok(upgraded) => {
                         let (observed, collected) = tokio::join!(
-                            send_literals(
+                            send_literals_with_tokens(
                                 &mut peers,
                                 &actual_state,
                                 &fact,
                                 &terminal_frame,
+                                workspace_token,
                                 upgraded,
                                 end
                             ),

@@ -5,7 +5,9 @@ mod tests;
 
 use super::*;
 use morphir_mck::workbench::BrowserApplicationSource;
-use morphir_mck::workbench::{BrowserDocumentError, BrowserDocumentErrorKind};
+use morphir_mck::workbench::{
+    BrowserDocumentError, BrowserDocumentErrorKind, BrowserDocumentFrameData,
+};
 use tokio::sync::Notify;
 
 const PROTOCOL: &str = "morphir-document-v1";
@@ -135,17 +137,16 @@ impl DocumentIngressLimits {
         Ok(Dimensions { journal, transport })
     }
 }
-enum Admission {
+enum BootstrapState {
     Prepared {
         body: axum::body::Bytes,
         headers: HeaderMap,
     },
     Bootstrapped,
-    Admitted,
+    UpgradeClaimed,
 }
 struct Record {
-    kind: u8,
-    sequence: u64,
+    data: BrowserDocumentFrameData,
     bytes: std::ops::Range<usize>,
 }
 enum Incoming {
@@ -178,7 +179,7 @@ enum Stop {
     Sent(u64),
 }
 struct IngressState {
-    admission: Admission,
+    bootstrap: BootstrapState,
     requests: usize,
     raw: Vec<u8>,
     records: Vec<Record>,
@@ -227,8 +228,20 @@ impl DocumentIngress {
                 std::mem::size_of::<Self>(),
             )?,
         )?;
+        // Fund the owned projection handoff into each retained descriptor in
+        // addition to requested record backing/initialization. Parser result
+        // construction and token-span arithmetic use the SAME parser loans.
+        let typed_handoff = mul(
+            limits.records,
+            std::mem::size_of::<BrowserDocumentFrameData>(),
+        )?;
         loans
-            .reserve_application_storage(&source, native, add(limits.records, 3)?, native)
+            .reserve_application_storage(
+                &source,
+                native,
+                add(limits.records, 3)?,
+                add(native, typed_handoff)?,
+            )
             .map_err(ControlledHostSetupFault::Funding)?;
         // Four duplicate get_all lookups, Cookie authentication, Host, Origin,
         // and offered protocol make eight lookups on an accepted upgrade.
@@ -321,7 +334,7 @@ impl DocumentIngress {
             auth,
             limits,
             state: Mutex::new(IngressState {
-                admission: Admission::Prepared { body, headers },
+                bootstrap: BootstrapState::Prepared { body, headers },
                 requests,
                 raw,
                 records,
@@ -492,14 +505,14 @@ pub(super) async fn bootstrap_route(
             let Ok(mut inner) = document.state.lock() else {
                 return StatusCode::SERVICE_UNAVAILABLE.into_response();
             };
-            match std::mem::replace(&mut inner.admission, Admission::Bootstrapped) {
-                Admission::Prepared { body, headers } => {
+            match std::mem::replace(&mut inner.bootstrap, BootstrapState::Bootstrapped) {
+                BootstrapState::Prepared { body, headers } => {
                     let mut response = Response::new(Body::from(body));
                     *response.headers_mut() = headers;
                     response
                 }
                 prior => {
-                    inner.admission = prior;
+                    inner.bootstrap = prior;
                     StatusCode::CONFLICT.into_response()
                 }
             }
@@ -528,7 +541,7 @@ pub(super) async fn upgrade_route(
             .state
             .lock()
             .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
-        if !matches!(inner.admission, Admission::Bootstrapped) {
+        if !matches!(inner.bootstrap, BootstrapState::Bootstrapped) {
             return Err(StatusCode::CONFLICT);
         }
         let offered = headers
@@ -547,7 +560,7 @@ pub(super) async fn upgrade_route(
         if tokens.next().is_some() || key.len() != 43 || !document.auth.exchange_launch_token(key) {
             return Err(StatusCode::FORBIDDEN);
         }
-        inner.admission = Admission::Admitted;
+        inner.bootstrap = BootstrapState::UpgradeClaimed;
         Ok(document.limits.frame_bytes)
     });
     let limit = match admitted {
@@ -675,8 +688,7 @@ impl DocumentIngress {
     fn retain(
         &self,
         mut frame: CheckingFrame<'_>,
-        kind: u8,
-        sequence: u64,
+        data: BrowserDocumentFrameData,
     ) -> Result<(), DocumentIngressFault> {
         let mut state = self
             .state
@@ -689,6 +701,7 @@ impl DocumentIngress {
             return Err(DocumentIngressFault::Order);
         }
         let bytes = frame.bytes.as_ref().ok_or(DocumentIngressFault::Order)?;
+        let (kind, sequence) = (data.kind(), data.sequence().get());
         let finish = state
             .raw
             .len()
@@ -708,8 +721,7 @@ impl DocumentIngress {
         let start = state.raw.len();
         state.raw.extend_from_slice(bytes);
         state.records.push(Record {
-            kind,
-            sequence,
+            data,
             bytes: start..finish,
         });
         if kind == 1 {
@@ -838,7 +850,7 @@ impl BoundControlledUiHost {
                     if sequence != expected {
                         return Err(DocumentIngressFault::Order);
                     }
-                    if let Err(cause) = loans.validate_document_frame(
+                    let data = match loans.decode_document_frame_data(
                         &document.source,
                         permission,
                         kind,
@@ -846,22 +858,25 @@ impl BoundControlledUiHost {
                         &bytes[HEADER_BYTES..],
                         host.end,
                     ) {
-                        let first = decode_kind(&cause);
-                        let mut inner = document
-                            .state
-                            .lock()
-                            .map_err(|_| DocumentIngressFault::Poisoned)?;
-                        if inner.decode_error.is_none() {
-                            inner.decode_error = Some(cause);
+                        Ok(data) => data,
+                        Err(cause) => {
+                            let first = decode_kind(&cause);
+                            let mut inner = document
+                                .state
+                                .lock()
+                                .map_err(|_| DocumentIngressFault::Poisoned)?;
+                            if inner.decode_error.is_none() {
+                                inner.decode_error = Some(cause);
+                            }
+                            return Err(first);
                         }
-                        return Err(first);
-                    }
+                    };
                     host.source
                         .while_source_active(|| {
                             if Instant::now() >= host.end {
                                 return Err(DocumentIngressFault::End);
                             }
-                            document.retain(frame, kind, sequence)
+                            document.retain(frame, data)
                         })
                         .map_err(|_| DocumentIngressFault::Source)??;
                     continue;

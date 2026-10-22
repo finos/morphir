@@ -10,6 +10,12 @@ pub use browser::{
     BrowserVisitError, with_prepared_browser_clients,
 };
 pub use browser::{
+    BrowserArchiveData, BrowserDocumentContent, BrowserDocumentFactData, BrowserDocumentFrameData,
+    BrowserDownloadOutcomeData, BrowserDownloadResultData, BrowserInventoryData,
+    BrowserJsonStringSpan, BrowserOpeningData, BrowserProjectSelectionData,
+    BrowserReadyArchiveData, BrowserSourceSelectionData, BrowserVisitData,
+};
+pub use browser::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
     ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
 };
