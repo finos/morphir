@@ -50,10 +50,11 @@ pub use transcript::{
 pub use workflow::installed;
 pub use workflow::native;
 pub use workflow::{
-    BrowserAction, BrowserActionKind, BrowserCallbackOutcome, BrowserClient, BrowserClients,
-    BrowserDownloadTarget, BrowserInputError, BrowserLoans, BrowserPreparationError,
-    BrowserPreparationErrorKind, BrowserScope, BrowserSemantic, BrowserSourceFault,
-    BrowserSourceIdentity, BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
+    BrowserAction, BrowserActionKind, BrowserApplicationRead, BrowserApplicationSource,
+    BrowserCallbackOutcome, BrowserClient, BrowserClients, BrowserDownloadTarget,
+    BrowserInputError, BrowserLoans, BrowserPreparationError, BrowserPreparationErrorKind,
+    BrowserScope, BrowserSemantic, BrowserSourceFault, BrowserSourceIdentity,
+    BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
 };
 pub use workflow::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,

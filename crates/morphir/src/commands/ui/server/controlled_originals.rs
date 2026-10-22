@@ -1,5 +1,6 @@
 //! Source-selected literal client stimulus over the ordinary authenticated host
 //! transport. No provider, server implementation or client qualification claim.
+mod assets;
 #[cfg(test)]
 #[path = "controlled_originals/end_tests.rs"]
 mod end_tests;
@@ -78,6 +79,7 @@ struct HostState {
     end: Instant,
     first: Mutex<Option<ControlledHostFault>>,
     actual_peer: Mutex<Option<ActualPeerFault>>,
+    assets: Option<assets::HostAssets>,
 }
 impl HostState {
     fn fault(&self, cause: ControlledHostFault) {
@@ -160,6 +162,14 @@ fn buffer(loans: &mut BrowserLoans<'_, '_>, n: usize) -> Result<String, Controll
 impl BoundControlledUiHost {
     pub(in crate::commands::ui) async fn bind(
         stimulus: ControlledHostStimulus,
+        loans: &mut BrowserLoans<'_, '_>,
+        end: Instant,
+    ) -> Result<Self, ControlledHostSetupFault> {
+        Self::bind_inner(stimulus, None, loans, end).await
+    }
+    async fn bind_inner(
+        stimulus: ControlledHostStimulus,
+        assets: Option<assets::HostAssets>,
         loans: &mut BrowserLoans<'_, '_>,
         end: Instant,
     ) -> Result<Self, ControlledHostSetupFault> {
@@ -268,11 +278,14 @@ impl BoundControlledUiHost {
             end,
             first: Mutex::new(None),
             actual_peer: Mutex::new(None),
+            assets,
         });
         let router = Router::new()
             .route("/launch", get(launch_route))
             .route("/api/session", get(manifest_route))
             .route("/rpc", get(upgrade_route))
+            .route("/observed/", get(asset_route))
+            .route("/observed/{*path}", get(asset_route))
             .with_state(state.clone());
         let future =
             super::serve_connections_with_source(listener, router, tasks, Some((source, end)));
@@ -376,6 +389,29 @@ impl BoundControlledUiHost {
             },
         }
     }
+}
+async fn asset_route(
+    State(state): State<Arc<HostState>>,
+    headers: HeaderMap,
+    uri: axum::http::Uri,
+) -> Response {
+    if !state.authenticated(&headers) {
+        return unauthorized();
+    }
+    state
+        .source
+        .while_source_active(|| {
+            if Instant::now() >= state.end {
+                return StatusCode::SERVICE_UNAVAILABLE.into_response();
+            }
+            match &state.assets {
+                Some(assets) => assets
+                    .response(uri.path())
+                    .unwrap_or_else(assets::AssetRouteFault::response),
+                None => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+            }
+        })
+        .unwrap_or_else(|_| StatusCode::SERVICE_UNAVAILABLE.into_response())
 }
 impl Drop for BoundControlledUiHost {
     fn drop(&mut self) {

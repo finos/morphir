@@ -6,7 +6,7 @@ use crate::workbench::model_originals::workflow::pipeline::installed::observatio
 };
 use std::{
     alloc::Layout,
-    sync::{Arc, Mutex, MutexGuard, atomic::AtomicUsize},
+    sync::{Arc, Mutex, MutexGuard, Weak, atomic::AtomicUsize},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,10 +89,34 @@ impl Control {
 pub(super) struct BrowserSourceScope {
     control: Arc<Control>,
 }
+/// Identity/liveness only. This creates no physical debt or effect permission.
+pub(super) struct ApplicationSourceIdentity {
+    control: Weak<Control>,
+}
+impl ApplicationSourceIdentity {
+    pub(super) fn validate(&self, scope: &BrowserSourceScope) -> Result<(), ScopeFault> {
+        if !Weak::ptr_eq(&self.control, &Arc::downgrade(&scope.control)) {
+            return Err(ScopeFault::ForeignSource);
+        }
+        self.while_active(|| ())
+    }
+    pub(super) fn while_active<R>(&self, action: impl FnOnce() -> R) -> Result<R, ScopeFault> {
+        let control = self.control.upgrade().ok_or(ScopeFault::Revoked)?;
+        let state = control.lock();
+        state.active()?;
+        Ok(action())
+    }
+}
 pub(super) struct BrowserSourceBinding {
     control: Option<Arc<Control>>,
 }
 impl BrowserSourceScope {
+    pub(super) fn application_identity(&self) -> Result<ApplicationSourceIdentity, ScopeFault> {
+        self.ready()?;
+        Ok(ApplicationSourceIdentity {
+            control: Arc::downgrade(&self.control),
+        })
+    }
     pub(super) fn prepare(loans: &mut BrowserOwnerLoans<'_>) -> Result<Self, BrowserInputFault> {
         let (decode, receiving, _) = loans.physical_owners()?;
         // Pinned alloc::sync::ArcInner is repr(C): strong, weak, data. This

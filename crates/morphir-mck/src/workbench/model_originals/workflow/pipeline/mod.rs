@@ -2,10 +2,11 @@
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
 mod browser;
 pub use browser::{
-    BrowserAction, BrowserActionKind, BrowserCallbackOutcome, BrowserClient, BrowserClients,
-    BrowserDownloadTarget, BrowserInputError, BrowserLoans, BrowserPreparationError,
-    BrowserPreparationErrorKind, BrowserScope, BrowserSemantic, BrowserSourceFault,
-    BrowserSourceIdentity, BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
+    BrowserAction, BrowserActionKind, BrowserApplicationRead, BrowserApplicationSource,
+    BrowserCallbackOutcome, BrowserClient, BrowserClients, BrowserDownloadTarget,
+    BrowserInputError, BrowserLoans, BrowserPreparationError, BrowserPreparationErrorKind,
+    BrowserScope, BrowserSemantic, BrowserSourceFault, BrowserSourceIdentity,
+    BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
 };
 pub use browser::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,

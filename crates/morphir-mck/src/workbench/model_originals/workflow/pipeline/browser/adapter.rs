@@ -102,6 +102,30 @@ pub struct BrowserLoans<'a, 'owners> {
     inner: &'a mut inputs::BrowserOwnerLoans<'owners>,
     scope: &'a BrowserSourceScope,
 }
+/// Opaque identity of one actual preparation. Neither a browser nor an action grant.
+pub struct BrowserApplicationSource {
+    identity: super::source_scope::ApplicationSourceIdentity,
+}
+impl BrowserApplicationSource {
+    /// Source liveness only, serialized with revocation. Never hold across await.
+    pub fn while_source_active<R>(
+        &self,
+        action: impl FnOnce() -> R,
+    ) -> Result<R, BrowserSourceFault> {
+        self.identity.while_active(action)
+    }
+}
+/// A request permission in the existing receiving domain, not observed IO.
+pub struct BrowserApplicationRead<'a> {
+    inner: super::super::installed::observation::SnapshotReadPermission<'a>,
+}
+impl BrowserApplicationRead<'_> {
+    pub fn finish(self, actual: usize) -> Result<(), BrowserInputError> {
+        self.inner
+            .finish(actual)
+            .map_err(|fault| inputs::BrowserInputFault::Receiving(*fault).into())
+    }
+}
 impl ControlledHostStimulus {
     pub fn prepare_delivery(
         &self,
@@ -115,6 +139,98 @@ impl ControlledHostStimulus {
     }
 }
 impl BrowserLoans<'_, '_> {
+    pub fn prepare_application_source(
+        &mut self,
+    ) -> Result<BrowserApplicationSource, BrowserInputError> {
+        self.reserve_controlled_host_storage(
+            std::mem::size_of::<BrowserApplicationSource>(),
+            1,
+            0,
+        )?;
+        Ok(BrowserApplicationSource {
+            identity: self
+                .scope
+                .application_identity()
+                .map_err(inputs::BrowserInputFault::Source)?,
+        })
+    }
+    pub fn validate_application_source(
+        &self,
+        source: &BrowserApplicationSource,
+    ) -> Result<(), BrowserInputError> {
+        self.ready_for(self.scope)?;
+        source
+            .identity
+            .validate(self.scope)
+            .map_err(|fault| inputs::BrowserInputFault::Source(fault).into())
+    }
+    pub fn validate_controlled_application(
+        &self,
+        source: &BrowserApplicationSource,
+        stimulus: &ControlledHostStimulus,
+    ) -> Result<(), BrowserInputError> {
+        self.validate_application_source(source)?;
+        stimulus
+            .validate_scope(self.scope)
+            .map_err(|fault| inputs::BrowserInputFault::Source(fault).into())
+    }
+    /// Named application backing/work debit on the SAME cumulative owners.
+    pub fn reserve_application_storage(
+        &mut self,
+        source: &BrowserApplicationSource,
+        bytes: usize,
+        slots: usize,
+        initialized: usize,
+    ) -> Result<(), BrowserInputError> {
+        self.validate_application_source(source)?;
+        self.reserve_controlled_host_storage(bytes, slots, initialized)
+    }
+    pub fn reserve_application_comparison(
+        &mut self,
+        source: &BrowserApplicationSource,
+        visits: usize,
+        bytes: usize,
+        checks: usize,
+    ) -> Result<(), BrowserInputError> {
+        self.validate_application_source(source)?;
+        use crate::workbench::model_originals::workflow::observation_check::CompareResource;
+        let (_, _, owner) = self.inner.physical_owners()?;
+        owner
+            .charge(CompareResource::StructuralVisits, visits)
+            .map_err(inputs::BrowserInputFault::Comparison)?;
+        owner
+            .charge(CompareResource::ComparisonBytes, bytes)
+            .map_err(inputs::BrowserInputFault::Comparison)?;
+        owner
+            .charge(CompareResource::Checks, checks)
+            .map_err(inputs::BrowserInputFault::Comparison)?;
+        Ok(())
+    }
+    pub fn prepare_application_read(
+        &mut self,
+        source: &BrowserApplicationSource,
+        requested: usize,
+    ) -> Result<BrowserApplicationRead<'_>, BrowserInputError> {
+        self.validate_application_source(source)?;
+        let (_, receiving, _) = self.inner.physical_owners()?;
+        receiving
+            .prepare_snapshot_read(requested)
+            .map(|inner| BrowserApplicationRead { inner })
+            .map_err(|fault| inputs::BrowserInputFault::Receiving(*fault).into())
+    }
+    /// Latch a failed application preparation. The caller retains its typed cause.
+    pub fn refuse_application(
+        &mut self,
+        source: &BrowserApplicationSource,
+    ) -> Result<(), BrowserInputError> {
+        self.validate_application_source(source)?;
+        let (_, receiving, _) = self.inner.physical_owners()?;
+        Err(inputs::BrowserInputFault::Receiving(
+            *receiving
+                .fail(super::super::installed::observation::InstalledObservationFault::PriorFault),
+        )
+        .into())
+    }
     /// Consume existing cumulative permissions for the concrete controlled host's
     /// own requested backing. This issues no source, task or physical permission.
     pub fn reserve_controlled_host_storage(
