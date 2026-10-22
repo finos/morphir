@@ -197,11 +197,14 @@ gate. Unselected jobs may skip. Full qualification is separate from the ordinary
 gate. New PR commits cancel superseded PR runs; main and merge-queue runs finish.
 
 CI and mise orchestration use pinned MoonBit `.mbtx` scripts. The `check` task is
-`scripts/check.mbtx`; new automation follows this convention, and touched legacy task
-pairs must migrate together. Compilers and existing application tests remain direct tool
+`scripts/check.mbtx`; the other task names are declared in `.config/mise/config.toml`
+and dispatch to standalone scripts. Compilers and existing application tests remain direct tool
 invocations. CI rejects added/modified legacy task wrappers and non-MoonBit automation
 under `scripts/`, while allowing their deletion during migration. The setup action caches
-the pinned toolchain, including core and moonx.
+the pinned toolchain, including core and moonx. Repository automation regressions run
+in `mise run test:ci` and the existing four-host qualification setup matrix. Git's
+pre-push entry point is a thin dispatcher to `scripts/pre-push.mbtx`; hook installation
+also works in linked worktrees and preserves unrelated custom hooks.
 
 Ubuntu 24.04 producers use pinned Zig 0.17.0 for native CLI release artifacts. Focused PR
 checks produce Linux x64; full qualification also cross-builds macOS arm64 and executes

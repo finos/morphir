@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Build all packages for JavaScript"
-set -euo pipefail
-
-moon build --target js

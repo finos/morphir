@@ -1,0 +1,187 @@
+///|
+/// Fetch the canonical pinned finos/morphir bd-plan tool, then delegate to Bun.
+/// This wrapper owns acquisition only; the upstream tracker tool remains unchanged.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+let revision = "d6b7cfa4cd614c85a087c009505c2856d5c73086"
+
+///|
+fn nonempty(value : String?) -> String? {
+  match value {
+    Some("") | None => None
+    _ => value
+  }
+}
+
+///|
+fn cache_directory(environment : Map[String, String]) -> String {
+  let xdg = nonempty(environment.get("XDG_CACHE_HOME"))
+  let base = if environment.get("OS") == Some("Windows_NT") {
+    match xdg {
+      Some(path) => path
+      None =>
+        match nonempty(environment.get("LOCALAPPDATA")) {
+          Some(path) => path + "/morphir"
+          None =>
+            abort("beads:plan: LOCALAPPDATA or XDG_CACHE_HOME must be set")
+        }
+    }
+  } else {
+    match xdg {
+      Some(path) => path + "/morphir"
+      None =>
+        match nonempty(environment.get("HOME")) {
+          Some(path) => path + "/.cache/morphir"
+          None => abort("beads:plan: HOME or XDG_CACHE_HOME must be set")
+        }
+    }
+  }
+  base + "/bd-plan/" + revision
+}
+
+///|
+async fn cached_script(
+  directory : String,
+  fetch : async () -> String,
+) -> String {
+  let script = directory + "/bd-plan.ts"
+  if @fs.exists(script) {
+    return script
+  }
+  if !@fs.exists(directory) {
+    @fs.mkdir(directory, recursive=true)
+  }
+  // Fetch completely before publishing: failure cannot poison the cache.
+  let content = fetch()
+  let temporary = script + "." + @env.now().to_string() + ".tmp"
+  defer (if @fs.exists(temporary) { @fs.remove(temporary) })
+  @fs.write_file(temporary, content, create_mode=@fs.CreateNew)
+  @fs.rename(temporary, script, replace=true)
+  script
+}
+
+///|
+async fn self_test() -> Unit {
+  guard cache_directory({ "HOME": "/home/test" }) ==
+    "/home/test/.cache/morphir/bd-plan/" + revision &&
+    cache_directory({ "HOME": "/home/test", "XDG_CACHE_HOME": "/xdg" }) ==
+    "/xdg/morphir/bd-plan/" + revision &&
+    cache_directory({ "OS": "Windows_NT", "LOCALAPPDATA": "C:/Local" }) ==
+    "C:/Local/morphir/bd-plan/" + revision &&
+    cache_directory({ "OS": "Windows_NT", "XDG_CACHE_HOME": "C:/Xdg" }) ==
+    "C:/Xdg/bd-plan/" + revision else {
+    fail("Cache contract changed")
+  }
+  let fixture = @fs.tmpdir(prefix="morphir-bd-plan-")
+  defer @fs.rmdir(fixture, recursive=true)
+  let cache = fixture + "/cache space"
+  let source =
+    #|console.log(JSON.stringify({args:process.argv.slice(2), cwd:process.cwd(), marker:process.env.BD_PLAN_FIXTURE}));
+    #|process.exit(23);
+  let script = cached_script(cache, () => source)
+  guard @fs.read_file(script).text() == source else {
+    fail("Cold cache failed")
+  }
+  guard cached_script(cache, () => fail("Warm cache fetched again")) == script else {
+    fail("Warm cache path changed")
+  }
+  let failed_cache = fixture + "/failed"
+  let failed = cached_script(failed_cache, () => fail("network fixture")) catch {
+    _ => "expected failure"
+  }
+  guard failed == "expected failure" &&
+    !@fs.exists(failed_cache + "/bd-plan.ts") else {
+    fail("Failed acquisition published a cache entry")
+  }
+  let args = ["spec", "a b", "quote'\"$;", "--render"]
+  let (status, out, _) = @process.collect_output(
+    "bun",
+    ["run", script, ..args],
+    cwd=fixture,
+    extra_env={ "BD_PLAN_FIXTURE": "inherited marker" },
+  )
+  let record = @json.parse(out.text())
+  guard status == 23 &&
+    record
+    is {
+      "args": Array(actual),
+      "cwd": String(cwd),
+      "marker": String("inherited marker"),
+      ..
+    } &&
+    actual == args.map(Json::string) &&
+    // Windows may report the inherited 8.3 spelling (RUNNER~1), while
+    // realpath expands it. Compare filesystem identities on both sides.
+    @fs.realpath(cwd) == @fs.realpath(fixture) else {
+    fail("Bun argv/environment/exit contract changed: " + out.text())
+  }
+  // Exercise this wrapper's main entry point, not only Bun in isolation.
+  let wrapper_cache = fixture + "/wrapper cache"
+  let environment = @env.get_env_vars()
+  environment.set("XDG_CACHE_HOME", wrapper_cache)
+  ignore(cached_script(cache_directory(environment), () => source))
+  let (wrapper_status, wrapper_output, wrapper_error) = @process.collect_output(
+    "moonx",
+    [@fs.realpath("scripts/beads-plan.mbtx"), ..args],
+    cwd=fixture,
+    extra_env={
+      "XDG_CACHE_HOME": wrapper_cache,
+      "BD_PLAN_FIXTURE": "inherited marker",
+    },
+  )
+  guard wrapper_status == 23 && wrapper_output.text() == out.text() else {
+    fail(
+      "Wrapper argv/cwd/environment/exit contract changed: " +
+      wrapper_error.text(),
+    )
+  }
+  println(
+    "beads:plan: platform-cache/acquisition/failure/Bun-argv tests passed",
+  )
+}
+
+///|
+async fn main {
+  if @env.args() is [_, "--self-test"] {
+    self_test()
+    return
+  }
+  let script = cached_script(cache_directory(@env.get_env_vars()), () => {
+    // curl remains the download executor so redirects, TLS and host proxy
+    // configuration keep the behavior of the original acquisition wrapper.
+    let (status, body, error) = @process.collect_output("curl", [
+      "--fail",
+      "--silent",
+      "--show-error",
+      "--location",
+      "https://raw.githubusercontent.com/finos/morphir/" +
+      revision +
+      "/tools/bd-plan.ts",
+    ])
+    guard status == 0 else {
+      @stdio.stderr.write(error)
+      @sys.exit(if status > 0 { status } else { 1 })
+      return ""
+    }
+    body.text()
+  })
+  let status = @process.run(
+    "bun",
+    ["run", script, ..@env.args()[1:]],
+    stdin=@stdio.stdin,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+  if status != 0 {
+    @sys.exit(if status > 0 { status } else { 1 })
+  }
+}

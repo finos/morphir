@@ -11,6 +11,6 @@ Content is vendored under Apache-2.0. The selected cases are reproduced without 
 | `v1-rentals.json` | finos/morphir-elm, `tests-integration/cli/test-data/rentals/expected-morphir-ir-v1.json` |
 | `v2-rentals.json` | finos/morphir-elm, `tests-integration/cli/test-data/rentals/expected-morphir-ir.json` |
 
-Commits are pinned in `scripts/refresh-ir-fixtures.py` and the module README. The historical rentals files are accepted inputs; canonical writers additionally emit the documentation wrappers present in Elm's codecs. Handwritten `elm_wire_test.mbt` assertions pin those encoder behaviors and the historical v2 literal spelling.
+Commits are pinned in `scripts/refresh-ir-fixtures.mbtx` and the module README. The historical rentals files are accepted inputs; canonical writers additionally emit the documentation wrappers present in Elm's codecs. Handwritten `elm_wire_test.mbt` assertions pin those encoder behaviors and the historical v2 literal spelling.
 
 The naming corpus also contains filesystem rendering cases. This module tests canonical names and legacy name decoding, not filesystem paths or filename truncation. Format tests use this implementation's v1–v4 support table, which includes historical v1/v2 in addition to the upstream table.

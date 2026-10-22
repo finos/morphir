@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Build all packages as native executables"
-set -euo pipefail
-
-moon build --target native --release

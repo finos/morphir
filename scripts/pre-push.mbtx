@@ -1,0 +1,103 @@
+///|
+/// Git only dispatches here; MoonBit owns the portable validation sequence.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+async fn checks(run : async (String) -> Int32) -> Int32 {
+  println("")
+  println("🔍 Running pre-push validation checks...")
+  println(
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+  )
+  println("")
+  for task in ["lint", "lint:moonbit", "validate"] {
+    match task {
+      "lint" => println("📝 Running lint checks...")
+      "lint:moonbit" => println("\n✨ Checking code formatting...")
+      _ => println("\n🔍 Running validation checks...")
+    }
+    if run(task) != 0 {
+      println("")
+      match task {
+        "lint" => {
+          println("❌ Linting failed! Please fix the issues and try again.")
+          println("   Run: mise run lint")
+        }
+        "lint:moonbit" => {
+          println(
+            "❌ Format check failed! Please format your code and try again.",
+          )
+          println("   Run: mise run format")
+        }
+        _ => {
+          println("❌ Validation failed! Please fix the issues and try again.")
+          println("   Run: mise run validate")
+        }
+      }
+      return 1
+    }
+  }
+  println(
+    "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+  )
+  println("✅ All pre-push checks passed! Proceeding with push...\n")
+  0
+}
+
+///|
+async fn self_test() -> Unit {
+  for failing in ["", "lint", "lint:moonbit", "validate"] {
+    let called : Array[String] = []
+    let status = checks(task => {
+      called.push(task)
+      if task == failing {
+        17
+      } else {
+        0
+      }
+    })
+    let expected = match failing {
+      "lint" => ["lint"]
+      "lint:moonbit" => ["lint", "lint:moonbit"]
+      _ => ["lint", "lint:moonbit", "validate"]
+    }
+    guard called == expected && status == (if failing == "" { 0 } else { 1 }) else {
+      fail("Pre-push sequence or failure propagation changed: " + failing)
+    }
+  }
+  guard checks(_ => -1) == 1 else { fail("Signal status permitted a push") }
+  println("pre-push: ordering/short-circuit/failure tests passed")
+}
+
+///|
+async fn main {
+  if @env.args() is [_, "--self-test"] {
+    self_test()
+    return
+  }
+  let code = checks(task => {
+    @process.run(
+      "mise",
+      ["run", task],
+      stdin=@stdio.stdin,
+      stdout=@stdio.stdout,
+      stderr=@stdio.stderr,
+    ) catch {
+      _ => {
+        @stdio.stderr.write(
+          "❌ Error: mise is not installed or not in PATH\n   Please install mise: https://mise.jdx.dev/\n",
+        )
+        1
+      }
+    }
+  })
+  if code != 0 {
+    @sys.exit(code)
+  }
+}

@@ -63,6 +63,70 @@ run_windows = [
 description = "Verify the toolchain core's source bytes and exact decimal parsing"
 run = ["moon run scripts/moonbit-core.mbtx check", "moon run scripts/moonbit-core.mbtx --self-test", "moon run tests/fixtures/core-pin/decimal.mbtx --target wasm-gc"]
 
+[tasks."build"]
+description = "Build all packages for all targets"
+run = "moonx scripts/repository-tasks.mbtx build"
+
+[tasks."build:wasi"]
+description = "Build all packages for WASI target"
+run = "moonx scripts/repository-tasks.mbtx build:wasi"
+
+[tasks."build:browser"]
+description = "Build all packages for browser (WASM-GC) target"
+run = "moonx scripts/repository-tasks.mbtx build:browser"
+
+[tasks."build:js"]
+description = "Build all packages for JavaScript"
+run = "moonx scripts/repository-tasks.mbtx build:js"
+
+[tasks."build:native"]
+description = "Build all packages as native executables"
+run = "moonx scripts/repository-tasks.mbtx build:native"
+
+[tasks."test"]
+description = "Run tests for all packages"
+run = "moonx scripts/repository-tasks.mbtx test"
+
+[tasks."format"]
+description = "Format Moonbit code"
+run = "moonx scripts/repository-tasks.mbtx format"
+
+[tasks."lint"]
+description = "Run all linting tasks"
+run = "moonx scripts/repository-tasks.mbtx lint"
+
+[tasks."lint:moonbit"]
+description = "Check Moonbit code formatting"
+run = "moonx scripts/repository-tasks.mbtx lint:moonbit"
+
+[tasks."lint:yaml"]
+description = "Lint YAML files in the repository"
+run = "moonx scripts/repository-tasks.mbtx lint:yaml"
+
+[tasks."validate"]
+description = "Run all validation checks"
+run = "moonx scripts/repository-tasks.mbtx validate"
+
+[tasks."clean"]
+description = "Clean build artifacts"
+run = "moonx scripts/repository-tasks.mbtx clean"
+
+[tasks."list-tasks"]
+description = "List all available mise tasks"
+run = "moonx scripts/repository-tasks.mbtx list-tasks"
+
+[tasks."ir:fixtures"]
+description = "Regenerate pinned IR fixture tests; optionally refresh from local upstream clones"
+run = "moonx scripts/refresh-ir-fixtures.mbtx"
+
+[tasks."setup:hooks"]
+description = "Setup git hooks for pre-push validation (idempotent)"
+run = "moonx scripts/setup-hooks.mbtx"
+
+[tasks."beads:plan"]
+description = "Store specs, plans and ledgers in beads using the pinned upstream bd-plan"
+run = "moonx scripts/beads-plan.mbtx"
+
 [tasks.check]
 description = "Run lint, CI policy tests, workspace tests and builds"
 run = "moonx scripts/check.mbtx"
@@ -89,6 +153,12 @@ run = [
   "moonx scripts/beads-companion.mbtx --self-test",
   "moonx scripts/headless-host.mbtx --self-test",
   "moonx scripts/mck-release.mbtx --self-test",
+  "moon fmt --check scripts/repository-tasks.mbtx scripts/refresh-ir-fixtures.mbtx scripts/setup-hooks.mbtx scripts/pre-push.mbtx scripts/beads-plan.mbtx",
+  "moonx scripts/repository-tasks.mbtx --self-test",
+  "moonx scripts/refresh-ir-fixtures.mbtx --self-test",
+  "moonx scripts/setup-hooks.mbtx --self-test",
+  "moonx scripts/pre-push.mbtx --self-test",
+  "moonx scripts/beads-plan.mbtx --self-test",
 ]
 
 [tasks."ci:measure"]

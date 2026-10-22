@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# mise description="Regenerate pinned IR fixture tests; optionally refresh from local upstream clones"
-set -euo pipefail
-uv run --no-cache --no-project python scripts/refresh-ir-fixtures.py "$@"
-moon fmt

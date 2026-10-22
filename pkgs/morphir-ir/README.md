@@ -117,7 +117,7 @@ mise run ir:fixtures
 mise run ir:fixtures -- --morphir /path/to/morphir --morphir-elm /path/to/morphir-elm
 ```
 
-Change the pins in `scripts/refresh-ir-fixtures.py` deliberately when updating the corpus. Upstream fixture content is Apache-2.0 licensed; paths and provenance are recorded in `conformance/fixtures/README.md`.
+Change the pins in `scripts/refresh-ir-fixtures.mbtx` deliberately when updating the corpus. Upstream fixture content is Apache-2.0 licensed; paths and provenance are recorded in `conformance/fixtures/README.md`.
 
 V4 named input objects use canonical lexical parameter order. Ordered pair arrays
 carry any other order explicitly. Writers use pair arrays when canonical object

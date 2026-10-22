@@ -1,0 +1,421 @@
+///|
+/// Portable build, test and repository housekeeping tasks.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+suberror TaskError {
+  Failed(Int32)
+  InvalidTask(String)
+} derive(Debug)
+
+///|
+fn commands(task : String) -> Array[(String, Array[String])] raise {
+  match task {
+    "build" =>
+      ["build:wasi", "build:browser", "build:js", "build:native"].map(t => {
+        ("mise", ["run", t])
+      })
+    "build:wasi" => [("moon", ["build", "--target", "wasm"])]
+    "build:browser" => [("moon", ["build", "--target", "wasm-gc"])]
+    "build:js" => [("moon", ["build", "--target", "js"])]
+    "build:native" => [("moon", ["build", "--target", "native", "--release"])]
+    "test" =>
+      [
+        ..["wasm", "wasm-gc", "js", "native"].map(t => {
+          ("moon", ["test", "--target", t])
+        }),
+        ("mise", ["run", "test:cli"]),
+        ("mise", ["run", "test:compiler"]),
+      ]
+    "format" => [("moon", ["fmt"])]
+    "lint:moonbit" => [("moon", ["fmt", "--check"])]
+    "lint" =>
+      [("mise", ["run", "lint:yaml"]), ("mise", ["run", "lint:moonbit"])]
+    "validate" =>
+      [("mise", ["run", "lint:yaml"]), ("mise", ["run", "validate:packages"])]
+    "list-tasks" => [("mise", ["tasks"])]
+    _ => raise InvalidTask(task)
+  }
+}
+
+///|
+fn messages(task : String) -> (String, String) {
+  match task {
+    "build" => ("🔨 Building all packages...", "✅ All builds complete")
+    "build:wasi" =>
+      ("🔨 Building for WASI target...", "✅ WASI build complete")
+    "build:browser" =>
+      (
+        "🔨 Building for browser (WASM-GC) target...", "✅ Browser build complete",
+      )
+    "test" => ("🧪 Running tests...", "✅ All tests passed")
+    "format" =>
+      (
+        "🎨 Formatting Moonbit code...", "✅ Moonbit code formatting complete",
+      )
+    "lint" =>
+      ("🔍 Running all linting tasks...", "✅ All linting tasks complete")
+    "lint:moonbit" =>
+      (
+        "🔍 Checking Moonbit code formatting...", "✅ Moonbit code formatting check complete",
+      )
+    "validate" =>
+      ("🔍 Running all validation checks...", "\n✅ All validations passed")
+    "list-tasks" => ("📋 Available mise tasks:\n", "")
+    _ => ("", "")
+  }
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Int32 {
+  @process.run(
+    program,
+    args,
+    stdin=@stdio.stdin,
+    stdout=@stdio.stdout,
+    stderr=@stdio.stderr,
+  )
+}
+
+///|
+async fn execute(
+  task : String,
+  invoke : async (String, Array[String]) -> Int32,
+) -> Unit {
+  let steps = commands(task)
+  let (before, after) = messages(task)
+  if before != "" {
+    println(before)
+  }
+  for (program, args) in steps {
+    if task == "validate" {
+      println(
+        if args == ["run", "lint:yaml"] {
+          "\n=== Validating YAML files ==="
+        } else {
+          "\n=== Verifying package structure ==="
+        },
+      )
+    }
+    let code = invoke(program, args)
+    if code != 0 {
+      if task == "lint:moonbit" {
+        println("❌ Formatting issues found. Run 'moon fmt' to fix.")
+      }
+      raise Failed(if task == "lint:moonbit" || code < 0 { 1 } else { code })
+    }
+  }
+  if after != "" {
+    println(after)
+  }
+}
+
+///|
+/// Match directory components, include hidden YAML, and do not follow links.
+async fn yaml_files(root : String, paths : Array[String]) -> Unit {
+  for name in @fs.readdir(root, include_hidden=true) {
+    if ["node_modules", ".git", "target", "build", "_build"].contains(name) {
+      continue
+    }
+    let path = root + "/" + name
+    match @fs.kind(path, follow_symlink=false) {
+      Directory => yaml_files(path, paths)
+      Regular =>
+        if name.has_suffix(".yaml") || name.has_suffix(".yml") {
+          paths.push(path)
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+async fn lint_yaml(
+  root : String,
+  invoke : async (String, Array[String]) -> Int32,
+) -> Unit {
+  println("🔍 Linting YAML files...")
+  let paths : Array[String] = []
+  yaml_files(root, paths)
+  paths.sort_by((a, b) => a.lexical_compare(b))
+  // One argument per path preserves whitespace on Windows and Unix. Batches
+  // bound command size while avoiding one process per YAML document.
+  for start = 0; start < paths.length(); start = start + 40 {
+    let end = if start + 40 < paths.length() {
+      start + 40
+    } else {
+      paths.length()
+    }
+    let status = invoke("yamllint", paths[start:end].to_owned())
+    if status != 0 {
+      raise Failed(if status > 0 { status } else { 1 })
+    }
+  }
+  println("✅ YAML linting complete")
+}
+
+///|
+async fn clean(
+  root : String,
+  invoke : async (String, Array[String]) -> Int32,
+) -> Int32 {
+  let path = root + "/_build"
+  // moon clean follows a root build-directory link. Unlink it before handing
+  // control to the compiler, so an external target cannot be cleaned.
+  let before = @fs.kind(path, follow_symlink=false) catch { _ => @fs.Unknown }
+  if before == @fs.SymLink {
+    @fs.remove(path)
+  }
+  // The legacy Unix task intentionally tolerates moon clean failing.
+  ignore(invoke("moon", ["clean"])) catch {
+    _ => ()
+  }
+  let kind = @fs.kind(path, follow_symlink=false) catch { _ => @fs.Unknown }
+  match kind {
+    Directory => @fs.rmdir(path, recursive=true)
+    Unknown => ()
+    _ => @fs.remove(path)
+  }
+  0
+}
+
+///|
+/// Exercise the real dispatch/process boundary with a small independent module.
+async fn entrypoint_test() -> Unit {
+  let script = @fs.realpath("scripts/repository-tasks.mbtx")
+  let root = @fs.tmpdir(prefix="morphir task entrypoints ")
+  defer @fs.rmdir(root, recursive=true)
+  @fs.write_file(
+    root + "/moon.mod",
+    "name = \"fixture/automation\"\nversion = \"0.1.0\"\n",
+  )
+  @fs.write_file(root + "/moon.pkg", "")
+  @fs.write_file(root + "/example.mbt", "pub fn example()->Int{1}\n")
+  @fs.write_file(root + "/sentinel", "preserve")
+  let invoke = async fn(task) {
+    @process.collect_output("moonx", [script, task], cwd=root)
+  }
+  let (build, build_out, build_err) = invoke("build:wasi")
+  guard build == 0 &&
+    @fs.exists(root + "/_build") &&
+    build_out.text().contains("✅ WASI build complete") else {
+    raise InvalidTask("entrypoint build failed: " + build_err.text())
+  }
+  let (bad_format, out, _) = invoke("lint:moonbit")
+  guard bad_format == 1 &&
+    out.text().contains("Formatting issues found") &&
+    !out.text().contains("check complete") else {
+    raise InvalidTask("entrypoint formatting failure not preserved")
+  }
+  let (formatted, _, format_err) = invoke("format")
+  let (good_format, _, _) = invoke("lint:moonbit")
+  guard formatted == 0 && good_format == 0 else {
+    raise InvalidTask(
+      "entrypoint format did not repair source: " + format_err.text(),
+    )
+  }
+  let (cleaned, _, _) = invoke("clean")
+  guard cleaned == 0 &&
+    !@fs.exists(root + "/_build") &&
+    @fs.read_file(root + "/sentinel").text() == "preserve" else {
+    raise InvalidTask("entrypoint clean touched wrong files")
+  }
+  if @env.get_env_var("OS") != Some("Windows_NT") {
+    let outside = @fs.tmpdir(prefix="morphir clean outside ")
+    defer @fs.rmdir(outside, recursive=true)
+    @fs.write_file(outside + "/sentinel", "external")
+    @fs.symlink(target=outside, root + "/_build")
+    let (link_cleaned, _, _) = invoke("clean")
+    guard link_cleaned == 0 &&
+      @fs.read_file(outside + "/sentinel").text() == "external" else {
+      raise InvalidTask("real moon clean followed external _build link")
+    }
+  }
+  @fs.write_file(
+    root + "/mise.toml",
+    "[tasks.fixture]\nrun = \"moon version\"\n",
+  )
+  let (listed, tasks, _) = @process.collect_output(
+    "moonx",
+    [script, "list-tasks"],
+    cwd=root,
+    extra_env={ "MISE_YES": "1", "MISE_TRUSTED_CONFIG_PATHS": root },
+  )
+  guard listed == 0 && tasks.text().contains("fixture") else {
+    raise InvalidTask("entrypoint task listing lost caller cwd")
+  }
+}
+
+///|
+async fn self_test() -> Unit {
+  guard commands("build") ==
+    [
+      ("mise", ["run", "build:wasi"]),
+      ("mise", ["run", "build:browser"]),
+      ("mise", ["run", "build:js"]),
+      ("mise", ["run", "build:native"]),
+    ] else {
+    abort("build ordering changed")
+  }
+  guard commands("test") ==
+    [
+      ("moon", ["test", "--target", "wasm"]),
+      ("moon", ["test", "--target", "wasm-gc"]),
+      ("moon", ["test", "--target", "js"]),
+      ("moon", ["test", "--target", "native"]),
+      ("mise", ["run", "test:cli"]),
+      ("mise", ["run", "test:compiler"]),
+    ] else {
+    abort("test coverage/order changed")
+  }
+  let calls : Array[String] = []
+  let status = try {
+    execute("build", fn(program, args) {
+      calls.push(program + " " + args.join(" "))
+      if calls.length() == 2 {
+        37
+      } else {
+        0
+      }
+    })
+    0
+  } catch {
+    Failed(code) => code
+    _ => -1
+  }
+  guard status == 37 && calls.length() == 2 else {
+    abort("child failure must propagate and stop later tasks")
+  }
+  let formatting = try {
+    execute("lint:moonbit", fn(_, _) { 23 })
+    0
+  } catch {
+    Failed(code) => code
+    _ => -1
+  }
+  guard formatting == 1 else { abort("format diagnostic status changed") }
+  for
+    (task, expected) in [
+      ("build:wasi", [("moon", ["build", "--target", "wasm"])]),
+      ("build:browser", [("moon", ["build", "--target", "wasm-gc"])]),
+      ("build:js", [("moon", ["build", "--target", "js"])]),
+      ("build:native", [("moon", ["build", "--target", "native", "--release"])]),
+      ("format", [("moon", ["fmt"])]),
+      (
+        "lint",
+        [("mise", ["run", "lint:yaml"]), ("mise", ["run", "lint:moonbit"])],
+      ),
+      (
+        "validate",
+        [("mise", ["run", "lint:yaml"]), ("mise", ["run", "validate:packages"])],
+      ),
+      ("list-tasks", [("mise", ["tasks"])]),
+    ] {
+    guard commands(task) == expected else { abort("wrong command for " + task) }
+  }
+  let root = @fs.tmpdir(prefix="morphir repository tasks ")
+  defer @fs.rmdir(root, recursive=true)
+  for
+    dir in [
+      ".github", "node_modules", ".git", "target", "build", "_build", "nested/node_modules",
+      "nested/building",
+    ] {
+    @fs.mkdir(root + "/" + dir, recursive=true)
+    @fs.write_file(root + "/" + dir + "/case.yaml", "key: value\n")
+  }
+  @fs.write_file(root + "/space name.yml", "key: value\n")
+  @fs.write_file(root + "/ignore.txt", "not yaml")
+  let paths : Array[String] = []
+  yaml_files(root, paths)
+  paths.sort_by((a, b) => a.lexical_compare(b))
+  let expected = [
+    root + "/.github/case.yaml",
+    root + "/nested/building/case.yaml",
+    root + "/space name.yml",
+  ]
+  guard paths == expected else { raise InvalidTask("YAML exclusions changed") }
+  let lint_calls : Array[(String, Array[String])] = []
+  lint_yaml(root, fn(program, args) {
+    lint_calls.push((program, args))
+    0
+  })
+  guard lint_calls == [("yamllint", expected)] else {
+    raise InvalidTask("YAML paths were split or changed")
+  }
+  for i in 0..<42 {
+    @fs.write_file(root + "/batch-\{i}.yaml", "key: value\n")
+  }
+  let lint_count = Ref(0)
+  let failed_lint = try {
+    lint_yaml(root, fn(_, _) {
+      lint_count.val += 1
+      19
+    })
+    0
+  } catch {
+    Failed(code) => code
+    _ => -1
+  }
+  guard failed_lint == 19 && lint_count.val == 1 else {
+    raise InvalidTask("YAML failure was swallowed or later batches executed")
+  }
+  let empty = @fs.tmpdir(prefix="morphir empty yaml ")
+  defer @fs.rmdir(empty, recursive=true)
+  lint_yaml(empty, fn(_, _) { abort("empty tree invoked yamllint") })
+  // clean intentionally tolerates moon clean failure and removes stale _build.
+  let code = clean(root, fn(_, _) { 41 })
+  guard code == 0 &&
+    !@fs.exists(root + "/_build") &&
+    @fs.exists(root + "/space name.yml") else {
+    abort("clean failed to remove only its build directory")
+  }
+  if @env.get_env_var("OS") != Some("Windows_NT") {
+    let missing = root + "/missing target"
+    @fs.symlink(target=missing, root + "/_build")
+    ignore(clean(root, fn(_, _) { 0 }))
+    guard (@fs.kind(root + "/_build", follow_symlink=false) catch {
+        _ => @fs.Unknown
+      }) ==
+      @fs.Unknown else {
+      raise InvalidTask("clean retained dangling _build link")
+    }
+    @fs.symlink(target=empty, root + "/_build")
+    @fs.write_file(empty + "/sentinel", "preserve")
+    ignore(clean(root, fn(_, _) { 0 }))
+    guard @fs.read_file(empty + "/sentinel").text() == "preserve" else {
+      raise InvalidTask("clean followed _build link")
+    }
+  }
+  entrypoint_test()
+  println("Repository task self-tests passed.")
+}
+
+///|
+async fn main {
+  try {
+    match @env.args()[1:].to_owned() {
+      ["--self-test"] => self_test()
+      ["lint:yaml", ..] => lint_yaml(".", run)
+      ["clean", ..] => {
+        println("🧹 Cleaning build artifacts...")
+        ignore(clean(".", run))
+        println("✅ Clean complete")
+      }
+      [task, ..] => execute(task, run)
+      _ => raise InvalidTask("missing task")
+    }
+  } catch {
+    Failed(code) => @sys.exit(code)
+    error => {
+      @stdio.stderr.write("\{error}\n")
+      @sys.exit(1)
+    }
+  }
+}

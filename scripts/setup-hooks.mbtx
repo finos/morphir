@@ -1,0 +1,226 @@
+///|
+/// Install the managed Git pre-push dispatcher without replacing custom hooks.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/core/env",
+}
+
+///|
+let dispatcher =
+  #|#!/bin/sh
+  #|# morphir-moonbit managed pre-push dispatcher v1
+  #|exec mise exec -- moonx scripts/pre-push.mbtx "$@"
+  #|
+
+///|
+/// Exact legacy signature: user additions must never be overwritten.
+let legacy_dispatcher =
+  #|#!/usr/bin/env bash
+  #|# Pre-push hook: Runs lint, format check, and validation before allowing push
+  #|set -e
+  #|
+  #|echo ""
+  #|echo "🔍 Running pre-push validation checks..."
+  #|echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  #|echo ""
+  #|
+  #|# Check if mise is available
+  #|if ! command -v mise &> /dev/null; then
+  #|    echo "❌ Error: mise is not installed or not in PATH"
+  #|    echo "   Please install mise: https://mise.jdx.dev/"
+  #|    exit 1
+  #|fi
+  #|
+  #|# Run linting
+  #|echo "📝 Running lint checks..."
+  #|if ! mise run lint; then
+  #|    echo ""
+  #|    echo "❌ Linting failed! Please fix the issues and try again."
+  #|    echo "   Run: mise run lint"
+  #|    exit 1
+  #|fi
+  #|
+  #|# Run format check
+  #|echo ""
+  #|echo "✨ Checking code formatting..."
+  #|if ! mise run lint:moonbit; then
+  #|    echo ""
+  #|    echo "❌ Format check failed! Please format your code and try again."
+  #|    echo "   Run: mise run format"
+  #|    exit 1
+  #|fi
+  #|
+  #|# Run validation
+  #|echo ""
+  #|echo "🔍 Running validation checks..."
+  #|if ! mise run validate; then
+  #|    echo ""
+  #|    echo "❌ Validation failed! Please fix the issues and try again."
+  #|    echo "   Run: mise run validate"
+  #|    exit 1
+  #|fi
+  #|
+  #|echo ""
+  #|echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  #|echo "✅ All pre-push checks passed! Proceeding with push..."
+  #|echo ""
+
+///|
+async fn install(root : String, skip~ : Bool = false) -> Unit {
+  if skip {
+    return
+  }
+  let (status, out, _) = @process.collect_output(
+    "git",
+    ["rev-parse", "--path-format=absolute", "--git-path", "hooks"],
+    cwd=root,
+  )
+  if status != 0 {
+    return
+  }
+  let directory = out.text().trim().to_owned()
+  if !@fs.exists(directory) {
+    @fs.mkdir(directory, recursive=true)
+  }
+  let hook = directory + "/pre-push"
+  let kind = @fs.kind(hook, follow_symlink=false) catch { _ => @fs.Unknown }
+  if kind != @fs.Unknown {
+    if kind != @fs.Regular {
+      println("setup:hooks: preserving custom hook at \{hook}")
+      return
+    }
+    let old = @fs.read_file(hook).text()
+    if old == dispatcher {
+      if @env.get_env_var("OS") != Some("Windows_NT") {
+        @fs.chmod(hook, 0o755)
+      }
+      return
+    }
+    let legacy = old.replace(old="\r\n", new="\n").trim_end() ==
+      legacy_dispatcher.trim_end()
+    if !legacy {
+      println("setup:hooks: preserving custom hook at \{hook}")
+      return
+    }
+  }
+  println("🔧 Setting up git hooks...")
+  @fs.write_file(hook, dispatcher)
+  if @env.get_env_var("OS") != Some("Windows_NT") {
+    @fs.chmod(hook, 0o755)
+  }
+  println("✅ Git hooks installed successfully!")
+  println("")
+  println("Pre-push hook will now run the following checks before every push:")
+  println("  • Linting (mise run lint)")
+  println("  • Format checking (mise run lint:moonbit)")
+  println("  • Validation (mise run validate)")
+  println("")
+  println("To bypass the hook (not recommended), use: git push --no-verify")
+}
+
+///|
+async fn git(root : String, args : Array[String]) -> String {
+  let (status, out, err) = @process.collect_output("git", args, cwd=root)
+  guard status == 0 else { fail(err.text()) }
+  out.text().trim().to_owned()
+}
+
+///|
+async fn self_test() -> Unit {
+  let fixture = @fs.tmpdir(prefix="morphir-hooks-")
+  defer @fs.rmdir(fixture, recursive=true)
+  let repo = fixture + "/repo's space"
+  @fs.mkdir(repo)
+  install(repo) // Non-repositories are harmless.
+  ignore(git(repo, ["init", "-q"]))
+  let hook = repo + "/.git/hooks/pre-push"
+  install(repo, skip=true)
+  guard !@fs.exists(hook) else { fail("CI installed a hook") }
+  install(repo)
+  guard @fs.read_file(hook).text() == dispatcher else {
+    fail("Dispatcher missing")
+  }
+  let before = @fs.mtime(hook)
+  install(repo)
+  guard @fs.mtime(hook) == before else { fail("Setup is not idempotent") }
+  if @env.get_env_var("OS") != Some("Windows_NT") {
+    @fs.chmod(hook, 0o644)
+    install(repo)
+    guard @fs.can_execute(hook) else {
+      fail("Hook executable mode not repaired")
+    }
+  }
+  // Linked worktrees share the hook, and Git resolves custom hook paths itself.
+  let linked = fixture + "/linked worktree"
+  // An orphan worktree exercises the shared hook path without creating Git
+  // objects, whose read-only attribute prevents portable Windows temp cleanup.
+  ignore(
+    git(repo, [
+      "worktree", "add", "--orphan", "-b", "hook-fixture", "-q", linked,
+    ]),
+  )
+  let objects = git(repo, ["count-objects", "-v"]).replace(old="\r\n", new="\n")
+  guard objects.has_prefix("count: 0\n") && objects.contains("\nin-pack: 0\n") else {
+    fail("Hook fixture created read-only Git objects")
+  }
+  install(linked)
+  guard @fs.read_file(hook).text() == dispatcher else {
+    fail("Linked worktree hook differs")
+  }
+  let custom = fixture + "/custom's hooks"
+  @fs.mkdir(custom)
+  ignore(git(repo, ["config", "core.hooksPath", custom]))
+  @fs.write_file(custom + "/pre-push", "#!/bin/sh\n# unrelated hook\n")
+  install(linked)
+  guard @fs.read_file(custom + "/pre-push").text().contains("unrelated hook") else {
+    fail("Custom hook overwritten")
+  }
+  @fs.remove(custom + "/pre-push")
+  install(linked)
+  guard @fs.read_file(custom + "/pre-push").text() == dispatcher else {
+    fail("Configured hooksPath ignored")
+  }
+  if @env.get_env_var("OS") != Some("Windows_NT") {
+    @fs.remove(custom + "/pre-push")
+    let target = custom + "/missing custom target"
+    @fs.symlink(target~, custom + "/pre-push")
+    install(repo)
+    guard !@fs.exists(target) &&
+      @fs.kind(custom + "/pre-push", follow_symlink=false) == @fs.SymLink else {
+      fail("Dangling custom hook symlink overwritten")
+    }
+    @fs.remove(custom + "/pre-push")
+  }
+  // Customized legacy hooks remain custom, even if they retain the old header.
+  let customized = legacy_dispatcher + "\n# Custom step\nexit 7\n"
+  @fs.write_file(custom + "/pre-push", customized)
+  install(repo)
+  guard @fs.read_file(custom + "/pre-push").text() == customized else {
+    fail("Customized legacy hook overwritten")
+  }
+  // Exact legacy content upgrades on Windows line endings too.
+  @fs.write_file(
+    custom + "/pre-push",
+    legacy_dispatcher.replace(old="\n", new="\r\n"),
+  )
+  install(repo)
+  guard @fs.read_file(custom + "/pre-push").text() == dispatcher else {
+    fail("Legacy managed hook not upgraded")
+  }
+  println("setup:hooks: Git/worktree/idempotence/custom-hook tests passed")
+}
+
+///|
+async fn main {
+  if @env.args() is [_, "--self-test"] {
+    self_test()
+    return
+  }
+  install(
+    ".",
+    skip=@env.get_env_var("CI") == Some("true") ||
+      @env.get_env_var("GITHUB_ACTIONS") == Some("true"),
+  )
+}

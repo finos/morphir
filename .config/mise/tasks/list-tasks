@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# mise description="List all available mise tasks"
-set -euo pipefail
-
-echo "📋 Available mise tasks:"
-echo ""
-mise tasks

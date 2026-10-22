@@ -120,55 +120,23 @@ compiler/core pair.
 
 ## Task Structure
 
-Tasks are organized in the `.config/mise/tasks/` directory:
+Task names are declared in `.config/mise/config.toml`. Their orchestration uses
+pinned standalone MoonBit scripts under `scripts/`:
 
-```
-.config/mise/tasks/
-├── lint/
-│   ├── _default           # Main lint task (bash)
-│   ├── _default.ps1       # Main lint task (PowerShell)
-│   ├── yaml               # YAML linting (bash)
-│   ├── yaml.ps1           # YAML linting (PowerShell)
-│   ├── moonbit            # Moonbit format check (bash)
-│   └── moonbit.ps1        # Moonbit format check (PowerShell)
-├── format/
-│   ├── _default           # Format task (bash)
-│   └── _default.ps1       # Format task (PowerShell)
-├── build/
-│   ├── _default           # Build all (bash)
-│   ├── _default.ps1       # Build all (PowerShell)
-│   ├── wasi               # WASI build (bash)
-│   ├── wasi.ps1           # WASI build (PowerShell)
-│   ├── browser            # Browser build (bash)
-│   ├── browser.ps1        # Browser build (PowerShell)
-│   ├── js                # JavaScript build (bash)
-│   ├── js.ps1            # JavaScript build (PowerShell)
-│   ├── native            # Native release build (bash)
-│   └── native.ps1        # Native release build (PowerShell)
-├── test/
-│   ├── _default           # Test task (bash)
-│   ├── _default.ps1       # Test task (PowerShell)
-│   ├── cli                # CLI smoke tests (bash)
-│   └── cli.ps1            # CLI smoke tests (PowerShell)
-├── validate/
-│   ├── _default           # Run all validations (bash)
-│   └── _default.ps1       # Run all validations (PowerShell)
-├── check                  # Run all checks (bash)
-├── check.ps1              # Run all checks (PowerShell)
-├── clean                  # Clean artifacts (bash)
-├── clean.ps1              # Clean artifacts (PowerShell)
-├── setup/
-│   ├── hooks              # Setup git hooks (bash)
-│   └── hooks.ps1          # Setup git hooks (PowerShell)
-├── beads/
-│   ├── plan               # Run bd-plan from finos/morphir (bash)
-│   └── plan.ps1           # Run bd-plan from finos/morphir (PowerShell)
-├── list-tasks             # List all tasks (bash)
-└── list-tasks.ps1         # List all tasks (PowerShell)
-```
+| Script | Task names |
+|--------|------------|
+| `repository-tasks.mbtx` | `build`, `build:wasi`, `build:browser`, `build:js`, `build:native`, `test`, `format`, `lint`, `lint:yaml`, `lint:moonbit`, `validate`, `clean`, `list-tasks` |
+| `refresh-ir-fixtures.mbtx` | `ir:fixtures`, including optional `--morphir` and `--morphir-elm` checkout paths |
+| `setup-hooks.mbtx` / `pre-push.mbtx` | `setup:hooks` and Git pre-push validation |
+| `beads-plan.mbtx` | `beads:plan`, acquiring the pinned upstream helper with curl and invoking it with Bun |
+| `check.mbtx` | `check` |
+| `validate-packages.mbtx` | `validate:packages` |
 
-Newer tasks are MoonBit scripts in `scripts/`, declared in `.config/mise/config.toml`. For example,
-`validate:packages` runs `moonx scripts/validate-packages.mbtx`.
+The Bash/PowerShell task pairs and Python fixture generator have been removed.
+Toolchain installation still uses the small bootstrap in `tools/`; application
+compilers and tests retain their own languages. Run `mise run test:ci` for script
+formatting and automation regression checks. The existing qualification setup matrix
+also runs those regressions on Linux x64/ARM64, macOS and Windows.
 
 ## Common Workflows
 
