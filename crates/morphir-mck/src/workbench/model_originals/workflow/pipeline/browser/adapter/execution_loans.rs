@@ -112,6 +112,7 @@ impl ExecutionChild {
         self.scope.validate_parent(global).map_err(source)?;
         self.identity.validate(&self.scope).map_err(source)
     }
+    #[cfg(test)]
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn revoke(
         &mut self,
     ) -> BrowserSourceTerminal {
@@ -121,6 +122,14 @@ impl ExecutionChild {
         &self,
     ) -> BrowserSourceTerminal {
         self.scope.terminal()
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn revoke_with_capture<
+        R,
+    >(
+        &mut self,
+        capture: impl FnOnce() -> R,
+    ) -> (R, BrowserSourceTerminal) {
+        self.scope.revoke_with_capture(capture)
     }
 }
 impl<'a, 'owners> BrowserLoans<'a, 'owners> {

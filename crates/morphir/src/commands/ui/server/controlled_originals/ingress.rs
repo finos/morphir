@@ -484,7 +484,7 @@ impl BoundControlledUiHost {
         assets: Option<assets::HostAssets>,
         loans: &mut BrowserLoans<'_, '_>,
         limits: DocumentIngressLimits,
-        producer: Option<morphir_mck::workbench::BrowserDocumentProducer>,
+        mut producer: Option<morphir_mck::workbench::BrowserDocumentProducer>,
         end: Instant,
     ) -> Result<Self, DocumentSetupFault> {
         let slots = limits.socket_tasks;
@@ -533,10 +533,25 @@ impl BoundControlledUiHost {
         } else {
             DocumentStorage::Local
         };
+        // The genuine engine-issued producer binds this port once, from the
+        // SAME stimulus/loans/fixed end, before auth entropy or TCP effects.
+        let transcript = producer
+            .as_mut()
+            .map(|producer| producer.prepare_host_transcript(loans, &stimulus, end))
+            .transpose()
+            .map_err(ControlledHostSetupFault::TranscriptPreparation)?;
         let document = DocumentIngress::prepare(&stimulus, loans, limits, storage, end)?;
-        let mut host = Self::bind_inner(stimulus, assets, Some(document), slots, loans, end)
-            .await
-            .map_err(DocumentSetupFault::Host)?;
+        let mut host = Self::bind_inner_with_transcript(
+            stimulus,
+            assets,
+            Some(document),
+            transcript,
+            slots,
+            loans,
+            end,
+        )
+        .await
+        .map_err(DocumentSetupFault::Host)?;
         host.document_decoder = decoder;
         host.document_producer = producer;
         Ok(host)

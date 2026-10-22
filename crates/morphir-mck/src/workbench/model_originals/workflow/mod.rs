@@ -1,4 +1,12 @@
 //! Private workflow operand compiler, not registered capability or authority.
+pub use pipeline::{
+    BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,
+    BrowserHostPeerFinish, BrowserHostPollState, BrowserHostReadOutcome, BrowserHostReadPending,
+    BrowserHostReadResult, BrowserHostSendOutcome, BrowserHostTranscript,
+    BrowserHostTranscriptFault, BrowserHostTranscriptPrepareError, BrowserHostTranscriptRecord,
+    BrowserHostTranscriptSnapshot, BrowserHostTranscriptTerminal, BrowserIssuedHostsTerminal,
+    BrowserManifestPending, BrowserReplyPending,
+};
 mod decode;
 use decode::*;
 pub use pipeline::{

@@ -176,6 +176,30 @@ impl BrowserInvocationScope {
         propagate_fault(&mut parent, &child);
         child.terminal()
     }
+    /// Engine-only synchronous cut: parent then child remain locked while the
+    /// caller inspects retained journals, and revocation occurs before either
+    /// source gate can reopen. Capture must not reenter source/loan operations.
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn revoke_with_capture<
+        R,
+    >(
+        &mut self,
+        capture: impl FnOnce() -> R,
+    ) -> (R, ScopeTerminal) {
+        let mut parent = self.parent.lock();
+        let mut child = self.control.inner.lock();
+        // Preserve the original unwind without leaving an active child or
+        // poisoning either source mutex merely because capture itself unwound.
+        let captured = std::panic::catch_unwind(std::panic::AssertUnwindSafe(capture));
+        child.revoke(None);
+        propagate_fault(&mut parent, &child);
+        let terminal = child.terminal();
+        drop(child);
+        drop(parent);
+        match captured {
+            Ok(captured) => (captured, terminal),
+            Err(original) => std::panic::resume_unwind(original),
+        }
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn terminal(
         &self,
     ) -> ScopeTerminal {

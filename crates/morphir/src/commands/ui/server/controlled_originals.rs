@@ -2,6 +2,7 @@
 //! transport. No provider, server implementation or client qualification claim.
 mod assets;
 mod joined;
+mod transcript;
 pub(in crate::commands::ui) use joined::{
     ControlledHostFinish, ControlledHostFinishRefusal, ControlledHostJoined,
 };
@@ -43,6 +44,7 @@ pub(in crate::commands::ui) enum ControlledHostFault {
     Listener,
     Socket(SocketCleanupError),
     Document(ingress::DocumentIngressFault),
+    Transcript(morphir_mck::workbench::BrowserHostTranscriptFault),
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::commands::ui) enum ControlledHostShutdown {
@@ -63,6 +65,7 @@ pub(in crate::commands::ui) enum ControlledHostSetupFault {
     Registry(FixedSocketSetupFault),
     Source,
     DocumentLimits,
+    TranscriptPreparation(morphir_mck::workbench::BrowserHostTranscriptPrepareError),
 }
 type ServeFuture = Pin<Box<dyn Future<Output = Result<(), CliError>> + Send>>;
 enum ListenerOwner {
@@ -106,6 +109,7 @@ struct HostState {
     actual_peer: Mutex<Option<ActualPeerFault>>,
     assets: Option<assets::HostAssets>,
     document: Option<ingress::DocumentIngress>,
+    transcript: Option<morphir_mck::workbench::BrowserHostTranscript>,
 }
 impl HostState {
     fn fault(&self, cause: ControlledHostFault) {
@@ -199,6 +203,18 @@ impl BoundControlledUiHost {
         stimulus: ControlledHostStimulus,
         assets: Option<assets::HostAssets>,
         document: Option<ingress::DocumentIngress>,
+        socket_tasks: usize,
+        loans: &mut BrowserLoans<'_, '_>,
+        end: Instant,
+    ) -> Result<Self, ControlledHostSetupFault> {
+        Self::bind_inner_with_transcript(stimulus, assets, document, None, socket_tasks, loans, end)
+            .await
+    }
+    async fn bind_inner_with_transcript(
+        stimulus: ControlledHostStimulus,
+        assets: Option<assets::HostAssets>,
+        document: Option<ingress::DocumentIngress>,
+        transcript: Option<morphir_mck::workbench::BrowserHostTranscript>,
         socket_tasks: usize,
         loans: &mut BrowserLoans<'_, '_>,
         end: Instant,
@@ -315,6 +331,7 @@ impl BoundControlledUiHost {
             actual_peer: Mutex::new(None),
             assets,
             document,
+            transcript,
         });
         let router = Router::new()
             .route("/launch", get(launch_route))
@@ -496,6 +513,9 @@ async fn manifest_route(State(state): State<Arc<HostState>>, headers: HeaderMap)
     if !state.authenticated(&headers) {
         return unauthorized();
     }
+    if state.transcript.is_some() {
+        return transcript::manifest_response(&state);
+    }
     let result = state.source.while_source_active(|| {
         if Instant::now() >= state.end {
             return Err(ControlledHostFault::End);
@@ -606,6 +626,10 @@ async fn source_polled<F: Future>(
     .map_err(|_| SourcePollFault::End)?
 }
 async fn serve_peer(mut socket: WebSocket, state: Arc<HostState>) {
+    if state.transcript.is_some() {
+        transcript::serve_peer(socket, state).await;
+        return;
+    }
     let delivery = match state.delivery.lock() {
         Ok(mut delivery) => delivery
             .take_peer()

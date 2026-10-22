@@ -7,6 +7,14 @@ use serde_json::Value;
 use std::{collections::BTreeMap, fmt, sync::OnceLock};
 use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::UnicodeNormalization;
+pub use workflow::{
+    BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,
+    BrowserHostPeerFinish, BrowserHostPollState, BrowserHostReadOutcome, BrowserHostReadPending,
+    BrowserHostReadResult, BrowserHostSendOutcome, BrowserHostTranscript,
+    BrowserHostTranscriptFault, BrowserHostTranscriptPrepareError, BrowserHostTranscriptRecord,
+    BrowserHostTranscriptSnapshot, BrowserHostTranscriptTerminal, BrowserIssuedHostsTerminal,
+    BrowserManifestPending, BrowserReplyPending,
+};
 
 mod inventory;
 pub use inventory::{Inventory, InventoryEntry, InventoryError, InventorySha256};

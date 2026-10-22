@@ -1,4 +1,12 @@
 //! Workbench codec cases with parent-owned expectations and explicit adapters.
+pub use model_originals::{
+    BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,
+    BrowserHostPeerFinish, BrowserHostPollState, BrowserHostReadOutcome, BrowserHostReadPending,
+    BrowserHostReadResult, BrowserHostSendOutcome, BrowserHostTranscript,
+    BrowserHostTranscriptFault, BrowserHostTranscriptPrepareError, BrowserHostTranscriptRecord,
+    BrowserHostTranscriptSnapshot, BrowserHostTranscriptTerminal, BrowserIssuedHostsTerminal,
+    BrowserManifestPending, BrowserReplyPending,
+};
 
 mod artifact_client;
 mod artifacts;

@@ -6,7 +6,8 @@ use super::{
         execution_loans::{ExecutionChild, PreparedBrowserClientRun},
     },
     collection::{
-        BrowserCollectionTerminal, BrowserDocumentBounds, BrowserRowCollection, BrowserRowProducer,
+        BrowserCollectionTerminal, BrowserDocumentBounds, BrowserIssuedHostsTerminal,
+        BrowserRowCollection, BrowserRowProducer,
     },
     inputs::BrowserOwnerLoans,
     source_scope::BrowserSourceScope,
@@ -116,6 +117,7 @@ pub struct BrowserRowAttempt<E> {
     callback: BrowserAdapterCompletion<E>,
     child: BrowserSourceTerminal,
     owner_failure: Option<BrowserInputError>,
+    issued_hosts: BrowserIssuedHostsTerminal,
     collection: BrowserRowCollection,
 }
 impl<E> BrowserRowAttempt<E> {
@@ -131,6 +133,11 @@ impl<E> BrowserRowAttempt<E> {
     pub fn collection(&self) -> &BrowserRowCollection {
         &self.collection
     }
+    /// Captured at the actual callback/revocation boundary. Later DATA-only
+    /// completion may enrich the journal but cannot heal this earlier outcome.
+    pub fn issued_hosts_terminal(&self) -> BrowserIssuedHostsTerminal {
+        self.issued_hosts
+    }
     pub fn collection_complete(&self) -> bool {
         matches!(
             self.collection.terminal(),
@@ -141,6 +148,10 @@ impl<E> BrowserRowAttempt<E> {
         !matches!(self.callback, BrowserAdapterCompletion::Returned(Ok(())))
             || self.child != BrowserSourceTerminal::Quiescent
             || self.owner_failure.is_some()
+            || matches!(
+                self.issued_hosts,
+                BrowserIssuedHostsTerminal::Incomplete { .. }
+            )
             || !self.collection_complete()
     }
 }
@@ -372,9 +383,15 @@ pub(super) fn with_prepared_browser_execution<R, E>(
                                     Err(BrowserRowSetupFailure::UnsupportedRole)
                                 }
                             };
-                            // Revoke on every normal return, including setup
-                            // refusal and a caught unwind, before inspection.
-                            let terminal = child.revoke();
+                            // Cut retained host DATA under SAME parent→child
+                            // source locks, then revoke before those gates can
+                            // reopen. Late pending outcomes may still append
+                            // DATA, but cannot enter this immutable attempt cut.
+                            let (issued_hosts, terminal) =
+                                child.revoke_with_capture(|| match &result {
+                                    Ok((_, collection)) => collection.issued_hosts_terminal(),
+                                    Err(_) => BrowserIssuedHostsTerminal::NoneIssued,
+                                });
                             match result {
                                 Ok((callback, collection)) => {
                                     // Check cumulative owners independently of
@@ -386,6 +403,7 @@ pub(super) fn with_prepared_browser_execution<R, E>(
                                         callback,
                                         child: terminal,
                                         owner_failure,
+                                        issued_hosts,
                                         collection,
                                     })
                                 }

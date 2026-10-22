@@ -1,4 +1,6 @@
 //! Engine-retained document DATA. Native joins and physical actions are separate.
+#[path = "collection/transcript.rs"]
+mod transcript;
 use super::super::installed::observation::InstalledObservationFault;
 use super::{
     adapter::execution_loans::{
@@ -12,6 +14,7 @@ use std::{
     sync::{Arc, Mutex, MutexGuard, atomic::AtomicUsize},
     time::Instant,
 };
+pub use transcript::*;
 
 /// Explicit dimensions paid from the existing policy owners, never a new grant.
 #[derive(Debug, Clone, Copy)]
@@ -96,6 +99,7 @@ struct Journal {
     records: Vec<RetainedRecord>,
     stream: Stream,
     last_fact: u64,
+    host: transcript::HostSlot,
 }
 enum Slot {
     Unissued(BrowserOpeningPosition),
@@ -197,6 +201,13 @@ impl BrowserRowCollection {
         // Both traversals spend the SAME source input owners. There is no
         // caller-supplied action count, index or replacement collection.
         let count = run.openings(loans)?.count();
+        // Prepay the engine's one return-boundary host-state inspection before
+        // any callback can issue a host. Later readonly inspection grants no
+        // effect and cannot repair this captured attempt classification.
+        let terminal_work = count
+            .checked_mul(size_of::<Slot>() + size_of::<transcript::HostSlot>())
+            .ok_or_else(|| refuse(loans, InstalledObservationFault::SizeOverflow))?;
+        loans.reserve_controlled_host_storage(0, 0, terminal_work)?;
         let mut slots = funded_vec(loans, count)?;
         for opening in run.openings(loans)? {
             slots.push(Slot::Unissued(run.validate_opening(&opening, loans)?));
@@ -333,6 +344,7 @@ impl BrowserRowProducer<'_> {
             records,
             stream: Stream::Open,
             last_fact: 0,
+            host: transcript::HostSlot::Unissued,
         }));
         let action = position.get();
         // Store the engine's owner before handing the only producer to native.

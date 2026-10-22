@@ -1,4 +1,12 @@
 //! Private browser observation support. No browser execution or source grant.
+pub use collection::{
+    BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,
+    BrowserHostPeerFinish, BrowserHostPollState, BrowserHostReadOutcome, BrowserHostReadPending,
+    BrowserHostReadResult, BrowserHostSendOutcome, BrowserHostTranscript,
+    BrowserHostTranscriptFault, BrowserHostTranscriptPrepareError, BrowserHostTranscriptRecord,
+    BrowserHostTranscriptSnapshot, BrowserHostTranscriptTerminal, BrowserIssuedHostsTerminal,
+    BrowserManifestPending, BrowserReplyPending,
+};
 mod adapter;
 mod archive_download;
 mod collection;

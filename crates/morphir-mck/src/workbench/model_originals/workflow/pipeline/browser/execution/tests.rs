@@ -1,6 +1,6 @@
 //! Genuine reviewed compiler rows and cumulative owners. No physical browser
 //! execution, product provenance, checker verdict or profile qualification.
-use super::super::{adapter::execution_loans::*, collection::*, *};
+use super::super::{collection::*, *};
 use super::*;
 use crate::{
     json::strict::Document,
@@ -297,6 +297,193 @@ fn browser_execution_engine_06_ignored_owner_refusal_belongs_to_same_attempt() {
             for row in &inventory.rows()[1..] {
                 assert_eq!(row.not_attempted_after(), Some(0));
             }
+        },
+    )
+    .unwrap();
+    assert_eq!(callbacks, 1);
+}
+
+#[test]
+fn browser_execution_engine_07_ignored_host_failure_belongs_to_same_attempt() {
+    let (_root, source, policy, receiving) = fixture();
+    let fact = frame(
+        1,
+        1,
+        br#"{"sequence":1,"kind":"model-closed","actual":{"workspace":"literal","opening":0}}"#,
+    );
+    let document_end = frame(2, 2, br#"{"lastSequence":1,"observer":{"kind":"closed"}}"#);
+    let mut callbacks = 0;
+    with_prepared_browser_execution(
+        &source,
+        &policy,
+        &receiving,
+        BrowserDocumentBounds::new(2, 4096, 1024).unwrap(),
+        |run, loans, row| {
+            callbacks += 1;
+            if callbacks > 1 {
+                return Ok::<_, ()>(());
+            }
+            let opening = run.openings(loans).unwrap().next().unwrap();
+            let mut stimulus = run.prepare_controlled_host(&opening, loans).unwrap();
+            let mut endpoint = row.issue(run, &opening, loans).unwrap();
+            let actual_end = std::time::Instant::now() + std::time::Duration::from_secs(3);
+            let port = endpoint
+                .prepare_host_transcript(loans, &stimulus, actual_end)
+                .unwrap();
+            port.peer_opened().unwrap();
+            let actual = vec![b'x'; stimulus.requests().unwrap()[0].len() + 1];
+            assert!(
+                port.begin_read()
+                    .unwrap()
+                    .finish(BrowserHostReadOutcome::Text(&actual))
+                    .is_err()
+            );
+            // This is a genuine retained refusal, not an adapter-supplied verdict.
+            port.peer_finished(BrowserHostPeerFinish::Failed).unwrap();
+            drop(port);
+            // No physical host was created by this core control. Retirement is
+            // bookkeeping only; the test does not assert a network/driver join.
+            stimulus.retire_after_join_in_place().unwrap();
+            endpoint.record_frame(loans, &fact, actual_end).unwrap();
+            endpoint
+                .record_frame(loans, &document_end, actual_end)
+                .unwrap();
+            Ok::<_, ()>(())
+        },
+        |inventory, _| {
+            assert_eq!(
+                inventory.first_failed_row(),
+                Some(0),
+                "the retained host refusal belongs to this callback, even if it returns Ok"
+            );
+            let attempt = inventory.rows()[0].attempt().unwrap();
+            assert!(matches!(
+                attempt.callback(),
+                BrowserAdapterCompletion::Returned(Ok(()))
+            ));
+            assert_eq!(attempt.child_terminal(), BrowserSourceTerminal::Quiescent);
+            assert!(attempt.owner_failure().is_none());
+            assert!(attempt.collection_complete());
+            let document = attempt.collection().document(0).unwrap();
+            assert_eq!(document.record_count(), 2);
+            let host = document.host_transcript().unwrap();
+            assert!(matches!(
+                attempt.issued_hosts_terminal(),
+                BrowserIssuedHostsTerminal::Incomplete {
+                    first: Some(BrowserHostTranscriptFault::Capacity),
+                    ..
+                }
+            ));
+            assert_eq!(host.first(), Some(BrowserHostTranscriptFault::Capacity));
+            assert!(matches!(
+                host.event(1).unwrap().fact(),
+                BrowserHostFact::TextRequestOverBound { .. }
+            ));
+            for later in &inventory.rows()[1..] {
+                assert_eq!(later.not_attempted_after(), Some(0));
+            }
+        },
+    )
+    .unwrap();
+    assert_eq!(callbacks, 1);
+}
+
+#[test]
+fn browser_execution_engine_08_late_actual_completion_cannot_heal_captured_incomplete() {
+    let (_root, source, policy, receiving) = fixture();
+    let fact = frame(
+        1,
+        1,
+        br#"{"sequence":1,"kind":"model-closed","actual":{"workspace":"literal","opening":0}}"#,
+    );
+    let document_end = frame(2, 2, br#"{"lastSequence":1,"observer":{"kind":"closed"}}"#);
+    let held = std::cell::RefCell::new(None);
+    let mut callbacks = 0;
+    with_prepared_browser_execution(
+        &source,
+        &policy,
+        &receiving,
+        BrowserDocumentBounds::new(2, 4096, 1024).unwrap(),
+        |run, loans, row| {
+            callbacks += 1;
+            if callbacks > 1 {
+                return Ok::<_, ()>(());
+            }
+            let opening = run.openings(loans).unwrap().next().unwrap();
+            let mut stimulus = run.prepare_controlled_host(&opening, loans).unwrap();
+            let mut endpoint = row.issue(run, &opening, loans).unwrap();
+            let actual_end = std::time::Instant::now() + std::time::Duration::from_secs(3);
+            let port = endpoint
+                .prepare_host_transcript(loans, &stimulus, actual_end)
+                .unwrap();
+            let manifest = port.begin_manifest().unwrap();
+            port.peer_opened().unwrap();
+            for (request, reply) in stimulus.requests().unwrap().iter().zip(stimulus.frames()) {
+                port.begin_read()
+                    .unwrap()
+                    .finish(BrowserHostReadOutcome::Text(request.as_bytes()))
+                    .unwrap();
+                port.begin_reply(reply.as_bytes())
+                    .unwrap()
+                    .finish(BrowserHostSendOutcome::Returned)
+                    .unwrap();
+            }
+            port.peer_finished(BrowserHostPeerFinish::ScriptFinished)
+                .unwrap();
+            held.replace(Some((
+                port,
+                manifest,
+                stimulus.manifest_body().as_bytes().to_vec(),
+            )));
+            // No physical host exists in this component control. Explicit
+            // binding retirement supplies bookkeeping, never physical proof.
+            stimulus.retire_after_join_in_place().unwrap();
+            endpoint.record_frame(loans, &fact, actual_end).unwrap();
+            endpoint
+                .record_frame(loans, &document_end, actual_end)
+                .unwrap();
+            Ok::<_, ()>(())
+        },
+        |inventory, _| {
+            assert_eq!(inventory.first_failed_row(), Some(0));
+            let attempt = inventory.rows()[0].attempt().unwrap();
+            assert!(matches!(
+                attempt.callback(),
+                BrowserAdapterCompletion::Returned(Ok(()))
+            ));
+            assert!(attempt.collection_complete());
+            assert!(attempt.owner_failure().is_none());
+            assert_eq!(attempt.child_terminal(), BrowserSourceTerminal::Quiescent);
+            let captured = attempt.issued_hosts_terminal();
+            assert!(matches!(
+                captured,
+                BrowserIssuedHostsTerminal::Incomplete {
+                    hosts: 1,
+                    unfinished: 1,
+                    pending: 1,
+                    first: None
+                }
+            ));
+            {
+                let document = attempt.collection().document(0).unwrap();
+                let host = document.host_transcript().unwrap();
+                assert_eq!(host.pending(), 1);
+                assert_eq!(host.first(), None);
+            }
+            let (port, pending, body) = held.borrow_mut().take().unwrap();
+            // Commit an already-issued actual outcome after revocation. This
+            // operation is DATA-only and opens no new source/host operation.
+            pending.prepared(200, &body).unwrap();
+            assert!(matches!(
+                attempt.collection().issued_hosts_terminal(),
+                BrowserIssuedHostsTerminal::AllOperationsReported { hosts: 1, .. }
+            ));
+            assert_eq!(attempt.issued_hosts_terminal(), captured);
+            assert_eq!(inventory.first_failed_row(), Some(0));
+            for row in &inventory.rows()[1..] {
+                assert_eq!(row.not_attempted_after(), Some(0));
+            }
+            drop(port);
         },
     )
     .unwrap();

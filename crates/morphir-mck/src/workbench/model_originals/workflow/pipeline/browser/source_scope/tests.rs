@@ -270,3 +270,66 @@ fn browser_invocation_scope_08_counter_overflow_refuses_before_either_debt_chang
         }
     );
 }
+
+#[test]
+fn browser_invocation_scope_09_capture_holds_same_parent_child_until_revocation() {
+    let (mut owners, mut receiving) = owners(8192, 100, 8192);
+    let mut loans = BrowserOwnerLoans::new(&mut owners, &mut receiving);
+    let source = BrowserSourceScope::prepare(&mut loans).unwrap();
+    let mut child = source.prepare_invocation(&mut loans).unwrap();
+    let probe = child.identity(&mut loans).unwrap();
+    let inspect = child.identity(&mut loans).unwrap();
+    let barrier = std::sync::Barrier::new(2);
+    std::thread::scope(|threads| {
+        let barrier = &barrier;
+        let (started, started_rx) = std::sync::mpsc::channel();
+        let (finished, finished_rx) = std::sync::mpsc::channel();
+        let worker = threads.spawn(move || {
+            barrier.wait();
+            started.send(()).unwrap();
+            finished.send(probe.while_active(|| 17)).unwrap();
+        });
+        let (captured, terminal) = child.revoke_with_capture(|| {
+            // Inspect actual issued controls, never call a nested source gate.
+            assert!(matches!(
+                source.control.state.try_lock(),
+                Err(std::sync::TryLockError::WouldBlock)
+            ));
+            let actual_child = inspect.child.upgrade().unwrap();
+            assert!(matches!(
+                actual_child.inner.state.try_lock(),
+                Err(std::sync::TryLockError::WouldBlock)
+            ));
+            barrier.wait();
+            started_rx.recv().unwrap();
+            assert!(matches!(
+                finished_rx.try_recv(),
+                Err(std::sync::mpsc::TryRecvError::Empty)
+            ));
+            71
+        });
+        assert_eq!(captured, 71);
+        assert_eq!(terminal, ScopeTerminal::Quiescent);
+        assert_eq!(finished_rx.recv().unwrap(), Err(ScopeFault::Revoked));
+        worker.join().unwrap();
+    });
+    assert_eq!(inspect.while_active(|| ()), Err(ScopeFault::Revoked));
+    assert_eq!(source.ready(), Ok(()));
+}
+
+#[test]
+fn browser_invocation_scope_10_capture_panic_revokes_without_losing_original_payload() {
+    let (mut owners, mut receiving) = owners(8192, 100, 8192);
+    let mut loans = BrowserOwnerLoans::new(&mut owners, &mut receiving);
+    let source = BrowserSourceScope::prepare(&mut loans).unwrap();
+    let mut child = source.prepare_invocation(&mut loans).unwrap();
+    let identity = child.identity(&mut loans).unwrap();
+    let original = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        child.revoke_with_capture(|| std::panic::panic_any(619_u32))
+    }))
+    .unwrap_err();
+    assert_eq!(original.downcast_ref::<u32>(), Some(&619));
+    assert_eq!(identity.while_active(|| ()), Err(ScopeFault::Revoked));
+    assert_eq!(child.terminal(), ScopeTerminal::Quiescent);
+    assert_eq!(source.ready(), Ok(()));
+}
