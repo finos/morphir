@@ -1,6 +1,27 @@
 // Private maintained application operation. No caller-supplied program, module
 // URL, producer event, or observation result crosses this boundary.
-import type { Frame, Page } from "playwright-core";
+import type { Frame, JSHandle, Page } from "playwright-core";
+
+export type InspectionPendingOutcome = Readonly<{kind:
+  "inspection-pending" | "originals-only" | "retired" | "failed" | "no-opening" | "replaced"}>;
+export type OpeningSettledOutcome = Readonly<{kind:
+  "stored" | "retired" | "failed" | "no-opening" | "replaced"}>;
+export type CoreEnqueueOutcome = "enqueued" | "ignored";
+type ConnectedControls = Readonly<{
+  awaitInspectionPending(): Promise<unknown>;
+  executePendingCore(): unknown;
+  awaitOpeningSettled(): Promise<unknown>;
+}>;
+type ActionState = Readonly<{kind: "idle"}> | Readonly<{kind: "pending"}>;
+
+function boundary<K extends string>(value: unknown, allowed: readonly K[]): Readonly<{kind: K}> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)
+      || Object.keys(value).length !== 1 || !Object.hasOwn(value, "kind") || !("kind" in value)
+      || typeof value.kind !== "string" || !allowed.includes(value.kind as K)) {
+    throw new Error("observed boundary outcome shape");
+  }
+  return Object.freeze({kind: value.kind as K});
+}
 
 export class ObservedLaunch {
   readonly #launchUrl: string;
@@ -47,6 +68,8 @@ export class ObservedDocumentOperation {
   readonly #rejectInvalidated: (error: unknown) => void;
   #state: State = { kind: "prepared" };
   #commits = 0;
+  #controls: JSHandle<ConnectedControls> | undefined;
+  #action: ActionState = {kind: "idle"};
 
   constructor(page: Page, target: ObservedLaunch, checkClock: () => void) {
     this.#page = page;
@@ -64,8 +87,22 @@ export class ObservedDocumentOperation {
   #fail(error: unknown): unknown {
     if (this.#state.kind === "faulted") return this.#state.error;
     this.#state = { kind: "faulted", error };
+    this.#releaseControls();
     this.#rejectInvalidated(error);
     return error;
+  }
+
+  #release(handle: JSHandle<ConnectedControls>): void {
+    // This requests remote-reference disposal. Physical Page/channel/task joins
+    // remain the controller's separate responsibility; no completion is inferred.
+    try { void handle.dispose().catch(error => { this.#fail(error); }); }
+    catch (error) { this.#fail(error); }
+  }
+
+  #releaseControls(): void {
+    const handle = this.#controls;
+    this.#controls = undefined;
+    if (handle) this.#release(handle);
   }
 
   readonly #onClose = (): void => { this.#fail(new Error("observed Page closed")); };
@@ -113,27 +150,86 @@ export class ObservedDocumentOperation {
       if (!response || response.status() !== 200 || this.#commits !== 1) {
         throw new Error("observed document navigation refused");
       }
-      await this.#effect(() => this.#page.evaluate(async () => {
+      this.assertCurrent();
+      const acquiring = this.#page.evaluateHandle(async () => {
         const originalDocument = document;
         const fixedLocation = `${location.origin}/observed/?mode=connected-originals`;
         if (location.href !== fixedLocation) throw new Error("observed document location");
         // This exact maintained callback and fixed module path are not a caller
         // expression API. Awaiting import includes the entry's top-level await.
-        await import(new URL("/observed/observed-document-entry.js", location.origin).href);
+        const entry = await import(new URL("/observed/observed-document-entry.js", location.origin).href);
         if (document !== originalDocument || location.href !== fixedLocation) {
           throw new Error("observed document replaced during startup");
         }
-      }));
-      this.assertCurrent();
-      this.#state = { kind: "ready" };
+        const controls: unknown = entry.connectedControls;
+        if (typeof controls !== "object" || controls === null || Array.isArray(controls)
+            || Object.keys(controls).length !== 3
+            || !Object.hasOwn(controls, "awaitInspectionPending")
+            || !Object.hasOwn(controls, "executePendingCore")
+            || !Object.hasOwn(controls, "awaitOpeningSettled")
+            || !("awaitInspectionPending" in controls) || typeof controls.awaitInspectionPending !== "function"
+            || !("executePendingCore" in controls) || typeof controls.executePendingCore !== "function"
+            || !("awaitOpeningSettled" in controls) || typeof controls.awaitOpeningSettled !== "function") {
+          throw new Error("observed fixed controls shape");
+        }
+        return controls as ConnectedControls;
+      });
+      let handle: JSHandle<ConnectedControls>;
+      try { handle = await this.#effect(() => acquiring); }
+      catch (error) {
+        // Race losers still own the reference they may eventually create. A
+        // late handle is disposed without restoring readiness or source rights.
+        void acquiring.then(late => this.#release(late), () => {});
+        throw error;
+      }
+      try {
+        this.assertCurrent();
+        this.#controls = handle;
+        this.#state = { kind: "ready" };
+      } catch (error) { this.#release(handle); throw error; }
     } catch (error) { throw this.#fail(error); }
+  }
+
+  async #operation<T>(invoke: (handle: JSHandle<ConnectedControls>) => Promise<unknown>,
+    decode: (value: unknown) => T): Promise<T> {
+    this.assertCurrent();
+    if (this.#state.kind !== "ready" || !this.#controls) {
+      throw this.#fail(new Error("observed fixed controls unavailable"));
+    }
+    if (this.#action.kind !== "idle") {
+      throw this.#fail(new Error("observed operation already pending"));
+    }
+    const handle = this.#controls;
+    this.#action = {kind: "pending"};
+    try { return decode(await this.#effect(() => invoke(handle))); }
+    catch (error) { throw this.#fail(error); }
+    finally { this.#action = {kind: "idle"}; }
+  }
+
+  awaitInspectionPending(): Promise<InspectionPendingOutcome> {
+    return this.#operation(handle => handle.evaluate(actual => actual.awaitInspectionPending()),
+      value => boundary(value, ["inspection-pending", "originals-only", "retired", "failed", "no-opening", "replaced"]));
+  }
+
+  executePendingCore(): Promise<CoreEnqueueOutcome> {
+    return this.#operation(handle => handle.evaluate(actual => actual.executePendingCore()), value => {
+      if (value !== "enqueued" && value !== "ignored") throw new Error("observed enqueue outcome shape");
+      return value;
+    });
+  }
+
+  awaitOpeningSettled(): Promise<OpeningSettledOutcome> {
+    return this.#operation(handle => handle.evaluate(actual => actual.awaitOpeningSettled()),
+      value => boundary(value, ["stored", "retired", "failed", "no-opening", "replaced"]));
   }
 
   dispose(): void {
     if (this.#state.kind === "starting") this.#fail(new Error("observed operation disposed during startup"));
+    else if (this.#action.kind === "pending") this.#fail(new Error("observed operation disposed while pending"));
     this.#page.off("close", this.#onClose);
     this.#page.off("crash", this.#onCrash);
     this.#page.off("framenavigated", this.#onNavigation);
     if (this.#state.kind !== "faulted") this.#state = { kind: "disposed" };
+    this.#releaseControls();
   }
 }

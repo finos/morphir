@@ -85,7 +85,13 @@ impl ModuleFixture {
                     (
                         "200 OK",
                         "Content-Type: text/javascript\r\n",
-                        "await fetch('/module-gate');",
+                        concat!(
+                            "await fetch('/module-gate');",
+                            "export const connectedControls=Object.freeze({",
+                            "awaitInspectionPending:async()=>({kind:'inspection-pending'}),",
+                            "executePendingCore:()=> 'enqueued',",
+                            "awaitOpeningSettled:async()=>({kind:'stored'})});"
+                        ),
                     )
                 } else if line == b"GET /module-gate HTTP/1.1\r" {
                     eprintln!("literal fixture: gate");

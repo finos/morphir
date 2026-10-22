@@ -34,6 +34,13 @@ function acceptSample(clock, previous, current) {
 }
 
 // crates/morphir-mck/src/workbench/model_originals/workflow/pipeline/browser/controller/observed-document.ts
+function boundary(value, allowed) {
+  if (typeof value !== "object" || value === null || Array.isArray(value) || Object.keys(value).length !== 1 || !Object.hasOwn(value, "kind") || !("kind" in value) || typeof value.kind !== "string" || !allowed.includes(value.kind)) {
+    throw new Error("observed boundary outcome shape");
+  }
+  return Object.freeze({ kind: value.kind });
+}
+
 class ObservedLaunch {
   #launchUrl;
   #documentUrl;
@@ -69,6 +76,8 @@ class ObservedDocumentOperation {
   #rejectInvalidated;
   #state = { kind: "prepared" };
   #commits = 0;
+  #controls;
+  #action = { kind: "idle" };
   constructor(page, target, checkClock) {
     this.#page = page;
     this.#frame = page.mainFrame();
@@ -85,8 +94,24 @@ class ObservedDocumentOperation {
     if (this.#state.kind === "faulted")
       return this.#state.error;
     this.#state = { kind: "faulted", error };
+    this.#releaseControls();
     this.#rejectInvalidated(error);
     return error;
+  }
+  #release(handle) {
+    try {
+      handle.dispose().catch((error) => {
+        this.#fail(error);
+      });
+    } catch (error) {
+      this.#fail(error);
+    }
+  }
+  #releaseControls() {
+    const handle = this.#controls;
+    this.#controls = undefined;
+    if (handle)
+      this.#release(handle);
   }
   #onClose = () => {
     this.#fail(new Error("observed Page closed"));
@@ -142,30 +167,83 @@ class ObservedDocumentOperation {
       if (!response || response.status() !== 200 || this.#commits !== 1) {
         throw new Error("observed document navigation refused");
       }
-      await this.#effect(() => this.#page.evaluate(async () => {
+      this.assertCurrent();
+      const acquiring = this.#page.evaluateHandle(async () => {
         const originalDocument = document;
         const fixedLocation = `${location.origin}/observed/?mode=connected-originals`;
         if (location.href !== fixedLocation)
           throw new Error("observed document location");
-        await import(new URL("/observed/observed-document-entry.js", location.origin).href);
+        const entry = await import(new URL("/observed/observed-document-entry.js", location.origin).href);
         if (document !== originalDocument || location.href !== fixedLocation) {
           throw new Error("observed document replaced during startup");
         }
-      }));
-      this.assertCurrent();
-      this.#state = { kind: "ready" };
+        const controls = entry.connectedControls;
+        if (typeof controls !== "object" || controls === null || Array.isArray(controls) || Object.keys(controls).length !== 3 || !Object.hasOwn(controls, "awaitInspectionPending") || !Object.hasOwn(controls, "executePendingCore") || !Object.hasOwn(controls, "awaitOpeningSettled") || !("awaitInspectionPending" in controls) || typeof controls.awaitInspectionPending !== "function" || !("executePendingCore" in controls) || typeof controls.executePendingCore !== "function" || !("awaitOpeningSettled" in controls) || typeof controls.awaitOpeningSettled !== "function") {
+          throw new Error("observed fixed controls shape");
+        }
+        return controls;
+      });
+      let handle;
+      try {
+        handle = await this.#effect(() => acquiring);
+      } catch (error) {
+        acquiring.then((late) => this.#release(late), () => {});
+        throw error;
+      }
+      try {
+        this.assertCurrent();
+        this.#controls = handle;
+        this.#state = { kind: "ready" };
+      } catch (error) {
+        this.#release(handle);
+        throw error;
+      }
     } catch (error) {
       throw this.#fail(error);
     }
   }
+  async#operation(invoke, decode) {
+    this.assertCurrent();
+    if (this.#state.kind !== "ready" || !this.#controls) {
+      throw this.#fail(new Error("observed fixed controls unavailable"));
+    }
+    if (this.#action.kind !== "idle") {
+      throw this.#fail(new Error("observed operation already pending"));
+    }
+    const handle = this.#controls;
+    this.#action = { kind: "pending" };
+    try {
+      return decode(await this.#effect(() => invoke(handle)));
+    } catch (error) {
+      throw this.#fail(error);
+    } finally {
+      this.#action = { kind: "idle" };
+    }
+  }
+  awaitInspectionPending() {
+    return this.#operation((handle) => handle.evaluate((actual) => actual.awaitInspectionPending()), (value) => boundary(value, ["inspection-pending", "originals-only", "retired", "failed", "no-opening", "replaced"]));
+  }
+  executePendingCore() {
+    return this.#operation((handle) => handle.evaluate((actual) => actual.executePendingCore()), (value) => {
+      if (value !== "enqueued" && value !== "ignored")
+        throw new Error("observed enqueue outcome shape");
+      return value;
+    });
+  }
+  awaitOpeningSettled() {
+    return this.#operation((handle) => handle.evaluate((actual) => actual.awaitOpeningSettled()), (value) => boundary(value, ["stored", "retired", "failed", "no-opening", "replaced"]));
+  }
   dispose() {
     if (this.#state.kind === "starting")
       this.#fail(new Error("observed operation disposed during startup"));
+    else if (this.#action.kind === "pending")
+      this.#fail(new Error("observed operation disposed while pending"));
     this.#page.off("close", this.#onClose);
     this.#page.off("crash", this.#onCrash);
     this.#page.off("framenavigated", this.#onNavigation);
     if (this.#state.kind !== "faulted")
       this.#state = { kind: "disposed" };
+    this.#releaseControls();
   }
 }
 
