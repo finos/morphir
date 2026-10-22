@@ -27,6 +27,32 @@ jsonschema = "latest"
 # and the freshness check in CI fails when a new usage release changes it.
 usage = "6.11.1"
 
+# Match finos/morphir-moonbit's pinned toolchain. When upgrading, update the
+# version, platform URLs (encode "+" as "%2B") and Windows core checksum together.
+[tools."http:moonbit"]
+version = "0.10.16+b1a0e846e"
+bin_path = "bin"
+# The Windows bootstrap is TypeScript; install Bun before running it.
+depends = ["bun"]
+# The compiler archive alone omits core and moonx. Complete the installation
+# inside mise's tool directory, using the exact selected version.
+postinstall = """
+{% if os() != "windows" %}
+bash -c 'set -euo pipefail; export PATH="$MISE_TOOL_INSTALL_PATH/bin:$PATH"; curl -fsSL https://cli.moonbitlang.com/install/unix.sh | MOON_HOME="$MISE_TOOL_INSTALL_PATH" bash -s -- "$MISE_TOOL_VERSION"'
+{% else %}
+bun "{{config_root}}/tools/bootstrap-moonbit-windows.ts" --core-sha256 c9c1fa97797bdaccb51ac5632581dc76c5d03b1dce8309323137f021982e5eac
+{% endif %}
+"""
+
+[tools."http:moonbit".platforms]
+linux-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-linux-x86_64.tar.gz" }
+linux-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-linux-aarch64.tar.gz" }
+macos-arm64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-darwin-aarch64.tar.gz" }
+windows-x64 = { url = "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-windows-x86_64.zip", format = "zip" }
+
+[env]
+MOON_HOME = { value = "{{ tools['http:moonbit'].path }}", tools = true }
+
 # ===== Initialization Tasks =====
 [tasks.init]
 description = "Initialize development environment. Use --ci for CI environments."
