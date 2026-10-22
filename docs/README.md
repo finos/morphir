@@ -8,6 +8,8 @@ for Elm and MoonBit, and the Morphir Workbench.
 
 - [Quick start](QUICK_START.md): install the toolchain and build the repository.
 - [Architecture](ARCHITECTURE.md): packages and how they fit together.
+- [Build and run a generated Wasm library](wasm-library-assembly.html): dependency assembly, embedded compilation,
+  saved Ion manifests and execution in a fresh compatible host.
 - [Mise tasks](MISE_TASKS.md): every build, test and check task.
 - [Architecture decision records](adr/README.md): decisions and their reasons.
 - [Designs](design/README.md) and [specifications](specs/README.md): durable system designs.

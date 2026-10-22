@@ -1,0 +1,210 @@
+<!-- ---
+title: Build and run a generated Wasm library
+summary: How Morphir assembles a complete dependency graph, saves Wasm with an Ion manifest, and runs it in a compatible host.
+order: 25
+--- -->
+<!-- HTML content fragment: the documentation site supplies its shared head, navigation and styles. -->
+<h1>Build and run a generated Wasm library</h1>
+<p>Start with a supported Morphir model, generate MoonBit source, compile its complete library graph,
+and save the resulting WebAssembly module with an Ion manifest. A compatible host can then load that
+saved pair and invoke its exports. The runtime deployment needs the compiler only if it also compiles code.</p>
+<p>This guide explains the supplied-dependency assembly path implemented in Morphir's host libraries.
+It is intended for application and host integrators. It describes library APIs and their contracts;
+the reproduction command below runs the maintained qualification example.</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#flow">From a model to a saved artifact</a></li>
+<li><a href="#inputs">Supply the complete dependency graph</a></li>
+<li><a href="#compile">Plan, compile and link</a></li>
+<li><a href="#save">Save Wasm and its manifest together</a></li>
+<li><a href="#load">Load in a fresh compatible host</a></li>
+<li><a href="#profiles">Libraries and host interfaces</a></li>
+<li><a href="#optimization">Exports, initialization and tree shaking</a></li>
+<li><a href="#example">Run the qualification example</a></li>
+<li><a href="#scope">Choose the right hosting boundary</a></li>
+<li><a href="#references">Implementation references</a></li>
+</ul>
+</nav>
+
+<section id="flow">
+<h2>From a model to a saved artifact</h2>
+<p>Generation and assembly are separate stages. The generator preserves the model's semantics and emits
+MoonBit packages. Assembly supplies all the libraries those packages use, compiles them in dependency order,
+and links the requested exports into a Wasm module. Publication saves that module and its description as one
+artifact. Loading checks the saved artifact before the host instantiates it.</p>
+<svg viewBox="0 0 440 480" width="100%" role="img" aria-labelledby="assembly-flow-title assembly-flow-description">
+<title id="assembly-flow-title">Generated library compilation and saved-artifact execution</title>
+<desc id="assembly-flow-description">Generated MoonBit and supplied dependencies enter planning, compilation and linking.
+The result is saved as Wasm and a manifest, then checked and invoked by a fresh compatible host.</desc>
+<g fill="none" stroke="currentColor" stroke-width="2">
+<rect x="20" y="10" width="400" height="80" rx="8"/>
+<path d="M220 90v40m-7-8 7 8 7-8"/>
+<rect x="20" y="130" width="400" height="80" rx="8"/>
+<path d="M220 210v40m-7-8 7 8 7-8"/>
+<rect x="20" y="250" width="400" height="80" rx="8"/>
+<path d="M220 330v40m-7-8 7 8 7-8"/>
+<rect x="20" y="370" width="400" height="90" rx="8"/>
+</g>
+<g fill="currentColor" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18">
+<text x="220" y="43">Generated MoonBit packages</text><text x="220" y="70">and exact supplied dependencies</text>
+<text x="220" y="163">Validate the graph, compile packages,</text><text x="220" y="190">then link retained exports</text>
+<text x="220" y="283">Publish model.wasm</text><text x="220" y="310">and manifest.ion together</text>
+<text x="220" y="403">Fresh compatible host</text><text x="220" y="430">checks, instantiates and invokes</text>
+</g>
+</svg>
+<p>MoonBit source can enter directly at the assembly stage. A Morphir model remains the semantic pipeline value;
+an assembly plan and a published artifact are separate build products with their own identities.</p>
+</section>
+
+<section id="inputs">
+<h2>Supply the complete dependency graph</h2>
+<p>Begin with an explicit set of packages and an exact root package. Include every referenced library and its
+transitive dependencies, including the matching Morphir SDK and MoonBit core assets. Registry resolution and
+download are the dependency provider's responsibility; the assembly planner consumes the supplied set.</p>
+<p>A package pin combines its canonical MoonBit package path with a SHA-256 content identity. Each import records
+an alias and an exact dependency pin. Aliases belong to the importing package, so different packages can use
+different aliases for the same dependency.</p>
+<table><thead><tr><th>Input</th><th>What to supply</th></tr></thead><tbody>
+<tr><td>Source package</td><td>Its source files, role and exact dependency pins.</td></tr>
+<tr><td>Prebuilt package</td><td>Its compiled core and interface, target, compiler/core/SDK identity and optimization setting.</td></tr>
+<tr><td>Assembly request</td><td>The root pin, all supplied packages, target, compiler/core/SDK identity, explicit exports and optimization setting.</td></tr>
+</tbody></table>
+<p>The planner validates every supplied package, including packages whose code might later be eliminated.
+It refuses duplicate identities or aliases, malformed names or digests, missing dependencies, mismatched pins
+and cycles. Diagnostics identify the referring package and requested dependency. A shared dependency appears
+once in the deterministic build order; reordering the inputs does not change that order.</p>
+<p>A hash identifies content. It does not authenticate its author or grant permission to execute it.</p>
+</section>
+
+<section id="compile">
+<h2>Plan, compile and link</h2>
+<p>The pure MoonBit planner performs graph validation and ordering without filesystem, network or compiler
+effects. The asynchronous compiler adapter verifies actual supplied bytes against their pins, checks
+compiler/core/SDK and target compatibility, and performs compilation.</p>
+<p>For each source package, the adapter supplies the direct, indirect and standard interfaces required by the
+compiler. It reuses verified prebuilt assets for compatible dependencies. After the packages are ready, it
+links the required compiled cores once and retains the requested public exports and required initialization.</p>
+<p>The embedded compiler provider performs these build and link operations. A compile failure or cancellation
+stops the build before successful artifact publication. Diagnostics retain their package context.</p>
+<p>At the API boundary, <code>executeAssembly</code> consumes an <code>AssemblyRequest</code> and returns an
+<code>AssemblyResult</code>. The result records the Wasm bytes, complete package evidence, identities,
+exports, diagnostics and optimization setting. It is then ready for artifact preparation.</p>
+</section>
+
+<section id="save">
+<h2>Save Wasm and its manifest together</h2>
+<p>A Wasm file needs enough context for another host to check and use it. Artifact preparation builds a manifest
+from the assembly result, inspects the actual Wasm imports and exports, and records the execution-profile identity.
+Binary Ion is the default manifest encoding; a checked JSON representation is an explicit alternative.</p>
+<table><thead><tr><th>Manifest information</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>Schema and origin</td><td>Identify the manifest format and source model revision/hash or MoonBit source hash.</td></tr>
+<tr><td>Artifact</td><td>Record the Wasm hash, size and target.</td></tr>
+<tr><td>Assembly</td><td>Preserve the full supplied graph, exact pins, aliases, build order, source/prebuilt forms and compiler/core/SDK identities.</td></tr>
+<tr><td>Invocation</td><td>Record the core-Wasm ABI, execution profile, retained exports and actual imports.</td></tr>
+<tr><td>Optimization</td><td>Record the chosen source/link setting and each package's actual setting.</td></tr>
+</tbody></table>
+<p>The current schema is <code>morphir-assembly-artifact-v1-draft</code>. It is a local draft format, independent
+of the Morphir IR format version. Treat changes to this manifest as compatibility changes rather than assuming
+it is a stable public interchange standard.</p>
+<p>The Node directory store writes <code>model.wasm</code> and <code>manifest.ion</code>, or the explicitly selected
+<code>manifest.json</code>, into a staging directory. It publishes the complete pair by renaming the directory.
+An exclusive cooperative-writer lock coordinates publishers; an existing destination is refused. Failed writes
+attempt staging cleanup, and cleanup failure remains visible alongside the original error. A crash can leave
+a publication lock that must be inspected before recovery.</p>
+</section>
+
+<section id="load">
+<h2>Load in a fresh compatible host</h2>
+<p>Read the saved Wasm/manifest pair and supply the host's supported targets, exact execution-profile identities,
+manifest encodings and import bindings. The loader checks the manifest, Wasm digest and size, graph consistency,
+declared profile and actual imports/exports. It checks Wasm instruction support by compiling the module before
+instantiation, then verifies required host bindings before executing initialization.</p>
+<p>This separates runtime compatibility from the build environment. A fresh host needs the artifact, manifest
+and declared runtime services. It does not need the original compiler process, its build cache, or an installed
+compiler command. The existing loader can run without the packaged compiler payload.</p>
+<p>Successful loading exposes the retained functions through the loaded artifact's invocation interface.
+The host owns the instance's lifetime and disposal. Unsupported targets, profiles, encodings or imports produce
+compatibility failures before instantiation; altered Wasm bytes produce integrity failures.</p>
+</section>
+
+<section id="profiles">
+<h2>Libraries and host interfaces</h2>
+<p>An execution profile identifies the contract between a guest's libraries and its host: the ABI, allowed
+services, codecs and Wasm requirements. Keep the profile identity separate from concrete compiler, core and
+library content hashes. Two hosts can implement the same contract with different implementations.</p>
+<p>A host must explicitly support the saved artifact's profile and provide its required imports. Adding a host
+service such as diagnostics changes that contract. A runtime that supports ordinary core Wasm is not thereby
+qualified for every host interface or for WebAssembly components.</p>
+<p>The production codec-adapter example exercises baseline and diagnostics profiles using the same assembly,
+publication and loader components. It demonstrates a bounded profile variation, rather than an arbitrary
+matrix of independently selectable capabilities.</p>
+</section>
+
+<section id="optimization">
+<h2>Exports, initialization and tree shaking</h2>
+<p>Validate the full dependency graph before eliminating unused code. Retention roots include the requested
+exports, required initialization and explicitly registered indirect entry points. Dynamic discovery needs
+explicit roots or a deliberately conservative policy.</p>
+<p>Linker elimination can reduce deployed code while the manifest still records the complete supplied graph.
+Keep both facts: the graph explains what was built, while the Wasm bytes show what was retained. Compare
+optimization settings using the same source and dependency identities, and check behavior and initialization
+as well as size. An unoptimized setting does not promise that every elimination pass is disabled.</p>
+</section>
+
+<section id="example">
+<h2>Run the qualification example</h2>
+<p>From a configured repository checkout, run the maintained generated-library qualification:</p>
+<pre><code class="language-bash">mise run test:assembly</code></pre>
+<p>The fixture generates a real three-module Morphir model with a cross-module reference and an SDK addition
+call. It supplies the generated packages, the SDK root/integer/list/basics source packages and their pinned core
+closure. It compiles through the packaged provider, saves Wasm and binary Ion, then invokes the saved artifact
+in separate fresh Node processes.</p>
+<p>Preparation uses Moon to generate the fixture and obtain dependency/build recipes. The actual package
+compilation uses the embedded provider with an empty <code>PATH</code> and no <code>MOON_HOME</code>.
+The task writes its report to <code>.dev/assembly-qualification-report.json</code> and prints the temporary
+workspace path. Successful temporary publications are removed after consumption;
+failed workspaces are retained for diagnosis.</p>
+<details><summary>Historical qualification measurements</summary>
+<p>The 18 October 2026 qualification used compiler <code>0.10.15+943464bfa</code> and a supplied graph of 44 packages,
+including 38 pinned core packages. These are historical measurements, not a required current toolchain or a
+size guarantee. Use the repository's current pinned toolchain for reproduction.</p>
+<table><thead><tr><th>Source/link setting</th><th>Wasm size</th><th>Observed behavior</th></tr></thead><tbody>
+<tr><td>Optimized</td><td>17,282 bytes</td><td>Answer 42, cross-module result 40, Boolean true, initialization exactly once.</td></tr>
+<tr><td>Unoptimized</td><td>18,476 bytes</td><td>The same results in a separate fresh process; initialization exactly once.</td></tr>
+</tbody></table>
+<p>Both settings removed a deliberately unreachable payload and used the same already optimized prebuilt core.
+The fixture also refused a missing SDK package and corrupted core bytes. These results qualify that fixture
+and host configuration.</p>
+</details>
+</section>
+
+<section id="scope">
+<h2>Choose the right hosting boundary</h2>
+<p>The full generated-library SDK/core path has been demonstrated in Node. Simpler dependency assembly and
+binary Ion loading have also been exercised in Chromium. The complete generated-library fixture's Node
+result does not establish every browser, native host or compiler embedding configuration.</p>
+<p>This path produces core Wasm. WebAssembly Component Model support additionally requires a compatible component
+interface, ABI and actual host/runtime integration. Likewise, loading an artifact does not by itself establish
+MEP negotiation, installed CLI integration or conformance through the shared MCK.</p>
+<p>Production codec adapters can reuse the assembly path behind the existing MCK process boundary. That adapter's
+codec and lifecycle evidence remains scoped to its tested profile and host. Registry solving, native compiler
+embedding and further component/MEP hosting remain separate integration work.</p>
+</section>
+
+<section id="references">
+<h2>Implementation references</h2>
+<ul>
+<li><a href="https://github.com/finos/morphir-moonbit/tree/main/pkgs/morphir-host/assembly">Pure planner</a> and
+<a href="https://github.com/finos/morphir-moonbit/blob/main/pkgs/morphir-host/embedding/assembly.mts">assembly executor and request types</a>.</li>
+<li><a href="https://github.com/finos/morphir-moonbit/blob/main/pkgs/morphir-host/embedding/artifacts.mts">Manifest preparation, publication and loading</a> and
+<a href="https://github.com/finos/morphir-moonbit/blob/main/pkgs/morphir-host/embedding/node-artifacts.mts">Node directory storage</a>.</li>
+<li><a href="https://github.com/finos/morphir-moonbit/blob/main/scripts/assembly-check.mbtx">Qualification task</a> and
+<a href="https://github.com/finos/morphir-moonbit/blob/main/pkgs/morphir-host/embedding/test/generated.mts">generated-library fixture</a>.</li>
+<li>Delivery: <a href="https://github.com/finos/morphir-moonbit/pull/141">compilation and linking</a>,
+<a href="https://github.com/finos/morphir-moonbit/pull/142">saved artifacts</a>,
+<a href="https://github.com/finos/morphir-moonbit/pull/144">generated-library qualification</a> and
+<a href="https://github.com/finos/morphir-moonbit/pull/148">production codec profiles</a>.</li>
+</ul>
+</section>
+
