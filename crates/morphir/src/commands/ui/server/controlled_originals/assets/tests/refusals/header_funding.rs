@@ -4,10 +4,29 @@ use super::*;
 
 #[test]
 fn browser_observed_assets_header_01_zero_work_and_one_short_table_refuse_before_map() {
+    let ((first_source_refused, retry_source_refused), _) =
+        scope(Limits { work: 0, ..ENOUGH }, |_, loans| {
+            (
+                loans.prepare_application_source().is_err(),
+                loans.prepare_application_source().is_err(),
+            )
+        });
+    assert!(first_source_refused && retry_source_refused);
+    // Pay only the source wrapper and its actual Weak-counter initialization.
+    // The SAME cumulative owner then has zero work left for either HeaderMap
+    // attempt. This does not enlarge the header permission or a profile limit.
+    let source_initialization = u64::try_from(
+        std::mem::size_of::<morphir_mck::workbench::BrowserApplicationSource>()
+            + std::mem::size_of::<std::sync::atomic::AtomicUsize>(),
+    )
+    .unwrap();
     let plan = header_table_plan().unwrap();
     let short = u64::try_from(plan.requested.checked_sub(1).unwrap()).unwrap();
     for limits in [
-        Limits { work: 0, ..ENOUGH },
+        Limits {
+            work: source_initialization,
+            ..ENOUGH
+        },
         Limits {
             retained: short,
             ..ENOUGH

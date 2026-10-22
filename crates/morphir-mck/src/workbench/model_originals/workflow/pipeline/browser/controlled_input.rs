@@ -3,10 +3,13 @@
 use super::{
     adapter::{BrowserScope, BrowserSemantic, BrowserSourceIdentity},
     inputs::{
-        BrowserActionKind, BrowserClientInput, BrowserInputFault, BrowserOwnerLoans,
-        BrowserRuntimeInput,
+        BrowserActionInput, BrowserActionKind, BrowserClientInput, BrowserFixtureInput,
+        BrowserInputFault, BrowserOwnerLoans, BrowserRuntimeInput,
     },
-    source_scope::{BrowserSourceBinding, BrowserSourceScope, ScopeFault, ScopeIssueFault},
+    source_scope::{
+        BrowserInvocationIdentity, BrowserSourceBinding, BrowserSourceScope, ScopeFault,
+        ScopeIssueFault,
+    },
 };
 use crate::workbench::model_originals::workflow::{
     input::{self, Frame, FramePart},
@@ -78,6 +81,59 @@ pub struct ControlledHostStimulus {
     action: usize,
     opening: ControlledOpening,
     binding: BrowserSourceBinding,
+}
+pub(super) struct PreparedControlledHostStimulus {
+    manifest_status: u64,
+    manifest_byte_limit: u64,
+    manifest_body: String,
+    peer_alias: String,
+    frames: Vec<String>,
+    requests: Option<Vec<String>>,
+    provider_id: String,
+    locator: String,
+    project: String,
+    attempt: String,
+    scope: BrowserScope,
+    semantic: BrowserSemantic,
+    action: usize,
+    opening: ControlledOpening,
+}
+impl PreparedControlledHostStimulus {
+    pub(super) fn finish(self, binding: BrowserSourceBinding) -> ControlledHostStimulus {
+        let Self {
+            manifest_status,
+            manifest_byte_limit,
+            manifest_body,
+            peer_alias,
+            frames,
+            requests,
+            provider_id,
+            locator,
+            project,
+            attempt,
+            scope,
+            semantic,
+            action,
+            opening,
+        } = self;
+        ControlledHostStimulus {
+            manifest_status,
+            manifest_byte_limit,
+            manifest_body,
+            peer_alias,
+            frames,
+            requests,
+            provider_id,
+            locator,
+            project,
+            attempt,
+            scope,
+            semantic,
+            action,
+            opening,
+            binding,
+        }
+    }
 }
 pub enum ControlledOpening {
     StartConnected,
@@ -178,6 +234,12 @@ impl ControlledHostStimulus {
     pub(super) fn validate_scope(&self, scope: &BrowserSourceScope) -> Result<(), ScopeFault> {
         self.binding.validate_scope(scope)
     }
+    pub(super) fn validate_invocation(
+        &self,
+        identity: &BrowserInvocationIdentity,
+    ) -> Result<(), ScopeFault> {
+        self.binding.validate_invocation(identity)
+    }
     pub(super) fn prepare(
         client: &BrowserClientInput<'_, '_, '_, '_, '_>,
         loans: &mut BrowserOwnerLoans<'_>,
@@ -190,6 +252,20 @@ impl ControlledHostStimulus {
         let Some(opening) = opening else {
             return loans.refuse_selection(ClosureError::Missing);
         };
+        let prepared = Self::prepare_selected(client.fixture(), &opening, loans)?;
+        let binding = source_scope.bind(loans).map_err(|fault| match fault {
+            ScopeIssueFault::Input(fault) => fault,
+            ScopeIssueFault::Scope(fault) => BrowserInputFault::Source(fault),
+        })?;
+        Ok(prepared.finish(binding))
+    }
+    pub(super) fn prepare_selected(
+        fixture: BrowserFixtureInput<'_>,
+        opening: &BrowserActionInput<'_>,
+        loans: &mut BrowserOwnerLoans<'_>,
+    ) -> Result<PreparedControlledHostStimulus, BrowserInputFault> {
+        loans.ready()?;
+        let action_position = opening.position();
         let (attempt, project_id, scope, semantic, source, opening) = match opening.kind() {
             BrowserActionKind::StartConnected {
                 attempt,
@@ -245,7 +321,6 @@ impl ControlledHostStimulus {
             ),
             _ => return loans.refuse_selection(ClosureError::Semantic),
         };
-        let fixture = client.fixture();
         let BrowserRuntimeInput::ControlledModelOriginalsHttpV1 {
             manifest,
             manifest_byte_limit,
@@ -287,12 +362,7 @@ impl ControlledHostStimulus {
         let locator = Self::copy_text(source.locator.as_str(), loans)?;
         let project = Self::copy_text(project_id.as_str(), loans)?;
         let attempt = Self::copy_text(attempt.as_str(), loans)?;
-        // No fallible copy/allocation follows actual debt issuance.
-        let binding = source_scope.bind(loans).map_err(|fault| match fault {
-            ScopeIssueFault::Input(fault) => fault,
-            ScopeIssueFault::Scope(fault) => BrowserInputFault::Source(fault),
-        })?;
-        Ok(Self {
+        Ok(PreparedControlledHostStimulus {
             manifest_status: manifest.status.0,
             manifest_byte_limit: manifest_byte_limit.0,
             manifest_body,
@@ -307,7 +377,6 @@ impl ControlledHostStimulus {
             semantic,
             opening,
             action: action_position,
-            binding,
         })
     }
     fn failure(

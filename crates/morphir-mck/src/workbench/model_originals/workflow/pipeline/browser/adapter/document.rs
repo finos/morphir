@@ -4,6 +4,9 @@ mod data;
 #[cfg(test)]
 #[path = "document/data_tests.rs"]
 mod data_tests;
+#[cfg(test)]
+#[path = "document/relation_tests.rs"]
+mod relation_tests;
 use super::*;
 use crate::json::strict::{self, Document};
 use crate::workbench::model_originals::workflow::{
@@ -27,6 +30,7 @@ const PROJECTION_TOKEN_SPANS: usize = 6;
 const PROJECTION_VALUE_MOVES: usize = 8;
 pub struct BrowserDocumentDecoder {
     source: BrowserApplicationSource,
+    relation: super::execution_loans::BrowserLoanStamp,
     remaining: usize,
     frame_bytes: usize,
 }
@@ -178,6 +182,7 @@ impl BrowserLoans<'_, '_> {
         self.reserve_application_comparison(source, visits, comparisons, records)?;
         Ok(BrowserDocumentDecoder {
             source: self.prepare_application_source()?,
+            relation: self.prepare_relation_stamp()?,
             remaining: records,
             frame_bytes,
         })
@@ -210,6 +215,7 @@ impl BrowserLoans<'_, '_> {
     ) -> Result<BrowserDocumentFrameData, BrowserDocumentError> {
         self.validate_application_source(source)?;
         self.validate_application_source(&permission.source)?;
+        self.validate_relation_stamp(&permission.relation)?;
         if permission.remaining == 0
             || permission
                 .frame_bytes

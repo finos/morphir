@@ -112,7 +112,7 @@ pub(super) struct ApplicationSourceIdentity {
 }
 impl ApplicationSourceIdentity {
     pub(super) fn validate(&self, scope: &BrowserSourceScope) -> Result<(), ScopeFault> {
-        if !Weak::ptr_eq(&self.control, &Arc::downgrade(&scope.control)) {
+        if self.control.as_ptr() != Arc::as_ptr(&scope.control) {
             return Err(ScopeFault::ForeignSource);
         }
         self.while_active(|| ())

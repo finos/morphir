@@ -2,6 +2,8 @@
 //! creates an action, source, download, report or comparison authority.
 #[path = "adapter/document.rs"]
 mod document;
+#[path = "adapter/execution_loans.rs"]
+pub(super) mod execution_loans;
 pub use super::controlled_input::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
     ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
@@ -16,6 +18,7 @@ use crate::workbench::{
     Corpus, RunConfiguration, configuration::Configuration, corpus::CorpusStorage,
 };
 pub use document::*;
+use execution_loans::LoanRelation;
 
 #[derive(Debug)]
 pub struct BrowserInputError {
@@ -103,7 +106,7 @@ pub struct BrowserClient<'a> {
 }
 pub struct BrowserLoans<'a, 'owners> {
     inner: &'a mut inputs::BrowserOwnerLoans<'owners>,
-    scope: &'a BrowserSourceScope,
+    relation: LoanRelation<'a>,
 }
 /// Opaque identity of one actual preparation. Neither a browser nor an action grant.
 pub struct BrowserApplicationSource {
@@ -134,11 +137,10 @@ impl ControlledHostStimulus {
         &self,
         loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<ControlledHostDelivery, BrowserInputError> {
-        loans.inner.ready()?;
-        self.validate_scope(loans.scope)
-            .map_err(inputs::BrowserInputFault::Source)?;
-        self.admit().map_err(inputs::BrowserInputFault::Source)?;
-        self.copy_delivery(loans.inner).map_err(Into::into)
+        loans.validate_controlled_source(self)?;
+        self.while_source_active(|| self.copy_delivery(loans.inner))
+            .map_err(inputs::BrowserInputFault::Source)?
+            .map_err(Into::into)
     }
 }
 impl BrowserLoans<'_, '_> {
@@ -148,11 +150,12 @@ impl BrowserLoans<'_, '_> {
         self.reserve_controlled_host_storage(
             std::mem::size_of::<BrowserApplicationSource>(),
             1,
-            0,
+            std::mem::size_of::<BrowserApplicationSource>()
+                + std::mem::size_of::<std::sync::atomic::AtomicUsize>(),
         )?;
         Ok(BrowserApplicationSource {
             identity: self
-                .scope
+                .global()
                 .application_identity()
                 .map_err(inputs::BrowserInputFault::Source)?,
         })
@@ -161,10 +164,10 @@ impl BrowserLoans<'_, '_> {
         &self,
         source: &BrowserApplicationSource,
     ) -> Result<(), BrowserInputError> {
-        self.ready_for(self.scope)?;
+        self.ready()?;
         source
             .identity
-            .validate(self.scope)
+            .validate(self.global())
             .map_err(|fault| inputs::BrowserInputFault::Source(fault).into())
     }
     pub fn validate_controlled_application(
@@ -173,9 +176,7 @@ impl BrowserLoans<'_, '_> {
         stimulus: &ControlledHostStimulus,
     ) -> Result<(), BrowserInputError> {
         self.validate_application_source(source)?;
-        stimulus
-            .validate_scope(self.scope)
-            .map_err(|fault| inputs::BrowserInputFault::Source(fault).into())
+        self.validate_controlled_source(stimulus)
     }
     /// Check the actual source relation before preparing any document backing.
     /// This produces no binding, permission, action or completion receipt.
@@ -183,10 +184,12 @@ impl BrowserLoans<'_, '_> {
         &self,
         stimulus: &ControlledHostStimulus,
     ) -> Result<(), BrowserInputError> {
-        self.ready_for(self.scope)?;
-        stimulus
-            .validate_scope(self.scope)
-            .map_err(|fault| inputs::BrowserInputFault::Source(fault).into())
+        self.ready()?;
+        match self.relation {
+            LoanRelation::Application(global) => stimulus.validate_scope(global),
+            LoanRelation::Execution { child, .. } => stimulus.validate_invocation(&child.identity),
+        }
+        .map_err(|fault| inputs::BrowserInputFault::Source(fault).into())
     }
     /// Named application backing/work debit on the SAME cumulative owners.
     pub fn reserve_application_storage(
@@ -253,7 +256,7 @@ impl BrowserLoans<'_, '_> {
         slots: usize,
         initialized: usize,
     ) -> Result<(), BrowserInputError> {
-        self.ready_for(self.scope)?;
+        self.ready()?;
         use crate::workbench::model_originals::workflow::pipeline::installed::observation::InstalledObservationResource as Resource;
         let (decode, receiving, _) = self.inner.physical_owners()?;
         decode
@@ -271,8 +274,9 @@ impl BrowserLoans<'_, '_> {
         Ok(())
     }
     fn ready_for(&self, scope: &BrowserSourceScope) -> Result<(), BrowserInputError> {
-        self.inner.ready()?;
-        if !std::ptr::eq(self.scope, scope) {
+        self.ready()?;
+        if !matches!(self.relation, LoanRelation::Application(global) if std::ptr::eq(global, scope))
+        {
             return Err(
                 inputs::BrowserInputFault::Source(BrowserSourceFault::ForeignSource).into(),
             );
@@ -306,7 +310,7 @@ pub fn with_prepared_browser_clients<R, E>(
             },
             &mut BrowserLoans {
                 inner: loans,
-                scope: &scope,
+                relation: LoanRelation::Application(&scope),
             },
         );
         let source = scope.revoke();
@@ -338,7 +342,7 @@ impl BrowserClients<'_> {
                     },
                     &mut BrowserLoans {
                         inner: loans,
-                        scope: self.scope,
+                        relation: LoanRelation::Application(self.scope),
                     },
                 )
             })

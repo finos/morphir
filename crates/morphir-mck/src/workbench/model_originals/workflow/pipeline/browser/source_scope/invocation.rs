@@ -108,6 +108,15 @@ impl BrowserSourceScope {
     }
 }
 impl BrowserInvocationScope {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_parent(
+        &self,
+        parent: &BrowserSourceScope,
+    ) -> Result<(), ScopeFault> {
+        if !Arc::ptr_eq(&self.parent, &parent.control) {
+            return Err(ScopeFault::ForeignSource);
+        }
+        while_active(&self.parent, &self.control, || ())
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn identity(
         &self,
         loans: &mut BrowserOwnerLoans<'_>,

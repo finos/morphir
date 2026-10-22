@@ -162,6 +162,59 @@ pub(super) struct BrowserClientInput<'compiled, 'case, 'sources, 'raw, 'supplied
     core: &'compiled CompiledSourceCase<'case, 'sources, 'raw, 'supplied>,
     case_index: usize,
 }
+/// Issued only by the canonical engine from its actual compiled current row.
+/// This view carries no report context or expected values.
+pub(super) struct BrowserExecutionInput<'compiled, 'case, 'sources, 'raw, 'supplied> {
+    core: &'compiled CompiledSourceCase<'case, 'sources, 'raw, 'supplied>,
+}
+impl<'compiled, 'case, 'sources, 'raw, 'supplied>
+    BrowserExecutionInput<'compiled, 'case, 'sources, 'raw, 'supplied>
+{
+    pub(super) fn from_compiled_client(
+        core: &'compiled CompiledSourceCase<'case, 'sources, 'raw, 'supplied>,
+        loans: &mut BrowserOwnerLoans<'_>,
+    ) -> Result<Self, BrowserInputFault> {
+        loans.ready()?;
+        if !matches!(core.source().paired().run(), PairedRun::Client { .. }) {
+            return loans.refuse_selection(ClosureError::Semantic);
+        }
+        Ok(Self { core })
+    }
+    pub(super) fn fixture(&self) -> BrowserFixtureInput<'case> {
+        let PairedRun::Client { fixture, .. } = self.core.source().paired().run() else {
+            unreachable!("issued compiled client view")
+        };
+        BrowserFixtureInput { input: fixture }
+    }
+    pub(super) fn actions(
+        &self,
+        loans: &mut BrowserOwnerLoans<'_>,
+    ) -> Result<
+        impl ExactSizeIterator<Item = BrowserActionInput<'case>> + use<'case>,
+        BrowserInputFault,
+    > {
+        client_actions(self.core, loans)
+    }
+}
+fn client_actions<'case>(
+    core: &CompiledSourceCase<'case, '_, '_, '_>,
+    loans: &mut BrowserOwnerLoans<'_>,
+) -> Result<impl ExactSizeIterator<Item = BrowserActionInput<'case>> + use<'case>, BrowserInputFault>
+{
+    let PairedRun::Client { actions, .. } = core.source().paired().run() else {
+        unreachable!("issued client view")
+    };
+    loans.visits(actions.len())?;
+    Ok(actions
+        .iter()
+        .enumerate()
+        .map(|(position, input)| BrowserActionInput {
+            kind: project_action(input),
+            #[cfg(test)]
+            input,
+            position,
+        }))
+}
 impl<'compiled, 'case> BrowserClientInput<'compiled, 'case, '_, '_, '_> {
     pub(super) fn case_index(&self) -> usize {
         self.case_index
@@ -182,19 +235,7 @@ impl<'compiled, 'case> BrowserClientInput<'compiled, 'case, '_, '_, '_> {
         impl ExactSizeIterator<Item = BrowserActionInput<'case>> + use<'case>,
         BrowserInputFault,
     > {
-        let PairedRun::Client { actions, .. } = self.core.source().paired().run() else {
-            unreachable!("issued client view")
-        };
-        loans.visits(actions.len())?;
-        Ok(actions
-            .iter()
-            .enumerate()
-            .map(|(position, input)| BrowserActionInput {
-                kind: project_action(input),
-                #[cfg(test)]
-                input,
-                position,
-            }))
+        client_actions(self.core, loans)
     }
     pub(super) fn input_aliases(
         &self,
