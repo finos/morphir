@@ -1,7 +1,11 @@
 //! Private browser observation support. No browser execution or source grant.
 pub use adapter::execution_loans::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
-    BrowserConnectedOpening, BrowserExecutionAction,
+    BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
+    BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
+    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
+    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub use collection::{
     BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,

@@ -28,6 +28,9 @@ pub(super) struct BrowserPhysicalParts {
     pub(super) download_window: Vec<u8>,
 }
 impl BrowserPhysicalBuffers {
+    pub(super) fn limits(&self) -> Limits {
+        self.limits
+    }
     pub(super) fn into_parts(self) -> BrowserPhysicalParts {
         BrowserPhysicalParts {
             limits: self.limits,

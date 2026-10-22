@@ -81,7 +81,7 @@ struct Control {
 }
 // Pinned alloc::sync::ArcInner is repr(C): strong, weak, data. This is
 // requested backing, including layout padding, not allocator/RSS overhead.
-fn arc_backing_layout<T>() -> Option<Layout> {
+pub(super) fn arc_backing_layout<T>() -> Option<Layout> {
     let atomic = Layout::new::<AtomicUsize>();
     atomic
         .extend(atomic)

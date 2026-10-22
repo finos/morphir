@@ -631,6 +631,38 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Ma
     AcquiredControllerTarget,
 );
 impl MaterializedControllerTarget {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn launch_parts(
+        &self,
+    ) -> (
+        &AcquiredTarget,
+        &SourceControllerLifetime,
+        &SourceOperationPrepayment,
+        Limits,
+    ) {
+        (
+            &self.0.target,
+            &self.0.lifetime,
+            &self.0.prepayment,
+            self.0.buffers.limits(),
+        )
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn finish_unlaunched(
+        self,
+    ) -> Result<(SourceControllerLifetime, SourceUnlaunchedFileOutcome), Self> {
+        let Self(mut owned) = self;
+        if !owned.target.clean_source_entries() {
+            return Err(Self(owned));
+        }
+        let AcquiredControllerTarget {
+            target,
+            lifetime,
+            buffers,
+            prepayment,
+        } = owned;
+        let files = target.release_unlaunched_source_files();
+        drop((buffers, prepayment));
+        Ok((lifetime, files))
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn into_parts(
         self,
     ) -> (
@@ -665,10 +697,88 @@ impl AcquiredControllerTarget {
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) enum SourceFileRelease {
     HandlesReleasedUnverified { handles: usize },
 }
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct SourceUnlaunchedFileOutcome
+{
+    cleanup: [EntryCleanup; 3],
+    descendants: CleanupPlan,
+    runtime: RuntimeAcquisition,
+    release: SourceFileRelease,
+    _digests: [[u8; 32]; 4],
+    _actual_read_bytes: u64,
+    _actual_eofs: usize,
+    _driver_written: u64,
+}
+impl SourceUnlaunchedFileOutcome {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn release(
+        &self,
+    ) -> SourceFileRelease {
+        self.release
+    }
+}
+impl AcquiredTarget {
+    fn clean_source_entries(&mut self) -> bool {
+        let Some(owned) = self._source_owned.as_mut() else {
+            return false;
+        };
+        let [
+            CreatedEntry::Held(profile_id),
+            CreatedEntry::Held(artifacts_id),
+            _,
+        ] = owned.entries
+        else {
+            return false;
+        };
+        owned.descendants.clean(
+            &self._root,
+            [&self.profile_dir, &owned._artifacts],
+            [profile_id, artifacts_id],
+        );
+        cleanup_entries(&self._root, &mut owned.entries, &mut owned.cleanup);
+        cleanup_report(&owned.entries).is_complete() && !owned.runtime.sink.disposal_uncertain()
+    }
+    // Only called after actual owned-entry retirement and before any process
+    // exists. No fake ProcessOutcome or source acceptance is manufactured.
+    fn release_unlaunched_source_files(mut self) -> SourceUnlaunchedFileOutcome {
+        let SourceAcquiredOwnership {
+            _core,
+            _artifacts,
+            _driver,
+            cleanup,
+            mut descendants,
+            mut runtime,
+            _digests,
+            _actual_read_bytes,
+            _actual_eofs,
+            _driver_written,
+            ..
+        } = self._source_owned.take().expect("same source ownership");
+        let handles = 8 + descendants.release_handles() + runtime.sink.release_handles();
+        drop((_core, _artifacts, _driver));
+        drop(self);
+        SourceUnlaunchedFileOutcome {
+            cleanup,
+            descendants,
+            runtime,
+            release: SourceFileRelease::HandlesReleasedUnverified { handles },
+            _digests,
+            _actual_read_bytes,
+            _actual_eofs,
+            _driver_written,
+        }
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn finish_unlaunched(
+        mut self,
+    ) -> Result<SourceUnlaunchedFileOutcome, Self> {
+        if !self.clean_source_entries() {
+            return Err(self);
+        }
+        Ok(self.release_unlaunched_source_files())
+    }
+}
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct SourceControllerFileOutcome
 {
     chromium: ProcessOutcome,
-    driver: Option<InteractiveOutcome>,
+    driver: Driver,
     first_fault: Option<ControllerFault>,
     cleanup: [EntryCleanup; 3],
     release: SourceFileRelease,
@@ -689,7 +799,10 @@ impl SourceControllerFileOutcome {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn driver(
         &self,
     ) -> Option<&InteractiveOutcome> {
-        self.driver.as_ref()
+        match &self.driver {
+            Driver::Finished(outcome) => Some(outcome),
+            _ => None,
+        }
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn first_fault(
         &self,
@@ -748,11 +861,15 @@ impl ControllerOutcome {
         let Chromium::Finished(chromium) = chromium else {
             unreachable!("actual finished controller")
         };
-        let driver = match driver {
-            Driver::Finished(outcome) => Some(outcome),
-            Driver::NotStarted => None,
-            _ => unreachable!("actual finished driver"),
-        };
+        // The completed owner also retains a genuinely unstarted/pre-child
+        // refused driver's backing and exact cause. No process is invented.
+        assert!(matches!(
+            driver,
+            Driver::Finished(_)
+                | Driver::NotStarted
+                | Driver::Prepared { .. }
+                | Driver::SpawnRefused { .. }
+        ));
         // Eight actual File fields in source-acquired target: executables2,
         // root/index/profile3 and core/artifacts/driver3. Never caller rootdir.
         let SourceAcquiredOwnership {

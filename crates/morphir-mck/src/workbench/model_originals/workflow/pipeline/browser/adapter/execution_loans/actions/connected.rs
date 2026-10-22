@@ -4,6 +4,9 @@ use super::*;
 use crate::workbench::model_originals::workflow::pipeline::browser::{
     BrowserDocumentProducer, BrowserHostTranscript, ControlledHostStimulus,
 };
+use crate::workbench::model_originals::workflow::pipeline::browser::{
+    collection::BrowserSourceHostAssociation, source_scope::BrowserSourceBinding,
+};
 use std::time::Instant;
 #[path = "connected/activity.rs"]
 mod activity;
@@ -40,13 +43,16 @@ enum ChoicePreparation {
 
 /// One existing host transcript's original end plus the exact source0 child
 /// relation. No caller Instant constructor or renewal is provided.
-pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct SourceControllerLifetime {
+pub struct SourceControllerLifetime {
     stamp: BrowserLoanStamp,
     end: Instant,
     binding: crate::workbench::model_originals::workflow::pipeline::browser::source_scope::BrowserSourceBinding,
     operation: SourceControllerOperationShape,
     association: crate::workbench::model_originals::workflow::pipeline::browser::collection::BrowserSourceHostAssociation,
+    pending: SourcePendingAlias,
+    journal: SourceOperationIdentity,
 }
+struct SourcePendingAlias(String);
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct SourceControllerOperationShape
 {
@@ -56,6 +62,41 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct So
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) alias_bytes: usize,
 }
 impl SourceControllerLifetime {
+    pub(super) fn same_action_journal(&self, action:&BrowserExecutionAction<'_, '_, '_, '_, '_, '_, '_>)->bool {
+        let cursor=lock(&action.owner.actions);
+        matches!(cursor.phase,Phase::Issued(position) if position==action.position())
+            && matches!(action.state,TokenState::Outstanding)
+            && self.journal.preflight(&cursor.operations).is_ok()
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_action_relation(
+        &self, action:&BrowserExecutionAction<'_, '_, '_, '_, '_, '_, '_>, loans:&mut BrowserLoans<'_, '_>
+    )->Result<(),BrowserActionIssueError> {
+        action.owner.validate_action(action,loans)?;
+        loans.validate_relation_stamp(&self.stamp)?;
+        action.owner.child.identity.while_active(|| {
+            let cursor=lock(&action.owner.actions);
+            self.journal.preflight(&cursor.operations).map_err(BrowserActionIssueError::Cursor)
+        }).map_err(|cause|BrowserActionIssueError::Input(source(cause)))??;
+        self.journal.fund_validation(loans.inner)?;
+        self.association.prepare_validation(loans)?;
+        action.owner.child.identity.while_active(|| {
+            self.association.while_current(|| {
+                let cursor=lock(&action.owner.actions);
+                self.journal.matches(&cursor.operations).map_err(BrowserActionIssueError::Cursor)
+            }).map_err(super::borrowed::association_error)?
+        }).map_err(|cause|BrowserActionIssueError::Input(source(cause)))?
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn pending_alias(&self) -> &str {
+        &self.pending.0
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn association(&self) -> &BrowserSourceHostAssociation {
+        &self.association
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_opening(
+        &self, opening: &super::BrowserConnectedOpening<'_>, loans: &mut BrowserLoans<'_, '_>
+    ) -> Result<(), BrowserActionIssueError> {
+        opening.validate_lifetime(self, loans)
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate(
         &self,
         loans: &BrowserLoans<'_, '_>,
@@ -103,25 +144,142 @@ impl SourceControllerLifetime {
     }
 }
 
-pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct ConnectedOpeningAction<
-    'a,
-    'compiled,
-    'run,
-    'case,
-    'sources,
-    'raw,
-    'supplied,
-> {
+pub struct ConnectedOpeningAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied> {
     action: BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
     selection: [String; 3],
     pending: &'case str,
     choices: ConnectedChoiceFunding,
 }
 impl ConnectedOpeningAction<'_, '_, '_, '_, '_, '_, '_> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn settle_controller_reply(
+        &mut self,
+        reply: &MeasuredOpeningReply,
+        lifetime: &SourceControllerLifetime,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        lifetime.validate_action_relation(&self.action,loans)?;
+        if self.position() != lifetime.operation.opening_position {
+            return Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::ForeignAction));
+        }
+        lifetime.association.prepare_validation(loans)?;
+        let action=&mut self.action;
+        let owner=action.owner;
+        owner.child.identity.while_active(|| {
+            lifetime.association.while_current(|| {
+                let mut cursor=lock(&owner.actions);
+                match cursor.phase {
+                    Phase::Issued(position) if position==action.position() && matches!(action.state, TokenState::Outstanding)=>{},
+                    Phase::Refused{cause,..}=>return Err(BrowserActionIssueError::Cursor(cause)),
+                    _=>return Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::ForeignAction)),
+                }
+                if !reply.matches(&cursor.operations) {return Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::ForeignAction));}
+                if !reply.accepted_by(&cursor.operations) {return Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::UnsupportedOperation));}
+                cursor.phase=if cursor.inputs.len()==0 {Phase::Exhausted}else{Phase::Ready};
+                action.state=TokenState::Consumed;
+                Ok(())
+            }).map_err(super::borrowed::association_error)?
+        }).map_err(|cause| BrowserActionIssueError::Input(source(cause)))?
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn refuse_controller(&mut self, cause: BrowserActionIssueError) {
+        let mut cursor=lock(&self.action.owner.actions);
+        cursor.first_issue.get_or_insert(cause);
+        cursor.refuse(self.action.position(), BrowserActionCursorFault::OperationRefused);
+        self.action.state=TokenState::Refused;
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn inspect_controller_cause<R>(&self, inspect: impl FnOnce(&BrowserActionIssueError)->R)->R {
+        let cursor=lock(&self.action.owner.actions);
+        inspect(cursor.first_issue.as_ref().expect("failed controller retained actual cause"))
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn position(
         &self,
     ) -> usize {
         self.action.position()
+    }
+    pub fn connected_opening<'b>(
+        &'b self,
+        producer: &BrowserDocumentProducer,
+        transcript: &BrowserHostTranscript,
+        stimulus: &ControlledHostStimulus,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<super::BrowserConnectedOpening<'b>, BrowserActionIssueError> {
+        self.action
+            .connected_opening(producer, transcript, stimulus, loans)
+    }
+}
+
+struct PreparedOpeningData<'case> {
+    stamp: BrowserLoanStamp,
+    selection: [String; 3],
+    pending: &'case str,
+}
+enum OpeningPreparationGate<'a> {
+    Bound(&'a BrowserSourceHostAssociation),
+    #[cfg(test)]
+    Component,
+}
+enum OpeningPreparationSource {
+    Bound(BrowserSourceHostAssociation),
+    #[cfg(test)]
+    Component,
+}
+impl OpeningPreparationSource {
+    fn gate(&self) -> OpeningPreparationGate<'_> {
+        match self {
+            Self::Bound(association) => OpeningPreparationGate::Bound(association),
+            #[cfg(test)]
+            Self::Component => OpeningPreparationGate::Component,
+        }
+    }
+}
+impl OpeningPreparationGate<'_> {
+    fn prepare_validation(
+        &self,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        match self {
+            Self::Bound(association) => association.prepare_validation(loans).map_err(Into::into),
+            #[cfg(test)]
+            Self::Component => Ok(()),
+        }
+    }
+    fn while_preparing<R>(
+        &self,
+        run: &PreparedBrowserClientRun<'_, '_, '_, '_, '_, '_>,
+        operation: impl FnOnce() -> R,
+    ) -> Result<R, BrowserActionIssueError> {
+        run.child
+            .identity
+            .while_active(|| match self {
+                Self::Bound(association) => association
+                    .while_current(operation)
+                    .map_err(super::borrowed::association_error),
+                #[cfg(test)]
+                Self::Component => Ok(operation()),
+            })
+            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))?
+    }
+    fn before_allocation(&self) -> Result<(), OpeningAllocationFault> {
+        match self {
+            Self::Bound(association) if Instant::now() >= association.end() => {
+                Err(OpeningAllocationFault::End)
+            }
+            _ => Ok(()),
+        }
+    }
+}
+enum OpeningAllocationFault {
+    End,
+    Allocation,
+}
+fn allocation_error(
+    error: OpeningAllocationFault,
+    loans: &mut BrowserLoans<'_, '_>,
+) -> BrowserActionIssueError {
+    match error {
+        OpeningAllocationFault::End => BrowserActionIssueError::Host(
+            crate::workbench::model_originals::workflow::pipeline::browser::BrowserHostTranscriptFault::End,
+        ),
+        OpeningAllocationFault::Allocation => loans.fail_collection(InstalledObservationFault::Allocation).into(),
     }
 }
 
@@ -139,6 +297,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Pr
     selection: [String; 3],
     pending: &'case str,
     choices: ChoicePreparation,
+    preparation: OpeningPreparationSource,
 }
 impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
     PreparedConnectedOpening<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
@@ -151,6 +310,22 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
         action: BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
         loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<Self, BrowserActionIssueError> {
+        let data = Self::prepare_data(run, &action, loans, OpeningPreparationGate::Component)?;
+        Ok(Self {
+            action,
+            stamp: data.stamp,
+            selection: data.selection,
+            pending: data.pending,
+            choices: ChoicePreparation::Unprepared,
+            preparation: OpeningPreparationSource::Component,
+        })
+    }
+    fn prepare_data(
+        run: &'a PreparedBrowserClientRun<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
+        action: &BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
+        loans: &mut BrowserLoans<'_, '_>,
+        gate: OpeningPreparationGate<'_>,
+    ) -> Result<PreparedOpeningData<'case>, BrowserActionIssueError> {
         // Exact relation/prior faults precede operand tests, spending and copies.
         run.validate_action(&action, loans)?;
         if action.position() != 0 {
@@ -174,8 +349,9 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             ));
         };
         let operands = [selected.provider_id, selected.locator, project_id];
-        let mut requested = size_of::<Self>();
-        let mut visits = size_of::<Self>();
+        let mut requested = size_of::<Self>().checked_add(size_of::<PreparedOpeningData<'_>>())
+            .ok_or_else(|| overflow(loans.inner))?;
+        let mut visits = requested;
         for value in operands {
             requested = requested
                 .checked_add(value.len())
@@ -187,7 +363,7 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
                 .and_then(|n| visits.checked_add(n))
                 .ok_or_else(|| overflow(loans.inner))?;
         }
-        loans.reserve_controlled_host_storage(requested, operands.len() + 1, visits)?;
+        loans.reserve_controlled_host_storage(requested, operands.len() + 2, visits)?;
         // This fixed driver passes each operand as one argv value. The funded
         // scan rejects embedded NUL before any acquisition or string copy.
         if operands.iter().any(|value| value.as_bytes().contains(&0)) {
@@ -195,21 +371,22 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
                 BrowserActionCursorFault::UnsupportedOperation,
             ));
         }
+        gate.prepare_validation(loans)?;
+        gate.while_preparing(run, || ())?;
         let stamp = loans.prepare_relation_stamp()?;
-        let mut selection = run
-            .child
-            .identity
-            .while_active(|| {
+        gate.prepare_validation(loans)?;
+        let mut selection = gate
+            .while_preparing(run, || {
                 let mut selection = [String::new(), String::new(), String::new()];
                 for (destination, source) in selection.iter_mut().zip(operands) {
+                    gate.before_allocation()?;
                     destination
                         .try_reserve_exact(source.len())
-                        .map_err(|_| InstalledObservationFault::Allocation)?;
+                        .map_err(|_| OpeningAllocationFault::Allocation)?;
                 }
-                Ok::<_, InstalledObservationFault>(selection)
-            })
-            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))?
-            .map_err(|cause| loans.fail_collection(cause))?;
+                Ok::<_, OpeningAllocationFault>(selection)
+            })?
+            .map_err(|cause| allocation_error(cause, loans))?;
         for (destination, source) in selection.iter().zip(operands) {
             let spare = destination
                 .capacity()
@@ -218,20 +395,19 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             loans.reserve_controlled_host_storage(spare, 0, 0)?;
         }
         // No loan/source re-entry while the exact child gate is held.
-        run.child
-            .identity
-            .while_active(|| {
-                for (destination, source) in selection.iter_mut().zip(operands) {
-                    destination.push_str(source);
-                }
-            })
-            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))?;
-        Ok(Self {
-            action,
+        gate.prepare_validation(loans)?;
+        gate.while_preparing(run, || {
+            for (destination, source) in selection.iter_mut().zip(operands) {
+                gate.before_allocation()?;
+                destination.push_str(source);
+            }
+            Ok::<_, OpeningAllocationFault>(())
+        })?
+        .map_err(|cause| allocation_error(cause, loans))?;
+        Ok(PreparedOpeningData {
             stamp,
             selection,
             pending,
-            choices: ChoicePreparation::Unprepared,
         })
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn provider_id(
@@ -266,6 +442,10 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
     ) -> Result<&ConnectedChoiceFunding, BrowserActionIssueError> {
         self.action.owner.validate_action(&self.action, loans)?;
         loans.validate_controlled_source(stimulus)?;
+        self.preparation.gate().prepare_validation(loans)?;
+        self.preparation
+            .gate()
+            .while_preparing(self.action.owner, || ())?;
         if stimulus.opening_action() != self.position() {
             return Err(BrowserActionIssueError::Input(source(
                 BrowserSourceFault::ForeignSource,
@@ -369,6 +549,7 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             .and_then(|n| n.checked_mul(128))
             .ok_or_else(|| overflow(loans.inner))?;
         loans.reserve_controlled_host_storage(requested, raw.len(), visits)?;
+        self.preparation.gate().prepare_validation(loans)?;
         let (decode, _, comparison) = loans
             .inner
             .physical_owners()
@@ -381,12 +562,12 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             .charge(CompareResource::ComparisonBytes, comparisons)
             .map_err(inputs::BrowserInputFault::Comparison)
             .map_err(BrowserInputError::from)?;
-        self.stamp
-            .while_active(|| {
+        self.preparation
+            .gate()
+            .while_preparing(self.action.owner, || {
                 let (doc, _) = decode.literal_with_raw(raw)?;
                 project(&doc, decode)
-            })
-            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))?
+            })?
             .map_err(inputs::BrowserInputFault::Decode)
             .map_err(BrowserInputError::from)
             .map_err(BrowserActionIssueError::from)
@@ -402,8 +583,53 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             ConnectedOpeningAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
             SourceControllerLifetime,
         ),
-        BrowserActionIssueError,
+        super::BrowserConnectedPreparationFailure<
+            'a,
+            'compiled,
+            'run,
+            'case,
+            'sources,
+            'raw,
+            'supplied,
+        >,
     > {
+        let prepared = self.prepare_parts(producer, transcript, stimulus, loans);
+        let parts = match prepared {
+            Ok(parts) => parts,
+            Err(cause) => return Err(self.action.preparation_failed(cause)),
+        };
+        let Self {
+            action,
+            stamp,
+            selection,
+            pending,
+            ..
+        } = self;
+        Ok((
+            ConnectedOpeningAction {
+                action,
+                selection,
+                pending,
+                choices: parts.choices,
+            },
+            SourceControllerLifetime {
+                stamp,
+                end: parts.end,
+                binding: parts.binding,
+                operation: parts.operation,
+                association: parts.association,
+                pending: parts.pending,
+                journal: parts.journal,
+            },
+        ))
+    }
+    fn prepare_parts(
+        &mut self,
+        producer: &BrowserDocumentProducer,
+        transcript: &BrowserHostTranscript,
+        stimulus: &ControlledHostStimulus,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<PreparedControllerParts, BrowserActionIssueError> {
         self.action.owner.validate_action(&self.action, loans)?;
         let association = transcript
             .source_controller_association(producer, stimulus, self.position(), loans)
@@ -460,8 +686,27 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
         };
         let metadata = size_of::<SourceControllerLifetime>()
             .checked_add(size_of::<ConnectedOpeningAction<'_, '_, '_, '_, '_, '_, '_>>())
+            .and_then(|n| n.checked_add(size_of::<PreparedControllerParts>()))
+            .and_then(|n| n.checked_add(self.pending.len()))
             .ok_or_else(|| overflow(loans.inner))?;
-        loans.reserve_controlled_host_storage(metadata, 2, metadata)?;
+        loans.reserve_controlled_host_storage(metadata, 4, metadata)?;
+        self.preparation.gate().prepare_validation(loans)?;
+        let mut pending = self.preparation.gate().while_preparing(self.action.owner, || {
+            let mut text = String::new();
+            text.try_reserve_exact(self.pending.len()).map_err(|_| BrowserActionIssueError::Cursor(BrowserActionCursorFault::UnsupportedOperation))?;
+            Ok::<_, BrowserActionIssueError>(SourcePendingAlias(text))
+        })??;
+        let spare = pending.0.capacity().checked_sub(self.pending.len()).ok_or_else(|| overflow(loans.inner))?;
+        loans.reserve_controlled_host_storage(spare, 0, 0)?;
+        self.preparation.gate().prepare_validation(loans)?;
+        self.preparation.gate().while_preparing(self.action.owner, || {
+            pending.0.push_str(self.pending);
+        })?;
+        SourceOperationIdentity::fund(loans.inner)?;
+        self.preparation.gate().prepare_validation(loans)?;
+        let journal=self.preparation.gate().while_preparing(self.action.owner, || {
+            lock(&self.action.owner.actions).operations.identity_after_funding()
+        })?;
         // Genuine child debt precedes the first possible acquisition effect.
         // Drop alone remains Abandoned; logical action replies cannot retire it.
         let binding = self
@@ -471,28 +716,76 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             .scope
             .bind(loans.inner)
             .map_err(issue)?;
-        let Self {
-            action,
-            stamp,
-            selection,
+        Ok(PreparedControllerParts {
+            choices,
+            end,
+            binding,
+            operation,
+            association,
             pending,
-            ..
-        } = self;
-        Ok((
-            ConnectedOpeningAction {
-                action,
-                selection,
-                pending,
-                choices,
-            },
-            SourceControllerLifetime {
-                stamp,
-                end,
-                binding,
-                operation,
-                association,
-            },
-        ))
+            journal,
+        })
+    }
+}
+struct PreparedControllerParts {
+    choices: ConnectedChoiceFunding,
+    end: Instant,
+    binding: BrowserSourceBinding,
+    operation: SourceControllerOperationShape,
+    association: BrowserSourceHostAssociation,
+    pending: SourcePendingAlias,
+    journal: SourceOperationIdentity,
+}
+impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
+    BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
+{
+    pub fn prepare_connected_controller(
+        self,
+        producer: &BrowserDocumentProducer,
+        transcript: &BrowserHostTranscript,
+        stimulus: &ControlledHostStimulus,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<
+        (
+            ConnectedOpeningAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
+            SourceControllerLifetime,
+        ),
+        super::BrowserConnectedPreparationFailure<
+            'a,
+            'compiled,
+            'run,
+            'case,
+            'sources,
+            'raw,
+            'supplied,
+        >,
+    > {
+        let prepared = (|| {
+            self.owner.validate_action(&self, loans)?;
+            let association = transcript
+                .source_controller_association(producer, stimulus, self.position(), loans)
+                .map_err(super::borrowed::association_error)?;
+            let data = PreparedConnectedOpening::prepare_data(
+                self.owner,
+                &self,
+                loans,
+                OpeningPreparationGate::Bound(&association),
+            )?;
+            Ok::<_, BrowserActionIssueError>((data, association))
+        })();
+        let (data, association) = match prepared {
+            Ok(value) => value,
+            Err(cause) => return Err(self.preparation_failed(cause)),
+        };
+        PreparedConnectedOpening {
+            action: self,
+            stamp: data.stamp,
+            selection: data.selection,
+            pending: data.pending,
+            choices: ChoicePreparation::Unprepared,
+            preparation: OpeningPreparationSource::Bound(association),
+        }
+        .into_controller_parts(producer, transcript, stimulus, loans)
     }
 }
 

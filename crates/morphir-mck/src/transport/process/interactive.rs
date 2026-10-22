@@ -2,6 +2,9 @@
 //! The caller supplies fixed capture storage. Complete controller preparation
 //! must separately fund actual metadata, storage and all control-copy work.
 use super::*;
+#[cfg(test)]
+#[path = "retained_spawn_tests.rs"]
+mod retained_spawn_tests;
 
 /// Already allocated caller storage. Spare capacity never changes Limits.
 pub(crate) struct FixedCaptureBuffers {
@@ -33,7 +36,57 @@ pub(crate) enum InteractiveSpawnError {
     CaptureNotEmpty(OutputStream),
     Process(ProcessError),
 }
+/// No child exists on this refusal. The SAME caller backing remains owned.
+pub(crate) struct FixedCaptureSpawnFailure {
+    cause: InteractiveSpawnError,
+    capture: FixedCaptureBuffers,
+}
+impl FixedCaptureSpawnFailure {
+    pub(crate) fn into_parts(self) -> (InteractiveSpawnError, FixedCaptureBuffers) {
+        (self.cause, self.capture)
+    }
+}
 impl OneShotProcess {
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+    pub(crate) fn spawn_fixed_capture_retained(
+        spec: CommandSpec,
+        limits: Limits,
+        capture: FixedCaptureBuffers,
+    ) -> Result<Self, FixedCaptureSpawnFailure> {
+        if let Err(cause) = capture.validate(limits) {
+            return Err(FixedCaptureSpawnFailure { cause, capture });
+        }
+        Self::spawn_with_io_retained(
+            spec,
+            limits,
+            ProcessInput::Null,
+            CaptureBuffers::Fixed {
+                stdout: capture.stdout,
+                stderr: capture.stderr,
+            },
+        )
+        .map(|(process, _)| process)
+        .map_err(|(cause, capture)| {
+            let CaptureBuffers::Fixed { stdout, stderr } = capture else {
+                unreachable!("retained fixed spawn cannot become a growing capture")
+            };
+            FixedCaptureSpawnFailure {
+                cause: InteractiveSpawnError::Process(cause),
+                capture: FixedCaptureBuffers { stdout, stderr },
+            }
+        })
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    pub(crate) fn spawn_fixed_capture_retained(
+        _spec: CommandSpec,
+        _limits: Limits,
+        capture: FixedCaptureBuffers,
+    ) -> Result<Self, FixedCaptureSpawnFailure> {
+        Err(FixedCaptureSpawnFailure {
+            cause: InteractiveSpawnError::Process(ProcessError::UnsupportedPlatform),
+            capture,
+        })
+    }
     /// Consume the caller's fixed backing through the existing output readers.
     /// This owns physical capture only; it grants no source or launch authority.
     #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
@@ -135,6 +188,17 @@ impl InteractiveOutcome {
 }
 impl InteractiveProcess {
     #[cfg(not(target_os = "macos"))]
+    pub(crate) fn spawn_retained(
+        _spec: CommandSpec,
+        _limits: Limits,
+        capture: FixedCaptureBuffers,
+    ) -> Result<Self, FixedCaptureSpawnFailure> {
+        Err(FixedCaptureSpawnFailure {
+            cause: InteractiveSpawnError::Process(ProcessError::UnsupportedPlatform),
+            capture,
+        })
+    }
+    #[cfg(not(target_os = "macos"))]
     pub(crate) fn spawn(
         _spec: CommandSpec,
         _limits: Limits,
@@ -151,9 +215,19 @@ impl InteractiveProcess {
         limits: Limits,
         capture: FixedCaptureBuffers,
     ) -> Result<Self, InteractiveSpawnError> {
+        Self::spawn_retained(spec, limits, capture).map_err(|failure| failure.into_parts().0)
+    }
+    #[cfg(target_os = "macos")]
+    pub(crate) fn spawn_retained(
+        spec: CommandSpec,
+        limits: Limits,
+        capture: FixedCaptureBuffers,
+    ) -> Result<Self, FixedCaptureSpawnFailure> {
         use rustix::fs::{OFlags, fcntl_getfl, fcntl_setfl};
-        capture.validate(limits)?;
-        let (process, stdin) = OneShotProcess::spawn_with_io(
+        if let Err(cause) = capture.validate(limits) {
+            return Err(FixedCaptureSpawnFailure { cause, capture });
+        }
+        let (process, stdin) = OneShotProcess::spawn_with_io_retained(
             spec,
             limits,
             ProcessInput::Piped,
@@ -162,7 +236,15 @@ impl InteractiveProcess {
                 stderr: capture.stderr,
             },
         )
-        .map_err(InteractiveSpawnError::Process)?;
+        .map_err(|(cause, capture)| {
+            let CaptureBuffers::Fixed { stdout, stderr } = capture else {
+                unreachable!("retained fixed interactive spawn cannot become growing capture")
+            };
+            FixedCaptureSpawnFailure {
+                cause: InteractiveSpawnError::Process(cause),
+                capture: FixedCaptureBuffers { stdout, stderr },
+            }
+        })?;
         // From here onward the actual child/readers MUST be returned retained,
         // including fcntl or missing-input setup failure. No bare Err is possible.
         let mut owner = Self {

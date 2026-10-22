@@ -1,7 +1,11 @@
 //! Private workflow operand compiler, not registered capability or authority.
 pub use pipeline::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
-    BrowserConnectedOpening, BrowserExecutionAction,
+    BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
+    BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
+    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
+    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub use pipeline::{
     BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,

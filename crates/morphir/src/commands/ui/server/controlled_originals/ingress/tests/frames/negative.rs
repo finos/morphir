@@ -378,5 +378,7 @@ fn browser_document_ingress_negative_04_exact_stop_zero_before_fact_then_second_
 #[path = "negative/preparation.rs"]
 mod preparation;
 
+#[path = "../collection_steps.rs"]
+mod collection_steps;
 #[path = "negative/lifecycle.rs"]
 mod lifecycle;

@@ -30,7 +30,7 @@ pub(super) fn with_compiled_limits(
 
 // Explicit actual-archive controls only. This does not alter the ordinary
 // one-GiB fixture, configured production policy or its permanent refusal test.
-pub(super) fn with_compiled_artifact_control(
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_compiled_artifact_control(
     action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut inputs::BrowserOwnerLoans<'_>),
 ) {
     with_compiled_fixture(
@@ -107,7 +107,7 @@ fn with_compiled_fixture(
     .unwrap();
 }
 
-pub(super) fn controlled_clients<'a, 'case, 'sources, 'raw, 'supplied>(
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn controlled_clients<'a, 'case, 'sources, 'raw, 'supplied>(
     compiled: &'a [CompiledExecution<'case, 'sources, 'raw, 'supplied>],
 ) -> Vec<
     &'a crate::workbench::model_originals::workflow::source_compile::CompiledSourceCase<

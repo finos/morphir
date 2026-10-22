@@ -395,11 +395,16 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
 mod actions;
 pub use actions::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
-    BrowserConnectedOpening, BrowserExecutionAction,
+    BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
+    BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
+    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
+    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::{
     ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerActivity,
-    SourceControllerLifetime, SourceControllerOperationShape,
+    SourceControllerLifetime, SourceControllerOperationShape, SourceOperationJournal,
+    MeasuredInspectionReply, MeasuredOpeningReply, PendingSourceOperation, SourceOperationKind,
 };
 #[cfg(test)]
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::{
@@ -428,6 +433,8 @@ impl BrowserLoans<'_, '_> {
 #[cfg(test)]
 #[path = "execution_loans/tests.rs"]
 mod tests;
+#[cfg(test)]
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use tests::{controlled_clients, with_compiled_artifact_control};
 
 /// Residual SAME-owner planning quantities, never a reservation or grant.
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct BrowserCleanupRemaining

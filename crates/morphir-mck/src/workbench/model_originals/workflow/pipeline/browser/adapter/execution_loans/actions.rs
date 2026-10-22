@@ -5,11 +5,33 @@ use std::sync::{Mutex, MutexGuard};
 mod borrowed;
 #[path = "actions/connected.rs"]
 mod connected;
-pub use borrowed::BrowserConnectedOpening;
+#[path = "actions/operations.rs"]
+mod operations;
+#[path = "actions/preparation_failure.rs"]
+mod preparation_failure;
+#[path = "actions/inspection.rs"]
+mod inspection;
+pub use inspection::{BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary};
+pub use borrowed::{BrowserConnectedOpening, BrowserPreparedControllerStep, BrowserPreparedListenerStart};
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use connected::{
     ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerActivity,
     SourceControllerLifetime, SourceControllerOperationShape,
 };
+pub use connected::{
+    ConnectedOpeningAction as BrowserOwnedConnectedOpening,
+    SourceControllerLifetime as BrowserControllerPreparation,
+};
+pub use operations::{
+    BrowserConnectedControlFault, BrowserConnectedJournalFault,
+    BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
+    BrowserInspectionPendingReply, BrowserOpeningSelectionReply,
+};
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use operations::{
+    MeasuredInspectionReply, MeasuredOpeningReply, PendingSourceOperation, SourceOperationJournal,
+    SourceOperationKind,
+};
+use operations::SourceOperationIdentity;
+pub use preparation_failure::BrowserConnectedPreparationFailure;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BrowserActionCursorFault {
@@ -19,6 +41,8 @@ pub enum BrowserActionCursorFault {
     Unsupported(BrowserUnsupportedActionKind),
     Poisoned,
     UnsupportedOperation,
+    PreparationRefused,
+    OperationRefused,
 }
 #[derive(Debug)]
 pub enum BrowserActionIssueError {
@@ -64,6 +88,8 @@ pub(super) struct BrowserActionCursor<'case> {
     inputs: inputs::BrowserActionInputs<'case>,
     total: usize,
     phase: Phase,
+    operations: SourceOperationJournal,
+    first_issue: Option<BrowserActionIssueError>,
 }
 impl<'case> BrowserActionCursor<'case> {
     pub(super) fn prepare(
@@ -81,10 +107,13 @@ impl<'case> BrowserActionCursor<'case> {
         // The embedding run's actual layout already funds this cursor and Mutex.
         // Pay every possible issued wrapper and monotone state write before issue.
         reserve(loans, bytes, total, initialized)?;
+        let operations = SourceOperationJournal::prepare(loans)?;
         Ok(Self {
             inputs,
             total,
             phase: Phase::Ready,
+            operations,
+            first_issue: None,
         })
     }
     fn position(&self) -> usize {
@@ -147,7 +176,7 @@ fn lock<'a, 'case>(
 }
 enum TokenState {
     Outstanding,
-    #[cfg(test)]
+    Refused,
     Consumed,
 }
 /// A single source-issued input. Getters are DATA only; fixed operation factories
@@ -160,6 +189,16 @@ pub struct BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 's
 impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
     BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
 {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn refuse_controller(&mut self, cause:BrowserActionIssueError) {
+        let mut cursor=lock(&self.owner.actions);
+        cursor.first_issue.get_or_insert(cause);
+        cursor.refuse(self.position(),BrowserActionCursorFault::OperationRefused);
+        self.state=TokenState::Refused;
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn inspect_controller_cause<R>(&self, inspect:impl FnOnce(&BrowserActionIssueError)->R)->R {
+        let cursor=lock(&self.owner.actions);
+        inspect(cursor.first_issue.as_ref().expect("actual refusal retained before token drop"))
+    }
     pub fn position(&self) -> usize {
         self.input.position()
     }
@@ -269,7 +308,32 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
     pub fn actions_terminal(&self) -> BrowserActionCursorTerminal {
         lock(&self.actions).terminal()
     }
+    /// DATA only; this copy cannot request or settle a source action.
+    pub fn connected_operations(&self) -> BrowserConnectedOperationsSnapshot {
+        lock(&self.actions).operations.snapshot()
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn into_action_capture(
+        self,
+    ) -> (
+        BrowserActionCursorTerminal,
+        SourceOperationJournal,
+        Option<BrowserActionIssueError>,
+    ) {
+        let cursor = match self.actions.into_inner() {
+            Ok(cursor) => cursor,
+            Err(poison) => {
+                let mut cursor = poison.into_inner();
+                let position = cursor.position();
+                cursor.refuse(position, BrowserActionCursorFault::Poisoned);
+                cursor
+            }
+        };
+        (cursor.terminal(), cursor.operations, cursor.first_issue)
+    }
 }
+#[cfg(test)]
+#[path = "actions/operation_tests.rs"]
+mod operation_tests;
 #[cfg(test)]
 #[path = "actions/tests.rs"]
 mod tests;

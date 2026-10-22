@@ -3,7 +3,11 @@ use super::super::{PreparationFault, Source, policy::Policy, prepared_typed};
 use super::{
     adapter::{
         BrowserInputError, BrowserLoans, BrowserPreparationErrorKind, BrowserSourceTerminal,
-        execution_loans::{BrowserActionCursorTerminal, ExecutionChild, PreparedBrowserClientRun},
+        execution_loans::{
+            BrowserActionCursorTerminal, BrowserActionIssueError,
+            BrowserConnectedOperationsSnapshot, ExecutionChild, PreparedBrowserClientRun,
+            SourceOperationJournal,
+        },
     },
     collection::{
         BrowserCollectionTerminal, BrowserDocumentBounds, BrowserIssuedHostsTerminal,
@@ -119,6 +123,8 @@ pub struct BrowserRowAttempt<E> {
     owner_failure: Option<BrowserInputError>,
     issued_hosts: BrowserIssuedHostsTerminal,
     actions: BrowserActionCursorTerminal,
+    connected_operations: BrowserConnectedOperationsSnapshot,
+    first_action_issue: Option<BrowserActionIssueError>,
     collection: BrowserRowCollection,
 }
 impl<E> BrowserRowAttempt<E> {
@@ -143,6 +149,12 @@ impl<E> BrowserRowAttempt<E> {
     /// This is independent of actual driver or physical operation completion.
     pub fn actions_terminal(&self) -> BrowserActionCursorTerminal {
         self.actions
+    }
+    pub fn connected_operations(&self) -> BrowserConnectedOperationsSnapshot {
+        self.connected_operations
+    }
+    pub fn first_action_issue(&self) -> Option<&BrowserActionIssueError> {
+        self.first_action_issue.as_ref()
     }
     pub fn collection_complete(&self) -> bool {
         matches!(
@@ -323,6 +335,8 @@ fn invoke_client<E>(
         BrowserAdapterCompletion<E>,
         BrowserRowCollection,
         BrowserActionCursorTerminal,
+        SourceOperationJournal,
+        Option<BrowserActionIssueError>,
     ),
     BrowserInputError,
 > {
@@ -336,13 +350,19 @@ fn invoke_client<E>(
     // Borrowed tokens cannot escape this callback/run lifetime. Record its
     // closed state now, including a forgotten or dropped outstanding operand;
     // destroying the run must not erase an ignored refusal.
-    let actions = run.actions_terminal();
+    let (actions, operations, first_action_issue) = run.into_action_capture();
     // Keep actual error/panic ownership; no payload is copied or normalized.
     let completion = match result {
         Ok(result) => BrowserAdapterCompletion::Returned(result),
         Err(original) => BrowserAdapterCompletion::Panicked(original),
     };
-    Ok((completion, collection, actions))
+    Ok((
+        completion,
+        collection,
+        actions,
+        operations,
+        first_action_issue,
+    ))
 }
 /// Sole preparation owns all compiled rows and report contexts through inspection.
 /// The adapter receives only source-selected inputs and an issued producer loan.
@@ -408,13 +428,24 @@ pub(super) fn with_prepared_browser_execution<R, E>(
                             // source locks, then revoke before those gates can
                             // reopen. Late pending outcomes may still append
                             // DATA, but cannot enter this immutable attempt cut.
-                            let (issued_hosts, terminal) =
-                                child.revoke_with_capture(|| match &result {
-                                    Ok((_, collection, _)) => collection.issued_hosts_terminal(),
-                                    Err(_) => BrowserIssuedHostsTerminal::NoneIssued,
+                            let ((issued_hosts, connected_operations), terminal) = child
+                                .revoke_with_capture(|| match &result {
+                                    Ok((_, collection, _, operations, _)) => {
+                                        (collection.issued_hosts_terminal(), operations.snapshot())
+                                    }
+                                    Err(_) => (
+                                        BrowserIssuedHostsTerminal::NoneIssued,
+                                        BrowserConnectedOperationsSnapshot::not_requested(),
+                                    ),
                                 });
                             match result {
-                                Ok((callback, collection, actions)) => {
+                                Ok((
+                                    callback,
+                                    collection,
+                                    actions,
+                                    _operations,
+                                    first_action_issue,
+                                )) => {
                                     // Check cumulative owners independently of
                                     // the now-revoked child. An ignored refusal
                                     // belongs to this actual callback, including
@@ -426,6 +457,8 @@ pub(super) fn with_prepared_browser_execution<R, E>(
                                         owner_failure,
                                         issued_hosts,
                                         actions,
+                                        connected_operations,
+                                        first_action_issue,
                                         collection,
                                     })
                                 }

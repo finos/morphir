@@ -1,7 +1,11 @@
 //! Workbench codec cases with parent-owned expectations and explicit adapters.
 pub use model_originals::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
-    BrowserConnectedOpening, BrowserExecutionAction,
+    BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
+    BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
+    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
+    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub use model_originals::{
     BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,

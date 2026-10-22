@@ -682,6 +682,12 @@ pub(super) enum DocumentCollectOutcome {
     Drained,
     Incomplete(DocumentIngressFault),
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum DocumentCollectStep {
+    FrameRetained,
+    AwaitingChange,
+    Terminal(DocumentCollectOutcome),
+}
 fn map_gate(cause: ControlledHostFault) -> DocumentIngressFault {
     match cause {
         ControlledHostFault::End => DocumentIngressFault::End,
@@ -782,6 +788,18 @@ impl DocumentIngress {
                 state.first.get_or_insert(DocumentIngressFault::Poisoned);
                 state.first
             }
+        }
+    }
+    fn collection_ready(&self) -> bool {
+        match self.state.lock() {
+            Ok(state) => {
+                state.first.is_some()
+                    || matches!(state.incoming, Incoming::Staged(_))
+                    || matches!(state.physical, Physical::Drained)
+            }
+            // The synchronous step records the actual poison/refusal on the
+            // original native and core owners; a wait must not hide it.
+            Err(_) => true,
         }
     }
     fn take_frame(&self) -> Result<Option<CheckingFrame<'_>>, DocumentIngressFault> {
@@ -974,125 +992,130 @@ impl BoundControlledUiHost {
             })
             .map_err(|_| DocumentIngressFault::Source)?
     }
-    pub(super) async fn collect_document(
+    /// Retain at most one actual staged frame, releasing both mutable borrows
+    /// before returning. A retained frame grants ACK eligibility, not delivery.
+    pub(super) fn collect_document_step(
         &mut self,
         loans: &mut BrowserLoans<'_, '_>,
-    ) -> DocumentCollectOutcome {
+    ) -> DocumentCollectStep {
         let host = &self.state;
         let Some(document) = host.document.as_ref() else {
-            return DocumentCollectOutcome::Incomplete(DocumentIngressFault::ForeignDocument);
+            return DocumentCollectStep::Terminal(DocumentCollectOutcome::Incomplete(
+                DocumentIngressFault::ForeignDocument,
+            ));
         };
         if loans
             .validate_controlled_application(&document.source, &host.source)
             .is_err()
         {
             document.fault(DocumentIngressFault::Source);
-            return DocumentCollectOutcome::Incomplete(
+            return DocumentCollectStep::Terminal(DocumentCollectOutcome::Incomplete(
                 document.first().unwrap_or(DocumentIngressFault::Source),
-            );
+            ));
         }
         if self.document_decoder.is_none() && self.document_producer.is_none() {
-            return DocumentCollectOutcome::Incomplete(DocumentIngressFault::ForeignDocument);
+            return DocumentCollectStep::Terminal(DocumentCollectOutcome::Incomplete(
+                DocumentIngressFault::ForeignDocument,
+            ));
         }
         if let Some(producer) = self.document_producer.as_ref() {
             if producer.validate_host(loans, &host.source).is_err() {
-                return DocumentCollectOutcome::Incomplete(DocumentIngressFault::Source);
+                return DocumentCollectStep::Terminal(DocumentCollectOutcome::Incomplete(
+                    DocumentIngressFault::Source,
+                ));
             }
         }
-        let result = async {
-            loop {
-                let notified = document.changed.notified();
-                if let Some(first) = document.first() {
-                    return Err(first);
+        let result = (|| {
+            if let Some(first) = document.first() {
+                return Err(first);
+            }
+            let frame = host
+                .source
+                .while_source_active(|| {
+                    if Instant::now() >= host.end {
+                        return Err(DocumentIngressFault::End);
+                    }
+                    document.take_frame()
+                })
+                .map_err(|_| DocumentIngressFault::Source)??;
+            if let Some(frame) = frame {
+                let bytes = frame.bytes.as_ref().ok_or(DocumentIngressFault::Order)?;
+                let (kind, sequence) = header(bytes)?;
+                let expected = document
+                    .state
+                    .lock()
+                    .map_err(|_| DocumentIngressFault::Poisoned)?
+                    .last_fact
+                    .checked_add(1)
+                    .ok_or(DocumentIngressFault::SizeOverflow)?;
+                if sequence != expected {
+                    return Err(DocumentIngressFault::Order);
                 }
-                let frame = host
-                    .source
-                    .while_source_active(|| {
-                        if Instant::now() >= host.end {
-                            return Err(DocumentIngressFault::End);
-                        }
-                        document.take_frame()
-                    })
-                    .map_err(|_| DocumentIngressFault::Source)??;
-                if let Some(frame) = frame {
-                    let bytes = frame.bytes.as_ref().ok_or(DocumentIngressFault::Order)?;
-                    let (kind, sequence) = header(bytes)?;
-                    let expected = document
-                        .state
-                        .lock()
-                        .map_err(|_| DocumentIngressFault::Poisoned)?
-                        .last_fact
-                        .checked_add(1)
-                        .ok_or(DocumentIngressFault::SizeOverflow)?;
-                    if sequence != expected {
-                        return Err(DocumentIngressFault::Order);
-                    }
-                    if let Some(producer) = self.document_producer.as_mut() {
-                        let retained = producer
-                            .record_frame(loans, bytes, host.end)
-                            .map_err(collection_kind)?;
-                        host.source
-                            .while_source_active(|| {
-                                if Instant::now() >= host.end {
-                                    return Err(DocumentIngressFault::End);
-                                }
-                                document.retain_engine(frame, retained)
-                            })
-                            .map_err(|_| DocumentIngressFault::Source)??;
-                        continue;
-                    }
-                    let permission = self
-                        .document_decoder
-                        .as_mut()
-                        .ok_or(DocumentIngressFault::ForeignDocument)?;
-                    let data = match loans.decode_document_frame_data(
-                        &document.source,
-                        permission,
-                        kind,
-                        sequence,
-                        &bytes[HEADER_BYTES..],
-                        host.end,
-                    ) {
-                        Ok(data) => data,
-                        Err(cause) => {
-                            let first = decode_kind(&cause);
-                            let mut inner = document
-                                .state
-                                .lock()
-                                .map_err(|_| DocumentIngressFault::Poisoned)?;
-                            if inner.decode_error.is_none() {
-                                inner.decode_error = Some(cause);
-                            }
-                            return Err(first);
-                        }
-                    };
+                if let Some(producer) = self.document_producer.as_mut() {
+                    let retained = producer
+                        .record_frame(loans, bytes, host.end)
+                        .map_err(collection_kind)?;
                     host.source
                         .while_source_active(|| {
                             if Instant::now() >= host.end {
                                 return Err(DocumentIngressFault::End);
                             }
-                            document.retain(frame, data)
+                            document.retain_engine(frame, retained)
                         })
                         .map_err(|_| DocumentIngressFault::Source)??;
-                    continue;
+                    return Ok(DocumentCollectStep::FrameRetained);
                 }
-                let drained = matches!(
-                    document
-                        .state
-                        .lock()
-                        .map_err(|_| DocumentIngressFault::Poisoned)?
-                        .physical,
-                    Physical::Drained
-                );
-                if drained {
-                    return Ok(());
-                }
-                gated(host, notified).await.map_err(map_gate)?;
+                let permission = self
+                    .document_decoder
+                    .as_mut()
+                    .ok_or(DocumentIngressFault::ForeignDocument)?;
+                let data = match loans.decode_document_frame_data(
+                    &document.source,
+                    permission,
+                    kind,
+                    sequence,
+                    &bytes[HEADER_BYTES..],
+                    host.end,
+                ) {
+                    Ok(data) => data,
+                    Err(cause) => {
+                        let first = decode_kind(&cause);
+                        let mut inner = document
+                            .state
+                            .lock()
+                            .map_err(|_| DocumentIngressFault::Poisoned)?;
+                        if inner.decode_error.is_none() {
+                            inner.decode_error = Some(cause);
+                        }
+                        return Err(first);
+                    }
+                };
+                host.source
+                    .while_source_active(|| {
+                        if Instant::now() >= host.end {
+                            return Err(DocumentIngressFault::End);
+                        }
+                        document.retain(frame, data)
+                    })
+                    .map_err(|_| DocumentIngressFault::Source)??;
+                return Ok(DocumentCollectStep::FrameRetained);
             }
-        }
-        .await;
+            let drained = matches!(
+                document
+                    .state
+                    .lock()
+                    .map_err(|_| DocumentIngressFault::Poisoned)?
+                    .physical,
+                Physical::Drained
+            );
+            Ok(if drained {
+                DocumentCollectStep::Terminal(DocumentCollectOutcome::Drained)
+            } else {
+                DocumentCollectStep::AwaitingChange
+            })
+        })();
         match result {
-            Ok(()) => DocumentCollectOutcome::Drained,
+            Ok(step) => step,
             Err(cause) => {
                 if let Some(producer) = self.document_producer.as_mut() {
                     producer
@@ -1101,7 +1124,48 @@ impl BoundControlledUiHost {
                 document.fault(cause);
                 host.fault(ControlledHostFault::Document(cause));
                 let _ = loans.refuse_application(&document.source);
-                DocumentCollectOutcome::Incomplete(document.first().unwrap_or(cause))
+                DocumentCollectStep::Terminal(DocumentCollectOutcome::Incomplete(
+                    document.first().unwrap_or(cause),
+                ))
+            }
+        }
+    }
+
+    /// Wait without borrowing the cumulative loans. Read actual queued/terminal
+    /// state on both sides of Notify setup: notify_waiters does not queue a
+    /// permit when it runs before a waiter exists. No frame is taken here.
+    pub(super) async fn wait_document_change(&self) {
+        let host = &self.state;
+        let Some(document) = host.document.as_ref() else {
+            return;
+        };
+        if document.collection_ready() {
+            return;
+        }
+        let notified = document.changed.notified();
+        if document.collection_ready() {
+            return;
+        }
+        if let Err(cause) = gated(host, notified).await {
+            let cause = map_gate(cause);
+            document.fault(cause);
+            host.fault(ControlledHostFault::Document(cause));
+            // The next synchronous step performs the original producer and
+            // SAME-loan refusal. This wait has no mutable owner loan to spend.
+        }
+    }
+
+    /// Compatibility loop. Native controller orchestration uses the bounded
+    /// step and loan-free wait separately so it can interleave actual polling.
+    pub(super) async fn collect_document(
+        &mut self,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> DocumentCollectOutcome {
+        loop {
+            match self.collect_document_step(loans) {
+                DocumentCollectStep::FrameRetained => (),
+                DocumentCollectStep::AwaitingChange => self.wait_document_change().await,
+                DocumentCollectStep::Terminal(outcome) => return outcome,
             }
         }
     }

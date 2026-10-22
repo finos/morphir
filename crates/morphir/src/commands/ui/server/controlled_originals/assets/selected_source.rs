@@ -3,6 +3,8 @@
 use super::*;
 use morphir_mck::workbench::{BrowserActionIssueError, BrowserConnectedOpening};
 
+mod execution;
+
 const SELECTED_COMMIT: &[u8; 40] = b"a42427debd0f5b3d484446e22670d2527469a538";
 const SELECTED_TREE: &[u8; 40] = b"bd397354331a208523805f0a02a955e2594891c7";
 const SELECTED_FILES: usize = 77;

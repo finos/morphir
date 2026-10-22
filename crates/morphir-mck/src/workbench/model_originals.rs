@@ -9,7 +9,11 @@ use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::UnicodeNormalization;
 pub use workflow::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
-    BrowserConnectedOpening, BrowserExecutionAction,
+    BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
+    BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
+    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
+    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub use workflow::{
     BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,

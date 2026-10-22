@@ -191,10 +191,17 @@ fn browser_selected_source_02_actual_selected77_complete_image_and_forged_table_
     });
 }
 
-#[test]
-#[ignore = "requires exact explicit selected77 image; native source association only, no Page"]
-fn browser_selected_source_03_genuine_row_same_host_original_end_and_recoverable_refusal() {
-    use super::super::super::{ControlledHostFinish, ControlledHostJoined};
+/// Actual selected image and genuine engine-issued row/action/SDK fixture.
+/// The test owns real host cleanup. A panic cannot satisfy the component error.
+pub(super) fn with_actual_selected_launch(
+    original_lifetime: Duration,
+    mut test: impl FnMut(
+        SelectedSourceLaunch<'_>,
+        &RunObservedApplication,
+        &tokio::runtime::Runtime,
+        &mut BrowserLoans<'_, '_>,
+    ),
+) {
     use crate::commands::ui::server::controlled_originals_tests::runtime;
     use morphir_mck::workbench::{
         BrowserAdapterCompletion, BrowserDocumentBounds, with_executed_browser_originals,
@@ -261,9 +268,12 @@ fn browser_selected_source_03_genuine_row_same_host_original_end_and_recoverable
             let opening = run.openings(loans).unwrap().next().unwrap();
             let endpoint = producer.issue(run, &opening, loans).unwrap();
             let stimulus = run.prepare_controlled_host(&opening, loans).unwrap();
-            let original_end = Instant::now() + Duration::from_secs(30);
+            let application_end = Instant::now() + Duration::from_secs(30);
             let application =
-                RunObservedApplication::prepare(&acquired, loans, original_end).unwrap();
+                RunObservedApplication::prepare(&acquired, loans, application_end).unwrap();
+            // Select the original host end ONCE, after image acquisition and
+            // before actual transcript/host/SDK issuance. Never renew it.
+            let original_end = (Instant::now() + original_lifetime).min(application.end);
             let selected_short = SelectedSourceApplication::prepare(
                 &application,
                 &acquired.manifest,
@@ -335,6 +345,33 @@ fn browser_selected_source_03_genuine_row_same_host_original_end_and_recoverable
                 launch.owner.host.state.assets.as_ref().unwrap().entry,
                 EntryPreparation::Prepared
             ));
+            test(launch, &application, &runtime, loans);
+            Err::<(), _>("native association only; source0 was not executed")
+        },
+        |inventory| {
+            assert_eq!(inventory.rows().len(), 23);
+            assert_eq!(inventory.first_failed_row(), Some(0));
+            assert!(matches!(
+                inventory.rows()[0].attempt().unwrap().callback(),
+                BrowserAdapterCompletion::Returned(Err(
+                    "native association only; source0 was not executed"
+                ))
+            ));
+            assert!(!inventory.rows()[0].attempt().unwrap().collection_complete());
+        },
+    )
+    .unwrap();
+    assert_eq!(callbacks, 1);
+}
+
+#[test]
+#[ignore = "requires exact explicit selected77 image; native source association only, no Page"]
+fn browser_selected_source_03_genuine_row_same_host_original_end_and_recoverable_refusal() {
+    use super::super::super::{ControlledHostFinish, ControlledHostJoined};
+    with_actual_selected_launch(
+        Duration::from_secs(30),
+        |launch, application, runtime, loans| {
+            let original_host = Arc::as_ptr(&launch.owner.host.state);
             // Prepared entry bytes do not prove an unused listener. Start the
             // SAME actual listener, then require a recoverable refusal rather
             // than granting source0 a host that could already have served it.
@@ -349,7 +386,7 @@ fn browser_selected_source_03_genuine_row_same_host_original_end_and_recoverable
                 super::super::super::ListenerOwner::Running { .. }
             );
             let (refusal, host, selected, opening) =
-                match selected.into_launch(host, &application, opening, loans) {
+                match selected.into_launch(host, application, opening, loans) {
                     Ok(launch) => (
                         None,
                         launch.owner.host,
@@ -376,20 +413,6 @@ fn browser_selected_source_03_genuine_row_same_host_original_end_and_recoverable
                 ControlledHostFinish::Joined(ControlledHostJoined::Clean)
             ));
             assert!(matches!(refusal, Some(SelectedSourceFault::HostEntry)));
-            Err::<(), _>("native association only; source0 was not executed")
         },
-        |inventory| {
-            assert_eq!(inventory.rows().len(), 23);
-            assert_eq!(inventory.first_failed_row(), Some(0));
-            assert!(matches!(
-                inventory.rows()[0].attempt().unwrap().callback(),
-                BrowserAdapterCompletion::Returned(Err(
-                    "native association only; source0 was not executed"
-                ))
-            ));
-            assert!(!inventory.rows()[0].attempt().unwrap().collection_complete());
-        },
-    )
-    .unwrap();
-    assert_eq!(callbacks, 1);
+    );
 }

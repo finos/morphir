@@ -146,7 +146,7 @@ fn overflow(loans: &mut BrowserLoans<'_, '_>) -> BrowserInputError {
 
 // Exact maintained ws optional-accelerator branches in the selected package.
 // The ordinary process launcher still clears inherited environment first.
-const SOURCE_NODE_ENVIRONMENT: [(&str, &str); 2] =
+pub(super) const SOURCE_NODE_ENVIRONMENT: [(&str, &str); 2] =
     [("WS_NO_BUFFER_UTIL", "1"), ("WS_NO_UTF_8_VALIDATE", "1")];
 pub(super) fn source_driver_environment() -> Vec<(OsString, OsString)> {
     let mut environment = Vec::with_capacity(SOURCE_NODE_ENVIRONMENT.len());

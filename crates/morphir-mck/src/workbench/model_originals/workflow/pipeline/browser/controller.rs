@@ -29,6 +29,17 @@ mod source_operation;
 pub(super) use observed_launch::ObservedLaunch;
 mod acquisition;
 mod source_inputs;
+mod source_facade;
+mod source_progress;
+mod source_endpoint;
+pub use source_facade::{BrowserControllerFile, BrowserControllerFiles,
+    BrowserControllerPreparationFailure, BrowserControllerPreparationFinished,
+    BrowserControllerPreparationStage, BrowserControllerRetirement,
+    BrowserMaterializedController, BrowserControllerLaunchFailure};
+pub use source_progress::{BrowserFixedController, BrowserConnectedObservation,
+    BrowserControllerFinished, BrowserContinuingController, BrowserStoppedController,
+    BrowserControllerContinueFailure, BrowserInspectionPreparationFailure,
+    BrowserInspectionSettlementFailure};
 pub(super) use acquisition::{
     AcquiredControllerTarget, ControllerFileInput, ControllerTargetInput,
     FundedControllerAcquisition, MaterializedControllerTarget, SelectedControllerTargetInput,
@@ -36,6 +47,9 @@ pub(super) use acquisition::{
 #[cfg(test)]
 #[path = "controller/acquisition_tests.rs"]
 mod acquisition_tests;
+#[cfg(all(test, target_os = "macos"))]
+#[path = "controller/receive_tests.rs"]
+mod receive_tests;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ControllerFault {
@@ -157,6 +171,17 @@ struct Executable {
     held: File,
 }
 impl Executable {
+    fn validate_source(&self, end:Instant)->Result<(),ControllerFault> {
+        if Instant::now()>=end {return Err(ControllerFault::End);}
+        let held=self.held.metadata().map_err(|_|ControllerFault::Acquisition)?;
+        if Instant::now()>=end {return Err(ControllerFault::End);}
+        let now=fs::symlink_metadata(&self.path).map_err(|_|ControllerFault::Acquisition)?;
+        if !now.is_file() || now.dev()!=held.dev() || now.ino()!=held.ino()
+            || now.len()!=held.len() || now.mtime()!=held.mtime() || now.mtime_nsec()!=held.mtime_nsec() {
+            return Err(ControllerFault::Acquisition);
+        }
+        Ok(())
+    }
     fn acquire(path: PathBuf) -> Result<Self, ControllerFault> {
         if !path.is_absolute() {
             return Err(ControllerFault::Acquisition);
@@ -398,9 +423,22 @@ enum Chromium {
 }
 enum Driver {
     NotStarted,
+    Prepared {
+        command: source_facade::SourcePreparedDriverCommand,
+        capture: FixedCaptureBuffers,
+    },
+    SpawnRefused {
+        cause: SourceDriverRefusal,
+        capture: FixedCaptureBuffers,
+    },
     Running(InteractiveProcess),
     Finished(InteractiveOutcome),
     Moving,
+}
+enum SourceDriverRefusal {
+    Command(crate::transport::process::CommandSpecError),
+    End,
+    Spawn(crate::transport::process::interactive::InteractiveSpawnError),
 }
 /// Selection of the maintained physical operation, never source authority.
 enum ControllerVariant {
@@ -477,6 +515,10 @@ enum Conversation {
     Disconnected,
     Joined,
     Stopping,
+}
+enum ReceivePurpose {
+    Advance,
+    ObserveRetained,
 }
 pub(super) struct BrowserController {
     target: AcquiredTarget,
@@ -689,6 +731,59 @@ impl BrowserController {
         self.conversation = Conversation::AttachedPending;
         Ok(())
     }
+    // Only called by the fixed source endpoint/step path while its genuine
+    // parent/child/journal gate is held. Every payload already owns backing;
+    // neither this routine nor the retained spawn path borrows loans again.
+    fn start_source_driver(&mut self) -> Result<(), ControllerFault> {
+        use source_facade::{before_effect, fill_decimal, fill_os};
+        self.target.node.validate_source(self.end)?;
+        let Driver::Prepared { command, .. } = &mut self.driver else {
+            return Err(ControllerFault::Order);
+        };
+        fill_os(&mut command.arguments[2], command.endpoint.as_ref(), self.end)?;
+        fill_decimal(&mut command.arguments[4], self.clock.calibrated_at_ns(), self.end)?;
+        fill_decimal(&mut command.arguments[5], self.clock.end_ns(), self.end)?;
+        fill_decimal(&mut command.arguments[6], u64::from(self.clock.timebase().numerator()), self.end)?;
+        fill_decimal(&mut command.arguments[7], u64::from(self.clock.timebase().denominator()), self.end)?;
+        before_effect(self.end)?;
+        let prepared = std::mem::replace(&mut self.driver, Driver::Moving);
+        let Driver::Prepared { command, capture } = prepared else {
+            unreachable!("same exclusive prepared owner");
+        };
+        let spec = match CommandSpec::new(command.program, command.arguments, command.directory, command.environment) {
+            Ok(spec) => spec,
+            Err(cause) => {
+                // No child exists. The exact capture backing still belongs to
+                // this owner even when a maintained command shape is refused.
+                self.driver = Driver::SpawnRefused {
+                    cause: SourceDriverRefusal::Command(cause),
+                    capture,
+                };
+                return Err(ControllerFault::Acquisition);
+            }
+        };
+        if let Err(fault) = before_effect(self.end) {
+            // This end refusal happened before Command::spawn, with no child.
+            // Keep backing in the same non-running owner for teardown.
+            self.driver = Driver::SpawnRefused {
+                cause: SourceDriverRefusal::End,
+                capture,
+            };
+            return Err(fault);
+        }
+        match InteractiveProcess::spawn_retained(spec, self.limits, capture) {
+            Ok(driver) => {
+                self.driver = Driver::Running(driver);
+                self.conversation = Conversation::AttachedPending;
+                before_effect(self.end)
+            }
+            Err(failure) => {
+                let (cause, capture) = failure.into_parts();
+                self.driver = Driver::SpawnRefused { cause:SourceDriverRefusal::Spawn(cause), capture };
+                Err(ControllerFault::Spawn)
+            }
+        }
+    }
     fn advance_roots(&mut self) {
         if let Chromium::Running(owner) = &mut self.chromium {
             let stop = matches!(
@@ -732,6 +827,85 @@ impl BrowserController {
         };
     }
     fn receive(&mut self) -> Result<Option<ControllerReply>, ControllerFault> {
+        self.receive_for(ReceivePurpose::Advance)
+    }
+    /// DATA-only folding of the collector's existing retained prefix. This
+    /// never advances a root, receives from a socket, closes input or sends.
+    /// A prior failure/end does not erase bytes already owned by the collector.
+    fn observe_source_retained(&mut self) -> Result<ControllerProgress, ControllerFault> {
+        match self.receive_for(ReceivePurpose::ObserveRetained) {
+            Ok(Some(reply)) => Ok(ControllerProgress::Reply(reply)),
+            Ok(None) => Ok(ControllerProgress::Pending),
+            Err(fault) => Err(self.fail(fault)),
+        }
+    }
+    fn advance_source_effects(&mut self, original_end:Instant, interrupted:&AtomicBool)->Result<(),ControllerFault> {
+        if let Some(first)=self.first_fault {return Err(first);}
+        if self.end!=original_end || !self.variant.source_opening() {return Err(self.fail(ControllerFault::Order));}
+        if interrupted.load(Ordering::Acquire) {return Err(self.fail(ControllerFault::Cancelled));}
+        self.source_before_effect()?;
+        // These are the existing process supervisors. Source progression does
+        // not initiate cleanup; exit/fault is retained before any next effect.
+        if let Chromium::Running(owner)=&mut self.chromium {
+            if Instant::now()>=original_end {return Err(self.fail(ControllerFault::End));}
+            let fault=match owner.advance() {
+                ProcessProgress::ExitObserved(_)|ProcessProgress::Finished(_)=>Some(ControllerFault::ChromiumExited),
+                ProcessProgress::Faulted(_)=>Some(ControllerFault::Process),
+                ProcessProgress::Working=>None,
+            };
+            if let Some(fault)=fault {return Err(self.fail(fault));}
+        } else {return Err(self.fail(ControllerFault::ChromiumExited));}
+        if let Driver::Running(owner)=&mut self.driver {
+            if Instant::now()>=original_end {return Err(self.fail(ControllerFault::End));}
+            let fault=match owner.advance() {
+                InteractiveProgress::ExitObserved(_)|InteractiveProgress::Finished(_)=>Some(ControllerFault::DriverExited),
+                InteractiveProgress::Faulted(_)=>Some(ControllerFault::Process),
+                InteractiveProgress::Working=>None,
+            };
+            if let Some(fault)=fault {return Err(self.fail(fault));}
+        }
+        if matches!(self.conversation,Conversation::Launching) {
+            let Driver::Prepared{command,..}=&mut self.driver else {return Err(self.fail(ControllerFault::Order));};
+            let ready=source_endpoint::read(&self.target,&mut self.capture,&mut command.endpoint,original_end)
+                .map_err(|fault|self.fail(fault))?;
+            if !ready {return Ok(());}
+            self.start_source_driver().map_err(|fault|self.fail(fault))?;
+        }
+        if matches!(self.conversation,Conversation::Ready) {
+            self.begin(ControllerCommand::StartObservedDocument)?;
+        }
+        let (frame,offset)=match self.conversation {
+            Conversation::SendingPage(offset)=>(self.variant.start_frame(),offset),
+            Conversation::SendingSourceOpening(offset)=>(b"2 open\n".as_slice(),offset),
+            Conversation::SendingSourceBoundary(offset)=>(b"3 wait\n".as_slice(),offset),
+            _=>return Ok(()),
+        };
+        self.source_before_effect()?;
+        let result=match &mut self.driver {
+            Driver::Running(owner)=>owner.write_stdin(&frame[offset..]),
+            _=>return Err(self.fail(ControllerFault::DriverExited)),
+        };
+        match result {
+            Ok(InteractiveWrite::Pending)=>Ok(()),
+            Ok(InteractiveWrite::Written(count))=>{
+                let next=offset.checked_add(count).filter(|next|*next<=frame.len()).ok_or_else(||self.fail(ControllerFault::Input))?;
+                self.conversation=match self.conversation {
+                    Conversation::SendingPage(_)=>if next==frame.len(){Conversation::PagePending}else{Conversation::SendingPage(next)},
+                    Conversation::SendingSourceOpening(_)=>if next==frame.len(){Conversation::SourceOpeningPending}else{Conversation::SendingSourceOpening(next)},
+                    Conversation::SendingSourceBoundary(_)=>if next==frame.len(){Conversation::SourceBoundaryPending}else{Conversation::SendingSourceBoundary(next)},
+                    _=>return Err(self.fail(ControllerFault::Order)),
+                };
+                Ok(())
+            }
+            Err(_)=>Err(self.fail(ControllerFault::Input)),
+        }
+    }
+    fn source_before_effect(&mut self)->Result<(),ControllerFault> {
+        if let Some(first)=self.first_fault {Err(first)}
+        else if Instant::now()>=self.end {Err(self.fail(ControllerFault::End))}
+        else {Ok(())}
+    }
+    fn receive_for(&mut self, purpose: ReceivePurpose) -> Result<Option<ControllerReply>, ControllerFault> {
         let count = match &self.driver {
             Driver::Running(owner) => owner
                 .copy_stdout(self.cursor, &mut self.capture[self.cursor..])
@@ -788,7 +962,8 @@ impl BrowserController {
                     (Conversation::ClosePending, closed)
                         if self.variant.accepts_disconnect(closed) =>
                     {
-                        if let Driver::Running(owner) = &mut self.driver {
+                        if matches!(purpose, ReceivePurpose::Advance)
+                            && let Driver::Running(owner) = &mut self.driver {
                             owner.close_stdin();
                         }
                         Conversation::Disconnected
@@ -798,7 +973,13 @@ impl BrowserController {
                 return Ok(Some(reply));
             }
         }
-        if self.cursor == self.capture.len() {
+        if self.cursor == self.capture.len()
+            && !(self.frame_start == self.cursor
+                && matches!(
+                    self.conversation,
+                    Conversation::Disconnected | Conversation::Joined
+                ))
+        {
             return Err(ControllerFault::Output);
         }
         Ok(None)
@@ -928,11 +1109,11 @@ impl BrowserController {
     pub(super) fn poll_cleanup(&mut self) -> bool {
         self.advance_roots();
         matches!(self.chromium, Chromium::Finished(_))
-            && matches!(self.driver, Driver::NotStarted | Driver::Finished(_))
+            && matches!(self.driver, Driver::NotStarted | Driver::Prepared {..} | Driver::SpawnRefused {..} | Driver::Finished(_))
     }
     pub(super) fn into_finished(self) -> ControllerFinish {
         if matches!(self.chromium, Chromium::Finished(_))
-            && matches!(self.driver, Driver::NotStarted | Driver::Finished(_))
+            && matches!(self.driver, Driver::NotStarted | Driver::Prepared {..} | Driver::SpawnRefused {..} | Driver::Finished(_))
         {
             ControllerFinish::Finished(ControllerOutcome(self))
         } else {

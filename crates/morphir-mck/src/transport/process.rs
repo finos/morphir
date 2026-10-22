@@ -550,6 +550,16 @@ impl OneShotProcess {
         input: ProcessInput,
         capture: CaptureBuffers,
     ) -> Result<(Self, Option<ChildStdin>), ProcessError> {
+        Self::spawn_with_io_retained(spec, limits, input, capture)
+            .map_err(|(cause, _capture)| cause)
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos", windows))]
+    fn spawn_with_io_retained(
+        spec: CommandSpec,
+        limits: Limits,
+        input: ProcessInput,
+        capture: CaptureBuffers,
+    ) -> Result<(Self, Option<ChildStdin>), (ProcessError, CaptureBuffers)> {
         let mut command = Command::new(spec.program);
         command
             .args(spec.arguments)
@@ -574,7 +584,10 @@ impl OneShotProcess {
         drop(command);
         #[cfg(target_os = "macos")]
         drop(child_handles);
-        let mut child = spawned.map_err(ProcessError::Spawn)?;
+        let mut child = match spawned {
+            Ok(child) => child,
+            Err(cause) => return Err((ProcessError::Spawn(cause), capture)),
+        };
         let stdin = child.stdin.take();
         let id = child.id();
         let faults = Arc::new(Mutex::new(None));
