@@ -134,6 +134,17 @@ impl Decoder {
         let result = crate::json::strict::raw_members_with_work(raw, &mut self.literal);
         self.read_result(result)
     }
+    pub(super) fn raw_literal<'source>(
+        &mut self,
+        bytes: &'source [u8],
+    ) -> Result<&'source serde_json::value::RawValue, DecodeError> {
+        self.ready()?;
+        if bytes.len() > self.limits.saved.get() {
+            return Err(DecodeError::SavedBytes);
+        }
+        let result = crate::json::strict::raw_with_work(bytes, &mut self.literal);
+        self.read_result(result)
+    }
     pub(super) fn raw_elements<'source>(
         &mut self,
         raw: &'source serde_json::value::RawValue,

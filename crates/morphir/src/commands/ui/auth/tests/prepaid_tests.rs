@@ -62,3 +62,50 @@ fn browser_prepaid_auth_02_same_secret_exchange_and_cookie_semantics() {
         assert!(auth.authenticate_cookie_header(cookie.split(';').next().unwrap()));
     });
 }
+
+#[test]
+fn browser_prepaid_auth_03_actual_expiry_before_second_entropy_preserves_original_end() {
+    loans(8388608, |loans| {
+        let source = loans.prepare_application_source().unwrap();
+        let end = std::time::Instant::now() + std::time::Duration::from_millis(25);
+        let mut calls = 0;
+        let actual = SessionAuth::prepaid_with_gate(
+            loans,
+            "controlled",
+            AuthGate::Scoped {
+                source: &source,
+                end,
+            },
+            |bytes| {
+                calls += 1;
+                bytes.fill(7);
+                // The first actual entropy boundary runs while active. Expire
+                // that SAME end before the next actual boundary is entered.
+                while std::time::Instant::now() < end {
+                    std::thread::yield_now();
+                }
+                Ok(())
+            },
+        );
+        let expired = matches!(actual, Err(PrepaidAuthFault::End));
+        drop(actual);
+        assert!(expired);
+        assert_eq!(calls, 1, "no second entropy effect after the original end");
+    });
+}
+
+#[test]
+fn browser_prepaid_auth_04_actual_source_return_refuses_gate_before_effect() {
+    let source = loans(8388608, |loans| loans.prepare_application_source().unwrap());
+    let mut calls = 0;
+    let result = AuthGate::Scoped {
+        source: &source,
+        end: std::time::Instant::now() + std::time::Duration::from_secs(1),
+    }
+    .run(|| {
+        calls += 1;
+        Ok(())
+    });
+    assert!(matches!(result, Err(PrepaidAuthFault::Source)));
+    assert_eq!(calls, 0);
+}

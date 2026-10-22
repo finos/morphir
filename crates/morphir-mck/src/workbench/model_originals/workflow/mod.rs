@@ -3,10 +3,11 @@ mod decode;
 use decode::*;
 pub use pipeline::{
     BrowserAction, BrowserActionKind, BrowserApplicationRead, BrowserApplicationSource,
-    BrowserCallbackOutcome, BrowserClient, BrowserClients, BrowserDownloadTarget,
-    BrowserInputError, BrowserLoans, BrowserPreparationError, BrowserPreparationErrorKind,
-    BrowserScope, BrowserSemantic, BrowserSourceFault, BrowserSourceIdentity,
-    BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
+    BrowserCallbackOutcome, BrowserClient, BrowserClients, BrowserDocumentDecoder,
+    BrowserDocumentError, BrowserDocumentErrorKind, BrowserDownloadTarget, BrowserInputError,
+    BrowserLoans, BrowserPreparationError, BrowserPreparationErrorKind, BrowserScope,
+    BrowserSemantic, BrowserSourceFault, BrowserSourceIdentity, BrowserSourceTerminal,
+    BrowserVisitError, with_prepared_browser_clients,
 };
 pub use pipeline::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,

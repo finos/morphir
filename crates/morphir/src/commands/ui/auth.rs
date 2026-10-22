@@ -23,6 +23,34 @@ pub(in crate::commands::ui) enum PrepaidAuthFault {
     Allocation(std::collections::TryReserveError),
     Random(getrandom::Error),
     Encoding(base64::EncodeSliceError),
+    Source,
+    End,
+}
+enum AuthGate<'a> {
+    Ordinary,
+    Scoped {
+        source: &'a morphir_mck::workbench::BrowserApplicationSource,
+        end: std::time::Instant,
+    },
+}
+impl AuthGate<'_> {
+    fn run<R>(
+        &self,
+        work: impl FnOnce() -> Result<R, PrepaidAuthFault>,
+    ) -> Result<R, PrepaidAuthFault> {
+        match self {
+            Self::Ordinary => work(),
+            Self::Scoped { source, end } => source
+                .while_source_active(|| {
+                    if std::time::Instant::now() >= *end {
+                        Err(PrepaidAuthFault::End)
+                    } else {
+                        work()
+                    }
+                })
+                .map_err(|_| PrepaidAuthFault::Source)?,
+        }
+    }
 }
 pub(in crate::commands::ui) struct PrepaidSessionAuth {
     auth: SessionAuth,
@@ -60,10 +88,33 @@ impl SessionAuth {
     ) -> Result<PrepaidSessionAuth, PrepaidAuthFault> {
         Self::prepaid_with_entropy(loans, identity, getrandom::fill)
     }
+    pub(in crate::commands::ui) fn generate_prepaid_scoped(
+        loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
+        identity: &str,
+        source: &morphir_mck::workbench::BrowserApplicationSource,
+        end: std::time::Instant,
+    ) -> Result<PrepaidSessionAuth, PrepaidAuthFault> {
+        loans
+            .validate_application_source(source)
+            .map_err(PrepaidAuthFault::Funding)?;
+        Self::prepaid_with_gate(loans, identity, AuthGate::Scoped { source, end }, |bytes| {
+            getrandom::fill(bytes).map_err(PrepaidAuthFault::Random)
+        })
+    }
     fn prepaid_with_entropy(
         loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
         identity: &str,
         mut entropy: impl FnMut(&mut [u8]) -> Result<(), getrandom::Error>,
+    ) -> Result<PrepaidSessionAuth, PrepaidAuthFault> {
+        Self::prepaid_with_gate(loans, identity, AuthGate::Ordinary, |bytes| {
+            entropy(bytes).map_err(PrepaidAuthFault::Random)
+        })
+    }
+    fn prepaid_with_gate(
+        loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
+        identity: &str,
+        gate: AuthGate<'_>,
+        mut entropy: impl FnMut(&mut [u8]) -> Result<(), PrepaidAuthFault>,
     ) -> Result<PrepaidSessionAuth, PrepaidAuthFault> {
         loans
             .reserve_controlled_host_storage(0, 0, 0)
@@ -86,11 +137,15 @@ impl SessionAuth {
         fn buffer(
             loans: &mut morphir_mck::workbench::BrowserLoans<'_, '_>,
             requested: usize,
+            gate: &AuthGate<'_>,
         ) -> Result<String, PrepaidAuthFault> {
-            let mut result = String::new();
-            result
-                .try_reserve_exact(requested)
-                .map_err(PrepaidAuthFault::Allocation)?;
+            let result = gate.run(|| {
+                let mut result = String::new();
+                result
+                    .try_reserve_exact(requested)
+                    .map_err(PrepaidAuthFault::Allocation)?;
+                Ok(result)
+            })?;
             let excess = result
                 .capacity()
                 .checked_sub(requested)
@@ -100,39 +155,41 @@ impl SessionAuth {
                 .map_err(PrepaidAuthFault::Funding)?;
             Ok(result)
         }
-        let mut name = buffer(loans, dimensions.name)?;
-        let mut token = buffer(loans, ENCODED_SECRET_BYTES)?;
-        let mut cookie = buffer(loans, dimensions.cookie)?;
+        let mut name = buffer(loans, dimensions.name, &gate)?;
+        let mut token = buffer(loans, ENCODED_SECRET_BYTES, &gate)?;
+        let mut cookie = buffer(loans, dimensions.cookie, &gate)?;
         let mut launch_secret = [0; SECRET_BYTES];
         let mut session_secret = [0; SECRET_BYTES];
-        entropy(&mut launch_secret).map_err(PrepaidAuthFault::Random)?;
-        entropy(&mut session_secret).map_err(PrepaidAuthFault::Random)?;
-        name.push_str(SESSION_COOKIE_PREFIX);
-        name.push_str(identity);
-        let mut encoded = [0; ENCODED_SECRET_BYTES];
-        URL_SAFE_NO_PAD
-            .encode_slice(launch_secret, &mut encoded)
-            .map_err(PrepaidAuthFault::Encoding)?;
-        for byte in encoded {
-            token.push(char::from(byte));
-        }
-        URL_SAFE_NO_PAD
-            .encode_slice(session_secret, &mut encoded)
-            .map_err(PrepaidAuthFault::Encoding)?;
-        cookie.push_str(&name);
-        cookie.push('=');
-        for byte in encoded {
-            cookie.push(char::from(byte));
-        }
-        cookie.push_str(COOKIE_ATTRIBUTES);
-        Ok(PrepaidSessionAuth {
-            auth: Self {
-                cookie_name: name,
-                launch_secret: Mutex::new(Some(launch_secret)),
-                session_secret,
-            },
-            launch_token: token,
-            cookie,
+        gate.run(|| entropy(&mut launch_secret))?;
+        gate.run(|| entropy(&mut session_secret))?;
+        gate.run(|| {
+            name.push_str(SESSION_COOKIE_PREFIX);
+            name.push_str(identity);
+            let mut encoded = [0; ENCODED_SECRET_BYTES];
+            URL_SAFE_NO_PAD
+                .encode_slice(launch_secret, &mut encoded)
+                .map_err(PrepaidAuthFault::Encoding)?;
+            for byte in encoded {
+                token.push(char::from(byte));
+            }
+            URL_SAFE_NO_PAD
+                .encode_slice(session_secret, &mut encoded)
+                .map_err(PrepaidAuthFault::Encoding)?;
+            cookie.push_str(&name);
+            cookie.push('=');
+            for byte in encoded {
+                cookie.push(char::from(byte));
+            }
+            cookie.push_str(COOKIE_ATTRIBUTES);
+            Ok(PrepaidSessionAuth {
+                auth: Self {
+                    cookie_name: name,
+                    launch_secret: Mutex::new(Some(launch_secret)),
+                    session_secret,
+                },
+                launch_token: token,
+                cookie,
+            })
         })
     }
     pub fn generate(session_id: &str) -> Result<(Self, String), CliError> {

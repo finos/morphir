@@ -43,10 +43,11 @@ pub use contract::{
 pub use corpus::{Corpus, load};
 pub use model_originals::{
     BrowserAction, BrowserActionKind, BrowserApplicationRead, BrowserApplicationSource,
-    BrowserCallbackOutcome, BrowserClient, BrowserClients, BrowserDownloadTarget,
-    BrowserInputError, BrowserLoans, BrowserPreparationError, BrowserPreparationErrorKind,
-    BrowserScope, BrowserSemantic, BrowserSourceFault, BrowserSourceIdentity,
-    BrowserSourceTerminal, BrowserVisitError, with_prepared_browser_clients,
+    BrowserCallbackOutcome, BrowserClient, BrowserClients, BrowserDocumentDecoder,
+    BrowserDocumentError, BrowserDocumentErrorKind, BrowserDownloadTarget, BrowserInputError,
+    BrowserLoans, BrowserPreparationError, BrowserPreparationErrorKind, BrowserScope,
+    BrowserSemantic, BrowserSourceFault, BrowserSourceIdentity, BrowserSourceTerminal,
+    BrowserVisitError, with_prepared_browser_clients,
 };
 pub use model_originals::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,

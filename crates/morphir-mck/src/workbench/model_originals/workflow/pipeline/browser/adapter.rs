@@ -1,5 +1,7 @@
 //! Borrowed INPUT only. This facade neither selects a physical browser nor
 //! creates an action, source, download, report or comparison authority.
+#[path = "adapter/document.rs"]
+mod document;
 pub use super::controlled_input::{
     ControlledDeliveryFault, ControlledHostDelivery, ControlledHostStimulus,
     ControlledManifestDelivery, ControlledOpening, ControlledPeerDelivery,
@@ -13,6 +15,7 @@ use crate::workbench::model_originals::workflow::{input, pipeline::PreparationFa
 use crate::workbench::{
     Corpus, RunConfiguration, configuration::Configuration, corpus::CorpusStorage,
 };
+pub use document::{BrowserDocumentDecoder, BrowserDocumentError, BrowserDocumentErrorKind};
 
 #[derive(Debug)]
 pub struct BrowserInputError {
@@ -170,6 +173,17 @@ impl BrowserLoans<'_, '_> {
         stimulus: &ControlledHostStimulus,
     ) -> Result<(), BrowserInputError> {
         self.validate_application_source(source)?;
+        stimulus
+            .validate_scope(self.scope)
+            .map_err(|fault| inputs::BrowserInputFault::Source(fault).into())
+    }
+    /// Check the actual source relation before preparing any document backing.
+    /// This produces no binding, permission, action or completion receipt.
+    pub fn validate_controlled_source(
+        &self,
+        stimulus: &ControlledHostStimulus,
+    ) -> Result<(), BrowserInputError> {
+        self.ready_for(self.scope)?;
         stimulus
             .validate_scope(self.scope)
             .map_err(|fault| inputs::BrowserInputFault::Source(fault).into())

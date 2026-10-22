@@ -4,6 +4,7 @@ mod assets;
 #[cfg(test)]
 #[path = "controlled_originals/end_tests.rs"]
 mod end_tests;
+mod ingress;
 use super::*;
 use crate::commands::ui::{
     auth::PrepaidAuthFault,
@@ -34,6 +35,7 @@ pub(in crate::commands::ui) enum ControlledHostFault {
     Poisoned,
     Listener,
     Socket(SocketCleanupError),
+    Document(ingress::DocumentIngressFault),
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::commands::ui) enum ControlledHostShutdown {
@@ -53,6 +55,7 @@ pub(in crate::commands::ui) enum ControlledHostSetupFault {
     Capacity(super::super::model_originals::MetadataOnlyCapacityFault),
     Registry(FixedSocketSetupFault),
     Source,
+    DocumentLimits,
 }
 type ServeFuture = Pin<Box<dyn Future<Output = Result<(), CliError>> + Send>>;
 enum ListenerOwner {
@@ -80,6 +83,7 @@ struct HostState {
     first: Mutex<Option<ControlledHostFault>>,
     actual_peer: Mutex<Option<ActualPeerFault>>,
     assets: Option<assets::HostAssets>,
+    document: Option<ingress::DocumentIngress>,
 }
 impl HostState {
     fn fault(&self, cause: ControlledHostFault) {
@@ -124,6 +128,7 @@ pub(in crate::commands::ui) struct BoundControlledUiHost {
     address: SocketAddr,
     base: String,
     launch: String,
+    document_decoder: Option<morphir_mck::workbench::BrowserDocumentDecoder>,
 }
 fn arc_layout<T>() -> Result<Layout, ControlledHostSetupFault> {
     let count = Layout::new::<std::sync::atomic::AtomicUsize>();
@@ -165,11 +170,13 @@ impl BoundControlledUiHost {
         loans: &mut BrowserLoans<'_, '_>,
         end: Instant,
     ) -> Result<Self, ControlledHostSetupFault> {
-        Self::bind_inner(stimulus, None, loans, end).await
+        Self::bind_inner(stimulus, None, None, 2, loans, end).await
     }
     async fn bind_inner(
         stimulus: ControlledHostStimulus,
         assets: Option<assets::HostAssets>,
+        document: Option<ingress::DocumentIngress>,
+        socket_tasks: usize,
         loans: &mut BrowserLoans<'_, '_>,
         end: Instant,
     ) -> Result<Self, ControlledHostSetupFault> {
@@ -185,12 +192,12 @@ impl BoundControlledUiHost {
             .map_err(ControlledHostSetupFault::Funding)?;
         // Two concrete concurrently retained roles: HTTP driver and its upgrade.
         // This is a fixed admission table, not a new normative concurrency grant.
-        let metadata = SocketTaskRegistry::fixed_requested_bytes(2)
+        let metadata = SocketTaskRegistry::fixed_requested_bytes(socket_tasks)
             .map_err(|e| ControlledHostSetupFault::Registry(FixedSocketSetupFault::Registry(e)))?;
         let capacity =
             super::super::model_originals::HostModelCaptureCapacity::metadata_only(loans, metadata)
                 .map_err(ControlledHostSetupFault::Capacity)?;
-        let (tasks, cleanup) = SocketTaskRegistry::new_fixed(&capacity, 2, loans)
+        let (tasks, cleanup) = SocketTaskRegistry::new_fixed(&capacity, socket_tasks, loans)
             .map_err(ControlledHostSetupFault::Registry)?;
         let (auth, token, cookie) =
             SessionAuth::generate_prepaid(loans, "model-originals-controlled")
@@ -279,6 +286,7 @@ impl BoundControlledUiHost {
             first: Mutex::new(None),
             actual_peer: Mutex::new(None),
             assets,
+            document,
         });
         let router = Router::new()
             .route("/launch", get(launch_route))
@@ -286,6 +294,12 @@ impl BoundControlledUiHost {
             .route("/rpc", get(upgrade_route))
             .route("/observed/", get(asset_route))
             .route("/observed/{*path}", get(asset_route))
+            .route(
+                "/_mck/document",
+                get(ingress::upgrade_route)
+                    .post(ingress::bootstrap_route)
+                    .layer(axum::extract::DefaultBodyLimit::max(0)),
+            )
             .with_state(state.clone());
         let future =
             super::serve_connections_with_source(listener, router, tasks, Some((source, end)));
@@ -296,6 +310,7 @@ impl BoundControlledUiHost {
             address,
             base,
             launch,
+            document_decoder: None,
         })
     }
     pub(in crate::commands::ui) fn address(&self) -> SocketAddr {

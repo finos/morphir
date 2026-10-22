@@ -135,7 +135,7 @@ fn array<T>(n: usize) -> Result<usize, ObservedAssetsFault> {
         .map(|layout| layout.size())
         .map_err(|_| ObservedAssetsFault::SizeOverflow)
 }
-fn allocate<T>(
+pub(super) fn allocate<T>(
     n: usize,
     loans: &mut BrowserLoans<'_, '_>,
     source: &BrowserApplicationSource,
@@ -158,7 +158,7 @@ fn allocate<T>(
 fn check(source: &BrowserApplicationSource, end: Instant) -> Result<(), ObservedAssetsFault> {
     source_work(source, end, || Ok(()))
 }
-fn source_work<R>(
+pub(super) fn source_work<R>(
     source: &BrowserApplicationSource,
     end: Instant,
     work: impl FnOnce() -> Result<R, ObservedAssetsFault>,
@@ -580,6 +580,13 @@ fn prepare_asset_headers(
     )?;
     source_work(source, end, || Ok(asset_headers(mime)))
 }
+pub(super) fn prepare_document_headers(
+    loans: &mut BrowserLoans<'_, '_>,
+    source: &BrowserApplicationSource,
+    end: Instant,
+) -> Result<HeaderMap, ObservedAssetsFault> {
+    prepare_asset_headers(AssetMime::Json, loans, source, end)
+}
 pub(super) struct HostAssets {
     image: Arc<ImmutableApplication>,
     delivery: Mutex<DeliveryState>,
@@ -718,7 +725,7 @@ impl BoundControlledUiHost {
     ) -> Result<Self, ObservedAssetsFault> {
         let end = end.min(application.end);
         let assets = HostAssets::prepare(application, &stimulus, loans, end)?;
-        Self::bind_inner(stimulus, Some(assets), loans, end)
+        Self::bind_inner(stimulus, Some(assets), None, 2, loans, end)
             .await
             .map_err(ObservedAssetsFault::Host)
     }

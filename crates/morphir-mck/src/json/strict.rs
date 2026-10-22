@@ -133,6 +133,17 @@ fn document_with_raw<'source, W: Work>(
     let document = from_raw_numbers(raw, 0, parse_number, work)?;
     Ok((document, raw))
 }
+/// Borrow one validated literal root without materializing its string values.
+/// The SAME cumulative work and duplicate-aware member traversal remain in use.
+pub(crate) fn raw_with_work<'source>(
+    bytes: &'source [u8],
+    work: &mut ReadWork,
+) -> Result<&'source serde_json::value::RawValue, StrictReadError> {
+    work.value()
+        .and_then(|()| work.decode(bytes.len()))
+        .and_then(|()| serde_json::from_slice(bytes).map_err(|e| e.to_string()))
+        .map_err(|error| work.error(error))
+}
 
 /// Borrow exact child tokens using the same duplicate-aware object seed.
 /// Each additional container decode and child buffering spends the caller's
