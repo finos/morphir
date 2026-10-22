@@ -5,6 +5,14 @@ use morphir_mck::workbench::{
     BrowserListenerDispatch, BrowserListenerStartDispatcher, BrowserPreparedListenerStart,
 };
 
+#[cfg(target_os = "macos")]
+mod composition;
+#[cfg(target_os = "macos")]
+use composition::{
+    SelectedSourceControllerLaunchFailure, SelectedSourceControllerLaunched,
+    SelectedSourceControllerPreparationFailure, SelectedSourceControllerPrepared,
+};
+
 #[derive(Debug)]
 enum SelectedSourceStartFault {
     Action(BrowserActionIssueError),
@@ -138,6 +146,27 @@ impl<'a> SelectedSourcePrepared<'a> {
 }
 
 impl SelectedSourceHost {
+    fn active_native_first(
+        state: &super::super::super::HostState,
+    ) -> Result<
+        std::sync::MutexGuard<'_, Option<super::super::super::ControlledHostFault>>,
+        SelectedSourceStartFault,
+    > {
+        let first = match state.first.lock() {
+            Ok(first) => first,
+            Err(poison) => {
+                let mut first = poison.into_inner();
+                let cause =
+                    *first.get_or_insert(super::super::super::ControlledHostFault::Poisoned);
+                return Err(SelectedSourceStartFault::Native(cause));
+            }
+        };
+        if let Some(cause) = *first {
+            return Err(SelectedSourceStartFault::Native(cause));
+        }
+        Ok(first)
+    }
+
     fn check_prepared_listener(&self, end: Instant) -> Result<(), SelectedSourceStartFault> {
         if self.application.end != end || self.host.state.end != end {
             return Err(SelectedSourceStartFault::OriginalEnd);
@@ -169,18 +198,7 @@ impl SelectedSourceHost {
         // A copied `first()` result would allow a concurrent native refusal
         // between validation and the spawn effect. Lock order is the SDK's
         // parent/child and journal gates, then this native first-fault lock.
-        let first = match self.host.state.first.lock() {
-            Ok(first) => first,
-            Err(poison) => {
-                let mut first = poison.into_inner();
-                let cause =
-                    *first.get_or_insert(super::super::super::ControlledHostFault::Poisoned);
-                return Err(SelectedSourceStartFault::Native(cause));
-            }
-        };
-        if let Some(cause) = *first {
-            return Err(SelectedSourceStartFault::Native(cause));
-        }
+        let first = Self::active_native_first(&self.host.state)?;
         self.check_prepared_listener(permit.original_end())?;
         let super::super::super::ListenerOwner::Bound(future) = std::mem::replace(
             &mut self.host.listener,
@@ -238,6 +256,22 @@ impl<'a> SelectedSourceLaunch<'a> {
             #[cfg(target_os = "macos")]
             let bytes = bytes
                 .checked_add(std::mem::size_of::<SelectedSourcePrepaidStartFailure<'_>>())
+                .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<SelectedSourceControllerPrepared<'_>>())
+                })
+                .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<
+                        SelectedSourceControllerPreparationFailure<'_>,
+                    >())
+                })
+                .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<SelectedSourceControllerLaunched<'_>>())
+                })
+                .and_then(|bytes| {
+                    bytes.checked_add(
+                        std::mem::size_of::<SelectedSourceControllerLaunchFailure<'_>>(),
+                    )
+                })
                 .ok_or(SelectedSourceStartFault::SizeOverflow)?;
             let work = bytes
                 .checked_add(std::mem::size_of::<super::super::super::ListenerOwner>())
@@ -251,8 +285,9 @@ impl<'a> SelectedSourceLaunch<'a> {
                     work.checked_add(2 * std::mem::size_of::<tokio::runtime::Handle>())
                 })
                 .ok_or(SelectedSourceStartFault::SizeOverflow)?;
+            let slots = if cfg!(target_os = "macos") { 13 } else { 9 };
             loans
-                .reserve_controlled_host_storage(bytes, 9, work)
+                .reserve_controlled_host_storage(bytes, slots, work)
                 .map_err(SelectedSourceStartFault::Funding)?;
             tokio::runtime::Handle::try_current().map_err(|_| {
                 SelectedSourceStartFault::Native(super::super::super::ControlledHostFault::Listener)
@@ -301,3 +336,7 @@ impl<'a> SelectedSourceLaunch<'a> {
 #[cfg(test)]
 #[path = "execution_tests.rs"]
 mod tests;
+
+#[cfg(all(test, target_os = "macos"))]
+#[path = "execution/composition_tests.rs"]
+mod composition_tests;

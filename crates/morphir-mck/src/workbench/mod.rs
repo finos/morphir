@@ -168,9 +168,9 @@ pub use model_originals::{BrowserControllerBusinessCredit, BrowserControllerBusi
 pub use model_originals::{
     BrowserConnectedObservation, BrowserContinuingController, BrowserControllerContinueFailure,
     BrowserControllerFile, BrowserControllerFiles, BrowserControllerFinished,
-    BrowserControllerLaunchFailure, BrowserControllerPreparationFailure,
-    BrowserControllerPreparationFinished, BrowserControllerPreparationStage,
-    BrowserControllerRetirement, BrowserFixedController, BrowserInspectionPreparationFailure,
-    BrowserInspectionSettlementFailure, BrowserMaterializedController, BrowserStoppedController,
-    BrowserUnlaunchedControllerFinished,
+    BrowserControllerLaunchFailure, BrowserControllerLaunchStage,
+    BrowserControllerPreparationFailure, BrowserControllerPreparationFinished,
+    BrowserControllerPreparationStage, BrowserControllerRetirement, BrowserFixedController,
+    BrowserInspectionPreparationFailure, BrowserInspectionSettlementFailure,
+    BrowserMaterializedController, BrowserStoppedController, BrowserUnlaunchedControllerFinished,
 };

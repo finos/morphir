@@ -43,8 +43,9 @@ pub(super) use acquisition::{
 };
 pub use source_facade::{
     BrowserControllerFile, BrowserControllerFiles, BrowserControllerLaunchFailure,
-    BrowserControllerPreparationFailure, BrowserControllerPreparationFinished,
-    BrowserControllerPreparationStage, BrowserControllerRetirement, BrowserMaterializedController,
+    BrowserControllerLaunchStage, BrowserControllerPreparationFailure,
+    BrowserControllerPreparationFinished, BrowserControllerPreparationStage,
+    BrowserControllerRetirement, BrowserMaterializedController,
     BrowserUnlaunchedControllerFinished,
 };
 pub use source_progress::{
