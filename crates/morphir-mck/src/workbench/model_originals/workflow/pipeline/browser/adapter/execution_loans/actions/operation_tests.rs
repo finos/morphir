@@ -8,6 +8,144 @@ use crate::workbench::model_originals::workflow::pipeline::browser::{
 };
 use std::time::{Duration, Instant};
 
+#[test]
+#[cfg(target_os = "macos")]
+fn browser_unprepared_controller_01_retires_only_unacquired_debt_without_consuming_source0() {
+    with_opening_setup(
+        Duration::from_secs(10),
+        |run, loans, producer, transcript, stimulus, end| {
+            let before = run.child.scope.terminal();
+            let action = run.next_action(loans).unwrap().unwrap();
+            let (owned, preparation) = action
+                .prepare_connected_controller(producer, transcript, stimulus, loans)
+                .unwrap();
+            let with_debt = run.child.scope.terminal();
+            assert_ne!(before, with_debt);
+            let finished = preparation
+                .finish_without_acquisition()
+                .ok()
+                .expect("the issued preparation has acquired no files or processes");
+            assert_eq!(finished.retirement(), crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerRetirement::Returned);
+            assert_eq!(run.child.scope.terminal(), before);
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+            let sdk = owned
+                .connected_opening(producer, transcript, stimulus, loans)
+                .unwrap();
+            assert_eq!(
+                sdk.validate_host(producer, transcript, stimulus, loans)
+                    .unwrap(),
+                end
+            );
+            // Native/document debt is still outstanding; no host join is inferred.
+            assert!(!matches!(before, crate::workbench::model_originals::workflow::pipeline::browser::source_scope::ScopeTerminal::Quiescent));
+        },
+    );
+}
+
+#[test]
+#[cfg(target_os = "macos")]
+fn browser_unprepared_controller_02_original_end_does_not_block_actual_unstarted_retirement() {
+    with_opening_setup(
+        Duration::from_millis(100),
+        |run, loans, producer, transcript, stimulus, end| {
+            let before = run.child.scope.terminal();
+            let action = run.next_action(loans).unwrap().unwrap();
+            let (owned, preparation) = action
+                .prepare_connected_controller(producer, transcript, stimulus, loans)
+                .unwrap();
+            let sdk = owned
+                .connected_opening(producer, transcript, stimulus, loans)
+                .unwrap();
+            std::thread::sleep(
+                end.saturating_duration_since(Instant::now()) + Duration::from_millis(1),
+            );
+            let usage = {
+                let (decode, receiving, comparison) = loans.inner.physical_owners().unwrap();
+                (decode.usage(), receiving.usage(), comparison.usage())
+            };
+            let finished = preparation
+                .finish_without_acquisition()
+                .ok()
+                .expect("no acquisition debt after original end");
+            assert_eq!(finished.retirement(), crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerRetirement::Returned);
+            assert_eq!(run.child.scope.terminal(), before);
+            let after = {
+                let (decode, receiving, comparison) = loans.inner.physical_owners().unwrap();
+                (decode.usage(), receiving.usage(), comparison.usage())
+            };
+            assert_eq!(usage, after);
+            assert!(matches!(sdk.validate_host(producer, transcript, stimulus, loans), Err(BrowserActionIssueError::Host(crate::workbench::model_originals::workflow::pipeline::browser::BrowserHostTranscriptFault::End))));
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+        },
+    );
+}
+
+#[test]
+#[cfg(target_os = "macos")]
+fn browser_unprepared_controller_03_source_fault_survives_return_of_only_unstarted_debt() {
+    with_opening_setup(
+        Duration::from_secs(10),
+        |run, loans, producer, transcript, stimulus, _end| {
+            let action = run.next_action(loans).unwrap().unwrap();
+            let (owned, preparation) = action
+                .prepare_connected_controller(producer, transcript, stimulus, loans)
+                .unwrap();
+            let sdk = owned
+                .connected_opening(producer, transcript, stimulus, loans)
+                .unwrap();
+            let opening = run.openings(loans).unwrap().next().unwrap();
+            let abandoned = run.prepare_controlled_host(&opening, loans).unwrap();
+            drop(abandoned); // Real SAME-child debt remains faulted, not joined.
+            let before = run.child.scope.terminal();
+            let finished = preparation
+                .finish_without_acquisition()
+                .ok()
+                .expect("cleanup after actual source fault");
+            assert_eq!(finished.retirement(), crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerRetirement::Returned);
+            use crate::workbench::model_originals::workflow::pipeline::browser::source_scope::ScopeTerminal;
+            let ScopeTerminal::Incomplete {
+                first: BrowserSourceFault::Abandoned,
+                bindings,
+            } = before
+            else {
+                panic!("actual abandoned owner must retain first source fault")
+            };
+            assert_eq!(
+                run.child.scope.terminal(),
+                ScopeTerminal::Incomplete {
+                    first: BrowserSourceFault::Abandoned,
+                    bindings: bindings - 1
+                }
+            );
+            assert!(
+                matches!(sdk.validate_host(producer, transcript, stimulus, loans), Err(BrowserActionIssueError::Input(error)) if error.source_cause()==Some(BrowserSourceFault::Abandoned))
+            );
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+        },
+    );
+}
+
 pub(super) fn with_opening_setup(
     original_for: Duration,
     operation: impl FnOnce(

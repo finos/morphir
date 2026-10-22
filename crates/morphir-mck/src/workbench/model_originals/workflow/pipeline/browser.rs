@@ -107,4 +107,5 @@ pub use controller::{
     BrowserControllerPreparationStage, BrowserControllerRetirement, BrowserFixedController,
     BrowserInspectionPreparationFailure, BrowserInspectionSettlementFailure,
     BrowserMaterializedController, BrowserStoppedController, BrowserUnlaunchedControllerFinished,
+    BrowserUnpreparedControllerFinished,
 };

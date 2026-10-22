@@ -847,6 +847,17 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             selection_bytes,
             alias_bytes,
         };
+        // The no-acquisition cleanup return is prepaid before this owner can
+        // incur binding debt. It requires no later business allocation/debit.
+        #[cfg(target_os = "macos")]
+        {
+            let metadata = crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserUnpreparedControllerFinished::preparation_metadata()
+                .ok_or_else(|| overflow(loans.inner))?;
+            let work = metadata.checked_add(crate::workbench::model_originals::workflow::pipeline::browser::source_scope::invocation_gate_work_upper()
+                .ok_or_else(|| overflow(loans.inner))?)
+                .ok_or_else(|| overflow(loans.inner))?;
+            loans.reserve_controlled_host_storage(metadata, 2, work)?;
+        }
         let metadata = size_of::<SourceControllerLifetime>()
             .checked_add(size_of::<ConnectedOpeningAction<'_, '_, '_, '_, '_, '_, '_>>())
             .and_then(|n| n.checked_add(size_of::<PreparedControllerParts>()))

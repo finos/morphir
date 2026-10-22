@@ -254,25 +254,32 @@ impl BrowserSourceBinding {
         self.retire_after_join_in_place()
     }
     /// Native owners can retire in place after proving exclusive ownership.
-    /// Keeping an inert wrapper permits safe field access during final Drop.
+    /// A refused count transition retains the exact binding for cleanup.
+    /// Successful retirement leaves an inert wrapper for safe final Drop.
     pub(super) fn retire_after_join_in_place(&mut self) -> Result<(), ScopeFault> {
-        let control = self.control.take().ok_or(ScopeFault::Revoked)?;
-        let control = match control {
-            BindingControl::Global(control) => control,
-            BindingControl::Invocation { parent, child } => {
-                return invocation::retire(&parent, &child);
+        let result = match self.control.as_ref().ok_or(ScopeFault::Revoked)? {
+            BindingControl::Invocation { parent, child } => invocation::retire(parent, child),
+            BindingControl::Global(control) => {
+                let mut state = control.lock();
+                let bindings = match &mut *state {
+                    State::Active { bindings } | State::Revoked { bindings, .. } => bindings,
+                };
+                match bindings.checked_sub(1) {
+                    Some(next) => {
+                        *bindings = next;
+                        Ok(())
+                    }
+                    None => {
+                        state.revoke(Some(ScopeFault::SizeOverflow));
+                        Err(ScopeFault::SizeOverflow)
+                    }
+                }
             }
         };
-        let mut state = control.lock();
-        let bindings = match &mut *state {
-            State::Active { bindings } | State::Revoked { bindings, .. } => bindings,
-        };
-        let Some(next) = bindings.checked_sub(1) else {
-            state.revoke(Some(ScopeFault::SizeOverflow));
-            return Err(ScopeFault::SizeOverflow);
-        };
-        *bindings = next;
-        Ok(())
+        if result.is_ok() {
+            self.control.take();
+        }
+        result
     }
     #[cfg(test)]
     pub(super) fn identity(&self) -> usize {

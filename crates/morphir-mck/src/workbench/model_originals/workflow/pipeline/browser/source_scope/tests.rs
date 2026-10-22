@@ -15,6 +15,45 @@ const CHECKER: &str = include_str!(concat!(
     "/src/workbench/model_originals/workflow/pipeline_controls/explicit-test-policy.json"
 ));
 
+#[test]
+fn browser_invocation_scope_09_retirement_refusal_keeps_actual_issued_binding() {
+    let (mut owners, mut receiving) = owners(8192, 100, 8192);
+    let mut loans = BrowserOwnerLoans::new(&mut owners, &mut receiving);
+    let source = BrowserSourceScope::prepare(&mut loans).unwrap();
+    let child = source.prepare_invocation(&mut loans).unwrap();
+    let mut binding = child.bind(&mut loans).unwrap();
+    // Exercise the existing private count-integrity failure after real issuance.
+    // No production constructor or caller count setter is introduced.
+    *source.control.lock() = State::Active { bindings: 0 };
+    *child.control.inner.lock() = State::Active { bindings: 0 };
+    assert_eq!(
+        binding.retire_after_join_in_place(),
+        Err(ScopeFault::SizeOverflow)
+    );
+    assert_eq!(binding.while_active(|| ()), Err(ScopeFault::SizeOverflow));
+    // Restore only the fixture's corrupted counts to consume its actual owner.
+    for control in [source.control.as_ref(), &child.control.inner] {
+        match &mut *control.lock() {
+            State::Active { bindings } | State::Revoked { bindings, .. } => *bindings = 1,
+        }
+    }
+    assert_eq!(binding.retire_after_join_in_place(), Ok(()));
+    assert_eq!(
+        source.terminal(),
+        ScopeTerminal::Incomplete {
+            first: ScopeFault::SizeOverflow,
+            bindings: 0
+        }
+    );
+    assert_eq!(
+        child.terminal(),
+        ScopeTerminal::Incomplete {
+            first: ScopeFault::SizeOverflow,
+            bindings: 0
+        }
+    );
+}
+
 // Same actual policy/decoder/receiving fixture as funded_workflow::tests.
 fn owners(retained: usize, slots: usize, visits: usize) -> (Owners, InstalledObservationOwner) {
     let mut checker: serde_json::Value = serde_json::from_str(CHECKER).unwrap();

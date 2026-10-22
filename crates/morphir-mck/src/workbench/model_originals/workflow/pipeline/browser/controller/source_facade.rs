@@ -157,6 +157,22 @@ pub enum BrowserControllerRetirement {
     Returned,
     Refused(BrowserSourceFault),
 }
+/// The issued preparation was consumed before runtime acquisition began.
+/// This records only its returned controller binding, never a process outcome,
+/// filesystem cleanup, native-host join or source-action completion.
+pub struct BrowserUnpreparedControllerFinished {
+    retirement: BrowserControllerRetirement,
+}
+impl BrowserUnpreparedControllerFinished {
+    pub fn retirement(&self) -> BrowserControllerRetirement {
+        self.retirement
+    }
+    pub(in super::super) fn preparation_metadata() -> Option<usize> {
+        std::mem::size_of::<Self>().checked_add(std::mem::size_of::<
+            Result<Self, BrowserControllerPreparation>,
+        >())
+    }
+}
 fn retire(preparation: &mut BrowserControllerPreparation) -> BrowserControllerRetirement {
     match preparation.retire_after_join_in_place() {
         Ok(()) => BrowserControllerRetirement::Returned,
@@ -619,6 +635,20 @@ impl BrowserMaterializedController {
     }
 }
 impl BrowserControllerPreparation {
+    /// Consume the genuinely unacquired preparation. Cleanup requires no new
+    /// business grant after the original end or source revocation. A refusal
+    /// returns the same preparation and binding for retained cleanup.
+    pub fn finish_without_acquisition(
+        mut self,
+    ) -> Result<BrowserUnpreparedControllerFinished, Self> {
+        match self.retire_after_join_in_place() {
+            Ok(()) => Ok(BrowserUnpreparedControllerFinished {
+                retirement: BrowserControllerRetirement::Returned,
+            }),
+            Err(_) => Err(self),
+        }
+    }
+
     pub fn prepare_runtime(
         self,
         archive: &[u8],

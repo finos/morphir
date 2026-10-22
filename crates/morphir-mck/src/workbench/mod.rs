@@ -173,4 +173,5 @@ pub use model_originals::{
     BrowserControllerPreparationStage, BrowserControllerRetirement, BrowserFixedController,
     BrowserInspectionPreparationFailure, BrowserInspectionSettlementFailure,
     BrowserMaterializedController, BrowserStoppedController, BrowserUnlaunchedControllerFinished,
+    BrowserUnpreparedControllerFinished,
 };
