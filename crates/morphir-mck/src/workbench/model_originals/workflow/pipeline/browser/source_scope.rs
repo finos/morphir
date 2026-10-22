@@ -1,5 +1,10 @@
 //! Revocable relation to one actual prepared source lifetime. This control
 //! admits no source/action by itself and cannot attest physical joins.
+#[path = "source_scope/invocation.rs"]
+mod invocation;
+#[cfg(test)]
+#[path = "source_scope/tests.rs"]
+mod tests;
 use super::inputs::{BrowserInputFault, BrowserOwnerLoans};
 use crate::workbench::model_originals::workflow::pipeline::installed::observation::{
     InstalledObservationFault, InstalledObservationResource,
@@ -74,6 +79,18 @@ impl State {
 struct Control {
     state: Mutex<State>,
 }
+// Pinned alloc::sync::ArcInner is repr(C): strong, weak, data. This is
+// requested backing, including layout padding, not allocator/RSS overhead.
+fn arc_backing_layout<T>() -> Option<Layout> {
+    let atomic = Layout::new::<AtomicUsize>();
+    atomic
+        .extend(atomic)
+        .ok()?
+        .0
+        .extend(Layout::new::<T>())
+        .ok()
+        .map(|(layout, _)| layout.pad_to_align())
+}
 impl Control {
     fn lock(&self) -> MutexGuard<'_, State> {
         match self.state.lock() {
@@ -108,7 +125,27 @@ impl ApplicationSourceIdentity {
     }
 }
 pub(super) struct BrowserSourceBinding {
-    control: Option<Arc<Control>>,
+    control: Option<BindingControl>,
+}
+enum BindingControl {
+    Global(Arc<Control>),
+    Invocation {
+        parent: Arc<Control>,
+        child: Arc<InvocationControl>,
+    },
+}
+struct InvocationControl {
+    inner: Control,
+}
+/// Engine-owned child lifetime only; no physical-effect permission.
+pub(super) struct BrowserInvocationScope {
+    parent: Arc<Control>,
+    control: Arc<InvocationControl>,
+}
+/// A nominal, funded relation to one exact parent and issued child.
+pub(super) struct BrowserInvocationIdentity {
+    parent: Weak<Control>,
+    child: Weak<InvocationControl>,
 }
 impl BrowserSourceScope {
     pub(super) fn application_identity(&self) -> Result<ApplicationSourceIdentity, ScopeFault> {
@@ -119,18 +156,8 @@ impl BrowserSourceScope {
     }
     pub(super) fn prepare(loans: &mut BrowserOwnerLoans<'_>) -> Result<Self, BrowserInputFault> {
         let (decode, receiving, _) = loans.physical_owners()?;
-        // Pinned alloc::sync::ArcInner is repr(C): strong, weak, data. This
-        // accounts requested backing and this owner, not allocator/RSS overhead.
-        let layout = (|| {
-            let atomic = Layout::new::<AtomicUsize>();
-            let header = atomic.extend(atomic).ok()?.0;
-            let backing = header
-                .extend(Layout::new::<Control>())
-                .ok()?
-                .0
-                .pad_to_align();
-            backing.size().checked_add(std::mem::size_of::<Self>())
-        })();
+        let layout = arc_backing_layout::<Control>()
+            .and_then(|backing| backing.size().checked_add(std::mem::size_of::<Self>()));
         let Some(bytes) = layout else {
             return Err(BrowserInputFault::Receiving(
                 *receiving.fail(InstalledObservationFault::SizeOverflow),
@@ -175,7 +202,7 @@ impl BrowserSourceScope {
         };
         *bindings = next;
         Ok(BrowserSourceBinding {
-            control: Some(Arc::clone(&self.control)),
+            control: Some(BindingControl::Global(Arc::clone(&self.control))),
         })
     }
     pub(super) fn revoke(&mut self) -> ScopeTerminal {
@@ -197,24 +224,38 @@ impl Drop for BrowserSourceScope {
 }
 impl BrowserSourceBinding {
     pub(super) fn validate_scope(&self, scope: &BrowserSourceScope) -> Result<(), ScopeFault> {
-        if Arc::ptr_eq(self.control.as_ref().expect("live binding"), &scope.control) {
-            Ok(())
-        } else {
-            Err(ScopeFault::ForeignSource)
+        match self.control.as_ref().expect("live binding") {
+            BindingControl::Global(control) if Arc::ptr_eq(control, &scope.control) => Ok(()),
+            // An invocation cannot be downgraded into an application grant.
+            BindingControl::Global(_) | BindingControl::Invocation { .. } => {
+                Err(ScopeFault::ForeignSource)
+            }
         }
     }
     /// Synchronous admission/send linearizes with revocation under this lock.
     /// No physical work may be scheduled by this callback after it returns.
     pub(super) fn while_active<R>(&self, action: impl FnOnce() -> R) -> Result<R, ScopeFault> {
-        let control = self.control.as_ref().expect("live binding");
-        let state = control.lock();
-        state.active()?;
-        Ok(action())
+        match self.control.as_ref().expect("live binding") {
+            BindingControl::Global(control) => {
+                let state = control.lock();
+                state.active()?;
+                Ok(action())
+            }
+            BindingControl::Invocation { parent, child } => {
+                invocation::while_active(parent, child, action)
+            }
+        }
     }
-    /// Bookkeeping only. The actual host caller must first settle every owner
-    /// covered by this binding. Drop is deliberately not this operation.
+    /// Bookkeeping only, never proof of a physical join. The actual caller must
+    /// first settle every covered owner. Drop is deliberately not this operation.
     pub(super) fn retire_after_join(mut self) -> Result<(), ScopeFault> {
         let control = self.control.take().expect("consumed exactly once");
+        let control = match control {
+            BindingControl::Global(control) => control,
+            BindingControl::Invocation { parent, child } => {
+                return invocation::retire(&parent, &child);
+            }
+        };
         let mut state = control.lock();
         let bindings = match &mut *state {
             State::Active { bindings } | State::Revoked { bindings, .. } => bindings,
@@ -228,13 +269,22 @@ impl BrowserSourceBinding {
     }
     #[cfg(test)]
     pub(super) fn identity(&self) -> usize {
-        Arc::as_ptr(self.control.as_ref().expect("live binding")) as usize
+        match self.control.as_ref().expect("live binding") {
+            BindingControl::Global(control) => Arc::as_ptr(control) as usize,
+            BindingControl::Invocation { child, .. } => Arc::as_ptr(child) as usize,
+        }
     }
 }
 impl Drop for BrowserSourceBinding {
     fn drop(&mut self) {
-        if let Some(control) = self.control.take() {
-            control.lock().revoke(Some(ScopeFault::Abandoned));
+        match self.control.take() {
+            Some(BindingControl::Global(control)) => {
+                control.lock().revoke(Some(ScopeFault::Abandoned))
+            }
+            Some(BindingControl::Invocation { parent, child }) => {
+                invocation::abandon(&parent, &child)
+            }
+            None => (),
         }
     }
 }
