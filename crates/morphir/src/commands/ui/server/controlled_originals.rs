@@ -71,11 +71,26 @@ enum ActualPeerFault {
     Read(axum::Error),
     Write(axum::Error),
 }
+enum LaunchDestination {
+    ControlledRoot,
+    ObservedDocument,
+}
+impl LaunchDestination {
+    fn header(&self) -> HeaderValue {
+        match self {
+            Self::ControlledRoot => HeaderValue::from_static("/"),
+            Self::ObservedDocument => {
+                HeaderValue::from_static("/observed/?mode=connected-originals")
+            }
+        }
+    }
+}
 struct HostState {
     auth: SessionAuth,
     cookie: HeaderValue,
     authority: String,
     origin: String,
+    launch_destination: LaunchDestination,
     source: Arc<ControlledHostStimulus>,
     delivery: Mutex<ControlledHostDelivery>,
     tasks: SocketTaskRegistry,
@@ -273,12 +288,17 @@ impl BoundControlledUiHost {
         launch.push_str(&base);
         launch.push_str("/launch?token=");
         launch.push_str(&token);
+        let launch_destination = match (&assets, &document) {
+            (Some(_), Some(_)) => LaunchDestination::ObservedDocument,
+            _ => LaunchDestination::ControlledRoot,
+        };
         let source = Arc::new(stimulus);
         let state = Arc::new(HostState {
             auth,
             cookie,
             authority,
             origin,
+            launch_destination,
             source: source.clone(),
             delivery: Mutex::new(delivery),
             tasks: tasks.clone(),
@@ -448,7 +468,13 @@ async fn launch_route(
             if !state.auth.exchange_launch_token(&query.token) {
                 return unauthorized();
             }
-            let mut response = Redirect::to("/").into_response();
+            // Both destinations are closed static headers. This avoids a new
+            // per-request String owner while preserving the actual 303 exchange.
+            let mut response = (
+                StatusCode::SEE_OTHER,
+                [(header::LOCATION, state.launch_destination.header())],
+            )
+                .into_response();
             response
                 .headers_mut()
                 .insert(header::SET_COOKIE, state.cookie.clone());

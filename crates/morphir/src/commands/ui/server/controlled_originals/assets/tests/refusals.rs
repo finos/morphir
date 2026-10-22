@@ -1,4 +1,6 @@
 //! Proposed child of assets::tests. No public owner/ledger or browser verdict.
+#[path = "refusals/fused.rs"]
+mod fused;
 #[path = "refusals/header_funding.rs"]
 mod header_funding;
 use super::*;

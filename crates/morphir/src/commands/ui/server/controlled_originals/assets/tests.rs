@@ -205,6 +205,14 @@ async fn observe_http_assets(
     if launch.status() != reqwest::StatusCode::SEE_OTHER {
         return Err(failure("actual authenticated launch exchange failed"));
     }
+    if launch
+        .headers()
+        .get(reqwest::header::LOCATION)
+        .and_then(|v| v.to_str().ok())
+        != Some("/")
+    {
+        return Err(failure("asset-only launch destination changed"));
+    }
     let cookie = launch
         .headers()
         .get(reqwest::header::SET_COOKIE)

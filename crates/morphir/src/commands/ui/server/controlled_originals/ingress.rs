@@ -398,6 +398,18 @@ impl BoundControlledUiHost {
         limits: DocumentIngressLimits,
         end: Instant,
     ) -> Result<Self, DocumentSetupFault> {
+        Self::bind_prepared_document(stimulus, None, loans, limits, end).await
+    }
+
+    // Both constructors retain one controlled stimulus, auth exchange, source,
+    // listener and socket registry. Assets never create a second host owner.
+    pub(super) async fn bind_prepared_document(
+        stimulus: ControlledHostStimulus,
+        assets: Option<assets::HostAssets>,
+        loans: &mut BrowserLoans<'_, '_>,
+        limits: DocumentIngressLimits,
+        end: Instant,
+    ) -> Result<Self, DocumentSetupFault> {
         let slots = limits.socket_tasks;
         // Prepay every possible ACK and one STOP owner before binding. bytes'
         // from_owner stores repr(C) AtomicUsize followed by the16-byte owner.
@@ -435,7 +447,7 @@ impl BoundControlledUiHost {
             .prepare_document_decoder(&decode_source, limits.records, limits.frame_bytes)
             .map_err(ControlledHostSetupFault::Funding)?;
         let document = DocumentIngress::prepare(&stimulus, loans, limits, end)?;
-        let mut host = Self::bind_inner(stimulus, None, Some(document), slots, loans, end)
+        let mut host = Self::bind_inner(stimulus, assets, Some(document), slots, loans, end)
             .await
             .map_err(DocumentSetupFault::Host)?;
         host.document_decoder = Some(decoder);

@@ -717,6 +717,19 @@ impl HostAssets {
     }
 }
 impl BoundControlledUiHost {
+    pub(super) async fn bind_with_observed_document(
+        stimulus: ControlledHostStimulus,
+        application: &RunObservedApplication,
+        loans: &mut BrowserLoans<'_, '_>,
+        limits: ingress::DocumentIngressLimits,
+        end: Instant,
+    ) -> Result<Self, ingress::DocumentSetupFault> {
+        let end = end.min(application.end);
+        let assets = HostAssets::prepare(application, &stimulus, loans, end)
+            .map_err(ingress::DocumentSetupFault::Assets)?;
+        Self::bind_prepared_document(stimulus, Some(assets), loans, limits, end).await
+    }
+
     pub(super) async fn bind_with_observed_assets(
         stimulus: ControlledHostStimulus,
         application: &RunObservedApplication,

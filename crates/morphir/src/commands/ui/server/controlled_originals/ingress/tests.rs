@@ -117,6 +117,14 @@ async fn observe(
     if launch.status() != reqwest::StatusCode::SEE_OTHER {
         return Err(failure("launch exchange failed"));
     }
+    if launch
+        .headers()
+        .get(reqwest::header::LOCATION)
+        .and_then(|v| v.to_str().ok())
+        != Some("/")
+    {
+        return Err(failure("document-only launch destination changed"));
+    }
     let cookie = launch
         .headers()
         .get(reqwest::header::SET_COOKIE)
