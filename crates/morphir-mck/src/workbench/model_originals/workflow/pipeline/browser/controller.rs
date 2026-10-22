@@ -430,6 +430,10 @@ impl BrowserController {
             .map_err(|_| ControllerFault::Clock)?;
         let args = vec![
             OsString::from("--headless"),
+            // This isolated disposable profile must not request the user's
+            // macOS keychain. Match Playwright's normal test storage defaults.
+            OsString::from("--password-store=basic"),
+            OsString::from("--use-mock-keychain"),
             OsString::from("--remote-debugging-port=0"),
             {
                 let mut arg = OsString::from("--user-data-dir=");
