@@ -44,7 +44,7 @@ For MoonBit work, mise installs the same pinned toolchain as
 install only MoonBit and its bootstrap dependency:
 
 ```bash
-mise install http:moonbit
+mise install bun http:moonbit
 mise exec -- moon version --all
 ```
 
