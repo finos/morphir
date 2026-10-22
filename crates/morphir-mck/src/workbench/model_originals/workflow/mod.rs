@@ -1,5 +1,12 @@
 //! Private workflow operand compiler, not registered capability or authority.
 pub use pipeline::{
+    BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
+    BrowserExecutionAction,
+};
+pub use pipeline::{
+    BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,
+};
+pub use pipeline::{
     BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,
     BrowserHostPeerFinish, BrowserHostPollState, BrowserHostReadOutcome, BrowserHostReadPending,
     BrowserHostReadResult, BrowserHostSendOutcome, BrowserHostTranscript,

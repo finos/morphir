@@ -253,6 +253,7 @@ pub struct PreparedBrowserClientRun<'compiled, 'run, 'case, 'sources, 'raw, 'sup
     input: inputs::BrowserExecutionInput<'compiled, 'case, 'sources, 'raw, 'supplied>,
     global: &'run BrowserSourceScope,
     child: &'run ExecutionChild,
+    actions: std::sync::Mutex<actions::BrowserActionCursor<'case>>,
 }
 pub struct BrowserExecutionOpening<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied> {
     owner: &'a PreparedBrowserClientRun<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
@@ -319,15 +320,20 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
         loans.ready()?;
         child.ready(global)?;
         let input = inputs::BrowserExecutionInput::from_compiled_client(core, loans)?;
-        child
+        let actions = child
             .identity
-            .while_active(|| reserve(loans, size_of::<Self>(), 1, size_of::<Self>()))
+            .while_active(|| {
+                reserve(loans, size_of::<Self>(), 1, size_of::<Self>())?;
+                let actual = input.actions(loans)?;
+                actions::BrowserActionCursor::prepare(actual, loans)
+            })
             .map_err(source)??;
         Ok(Self {
             core,
             input,
             global,
             child,
+            actions: std::sync::Mutex::new(actions),
         })
     }
     pub fn openings<'a>(
@@ -384,6 +390,12 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
         Ok(BrowserOpeningPosition(opening.action.position()))
     }
 }
+#[path = "execution_loans/actions.rs"]
+mod actions;
+pub use actions::{
+    BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
+    BrowserExecutionAction,
+};
 #[cfg(test)]
 #[path = "execution_loans/tests.rs"]
 mod tests;

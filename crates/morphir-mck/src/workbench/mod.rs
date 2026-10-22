@@ -1,5 +1,12 @@
 //! Workbench codec cases with parent-owned expectations and explicit adapters.
 pub use model_originals::{
+    BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
+    BrowserExecutionAction,
+};
+pub use model_originals::{
+    BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,
+};
+pub use model_originals::{
     BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,
     BrowserHostPeerFinish, BrowserHostPollState, BrowserHostReadOutcome, BrowserHostReadPending,
     BrowserHostReadResult, BrowserHostSendOutcome, BrowserHostTranscript,

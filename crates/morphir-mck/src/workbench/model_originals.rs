@@ -8,6 +8,13 @@ use std::{collections::BTreeMap, fmt, sync::OnceLock};
 use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::UnicodeNormalization;
 pub use workflow::{
+    BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
+    BrowserExecutionAction,
+};
+pub use workflow::{
+    BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,
+};
+pub use workflow::{
     BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,
     BrowserHostPeerFinish, BrowserHostPollState, BrowserHostReadOutcome, BrowserHostReadPending,
     BrowserHostReadResult, BrowserHostSendOutcome, BrowserHostTranscript,

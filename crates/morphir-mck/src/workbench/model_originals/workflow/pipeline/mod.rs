@@ -1,6 +1,13 @@
 //! One selected branch of the existing Workbench pipeline. The fixed reviewed
 //! source bundle is PARTIAL. No semantic lineage/runtime qualification is issued.
 pub use browser::{
+    BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
+    BrowserExecutionAction,
+};
+pub use browser::{
+    BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,
+};
+pub use browser::{
     BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,
     BrowserHostPeerFinish, BrowserHostPollState, BrowserHostReadOutcome, BrowserHostReadPending,
     BrowserHostReadResult, BrowserHostSendOutcome, BrowserHostTranscript,

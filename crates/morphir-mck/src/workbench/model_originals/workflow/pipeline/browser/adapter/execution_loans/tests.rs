@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-fn with_compiled(
+pub(super) fn with_compiled(
     action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut inputs::BrowserOwnerLoans<'_>),
 ) {
     let root = tempfile::tempdir().unwrap();
@@ -58,7 +58,7 @@ fn with_compiled(
     .unwrap();
 }
 
-fn controlled_clients<'a, 'case, 'sources, 'raw, 'supplied>(
+pub(super) fn controlled_clients<'a, 'case, 'sources, 'raw, 'supplied>(
     compiled: &'a [CompiledExecution<'case, 'sources, 'raw, 'supplied>],
 ) -> Vec<
     &'a crate::workbench::model_originals::workflow::source_compile::CompiledSourceCase<

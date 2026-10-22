@@ -489,3 +489,60 @@ fn browser_execution_engine_08_late_actual_completion_cannot_heal_captured_incom
     .unwrap();
     assert_eq!(callbacks, 1);
 }
+
+#[test]
+fn browser_execution_engine_09_dropped_action_refusal_is_captured_before_run_disappears() {
+    let (_root, source, policy, receiving) = fixture();
+    let fact = frame(
+        1,
+        1,
+        br#"{"sequence":1,"kind":"model-closed","actual":{"workspace":"literal","opening":0}}"#,
+    );
+    let end = frame(2, 2, br#"{"lastSequence":1,"observer":{"kind":"closed"}}"#);
+    let mut callbacks = 0;
+    with_prepared_browser_execution(
+        &source,
+        &policy,
+        &receiving,
+        BrowserDocumentBounds::new(2, 4096, 1024).unwrap(),
+        |run, loans, row| {
+            callbacks += 1;
+            if callbacks > 1 {
+                return Ok::<_, ()>(());
+            }
+            let current = run.next_action(loans).unwrap().unwrap();
+            assert_eq!(current.position(), 0);
+            drop(current);
+            assert!(run.next_action(loans).is_err());
+            let opening = run.openings(loans).unwrap().next().unwrap();
+            let mut document = row.issue(run, &opening, loans).unwrap();
+            let actual_end = std::time::Instant::now() + std::time::Duration::from_secs(3);
+            document.record_frame(loans, &fact, actual_end).unwrap();
+            document.record_frame(loans, &end, actual_end).unwrap();
+            Ok::<_, ()>(())
+        },
+        |inventory, _| {
+            assert_eq!(inventory.first_failed_row(), Some(0));
+            let first = inventory.rows()[0].attempt().unwrap();
+            assert!(matches!(
+                first.callback(),
+                BrowserAdapterCompletion::Returned(Ok(()))
+            ));
+            assert!(first.collection_complete());
+            assert_eq!(first.child_terminal(), BrowserSourceTerminal::Quiescent);
+            assert!(first.owner_failure().is_none());
+            assert!(matches!(
+                first.actions_terminal(),
+                BrowserActionCursorTerminal::Refused {
+                    position: 0,
+                    cause: BrowserActionCursorFault::OutstandingAbandoned
+                }
+            ));
+            for later in &inventory.rows()[1..] {
+                assert_eq!(later.not_attempted_after(), Some(0));
+            }
+        },
+    )
+    .unwrap();
+    assert_eq!(callbacks, 1);
+}

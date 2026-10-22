@@ -189,31 +189,21 @@ impl<'compiled, 'case, 'sources, 'raw, 'supplied>
     pub(super) fn actions(
         &self,
         loans: &mut BrowserOwnerLoans<'_>,
-    ) -> Result<
-        impl ExactSizeIterator<Item = BrowserActionInput<'case>> + use<'case>,
-        BrowserInputFault,
-    > {
+    ) -> Result<BrowserActionInputs<'case>, BrowserInputFault> {
         client_actions(self.core, loans)
     }
 }
 fn client_actions<'case>(
     core: &CompiledSourceCase<'case, '_, '_, '_>,
     loans: &mut BrowserOwnerLoans<'_>,
-) -> Result<impl ExactSizeIterator<Item = BrowserActionInput<'case>> + use<'case>, BrowserInputFault>
-{
+) -> Result<BrowserActionInputs<'case>, BrowserInputFault> {
     let PairedRun::Client { actions, .. } = core.source().paired().run() else {
         unreachable!("issued client view")
     };
     loans.visits(actions.len())?;
-    Ok(actions
-        .iter()
-        .enumerate()
-        .map(|(position, input)| BrowserActionInput {
-            kind: project_action(input),
-            #[cfg(test)]
-            input,
-            position,
-        }))
+    Ok(BrowserActionInputs {
+        actions: actions.iter().enumerate(),
+    })
 }
 impl<'compiled, 'case> BrowserClientInput<'compiled, 'case, '_, '_, '_> {
     pub(super) fn case_index(&self) -> usize {
@@ -231,10 +221,7 @@ impl<'compiled, 'case> BrowserClientInput<'compiled, 'case, '_, '_, '_> {
     pub(super) fn actions(
         &self,
         loans: &mut BrowserOwnerLoans<'_>,
-    ) -> Result<
-        impl ExactSizeIterator<Item = BrowserActionInput<'case>> + use<'case>,
-        BrowserInputFault,
-    > {
+    ) -> Result<BrowserActionInputs<'case>, BrowserInputFault> {
         client_actions(self.core, loans)
     }
     pub(super) fn input_aliases(
@@ -262,6 +249,56 @@ impl<'compiled, 'case> BrowserClientInput<'compiled, 'case, '_, '_, '_> {
             })
         }))
     }
+}
+pub(super) struct BrowserActionInputs<'case> {
+    actions: std::iter::Enumerate<std::slice::Iter<'case, ClientAction>>,
+}
+impl<'case> Iterator for BrowserActionInputs<'case> {
+    type Item = BrowserActionInput<'case>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.actions
+            .next()
+            .map(|(position, input)| BrowserActionInput {
+                kind: project_action(input),
+                #[cfg(test)]
+                input,
+                position,
+            })
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.actions.size_hint()
+    }
+}
+impl ExactSizeIterator for BrowserActionInputs<'_> {}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BrowserUnsupportedActionKind {
+    ObserveIdentity,
+    InitializeExecutionRuntime,
+    StartImport,
+    PreparePendingCore,
+    SettlePreparedCore,
+    Deliver,
+    Reject,
+    ReadRun,
+    SignalPicker,
+    CancelOpening,
+    MutateCaller,
+    Inspect,
+    Search,
+    ConceptualSpecification,
+    ReplaceModel,
+    SubmitExecution,
+    ReleaseExecution,
+    SelectCurrentDeclaration,
+    BeginLocalEvaluation,
+    AwaitLocalEvaluation,
+    BeginNativeInitialize,
+    BeginNativeChoose,
+    AwaitNativeBoundary,
+    BindNativeProject,
+    BeginNativeOpenProject,
+    DisposeNativeRuntime,
+    AwaitNativeDisposal,
 }
 pub(super) struct BrowserActionInput<'case> {
     #[cfg(test)]
@@ -305,7 +342,25 @@ pub(super) enum BrowserActionKind<'case> {
     Checkpoint {
         name: &'case FixtureAlias,
     },
-    Unsupported,
+    AwaitConnectedBoundary {
+        pending: &'case FixtureAlias,
+        boundary: &'case input::ClientActionAwaitConnectedBoundaryBoundary,
+    },
+    ExecutePendingCore {
+        effect: &'case input::EffectRef,
+    },
+    SearchCurrent {
+        query: &'case Text<0, 16000>,
+    },
+    DisposeConnectedOpening {
+        pending: &'case FixtureAlias,
+    },
+    AwaitConnectedDisposal {
+        pending: &'case FixtureAlias,
+    },
+    Unsupported {
+        kind: BrowserUnsupportedActionKind,
+    },
 }
 impl<'case> BrowserActionInput<'case> {
     pub(super) fn position(&self) -> usize {
@@ -357,7 +412,100 @@ fn project_action(input: &ClientAction) -> BrowserActionKind<'_> {
         ClientAction::CloseModel { model } => BrowserActionKind::CloseModel { model },
         ClientAction::CloseCurrentModel {} => BrowserActionKind::CloseCurrentModel,
         ClientAction::Checkpoint { name } => BrowserActionKind::Checkpoint { name },
-        _ => BrowserActionKind::Unsupported,
+        ClientAction::AwaitConnectedBoundary { pending, boundary } => {
+            BrowserActionKind::AwaitConnectedBoundary { pending, boundary }
+        }
+        ClientAction::ExecutePendingCore { effect } => {
+            BrowserActionKind::ExecutePendingCore { effect }
+        }
+        ClientAction::SearchCurrent { query } => BrowserActionKind::SearchCurrent { query },
+        ClientAction::DisposeConnectedOpening { pending } => {
+            BrowserActionKind::DisposeConnectedOpening { pending }
+        }
+        ClientAction::AwaitConnectedDisposal { pending } => {
+            BrowserActionKind::AwaitConnectedDisposal { pending }
+        }
+        ClientAction::ObserveIdentity { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::ObserveIdentity,
+        },
+        ClientAction::InitializeExecutionRuntime { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::InitializeExecutionRuntime,
+        },
+        ClientAction::StartImport { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::StartImport,
+        },
+        ClientAction::PreparePendingCore { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::PreparePendingCore,
+        },
+        ClientAction::SettlePreparedCore { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::SettlePreparedCore,
+        },
+        ClientAction::Deliver { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::Deliver,
+        },
+        ClientAction::Reject { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::Reject,
+        },
+        ClientAction::ReadRun { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::ReadRun,
+        },
+        ClientAction::SignalPicker { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::SignalPicker,
+        },
+        ClientAction::CancelOpening { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::CancelOpening,
+        },
+        ClientAction::MutateCaller { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::MutateCaller,
+        },
+        ClientAction::Inspect { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::Inspect,
+        },
+        ClientAction::Search { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::Search,
+        },
+        ClientAction::ConceptualSpecification { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::ConceptualSpecification,
+        },
+        ClientAction::ReplaceModel { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::ReplaceModel,
+        },
+        ClientAction::SubmitExecution { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::SubmitExecution,
+        },
+        ClientAction::ReleaseExecution { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::ReleaseExecution,
+        },
+        ClientAction::SelectCurrentDeclaration { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::SelectCurrentDeclaration,
+        },
+        ClientAction::BeginLocalEvaluation { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::BeginLocalEvaluation,
+        },
+        ClientAction::AwaitLocalEvaluation { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::AwaitLocalEvaluation,
+        },
+        ClientAction::BeginNativeInitialize { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::BeginNativeInitialize,
+        },
+        ClientAction::BeginNativeChoose { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::BeginNativeChoose,
+        },
+        ClientAction::AwaitNativeBoundary { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::AwaitNativeBoundary,
+        },
+        ClientAction::BindNativeProject { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::BindNativeProject,
+        },
+        ClientAction::BeginNativeOpenProject { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::BeginNativeOpenProject,
+        },
+        ClientAction::DisposeNativeRuntime { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::DisposeNativeRuntime,
+        },
+        ClientAction::AwaitNativeDisposal { .. } => BrowserActionKind::Unsupported {
+            kind: BrowserUnsupportedActionKind::AwaitNativeDisposal,
+        },
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

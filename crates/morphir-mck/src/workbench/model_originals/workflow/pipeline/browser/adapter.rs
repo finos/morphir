@@ -19,6 +19,7 @@ use crate::workbench::{
 };
 pub use document::*;
 use execution_loans::LoanRelation;
+pub use inputs::BrowserUnsupportedActionKind;
 
 #[derive(Debug)]
 pub struct BrowserInputError {
@@ -380,6 +381,78 @@ pub enum BrowserDownloadTarget<'a> {
     RetainedFile,
     InventoryPath(&'a str),
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BrowserConnectedBoundary {
+    InspectionPending,
+    OpeningSettled,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BrowserEffectKind {
+    Picker,
+    FileRead,
+    NativeCapture,
+    Initialize,
+    Capture,
+    Inventory,
+    ReadOriginal,
+    ReadProjection,
+    Release,
+    Digest,
+    Inspection,
+    ExecutionSubmit,
+    ExecutionObserve,
+    ExecutionRelease,
+    LocalEvaluation,
+    Catalog,
+    NativeInvoke,
+    ManifestFetch,
+    WorkspaceOpen,
+}
+#[derive(Debug, Clone, Copy)]
+pub struct BrowserEffectRef<'a> {
+    attempt: &'a str,
+    kind: BrowserEffectKind,
+    ordinal: u64,
+}
+impl BrowserEffectRef<'_> {
+    pub fn attempt(&self) -> &str {
+        self.attempt
+    }
+    pub fn kind(&self) -> BrowserEffectKind {
+        self.kind
+    }
+    pub fn ordinal(&self) -> u64 {
+        self.ordinal
+    }
+}
+fn project_effect(effect: &input::EffectRef) -> BrowserEffectRef<'_> {
+    let kind = match effect.kind {
+        input::EffectKind::Picker => BrowserEffectKind::Picker,
+        input::EffectKind::FileRead => BrowserEffectKind::FileRead,
+        input::EffectKind::NativeCapture => BrowserEffectKind::NativeCapture,
+        input::EffectKind::Initialize => BrowserEffectKind::Initialize,
+        input::EffectKind::Capture => BrowserEffectKind::Capture,
+        input::EffectKind::Inventory => BrowserEffectKind::Inventory,
+        input::EffectKind::ReadOriginal => BrowserEffectKind::ReadOriginal,
+        input::EffectKind::ReadProjection => BrowserEffectKind::ReadProjection,
+        input::EffectKind::Release => BrowserEffectKind::Release,
+        input::EffectKind::Digest => BrowserEffectKind::Digest,
+        input::EffectKind::Inspection => BrowserEffectKind::Inspection,
+        input::EffectKind::ExecutionSubmit => BrowserEffectKind::ExecutionSubmit,
+        input::EffectKind::ExecutionObserve => BrowserEffectKind::ExecutionObserve,
+        input::EffectKind::ExecutionRelease => BrowserEffectKind::ExecutionRelease,
+        input::EffectKind::LocalEvaluation => BrowserEffectKind::LocalEvaluation,
+        input::EffectKind::Catalog => BrowserEffectKind::Catalog,
+        input::EffectKind::NativeInvoke => BrowserEffectKind::NativeInvoke,
+        input::EffectKind::ManifestFetch => BrowserEffectKind::ManifestFetch,
+        input::EffectKind::WorkspaceOpen => BrowserEffectKind::WorkspaceOpen,
+    };
+    BrowserEffectRef {
+        attempt: effect.attempt.as_str(),
+        kind,
+        ordinal: effect.ordinal.0,
+    }
+}
 #[derive(Debug, Clone, Copy)]
 pub enum BrowserActionKind<'a> {
     BeginConnectedOpening {
@@ -417,7 +490,25 @@ pub enum BrowserActionKind<'a> {
     Checkpoint {
         name: &'a str,
     },
-    Unsupported,
+    AwaitConnectedBoundary {
+        pending: &'a str,
+        boundary: BrowserConnectedBoundary,
+    },
+    ExecutePendingCore {
+        effect: BrowserEffectRef<'a>,
+    },
+    SearchCurrent {
+        query: &'a str,
+    },
+    DisposeConnectedOpening {
+        pending: &'a str,
+    },
+    AwaitConnectedDisposal {
+        pending: &'a str,
+    },
+    Unsupported {
+        kind: BrowserUnsupportedActionKind,
+    },
 }
 pub struct BrowserAction<'a> {
     position: usize,
@@ -461,104 +552,7 @@ impl BrowserClient<'_> {
             .actions(loans.inner)
             .map(|actions| {
                 actions.map(|action| {
-                    use inputs::BrowserActionKind as Input;
-                    let kind = match action.kind() {
-                        Input::BeginConnectedOpening {
-                            attempt,
-                            pending,
-                            project_id,
-                            scope,
-                            semantic,
-                            source,
-                            transfer_limits,
-                        } => BrowserActionKind::BeginConnectedOpening {
-                            attempt: attempt.as_str(),
-                            pending: pending.as_str(),
-                            project_id: project_id.as_str(),
-                            scope: match scope {
-                                input::ClientActionBeginConnectedOpeningScope::Primary => {
-                                    BrowserScope::Primary
-                                }
-                                input::ClientActionBeginConnectedOpeningScope::Complete => {
-                                    BrowserScope::Complete
-                                }
-                            },
-                            semantic: match semantic {
-                                input::ClientActionBeginConnectedOpeningSemantic::None => {
-                                    BrowserSemantic::None
-                                }
-                                input::ClientActionBeginConnectedOpeningSemantic::Projection => {
-                                    BrowserSemantic::Projection
-                                }
-                            },
-                            source: BrowserSourceIdentity {
-                                provider_id: source.provider_id.as_str(),
-                                locator: source.locator.as_str(),
-                            },
-                            inventory_max_entries: transfer_limits.inventory_max_entries.0,
-                            read_max_bytes: transfer_limits.read_max_bytes.0,
-                        },
-                        Input::StartConnected {
-                            attempt,
-                            project_id,
-                            scope,
-                            semantic,
-                            source,
-                        } => BrowserActionKind::StartConnected {
-                            attempt: attempt.as_str(),
-                            project_id: project_id.as_str(),
-                            scope: match scope {
-                                input::ClientActionStartConnectedScope::Primary => {
-                                    BrowserScope::Primary
-                                }
-                                input::ClientActionStartConnectedScope::Complete => {
-                                    BrowserScope::Complete
-                                }
-                            },
-                            semantic: match semantic {
-                                input::ClientActionStartConnectedSemantic::None => {
-                                    BrowserSemantic::None
-                                }
-                                input::ClientActionStartConnectedSemantic::Projection => {
-                                    BrowserSemantic::Projection
-                                }
-                            },
-                            source: BrowserSourceIdentity {
-                                provider_id: source.provider_id.as_str(),
-                                locator: source.locator.as_str(),
-                            },
-                        },
-                        Input::BindModelOwner { attempt, model } => {
-                            BrowserActionKind::BindModelOwner {
-                                attempt: attempt.as_str(),
-                                model: model.as_str(),
-                            }
-                        }
-                        Input::DownloadOriginal { model, target } => {
-                            BrowserActionKind::DownloadOriginal {
-                                model: model.as_str(),
-                                target: match target {
-                                    input::ClientActionDownloadOriginalTarget::RetainedFile {} => {
-                                        BrowserDownloadTarget::RetainedFile
-                                    }
-                                    input::ClientActionDownloadOriginalTarget::InventoryPath {
-                                        path,
-                                    } => BrowserDownloadTarget::InventoryPath(path.as_str()),
-                                },
-                            }
-                        }
-                        Input::DownloadArchive { model } => BrowserActionKind::DownloadArchive {
-                            model: model.as_str(),
-                        },
-                        Input::CloseModel { model } => BrowserActionKind::CloseModel {
-                            model: model.as_str(),
-                        },
-                        Input::CloseCurrentModel => BrowserActionKind::CloseCurrentModel,
-                        Input::Checkpoint { name } => BrowserActionKind::Checkpoint {
-                            name: name.as_str(),
-                        },
-                        Input::Unsupported => BrowserActionKind::Unsupported,
-                    };
+                    let kind = project_browser_action(action.kind());
                     BrowserAction {
                         position: action.position(),
                         kind,
@@ -566,5 +560,116 @@ impl BrowserClient<'_> {
                 })
             })
             .map_err(Into::into)
+    }
+}
+
+fn project_browser_action<'a>(action: inputs::BrowserActionKind<'a>) -> BrowserActionKind<'a> {
+    use inputs::BrowserActionKind as Input;
+
+    match action {
+        Input::BeginConnectedOpening {
+            attempt,
+            pending,
+            project_id,
+            scope,
+            semantic,
+            source,
+            transfer_limits,
+        } => BrowserActionKind::BeginConnectedOpening {
+            attempt: attempt.as_str(),
+            pending: pending.as_str(),
+            project_id: project_id.as_str(),
+            scope: match scope {
+                input::ClientActionBeginConnectedOpeningScope::Primary => BrowserScope::Primary,
+                input::ClientActionBeginConnectedOpeningScope::Complete => BrowserScope::Complete,
+            },
+            semantic: match semantic {
+                input::ClientActionBeginConnectedOpeningSemantic::None => BrowserSemantic::None,
+                input::ClientActionBeginConnectedOpeningSemantic::Projection => {
+                    BrowserSemantic::Projection
+                }
+            },
+            source: BrowserSourceIdentity {
+                provider_id: source.provider_id.as_str(),
+                locator: source.locator.as_str(),
+            },
+            inventory_max_entries: transfer_limits.inventory_max_entries.0,
+            read_max_bytes: transfer_limits.read_max_bytes.0,
+        },
+        Input::StartConnected {
+            attempt,
+            project_id,
+            scope,
+            semantic,
+            source,
+        } => BrowserActionKind::StartConnected {
+            attempt: attempt.as_str(),
+            project_id: project_id.as_str(),
+            scope: match scope {
+                input::ClientActionStartConnectedScope::Primary => BrowserScope::Primary,
+                input::ClientActionStartConnectedScope::Complete => BrowserScope::Complete,
+            },
+            semantic: match semantic {
+                input::ClientActionStartConnectedSemantic::None => BrowserSemantic::None,
+                input::ClientActionStartConnectedSemantic::Projection => {
+                    BrowserSemantic::Projection
+                }
+            },
+            source: BrowserSourceIdentity {
+                provider_id: source.provider_id.as_str(),
+                locator: source.locator.as_str(),
+            },
+        },
+        Input::BindModelOwner { attempt, model } => BrowserActionKind::BindModelOwner {
+            attempt: attempt.as_str(),
+            model: model.as_str(),
+        },
+        Input::DownloadOriginal { model, target } => BrowserActionKind::DownloadOriginal {
+            model: model.as_str(),
+            target: match target {
+                input::ClientActionDownloadOriginalTarget::RetainedFile {} => {
+                    BrowserDownloadTarget::RetainedFile
+                }
+                input::ClientActionDownloadOriginalTarget::InventoryPath { path } => {
+                    BrowserDownloadTarget::InventoryPath(path.as_str())
+                }
+            },
+        },
+        Input::DownloadArchive { model } => BrowserActionKind::DownloadArchive {
+            model: model.as_str(),
+        },
+        Input::CloseModel { model } => BrowserActionKind::CloseModel {
+            model: model.as_str(),
+        },
+        Input::CloseCurrentModel => BrowserActionKind::CloseCurrentModel,
+        Input::Checkpoint { name } => BrowserActionKind::Checkpoint {
+            name: name.as_str(),
+        },
+        Input::AwaitConnectedBoundary { pending, boundary } => {
+            BrowserActionKind::AwaitConnectedBoundary {
+                pending: pending.as_str(),
+                boundary: match boundary {
+                    input::ClientActionAwaitConnectedBoundaryBoundary::InspectionPending => {
+                        BrowserConnectedBoundary::InspectionPending
+                    }
+                    input::ClientActionAwaitConnectedBoundaryBoundary::OpeningSettled => {
+                        BrowserConnectedBoundary::OpeningSettled
+                    }
+                },
+            }
+        }
+        Input::ExecutePendingCore { effect } => BrowserActionKind::ExecutePendingCore {
+            effect: project_effect(effect),
+        },
+        Input::SearchCurrent { query } => BrowserActionKind::SearchCurrent {
+            query: query.as_str(),
+        },
+        Input::DisposeConnectedOpening { pending } => BrowserActionKind::DisposeConnectedOpening {
+            pending: pending.as_str(),
+        },
+        Input::AwaitConnectedDisposal { pending } => BrowserActionKind::AwaitConnectedDisposal {
+            pending: pending.as_str(),
+        },
+        Input::Unsupported { kind } => BrowserActionKind::Unsupported { kind },
     }
 }

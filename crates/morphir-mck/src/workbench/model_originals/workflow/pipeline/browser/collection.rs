@@ -276,10 +276,10 @@ impl BrowserRowCollection {
     }
 }
 impl BrowserRowProducer<'_> {
-    pub fn issue(
+    pub fn issue<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>(
         &mut self,
-        run: &PreparedBrowserClientRun<'_, '_, '_, '_, '_, '_>,
-        opening: &BrowserExecutionOpening<'_, '_, '_, '_, '_, '_, '_>,
+        run: &PreparedBrowserClientRun<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
+        opening: &BrowserExecutionOpening<'_, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
         loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<BrowserDocumentProducer, BrowserInputError> {
         loans.validate_relation_stamp(&self.collection.relation)?;

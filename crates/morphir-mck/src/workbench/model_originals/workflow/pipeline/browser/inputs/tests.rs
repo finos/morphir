@@ -114,7 +114,14 @@ fn browser_inputs_01_full_preparation_then_same_borrowed_inputs_and_alias_filter
                     | (BrowserActionKind::CloseModel { .. }, crate::workbench::model_originals::workflow::input::ClientAction::CloseModel { .. })
                     | (BrowserActionKind::CloseCurrentModel, crate::workbench::model_originals::workflow::input::ClientAction::CloseCurrentModel { .. })
                     | (BrowserActionKind::Checkpoint { .. }, crate::workbench::model_originals::workflow::input::ClientAction::Checkpoint { .. }) => {},
-                    (BrowserActionKind::Unsupported, input) => assert!(!matches!(input,
+                    (BrowserActionKind::AwaitConnectedBoundary {pending,boundary}, ClientAction::AwaitConnectedBoundary {pending:actual,boundary:actual_boundary}) => {
+                        assert!(std::ptr::eq(pending,actual)); assert!(std::ptr::eq(boundary,actual_boundary));
+                    },
+                    (BrowserActionKind::ExecutePendingCore {effect}, ClientAction::ExecutePendingCore {effect:actual}) => assert!(std::ptr::eq(effect,actual)),
+                    (BrowserActionKind::SearchCurrent {query}, ClientAction::SearchCurrent {query:actual}) => assert!(std::ptr::eq(query,actual)),
+                    (BrowserActionKind::DisposeConnectedOpening {pending}, ClientAction::DisposeConnectedOpening {pending:actual})
+                    | (BrowserActionKind::AwaitConnectedDisposal {pending}, ClientAction::AwaitConnectedDisposal {pending:actual}) => assert!(std::ptr::eq(pending,actual)),
+                    (BrowserActionKind::Unsupported {..}, input) => assert!(!matches!(input,
                         crate::workbench::model_originals::workflow::input::ClientAction::StartConnected { .. }
                         | crate::workbench::model_originals::workflow::input::ClientAction::BeginConnectedOpening { .. }
                         | crate::workbench::model_originals::workflow::input::ClientAction::BindModelOwner { .. }
@@ -122,7 +129,12 @@ fn browser_inputs_01_full_preparation_then_same_borrowed_inputs_and_alias_filter
                         | crate::workbench::model_originals::workflow::input::ClientAction::DownloadArchive { .. }
                         | crate::workbench::model_originals::workflow::input::ClientAction::CloseModel { .. }
                         | crate::workbench::model_originals::workflow::input::ClientAction::CloseCurrentModel { .. }
-                        | crate::workbench::model_originals::workflow::input::ClientAction::Checkpoint { .. })),
+                        | crate::workbench::model_originals::workflow::input::ClientAction::Checkpoint { .. }
+                        | ClientAction::AwaitConnectedBoundary {..}
+                        | ClientAction::ExecutePendingCore {..}
+                        | ClientAction::SearchCurrent {..}
+                        | ClientAction::DisposeConnectedOpening {..}
+                        | ClientAction::AwaitConnectedDisposal {..})),
                     _ => panic!("closed projection must agree with this exact input variant"),
                 }
             }
@@ -403,3 +415,23 @@ fn browser_inputs_07_callback_error_is_retained_as_its_closed_type() {
 mod controlled_input;
 mod projections;
 mod public_bridge;
+
+#[test]
+fn browser_inputs_closed_unsupported_tags_remain_data_not_execution_inputs() {
+    use crate::workbench::model_originals::workflow::decode::Decode;
+    let source = source(CORPUS);
+    prepared_browser_originals::<_,BrowserInputFault>(&source,&configuration(),|_,loans| {
+        for (raw,expected) in [
+            (r#"{"kind":"search","model":"model-A","query":"literal"}"#,BrowserUnsupportedActionKind::Search),
+            (r#"{"kind":"prepare-pending-core","effect":{"attempt":"attempt-A","kind":"inspection","ordinal":0}}"#,BrowserUnsupportedActionKind::PreparePendingCore),
+        ] {
+            // Literal decoding exercises closed DATA tags only. It cannot mint
+            // a cursor token or associate this input with a compiled source row.
+            let document=crate::json::strict::Document::parse_unsigned_counts(raw.as_bytes()).unwrap();
+            let (decoder,_,_)=loans.physical_owners()?;
+            let input=ClientAction::decode(&document,decoder).map_err(BrowserInputFault::Decode)?;
+            assert!(matches!(project_action(&input),BrowserActionKind::Unsupported{kind} if kind==expected));
+        }
+        Ok(())
+    }).unwrap();
+}
