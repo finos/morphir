@@ -18,6 +18,9 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { builtExecutable } from "./cargo-artifacts.ts";
+
+export { builtExecutable } from "./cargo-artifacts.ts";
 
 /** The process environment with every MORPHIR_* variable removed, in any
  * case, and every home and config directory moved under `root`. */
@@ -40,36 +43,6 @@ export function isolatedEnvironment(
 		MORPHIR_HOME: path.join(root, "morphir-home"),
 		MORPHIR_LOG_FILE: "false",
 	};
-}
-
-type CargoMessage = {
-	reason?: string;
-	target?: { name?: string; kind?: string[] };
-	executable?: string | null;
-};
-
-/** The path of the morphir binary in `cargo build --message-format=json`
- * output. */
-export function builtExecutable(messages: string): string {
-	let executable: string | undefined;
-	for (const line of messages.split(/\r?\n/)) {
-		let message: CargoMessage;
-		try {
-			message = JSON.parse(line) as CargoMessage;
-		} catch {
-			continue;
-		}
-		if (
-			message.reason === "compiler-artifact" &&
-			message.target?.name === "morphir" &&
-			message.target.kind?.includes("bin") &&
-			message.executable
-		) {
-			executable = message.executable;
-		}
-	}
-	if (executable === undefined) throw new Error("cargo reported no morphir binary");
-	return executable;
 }
 
 function run(command: string, args: string[], options: { cwd: string; env?: Record<string, string> }): string {

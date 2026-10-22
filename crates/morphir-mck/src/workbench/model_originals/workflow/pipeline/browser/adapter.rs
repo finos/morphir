@@ -34,6 +34,12 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) enum Brow
     Collection(super::collection::BrowserCollectionFault),
 }
 impl BrowserInputError {
+    #[cfg(test)]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn test_cause(
+        &self,
+    ) -> &inputs::BrowserInputFault {
+        &self.cause
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn activity_cause(
         &self,
     ) -> Option<BrowserActivityFault> {

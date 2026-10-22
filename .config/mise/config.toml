@@ -408,6 +408,13 @@ run = [
     "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck",
 ]
 
+[tasks."mck:test"]
+description = "Test the MCK engine with its actual MEP peer and fixed driver controls"
+run = [
+    "mise run mck:controller-test",
+    "bun run tools/test-mck-engine.ts",
+]
+
 [tasks."mck:controller-test"]
 description = "Test fixed driver clock, startup and reference ownership without a browser"
 run = [

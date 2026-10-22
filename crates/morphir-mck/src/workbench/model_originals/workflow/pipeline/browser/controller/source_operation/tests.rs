@@ -8,6 +8,7 @@ use super::super::{
     acquisition::{ControllerFileInput, ControllerTargetInput},
 };
 use super::*;
+use crate::workbench::model_originals::workflow::pipeline::installed::observation::InstalledObservationResource;
 use std::path::Path;
 
 fn target() -> ControllerTargetInput<'static> {
@@ -39,8 +40,29 @@ fn source_operation_prepay_01_exact_lifetime_limits_and_target_are_prepared_with
             .err()
             .expect("ordinary small work input cannot fund a full controller envelope");
         assert!(
-            loans.business_test_ready().is_err(),
-            "the actual cumulative work refusal must remain sticky: {refusal:?}"
+            matches!(
+                refusal.test_cause(),
+                BrowserInputFault::Receiving(InstalledObservationFault::Resource {
+                    kind: InstalledObservationResource::ByteVisits,
+                    limit: 8_388_608,
+                    ..
+                })
+            ),
+            "the ordinary full-controller refusal must be its explicit work limit: {refusal:?}"
+        );
+        let sticky = loans
+            .business_test_ready()
+            .expect_err("the actual cumulative work refusal must remain sticky");
+        assert!(
+            matches!(
+                sticky.test_cause(),
+                BrowserInputFault::Receiving(InstalledObservationFault::Resource {
+                    kind: InstalledObservationResource::ByteVisits,
+                    limit: 8_388_608,
+                    ..
+                })
+            ),
+            "the sticky refusal must retain the actual work-limit cause: {sticky:?}"
         );
         assert_eq!(lifetime.end(), original_end);
         eprintln!("ordinary full-controller work refusal: {refusal:?}");

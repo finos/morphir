@@ -79,6 +79,9 @@ jobs:
               - 'tools/fetch-published-bundles*'
               - 'tools/prepare-elm-examples*'
               - 'tools/prepare-backend-examples*'
+              # The native engine tests need their compiled MEP peer.
+              - 'tools/test-mck-engine*'
+              - 'tools/cargo-artifacts*'
               # generated CLI docs are diff-checked against the CLI source
               - 'docs/cli/**'
               - 'docs/man/**'
@@ -300,9 +303,7 @@ jobs:
 
       # The MCK engine is a library crate of its own; --package morphir does not run its tests.
       - name: Run MCK engine and fixed driver controls
-        run: |
-          mise run mck:controller-test
-          cargo test --locked --package morphir-mck
+        run: mise run mck:test
 
       - name: Validate signed tool release metadata
         run: mise run ci:validate-tool-release-metadata
@@ -496,7 +497,7 @@ jobs:
 
       - name: Test the native MCK engine for kit and schema changes
         if: ${{ needs.changes.outputs.mck == 'true' && needs.changes.outputs.rust != 'true' }}
-        run: cargo test --locked --package morphir-mck
+        run: bun run tools/test-mck-engine.ts
 
       - name: Run the kit against the TypeScript binding
         run: |
