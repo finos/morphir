@@ -6,6 +6,12 @@ use morphir_mck::workbench::{
     BrowserMaterializedController,
 };
 
+/// Only controller preparation pays the pump horizon before materialization.
+/// A standalone prepared listener cannot enter controller launch directly.
+pub(super) struct SelectedSourceControllerRuntime<'a> {
+    pub(super) native: SelectedSourcePrepared<'a>,
+}
+
 pub(super) struct SelectedSourceControllerPrepared<'a> {
     pub(super) native: SelectedSourcePrepared<'a>,
     pub(super) materialized: BrowserMaterializedController,
@@ -46,7 +52,11 @@ pub(super) enum SelectedSourceControllerLaunchFailure<'a> {
     },
 }
 
-impl<'a> SelectedSourcePrepared<'a> {
+impl<'a> SelectedSourceControllerRuntime<'a> {
+    pub(super) fn into_native(self) -> SelectedSourcePrepared<'a> {
+        self.native
+    }
+
     /// Take only this materialized owner's already-funded allowance. The SDK
     /// still validates the actual source/host relation before physical launch.
     /// Every visible returned wrapper was paid before runtime acquisition.
@@ -56,14 +66,15 @@ impl<'a> SelectedSourcePrepared<'a> {
         loans: &BrowserLoans<'_, '_>,
     ) -> Result<SelectedSourceControllerPrepared<'a>, SelectedSourceControllerPreparationFailure<'a>>
     {
+        let Self { native } = self;
         match materialized.listener_start_credit(loans) {
             Ok(listener_credit) => Ok(SelectedSourceControllerPrepared {
-                native: self,
+                native,
                 materialized,
                 listener_credit,
             }),
             Err(cause) => Err(SelectedSourceControllerPreparationFailure {
-                native: self,
+                native,
                 materialized,
                 cause,
             }),
@@ -136,5 +147,27 @@ impl<'a> SelectedSourceControllerLaunched<'a> {
             Ok(native) => Ok(SelectedSourceControllerRunning { native, controller }),
             Err(native) => Err(SelectedSourceControllerListenerFailure { native, controller }),
         }
+    }
+}
+
+impl SelectedSourceControllerRunning<'_> {
+    /// Return the exact measured loan-free future, without another async
+    /// wrapper or a renewed deadline. The caller drops it before the next step.
+    pub(super) fn wait_for_change(&self) -> impl std::future::Future<Output = ()> + '_ {
+        super::pump::wait(&self.native.owner.host)
+    }
+
+    pub(super) fn step_opening(
+        &mut self,
+        loans: &mut BrowserLoans<'_, '_>,
+        interrupted: &std::sync::atomic::AtomicBool,
+    ) -> super::pump::SelectedSourcePumpStep {
+        super::pump::step(
+            &mut self.native.owner,
+            &mut self.controller,
+            super::pump::SelectedSourcePumpSource::Opening(&self.native.opening),
+            loans,
+            interrupted,
+        )
     }
 }

@@ -7,7 +7,7 @@ pub use model_originals::{
     BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
     BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
     BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
-    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart, BrowserSourcePumpGuardWork,
 };
 pub use model_originals::{
     BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,

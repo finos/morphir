@@ -100,12 +100,15 @@ fn native_selected_listener_start_03_missing_runtime_returns_unstarted_owner() {
                 joined,
                 ControlledHostFinish::Joined(ControlledHostJoined::Clean)
             ));
-            assert!(matches!(
-                fault,
-                Some(SelectedSourceStartFault::Native(
-                    ControlledHostFault::Listener
-                ))
-            ));
+            assert!(
+                matches!(
+                    fault,
+                    Some(SelectedSourceStartFault::Native(
+                        ControlledHostFault::Listener
+                    ))
+                ),
+                "actual native preparation fault: {fault:?}"
+            );
         },
     );
 }

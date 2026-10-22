@@ -688,6 +688,13 @@ pub(super) enum DocumentCollectStep {
     AwaitingChange,
     Terminal(DocumentCollectOutcome),
 }
+/// Resource DATA derived from the retained ingress owner. This gives no source,
+/// parser or effect authority to a native orchestration loop.
+pub(super) struct DocumentPumpLayout {
+    pub(super) record_bound: usize,
+    pub(super) notification_bound: usize,
+    pub(super) readiness_scan_bytes: usize,
+}
 fn map_gate(cause: ControlledHostFault) -> DocumentIngressFault {
     match cause {
         ControlledHostFault::End => DocumentIngressFault::End,
@@ -992,6 +999,30 @@ impl BoundControlledUiHost {
             })
             .map_err(|_| DocumentIngressFault::Source)?
     }
+    /// A readiness hint only. The next bounded collection step still validates
+    /// the genuine source and retains the actual frame under its own gates.
+    pub(super) fn document_collection_ready(&self) -> bool {
+        self.state
+            .document
+            .as_ref()
+            .is_none_or(DocumentIngress::collection_ready)
+    }
+
+    pub(super) fn document_pump_layout(&self) -> Option<DocumentPumpLayout> {
+        let document = self.state.document.as_ref()?;
+        // Each admitted record can stage once and ACK once. The remaining
+        // notification sites are STOP, drain, ServeGuard, first fault and an
+        // already queued Notify permit. Non-ready wakes retain one fixed tick.
+        let notification_bound = document.limits.records.checked_mul(2)?.checked_add(5)?;
+        let readiness_scan_bytes = std::mem::size_of::<IngressState>()
+            .checked_add(std::mem::size_of::<std::sync::MutexGuard<'_, IngressState>>())?;
+        Some(DocumentPumpLayout {
+            record_bound: document.limits.records,
+            notification_bound,
+            readiness_scan_bytes,
+        })
+    }
+
     /// Retain at most one actual staged frame, releasing both mutable borrows
     /// before returning. A retained frame grants ACK eligibility, not delivery.
     pub(super) fn collect_document_step(

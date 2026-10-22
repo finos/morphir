@@ -15,7 +15,7 @@ pub use workflow::{
     BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
     BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
     BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
-    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart, BrowserSourcePumpGuardWork,
 };
 pub use workflow::{
     BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,

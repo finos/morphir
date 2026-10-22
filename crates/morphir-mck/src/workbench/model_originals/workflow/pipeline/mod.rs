@@ -8,7 +8,7 @@ pub use browser::{
     BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
     BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
     BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
-    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart, BrowserSourcePumpGuardWork,
 };
 pub use browser::{
     BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,

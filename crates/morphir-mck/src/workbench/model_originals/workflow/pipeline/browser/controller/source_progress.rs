@@ -318,9 +318,26 @@ impl BrowserFixedController {
             }
         }
     }
-    /// Invoke only from the maintained native owner's scoped dispatch while its
-    /// actual first-fault guard is held. The source permit cannot escape its
-    /// parent→child→journal gate and must match this lifetime nominally.
+    /// Guard DATA for every probe, including the early cadence-None path.
+    /// The three groups are outer lifetime validation, prepayment validation
+    /// (lifetime plus retained relation stamp), and the final business gate.
+    /// Credit transfer/dispatch-body work is already funded by the envelope.
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn dispatch_probe_work_upper()
+    -> Option<usize> {
+        use super::super::adapter::execution_loans::{
+            SourceControllerActivity, SourceControllerOperationShape,
+        };
+        use std::mem::size_of;
+        SourceControllerActivity::validation_work_upper()?
+            .checked_mul(3)?
+            .checked_add(size_of::<Limits>().checked_mul(2)?)?
+            .checked_add(size_of::<SourceControllerOperationShape>().checked_mul(2)?)?
+            .checked_add(size_of::<Instant>().checked_mul(4)?)?
+            .checked_add(size_of::<Option<Instant>>())?
+            .checked_add(size_of::<Duration>().checked_mul(2)?)
+    }
+    /// Obtain the allowance before entering the scoped source/native dispatch
+    /// gate. This probe validates the source and loan relation itself.
     pub fn dispatch_credit(
         &mut self,
         loans: &BrowserLoans<'_, '_>,
@@ -347,6 +364,9 @@ impl BrowserFixedController {
             .map(Some)
             .map_err(BrowserActionIssueError::Funding)
     }
+    /// Invoke only from the maintained native owner's scoped dispatch while its
+    /// actual first-fault guard is held. The source permit cannot escape its
+    /// parent→child→journal gate and must match this lifetime nominally.
     pub fn advance(
         &mut self,
         permit: BrowserPreparedControllerStep<'_>,

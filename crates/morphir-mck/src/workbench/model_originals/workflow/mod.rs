@@ -7,7 +7,7 @@ pub use pipeline::{
     BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
     BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
     BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
-    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart, BrowserSourcePumpGuardWork,
 };
 pub use pipeline::{
     BrowserConnectedBoundary, BrowserEffectKind, BrowserEffectRef, BrowserUnsupportedActionKind,

@@ -8,10 +8,13 @@ use morphir_mck::workbench::{
 #[cfg(target_os = "macos")]
 mod composition;
 #[cfg(target_os = "macos")]
+mod pump;
+#[cfg(target_os = "macos")]
 use composition::{
     SelectedSourceControllerLaunchFailure, SelectedSourceControllerLaunched,
     SelectedSourceControllerListenerFailure, SelectedSourceControllerPreparationFailure,
     SelectedSourceControllerPrepared, SelectedSourceControllerRunning,
+    SelectedSourceControllerRuntime,
 };
 
 #[derive(Debug)]
@@ -40,6 +43,12 @@ struct SelectedSourceStartFailure<'a> {
 struct SelectedSourcePrepared<'a> {
     launch: SelectedSourceLaunch<'a>,
     runtime: tokio::runtime::Handle,
+}
+
+enum SelectedRuntimePurpose {
+    Listener,
+    #[cfg(target_os = "macos")]
+    Controller,
 }
 
 /// Native effects and the SDK gate result are separate factual dimensions.
@@ -224,6 +233,25 @@ impl<'a> SelectedSourceLaunch<'a> {
         self,
         loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<SelectedSourcePrepared<'a>, SelectedSourceStartFailure<'a>> {
+        self.prepare_runtime(loans, SelectedRuntimePurpose::Listener)
+    }
+
+    #[cfg(target_os = "macos")]
+    fn prepare_controller_runtime(
+        self,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<SelectedSourceControllerRuntime<'a>, SelectedSourceStartFailure<'a>> {
+        self.prepare_runtime(loans, SelectedRuntimePurpose::Controller)
+            .map(|native| SelectedSourceControllerRuntime { native })
+    }
+
+    fn prepare_runtime(
+        self,
+        loans: &mut BrowserLoans<'_, '_>,
+        purpose: SelectedRuntimePurpose,
+    ) -> Result<SelectedSourcePrepared<'a>, SelectedSourceStartFailure<'a>> {
+        #[cfg(not(target_os = "macos"))]
+        let _ = purpose;
         let result = (|| {
             // Source currentness precedes new requested storage. Native first
             // is checked under the final gate before any listener effect.
@@ -294,7 +322,28 @@ impl<'a> SelectedSourceLaunch<'a> {
                     work.checked_add(2 * std::mem::size_of::<tokio::runtime::Handle>())
                 })
                 .ok_or(SelectedSourceStartFault::SizeOverflow)?;
-            let slots = if cfg!(target_os = "macos") { 15 } else { 9 };
+            let slots: usize = if cfg!(target_os = "macos") { 15 } else { 9 };
+            #[cfg(target_os = "macos")]
+            let (bytes, slots, work) = match purpose {
+                SelectedRuntimePurpose::Listener => (bytes, slots, work),
+                SelectedRuntimePurpose::Controller => {
+                    let pump = pump::funding(&self.owner.host)?;
+                    let stage_bytes = std::mem::size_of::<SelectedSourceControllerRuntime<'_>>();
+                    (
+                        bytes
+                            .checked_add(pump.bytes)
+                            .and_then(|n| n.checked_add(stage_bytes))
+                            .ok_or(SelectedSourceStartFault::SizeOverflow)?,
+                        slots
+                            .checked_add(pump.slots)
+                            .and_then(|n| n.checked_add(1))
+                            .ok_or(SelectedSourceStartFault::SizeOverflow)?,
+                        work.checked_add(pump.visits)
+                            .and_then(|n| n.checked_add(stage_bytes))
+                            .ok_or(SelectedSourceStartFault::SizeOverflow)?,
+                    )
+                }
+            };
             loans
                 .reserve_controlled_host_storage(bytes, slots, work)
                 .map_err(SelectedSourceStartFault::Funding)?;

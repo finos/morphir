@@ -391,6 +391,9 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
         Ok(BrowserOpeningPosition(opening.action.position()))
     }
 }
+#[path = "execution_loans/pump_work.rs"]
+mod pump_work;
+pub use pump_work::BrowserSourcePumpGuardWork;
 #[path = "execution_loans/actions.rs"]
 mod actions;
 pub use actions::{

@@ -7,7 +7,7 @@ pub use adapter::execution_loans::{
     BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
     BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
     BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
-    BrowserPreparedControllerStep, BrowserPreparedListenerStart,
+    BrowserPreparedControllerStep, BrowserPreparedListenerStart, BrowserSourcePumpGuardWork,
 };
 pub use collection::{
     BrowserHostFact, BrowserHostInterruption, BrowserHostIoFailure, BrowserHostManifestFailure,

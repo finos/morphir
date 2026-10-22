@@ -3,18 +3,19 @@
 use super::composition::{
     SelectedSourceControllerListenerFailure, SelectedSourceControllerRunning,
 };
+use super::pump::{SelectedSourcePumpProgress, SelectedSourcePumpStep, SelectedSourcePumpStop};
 use super::*;
 use crate::commands::ui::server::controlled_originals::{
     ControlledHostFault, ControlledHostFinish, ControlledHostJoined, HostState, ListenerOwner,
 };
 use morphir_mck::transport::Limits;
 use morphir_mck::workbench::{
-    BrowserActionCursorTerminal, BrowserAdapterCompletion, BrowserControllerFile,
-    BrowserControllerFiles, BrowserControllerLaunchStage, BrowserControllerRetirement,
-    BrowserDocumentBounds, BrowserListenerDispatch, RunConfiguration, load,
-    with_executed_browser_originals,
+    BrowserActionCursorTerminal, BrowserAdapterCompletion, BrowserConnectedControlFault,
+    BrowserConnectedObservation, BrowserControllerFile, BrowserControllerFiles,
+    BrowserControllerLaunchStage, BrowserControllerRetirement, BrowserDocumentBounds,
+    BrowserListenerDispatch, RunConfiguration, load, with_executed_browser_originals,
 };
-use std::{path::Path, time::Duration};
+use std::{path::Path, sync::atomic::AtomicBool, time::Duration};
 
 struct NativeCleanupFacts {
     same_host: bool,
@@ -77,6 +78,7 @@ enum CompositionControl {
     MissingCwd,
     ListenerFaultAfterLaunch,
     HealthyListenerAfterLaunch,
+    PhysicalExitAfterListener,
 }
 
 #[test]
@@ -95,6 +97,12 @@ fn native_selected_controller_composition_10_listener_refusal_retains_launched_o
 #[ignore = "requires selected77 image/archive/Node; non-browser OS ownership only, no Chrome"]
 fn native_selected_controller_composition_11_healthy_listener_retains_launched_owner() {
     composition_control(CompositionControl::HealthyListenerAfterLaunch);
+}
+
+#[test]
+#[ignore = "requires selected77 image/archive/Node; non-browser process pump only, no Chrome"]
+fn native_selected_controller_composition_12_pump_retains_actual_process_exit() {
+    composition_control(CompositionControl::PhysicalExitAfterListener);
 }
 
 fn composition_control(control: CompositionControl) {
@@ -243,7 +251,7 @@ fn composition_control(control: CompositionControl) {
             // Retain the actual runtime and native wrapper costs BEFORE the
             // physical preparation chooses residual cleanup capacity.
             let prepared = runtime
-                .block_on(async { launch.prepare_native_runtime(loans) })
+                .block_on(async { launch.prepare_controller_runtime(loans) })
                 .unwrap_or_else(|_| panic!("actual pre-acquisition native runtime retention"));
             let materialized = match preparation.prepare_runtime(
                 &archive,
@@ -269,7 +277,12 @@ fn composition_control(control: CompositionControl) {
                 Err(failure) => {
                     let detail = format!("{failure:?}");
                     let cleanup = failure.finish_cleanup();
-                    let native = finish_native(prepared, &runtime, original_host, &application);
+                    let native = finish_native(
+                        prepared.into_native(),
+                        &runtime,
+                        original_host,
+                        &application,
+                    );
                     assert_native_cleanup(native);
                     assert!(
                         cleanup.is_ok(),
@@ -310,7 +323,8 @@ fn composition_control(control: CompositionControl) {
                     let retained_root = match control {
                         CompositionControl::MissingCwd => &moved,
                         CompositionControl::ListenerFaultAfterLaunch
-                        | CompositionControl::HealthyListenerAfterLaunch => &cwd,
+                        | CompositionControl::HealthyListenerAfterLaunch
+                        | CompositionControl::PhysicalExitAfterListener => &cwd,
                     };
                     let retained_runtime_file =
                         retained_root.join("artifacts/runtime/index.mjs").is_file();
@@ -323,7 +337,8 @@ fn composition_control(control: CompositionControl) {
                     let renamed_back = match control {
                         CompositionControl::MissingCwd => std::fs::rename(&moved, &cwd),
                         CompositionControl::ListenerFaultAfterLaunch
-                        | CompositionControl::HealthyListenerAfterLaunch => Ok(()),
+                        | CompositionControl::HealthyListenerAfterLaunch
+                        | CompositionControl::PhysicalExitAfterListener => Ok(()),
                     };
                     // Keep the actual moved credit through both teardowns.
                     drop(listener_credit);
@@ -357,7 +372,8 @@ fn composition_control(control: CompositionControl) {
                     let renamed_back = match control {
                         CompositionControl::MissingCwd => std::fs::rename(&moved, &cwd),
                         CompositionControl::ListenerFaultAfterLaunch
-                        | CompositionControl::HealthyListenerAfterLaunch => Ok(()),
+                        | CompositionControl::HealthyListenerAfterLaunch
+                        | CompositionControl::PhysicalExitAfterListener => Ok(()),
                     };
                     drop(listener_credit);
                     assert!(
@@ -433,7 +449,7 @@ fn composition_control(control: CompositionControl) {
 fn listener_boundary(
     control: CompositionControl,
     launched: SelectedSourceControllerLaunched<'_>,
-    loans: &BrowserLoans<'_, '_>,
+    loans: &mut BrowserLoans<'_, '_>,
     runtime: &tokio::runtime::Runtime,
     original_host: *const HostState,
     application: &RunObservedApplication,
@@ -498,6 +514,16 @@ fn listener_boundary(
                 )))
             ));
         }
+        Ok(running) if matches!(control, CompositionControl::PhysicalExitAfterListener) => {
+            process_exit_pump(
+                running,
+                loans,
+                runtime,
+                original_host,
+                application,
+                original_end,
+            );
+        }
         Ok(SelectedSourceControllerRunning {
             native,
             mut controller,
@@ -535,4 +561,80 @@ fn listener_boundary(
             ));
         }
     }
+}
+
+fn process_exit_pump(
+    mut running: SelectedSourceControllerRunning<'_>,
+    loans: &mut BrowserLoans<'_, '_>,
+    runtime: &tokio::runtime::Runtime,
+    original_host: *const HostState,
+    application: &RunObservedApplication,
+    original_end: Instant,
+) {
+    let same_host = Arc::as_ptr(&running.native.owner.host.state) == original_host;
+    let same_image = Arc::ptr_eq(&running.native.owner.application.image, &application.image);
+    let listener_running = matches!(
+        running.native.owner.host.listener,
+        ListenerOwner::Running { .. }
+    );
+    let interrupted = AtomicBool::new(false);
+    let mut terminal: Option<SelectedSourcePumpStep> = None;
+    let mut unexpected_observation = None;
+    // Poll one actual fixed timer/yield before the physical-exit refusal.
+    runtime.block_on(running.wait_for_change());
+    while Instant::now() < original_end {
+        let step = running.step_opening(loans, &interrupted);
+        if step.observation != Ok(BrowserConnectedObservation::Pending) {
+            unexpected_observation.get_or_insert(step.observation);
+        }
+        match &step.progress {
+            SelectedSourcePumpProgress::Stopped(_) => {
+                terminal = Some(step);
+                break;
+            }
+            SelectedSourcePumpProgress::More | SelectedSourcePumpProgress::AwaitingChange => {}
+        }
+        // Use the maintained wait: it captures no loans and resets no deadline.
+        // There is no driver stdout; notifications cannot mint extra effects.
+        runtime.block_on(running.wait_for_change());
+    }
+    let SelectedSourceControllerRunning {
+        native,
+        mut controller,
+    } = running;
+    controller.request_shutdown();
+    while !controller.poll_cleanup() && Instant::now() < original_end {
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    let physical = controller.finish();
+    let retirement = physical.as_ref().ok().map(|finished| finished.retirement());
+    let first_control = physical
+        .as_ref()
+        .ok()
+        .and_then(|finished| finished.first_control_fault());
+    drop(native.opening);
+    let joined = runtime.block_on(native.owner.host.finish_joined());
+    drop(native.owner.application);
+    // All refusal/end assertions follow the actual physical and native joins.
+    assert!(physical.is_ok(), "actual pump process teardown incomplete");
+    assert_eq!(retirement, Some(BrowserControllerRetirement::Returned));
+    assert!(same_host && same_image && listener_running);
+    assert!(matches!(
+        joined,
+        ControlledHostFinish::Joined(ControlledHostJoined::Clean)
+    ));
+    assert_eq!(unexpected_observation, None);
+    assert!(matches!(
+        terminal,
+        Some(SelectedSourcePumpStep {
+            observation: Ok(BrowserConnectedObservation::Pending),
+            progress: SelectedSourcePumpProgress::Stopped(SelectedSourcePumpStop::Controller(
+                BrowserConnectedControlFault::ChromiumExited
+            )),
+        })
+    ));
+    assert_eq!(
+        first_control,
+        Some(BrowserConnectedControlFault::ChromiumExited)
+    );
 }
