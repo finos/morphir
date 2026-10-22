@@ -9,4 +9,5 @@ import {
   "moonbitlang/async",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
 }

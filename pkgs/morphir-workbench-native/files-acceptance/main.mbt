@@ -1,10 +1,30 @@
 ///|
+fn fixture_folder(arguments : ArrayView[String]) -> String raise {
+  let command = @argparse.Command(
+    "files-acceptance",
+    disable_help_flag=true,
+    disable_version_flag=true,
+    disable_help_subcommand=true,
+    positionals=[
+      @argparse.PositionArg(
+        "fixture-folder",
+        num_args=@argparse.ValueRange::single(),
+      ),
+    ],
+  )
+  // This test host has always treated every operand literally, including -- and
+  // --help. End option parsing before the caller's data; the library owns arity.
+  let literal = ["--"]
+  literal.append(arguments)
+  command.parse(argv=literal, env=Map([])).values["fixture-folder"][0]
+}
+
+///|
 /// Test host only: the process owner supplies the fixed picker result. Renderer
 /// requests still contain only protocol frames, never a native pathname.
 async fn main {
-  let args = @env.args()
-  guard args.length() == 2 else {
-    abort("Usage: files-acceptance <fixture-folder>")
+  let folder = fixture_folder(@env.args()[1:]) catch {
+    _ => abort("Usage: files-acceptance <fixture-folder>")
   }
   let owner = @bridge.FileOwner::new(enabled=true)
   defer owner.close()
@@ -18,7 +38,7 @@ async fn main {
           fn() raise {
             @session.Caller::admit("main", "app", Some("acceptance-page"))
           },
-          async fn() { Some(args[1]) },
+          async fn() { Some(folder) },
         )
         @stdio.stdout.write(reply + "\n")
         pending.clear()
