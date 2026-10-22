@@ -5,14 +5,20 @@ import type { Browser, BrowserContext, Page } from "playwright-core";
 import { parseClock, acceptSample } from "./driver-clock";
 import { ObservedDocumentOperation, parseObservedLaunch } from "./observed-document";
 
-const [entry, endpoint, artifacts, atText, endText, numerText, denomText, variant, launchUrl] = process.argv.slice(2);
-if ((process.argv.length !== 9 && process.argv.length !== 11) || !entry || !endpoint || !artifacts) {
+const [entry, endpoint, artifacts, atText, endText, numerText, denomText, variant, launchUrl,
+  providerId, locator, projectId] = process.argv.slice(2);
+if (![9, 11, 14].includes(process.argv.length) || !entry || !endpoint || !artifacts) {
   throw new Error("fixed driver arguments required");
 }
-const observedTarget = process.argv.length === 11
-  ? variant === "observed-workbench" && launchUrl
+const observedTarget = process.argv.length !== 9
+  ? ((process.argv.length === 11 && variant === "observed-workbench")
+      || (process.argv.length === 14 && variant === "observed-source-opening")) && launchUrl
     ? parseObservedLaunch(launchUrl)
     : (() => { throw new Error("fixed driver launch variant"); })()
+  : undefined;
+const openingSelection = process.argv.length === 14
+  ? providerId && locator && projectId ? Object.freeze({providerId, locator, projectId})
+    : (() => {throw new Error("fixed source selection arguments");})()
   : undefined;
 // This binary is selected and hashed by Rust. The basis is qualified only for
 // that Node24.22 Darwin binary, not arbitrary Node runtimes or platforms.
@@ -70,18 +76,30 @@ async function main(): Promise<void> {
         beforeEffect();
         process.stdout.write("1 document-started\n");
       } else process.stdout.write("1 page-created\n");
-    } else if (sequence === 2 && pending === "2 close\n") {
+    } else if (openingSelection && sequence === 2 && pending === "2 open\n") {
+      if (!observedDocument) throw new Error("observed document unavailable");
+      const actual = await observedDocument.beginConnectedOpening(openingSelection);
+      observedDocument.assertCurrent();
+      beforeEffect();
+      process.stdout.write(`2 ${actual.kind}\n`);
+    } else if (openingSelection && sequence === 3 && pending === "3 wait\n") {
+      if (!observedDocument) throw new Error("observed document unavailable");
+      const actual = await observedDocument.awaitCapturedInspectionPending();
+      observedDocument.assertCurrent();
+      beforeEffect();
+      process.stdout.write(`3 ${actual.kind}\n`);
+    } else if (sequence === (openingSelection ? 4 : 2) && pending === (openingSelection ? "4 close\n" : "2 close\n")) {
       observedDocument?.assertCurrent();
       beforeEffect();
       await cleanup();
       if (first.kind === "failed") throw first.error;
       beforeEffect();
-      process.stdout.write("2 disconnected\n");
+      process.stdout.write(openingSelection ? "4 disconnected\n" : "2 disconnected\n");
     } else throw new Error("command order");
     sequence += 1;
     pending = "";
   }
-  if (pending || sequence !== 3) throw new Error("incomplete command stream");
+  if (pending || sequence !== (openingSelection ? 5 : 3)) throw new Error("incomplete command stream");
 }
 try { await main(); } catch (error) { retainFirst(error); }
 await cleanup();

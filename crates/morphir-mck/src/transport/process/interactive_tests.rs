@@ -33,6 +33,88 @@ fn command(program: &str, args: &[&str], directory: &std::path::Path) -> Command
 fn buffers(stdout: usize, stderr: usize) -> FixedCaptureBuffers {
     FixedCaptureBuffers::new(Vec::with_capacity(stdout), Vec::with_capacity(stderr))
 }
+fn settle_fixed_oneshot(mut process: OneShotProcess) -> ProcessOutcome {
+    let end = Instant::now() + WAIT;
+    loop {
+        match process.advance() {
+            ProcessProgress::ExitObserved(_) | ProcessProgress::Faulted(_) => {
+                let _ = process.reap_retained();
+            }
+            ProcessProgress::Finished(_) => break,
+            ProcessProgress::Working => {}
+        }
+        if Instant::now() >= end {
+            let _ = process.request_termination();
+        }
+        assert!(
+            Instant::now() < end + WAIT,
+            "actual fixed process/readers remain owned"
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    match process.into_finished() {
+        ProcessFinish::Finished(outcome) => outcome,
+        ProcessFinish::Pending(_) => panic!("actual fixed process/readers must join"),
+    }
+}
+
+#[test]
+fn fixed_oneshot_capture_01_consumes_actual_backing_and_joins_real_readers() {
+    let directory = tempfile::tempdir().unwrap();
+    let stdout = Vec::with_capacity(8);
+    let stderr = Vec::with_capacity(4);
+    let stdout_backing = stdout.as_ptr();
+    let stderr_backing = stderr.as_ptr();
+    let process = OneShotProcess::spawn_fixed_capture(
+        command(
+            "/bin/sh",
+            &["-c", "printf fixed; printf err >&2"],
+            directory.path(),
+        ),
+        limits(8, 4),
+        FixedCaptureBuffers::new(stdout, stderr),
+    )
+    .unwrap();
+    let outcome = settle_fixed_oneshot(process);
+    assert!(outcome.status().success());
+    assert_eq!(outcome.stdout(), b"fixed");
+    assert_eq!(outcome.stderr(), b"err");
+    assert_eq!(outcome.stdout().as_ptr(), stdout_backing);
+    assert_eq!(outcome.stderr().as_ptr(), stderr_backing);
+    assert!(outcome.first_fault().is_none());
+}
+
+#[test]
+fn fixed_oneshot_capture_02_refuses_before_spawn_and_spare_capacity_never_extends_payload() {
+    let directory = tempfile::tempdir().unwrap();
+    let marker = directory.path().join("must-not-exist");
+    let result = OneShotProcess::spawn_fixed_capture(
+        command(
+            "/bin/sh",
+            &["-c", "printf effect > must-not-exist"],
+            directory.path(),
+        ),
+        limits(8, 4),
+        buffers(7, 4),
+    );
+    assert!(matches!(
+        result,
+        Err(InteractiveSpawnError::CaptureCapacity(OutputStream::Stdout))
+    ));
+    assert!(!marker.exists());
+    let process = OneShotProcess::spawn_fixed_capture(
+        command("/bin/sh", &["-c", "printf abcdef"], directory.path()),
+        limits(4, 0),
+        buffers(8, 0),
+    )
+    .unwrap();
+    let outcome = settle_fixed_oneshot(process);
+    assert_eq!(outcome.stdout(), b"abcd");
+    assert!(matches!(
+        outcome.first_fault(),
+        Some(ProcessFault::StdoutLimit)
+    ));
+}
 struct Actual(Option<InteractiveProcess>);
 impl Actual {
     fn owner(&mut self) -> &mut InteractiveProcess {

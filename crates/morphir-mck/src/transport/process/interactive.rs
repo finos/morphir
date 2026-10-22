@@ -33,6 +33,39 @@ pub(crate) enum InteractiveSpawnError {
     CaptureNotEmpty(OutputStream),
     Process(ProcessError),
 }
+impl OneShotProcess {
+    /// Consume the caller's fixed backing through the existing output readers.
+    /// This owns physical capture only; it grants no source or launch authority.
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+    pub(crate) fn spawn_fixed_capture(
+        spec: CommandSpec,
+        limits: Limits,
+        capture: FixedCaptureBuffers,
+    ) -> Result<Self, InteractiveSpawnError> {
+        capture.validate(limits)?;
+        Self::spawn_with_io(
+            spec,
+            limits,
+            ProcessInput::Null,
+            CaptureBuffers::Fixed {
+                stdout: capture.stdout,
+                stderr: capture.stderr,
+            },
+        )
+        .map(|(process, _)| process)
+        .map_err(InteractiveSpawnError::Process)
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    pub(crate) fn spawn_fixed_capture(
+        _spec: CommandSpec,
+        _limits: Limits,
+        _capture: FixedCaptureBuffers,
+    ) -> Result<Self, InteractiveSpawnError> {
+        Err(InteractiveSpawnError::Process(
+            ProcessError::UnsupportedPlatform,
+        ))
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum InteractiveFault {
     Process(ProcessFault),

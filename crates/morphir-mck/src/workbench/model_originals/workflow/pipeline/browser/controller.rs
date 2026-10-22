@@ -25,7 +25,17 @@ use std::{
     time::Instant,
 };
 mod observed_launch;
+mod source_operation;
 pub(super) use observed_launch::ObservedLaunch;
+mod acquisition;
+mod source_inputs;
+pub(super) use acquisition::{
+    AcquiredControllerTarget, ControllerFileInput, ControllerTargetInput,
+    FundedControllerAcquisition,
+};
+#[cfg(test)]
+#[path = "controller/acquisition_tests.rs"]
+mod acquisition_tests;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ControllerFault {
@@ -46,6 +56,8 @@ pub(super) enum ControllerFault {
 pub(super) enum ControllerCommand {
     CreateProbePage,
     StartObservedDocument,
+    BeginConnectedOpening,
+    AwaitCapturedInspectionPending,
     ClosePageContextAndDisconnect,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,8 +65,36 @@ pub(super) enum ControllerReply {
     Attached,
     ProbePageCreated,
     ObservedDocumentStarted,
+    SourceOpening(ControllerChoiceReply),
+    CapturedBoundary(ControllerBoundaryReply),
     Disconnected,
+    SourceDisconnected,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ControllerChoiceReply {
+    ProjectSelected,
+    NotReady,
+    Unavailable,
+    OtherSelection,
+    Retired,
+    Replaced,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ControllerBoundaryReply {
+    InspectionPending,
+    OriginalsOnly,
+    Retired,
+    Failed,
+    NoOpening,
+    Replaced,
+}
+pub(super) const SOURCE_STDOUT_BOUND: usize = b"attached\n".len()
+    + b"1 document-started\n".len()
+    + b"2 project-selected\n".len()
+    + b"3 inspection-pending\n".len()
+    + b"4 disconnected\n".len();
+pub(super) const SOURCE_COMMAND_BYTES: usize =
+    b"1 start\n".len() + b"2 open\n".len() + b"3 wait\n".len() + b"4 close\n".len();
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ControllerProgress {
     Pending,
@@ -72,6 +112,43 @@ pub(super) fn parse_reply(bytes: &[u8]) -> Result<ControllerReply, ControllerFau
         b"1 page-created\n" => Ok(ControllerReply::ProbePageCreated),
         b"1 document-started\n" => Ok(ControllerReply::ObservedDocumentStarted),
         b"2 disconnected\n" => Ok(ControllerReply::Disconnected),
+        b"4 disconnected\n" => Ok(ControllerReply::SourceDisconnected),
+        b"2 project-selected\n" => Ok(ControllerReply::SourceOpening(
+            ControllerChoiceReply::ProjectSelected,
+        )),
+        b"2 not-ready\n" => Ok(ControllerReply::SourceOpening(
+            ControllerChoiceReply::NotReady,
+        )),
+        b"2 unavailable\n" => Ok(ControllerReply::SourceOpening(
+            ControllerChoiceReply::Unavailable,
+        )),
+        b"2 other-selection\n" => Ok(ControllerReply::SourceOpening(
+            ControllerChoiceReply::OtherSelection,
+        )),
+        b"2 retired\n" => Ok(ControllerReply::SourceOpening(
+            ControllerChoiceReply::Retired,
+        )),
+        b"2 replaced\n" => Ok(ControllerReply::SourceOpening(
+            ControllerChoiceReply::Replaced,
+        )),
+        b"3 inspection-pending\n" => Ok(ControllerReply::CapturedBoundary(
+            ControllerBoundaryReply::InspectionPending,
+        )),
+        b"3 originals-only\n" => Ok(ControllerReply::CapturedBoundary(
+            ControllerBoundaryReply::OriginalsOnly,
+        )),
+        b"3 retired\n" => Ok(ControllerReply::CapturedBoundary(
+            ControllerBoundaryReply::Retired,
+        )),
+        b"3 failed\n" => Ok(ControllerReply::CapturedBoundary(
+            ControllerBoundaryReply::Failed,
+        )),
+        b"3 no-opening\n" => Ok(ControllerReply::CapturedBoundary(
+            ControllerBoundaryReply::NoOpening,
+        )),
+        b"3 replaced\n" => Ok(ControllerReply::CapturedBoundary(
+            ControllerBoundaryReply::Replaced,
+        )),
         _ => Err(ControllerFault::Shape),
     }
 }
@@ -170,6 +247,9 @@ pub(super) struct AcquiredTarget {
     profile_dir: File,
     artifacts: PathBuf,
     driver: PathBuf,
+    // Source preparation keeps its actual held assets and partial cleanup debt.
+    // Component-only acquisition has no such source ownership claim.
+    _source_owned: Option<acquisition::SourceAcquiredOwnership>,
 }
 impl AcquiredTarget {
     pub(super) fn acquire(
@@ -241,6 +321,7 @@ impl AcquiredTarget {
             _root: root_file,
             profile_dir,
             driver,
+            _source_owned: None,
         })
     }
     fn endpoint(&self, buffer: &mut [u8]) -> Result<Option<String>, ControllerFault> {
@@ -325,6 +406,10 @@ enum Driver {
 enum ControllerVariant {
     Probe,
     Observed(ObservedLaunch),
+    SourceObserved {
+        launch: ObservedLaunch,
+        selection: [String; 3],
+    },
 }
 impl ControllerVariant {
     fn accepts_start(&self, command: ControllerCommand) -> bool {
@@ -332,6 +417,10 @@ impl ControllerVariant {
             (self, command),
             (Self::Probe, ControllerCommand::CreateProbePage)
                 | (Self::Observed(_), ControllerCommand::StartObservedDocument)
+                | (
+                    Self::SourceObserved { .. },
+                    ControllerCommand::StartObservedDocument
+                )
         )
     }
     fn accepts_reply(&self, reply: ControllerReply) -> bool {
@@ -339,13 +428,33 @@ impl ControllerVariant {
             (self, reply),
             (Self::Probe, ControllerReply::ProbePageCreated)
                 | (Self::Observed(_), ControllerReply::ObservedDocumentStarted)
+                | (
+                    Self::SourceObserved { .. },
+                    ControllerReply::ObservedDocumentStarted
+                )
         )
     }
     fn start_frame(&self) -> &'static [u8] {
         match self {
             Self::Probe => b"1 page\n",
-            Self::Observed(_) => b"1 start\n",
+            Self::Observed(_) | Self::SourceObserved { .. } => b"1 start\n",
         }
+    }
+    fn source_opening(&self) -> bool {
+        matches!(self, Self::SourceObserved { .. })
+    }
+    fn close_frame(&self) -> &'static [u8] {
+        if self.source_opening() {
+            b"4 close\n"
+        } else {
+            b"2 close\n"
+        }
+    }
+    fn accepts_disconnect(&self, reply: ControllerReply) -> bool {
+        matches!(
+            (self.source_opening(), reply),
+            (false, ControllerReply::Disconnected) | (true, ControllerReply::SourceDisconnected)
+        )
     }
 }
 #[derive(Clone, Copy)]
@@ -356,6 +465,13 @@ enum Conversation {
     SendingPage(usize),
     PagePending,
     PageReady,
+    SendingSourceOpening(usize),
+    SourceOpeningPending,
+    SourceReady,
+    SendingSourceBoundary(usize),
+    SourceBoundaryPending,
+    SourceBoundaryReady,
+    SourceRefused,
     SendingClose(usize),
     ClosePending,
     Disconnected,
@@ -503,7 +619,23 @@ impl BrowserController {
             (Conversation::Ready, start) if self.variant.accepts_start(start) => {
                 Conversation::SendingPage(0)
             }
-            (Conversation::PageReady, ControllerCommand::ClosePageContextAndDisconnect) => {
+            (Conversation::PageReady, ControllerCommand::BeginConnectedOpening)
+                if self.variant.source_opening() =>
+            {
+                Conversation::SendingSourceOpening(0)
+            }
+            (Conversation::SourceReady, ControllerCommand::AwaitCapturedInspectionPending)
+                if self.variant.source_opening() =>
+            {
+                Conversation::SendingSourceBoundary(0)
+            }
+            (
+                Conversation::SourceBoundaryReady,
+                ControllerCommand::ClosePageContextAndDisconnect,
+            ) if self.variant.source_opening() => Conversation::SendingClose(0),
+            (Conversation::PageReady, ControllerCommand::ClosePageContextAndDisconnect)
+                if !self.variant.source_opening() =>
+            {
                 Conversation::SendingClose(0)
             }
             _ => return Err(self.fail(ControllerFault::Order)),
@@ -522,9 +654,19 @@ impl BrowserController {
             self.clock.timebase().numerator().to_string().into(),
             self.clock.timebase().denominator().to_string().into(),
         ];
-        if let ControllerVariant::Observed(launch) = &self.variant {
-            arguments.push("observed-workbench".into());
-            arguments.push(launch.as_str().into());
+        match &self.variant {
+            ControllerVariant::Observed(launch) => {
+                arguments.push("observed-workbench".into());
+                arguments.push(launch.as_str().into());
+            }
+            ControllerVariant::SourceObserved { launch, selection } => {
+                arguments.push("observed-source-opening".into());
+                arguments.push(launch.as_str().into());
+                for operand in selection {
+                    arguments.push(operand.into());
+                }
+            }
+            ControllerVariant::Probe => {}
         }
         let spec = CommandSpec::new(
             self.target.node.path.clone(),
@@ -618,7 +760,29 @@ impl BrowserController {
                     (Conversation::PagePending, started) if self.variant.accepts_reply(started) => {
                         Conversation::PageReady
                     }
-                    (Conversation::ClosePending, ControllerReply::Disconnected) => {
+                    (
+                        Conversation::SourceOpeningPending,
+                        ControllerReply::SourceOpening(choice),
+                    ) if self.variant.source_opening() => {
+                        if choice == ControllerChoiceReply::ProjectSelected {
+                            Conversation::SourceReady
+                        } else {
+                            Conversation::SourceRefused
+                        }
+                    }
+                    (
+                        Conversation::SourceBoundaryPending,
+                        ControllerReply::CapturedBoundary(boundary),
+                    ) if self.variant.source_opening() => {
+                        if boundary == ControllerBoundaryReply::InspectionPending {
+                            Conversation::SourceBoundaryReady
+                        } else {
+                            Conversation::SourceRefused
+                        }
+                    }
+                    (Conversation::ClosePending, closed)
+                        if self.variant.accepts_disconnect(closed) =>
+                    {
                         if let Driver::Running(owner) = &mut self.driver {
                             owner.close_stdin();
                         }
@@ -674,7 +838,9 @@ impl BrowserController {
         }
         let (frame, offset) = match self.conversation {
             Conversation::SendingPage(offset) => (Some(self.variant.start_frame()), offset),
-            Conversation::SendingClose(offset) => (Some(b"2 close\n".as_slice()), offset),
+            Conversation::SendingSourceOpening(offset) => (Some(b"2 open\n".as_slice()), offset),
+            Conversation::SendingSourceBoundary(offset) => (Some(b"3 wait\n".as_slice()), offset),
+            Conversation::SendingClose(offset) => (Some(self.variant.close_frame()), offset),
             _ => (None, 0),
         };
         if let Some(frame) = frame {
@@ -699,6 +865,20 @@ impl BrowserController {
                                 Conversation::ClosePending
                             } else {
                                 Conversation::SendingClose(next)
+                            }
+                        }
+                        Conversation::SendingSourceOpening(_) => {
+                            if next == frame.len() {
+                                Conversation::SourceOpeningPending
+                            } else {
+                                Conversation::SendingSourceOpening(next)
+                            }
+                        }
+                        Conversation::SendingSourceBoundary(_) => {
+                            if next == frame.len() {
+                                Conversation::SourceBoundaryPending
+                            } else {
+                                Conversation::SendingSourceBoundary(next)
                             }
                         }
                         _ => unreachable!(),

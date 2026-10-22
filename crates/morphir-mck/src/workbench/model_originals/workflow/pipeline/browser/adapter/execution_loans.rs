@@ -396,6 +396,71 @@ pub use actions::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
     BrowserExecutionAction,
 };
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::{
+    ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerLifetime,
+    SourceControllerOperationShape,
+};
+#[cfg(test)]
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::{
+    with_foreign_source_controller_lifetime, with_revoked_source_controller_lifetime,
+    with_source_controller_lifetime, with_source_controller_limits,
+};
+impl BrowserLoans<'_, '_> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare_controller_buffers(
+        &mut self,
+        lifetime: &SourceControllerLifetime,
+        limits: crate::transport::Limits,
+    ) -> Result<super::super::funded_workflow::BrowserPhysicalBuffers, BrowserInputError> {
+        lifetime.validate(self)?;
+        lifetime
+            .while_active(|| {
+                super::super::funded_workflow::BrowserPhysicalBuffers::prepare(
+                    self.inner, limits, 0,
+                )
+            })
+            .map_err(source)?
+            .map_err(BrowserInputError::from)
+    }
+}
 #[cfg(test)]
 #[path = "execution_loans/tests.rs"]
 mod tests;
+
+/// Residual SAME-owner planning quantities, never a reservation or grant.
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct BrowserCleanupRemaining
+{
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) retained_bytes: usize,
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) receiving_visits: usize,
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) decode_visits: usize,
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) decode_slots: usize,
+}
+impl BrowserLoans<'_, '_> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn remaining_cleanup_resources(
+        &mut self,
+        lifetime: &SourceControllerLifetime,
+    ) -> Result<BrowserCleanupRemaining, BrowserInputError> {
+        use crate::workbench::model_originals::workflow::decode::OperandResource;
+        lifetime.validate(self)?;
+        let (decode, receiving, _) = self.inner.physical_owners()?;
+        let retained = receiving
+            .remaining(InstalledObservationResource::RetainedBytes)
+            .map_err(inputs::BrowserInputFault::Receiving)?;
+        let visits = receiving
+            .remaining(InstalledObservationResource::ByteVisits)
+            .map_err(inputs::BrowserInputFault::Receiving)?;
+        Ok(BrowserCleanupRemaining {
+            retained_bytes: usize::try_from(retained).map_err(|_| {
+                inputs::BrowserInputFault::Receiving(InstalledObservationFault::SizeOverflow)
+            })?,
+            receiving_visits: usize::try_from(visits).map_err(|_| {
+                inputs::BrowserInputFault::Receiving(InstalledObservationFault::SizeOverflow)
+            })?,
+            decode_visits: decode
+                .remaining(OperandResource::ByteVisits)
+                .map_err(inputs::BrowserInputFault::Decode)?,
+            decode_slots: decode
+                .remaining(OperandResource::Slots)
+                .map_err(inputs::BrowserInputFault::Decode)?,
+        })
+    }
+}

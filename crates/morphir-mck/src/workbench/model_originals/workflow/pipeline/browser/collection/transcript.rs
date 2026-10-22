@@ -494,6 +494,25 @@ impl BrowserDocumentProducer {
     }
 }
 impl BrowserHostTranscript {
+    /// Borrow only the original end of the exact already-prepared host slot.
+    /// This issues no new time budget, host port, action or physical proof.
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn source_controller_end(
+        &self,
+        producer: &BrowserDocumentProducer,
+        stimulus: &ControlledHostStimulus,
+        opening: usize,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<Instant, BrowserHostTranscriptPrepareError> {
+        producer.validate_host(loans, stimulus)?;
+        loans.validate_relation_stamp(&self.relation)?;
+        if producer.opening != opening || !Arc::ptr_eq(&producer.journal, &self.journal) {
+            return Err(BrowserHostTranscriptPrepareError::Input(
+                inputs::BrowserInputFault::Source(BrowserSourceFault::ForeignSource).into(),
+            ));
+        }
+        self.with_cache(|_| Ok(self.end))
+            .map_err(BrowserHostTranscriptPrepareError::Transcript)
+    }
     fn with_cache<R>(
         &self,
         operation: impl FnOnce(&mut HostCache) -> Result<R, BrowserHostTranscriptFault>,

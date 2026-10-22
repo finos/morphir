@@ -74,6 +74,15 @@ impl Decoder {
             slots: self.slots,
         }
     }
+    /// Planning DATA only. A later operation must still debit this SAME owner.
+    pub(super) fn remaining(&self, resource: OperandResource) -> Result<usize, DecodeError> {
+        self.ready()?;
+        let (limit, used) = match resource {
+            OperandResource::ByteVisits => (self.limits.byte_visits.get(), self.byte_visits),
+            OperandResource::Slots => (self.limits.slots.get(), self.slots),
+        };
+        limit.checked_sub(used).ok_or(DecodeError::Work(resource))
+    }
     pub(super) fn ready(&self) -> Result<(), DecodeError> {
         self.fault.clone().map_or(Ok(()), Err)
     }

@@ -18,6 +18,13 @@ use crate::{
 pub(super) fn with_compiled(
     action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut inputs::BrowserOwnerLoans<'_>),
 ) {
+    with_compiled_limits(br#"{"rpcFrames":"checker-capture","retainedBytes":8388608,"stdoutPrefixBytes":0,"stderrPrefixBytes":0,"snapshotReadBytes":1048576,"byteVisits":8388608,"records":0}"#, action)
+}
+
+pub(super) fn with_compiled_limits(
+    limits: &[u8],
+    action: impl FnOnce(&[CompiledExecution<'_, '_, '_, '_>], &mut inputs::BrowserOwnerLoans<'_>),
+) {
     let root = tempfile::tempdir().unwrap();
     std::fs::write(
         root.path().join("cases.json"),
@@ -36,8 +43,13 @@ pub(super) fn with_compiled(
         .unwrap(),
     )
     .unwrap();
-    let mut receiving = super::super::super::super::installed::observation::InstalledObservationOwner::new(
-        &InstalledObservationLimits::from_document(&Document::parse_unsigned_counts(br#"{"rpcFrames":"checker-capture","retainedBytes":8388608,"stdoutPrefixBytes":0,"stderrPrefixBytes":0,"snapshotReadBytes":1048576,"byteVisits":8388608,"records":0}"#).unwrap()).unwrap());
+    let mut receiving =
+        super::super::super::super::installed::observation::InstalledObservationOwner::new(
+            &InstalledObservationLimits::from_document(
+                &Document::parse_unsigned_counts(limits).unwrap(),
+            )
+            .unwrap(),
+        );
     prepared_typed(
         &source,
         &checker,

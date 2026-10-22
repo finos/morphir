@@ -77,6 +77,8 @@ class ObservedDocumentOperation {
   #state = { kind: "prepared" };
   #commits = 0;
   #controls;
+  #capture;
+  #opening;
   #action = { kind: "idle" };
   constructor(page, target, checkClock) {
     this.#page = page;
@@ -95,6 +97,8 @@ class ObservedDocumentOperation {
       return this.#state.error;
     this.#state = { kind: "faulted", error };
     this.#releaseControls();
+    this.#releaseCapture(true);
+    this.#releaseOpening();
     this.#rejectInvalidated(error);
     return error;
   }
@@ -112,6 +116,44 @@ class ObservedDocumentOperation {
     this.#controls = undefined;
     if (handle)
       this.#release(handle);
+  }
+  #disposeOpening(handle) {
+    try {
+      handle.evaluate((actual) => actual.dispose()).then(() => this.#release(handle), (error) => {
+        this.#fail(error);
+        this.#release(handle);
+      });
+    } catch (error) {
+      this.#fail(error);
+      this.#release(handle);
+    }
+  }
+  #releaseOpening() {
+    const handle = this.#opening;
+    this.#opening = undefined;
+    if (handle)
+      this.#disposeOpening(handle);
+  }
+  #disposeCapture(handle) {
+    try {
+      handle.evaluate((actual) => actual.cancel()).then(() => this.#release(handle), (error) => {
+        this.#fail(error);
+        this.#release(handle);
+      });
+    } catch (error) {
+      this.#fail(error);
+      this.#release(handle);
+    }
+  }
+  #releaseCapture(cancel) {
+    const handle = this.#capture;
+    this.#capture = undefined;
+    if (handle) {
+      if (cancel)
+        this.#disposeCapture(handle);
+      else
+        this.#release(handle);
+    }
   }
   #onClose = () => {
     this.#fail(new Error("observed Page closed"));
@@ -233,6 +275,79 @@ class ObservedDocumentOperation {
   awaitOpeningSettled() {
     return this.#operation((handle) => handle.evaluate((actual) => actual.awaitOpeningSettled()), (value) => boundary(value, ["stored", "retired", "failed", "no-opening", "replaced"]));
   }
+  beginConnectedOpening(selection) {
+    return this.#operation(async () => {
+      if (this.#opening || this.#capture)
+        throw new Error("observed opening already captured");
+      this.assertCurrent();
+      const acquiring = this.#page.evaluateHandle(async () => {
+        const entry = await import(new URL("/observed/observed-document-entry.js", location.origin).href);
+        const controls = entry.openingControls;
+        if (typeof controls !== "object" || controls === null || Array.isArray(controls) || Object.keys(controls).length !== 1 || !Object.hasOwn(controls, "prepareOpeningCapture") || !("prepareOpeningCapture" in controls) || typeof controls.prepareOpeningCapture !== "function")
+          throw new Error("observed opening controls shape");
+        const capture = controls.prepareOpeningCapture();
+        if (typeof capture !== "object" || capture === null || Array.isArray(capture) || Object.keys(capture).length !== 2 || !Object.hasOwn(capture, "whenRegistered") || !Object.hasOwn(capture, "cancel") || !("whenRegistered" in capture) || typeof capture.whenRegistered !== "function" || !("cancel" in capture) || typeof capture.cancel !== "function")
+          throw new Error("observed opening capture shape");
+        return capture;
+      });
+      let capture;
+      try {
+        capture = await this.#effect(() => acquiring);
+      } catch (error) {
+        acquiring.then((late) => this.#disposeCapture(late), () => {});
+        throw error;
+      }
+      this.#capture = capture;
+      await this.#effect(() => capture.evaluate(() => {
+        const buttons = document.querySelectorAll('button[data-model-connect="originals"]');
+        const button = buttons[0];
+        if (buttons.length !== 1 || !button?.isConnected || button.disabled || button.hidden || button.getClientRects().length === 0)
+          throw new Error("observed Connect unavailable");
+        button.click();
+      }));
+      this.assertCurrent();
+      const registered = capture.evaluateHandle(async (actual) => {
+        const owner = await actual.whenRegistered();
+        if (typeof owner !== "object" || owner === null || Array.isArray(owner) || Object.keys(owner).length !== 7 || !Object.hasOwn(owner, "chooseSource") || !Object.hasOwn(owner, "chooseProject") || !Object.hasOwn(owner, "awaitInspectionPending") || !Object.hasOwn(owner, "executePendingCore") || !Object.hasOwn(owner, "awaitOpeningSettled") || !Object.hasOwn(owner, "dispose") || !Object.hasOwn(owner, "whenSettled") || typeof owner.chooseSource !== "function" || typeof owner.chooseProject !== "function" || typeof owner.awaitInspectionPending !== "function" || typeof owner.executePendingCore !== "function" || typeof owner.awaitOpeningSettled !== "function" || typeof owner.dispose !== "function" || typeof owner.whenSettled !== "function")
+          throw new Error("observed captured opening shape");
+        return owner;
+      });
+      let opening;
+      try {
+        opening = await this.#effect(() => registered);
+      } catch (error) {
+        registered.then((late) => this.#disposeOpening(late), () => {});
+        throw error;
+      }
+      this.#opening = opening;
+      this.#releaseCapture(false);
+      await this.#waitChoiceDom("source");
+      const source = boundary(await this.#effect(() => opening.evaluate((actual, data) => actual.chooseSource(data.providerId, data.locator), selection)), ["source-selected", "not-ready", "unavailable", "other-selection", "retired", "replaced"]);
+      if (source.kind !== "source-selected")
+        return source;
+      await this.#waitChoiceDom("project");
+      return this.#effect(() => opening.evaluate((actual, data) => actual.chooseProject(data.projectId), selection));
+    }, (value) => boundary(value, ["project-selected", "not-ready", "unavailable", "other-selection", "retired", "replaced"]));
+  }
+  async#waitChoiceDom(kind) {
+    this.assertCurrent();
+    const waiting = this.#page.waitForFunction((data) => document.querySelector(data === "source" ? '[data-model-choice-phase="source"]' : '[data-model-choice-phase="project"]') !== null, kind, { timeout: 0 });
+    let ready;
+    try {
+      ready = await this.#effect(() => waiting);
+    } catch (error) {
+      waiting.then((late) => this.#release(late), () => {});
+      throw error;
+    }
+    this.#release(ready);
+  }
+  awaitCapturedInspectionPending() {
+    return this.#operation(async () => {
+      if (!this.#opening)
+        throw new Error("observed captured opening unavailable");
+      return this.#opening.evaluate((actual) => actual.awaitInspectionPending());
+    }, (value) => boundary(value, ["inspection-pending", "originals-only", "retired", "failed", "no-opening", "replaced"]));
+  }
   dispose() {
     if (this.#state.kind === "starting")
       this.#fail(new Error("observed operation disposed during startup"));
@@ -244,16 +359,34 @@ class ObservedDocumentOperation {
     if (this.#state.kind !== "faulted")
       this.#state = { kind: "disposed" };
     this.#releaseControls();
+    this.#releaseCapture(true);
+    this.#releaseOpening();
   }
 }
 
 // crates/morphir-mck/src/workbench/model_originals/workflow/pipeline/browser/controller/driver.ts
-var [entry, endpoint, artifacts, atText, endText, numerText, denomText, variant, launchUrl] = process.argv.slice(2);
-if (process.argv.length !== 9 && process.argv.length !== 11 || !entry || !endpoint || !artifacts) {
+var [
+  entry,
+  endpoint,
+  artifacts,
+  atText,
+  endText,
+  numerText,
+  denomText,
+  variant,
+  launchUrl,
+  providerId,
+  locator,
+  projectId
+] = process.argv.slice(2);
+if (![9, 11, 14].includes(process.argv.length) || !entry || !endpoint || !artifacts) {
   throw new Error("fixed driver arguments required");
 }
-var observedTarget = process.argv.length === 11 ? variant === "observed-workbench" && launchUrl ? parseObservedLaunch(launchUrl) : (() => {
+var observedTarget = process.argv.length !== 9 ? (process.argv.length === 11 && variant === "observed-workbench" || process.argv.length === 14 && variant === "observed-source-opening") && launchUrl ? parseObservedLaunch(launchUrl) : (() => {
   throw new Error("fixed driver launch variant");
+})() : undefined;
+var openingSelection = process.argv.length === 14 ? providerId && locator && projectId ? Object.freeze({ providerId, locator, projectId }) : (() => {
+  throw new Error("fixed source selection arguments");
 })() : undefined;
 var clock = parseClock(atText, endText, numerText, denomText);
 var previous = clock.calibrated;
@@ -339,22 +472,42 @@ async function main() {
       } else
         process.stdout.write(`1 page-created
 `);
-    } else if (sequence === 2 && pending === `2 close
+    } else if (openingSelection && sequence === 2 && pending === `2 open
 `) {
+      if (!observedDocument)
+        throw new Error("observed document unavailable");
+      const actual = await observedDocument.beginConnectedOpening(openingSelection);
+      observedDocument.assertCurrent();
+      beforeEffect();
+      process.stdout.write(`2 ${actual.kind}
+`);
+    } else if (openingSelection && sequence === 3 && pending === `3 wait
+`) {
+      if (!observedDocument)
+        throw new Error("observed document unavailable");
+      const actual = await observedDocument.awaitCapturedInspectionPending();
+      observedDocument.assertCurrent();
+      beforeEffect();
+      process.stdout.write(`3 ${actual.kind}
+`);
+    } else if (sequence === (openingSelection ? 4 : 2) && pending === (openingSelection ? `4 close
+` : `2 close
+`)) {
       observedDocument?.assertCurrent();
       beforeEffect();
       await cleanup();
       if (first.kind === "failed")
         throw first.error;
       beforeEffect();
-      process.stdout.write(`2 disconnected
+      process.stdout.write(openingSelection ? `4 disconnected
+` : `2 disconnected
 `);
     } else
       throw new Error("command order");
     sequence += 1;
     pending = "";
   }
-  if (pending || sequence !== 3)
+  if (pending || sequence !== (openingSelection ? 5 : 3))
     throw new Error("incomplete command stream");
 }
 try {

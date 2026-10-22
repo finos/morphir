@@ -1,7 +1,7 @@
 //! Fixed owned backing only. This is not a prepared BrowserRun or a grant to
 //! launch, read a path, issue an action, collect a Download or compare a result.
 use super::inputs::{BrowserInputFault, BrowserOwnerLoans};
-use crate::transport::Limits;
+use crate::transport::{Limits, process::interactive::FixedCaptureBuffers};
 use crate::workbench::model_originals::workflow::pipeline::installed::observation::{
     InstalledObservationFault, InstalledObservationOwner, InstalledObservationResource,
 };
@@ -18,7 +18,25 @@ pub(super) struct BrowserPhysicalBuffers {
     control_prefix: Vec<u8>,
     download_window: Vec<u8>,
 }
+/// The six funded destinations moved into their actual physical owners. The
+/// download window remains explicit, including a zero-length no-download slice.
+pub(super) struct BrowserPhysicalParts {
+    pub(super) limits: Limits,
+    pub(super) chromium: FixedCaptureBuffers,
+    pub(super) driver: FixedCaptureBuffers,
+    pub(super) control_prefix: Vec<u8>,
+    pub(super) download_window: Vec<u8>,
+}
 impl BrowserPhysicalBuffers {
+    pub(super) fn into_parts(self) -> BrowserPhysicalParts {
+        BrowserPhysicalParts {
+            limits: self.limits,
+            chromium: FixedCaptureBuffers::new(self.chromium_stdout, self.chromium_stderr),
+            driver: FixedCaptureBuffers::new(self.driver_stdout, self.driver_stderr),
+            control_prefix: self.control_prefix,
+            download_window: self.download_window,
+        }
+    }
     pub(super) fn prepare(
         loans: &mut BrowserOwnerLoans<'_>,
         limits: Limits,

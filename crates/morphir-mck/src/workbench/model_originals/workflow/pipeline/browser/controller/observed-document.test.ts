@@ -129,6 +129,84 @@ test("observed launch accepts only the closed loopback authentication shape", ()
   ]) assert.throws(() => parseObservedLaunch(value), /observed launch shape/);
 });
 
+// Fixed-source conversation ownership controls; these doubles are not actual
+// UI clicks, source acceptance or physical browser qualification.
+function openingReferenceFixture(sourceOutcome: unknown = {kind: "source-selected"}) {
+  const target = parseObservedLaunch(`http://127.0.0.1:47123/launch?token=${"A".repeat(43)}`);
+  const events = new EventEmitter();
+  let address = "about:blank", acquisitions = 0, clicks = 0, disposed = 0;
+  const calls: unknown[] = [];
+  const frame = {url: () => address};
+  const registered = deferred<void>(), boundaryResult = deferred<unknown>();
+  const actualOpening = {
+    async chooseSource(providerId: string, locator: string) {calls.push(["source", providerId, locator]); return sourceOutcome;},
+    async chooseProject(projectId: string) {calls.push(["project", projectId]); return {kind: "project-selected"};},
+    awaitInspectionPending() {calls.push("captured-wait"); return boundaryResult.promise;},
+    executePendingCore() {throw new Error("checkpoint2 must not be skipped");},
+    async awaitOpeningSettled() {return {kind: "stored"};},
+    dispose() {disposed++;}, async whenSettled() {},
+  };
+  const openingRemote = {async dispose() {}, async evaluate(callback: (value: typeof actualOpening, data?: any) => unknown, data?: any) {
+    return callback(actualOpening, data);
+  }};
+  const captureRemote = {
+    async dispose() {},
+    async evaluate(callback: (value: any) => unknown) {
+      // Connect is a fixed in-document effect in production. The reference
+      // double records that boundary without executing caller browser code.
+      if (callback.toString().includes("querySelectorAll")) {clicks++; registered.resolve(); return;}
+      return callback({cancel() {disposed++;}});
+    },
+    async evaluateHandle() {await registered.promise; return openingRemote;},
+  };
+  const controlsRemote = {async dispose() {}, async evaluate() {throw new Error("legacy singleton must not be used");}};
+  const page = Object.assign(events, {mainFrame: () => frame, isClosed: () => false, url: () => address,
+    async goto() {address = target.documentUrl; events.emit("framenavigated", frame); return {status: () => 200};},
+    async evaluateHandle() {return acquisitions++ === 0 ? controlsRemote : captureRemote;},
+    async waitForFunction() {return {async dispose() {}};},
+  }) as unknown as Page;
+  return {operation: new ObservedDocumentOperation(page, target, () => {}), calls,
+    boundaryResult, clicks: () => clicks, disposed: () => disposed};
+}
+
+test("source operation retains captured owner across exact source/project selection and boundary wait", async () => {
+  const fixture = openingReferenceFixture();
+  await fixture.operation.start();
+  assert.deepEqual(await fixture.operation.beginConnectedOpening({providerId: "provider-A", locator: "workspace:orders", projectId: "project-A"}),
+    {kind: "project-selected"});
+  assert.equal(fixture.clicks(), 1);
+  assert.deepEqual(fixture.calls, [["source", "provider-A", "workspace:orders"], ["project", "project-A"]]);
+  const waiting = fixture.operation.awaitCapturedInspectionPending();
+  fixture.boundaryResult.resolve({kind: "inspection-pending"});
+  assert.deepEqual(await waiting, {kind: "inspection-pending"});
+  assert.deepEqual(fixture.calls.at(-1), "captured-wait");
+  fixture.operation.dispose();
+});
+
+test("captured wait disposal refuses late success and requests captured-owner cleanup", async () => {
+  const fixture = openingReferenceFixture();
+  await fixture.operation.start();
+  await fixture.operation.beginConnectedOpening({providerId: "provider-A", locator: "workspace:orders", projectId: "project-A"});
+  const waiting = fixture.operation.awaitCapturedInspectionPending().catch((error: unknown) => error);
+  fixture.operation.dispose();
+  const first = await waiting;
+  assert.ok(first instanceof Error);
+  fixture.boundaryResult.resolve({kind: "inspection-pending"});
+  assert.ok(fixture.disposed() >= 1);
+  await assert.rejects(fixture.operation.awaitCapturedInspectionPending(), error => error === first);
+});
+
+test("a project-selected reply in the source phase cannot become source0 success", async () => {
+  const fixture = openingReferenceFixture({kind: "project-selected"});
+  await fixture.operation.start();
+  const first = await fixture.operation.beginConnectedOpening({providerId: "provider-A", locator: "workspace:orders", projectId: "project-A"})
+    .catch((error: unknown) => error);
+  assert.ok(first instanceof Error);
+  assert.deepEqual(fixture.calls, [["source", "provider-A", "workspace:orders"]]);
+  assert.ok(fixture.disposed() >= 1);
+  await assert.rejects(fixture.operation.awaitCapturedInspectionPending(), error => error === first);
+});
+
 const entry = process.env.MCK_DRIVER_PLAYWRIGHT_ENTRY;
 const executablePath = process.env.MCK_DRIVER_CHROMIUM;
 const selected = entry && executablePath;

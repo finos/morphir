@@ -148,6 +148,17 @@ impl InstalledObservationOwner {
     ) -> InstalledObservationUsage {
         self.usage
     }
+    /// Read-only planning DATA; does not reserve, renew or refund a resource.
+    pub(in crate::workbench::model_originals::workflow::pipeline) fn remaining(
+        &self,
+        kind: InstalledObservationResource,
+    ) -> Result<u64, InstalledObservationFault> {
+        self.ready().map_err(|fault| *fault)?;
+        self.limits
+            .amount(kind)
+            .checked_sub(self.usage.amount(kind))
+            .ok_or(InstalledObservationFault::LayoutMismatch)
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline) fn fail(
         &mut self,
         fault: InstalledObservationFault,

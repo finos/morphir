@@ -200,3 +200,404 @@ fn browser_action_cursor_05_zero_and_one_byte_remaining_refuse_before_run_cursor
         });
     }
 }
+
+#[test]
+fn browser_source_operation_01_prepared_source_operand_keeps_exact_action_outstanding() {
+    with_compiled(|compiled, inner| {
+        let core = controlled_clients(compiled)[0];
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let child = ExecutionChild::prepare(&global, inner).unwrap();
+        let run = PreparedBrowserClientRun::prepare(core, &global, &child, inner).unwrap();
+        let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+        let action = run.next_action(&mut loans).unwrap().unwrap();
+        let BrowserActionKind::BeginConnectedOpening {
+            source,
+            project_id,
+            pending,
+            ..
+        } = action.kind()
+        else {
+            panic!("genuine first action");
+        };
+        let prepared = PreparedConnectedOpening::prepare(&run, action, &mut loans).unwrap();
+        assert_eq!(prepared.provider_id(), source.provider_id);
+        assert_eq!(prepared.locator(), source.locator);
+        assert_eq!(prepared.project_id(), project_id);
+        assert_eq!(prepared.pending_alias(), pending);
+        assert_eq!(prepared.position(), 0);
+        assert!(matches!(
+            run.actions_terminal(),
+            BrowserActionCursorTerminal::Incomplete {
+                consumed: 0,
+                pending: Some(0),
+                ..
+            }
+        ));
+        // Preparing DATA is never an actual selection receipt.
+        drop(prepared);
+        assert!(matches!(
+            run.actions_terminal(),
+            BrowserActionCursorTerminal::Refused {
+                position: 0,
+                cause: BrowserActionCursorFault::OutstandingAbandoned
+            }
+        ));
+    });
+}
+
+#[test]
+fn browser_source_operation_02_foreign_child_refuses_before_preparation_spending() {
+    with_compiled(|compiled, inner| {
+        let cores = controlled_clients(compiled);
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let a_child = ExecutionChild::prepare(&global, inner).unwrap();
+        let b_child = ExecutionChild::prepare(&global, inner).unwrap();
+        let a = PreparedBrowserClientRun::prepare(cores[0], &global, &a_child, inner).unwrap();
+        let b = PreparedBrowserClientRun::prepare(cores[1], &global, &b_child, inner).unwrap();
+        let action = {
+            let mut loans = BrowserLoans::execution(inner, &global, &a_child).unwrap();
+            a.next_action(&mut loans).unwrap().unwrap()
+        };
+        let before = {
+            let (decode, receiving, comparison) = inner.physical_owners().unwrap();
+            (decode.usage(), receiving.usage(), comparison.usage())
+        };
+        let mut loans = BrowserLoans::execution(inner, &global, &b_child).unwrap();
+        assert!(PreparedConnectedOpening::prepare(&b, action, &mut loans).is_err());
+        let after = {
+            let (decode, receiving, comparison) = inner.physical_owners().unwrap();
+            (decode.usage(), receiving.usage(), comparison.usage())
+        };
+        assert_eq!(before, after);
+        assert_eq!(
+            b.actions_terminal(),
+            BrowserActionCursorTerminal::NoneIssued
+        );
+    });
+}
+
+#[test]
+fn browser_source_operation_03_funding_failure_cannot_settle_action() {
+    with_compiled(|compiled, inner| {
+        let core = controlled_clients(compiled)[0];
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let child = ExecutionChild::prepare(&global, inner).unwrap();
+        let run = PreparedBrowserClientRun::prepare(core, &global, &child, inner).unwrap();
+        let action = {
+            let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+            run.next_action(&mut loans).unwrap().unwrap()
+        };
+        {
+            let (_, receiving, _) = inner.physical_owners().unwrap();
+            let left = 8_388_608 - usize::try_from(receiving.usage().retained_bytes()).unwrap();
+            receiving
+                .reserve_span(InstalledObservationResource::RetainedBytes, left)
+                .unwrap();
+        }
+        let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+        assert!(PreparedConnectedOpening::prepare(&run, action, &mut loans).is_err());
+        assert!(matches!(
+            run.actions_terminal(),
+            BrowserActionCursorTerminal::Refused {
+                position: 0,
+                cause: BrowserActionCursorFault::OutstandingAbandoned
+            }
+        ));
+    });
+}
+
+#[test]
+fn browser_source_operation_04_choice_plan_uses_same_prepared_reply_rows_without_selection() {
+    with_compiled(|compiled, inner| {
+        let core = controlled_clients(compiled)[0];
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let child = ExecutionChild::prepare(&global, inner).unwrap();
+        let run = PreparedBrowserClientRun::prepare(core, &global, &child, inner).unwrap();
+        let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+        let opening = run.openings(&mut loans).unwrap().next().unwrap();
+        let stimulus = run.prepare_controlled_host(&opening, &mut loans).unwrap();
+        let action = run.next_action(&mut loans).unwrap().unwrap();
+        let mut prepared = PreparedConnectedOpening::prepare(&run, action, &mut loans).unwrap();
+        let expected_identity_bytes =
+            prepared.provider_id().len() + prepared.locator().len() + prepared.project_id().len();
+        let plan = prepared
+            .prepare_choice_funding(&stimulus, &mut loans)
+            .unwrap();
+        assert_eq!(plan.source_rows(), 1);
+        assert_eq!(plan.project_rows(), 1);
+        assert_eq!(plan.identity_bytes(), expected_identity_bytes);
+        assert!(matches!(
+            run.actions_terminal(),
+            BrowserActionCursorTerminal::Incomplete {
+                consumed: 0,
+                pending: Some(0),
+                ..
+            }
+        ));
+        // Prepared literal DATA/choice bounds never attest a network exchange,
+        // nominal application selection or a joined controlled host.
+    });
+}
+
+#[test]
+fn browser_source_operation_05_foreign_prepared_replies_refuse_before_parser_or_receiving_debit() {
+    with_compiled(|compiled, inner| {
+        let cores = controlled_clients(compiled);
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let a_child = ExecutionChild::prepare(&global, inner).unwrap();
+        let b_child = ExecutionChild::prepare(&global, inner).unwrap();
+        let a = PreparedBrowserClientRun::prepare(cores[0], &global, &a_child, inner).unwrap();
+        let b = PreparedBrowserClientRun::prepare(cores[1], &global, &b_child, inner).unwrap();
+        let foreign = {
+            let mut loans = BrowserLoans::execution(inner, &global, &b_child).unwrap();
+            let opening = b.openings(&mut loans).unwrap().next().unwrap();
+            b.prepare_controlled_host(&opening, &mut loans).unwrap()
+        };
+        let mut prepared = {
+            let mut loans = BrowserLoans::execution(inner, &global, &a_child).unwrap();
+            let action = a.next_action(&mut loans).unwrap().unwrap();
+            PreparedConnectedOpening::prepare(&a, action, &mut loans).unwrap()
+        };
+        let before = {
+            let (decode, receiving, comparison) = inner.physical_owners().unwrap();
+            (decode.usage(), receiving.usage(), comparison.usage())
+        };
+        let mut loans = BrowserLoans::execution(inner, &global, &a_child).unwrap();
+        assert!(
+            prepared
+                .prepare_choice_funding(&foreign, &mut loans)
+                .is_err()
+        );
+        let after = {
+            let (decode, receiving, comparison) = inner.physical_owners().unwrap();
+            (decode.usage(), receiving.usage(), comparison.usage())
+        };
+        assert_eq!(before, after);
+    });
+}
+
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_source_controller_lifetime(
+    action: impl FnOnce(SourceControllerLifetime, &mut BrowserLoans<'_, '_>),
+) {
+    with_source_controller_fixture(
+        |lifetime, inner, global, child| {
+            let mut loans = BrowserLoans::execution(inner, global, child).unwrap();
+            action(lifetime, &mut loans);
+        },
+        |_| {},
+    );
+}
+
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_source_controller_limits(
+    limits: &[u8],
+    action: impl FnOnce(SourceControllerLifetime, &mut BrowserLoans<'_, '_>),
+) {
+    with_source_controller_fixture_limits(
+        limits,
+        |lifetime, inner, global, child| {
+            let mut loans = BrowserLoans::execution(inner, global, child).unwrap();
+            action(lifetime, &mut loans);
+        },
+        |_| {},
+    );
+}
+
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_foreign_source_controller_lifetime(
+    action: impl FnOnce(SourceControllerLifetime, &mut BrowserLoans<'_, '_>),
+) {
+    with_source_controller_fixture(
+        |lifetime, inner, global, _| {
+            let other = ExecutionChild::prepare(global, inner).unwrap();
+            let mut loans = BrowserLoans::execution(inner, global, &other).unwrap();
+            action(lifetime, &mut loans);
+        },
+        |_| {},
+    );
+}
+
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_revoked_source_controller_lifetime<
+    R,
+>(
+    prepare: impl FnOnce(SourceControllerLifetime, &mut BrowserLoans<'_, '_>) -> R,
+    after_revoke: impl FnOnce(R),
+) {
+    with_source_controller_fixture(
+        |lifetime, inner, global, child| {
+            let mut loans = BrowserLoans::execution(inner, global, child).unwrap();
+            prepare(lifetime, &mut loans)
+        },
+        after_revoke,
+    );
+}
+
+fn with_source_controller_fixture<R>(
+    prepare: impl FnOnce(
+        SourceControllerLifetime,
+        &mut inputs::BrowserOwnerLoans<'_>,
+        &BrowserSourceScope,
+        &ExecutionChild,
+    ) -> R,
+    finish: impl FnOnce(R),
+) {
+    with_source_controller_fixture_limits(
+        br#"{"rpcFrames":"checker-capture","retainedBytes":8388608,"stdoutPrefixBytes":4096,"stderrPrefixBytes":4096,"snapshotReadBytes":1048576,"byteVisits":8388608,"records":0}"#,
+        prepare, finish,
+    );
+}
+
+fn with_source_controller_fixture_limits<R>(
+    limits: &[u8],
+    prepare: impl FnOnce(
+        SourceControllerLifetime,
+        &mut inputs::BrowserOwnerLoans<'_>,
+        &BrowserSourceScope,
+        &ExecutionChild,
+    ) -> R,
+    finish: impl FnOnce(R),
+) {
+    use crate::workbench::model_originals::workflow::pipeline::browser::{
+        BrowserDocumentBounds, BrowserRowCollection,
+    };
+    super::super::tests::with_compiled_limits(limits, |compiled, inner| {
+        let core = controlled_clients(compiled)[0];
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let mut child = ExecutionChild::prepare(&global, inner).unwrap();
+        let run = PreparedBrowserClientRun::prepare(core, &global, &child, inner).unwrap();
+        let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+        let opening = run.openings(&mut loans).unwrap().next().unwrap();
+        let stimulus = run.prepare_controlled_host(&opening, &mut loans).unwrap();
+        let mut collection = BrowserRowCollection::prepare(
+            &run,
+            &mut loans,
+            BrowserDocumentBounds::new(1, 128, 128).unwrap(),
+        )
+        .unwrap();
+        let mut producer = collection
+            .producer()
+            .issue(&run, &opening, &mut loans)
+            .unwrap();
+        let transcript = producer
+            .prepare_host_transcript(
+                &mut loans,
+                &stimulus,
+                std::time::Instant::now() + std::time::Duration::from_secs(10),
+            )
+            .unwrap();
+        let issued = run.next_action(&mut loans).unwrap().unwrap();
+        let prepared = PreparedConnectedOpening::prepare(&run, issued, &mut loans).unwrap();
+        let (action_owner, lifetime) = prepared
+            .into_controller_parts(&producer, &transcript, &stimulus, &mut loans)
+            .unwrap();
+        drop(loans);
+        let result = prepare(lifetime, inner, &global, &child);
+        drop(action_owner);
+        drop(opening);
+        drop(run);
+        // The real issuing scope revokes after the callback/borrowed run
+        // ends; no synthetic identity or alternate revocation broker.
+        child.revoke();
+        finish(result);
+    });
+}
+
+#[test]
+fn browser_source_operation_06_lifetime_keeps_actual_host_end_and_outstanding_source0() {
+    use crate::workbench::model_originals::workflow::pipeline::browser::{
+        BrowserDocumentBounds, BrowserRowCollection,
+    };
+    with_compiled(|compiled, inner| {
+        let core = controlled_clients(compiled)[0];
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let child = ExecutionChild::prepare(&global, inner).unwrap();
+        let run = PreparedBrowserClientRun::prepare(core, &global, &child, inner).unwrap();
+        let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+        let opening = run.openings(&mut loans).unwrap().next().unwrap();
+        let stimulus = run.prepare_controlled_host(&opening, &mut loans).unwrap();
+        let mut collection = BrowserRowCollection::prepare(
+            &run,
+            &mut loans,
+            BrowserDocumentBounds::new(1, 128, 128).unwrap(),
+        )
+        .unwrap();
+        let mut producer = collection
+            .producer()
+            .issue(&run, &opening, &mut loans)
+            .unwrap();
+        let end = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let transcript = producer
+            .prepare_host_transcript(&mut loans, &stimulus, end)
+            .unwrap();
+        let action = run.next_action(&mut loans).unwrap().unwrap();
+        let prepared = PreparedConnectedOpening::prepare(&run, action, &mut loans).unwrap();
+        let (action_owner, lifetime) = prepared
+            .into_controller_parts(&producer, &transcript, &stimulus, &mut loans)
+            .unwrap();
+        assert_eq!(lifetime.end(), end);
+        lifetime.validate(&loans).unwrap();
+        assert_eq!(action_owner.position(), 0);
+        assert!(matches!(
+            run.actions_terminal(),
+            BrowserActionCursorTerminal::Incomplete {
+                pending: Some(0),
+                ..
+            }
+        ));
+        assert_eq!(
+            child.terminal(),
+            BrowserSourceTerminal::Unfinished { bindings: 2 }
+        );
+    });
+}
+
+#[test]
+fn browser_source_operation_07_same_child_other_host_journal_refuses_before_debit() {
+    use crate::workbench::model_originals::workflow::pipeline::browser::{
+        BrowserDocumentBounds, BrowserRowCollection,
+    };
+    with_compiled(|compiled, inner| {
+        let core = controlled_clients(compiled)[0];
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let child = ExecutionChild::prepare(&global, inner).unwrap();
+        let run = PreparedBrowserClientRun::prepare(core, &global, &child, inner).unwrap();
+        let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+        let opening = run.openings(&mut loans).unwrap().next().unwrap();
+        let stimulus = run.prepare_controlled_host(&opening, &mut loans).unwrap();
+        let mut a = BrowserRowCollection::prepare(
+            &run,
+            &mut loans,
+            BrowserDocumentBounds::new(1, 128, 128).unwrap(),
+        )
+        .unwrap();
+        let mut b = BrowserRowCollection::prepare(
+            &run,
+            &mut loans,
+            BrowserDocumentBounds::new(1, 128, 128).unwrap(),
+        )
+        .unwrap();
+        let producer_a = a.producer().issue(&run, &opening, &mut loans).unwrap();
+        let mut producer_b = b.producer().issue(&run, &opening, &mut loans).unwrap();
+        let transcript_b = producer_b
+            .prepare_host_transcript(
+                &mut loans,
+                &stimulus,
+                std::time::Instant::now() + std::time::Duration::from_secs(10),
+            )
+            .unwrap();
+        let action = run.next_action(&mut loans).unwrap().unwrap();
+        let prepared = PreparedConnectedOpening::prepare(&run, action, &mut loans).unwrap();
+        let before = {
+            let (decode, receiving, comparison) = loans.inner.physical_owners().unwrap();
+            (decode.usage(), receiving.usage(), comparison.usage())
+        };
+        assert!(
+            prepared
+                .into_controller_parts(&producer_a, &transcript_b, &stimulus, &mut loans)
+                .is_err()
+        );
+        let after = {
+            let (decode, receiving, comparison) = loans.inner.physical_owners().unwrap();
+            (decode.usage(), receiving.usage(), comparison.usage())
+        };
+        assert_eq!(before, after);
+    });
+}

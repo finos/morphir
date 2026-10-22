@@ -1,6 +1,12 @@
 //! Source-selected monotone action input. No physical execution or verdict.
 use super::*;
 use std::sync::{Mutex, MutexGuard};
+#[path = "actions/connected.rs"]
+mod connected;
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use connected::{
+    ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerLifetime,
+    SourceControllerOperationShape,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BrowserActionCursorFault {
@@ -9,11 +15,13 @@ pub enum BrowserActionCursorFault {
     ForeignAction,
     Unsupported(BrowserUnsupportedActionKind),
     Poisoned,
+    UnsupportedOperation,
 }
 #[derive(Debug)]
 pub enum BrowserActionIssueError {
     Input(BrowserInputError),
     Cursor(BrowserActionCursorFault),
+    Host(super::super::super::collection::BrowserHostTranscriptFault),
 }
 impl From<BrowserInputError> for BrowserActionIssueError {
     fn from(error: BrowserInputError) -> Self {
@@ -259,3 +267,8 @@ impl<'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
 #[cfg(test)]
 #[path = "actions/tests.rs"]
 mod tests;
+#[cfg(test)]
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use tests::{
+    with_foreign_source_controller_lifetime, with_revoked_source_controller_lifetime,
+    with_source_controller_lifetime, with_source_controller_limits,
+};
