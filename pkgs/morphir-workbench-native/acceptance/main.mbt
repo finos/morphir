@@ -1,4 +1,32 @@
 ///|
+fn fixture_executable(
+  executable : String,
+  arguments : ArrayView[String],
+) -> String raise {
+  let command = @argparse.Command(
+    "acceptance",
+    disable_help_flag=true,
+    disable_version_flag=true,
+    disable_help_subcommand=true,
+    positionals=[
+      @argparse.PositionArg(
+        "fixture-executable",
+        num_args=@argparse.ValueRange(lower=0),
+      ),
+    ],
+  )
+  // Legacy callers select the last literal operand, or this executable when no
+  // operand is supplied. These values are never forwarded as a child argv tail.
+  let literal = ["--"]
+  literal.append(arguments)
+  let matches = command.parse(argv=literal, env=Map([]))
+  match matches.values.get("fixture-executable") {
+    Some(values) => values.last().unwrap_or(executable)
+    None => executable
+  }
+}
+
+///|
 fn body(format~ : String = "json") -> String raise {
   (
     {
@@ -58,7 +86,8 @@ fn outcome(receipt : Json) -> Json raise {
 
 ///|
 async fn main {
-  let executable = @env.args().last().unwrap()
+  let args = @env.args()
+  let executable = fixture_executable(args[0], args[1:])
   let directory = @env.current_dir().unwrap() +
     "/.dev/native-workers-" +
     @env.now().to_string()
