@@ -1,7 +1,9 @@
 //! Native listener transition under the genuine source0 SDK.
 //! No controller reply, logical settlement or process join is synthesized here.
 use super::*;
-use morphir_mck::workbench::BrowserPreparedListenerStart;
+use morphir_mck::workbench::{
+    BrowserListenerDispatch, BrowserListenerStartDispatcher, BrowserPreparedListenerStart,
+};
 
 #[derive(Debug)]
 enum SelectedSourceStartFault {
@@ -22,6 +24,117 @@ struct SelectedSourceStarted<'a> {
 struct SelectedSourceStartFailure<'a> {
     fault: SelectedSourceStartFault,
     launch: SelectedSourceLaunch<'a>,
+}
+
+/// Native context retained before physical acquisition spends residual cleanup
+/// capacity. This owns a real runtime Handle, not listener-start authority.
+struct SelectedSourcePrepared<'a> {
+    launch: SelectedSourceLaunch<'a>,
+    runtime: tokio::runtime::Handle,
+}
+
+/// Native effects and the SDK gate result are separate factual dimensions.
+/// In particular, a later gate refusal must not erase an installed listener.
+enum SelectedSourceListenerOutcome {
+    NotDispatched,
+    EnteredWithoutResult,
+    Completed(Result<(), SelectedSourceStartFault>),
+}
+
+enum SelectedSourceListenerState {
+    Prepared(tokio::runtime::Handle),
+    Entered,
+    Completed(Result<(), SelectedSourceStartFault>),
+}
+
+struct SelectedSourceListenerDispatcher<'a> {
+    owner: &'a mut SelectedSourceHost,
+    state: SelectedSourceListenerState,
+}
+
+impl<'a> SelectedSourceListenerDispatcher<'a> {
+    fn new(owner: &'a mut SelectedSourceHost, runtime: tokio::runtime::Handle) -> Self {
+        Self {
+            owner,
+            state: SelectedSourceListenerState::Prepared(runtime),
+        }
+    }
+
+    fn into_outcome(self) -> SelectedSourceListenerOutcome {
+        match self.state {
+            SelectedSourceListenerState::Prepared(_) => {
+                SelectedSourceListenerOutcome::NotDispatched
+            }
+            SelectedSourceListenerState::Entered => {
+                SelectedSourceListenerOutcome::EnteredWithoutResult
+            }
+            SelectedSourceListenerState::Completed(result) => {
+                SelectedSourceListenerOutcome::Completed(result)
+            }
+        }
+    }
+}
+
+impl BrowserListenerStartDispatcher for SelectedSourceListenerDispatcher<'_> {
+    fn dispatch(&mut self, permit: BrowserPreparedListenerStart<'_>) -> BrowserListenerDispatch {
+        let prior = std::mem::replace(&mut self.state, SelectedSourceListenerState::Entered);
+        let SelectedSourceListenerState::Prepared(runtime) = prior else {
+            // This concrete owner never installs twice. Keep its actual first
+            // outcome, including successful installation, on a repeated hook.
+            self.state = prior;
+            return BrowserListenerDispatch::Refused;
+        };
+        let actual = self.owner.install_listener(permit, runtime);
+        let tag = match &actual {
+            Ok(()) => BrowserListenerDispatch::Installed,
+            Err(_) => BrowserListenerDispatch::Refused,
+        };
+        self.state = SelectedSourceListenerState::Completed(actual);
+        tag
+    }
+}
+
+#[cfg(target_os = "macos")]
+struct SelectedSourcePrepaidStartFailure<'a> {
+    launch: SelectedSourceLaunch<'a>,
+    gate: Result<BrowserListenerDispatch, BrowserActionIssueError>,
+    native: SelectedSourceListenerOutcome,
+}
+
+#[cfg(target_os = "macos")]
+impl<'a> SelectedSourcePrepared<'a> {
+    /// The caller moves the sole materialized listener allowance here only
+    /// after retaining the actual physical controller. No fresh loan debit or
+    /// runtime lookup is permitted at this transition.
+    fn start_prepaid_listener(
+        self,
+        credit: morphir_mck::workbench::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<SelectedSourceStarted<'a>, SelectedSourcePrepaidStartFailure<'a>> {
+        let Self {
+            mut launch,
+            runtime,
+        } = self;
+        let mut dispatcher = SelectedSourceListenerDispatcher::new(&mut launch.owner, runtime);
+        let gate = launch
+            .opening
+            .with_prepaid_listener_start(credit, loans, &mut dispatcher);
+        let native = dispatcher.into_outcome();
+        if matches!(gate, Ok(BrowserListenerDispatch::Installed))
+            && matches!(native, SelectedSourceListenerOutcome::Completed(Ok(())))
+        {
+            Ok(SelectedSourceStarted {
+                owner: launch.owner,
+                opening: launch.opening,
+            })
+        } else {
+            Err(SelectedSourcePrepaidStartFailure {
+                launch,
+                gate,
+                native,
+            })
+        }
+    }
 }
 
 impl SelectedSourceHost {
@@ -85,10 +198,13 @@ impl SelectedSourceHost {
 }
 
 impl<'a> SelectedSourceLaunch<'a> {
-    fn start_listener(
-        mut self,
+    /// Retain the concrete native runtime and transition storage before the
+    /// physical controller sizes cleanup from the remaining capacity. This
+    /// prepares ownership only; installation still needs a scoped source gate.
+    fn prepare_native_runtime(
+        self,
         loans: &mut BrowserLoans<'_, '_>,
-    ) -> Result<SelectedSourceStarted<'a>, SelectedSourceStartFailure<'a>> {
+    ) -> Result<SelectedSourcePrepared<'a>, SelectedSourceStartFailure<'a>> {
         let result = (|| {
             // Source currentness precedes new requested storage. Native first
             // is checked under the final gate before any listener effect.
@@ -101,11 +217,27 @@ impl<'a> SelectedSourceLaunch<'a> {
             let bytes = std::mem::size_of::<SelectedSourceStarted<'_>>()
                 .checked_add(std::mem::size_of::<SelectedSourceStartFailure<'_>>())
                 .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<SelectedSourcePrepared<'_>>())
+                })
+                .and_then(|bytes| {
                     bytes.checked_add(std::mem::size_of::<
                         tokio::task::JoinHandle<Result<(), CliError>>,
                     >())
                 })
                 .and_then(|bytes| bytes.checked_add(std::mem::size_of::<tokio::runtime::Handle>()))
+                .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<SelectedSourceListenerDispatcher<'_>>())
+                })
+                .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<SelectedSourceListenerState>())
+                })
+                .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<SelectedSourceListenerOutcome>())
+                })
+                .ok_or(SelectedSourceStartFault::SizeOverflow)?;
+            #[cfg(target_os = "macos")]
+            let bytes = bytes
+                .checked_add(std::mem::size_of::<SelectedSourcePrepaidStartFailure<'_>>())
                 .ok_or(SelectedSourceStartFault::SizeOverflow)?;
             let work = bytes
                 .checked_add(std::mem::size_of::<super::super::super::ListenerOwner>())
@@ -120,26 +252,48 @@ impl<'a> SelectedSourceLaunch<'a> {
                 })
                 .ok_or(SelectedSourceStartFault::SizeOverflow)?;
             loans
-                .reserve_controlled_host_storage(bytes, 4, work)
+                .reserve_controlled_host_storage(bytes, 9, work)
                 .map_err(SelectedSourceStartFault::Funding)?;
-            let runtime = tokio::runtime::Handle::try_current().map_err(|_| {
+            tokio::runtime::Handle::try_current().map_err(|_| {
                 SelectedSourceStartFault::Native(super::super::super::ControlledHostFault::Listener)
-            })?;
-            self.opening
-                .with_prepared_listener_start(loans, |permit| {
-                    self.owner.install_listener(permit, runtime)
-                })
-                .map_err(SelectedSourceStartFault::Action)?
+            })
         })();
         match result {
-            Ok(()) => Ok(SelectedSourceStarted {
-                owner: self.owner,
-                opening: self.opening,
+            Ok(runtime) => Ok(SelectedSourcePrepared {
+                launch: self,
+                runtime,
             }),
             Err(fault) => Err(SelectedSourceStartFailure {
                 fault,
                 launch: self,
             }),
+        }
+    }
+
+    /// Standalone component path. Composed execution instead uses the prepared
+    /// context with its separately prepaid fixed listener allowance.
+    fn start_listener(
+        self,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<SelectedSourceStarted<'a>, SelectedSourceStartFailure<'a>> {
+        let SelectedSourcePrepared {
+            mut launch,
+            runtime,
+        } = self.prepare_native_runtime(loans)?;
+        let result = (|| {
+            launch
+                .opening
+                .with_prepared_listener_start(loans, |permit| {
+                    launch.owner.install_listener(permit, runtime)
+                })
+                .map_err(SelectedSourceStartFault::Action)?
+        })();
+        match result {
+            Ok(()) => Ok(SelectedSourceStarted {
+                owner: launch.owner,
+                opening: launch.opening,
+            }),
+            Err(fault) => Err(SelectedSourceStartFailure { fault, launch }),
         }
     }
 }

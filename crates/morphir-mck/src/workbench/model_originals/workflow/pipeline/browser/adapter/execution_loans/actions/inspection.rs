@@ -19,6 +19,22 @@ pub struct BrowserInspectionBoundarySource<'a> {
     association: BrowserSourceHostAssociation,
 }
 impl BrowserInspectionBoundarySource<'_> {
+    #[cfg(target_os = "macos")]
+    pub fn with_prepaid_controller_step(
+        &self,
+        credit:crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+        dispatcher: &mut dyn BrowserControllerStepDispatcher,
+    ) -> Result<BrowserControllerDispatch, BrowserActionIssueError> {
+        super::borrowed::with_prepaid_controller_step(
+            self.action,
+            &self.association,
+            credit,
+            loans,
+            dispatcher,
+        )
+    }
+
     pub fn validate_host(
         &self,
         producer: &BrowserDocumentProducer,
@@ -118,6 +134,165 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             Err(cause) => Err((action, cause)),
         }
     }
+    /// Readonly preflight before moving a once allowance from the existing
+    /// envelope. The allowance separately prepaid these bounded checks.
+    #[cfg(target_os = "macos")]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn preflight_action(
+        action: &BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
+        lifetime: &SourceControllerLifetime,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        action.owner.validate_action(action, loans)?;
+        action
+            .owner
+            .child
+            .identity
+            .while_active(|| {
+                lifetime
+                    .journal_identity()
+                    .preflight(&lock(&action.owner.actions).operations)
+                    .map_err(BrowserActionIssueError::Cursor)
+            })
+            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))??;
+        lifetime.validate(loans)?;
+        if action.position() != lifetime.operation_shape().boundary_position
+            || !matches!(
+                action.kind(),
+                BrowserActionKind::AwaitConnectedBoundary {
+                    boundary: BrowserConnectedBoundary::InspectionPending,
+                    ..
+                }
+            )
+        {
+            return Err(BrowserActionIssueError::Cursor(
+                BrowserActionCursorFault::UnsupportedOperation,
+            ));
+        }
+        action
+            .owner
+            .child
+            .identity
+            .while_active(|| {
+                lifetime
+                    .association()
+                    .while_current(|| {
+                        let cursor = lock(&action.owner.actions);
+                        lifetime
+                            .journal_identity()
+                            .matches(&cursor.operations)
+                            .map_err(BrowserActionIssueError::Cursor)
+                    })
+                    .map_err(association_error)?
+            })
+            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))?
+    }
+    #[cfg(target_os = "macos")]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn preflight(
+        &self,
+        lifetime: &SourceControllerLifetime,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        Self::preflight_action(&self.action, lifetime, loans)
+    }
+    #[cfg(target_os = "macos")]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare_prepaid(
+        action: BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
+        lifetime: &SourceControllerLifetime,
+        mut credit: crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<
+        Self,
+        (
+            BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>,
+            BrowserActionIssueError,
+        ),
+    > {
+        use crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessOperation;
+        let checked = (|| {
+            lifetime.validate_action_relation_prepaid(&action, &credit, loans)?;
+            let BrowserActionKind::AwaitConnectedBoundary {
+                pending,
+                boundary: BrowserConnectedBoundary::InspectionPending,
+            } = action.kind()
+            else {
+                return Err(BrowserActionIssueError::Cursor(
+                    BrowserActionCursorFault::UnsupportedOperation,
+                ));
+            };
+            if action.position() != lifetime.operation_shape().boundary_position {
+                return Err(BrowserActionIssueError::Cursor(
+                    BrowserActionCursorFault::UnsupportedOperation,
+                ));
+            }
+            // The previously authenticated operation shape includes BOTH alias
+            // operands. Refuse an unexpected length before scanning any bytes.
+            if pending.len() != lifetime.pending_alias().len() {
+                return Err(BrowserActionIssueError::Cursor(
+                    BrowserActionCursorFault::ForeignAction,
+                ));
+            }
+            credit
+                .require_operation(SourceBusinessOperation::InspectionPreparation)
+                .map_err(BrowserActionIssueError::Funding)?;
+            let alias_bytes = lifetime.operation_shape().alias_bytes;
+            credit
+                .storage(0, 0, alias_bytes)
+                .map_err(BrowserActionIssueError::Funding)?;
+            credit
+                .comparison(2, alias_bytes, 1)
+                .map_err(BrowserActionIssueError::Funding)?;
+            let bytes = size_of::<Self>()
+                .checked_add(2 * size_of::<usize>())
+                .expect("prepaid inspection preparation layout already checked");
+            super::borrowed::prepaid_source_gate(
+                &action,
+                lifetime.association(),
+                loans,
+                &mut credit,
+                SourceBusinessOperation::InspectionPreparation,
+                bytes,
+                || {
+                    if pending == lifetime.pending_alias() {
+                        Ok(())
+                    } else {
+                        Err(BrowserActionIssueError::Cursor(
+                            BrowserActionCursorFault::ForeignAction,
+                        ))
+                    }
+                },
+            )?
+        })();
+        match checked {
+            Ok(()) => Ok(Self { action }),
+            Err(cause) => Err((action, cause)),
+        }
+    }
+    #[cfg(target_os = "macos")]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn source_prepaid<'b>(
+        &'b self,
+        lifetime: &SourceControllerLifetime,
+        mut credit: crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<BrowserInspectionBoundarySource<'b>, BrowserActionIssueError> {
+        use crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessOperation;
+        lifetime.validate_action_relation_prepaid(&self.action, &credit, loans)?;
+        let bytes = size_of::<BrowserInspectionBoundarySource<'_>>()
+            .checked_add(2 * size_of::<std::sync::atomic::AtomicUsize>())
+            .expect("prepaid inspection source layout already checked");
+        let association = super::borrowed::prepaid_source_gate(
+            &self.action,
+            lifetime.association(),
+            loans,
+            &mut credit,
+            SourceBusinessOperation::InspectionSource,
+            bytes,
+            || lifetime.association().duplicate_after_funding(),
+        )?;
+        Ok(BrowserInspectionBoundarySource {
+            action: &self.action,
+            association,
+        })
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn source<'b>(
         &'b self,
         lifetime: &SourceControllerLifetime,
@@ -150,6 +325,41 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             ));
         }
         lifetime.association().prepare_validation(loans)?;
+        self.settle_validated_reply(reply, lifetime)
+    }
+    #[cfg(target_os = "macos")]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn settle_controller_reply_prepaid(
+        &mut self,
+        reply: &MeasuredInspectionReply,
+        lifetime: &SourceControllerLifetime,
+        mut credit: crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        use crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessOperation;
+        lifetime.validate_action_relation_prepaid(&self.action, &credit, loans)?;
+        if self.action.position() != lifetime.operation_shape().boundary_position {
+            return Err(BrowserActionIssueError::Cursor(
+                BrowserActionCursorFault::ForeignAction,
+            ));
+        }
+        credit
+            .require_operation(SourceBusinessOperation::InspectionSettlement)
+            .map_err(BrowserActionIssueError::Funding)?;
+        let bytes = size_of::<Self>();
+        let work = SourceControllerLifetime::business_validation_work_upper()
+            .and_then(|n| n.checked_mul(4))
+            .and_then(|n| n.checked_add(bytes))
+            .expect("checked prepaid inspection settlement layout");
+        credit
+            .storage(bytes, 1, work)
+            .map_err(BrowserActionIssueError::Funding)?;
+        self.settle_validated_reply(reply, lifetime)
+    }
+    fn settle_validated_reply(
+        &mut self,
+        reply: &MeasuredInspectionReply,
+        lifetime: &SourceControllerLifetime,
+    ) -> Result<(), BrowserActionIssueError> {
         let action = &mut self.action;
         let owner = action.owner;
         owner

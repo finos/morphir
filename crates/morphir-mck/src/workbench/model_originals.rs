@@ -11,8 +11,10 @@ pub use workflow::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
     BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
     BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
-    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
-    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserConnectedPreparationFailure, BrowserControllerDispatch, BrowserControllerPreparation,
+    BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
+    BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
+    BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
     BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub use workflow::{
@@ -534,3 +536,16 @@ fn validate(schema: Schema, value: &Value) -> Result<(), InvalidFrame> {
     };
     validator.validate(value).map_err(|_| InvalidFrame::Shape)
 }
+
+#[cfg(target_os = "macos")]
+pub use workflow::{BrowserControllerBusinessCredit, BrowserControllerBusinessFundingFault};
+
+#[cfg(target_os = "macos")]
+pub use workflow::{
+    BrowserConnectedObservation, BrowserContinuingController, BrowserControllerContinueFailure,
+    BrowserControllerFile, BrowserControllerFiles, BrowserControllerFinished,
+    BrowserControllerLaunchFailure, BrowserControllerPreparationFailure,
+    BrowserControllerPreparationFinished, BrowserControllerPreparationStage,
+    BrowserControllerRetirement, BrowserFixedController, BrowserInspectionPreparationFailure,
+    BrowserInspectionSettlementFailure, BrowserMaterializedController, BrowserStoppedController,
+};

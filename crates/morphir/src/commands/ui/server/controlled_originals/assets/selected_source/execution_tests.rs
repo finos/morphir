@@ -4,6 +4,7 @@ use super::*;
 use crate::commands::ui::server::controlled_originals::{
     ControlledHostFault, ControlledHostFinish, ControlledHostJoined, ListenerOwner,
 };
+use morphir_mck::workbench::{BrowserListenerDispatch, BrowserListenerStartDispatcher};
 
 #[test]
 #[ignore = "requires explicit exact77 selected image; listener only, no Chrome"]
@@ -206,6 +207,90 @@ fn poisoned_native_first(prior: Option<ControlledHostFault>) {
             assert!(
                 matches!(fault, Some(SelectedSourceStartFault::Native(cause)) if cause == expected)
             );
+        },
+    );
+}
+
+#[test]
+#[ignore = "requires explicit exact77 selected image; prepared runtime only, no listener or Chrome"]
+fn native_selected_listener_preparation_07_retains_real_runtime_and_bound_host() {
+    with_actual_selected_launch(
+        std::time::Duration::from_secs(30),
+        |launch, _application, runtime, loans| {
+            let pointer = Arc::as_ptr(&launch.owner.host.state);
+            let prepared = runtime.block_on(async { launch.prepare_native_runtime(loans) });
+            let (fault, launch, task_result) = match prepared {
+                Ok(SelectedSourcePrepared {
+                    launch,
+                    runtime: retained_runtime,
+                }) => {
+                    // Outside an entered runtime, use only the actual retained
+                    // Handle and join the real task. This is a runtime-retention
+                    // control, not a source listener or browser effect.
+                    let task = retained_runtime.spawn(async { 37u8 });
+                    let result = runtime.block_on(task);
+                    drop(retained_runtime);
+                    (None, launch, Some(result))
+                }
+                Err(SelectedSourceStartFailure { fault, launch }) => (Some(fault), launch, None),
+            };
+            let same = Arc::as_ptr(&launch.owner.host.state) == pointer;
+            let bound = matches!(launch.owner.host.listener, ListenerOwner::Bound(_));
+            drop(launch.opening);
+            let joined = runtime.block_on(launch.owner.host.finish_joined());
+            drop(launch.owner.application);
+            assert!(same);
+            assert!(bound, "preparation must leave the actual listener unserved");
+            assert!(matches!(
+                joined,
+                ControlledHostFinish::Joined(ControlledHostJoined::Clean)
+            ));
+            assert!(matches!(task_result, Some(Ok(37))));
+            assert!(fault.is_none());
+        },
+    );
+}
+
+#[test]
+#[ignore = "requires explicit exact77 selected image; concrete listener dispatcher only, no paid-credit or Page acceptance"]
+fn native_selected_listener_dispatch_08_retained_runtime_starts_same_host_outside_runtime() {
+    with_actual_selected_launch(
+        std::time::Duration::from_secs(30),
+        |launch, _application, runtime, loans| {
+            let pointer = Arc::as_ptr(&launch.owner.host.state);
+            let SelectedSourcePrepared {
+                mut launch,
+                runtime: retained_runtime,
+            } = runtime
+                .block_on(async { launch.prepare_native_runtime(loans) })
+                .unwrap_or_else(|_| panic!("actual retained native runtime"));
+            let outside_runtime = tokio::runtime::Handle::try_current().is_err();
+            let mut dispatcher =
+                SelectedSourceListenerDispatcher::new(&mut launch.owner, retained_runtime);
+            // The existing component gate supplies the actual scoped permit.
+            // The funded composed path is qualified separately with its real
+            // materialized allowance, not inferred from this control.
+            let result = launch
+                .opening
+                .with_prepared_listener_start(loans, |permit| dispatcher.dispatch(permit));
+            let outcome = dispatcher.into_outcome();
+            let same = Arc::as_ptr(&launch.owner.host.state) == pointer;
+            let running = matches!(launch.owner.host.listener, ListenerOwner::Running { .. });
+            drop(launch.opening);
+            let joined = runtime.block_on(launch.owner.host.finish_joined());
+            drop(launch.owner.application);
+            assert!(outside_runtime);
+            assert!(same);
+            assert!(running);
+            assert!(matches!(result, Ok(BrowserListenerDispatch::Installed)));
+            assert!(matches!(
+                outcome,
+                SelectedSourceListenerOutcome::Completed(Ok(()))
+            ));
+            assert!(matches!(
+                joined,
+                ControlledHostFinish::Joined(ControlledHostJoined::Clean)
+            ));
         },
     );
 }

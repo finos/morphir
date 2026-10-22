@@ -313,3 +313,105 @@ fn browser_inspection_action_05_prepared_holder_cannot_settle_after_original_end
         },
     );
 }
+#[cfg(target_os = "macos")]
+#[test]
+fn browser_inspection_action_06_prepaid_source1_after_residual_uses_no_fresh_budget() {
+    use super::super::super::tests::{controlled_clients, with_compiled_artifact_control};
+    use crate::workbench::model_originals::workflow::pipeline::browser::{
+        BrowserDocumentBounds, BrowserRowCollection,
+        controller::source_business::{SourceBusinessEnvelope, SourceBusinessOperation},
+    };
+    with_compiled_artifact_control(|compiled, inner| {
+        let core = controlled_clients(compiled)[0];
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let child = ExecutionChild::prepare(&global, inner).unwrap();
+        let run = PreparedBrowserClientRun::prepare(core, &global, &child, inner).unwrap();
+        let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+        let opening = run.openings(&mut loans).unwrap().next().unwrap();
+        let stimulus = run.prepare_controlled_host(&opening, &mut loans).unwrap();
+        let mut collection = BrowserRowCollection::prepare(
+            &run,
+            &mut loans,
+            BrowserDocumentBounds::new(2, 1024, 512).unwrap(),
+        )
+        .unwrap();
+        let mut producer = collection
+            .producer()
+            .issue(&run, &opening, &mut loans)
+            .unwrap();
+        let end = Instant::now() + Duration::from_secs(10);
+        let transcript = producer
+            .prepare_host_transcript(&mut loans, &stimulus, end)
+            .unwrap();
+        let action0 = run.next_action(&mut loans).unwrap().unwrap();
+        let (mut owned0, lifetime) = action0
+            .prepare_connected_controller(&producer, &transcript, &stimulus, &mut loans)
+            .unwrap();
+        let mut envelope = SourceBusinessEnvelope::prepare(&lifetime, &mut loans).unwrap();
+        // Literal sealed DATA controls logical progression only, not a real
+        // controller reply or business execution.
+        let measured0 = lock(&run.actions)
+            .operations
+            .requested(SourceOperationKind::Opening)
+            .unwrap()
+            .opening(BrowserOpeningSelectionReply::ProjectSelected)
+            .ok()
+            .unwrap();
+        owned0
+            .settle_controller_reply(&measured0, &lifetime, &mut loans)
+            .unwrap();
+        drop(owned0);
+        let action1 = run.next_action(&mut loans).unwrap().unwrap();
+        let remainder = loans.remaining_cleanup_resources(&lifetime).unwrap();
+        loans
+            .reserve_controlled_host_storage(remainder.retained_bytes, 0, 0)
+            .unwrap();
+        let before = loans.business_usage().unwrap();
+        let mut owned = BrowserOwnedInspectionBoundary::prepare_prepaid(
+            action1,
+            &lifetime,
+            envelope
+                .take(SourceBusinessOperation::InspectionPreparation)
+                .unwrap(),
+            &loans,
+        )
+        .unwrap_or_else(|_| panic!("prepaid source1"));
+        let source = owned
+            .source_prepaid(
+                &lifetime,
+                envelope
+                    .take(SourceBusinessOperation::InspectionSource)
+                    .unwrap(),
+                &loans,
+            )
+            .unwrap();
+        drop(source);
+        let measured1 = lock(&run.actions)
+            .operations
+            .requested(SourceOperationKind::InspectionBoundary)
+            .unwrap()
+            .inspection(BrowserInspectionPendingReply::InspectionPending)
+            .ok()
+            .unwrap();
+        owned
+            .settle_controller_reply_prepaid(
+                &measured1,
+                &lifetime,
+                envelope
+                    .take(SourceBusinessOperation::InspectionSettlement)
+                    .unwrap(),
+                &loans,
+            )
+            .unwrap();
+        let after = loans.business_usage().unwrap();
+        assert_eq!(before, after);
+        assert!(matches!(
+            run.actions_terminal(),
+            BrowserActionCursorTerminal::Incomplete {
+                consumed: 2,
+                pending: None,
+                ..
+            }
+        ));
+    });
+}

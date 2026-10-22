@@ -631,6 +631,32 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Ma
     AcquiredControllerTarget,
 );
 impl MaterializedControllerTarget {
+    pub(super) fn take_business(
+        &mut self,
+        operation: super::source_business::SourceBusinessOperation,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<
+        super::source_business::SourceBusinessCredit,
+        super::super::adapter::execution_loans::BrowserActionIssueError,
+    > {
+        use super::super::adapter::execution_loans::BrowserActionIssueError;
+        self.0
+            .prepayment
+            .validate(&self.0.lifetime, self.0.buffers.limits(), loans)
+            .map_err(BrowserActionIssueError::Input)?;
+        // Moving already-paid work is not a new reserve or a source grant.
+        // Keep actual source/end currentness at this mutation too; the later
+        // real consumer must independently validate its own exact affinity.
+        self.0
+            .lifetime
+            .while_business_active(|| {
+                self.0
+                    .prepayment
+                    .take_business(operation)
+                    .map_err(BrowserActionIssueError::Funding)
+            })
+            .map_err(BrowserActionIssueError::Input)?
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn launch_parts(
         &self,
     ) -> (

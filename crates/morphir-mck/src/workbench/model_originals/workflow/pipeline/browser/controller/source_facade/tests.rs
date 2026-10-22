@@ -271,3 +271,136 @@ fn browser_source_facade_05_materialized_spawn_refusal_preserves_actual_owned_tr
         fs::rename(&moved, &root).unwrap();
     });
 }
+
+#[test]
+#[ignore = "requires selected archive/Node; full115 and actual scoped gate, no Chrome"]
+fn browser_source_facade_06_full_runtime_step_survives_unreserved_storage_exhaustion() {
+    use super::super::super::adapter::execution_loans::{
+        BrowserControllerDispatch, BrowserControllerStepDispatcher, BrowserPreparedControllerStep,
+        ExecutionChild, controlled_clients, with_compiled_artifact_control,
+    };
+    use super::super::super::source_scope::BrowserSourceScope;
+    use super::super::super::{
+        BrowserDocumentBounds, BrowserRowCollection, PreparedBrowserClientRun,
+    };
+    let archive = fs::read(
+        std::env::var_os("MORPHIR_MCK_BROWSER_PLAYWRIGHT_ARCHIVE").expect("explicit archive"),
+    )
+    .unwrap();
+    let node = PathBuf::from(std::env::var_os("MORPHIR_MCK_BROWSER_NODE").expect("explicit Node"));
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().canonicalize().unwrap();
+    with_compiled_artifact_control(|compiled, inner| {
+        let core = controlled_clients(compiled)[0];
+        let global = BrowserSourceScope::prepare(inner).unwrap();
+        let child = ExecutionChild::prepare(&global, inner).unwrap();
+        let run = PreparedBrowserClientRun::prepare(core, &global, &child, inner).unwrap();
+        let mut loans = BrowserLoans::execution(inner, &global, &child).unwrap();
+        let source = run.openings(&mut loans).unwrap().next().unwrap();
+        let stimulus = run.prepare_controlled_host(&source, &mut loans).unwrap();
+        let mut collection = BrowserRowCollection::prepare(
+            &run,
+            &mut loans,
+            BrowserDocumentBounds::new(2, 1024, 512).unwrap(),
+        )
+        .unwrap();
+        let mut producer = collection
+            .producer()
+            .issue(&run, &source, &mut loans)
+            .unwrap();
+        let transcript = producer
+            .prepare_host_transcript(
+                &mut loans,
+                &stimulus,
+                Instant::now() + Duration::from_secs(10),
+            )
+            .unwrap();
+        let action = run.next_action(&mut loans).unwrap().unwrap();
+        let (owned, preparation) = action
+            .prepare_connected_controller(&producer, &transcript, &stimulus, &mut loans)
+            .unwrap_or_else(|_| panic!("genuine source0 factory"));
+        let sdk = owned
+            .connected_opening(&producer, &transcript, &stimulus, &mut loans)
+            .unwrap();
+        let mut materialized = preparation
+            .prepare_runtime(
+                &archive,
+                BrowserControllerFiles {
+                    chromium: BrowserControllerFile {
+                        path: Path::new("/bin/sleep"),
+                        byte_length: fs::metadata("/bin/sleep").unwrap().len(),
+                    },
+                    node: BrowserControllerFile {
+                        path: &node,
+                        byte_length: fs::metadata(&node).unwrap().len(),
+                    },
+                    root: &root,
+                },
+                Limits {
+                    max_frame: 128,
+                    stderr_capture: 64,
+                    ..Limits::DEFAULT
+                },
+                &mut loans,
+            )
+            .unwrap_or_else(|cause| panic!("actual complete runtime preparation: {cause:?}"));
+        assert!(root.join("artifacts/runtime/index.mjs").is_file());
+        let (_, lifetime, _, _) = materialized.target.launch_parts();
+        let available = loans.remaining_cleanup_resources(lifetime).unwrap();
+        // Consume only the SAME owner's unreserved remainder after actual
+        // preparation. No pool is enlarged or refilled and no cleanup capacity
+        // is invented. Later work must use its earlier owned reservation.
+        loans
+            .reserve_controlled_host_storage(available.retained_bytes, 0, 0)
+            .unwrap();
+        struct MatchingOnly<'a> {
+            lifetime: &'a BrowserControllerPreparation,
+            matched: &'a mut bool,
+        }
+        impl BrowserControllerStepDispatcher for MatchingOnly<'_> {
+            fn dispatch(
+                &mut self,
+                permit: BrowserPreparedControllerStep<'_>,
+            ) -> BrowserControllerDispatch {
+                *self.matched = permit.matches_lifetime(self.lifetime);
+                // This exercises the actual scoped gate without performing a
+                // browser effect or inventing a successful controller reply.
+                BrowserControllerDispatch::NativeRefused
+            }
+        }
+        let mut matched = false;
+        let step = match materialized.take_dispatch_credit(&loans) {
+            Err(cause) => Err(cause),
+            Ok(credit) => {
+                let (_, lifetime, _, _) = materialized.target.launch_parts();
+                let mut dispatcher = MatchingOnly {
+                    lifetime,
+                    matched: &mut matched,
+                };
+                sdk.with_prepaid_controller_step(credit, &loans, &mut dispatcher)
+            }
+        };
+        // Always finish the actual owned filesystem path before the assertion,
+        // including the genuine old per-call funding refusal in the RED run.
+        let BrowserMaterializedController { target, storage } = materialized;
+        let (mut lifetime, files) = target
+            .finish_unlaunched()
+            .ok()
+            .expect("prepaid owned cleanup remains possible after business refusal");
+        drop((storage, files));
+        let retirement = retire(&mut lifetime);
+        assert!(!root.join("profile").exists());
+        assert!(!root.join("artifacts").exists());
+        assert!(!root.join("driver.mjs").exists());
+        assert!(root.is_dir());
+        assert_eq!(retirement, BrowserControllerRetirement::Returned);
+        assert!(
+            step.is_ok(),
+            "scoped step cannot ask for fresh storage: {step:?}"
+        );
+        assert!(
+            matched,
+            "scoped permit belongs to the actual materialized lifetime"
+        );
+    });
+}

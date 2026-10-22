@@ -3,16 +3,23 @@ use super::*;
 use std::sync::{Mutex, MutexGuard};
 #[path = "actions/borrowed.rs"]
 mod borrowed;
+#[path = "actions/business_origin.rs"]
+mod business_origin;
 #[path = "actions/connected.rs"]
 mod connected;
+#[path = "actions/inspection.rs"]
+mod inspection;
 #[path = "actions/operations.rs"]
 mod operations;
 #[path = "actions/preparation_failure.rs"]
 mod preparation_failure;
-#[path = "actions/inspection.rs"]
-mod inspection;
-pub use inspection::{BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary};
-pub use borrowed::{BrowserConnectedOpening, BrowserPreparedControllerStep, BrowserPreparedListenerStart};
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use borrowed::business_gate_headers;
+pub use borrowed::{
+    BrowserConnectedOpening, BrowserControllerDispatch, BrowserControllerStepDispatcher,
+    BrowserListenerDispatch, BrowserListenerStartDispatcher, BrowserPreparedControllerStep,
+    BrowserPreparedListenerStart,
+};
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use business_origin::SourceBusinessOrigin;
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use connected::{
     ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerActivity,
     SourceControllerLifetime, SourceControllerOperationShape,
@@ -21,6 +28,8 @@ pub use connected::{
     ConnectedOpeningAction as BrowserOwnedConnectedOpening,
     SourceControllerLifetime as BrowserControllerPreparation,
 };
+pub use inspection::{BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary};
+use operations::SourceOperationIdentity;
 pub use operations::{
     BrowserConnectedControlFault, BrowserConnectedJournalFault,
     BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
@@ -30,7 +39,6 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) use opera
     MeasuredInspectionReply, MeasuredOpeningReply, PendingSourceOperation, SourceOperationJournal,
     SourceOperationKind,
 };
-use operations::SourceOperationIdentity;
 pub use preparation_failure::BrowserConnectedPreparationFailure;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,6 +54,8 @@ pub enum BrowserActionCursorFault {
 }
 #[derive(Debug)]
 pub enum BrowserActionIssueError {
+    #[cfg(target_os = "macos")]
+    Funding(super::super::super::controller::source_business::SourceBusinessFundingFault),
     Input(BrowserInputError),
     Cursor(BrowserActionCursorFault),
     Host(super::super::super::collection::BrowserHostTranscriptFault),
@@ -189,15 +199,28 @@ pub struct BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 's
 impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
     BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
 {
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn refuse_controller(&mut self, cause:BrowserActionIssueError) {
-        let mut cursor=lock(&self.owner.actions);
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn refuse_controller(
+        &mut self,
+        cause: BrowserActionIssueError,
+    ) {
+        let mut cursor = lock(&self.owner.actions);
         cursor.first_issue.get_or_insert(cause);
-        cursor.refuse(self.position(),BrowserActionCursorFault::OperationRefused);
-        self.state=TokenState::Refused;
+        cursor.refuse(self.position(), BrowserActionCursorFault::OperationRefused);
+        self.state = TokenState::Refused;
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn inspect_controller_cause<R>(&self, inspect:impl FnOnce(&BrowserActionIssueError)->R)->R {
-        let cursor=lock(&self.owner.actions);
-        inspect(cursor.first_issue.as_ref().expect("actual refusal retained before token drop"))
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn inspect_controller_cause<
+        R,
+    >(
+        &self,
+        inspect: impl FnOnce(&BrowserActionIssueError) -> R,
+    ) -> R {
+        let cursor = lock(&self.owner.actions);
+        inspect(
+            cursor
+                .first_issue
+                .as_ref()
+                .expect("actual refusal retained before token drop"),
+        )
     }
     pub fn position(&self) -> usize {
         self.input.position()

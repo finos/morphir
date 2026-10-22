@@ -3,8 +3,10 @@ pub use model_originals::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
     BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
     BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
-    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
-    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserConnectedPreparationFailure, BrowserControllerDispatch, BrowserControllerPreparation,
+    BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
+    BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
+    BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
     BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub use model_originals::{
@@ -158,3 +160,16 @@ mod native_record_receiver_tests;
 
 #[cfg(test)]
 mod installed_borrowed_tests;
+
+#[cfg(target_os = "macos")]
+pub use model_originals::{BrowserControllerBusinessCredit, BrowserControllerBusinessFundingFault};
+
+#[cfg(target_os = "macos")]
+pub use model_originals::{
+    BrowserConnectedObservation, BrowserContinuingController, BrowserControllerContinueFailure,
+    BrowserControllerFile, BrowserControllerFiles, BrowserControllerFinished,
+    BrowserControllerLaunchFailure, BrowserControllerPreparationFailure,
+    BrowserControllerPreparationFinished, BrowserControllerPreparationStage,
+    BrowserControllerRetirement, BrowserFixedController, BrowserInspectionPreparationFailure,
+    BrowserInspectionSettlementFailure, BrowserMaterializedController, BrowserStoppedController,
+};

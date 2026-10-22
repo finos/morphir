@@ -99,33 +99,68 @@ pub(super) struct SourceOperationIdentity {
     state: Weak<Mutex<BrowserConnectedOperationsSnapshot>>,
 }
 impl SourceOperationIdentity {
-    pub(super) fn preflight(&self, journal:&SourceOperationJournal)->Result<(),BrowserActionCursorFault> {
+    pub(super) fn duplicate_after_funding(&self) -> Self {
+        Self {
+            state: self.state.clone(),
+        }
+    }
+    pub(super) fn copy_work_upper() -> Option<usize> {
+        size_of::<Self>().checked_add(size_of::<std::sync::atomic::AtomicUsize>().checked_mul(2)?)
+    }
+    pub(super) fn preflight(
+        &self,
+        journal: &SourceOperationJournal,
+    ) -> Result<(), BrowserActionCursorFault> {
         // No temporary Weak/Arc or mutable debit is created for foreign DATA.
         // Both are existing nominal allocations, and this retained Weak keeps
         // its allocation identity alive even when the original Arc is gone.
-        if self.state.as_ptr()!=Arc::as_ptr(&journal.state) {return Err(BrowserActionCursorFault::ForeignAction);}
+        if self.state.as_ptr() != Arc::as_ptr(&journal.state) {
+            return Err(BrowserActionCursorFault::ForeignAction);
+        }
         Ok(())
     }
-    pub(super) fn fund(loans: &mut inputs::BrowserOwnerLoans<'_>) -> Result<(),BrowserInputError> {
-        let bytes=size_of::<Self>();
-        let work=bytes.checked_add(size_of::<std::sync::atomic::AtomicUsize>().checked_mul(2).ok_or_else(|| overflow(loans))?).ok_or_else(|| overflow(loans))?;
-        reserve(loans,bytes,1,work)
+    pub(super) fn fund(loans: &mut inputs::BrowserOwnerLoans<'_>) -> Result<(), BrowserInputError> {
+        let bytes = size_of::<Self>();
+        let work = bytes
+            .checked_add(
+                size_of::<std::sync::atomic::AtomicUsize>()
+                    .checked_mul(2)
+                    .ok_or_else(|| overflow(loans))?,
+            )
+            .ok_or_else(|| overflow(loans))?;
+        reserve(loans, bytes, 1, work)
     }
-    pub(super) fn fund_validation(&self, loans: &mut inputs::BrowserOwnerLoans<'_>) -> Result<(),BrowserInputError> {
-        let work=size_of::<Self>()+size_of::<Arc<Mutex<BrowserConnectedOperationsSnapshot>>>()+3*size_of::<std::sync::atomic::AtomicUsize>();
-        reserve(loans,0,0,work)
+    pub(super) fn fund_validation(
+        &self,
+        loans: &mut inputs::BrowserOwnerLoans<'_>,
+    ) -> Result<(), BrowserInputError> {
+        let work = size_of::<Self>()
+            + size_of::<Arc<Mutex<BrowserConnectedOperationsSnapshot>>>()
+            + 3 * size_of::<std::sync::atomic::AtomicUsize>();
+        reserve(loans, 0, 0, work)
     }
-    pub(super) fn matches(&self, journal:&SourceOperationJournal)->Result<(),BrowserActionCursorFault> {
+    pub(super) fn matches(
+        &self,
+        journal: &SourceOperationJournal,
+    ) -> Result<(), BrowserActionCursorFault> {
         self.preflight(journal)?;
-        let Some(owner)=self.state.upgrade() else {return Err(BrowserActionCursorFault::ForeignAction);};
-        if !Arc::ptr_eq(&owner,&journal.state) {return Err(BrowserActionCursorFault::ForeignAction);}
-        if journal_lock(&owner).journal_fault.is_some() {return Err(BrowserActionCursorFault::Poisoned);}
+        let Some(owner) = self.state.upgrade() else {
+            return Err(BrowserActionCursorFault::ForeignAction);
+        };
+        if !Arc::ptr_eq(&owner, &journal.state) {
+            return Err(BrowserActionCursorFault::ForeignAction);
+        }
+        if journal_lock(&owner).journal_fault.is_some() {
+            return Err(BrowserActionCursorFault::Poisoned);
+        }
         Ok(())
     }
 }
 impl SourceOperationJournal {
-    pub(super) fn identity_after_funding(&self)->SourceOperationIdentity {
-        SourceOperationIdentity {state:Arc::downgrade(&self.state)}
+    pub(super) fn identity_after_funding(&self) -> SourceOperationIdentity {
+        SourceOperationIdentity {
+            state: Arc::downgrade(&self.state),
+        }
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare(
         loans: &mut inputs::BrowserOwnerLoans<'_>,
@@ -283,12 +318,21 @@ impl PendingSourceOperation {
 }
 impl MeasuredOpeningReply {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn accepted_by(
-        &self, journal: &SourceOperationJournal,
+        &self,
+        journal: &SourceOperationJournal,
     ) -> bool {
-        if !self.matches(journal) || self.reply != BrowserOpeningSelectionReply::ProjectSelected {return false;}
+        if !self.matches(journal) || self.reply != BrowserOpeningSelectionReply::ProjectSelected {
+            return false;
+        }
         let state = journal_lock(&self.state);
-        state.journal_fault.is_none() && matches!(state.opening,
-            BrowserConnectedOperationObservation::Requested {reply:Some(BrowserOpeningSelectionReply::ProjectSelected),first_control_fault:None})
+        state.journal_fault.is_none()
+            && matches!(
+                state.opening,
+                BrowserConnectedOperationObservation::Requested {
+                    reply: Some(BrowserOpeningSelectionReply::ProjectSelected),
+                    first_control_fault: None
+                }
+            )
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn matches(
         &self,
@@ -311,12 +355,22 @@ impl MeasuredOpeningReply {
 }
 impl MeasuredInspectionReply {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn accepted_by(
-        &self, journal: &SourceOperationJournal,
+        &self,
+        journal: &SourceOperationJournal,
     ) -> bool {
-        if !self.matches(journal) || self.reply != BrowserInspectionPendingReply::InspectionPending {return false;}
+        if !self.matches(journal) || self.reply != BrowserInspectionPendingReply::InspectionPending
+        {
+            return false;
+        }
         let state = journal_lock(&self.state);
-        state.journal_fault.is_none() && matches!(state.inspection_boundary,
-            BrowserConnectedOperationObservation::Requested {reply:Some(BrowserInspectionPendingReply::InspectionPending),first_control_fault:None})
+        state.journal_fault.is_none()
+            && matches!(
+                state.inspection_boundary,
+                BrowserConnectedOperationObservation::Requested {
+                    reply: Some(BrowserInspectionPendingReply::InspectionPending),
+                    first_control_fault: None
+                }
+            )
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn matches(
         &self,

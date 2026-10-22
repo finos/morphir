@@ -22,6 +22,7 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct So
     end: Instant,
     limits: Limits,
     operation: SourceControllerOperationShape,
+    business: super::source_business::SourceBusinessEnvelope,
 }
 impl SourceOperationPrepayment {
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare(
@@ -113,13 +114,24 @@ impl SourceOperationPrepayment {
         })()
         .ok_or_else(|| overflow(loans))?;
         loans.reserve_controlled_host_storage(calculated.0, calculated.1, calculated.2)?;
+        let business = super::source_business::SourceBusinessEnvelope::prepare(lifetime, loans)?;
         let stamp = loans.prepare_relation_stamp()?;
         Ok(Self {
             stamp,
             end: lifetime.end(),
             limits,
             operation,
+            business,
         })
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn take_business(
+        &mut self,
+        operation: super::source_business::SourceBusinessOperation,
+    ) -> Result<
+        super::source_business::SourceBusinessCredit,
+        super::source_business::SourceBusinessFundingFault,
+    > {
+        self.business.take(operation)
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate(
         &self,

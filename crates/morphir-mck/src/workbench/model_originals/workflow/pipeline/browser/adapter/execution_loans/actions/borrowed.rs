@@ -11,27 +11,65 @@ use crate::workbench::model_originals::workflow::pipeline::browser::{
 use std::time::Instant;
 
 pub(super) trait OpeningToken: Sync {
+    fn validate_business_origin(
+        &self,
+        origin: &SourceBusinessOrigin,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError>;
     fn validate(&self, loans: &BrowserLoans<'_, '_>) -> Result<(), BrowserActionIssueError>;
-    fn validate_lifetime(&self, lifetime:&SourceControllerLifetime, loans:&mut BrowserLoans<'_, '_>) -> Result<(),BrowserActionIssueError>;
-    fn same_lifetime(&self, lifetime:&SourceControllerLifetime)->bool;
-    fn supports(&self, operation:SourceOperationKind)->bool;
+    fn validate_lifetime(
+        &self,
+        lifetime: &SourceControllerLifetime,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError>;
+    fn same_lifetime(&self, lifetime: &SourceControllerLifetime) -> bool;
+    fn supports(&self, operation: SourceOperationKind) -> bool;
     fn retention_gate(
         &self,
         action: &mut dyn FnMut() -> Result<(), BrowserActionIssueError>,
     ) -> Result<(), BrowserActionIssueError>;
-    fn request(&self, operation: SourceOperationKind) -> Result<PendingSourceOperation, BrowserActionCursorFault>;
+    fn request(
+        &self,
+        operation: SourceOperationKind,
+    ) -> Result<PendingSourceOperation, BrowserActionCursorFault>;
 }
 impl OpeningToken for BrowserExecutionAction<'_, '_, '_, '_, '_, '_, '_> {
-    fn supports(&self, operation:SourceOperationKind)->bool {
-        matches!((self.kind(), operation),
-            (BrowserActionKind::BeginConnectedOpening { .. }, SourceOperationKind::Opening)
-            | (BrowserActionKind::AwaitConnectedBoundary {boundary: BrowserConnectedBoundary::InspectionPending, ..}, SourceOperationKind::InspectionBoundary))
+    fn validate_business_origin(
+        &self,
+        origin: &SourceBusinessOrigin,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        origin.validate_action(self, loans)
     }
-    fn same_lifetime(&self,lifetime:&SourceControllerLifetime)->bool {lifetime.same_action_journal(self)}
-    fn validate_lifetime(&self, lifetime:&SourceControllerLifetime, loans:&mut BrowserLoans<'_, '_>)->Result<(),BrowserActionIssueError> {
-        lifetime.validate_action_relation(self,loans)
+    fn supports(&self, operation: SourceOperationKind) -> bool {
+        matches!(
+            (self.kind(), operation),
+            (
+                BrowserActionKind::BeginConnectedOpening { .. },
+                SourceOperationKind::Opening
+            ) | (
+                BrowserActionKind::AwaitConnectedBoundary {
+                    boundary: BrowserConnectedBoundary::InspectionPending,
+                    ..
+                },
+                SourceOperationKind::InspectionBoundary
+            )
+        )
     }
-    fn request(&self, operation: SourceOperationKind) -> Result<PendingSourceOperation, BrowserActionCursorFault> {
+    fn same_lifetime(&self, lifetime: &SourceControllerLifetime) -> bool {
+        lifetime.same_action_journal(self)
+    }
+    fn validate_lifetime(
+        &self,
+        lifetime: &SourceControllerLifetime,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        lifetime.validate_action_relation(self, loans)
+    }
+    fn request(
+        &self,
+        operation: SourceOperationKind,
+    ) -> Result<PendingSourceOperation, BrowserActionCursorFault> {
         if !self.supports(operation) {
             return Err(BrowserActionCursorFault::UnsupportedOperation);
         }
@@ -84,9 +122,11 @@ impl BrowserConnectedOpening<'_> {
         lifetime: &SourceControllerLifetime,
         loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<(), BrowserActionIssueError> {
-        self.action.validate_lifetime(lifetime,loans)?;
+        self.action.validate_lifetime(lifetime, loans)?;
         if !self.association.same_relation(lifetime.association()) {
-            return Err(BrowserActionIssueError::Input(source(BrowserSourceFault::ForeignSource)));
+            return Err(BrowserActionIssueError::Input(source(
+                BrowserSourceFault::ForeignSource,
+            )));
         }
         self.while_host_active(loans, || ())
     }
@@ -139,25 +179,27 @@ impl BrowserConnectedOpening<'_> {
         loans: &mut BrowserLoans<'_, '_>,
         operation: impl FnOnce() -> R,
     ) -> Result<R, BrowserActionIssueError> {
-        current_source_gate(self.action,&self.association,loans,operation)
+        current_source_gate(self.action, &self.association, loans, operation)
     }
 }
 pub(super) fn current_source_gate<R>(
-    action:&dyn OpeningToken, association:&BrowserSourceHostAssociation,
-    loans:&mut BrowserLoans<'_, '_>, operation:impl FnOnce()->R,
-)->Result<R,BrowserActionIssueError> {
-        action.validate(loans)?;
-        association.prepare_validation(loans)?;
-        let mut operation = Some(operation);
-        let mut result = None;
-        action.retention_gate(&mut || {
-            association
-                .while_current(|| {
-                    result = Some(operation.take().expect("exclusive one-call retention gate")());
-                })
-                .map_err(association_error)
-        })?;
-        Ok(result.expect("successful retention gate executed its closure"))
+    action: &dyn OpeningToken,
+    association: &BrowserSourceHostAssociation,
+    loans: &mut BrowserLoans<'_, '_>,
+    operation: impl FnOnce() -> R,
+) -> Result<R, BrowserActionIssueError> {
+    action.validate(loans)?;
+    association.prepare_validation(loans)?;
+    let mut operation = Some(operation);
+    let mut result = None;
+    action.retention_gate(&mut || {
+        association
+            .while_current(|| {
+                result = Some(operation.take().expect("exclusive one-call retention gate")());
+            })
+            .map_err(association_error)
+    })?;
+    Ok(result.expect("successful retention gate executed its closure"))
 }
 
 struct ControllerStepGateBrand;
@@ -170,12 +212,26 @@ pub struct BrowserPreparedControllerStep<'gate> {
     _brand: &'gate mut ControllerStepGateBrand,
 }
 impl BrowserPreparedControllerStep<'_> {
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn supports(&self, operation:SourceOperationKind)->bool {self.action.supports(operation)}
-    pub fn original_end(&self) -> Instant { self.end }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn matches_lifetime(&self, lifetime: &SourceControllerLifetime) -> bool {
-        self.association.same_relation(lifetime.association()) && self.action.same_lifetime(lifetime)
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn supports(
+        &self,
+        operation: SourceOperationKind,
+    ) -> bool {
+        self.action.supports(operation)
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn requested(&self, operation: SourceOperationKind) -> Result<PendingSourceOperation, BrowserActionCursorFault> {
+    pub fn original_end(&self) -> Instant {
+        self.end
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn matches_lifetime(
+        &self,
+        lifetime: &SourceControllerLifetime,
+    ) -> bool {
+        self.association.same_relation(lifetime.association())
+            && self.action.same_lifetime(lifetime)
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn requested(
+        &self,
+        operation: SourceOperationKind,
+    ) -> Result<PendingSourceOperation, BrowserActionCursorFault> {
         self.action.request(operation)
     }
 }
@@ -188,27 +244,37 @@ impl BrowserConnectedOpening<'_> {
         loans: &mut BrowserLoans<'_, '_>,
         advance: F,
     ) -> Result<R, BrowserActionIssueError>
-    where F: for<'gate> FnOnce(BrowserPreparedControllerStep<'gate>) -> R,
+    where
+        F: for<'gate> FnOnce(BrowserPreparedControllerStep<'gate>) -> R,
     {
-        with_controller_step(self.action,&self.association,loans,advance)
+        with_controller_step(self.action, &self.association, loans, advance)
     }
 }
-pub(super) fn with_controller_step<R,F>(
-    action:&dyn OpeningToken, association:&BrowserSourceHostAssociation,
-    loans:&mut BrowserLoans<'_, '_>, advance:F,
-)->Result<R,BrowserActionIssueError>
-where F:for<'gate> FnOnce(BrowserPreparedControllerStep<'gate>)->R {
-        current_source_gate(action,association,loans,||())?;
-        let bytes = size_of::<BrowserPreparedControllerStep<'_>>()
-            .checked_add(size_of::<Option<F>>())
-            .and_then(|n| n.checked_add(size_of::<Option<R>>()))
-            .and_then(|n| n.checked_add(size_of::<ControllerStepGateBrand>()))
-            .ok_or_else(|| overflow(loans.inner))?;
-        loans.reserve_controlled_host_storage(bytes, 4, bytes)?;
-        current_source_gate(action,association,loans, || {
-            let mut brand = ControllerStepGateBrand;
-            advance(BrowserPreparedControllerStep {end: association.end(), association, action, _brand: &mut brand})
+pub(super) fn with_controller_step<R, F>(
+    action: &dyn OpeningToken,
+    association: &BrowserSourceHostAssociation,
+    loans: &mut BrowserLoans<'_, '_>,
+    advance: F,
+) -> Result<R, BrowserActionIssueError>
+where
+    F: for<'gate> FnOnce(BrowserPreparedControllerStep<'gate>) -> R,
+{
+    current_source_gate(action, association, loans, || ())?;
+    let bytes = size_of::<BrowserPreparedControllerStep<'_>>()
+        .checked_add(size_of::<Option<F>>())
+        .and_then(|n| n.checked_add(size_of::<Option<R>>()))
+        .and_then(|n| n.checked_add(size_of::<ControllerStepGateBrand>()))
+        .ok_or_else(|| overflow(loans.inner))?;
+    loans.reserve_controlled_host_storage(bytes, 4, bytes)?;
+    current_source_gate(action, association, loans, || {
+        let mut brand = ControllerStepGateBrand;
+        advance(BrowserPreparedControllerStep {
+            end: association.end(),
+            association,
+            action,
+            _brand: &mut brand,
         })
+    })
 }
 impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
     BrowserExecutionAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
@@ -364,5 +430,133 @@ impl BrowserConnectedOpening<'_> {
                 _brand: &mut brand,
             })
         })
+    }
+}
+
+/// A fixed maintained native controller dispatch. Native refusal is factual;
+/// it is not a source reply, application result, or physical completion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BrowserControllerDispatch {
+    Advanced(Result<(), BrowserConnectedControlFault>),
+    NativeRefused,
+}
+pub trait BrowserControllerStepDispatcher {
+    fn dispatch(&mut self, permit: BrowserPreparedControllerStep<'_>) -> BrowserControllerDispatch;
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BrowserListenerDispatch {
+    Installed,
+    Refused,
+}
+pub trait BrowserListenerStartDispatcher {
+    fn dispatch(&mut self, permit: BrowserPreparedListenerStart<'_>) -> BrowserListenerDispatch;
+}
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn business_gate_headers()
+-> Option<(usize, usize)> {
+    let step = size_of::<BrowserPreparedControllerStep<'_>>()
+        .checked_add(size_of::<Option<&mut dyn BrowserControllerStepDispatcher>>())?
+        .checked_add(size_of::<Option<BrowserControllerDispatch>>())?
+        .checked_add(size_of::<ControllerStepGateBrand>())?;
+    let listener = size_of::<BrowserPreparedListenerStart<'_>>()
+        .checked_add(size_of::<Option<&mut dyn BrowserListenerStartDispatcher>>())?
+        .checked_add(size_of::<Option<BrowserListenerDispatch>>())?
+        .checked_add(size_of::<ListenerStartGateBrand>())?;
+    Some((step, listener))
+}
+#[cfg(target_os = "macos")]
+pub(super) fn prepaid_source_gate<R>(
+    action: &dyn OpeningToken,
+    association: &BrowserSourceHostAssociation,
+    loans: &BrowserLoans<'_, '_>,
+    credit:&mut crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessCredit,
+    operation:crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessOperation,
+    bytes: usize,
+    execute: impl FnOnce() -> R,
+) -> Result<R, BrowserActionIssueError> {
+    // Nominal affinity is inspected before mutating the funding allowance.
+    action.validate_business_origin(credit.origin(), loans)?;
+    credit.origin().validate_host_association(association)?;
+    // A known source/host/end refusal wins before funding bookkeeping faults.
+    action.retention_gate(&mut || association.while_current(|| ()).map_err(association_error))?;
+    credit
+        .require_operation(operation)
+        .map_err(BrowserActionIssueError::Funding)?;
+    let work = SourceControllerLifetime::business_validation_work_upper()
+        .and_then(|n| n.checked_mul(4))
+        .and_then(|n| n.checked_add(bytes))
+        .expect("business layout checked before credit issuance");
+    credit
+        .storage(bytes, 4, work)
+        .map_err(BrowserActionIssueError::Funding)?;
+    let mut execute = Some(execute);
+    let mut result = None;
+    action.retention_gate(&mut || {
+        association
+            .while_current(|| {
+                result = Some(execute.take().expect("exclusive fixed dispatch")());
+            })
+            .map_err(association_error)
+    })?;
+    Ok(result.expect("successful fixed dispatch gate executed"))
+}
+#[cfg(target_os = "macos")]
+pub(super) fn with_prepaid_controller_step(
+    action: &dyn OpeningToken,
+    association: &BrowserSourceHostAssociation,
+    mut credit:crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessCredit,
+    loans: &BrowserLoans<'_, '_>,
+    dispatcher: &mut dyn BrowserControllerStepDispatcher,
+) -> Result<BrowserControllerDispatch, BrowserActionIssueError> {
+    let bytes = business_gate_headers().expect("checked business layout").0;
+    prepaid_source_gate(action,association,loans,&mut credit,
+        crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessOperation::ControllerDispatch,bytes,|| {
+        let mut brand=ControllerStepGateBrand;
+        dispatcher.dispatch(BrowserPreparedControllerStep{end:association.end(),association,action,_brand:&mut brand})
+    })
+}
+#[cfg(target_os = "macos")]
+impl BrowserConnectedOpening<'_> {
+    pub fn with_prepaid_controller_step(
+        &self,
+        credit:crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+        dispatcher: &mut dyn BrowserControllerStepDispatcher,
+    ) -> Result<BrowserControllerDispatch, BrowserActionIssueError> {
+        with_prepaid_controller_step(self.action, &self.association, credit, loans, dispatcher)
+    }
+    pub fn with_prepaid_listener_start(
+        &self,
+        mut credit:crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+        dispatcher: &mut dyn BrowserListenerStartDispatcher,
+    ) -> Result<BrowserListenerDispatch, BrowserActionIssueError> {
+        let bytes = business_gate_headers().expect("checked business layout").1;
+        prepaid_source_gate(self.action,&self.association,loans,&mut credit,
+            crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessOperation::ListenerStart,bytes,|| {
+            let mut brand=ListenerStartGateBrand;
+            dispatcher.dispatch(BrowserPreparedListenerStart{end:self.association.end(),_brand:&mut brand})
+        })
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl BrowserConnectedOpening<'_> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_lifetime_prepaid(
+        &self,
+        lifetime: &SourceControllerLifetime,
+        mut credit:crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        lifetime.validate(loans)?;
+        if !self.action.same_lifetime(lifetime)
+            || !self.association.same_relation(lifetime.association())
+        {
+            return Err(BrowserActionIssueError::Cursor(
+                BrowserActionCursorFault::ForeignAction,
+            ));
+        }
+        prepaid_source_gate(self.action,&self.association,loans,&mut credit,
+            crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessOperation::LaunchValidation,
+            size_of::<Self>(),||())
     }
 }

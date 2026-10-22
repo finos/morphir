@@ -397,14 +397,17 @@ pub use actions::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
     BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
     BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
-    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
-    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserConnectedPreparationFailure, BrowserControllerDispatch, BrowserControllerPreparation,
+    BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
+    BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
+    BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
     BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::{
-    ConnectedOpeningAction, PreparedConnectedOpening, SourceControllerActivity,
+    ConnectedOpeningAction, MeasuredInspectionReply, MeasuredOpeningReply, PendingSourceOperation,
+    PreparedConnectedOpening, SourceBusinessOrigin, SourceControllerActivity,
     SourceControllerLifetime, SourceControllerOperationShape, SourceOperationJournal,
-    MeasuredInspectionReply, MeasuredOpeningReply, PendingSourceOperation, SourceOperationKind,
+    SourceOperationKind, business_gate_headers,
 };
 #[cfg(test)]
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::{
@@ -415,6 +418,42 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actio
     with_source_controller_limits,
 };
 impl BrowserLoans<'_, '_> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn reserve_source_business_comparison(
+        &mut self,
+        lifetime: &SourceControllerLifetime,
+        visits: usize,
+        bytes: usize,
+        checks: usize,
+    ) -> Result<(), BrowserInputError> {
+        use crate::workbench::model_originals::workflow::observation_check::CompareResource;
+        lifetime.validate(self)?;
+        let (_, _, comparison) = self.inner.physical_owners()?;
+        for (resource, value) in [
+            (CompareResource::StructuralVisits, visits),
+            (CompareResource::ComparisonBytes, bytes),
+            (CompareResource::Checks, checks),
+        ] {
+            comparison
+                .charge(resource, value)
+                .map_err(inputs::BrowserInputFault::Comparison)?;
+        }
+        Ok(())
+    }
+    #[cfg(test)]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn business_usage(&mut self)->Result<(
+        crate::workbench::model_originals::workflow::decode::DecodeUsage,
+        crate::workbench::model_originals::workflow::pipeline::installed::observation::InstalledObservationUsage,
+        crate::workbench::model_originals::workflow::observation_check::CompareUsage,
+    ),BrowserInputError>{
+        let (decode, receiving, comparison) = self.inner.physical_owners()?;
+        Ok((decode.usage(), receiving.usage(), comparison.usage()))
+    }
+    #[cfg(test)]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn business_test_ready(
+        &self,
+    ) -> Result<(), BrowserInputError> {
+        self.ready()
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare_controller_buffers(
         &mut self,
         lifetime: &SourceControllerLifetime,
@@ -434,7 +473,9 @@ impl BrowserLoans<'_, '_> {
 #[path = "execution_loans/tests.rs"]
 mod tests;
 #[cfg(test)]
-pub(in crate::workbench::model_originals::workflow::pipeline::browser) use tests::{controlled_clients, with_compiled_artifact_control};
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use tests::{
+    controlled_clients, with_compiled_artifact_control,
+};
 
 /// Residual SAME-owner planning quantities, never a reservation or grant.
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct BrowserCleanupRemaining

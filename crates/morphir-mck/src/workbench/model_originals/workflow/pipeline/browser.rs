@@ -3,8 +3,10 @@ pub use adapter::execution_loans::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
     BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
     BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
-    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
-    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserConnectedPreparationFailure, BrowserControllerDispatch, BrowserControllerPreparation,
+    BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
+    BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
+    BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
     BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub use collection::{
@@ -92,3 +94,16 @@ fn prepared_browser_originals<R, E>(
 
 #[cfg(test)]
 mod privacy_probe;
+
+#[cfg(target_os = "macos")]
+pub use controller::{BrowserControllerBusinessCredit, BrowserControllerBusinessFundingFault};
+
+#[cfg(target_os = "macos")]
+pub use controller::{
+    BrowserConnectedObservation, BrowserContinuingController, BrowserControllerContinueFailure,
+    BrowserControllerFile, BrowserControllerFiles, BrowserControllerFinished,
+    BrowserControllerLaunchFailure, BrowserControllerPreparationFailure,
+    BrowserControllerPreparationFinished, BrowserControllerPreparationStage,
+    BrowserControllerRetirement, BrowserFixedController, BrowserInspectionPreparationFailure,
+    BrowserInspectionSettlementFailure, BrowserMaterializedController, BrowserStoppedController,
+};

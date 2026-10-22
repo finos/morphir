@@ -3,8 +3,10 @@ pub use pipeline::{
     BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserActionIssueError,
     BrowserConnectedControlFault, BrowserConnectedJournalFault, BrowserConnectedOpening,
     BrowserConnectedOperationObservation, BrowserConnectedOperationsSnapshot,
-    BrowserConnectedPreparationFailure, BrowserControllerPreparation, BrowserExecutionAction,
-    BrowserInspectionBoundarySource, BrowserOwnedInspectionBoundary, BrowserInspectionPendingReply, BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening,
+    BrowserConnectedPreparationFailure, BrowserControllerDispatch, BrowserControllerPreparation,
+    BrowserControllerStepDispatcher, BrowserExecutionAction, BrowserInspectionBoundarySource,
+    BrowserInspectionPendingReply, BrowserListenerDispatch, BrowserListenerStartDispatcher,
+    BrowserOpeningSelectionReply, BrowserOwnedConnectedOpening, BrowserOwnedInspectionBoundary,
     BrowserPreparedControllerStep, BrowserPreparedListenerStart,
 };
 pub use pipeline::{
@@ -154,3 +156,16 @@ mod native_original_unit_controls;
 
 #[cfg(test)]
 mod streaming_field_tests;
+
+#[cfg(target_os = "macos")]
+pub use pipeline::{BrowserControllerBusinessCredit, BrowserControllerBusinessFundingFault};
+
+#[cfg(target_os = "macos")]
+pub use pipeline::{
+    BrowserConnectedObservation, BrowserContinuingController, BrowserControllerContinueFailure,
+    BrowserControllerFile, BrowserControllerFiles, BrowserControllerFinished,
+    BrowserControllerLaunchFailure, BrowserControllerPreparationFailure,
+    BrowserControllerPreparationFinished, BrowserControllerPreparationStage,
+    BrowserControllerRetirement, BrowserFixedController, BrowserInspectionPreparationFailure,
+    BrowserInspectionSettlementFailure, BrowserMaterializedController, BrowserStoppedController,
+};

@@ -62,38 +62,109 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct So
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) alias_bytes: usize,
 }
 impl SourceControllerLifetime {
-    pub(super) fn same_action_journal(&self, action:&BrowserExecutionAction<'_, '_, '_, '_, '_, '_, '_>)->bool {
-        let cursor=lock(&action.owner.actions);
+    pub(super) fn journal_identity(&self) -> &SourceOperationIdentity {
+        &self.journal
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn prepare_business_origin(
+        &self,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<SourceBusinessOrigin, BrowserInputError> {
+        SourceBusinessOrigin::prepare(self, loans)
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn business_validation_work_upper()
+    -> Option<usize> {
+        SourceControllerActivity::validation_work_upper()?
+            .checked_add(size_of::<BrowserActionCursor<'_>>())?
+            .checked_add(size_of::<std::sync::MutexGuard<'_, BrowserActionCursor<'_>>>())?
+            .checked_add(SourceOperationIdentity::copy_work_upper()?)
+    }
+    pub(super) fn same_action_journal(
+        &self,
+        action: &BrowserExecutionAction<'_, '_, '_, '_, '_, '_, '_>,
+    ) -> bool {
+        let cursor = lock(&action.owner.actions);
         matches!(cursor.phase,Phase::Issued(position) if position==action.position())
-            && matches!(action.state,TokenState::Outstanding)
+            && matches!(action.state, TokenState::Outstanding)
             && self.journal.preflight(&cursor.operations).is_ok()
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_action_relation(
-        &self, action:&BrowserExecutionAction<'_, '_, '_, '_, '_, '_, '_>, loans:&mut BrowserLoans<'_, '_>
-    )->Result<(),BrowserActionIssueError> {
-        action.owner.validate_action(action,loans)?;
+        &self,
+        action: &BrowserExecutionAction<'_, '_, '_, '_, '_, '_, '_>,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        action.owner.validate_action(action, loans)?;
         loans.validate_relation_stamp(&self.stamp)?;
-        action.owner.child.identity.while_active(|| {
-            let cursor=lock(&action.owner.actions);
-            self.journal.preflight(&cursor.operations).map_err(BrowserActionIssueError::Cursor)
-        }).map_err(|cause|BrowserActionIssueError::Input(source(cause)))??;
+        action
+            .owner
+            .child
+            .identity
+            .while_active(|| {
+                let cursor = lock(&action.owner.actions);
+                self.journal
+                    .preflight(&cursor.operations)
+                    .map_err(BrowserActionIssueError::Cursor)
+            })
+            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))??;
         self.journal.fund_validation(loans.inner)?;
         self.association.prepare_validation(loans)?;
-        action.owner.child.identity.while_active(|| {
-            self.association.while_current(|| {
-                let cursor=lock(&action.owner.actions);
-                self.journal.matches(&cursor.operations).map_err(BrowserActionIssueError::Cursor)
-            }).map_err(super::borrowed::association_error)?
-        }).map_err(|cause|BrowserActionIssueError::Input(source(cause)))?
+        action
+            .owner
+            .child
+            .identity
+            .while_active(|| {
+                self.association
+                    .while_current(|| {
+                        let cursor = lock(&action.owner.actions);
+                        self.journal
+                            .matches(&cursor.operations)
+                            .map_err(BrowserActionIssueError::Cursor)
+                    })
+                    .map_err(super::borrowed::association_error)?
+            })
+            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))?
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn pending_alias(&self) -> &str {
+    #[cfg(target_os = "macos")]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_action_relation_prepaid(
+        &self,
+        action: &BrowserExecutionAction<'_, '_, '_, '_, '_, '_, '_>,
+        credit:&crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        self.validate(loans)?;
+        credit.origin().validate_action(action, loans)?;
+        credit
+            .origin()
+            .validate_host_association(self.association())?;
+        if !self.same_action_journal(action) {
+            return Err(BrowserActionIssueError::Cursor(
+                BrowserActionCursorFault::ForeignAction,
+            ));
+        }
+        Ok(())
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn pending_alias(
+        &self,
+    ) -> &str {
         &self.pending.0
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn association(&self) -> &BrowserSourceHostAssociation {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn association(
+        &self,
+    ) -> &BrowserSourceHostAssociation {
         &self.association
     }
+    #[cfg(target_os = "macos")]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_opening_prepaid(
+        &self,
+        opening: &super::BrowserConnectedOpening<'_>,
+        credit:crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        opening.validate_lifetime_prepaid(self, credit, loans)
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_opening(
-        &self, opening: &super::BrowserConnectedOpening<'_>, loans: &mut BrowserLoans<'_, '_>
+        &self,
+        opening: &super::BrowserConnectedOpening<'_>,
+        loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<(), BrowserActionIssueError> {
         opening.validate_lifetime(self, loans)
     }
@@ -151,44 +222,135 @@ pub struct ConnectedOpeningAction<'a, 'compiled, 'run, 'case, 'sources, 'raw, 's
     choices: ConnectedChoiceFunding,
 }
 impl ConnectedOpeningAction<'_, '_, '_, '_, '_, '_, '_> {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_controller_lifetime(
+        &self,
+        lifetime: &SourceControllerLifetime,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        self.action.owner.validate_action(&self.action, loans)?;
+        lifetime.validate(loans)?;
+        if !lifetime.same_action_journal(&self.action) {
+            return Err(BrowserActionIssueError::Cursor(
+                BrowserActionCursorFault::ForeignAction,
+            ));
+        }
+        Ok(())
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn settle_controller_reply(
         &mut self,
         reply: &MeasuredOpeningReply,
         lifetime: &SourceControllerLifetime,
         loans: &mut BrowserLoans<'_, '_>,
     ) -> Result<(), BrowserActionIssueError> {
-        lifetime.validate_action_relation(&self.action,loans)?;
+        lifetime.validate_action_relation(&self.action, loans)?;
         if self.position() != lifetime.operation.opening_position {
-            return Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::ForeignAction));
+            return Err(BrowserActionIssueError::Cursor(
+                BrowserActionCursorFault::ForeignAction,
+            ));
         }
         lifetime.association.prepare_validation(loans)?;
-        let action=&mut self.action;
-        let owner=action.owner;
-        owner.child.identity.while_active(|| {
-            lifetime.association.while_current(|| {
-                let mut cursor=lock(&owner.actions);
-                match cursor.phase {
-                    Phase::Issued(position) if position==action.position() && matches!(action.state, TokenState::Outstanding)=>{},
-                    Phase::Refused{cause,..}=>return Err(BrowserActionIssueError::Cursor(cause)),
-                    _=>return Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::ForeignAction)),
-                }
-                if !reply.matches(&cursor.operations) {return Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::ForeignAction));}
-                if !reply.accepted_by(&cursor.operations) {return Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::UnsupportedOperation));}
-                cursor.phase=if cursor.inputs.len()==0 {Phase::Exhausted}else{Phase::Ready};
-                action.state=TokenState::Consumed;
-                Ok(())
-            }).map_err(super::borrowed::association_error)?
-        }).map_err(|cause| BrowserActionIssueError::Input(source(cause)))?
+        self.settle_validated_reply(reply, lifetime)
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn refuse_controller(&mut self, cause: BrowserActionIssueError) {
-        let mut cursor=lock(&self.action.owner.actions);
+    #[cfg(target_os = "macos")]
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn settle_controller_reply_prepaid(
+        &mut self,
+        reply: &MeasuredOpeningReply,
+        lifetime: &SourceControllerLifetime,
+        mut credit:crate::workbench::model_originals::workflow::pipeline::browser::controller::BrowserControllerBusinessCredit,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        lifetime.validate_action_relation_prepaid(&self.action, &credit, loans)?;
+        credit.require_operation(crate::workbench::model_originals::workflow::pipeline::browser::controller::source_business::SourceBusinessOperation::OpeningSettlement).map_err(BrowserActionIssueError::Funding)?;
+        let bytes = size_of::<Self>();
+        let work = SourceControllerLifetime::business_validation_work_upper()
+            .and_then(|n| n.checked_mul(4))
+            .and_then(|n| n.checked_add(bytes))
+            .expect("checked prepaid settlement layout");
+        credit
+            .storage(bytes, 1, work)
+            .map_err(BrowserActionIssueError::Funding)?;
+        if self.position() != lifetime.operation.opening_position {
+            return Err(BrowserActionIssueError::Cursor(
+                BrowserActionCursorFault::ForeignAction,
+            ));
+        }
+        self.settle_validated_reply(reply, lifetime)
+    }
+    fn settle_validated_reply(
+        &mut self,
+        reply: &MeasuredOpeningReply,
+        lifetime: &SourceControllerLifetime,
+    ) -> Result<(), BrowserActionIssueError> {
+        let action = &mut self.action;
+        let owner = action.owner;
+        owner
+            .child
+            .identity
+            .while_active(|| {
+                lifetime
+                    .association
+                    .while_current(|| {
+                        let mut cursor = lock(&owner.actions);
+                        match cursor.phase {
+                            Phase::Issued(position)
+                                if position == action.position()
+                                    && matches!(action.state, TokenState::Outstanding) => {}
+                            Phase::Refused { cause, .. } => {
+                                return Err(BrowserActionIssueError::Cursor(cause));
+                            }
+                            _ => {
+                                return Err(BrowserActionIssueError::Cursor(
+                                    BrowserActionCursorFault::ForeignAction,
+                                ));
+                            }
+                        }
+                        if !reply.matches(&cursor.operations) {
+                            return Err(BrowserActionIssueError::Cursor(
+                                BrowserActionCursorFault::ForeignAction,
+                            ));
+                        }
+                        if !reply.accepted_by(&cursor.operations) {
+                            return Err(BrowserActionIssueError::Cursor(
+                                BrowserActionCursorFault::UnsupportedOperation,
+                            ));
+                        }
+                        cursor.phase = if cursor.inputs.len() == 0 {
+                            Phase::Exhausted
+                        } else {
+                            Phase::Ready
+                        };
+                        action.state = TokenState::Consumed;
+                        Ok(())
+                    })
+                    .map_err(super::borrowed::association_error)?
+            })
+            .map_err(|cause| BrowserActionIssueError::Input(source(cause)))?
+    }
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn refuse_controller(
+        &mut self,
+        cause: BrowserActionIssueError,
+    ) {
+        let mut cursor = lock(&self.action.owner.actions);
         cursor.first_issue.get_or_insert(cause);
-        cursor.refuse(self.action.position(), BrowserActionCursorFault::OperationRefused);
-        self.action.state=TokenState::Refused;
+        cursor.refuse(
+            self.action.position(),
+            BrowserActionCursorFault::OperationRefused,
+        );
+        self.action.state = TokenState::Refused;
     }
-    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn inspect_controller_cause<R>(&self, inspect: impl FnOnce(&BrowserActionIssueError)->R)->R {
-        let cursor=lock(&self.action.owner.actions);
-        inspect(cursor.first_issue.as_ref().expect("failed controller retained actual cause"))
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn inspect_controller_cause<
+        R,
+    >(
+        &self,
+        inspect: impl FnOnce(&BrowserActionIssueError) -> R,
+    ) -> R {
+        let cursor = lock(&self.action.owner.actions);
+        inspect(
+            cursor
+                .first_issue
+                .as_ref()
+                .expect("failed controller retained actual cause"),
+        )
     }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn position(
         &self,
@@ -349,7 +511,8 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             ));
         };
         let operands = [selected.provider_id, selected.locator, project_id];
-        let mut requested = size_of::<Self>().checked_add(size_of::<PreparedOpeningData<'_>>())
+        let mut requested = size_of::<Self>()
+            .checked_add(size_of::<PreparedOpeningData<'_>>())
             .ok_or_else(|| overflow(loans.inner))?;
         let mut visits = requested;
         for value in operands {
@@ -691,22 +854,38 @@ impl<'a, 'compiled, 'run, 'case, 'sources, 'raw, 'supplied>
             .ok_or_else(|| overflow(loans.inner))?;
         loans.reserve_controlled_host_storage(metadata, 4, metadata)?;
         self.preparation.gate().prepare_validation(loans)?;
-        let mut pending = self.preparation.gate().while_preparing(self.action.owner, || {
-            let mut text = String::new();
-            text.try_reserve_exact(self.pending.len()).map_err(|_| BrowserActionIssueError::Cursor(BrowserActionCursorFault::UnsupportedOperation))?;
-            Ok::<_, BrowserActionIssueError>(SourcePendingAlias(text))
-        })??;
-        let spare = pending.0.capacity().checked_sub(self.pending.len()).ok_or_else(|| overflow(loans.inner))?;
+        let mut pending = self
+            .preparation
+            .gate()
+            .while_preparing(self.action.owner, || {
+                let mut text = String::new();
+                text.try_reserve_exact(self.pending.len()).map_err(|_| {
+                    BrowserActionIssueError::Cursor(BrowserActionCursorFault::UnsupportedOperation)
+                })?;
+                Ok::<_, BrowserActionIssueError>(SourcePendingAlias(text))
+            })??;
+        let spare = pending
+            .0
+            .capacity()
+            .checked_sub(self.pending.len())
+            .ok_or_else(|| overflow(loans.inner))?;
         loans.reserve_controlled_host_storage(spare, 0, 0)?;
         self.preparation.gate().prepare_validation(loans)?;
-        self.preparation.gate().while_preparing(self.action.owner, || {
-            pending.0.push_str(self.pending);
-        })?;
+        self.preparation
+            .gate()
+            .while_preparing(self.action.owner, || {
+                pending.0.push_str(self.pending);
+            })?;
         SourceOperationIdentity::fund(loans.inner)?;
         self.preparation.gate().prepare_validation(loans)?;
-        let journal=self.preparation.gate().while_preparing(self.action.owner, || {
-            lock(&self.action.owner.actions).operations.identity_after_funding()
-        })?;
+        let journal = self
+            .preparation
+            .gate()
+            .while_preparing(self.action.owner, || {
+                lock(&self.action.owner.actions)
+                    .operations
+                    .identity_after_funding()
+            })?;
         // Genuine child debt precedes the first possible acquisition effect.
         // Drop alone remains Abandoned; logical action replies cannot retire it.
         let binding = self

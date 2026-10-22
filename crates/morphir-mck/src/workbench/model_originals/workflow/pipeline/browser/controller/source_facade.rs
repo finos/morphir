@@ -12,6 +12,8 @@ use super::*;
 mod launch_storage;
 use super::super::adapter::execution_loans::{BrowserActionIssueError, BrowserConnectedOpening};
 use super::super::funded_workflow::BrowserPhysicalParts;
+use super::BrowserControllerBusinessCredit;
+use super::source_business::SourceBusinessOperation;
 use crate::transport::process::{
     CommandSpecError, ProcessError, interactive::InteractiveSpawnError,
 };
@@ -368,6 +370,24 @@ impl std::fmt::Debug for BrowserControllerLaunchFailure {
     }
 }
 impl BrowserMaterializedController {
+    /// Move the sole already-funded listener allowance. This grants neither
+    /// source authority nor a successful native listener; its actual consumer
+    /// still validates the same opening/host and records its real effects.
+    pub fn listener_start_credit(
+        &mut self,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<BrowserControllerBusinessCredit, BrowserActionIssueError> {
+        self.target
+            .take_business(SourceBusinessOperation::ListenerStart, loans)
+    }
+    #[cfg(test)]
+    pub(super) fn take_dispatch_credit(
+        &mut self,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<BrowserControllerBusinessCredit, BrowserActionIssueError> {
+        self.target
+            .take_business(SourceBusinessOperation::ControllerDispatch, loans)
+    }
     pub fn launch(
         mut self,
         launch_uri: &str,
@@ -376,9 +396,13 @@ impl BrowserMaterializedController {
     ) -> Result<super::source_progress::BrowserFixedController, BrowserControllerLaunchFailure>
     {
         let prepared = (|| {
+            let credit = self
+                .target
+                .take_business(SourceBusinessOperation::LaunchValidation, loans)
+                .map_err(LaunchCause::Association)?;
             let (target, lifetime, prepayment, limits) = self.target.launch_parts();
             lifetime
-                .validate_opening(opening, loans)
+                .validate_opening_prepaid(opening, credit, loans)
                 .map_err(LaunchCause::Association)?;
             prepayment
                 .validate(lifetime, limits, loans)
