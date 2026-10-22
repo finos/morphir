@@ -284,3 +284,34 @@ test "metadata authority is an explicit single host file on run" {
     )
   }
 }
+
+///|
+test "ordinary syntax preserves ordered repeats and rejects conflicts in both orders" {
+  let cli = parse_cli([
+    "run", "--project=a", "--project", "b", "--log-file= λ log ", "--help",
+  ])
+  assert_eq(values(cli, "project"), ["a", "b"])
+  assert_eq(value(cli, "log-file"), " λ log ")
+  assert_true(cli.help)
+  for
+    args in [
+      ["--log-file=a", "--log-file", "b"],
+      ["--all", "--project=p"],
+      ["--project=p", "--all"],
+      ["--file", "--directory"],
+      ["--directory", "--file"],
+      ["--json", "--json-lines"],
+      ["--json-lines", "--json"],
+      ["--help", "--unknown"],
+      ["--log-file="],
+    ] {
+    assert_true(
+      try {
+        ignore(parse_cli(["run"] + args))
+        false
+      } catch {
+        _ => true
+      },
+    )
+  }
+}

@@ -314,6 +314,37 @@ fn command_spec(path : String, name : String) -> @argparse.Command {
 }
 
 ///|
+/// Validate only local MCK syntax before choosing an opaque raw tail. Set
+/// rejects repeated controls and bounds candidate attempts. Domain checks and
+/// successful help still use parse_cli_local. No-banner must be recognized here
+/// before filtering, so it cannot be mistaken for a missing option's value.
+fn mck_syntax_spec() -> @argparse.Command {
+  @argparse.Command(
+    "morphir",
+    flags=[
+      @argparse.FlagArg("help", short='h', global=true),
+      @argparse.FlagArg("json", global=true),
+      @argparse.FlagArg("json-lines", global=true),
+      @argparse.FlagArg("no-banner", global=true, hidden=true),
+    ],
+    subcommands=[
+      @argparse.Command(
+        "mck",
+        options=command_schema("mck").options.map(name => {
+          @argparse.OptionArg(name, action=Set)
+        }),
+        disable_help_flag=true,
+        disable_version_flag=true,
+        disable_help_subcommand=true,
+      ),
+    ],
+    disable_help_flag=true,
+    disable_version_flag=true,
+    disable_help_subcommand=true,
+  )
+}
+
+///|
 fn parse_cli(args : Array[String]) -> Cli raise {
   if mck_cli(args) is Some(cli) {
     return cli

@@ -88,15 +88,7 @@ fn mck_cli(args : Array[String]) -> Cli? raise {
   if start >= args.length() || args[start] != "mck" {
     return None
   }
-  let mut end = start + 1
-  let options = command_schema("mck").options
-  while end < args.length() && args[end].has_prefix("-") && args[end] != "--" {
-    let token = args[end]
-    end += 1
-    if options.any(name => token == "--" + name) && end < args.length() {
-      end += 1
-    }
-  }
+  let end = mck_prefix_end(args, start + 1)
   let bootstrap = args[:end].to_owned().filter(arg => arg != "--no-banner")
   let cli = parse_cli_local(bootstrap)
   let offset = if end < args.length() && args[end] == "--" {
@@ -110,6 +102,39 @@ fn mck_cli(args : Array[String]) -> Cli? raise {
     None
   }
   Some({ ..cli, forwarded, })
+}
+
+///|
+/// Five Set options of arity one, no positionals and valueless flags can
+/// consume at most five candidate tokens. The first valid boundary is therefore
+/// among six candidates. ArrayViews avoid copying every attempted prefix.
+/// Adding repeatable/multivalued options or positionals requires requalification.
+fn mck_prefix_end(args : Array[String], start : Int32) -> Int32 raise {
+  let syntax = mck_syntax_spec()
+  let mut candidates = 0
+  for end = start; end <= args.length(); end = end + 1 {
+    if end < args.length() && args[end] != "--" && args[end].has_prefix("-") {
+      continue
+    }
+    candidates += 1
+    let valid = try {
+      ignore(syntax.parse(argv=args[:end], env=Map([])))
+      true
+    } catch {
+      _ => false
+    }
+    if valid {
+      return end
+    }
+    if candidates >= command_schema("mck").options.length() + 1 {
+      break
+    }
+  }
+  // Request the library's diagnostic only after exhausting the syntax budget.
+  ignore(syntax.parse(argv=args, env=Map([]))) catch {
+    error => raise @config.Invalid(error.to_string())
+  }
+  raise @config.Invalid("mck.invalid_local_prefix")
 }
 
 ///|
