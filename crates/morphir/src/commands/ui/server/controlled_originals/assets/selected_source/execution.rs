@@ -8,6 +8,8 @@ use morphir_mck::workbench::{
 #[cfg(target_os = "macos")]
 mod composition;
 #[cfg(target_os = "macos")]
+mod prefix;
+#[cfg(target_os = "macos")]
 mod pump;
 #[cfg(target_os = "macos")]
 use composition::{

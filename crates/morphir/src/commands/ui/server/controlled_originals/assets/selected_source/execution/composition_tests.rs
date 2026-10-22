@@ -3,17 +3,21 @@
 use super::composition::{
     SelectedSourceControllerListenerFailure, SelectedSourceControllerRunning,
 };
-use super::pump::{SelectedSourcePumpProgress, SelectedSourcePumpStep, SelectedSourcePumpStop};
+use super::prefix::{
+    SelectedNativeCleanup, SelectedSourcePrefixInputs, SelectedSourcePrefixOutcome,
+    execute_selected_source_prefix,
+};
 use super::*;
 use crate::commands::ui::server::controlled_originals::{
     ControlledHostFault, ControlledHostFinish, ControlledHostJoined, HostState, ListenerOwner,
 };
 use morphir_mck::transport::Limits;
 use morphir_mck::workbench::{
-    BrowserActionCursorTerminal, BrowserAdapterCompletion, BrowserConnectedControlFault,
-    BrowserConnectedObservation, BrowserControllerFile, BrowserControllerFiles,
+    BrowserActionCursorFault, BrowserActionCursorTerminal, BrowserAdapterCompletion,
+    BrowserConnectedControlFault, BrowserControllerFile, BrowserControllerFiles,
     BrowserControllerLaunchStage, BrowserControllerRetirement, BrowserDocumentBounds,
-    BrowserListenerDispatch, RunConfiguration, load, with_executed_browser_originals,
+    BrowserListenerDispatch, BrowserRowState, RunConfiguration, load,
+    with_executed_browser_originals,
 };
 use std::{path::Path, sync::atomic::AtomicBool, time::Duration};
 
@@ -187,6 +191,109 @@ fn composition_control(control: CompositionControl) {
     let corpus = load(&base).unwrap();
     let runtime = runtime();
     let mut callbacks = 0;
+    if matches!(control, CompositionControl::PhysicalExitAfterListener) {
+        let interrupted = AtomicBool::new(false);
+        with_executed_browser_originals(
+            &corpus,
+            &configuration,
+            BrowserDocumentBounds::new(2, 4096, 1024).unwrap(),
+            |run, loans, producer| {
+                callbacks += 1;
+                let application_end = Instant::now() + Duration::from_secs(30);
+                let application =
+                    RunObservedApplication::prepare(&acquired, loans, application_end).unwrap();
+                // One maintained entry owns host, acquisition, pump and cleanup.
+                // /bin/sleep is an OS owner control, never a browser candidate.
+                let outcome = execute_selected_source_prefix(
+                    run,
+                    loans,
+                    producer,
+                    SelectedSourcePrefixInputs {
+                        application: &application,
+                        manifest: &acquired.manifest,
+                        runtime_archive: &archive,
+                        files: BrowserControllerFiles {
+                            chromium: BrowserControllerFile {
+                                path: Path::new("/bin/sleep"),
+                                byte_length: chromium_bytes,
+                            },
+                            node: BrowserControllerFile {
+                                path: &node,
+                                byte_length: node_bytes,
+                            },
+                            root: &cwd,
+                        },
+                        transport: Limits {
+                            max_frame: 128,
+                            stderr_capture: 64,
+                            ..Limits::DEFAULT
+                        },
+                        document: ingress::DocumentIngressLimits {
+                            observation_owners: 4,
+                            observation_events: 8,
+                            records: 2,
+                            journal_bytes: 4096,
+                            frame_bytes: 1024,
+                            socket_tasks: 6,
+                            request_tickets: 16,
+                            request_header_fields: 32,
+                            request_header_bytes: 1024,
+                        },
+                        original_end: application.end,
+                    },
+                    runtime.handle(),
+                    &interrupted,
+                );
+                assert!(matches!(
+                    run.actions_terminal(),
+                    BrowserActionCursorTerminal::Refused {
+                        position: 0,
+                        cause: BrowserActionCursorFault::OutstandingAbandoned,
+                    }
+                ));
+                Err::<(), SelectedSourcePrefixOutcome>(outcome)
+            },
+            |inventory| {
+                assert_eq!(inventory.rows().len(), 23);
+                assert_eq!(inventory.first_failed_row(), Some(0));
+                let BrowserAdapterCompletion::Returned(Err(outcome)) =
+                    inventory.rows()[0].attempt().unwrap().callback()
+                else {
+                    panic!("the exact owned prefix outcome must survive the callback");
+                };
+                assert_eq!(
+                    outcome.opening_control_fault(),
+                    Some(BrowserConnectedControlFault::ChromiumExited)
+                );
+                assert_eq!(
+                    outcome.physical_retirement(),
+                    Some(BrowserControllerRetirement::Returned)
+                );
+                assert!(matches!(
+                    &outcome.native,
+                    SelectedNativeCleanup::Observed(ControlledHostFinish::Joined(
+                        ControlledHostJoined::Clean
+                    ))
+                ));
+                assert!(!inventory.rows()[0].attempt().unwrap().collection_complete());
+                for row in &inventory.rows()[1..] {
+                    assert!(matches!(
+                        row.state(),
+                        BrowserRowState::NotAttempted {
+                            prior_failure_row: 0
+                        }
+                    ));
+                }
+            },
+        )
+        .unwrap();
+        assert_eq!(callbacks, 1);
+        assert!(!cwd.join("artifacts").exists());
+        assert!(!cwd.join("profile").exists());
+        assert!(!cwd.join("driver.mjs").exists());
+        assert!(cwd.is_dir());
+        return;
+    }
     with_executed_browser_originals(
         &corpus,
         &configuration,
@@ -514,16 +621,6 @@ fn listener_boundary(
                 )))
             ));
         }
-        Ok(running) if matches!(control, CompositionControl::PhysicalExitAfterListener) => {
-            process_exit_pump(
-                running,
-                loans,
-                runtime,
-                original_host,
-                application,
-                original_end,
-            );
-        }
         Ok(SelectedSourceControllerRunning {
             native,
             mut controller,
@@ -561,80 +658,4 @@ fn listener_boundary(
             ));
         }
     }
-}
-
-fn process_exit_pump(
-    mut running: SelectedSourceControllerRunning<'_>,
-    loans: &mut BrowserLoans<'_, '_>,
-    runtime: &tokio::runtime::Runtime,
-    original_host: *const HostState,
-    application: &RunObservedApplication,
-    original_end: Instant,
-) {
-    let same_host = Arc::as_ptr(&running.native.owner.host.state) == original_host;
-    let same_image = Arc::ptr_eq(&running.native.owner.application.image, &application.image);
-    let listener_running = matches!(
-        running.native.owner.host.listener,
-        ListenerOwner::Running { .. }
-    );
-    let interrupted = AtomicBool::new(false);
-    let mut terminal: Option<SelectedSourcePumpStep> = None;
-    let mut unexpected_observation = None;
-    // Poll one actual fixed timer/yield before the physical-exit refusal.
-    runtime.block_on(running.wait_for_change());
-    while Instant::now() < original_end {
-        let step = running.step_opening(loans, &interrupted);
-        if step.observation != Ok(BrowserConnectedObservation::Pending) {
-            unexpected_observation.get_or_insert(step.observation);
-        }
-        match &step.progress {
-            SelectedSourcePumpProgress::Stopped(_) => {
-                terminal = Some(step);
-                break;
-            }
-            SelectedSourcePumpProgress::More | SelectedSourcePumpProgress::AwaitingChange => {}
-        }
-        // Use the maintained wait: it captures no loans and resets no deadline.
-        // There is no driver stdout; notifications cannot mint extra effects.
-        runtime.block_on(running.wait_for_change());
-    }
-    let SelectedSourceControllerRunning {
-        native,
-        mut controller,
-    } = running;
-    controller.request_shutdown();
-    while !controller.poll_cleanup() && Instant::now() < original_end {
-        std::thread::sleep(Duration::from_millis(1));
-    }
-    let physical = controller.finish();
-    let retirement = physical.as_ref().ok().map(|finished| finished.retirement());
-    let first_control = physical
-        .as_ref()
-        .ok()
-        .and_then(|finished| finished.first_control_fault());
-    drop(native.opening);
-    let joined = runtime.block_on(native.owner.host.finish_joined());
-    drop(native.owner.application);
-    // All refusal/end assertions follow the actual physical and native joins.
-    assert!(physical.is_ok(), "actual pump process teardown incomplete");
-    assert_eq!(retirement, Some(BrowserControllerRetirement::Returned));
-    assert!(same_host && same_image && listener_running);
-    assert!(matches!(
-        joined,
-        ControlledHostFinish::Joined(ControlledHostJoined::Clean)
-    ));
-    assert_eq!(unexpected_observation, None);
-    assert!(matches!(
-        terminal,
-        Some(SelectedSourcePumpStep {
-            observation: Ok(BrowserConnectedObservation::Pending),
-            progress: SelectedSourcePumpProgress::Stopped(SelectedSourcePumpStop::Controller(
-                BrowserConnectedControlFault::ChromiumExited
-            )),
-        })
-    ));
-    assert_eq!(
-        first_control,
-        Some(BrowserConnectedControlFault::ChromiumExited)
-    );
 }

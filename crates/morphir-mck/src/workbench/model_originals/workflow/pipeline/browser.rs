@@ -102,7 +102,7 @@ pub use controller::{BrowserControllerBusinessCredit, BrowserControllerBusinessF
 pub use controller::{
     BrowserConnectedObservation, BrowserContinuingController, BrowserControllerContinueFailure,
     BrowserControllerFile, BrowserControllerFiles, BrowserControllerFinished,
-    BrowserControllerLaunchFailure, BrowserControllerLaunchStage,
+    BrowserControllerLaunchFailure, BrowserControllerLaunchFinished, BrowserControllerLaunchStage,
     BrowserControllerPreparationFailure, BrowserControllerPreparationFinished,
     BrowserControllerPreparationStage, BrowserControllerRetirement, BrowserFixedController,
     BrowserInspectionPreparationFailure, BrowserInspectionSettlementFailure,

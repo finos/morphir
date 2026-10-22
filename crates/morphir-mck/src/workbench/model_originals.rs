@@ -544,7 +544,7 @@ pub use workflow::{BrowserControllerBusinessCredit, BrowserControllerBusinessFun
 pub use workflow::{
     BrowserConnectedObservation, BrowserContinuingController, BrowserControllerContinueFailure,
     BrowserControllerFile, BrowserControllerFiles, BrowserControllerFinished,
-    BrowserControllerLaunchFailure, BrowserControllerLaunchStage,
+    BrowserControllerLaunchFailure, BrowserControllerLaunchFinished, BrowserControllerLaunchStage,
     BrowserControllerPreparationFailure, BrowserControllerPreparationFinished,
     BrowserControllerPreparationStage, BrowserControllerRetirement, BrowserFixedController,
     BrowserInspectionPreparationFailure, BrowserInspectionSettlementFailure,
