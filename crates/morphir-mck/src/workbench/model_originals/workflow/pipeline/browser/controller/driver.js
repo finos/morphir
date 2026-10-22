@@ -33,11 +33,150 @@ function acceptSample(clock, previous, current) {
   return current;
 }
 
+// crates/morphir-mck/src/workbench/model_originals/workflow/pipeline/browser/controller/observed-document.ts
+class ObservedLaunch {
+  #launchUrl;
+  #documentUrl;
+  constructor(launchUrl, documentUrl) {
+    this.#launchUrl = launchUrl;
+    this.#documentUrl = documentUrl;
+    Object.freeze(this);
+  }
+  get launchUrl() {
+    return this.#launchUrl;
+  }
+  get documentUrl() {
+    return this.#documentUrl;
+  }
+  static parse(input) {
+    const match = /^http:\/\/127\.0\.0\.1:([1-9][0-9]{0,4})\/launch\?token=([A-Za-z0-9_-]{42}[AEIMQUYcgkosw048])$/.exec(input);
+    if (!match || Number(match[1]) > 65535)
+      throw new Error("observed launch shape");
+    const parsed = new URL(input);
+    return new ObservedLaunch(input, `${parsed.origin}/observed/?mode=connected-originals`);
+  }
+}
+function parseObservedLaunch(input) {
+  return ObservedLaunch.parse(input);
+}
+
+class ObservedDocumentOperation {
+  #page;
+  #frame;
+  #target;
+  #checkClock;
+  #invalidated;
+  #rejectInvalidated;
+  #state = { kind: "prepared" };
+  #commits = 0;
+  constructor(page, target, checkClock) {
+    this.#page = page;
+    this.#frame = page.mainFrame();
+    this.#target = target;
+    this.#checkClock = checkClock;
+    let reject;
+    this.#invalidated = new Promise((_, rejectPromise) => {
+      reject = rejectPromise;
+    });
+    this.#rejectInvalidated = reject;
+    this.#invalidated.catch(() => {});
+  }
+  #fail(error) {
+    if (this.#state.kind === "faulted")
+      return this.#state.error;
+    this.#state = { kind: "faulted", error };
+    this.#rejectInvalidated(error);
+    return error;
+  }
+  #onClose = () => {
+    this.#fail(new Error("observed Page closed"));
+  };
+  #onCrash = () => {
+    this.#fail(new Error("observed Page crashed"));
+  };
+  #onNavigation = (frame) => {
+    if (frame !== this.#frame)
+      return;
+    this.#commits += 1;
+    if (this.#commits !== 1 || frame.url() !== this.#target.documentUrl) {
+      this.#fail(new Error("observed document replaced"));
+    }
+  };
+  assertCurrent() {
+    if (this.#state.kind === "faulted")
+      throw this.#state.error;
+    if (this.#state.kind === "disposed")
+      throw new Error("observed operation disposed");
+    try {
+      this.#checkClock();
+      if (this.#page.isClosed() || this.#page.mainFrame() !== this.#frame) {
+        throw new Error("observed Page unavailable");
+      }
+      if (this.#commits !== 0 && this.#page.url() !== this.#target.documentUrl) {
+        throw new Error("observed document replaced");
+      }
+    } catch (error) {
+      throw this.#fail(error);
+    }
+  }
+  async#effect(effect) {
+    this.assertCurrent();
+    const result = await Promise.race([effect(), this.#invalidated]);
+    this.assertCurrent();
+    return result;
+  }
+  async start() {
+    if (this.#state.kind === "faulted")
+      throw this.#state.error;
+    if (this.#state.kind !== "prepared")
+      throw new Error("observed operation already started");
+    this.#state = { kind: "starting" };
+    this.#page.on("close", this.#onClose);
+    this.#page.on("crash", this.#onCrash);
+    this.#page.on("framenavigated", this.#onNavigation);
+    try {
+      const response = await this.#effect(() => this.#page.goto(this.#target.launchUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: 0
+      }));
+      if (!response || response.status() !== 200 || this.#commits !== 1) {
+        throw new Error("observed document navigation refused");
+      }
+      await this.#effect(() => this.#page.evaluate(async () => {
+        const originalDocument = document;
+        const fixedLocation = `${location.origin}/observed/?mode=connected-originals`;
+        if (location.href !== fixedLocation)
+          throw new Error("observed document location");
+        await import(new URL("/observed/observed-document-entry.js", location.origin).href);
+        if (document !== originalDocument || location.href !== fixedLocation) {
+          throw new Error("observed document replaced during startup");
+        }
+      }));
+      this.assertCurrent();
+      this.#state = { kind: "ready" };
+    } catch (error) {
+      throw this.#fail(error);
+    }
+  }
+  dispose() {
+    if (this.#state.kind === "starting")
+      this.#fail(new Error("observed operation disposed during startup"));
+    this.#page.off("close", this.#onClose);
+    this.#page.off("crash", this.#onCrash);
+    this.#page.off("framenavigated", this.#onNavigation);
+    if (this.#state.kind !== "faulted")
+      this.#state = { kind: "disposed" };
+  }
+}
+
 // crates/morphir-mck/src/workbench/model_originals/workflow/pipeline/browser/controller/driver.ts
-var [entry, endpoint, artifacts, atText, endText, numerText, denomText] = process.argv.slice(2);
-if (process.argv.length !== 9 || !entry || !endpoint || !artifacts) {
+var [entry, endpoint, artifacts, atText, endText, numerText, denomText, variant, launchUrl] = process.argv.slice(2);
+if (process.argv.length !== 9 && process.argv.length !== 11 || !entry || !endpoint || !artifacts) {
   throw new Error("fixed driver arguments required");
 }
+var observedTarget = process.argv.length === 11 ? variant === "observed-workbench" && launchUrl ? parseObservedLaunch(launchUrl) : (() => {
+  throw new Error("fixed driver launch variant");
+})() : undefined;
 var clock = parseClock(atText, endText, numerText, denomText);
 var previous = clock.calibrated;
 function beforeEffect() {
@@ -46,8 +185,17 @@ function beforeEffect() {
 var browser;
 var context;
 var page;
-var first;
+var observedDocument;
+var first = { kind: "none" };
+function retainFirst(error) {
+  if (first.kind === "none")
+    first = { kind: "failed", error };
+}
+function retainedFailure() {
+  return first;
+}
 async function cleanup() {
+  observedDocument?.dispose();
   for (const release of [
     async () => {
       if (page) {
@@ -74,7 +222,7 @@ async function cleanup() {
     try {
       await release();
     } catch (error) {
-      first ??= error;
+      retainFirst(error);
     }
   }
 }
@@ -95,21 +243,31 @@ async function main() {
     if (!pending.endsWith(`
 `))
       continue;
-    if (sequence === 1 && pending === `1 page
-`) {
+    if (sequence === 1 && pending === (observedTarget ? `1 start
+` : `1 page
+`)) {
       beforeEffect();
       context = await browser.newContext();
       beforeEffect();
       page = await context.newPage();
       beforeEffect();
-      process.stdout.write(`1 page-created
+      if (observedTarget) {
+        observedDocument = new ObservedDocumentOperation(page, observedTarget, beforeEffect);
+        await observedDocument.start();
+        observedDocument.assertCurrent();
+        beforeEffect();
+        process.stdout.write(`1 document-started
+`);
+      } else
+        process.stdout.write(`1 page-created
 `);
     } else if (sequence === 2 && pending === `2 close
 `) {
+      observedDocument?.assertCurrent();
       beforeEffect();
       await cleanup();
-      if (first)
-        throw first;
+      if (first.kind === "failed")
+        throw first.error;
       beforeEffect();
       process.stdout.write(`2 disconnected
 `);
@@ -124,10 +282,11 @@ async function main() {
 try {
   await main();
 } catch (error) {
-  first ??= error;
+  retainFirst(error);
 }
 await cleanup();
-if (first) {
-  console.error(first);
+var finalFailure = retainedFailure();
+if (finalFailure.kind === "failed") {
+  console.error(observedTarget ? "fixed observed document driver failed" : finalFailure.error);
   process.exitCode = 1;
 }

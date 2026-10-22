@@ -1,12 +1,19 @@
-// Fixed physical component. No application scenario, evaluation or source grant.
+// Fixed physical component and one closed observed application operation.
+// Neither launch spelling nor application completion creates a source grant.
 import { pathToFileURL } from "node:url";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import { parseClock, acceptSample } from "./driver-clock";
+import { ObservedDocumentOperation, parseObservedLaunch } from "./observed-document";
 
-const [entry, endpoint, artifacts, atText, endText, numerText, denomText] = process.argv.slice(2);
-if (process.argv.length !== 9 || !entry || !endpoint || !artifacts) {
+const [entry, endpoint, artifacts, atText, endText, numerText, denomText, variant, launchUrl] = process.argv.slice(2);
+if ((process.argv.length !== 9 && process.argv.length !== 11) || !entry || !endpoint || !artifacts) {
   throw new Error("fixed driver arguments required");
 }
+const observedTarget = process.argv.length === 11
+  ? variant === "observed-workbench" && launchUrl
+    ? parseObservedLaunch(launchUrl)
+    : (() => { throw new Error("fixed driver launch variant"); })()
+  : undefined;
 // This binary is selected and hashed by Rust. The basis is qualified only for
 // that Node24.22 Darwin binary, not arbitrary Node runtimes or platforms.
 const clock = parseClock(atText, endText, numerText, denomText);
@@ -17,14 +24,23 @@ function beforeEffect(): void {
 let browser: Browser | undefined;
 let context: BrowserContext | undefined;
 let page: Page | undefined;
-let first: unknown;
+let observedDocument: ObservedDocumentOperation | undefined;
+type FirstFailure = { readonly kind: "none" } | { readonly kind: "failed"; readonly error: unknown };
+let first: FirstFailure = { kind: "none" };
+function retainFirst(error: unknown): void {
+  if (first.kind === "none") first = { kind: "failed", error };
+}
+function retainedFailure(): FirstFailure { return first; }
 async function cleanup(): Promise<void> {
+  // Intentional cleanup retires the retained lifecycle guard before closing
+  // the SAME actual Page. A startup/business failure remains the first error.
+  observedDocument?.dispose();
   for (const release of [
     async () => { if (page) { const actual = page; page = undefined; await actual.close(); } },
     async () => { if (context) { const actual = context; context = undefined; await actual.close(); } },
     async () => { if (browser) { const actual = browser; browser = undefined; await actual.close(); } },
   ]) {
-    try { await release(); } catch (error) { first ??= error; }
+    try { await release(); } catch (error) { retainFirst(error); }
   }
 }
 async function main(): Promise<void> {
@@ -41,17 +57,24 @@ async function main(): Promise<void> {
     if (bytes.length + pending.length > 8 || bytes.some((byte) => byte > 127)) throw new Error("command shape");
     pending += bytes.toString("ascii");
     if (!pending.endsWith("\n")) continue;
-    if (sequence === 1 && pending === "1 page\n") {
+    if (sequence === 1 && pending === (observedTarget ? "1 start\n" : "1 page\n")) {
       beforeEffect();
       context = await browser.newContext();
       beforeEffect();
       page = await context.newPage();
       beforeEffect();
-      process.stdout.write("1 page-created\n");
+      if (observedTarget) {
+        observedDocument = new ObservedDocumentOperation(page, observedTarget, beforeEffect);
+        await observedDocument.start();
+        observedDocument.assertCurrent();
+        beforeEffect();
+        process.stdout.write("1 document-started\n");
+      } else process.stdout.write("1 page-created\n");
     } else if (sequence === 2 && pending === "2 close\n") {
+      observedDocument?.assertCurrent();
       beforeEffect();
       await cleanup();
-      if (first) throw first;
+      if (first.kind === "failed") throw first.error;
       beforeEffect();
       process.stdout.write("2 disconnected\n");
     } else throw new Error("command order");
@@ -60,6 +83,13 @@ async function main(): Promise<void> {
   }
   if (pending || sequence !== 3) throw new Error("incomplete command stream");
 }
-try { await main(); } catch (error) { first ??= error; }
+try { await main(); } catch (error) { retainFirst(error); }
 await cleanup();
-if (first) { console.error(first); process.exitCode = 1; }
+const finalFailure = retainedFailure();
+if (finalFailure.kind === "failed") {
+  // Playwright navigation errors can include the one-use launch credential.
+  // Keep the actual first error internally; the closed observed variant does
+  // not serialize that error or its URL into process diagnostics.
+  console.error(observedTarget ? "fixed observed document driver failed" : finalFailure.error);
+  process.exitCode = 1;
+}
