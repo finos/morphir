@@ -62,8 +62,15 @@ impl SourceLaunchStorage {
             .ok_or(StorageFault::Overflow)?;
         let work = super::super::super::adapter::execution_loans::SourceControllerActivity::validation_work_upper()
             .and_then(|n| n.checked_mul(guards)).ok_or(StorageFault::Overflow)?;
+        // The cancellation-only result can be produced after residual cleanup
+        // planning, so its visible owner wrapper is paid here, before any
+        // physical acquisition. No later cleanup debit is permitted.
+        let headers = size_of::<Self>()
+            .checked_add(size_of::<BrowserUnlaunchedControllerFinished>())
+            .ok_or(StorageFault::Overflow)?;
+        let work = work.checked_add(headers).ok_or(StorageFault::Overflow)?;
         loans
-            .reserve_controlled_host_storage(size_of::<Self>(), 1, work)
+            .reserve_controlled_host_storage(headers, 2, work)
             .map_err(StorageFault::Input)?;
         path(
             &mut self.chromium_program,

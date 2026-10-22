@@ -188,6 +188,17 @@ pub struct BrowserMaterializedController {
     target: MaterializedControllerTarget,
     storage: SourceLaunchStorage,
 }
+/// Actual unlaunched filesystem teardown and controller-binding retirement.
+/// No process outcome, native-host join or source-action completion is implied.
+pub struct BrowserUnlaunchedControllerFinished {
+    files: SourceUnlaunchedFileOutcome,
+    retirement: BrowserControllerRetirement,
+}
+impl BrowserUnlaunchedControllerFinished {
+    pub fn retirement(&self) -> BrowserControllerRetirement {
+        self.retirement
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BrowserControllerLaunchStage {
     Association,
@@ -370,6 +381,20 @@ impl std::fmt::Debug for BrowserControllerLaunchFailure {
     }
 }
 impl BrowserMaterializedController {
+    /// Cleanup retains its existing authority after business cancellation or
+    /// expiry. An incomplete teardown returns this SAME owner, without a
+    /// fabricated launch refusal or an imaginary child process.
+    pub fn finish_cleanup(self) -> Result<BrowserUnlaunchedControllerFinished, Self> {
+        let Self { target, storage } = self;
+        match target.finish_unlaunched() {
+            Err(target) => Err(Self { target, storage }),
+            Ok((mut lifetime, files)) => {
+                drop(storage);
+                let retirement = retire(&mut lifetime);
+                Ok(BrowserUnlaunchedControllerFinished { files, retirement })
+            }
+        }
+    }
     /// Move the sole already-funded listener allowance. This grants neither
     /// source authority nor a successful native listener; its actual consumer
     /// still validates the same opening/host and records its real effects.

@@ -382,13 +382,11 @@ fn browser_source_facade_06_full_runtime_step_survives_unreserved_storage_exhaus
         };
         // Always finish the actual owned filesystem path before the assertion,
         // including the genuine old per-call funding refusal in the RED run.
-        let BrowserMaterializedController { target, storage } = materialized;
-        let (mut lifetime, files) = target
-            .finish_unlaunched()
+        let finished = materialized
+            .finish_cleanup()
             .ok()
             .expect("prepaid owned cleanup remains possible after business refusal");
-        drop((storage, files));
-        let retirement = retire(&mut lifetime);
+        let retirement = finished.retirement();
         assert!(!root.join("profile").exists());
         assert!(!root.join("artifacts").exists());
         assert!(!root.join("driver.mjs").exists());

@@ -548,4 +548,5 @@ pub use workflow::{
     BrowserControllerPreparationFinished, BrowserControllerPreparationStage,
     BrowserControllerRetirement, BrowserFixedController, BrowserInspectionPreparationFailure,
     BrowserInspectionSettlementFailure, BrowserMaterializedController, BrowserStoppedController,
+    BrowserUnlaunchedControllerFinished,
 };

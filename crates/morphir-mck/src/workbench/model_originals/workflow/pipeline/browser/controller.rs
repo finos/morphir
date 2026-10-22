@@ -45,6 +45,7 @@ pub use source_facade::{
     BrowserControllerFile, BrowserControllerFiles, BrowserControllerLaunchFailure,
     BrowserControllerPreparationFailure, BrowserControllerPreparationFinished,
     BrowserControllerPreparationStage, BrowserControllerRetirement, BrowserMaterializedController,
+    BrowserUnlaunchedControllerFinished,
 };
 pub use source_progress::{
     BrowserConnectedObservation, BrowserContinuingController, BrowserControllerContinueFailure,

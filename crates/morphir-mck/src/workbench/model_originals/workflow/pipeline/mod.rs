@@ -1265,4 +1265,5 @@ pub use browser::{
     BrowserControllerPreparationFinished, BrowserControllerPreparationStage,
     BrowserControllerRetirement, BrowserFixedController, BrowserInspectionPreparationFailure,
     BrowserInspectionSettlementFailure, BrowserMaterializedController, BrowserStoppedController,
+    BrowserUnlaunchedControllerFinished,
 };
