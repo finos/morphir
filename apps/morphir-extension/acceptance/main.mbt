@@ -313,15 +313,43 @@ async fn installed_case(
 }
 
 ///|
+fn acceptance_command() -> @argparse.Command {
+  @argparse.Command("morphir-extension-acceptance", disable_help_flag=true, positionals=[
+    @argparse.PositionArg(
+      "guest",
+      num_args=@argparse.ValueRange::single(),
+      allow_hyphen_values=true,
+    ),
+    @argparse.PositionArg(
+      "repository",
+      num_args=@argparse.ValueRange::single(),
+      allow_hyphen_values=true,
+    ),
+    @argparse.PositionArg(
+      "evidence",
+      num_args=@argparse.ValueRange::single(),
+      allow_hyphen_values=true,
+    ),
+  ])
+}
+
+///|
+fn parse_acceptance_operands(
+  argv : ArrayView[String],
+) -> @argparse.Matches raise {
+  // All user tokens are literal data. Only this synthetic delimiter is syntax.
+  let literal = ["--"] + argv.to_owned()
+  acceptance_command().parse(argv=literal)
+}
+
+///|
 async fn main {
-  let args = @env.args()
-  guard args.length() == 4 else {
-    fail("guest, repository and evidence root required")
-  }
-  let guest = @fs.realpath(args[1])
-  let repository = @fs.realpath(args[2])
-  @fs.mkdir(args[3], recursive=true, allow_exist=true)
-  let evidence = @fs.realpath(args[3])
+  let args = parse_acceptance_operands(@env.args()[1:])
+  let guest = @fs.realpath(args.values["guest"][0])
+  let repository = @fs.realpath(args.values["repository"][0])
+  let evidence_path = args.values["evidence"][0]
+  @fs.mkdir(evidence_path, recursive=true, allow_exist=true)
+  let evidence = @fs.realpath(evidence_path)
   let root = @fs.tmpdir(prefix="morphir-mep-acceptance-")
   defer @fs.rmdir(root, recursive=true)
   @fs.mkdir(root + "/process")
