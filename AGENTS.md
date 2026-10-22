@@ -1,7 +1,24 @@
 # Agent Instructions
 
 General agent configuration, skills and the pre-push checks for this repository are in
-[.github/AGENTS.md](.github/AGENTS.md). This file adds how work is tracked.
+[.github/AGENTS.md](.github/AGENTS.md). This file adds repository-wide MoonBit dependency guidance and how work
+is tracked.
+
+## MoonBit dependencies
+
+For all MoonBit code in this repository, prefer suitable Mooncakes packages from
+these owners when selecting dependencies:
+
+- `moonbitlang`
+- `moonbit-community`
+- `moonrockz`
+- `bobzhang`
+- `moonbitstack`
+
+This list is not a ranking or an exclusive allowlist. Check that a package fits the
+required API, target platforms and maintenance needs, reuse existing dependencies
+where suitable, and follow the applicable version-pinning policy. Prefer an
+existing library to a new implementation of the same utility.
 
 ## Project-management skill
 

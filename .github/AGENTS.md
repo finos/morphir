@@ -157,6 +157,9 @@ To add a new skill:
 
 ## Task Scripts
 
+Read [scripts/AGENTS.md](../scripts/AGENTS.md) before adding or changing automation. It covers library-based
+command-line parsing. The root [MoonBit dependency guidance](../AGENTS.md#moonbit-dependencies) applies here too.
+
 Use standalone MoonBit `.mbtx` scripts for scripting and automation, especially mise tasks and CI orchestration.
 One script then works on every platform with the pinned toolchain that mise already installs. Do not add Bash,
 PowerShell, Python or JavaScript orchestration scripts, or move that logic into inline workflow shell blocks.
