@@ -65,7 +65,10 @@ impl LiteralController {
         assert_eq!(COMPLETE.len(), SOURCE_STDOUT_BOUND);
         let prefix = SOURCE_STDOUT_BOUND - b"4 disconnected\n".len();
         let actual = Self::prepare_at(bytes, prefix, Conversation::ClosePending);
-        assert_eq!(&actual.owner.as_ref().unwrap().capture[..prefix], &COMPLETE[..prefix]);
+        assert_eq!(
+            &actual.owner.as_ref().unwrap().capture[..prefix],
+            &COMPLETE[..prefix]
+        );
         actual
     }
     fn prepare_at(bytes: &[u8], prefix: usize, conversation: Conversation) -> Self {
@@ -83,7 +86,10 @@ impl LiteralController {
             ..Limits::DEFAULT
         };
         let driver = literal_driver(&root, bytes, limits);
-        assert_eq!(driver.process().stdout().len(), bytes.len().min(SOURCE_STDOUT_BOUND));
+        assert_eq!(
+            driver.process().stdout().len(),
+            bytes.len().min(SOURCE_STDOUT_BOUND)
+        );
         let mut capture = vec![0; SOURCE_STDOUT_BOUND];
         // These earlier bytes are already consumed conversation history. The
         // final frame below still comes from this actual joined stdout owner.
@@ -214,7 +220,11 @@ fn browser_controller_receive_03_actual_trailing_byte_refuses_join() {
 
 #[test]
 fn browser_controller_observe_01_retained_actual_reply_survives_prior_cancel_and_end() {
-    let mut actual = LiteralController::prepare_at(b"2 project-selected\n", 0, Conversation::SourceOpeningPending);
+    let mut actual = LiteralController::prepare_at(
+        b"2 project-selected\n",
+        0,
+        Conversation::SourceOpeningPending,
+    );
     let root_ids = actual.owner().ids();
     actual.owner().first_fault = Some(ControllerFault::Cancelled);
     actual.owner().end = Instant::now(); // Literal component original already elapsed.
@@ -222,13 +232,22 @@ fn browser_controller_observe_01_retained_actual_reply_survives_prior_cancel_and
     assert_eq!(actual.owner().ids(), root_ids);
     assert_eq!(actual.owner().first_fault, Some(ControllerFault::Cancelled));
     let outcome = actual.finish();
-    assert_eq!(reply, Ok(ControllerProgress::Reply(ControllerReply::SourceOpening(ControllerChoiceReply::ProjectSelected))));
+    assert_eq!(
+        reply,
+        Ok(ControllerProgress::Reply(ControllerReply::SourceOpening(
+            ControllerChoiceReply::ProjectSelected
+        )))
+    );
     assert_eq!(outcome.first_fault(), Some(&ControllerFault::Cancelled));
 }
 
 #[test]
 fn browser_controller_observe_02_late_unknown_bytes_cannot_form_a_reply() {
-    let mut actual = LiteralController::prepare_at(b"2 invented-result\n", 0, Conversation::SourceOpeningPending);
+    let mut actual = LiteralController::prepare_at(
+        b"2 invented-result\n",
+        0,
+        Conversation::SourceOpeningPending,
+    );
     actual.owner().first_fault = Some(ControllerFault::Cancelled);
     let reply = actual.owner().observe_source_retained();
     let outcome = actual.finish();

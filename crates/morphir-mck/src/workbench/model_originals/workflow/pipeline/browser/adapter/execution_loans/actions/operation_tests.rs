@@ -286,77 +286,163 @@ fn browser_source_receipts_02_requested_drop_and_late_data_do_not_mutate_prior_c
 
 #[test]
 fn browser_controller_step_01_exact_source_original_end_and_outstanding_token() {
-    with_opening_setup(Duration::from_secs(10), |run, loans, producer, transcript, stimulus, end| {
-        let action = run.next_action(loans).unwrap().unwrap();
-        let sdk = action.connected_opening(producer, transcript, stimulus, loans).unwrap();
-        let seen = sdk.with_prepared_controller_step(loans, |permit| permit.original_end()).unwrap();
-        assert_eq!(seen, end);
-        assert!(matches!(run.actions_terminal(), BrowserActionCursorTerminal::Incomplete {
-            consumed: 0, pending: Some(0), ..
-        }));
-    });
+    with_opening_setup(
+        Duration::from_secs(10),
+        |run, loans, producer, transcript, stimulus, end| {
+            let action = run.next_action(loans).unwrap().unwrap();
+            let sdk = action
+                .connected_opening(producer, transcript, stimulus, loans)
+                .unwrap();
+            let seen = sdk
+                .with_prepared_controller_step(loans, |permit| permit.original_end())
+                .unwrap();
+            assert_eq!(seen, end);
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+        },
+    );
 }
 
 #[test]
 fn browser_controller_step_02_original_expiry_refuses_callback_before_permit_allocation() {
-    with_opening_setup(Duration::from_millis(100), |run, loans, producer, transcript, stimulus, end| {
-        let action = run.next_action(loans).unwrap().unwrap();
-        let sdk = action.connected_opening(producer, transcript, stimulus, loans).unwrap();
-        std::thread::sleep(end.saturating_duration_since(Instant::now()) + Duration::from_millis(1));
-        let before = {
-            let (decode, receiving, comparison) = loans.inner.physical_owners().unwrap();
-            (decode.usage(), receiving.usage(), comparison.usage())
-        };
-        let mut called = false;
-        let refused = sdk.with_prepared_controller_step(loans, |_| {called = true;});
-        assert!(!called);
-        assert!(matches!(refused, Err(BrowserActionIssueError::Host(
+    with_opening_setup(
+        Duration::from_millis(100),
+        |run, loans, producer, transcript, stimulus, end| {
+            let action = run.next_action(loans).unwrap().unwrap();
+            let sdk = action
+                .connected_opening(producer, transcript, stimulus, loans)
+                .unwrap();
+            std::thread::sleep(
+                end.saturating_duration_since(Instant::now()) + Duration::from_millis(1),
+            );
+            let before = {
+                let (decode, receiving, comparison) = loans.inner.physical_owners().unwrap();
+                (decode.usage(), receiving.usage(), comparison.usage())
+            };
+            let mut called = false;
+            let refused = sdk.with_prepared_controller_step(loans, |_| {
+                called = true;
+            });
+            assert!(!called);
+            assert!(matches!(refused, Err(BrowserActionIssueError::Host(
             crate::workbench::model_originals::workflow::pipeline::browser::BrowserHostTranscriptFault::End
         ))));
-        let after = {
-            let (decode, receiving, comparison) = loans.inner.physical_owners().unwrap();
-            (decode.usage(), receiving.usage(), comparison.usage())
-        };
-        // The existing currentness guard pays its actual validation visits.
-        // It must refuse before retaining a new permit/wrapper or dispatching.
-        assert_eq!(before.0.slots, after.0.slots);
-        assert_eq!(before.1.retained_bytes(), after.1.retained_bytes());
-        assert_eq!(before.2, after.2);
-    });
+            let after = {
+                let (decode, receiving, comparison) = loans.inner.physical_owners().unwrap();
+                (decode.usage(), receiving.usage(), comparison.usage())
+            };
+            // The existing currentness guard pays its actual validation visits.
+            // It must refuse before retaining a new permit/wrapper or dispatching.
+            assert_eq!(before.0.slots, after.0.slots);
+            assert_eq!(before.1.retained_bytes(), after.1.retained_bytes());
+            assert_eq!(before.2, after.2);
+        },
+    );
 }
 
 #[test]
 fn browser_source_settlement_01_foreign_sealed_data_cannot_consume_genuine_action() {
-    with_opening_setup(Duration::from_secs(10), |run, loans, producer, transcript, stimulus, _| {
-        let action = run.next_action(loans).unwrap().unwrap();
-        let (mut owned, lifetime)=action.prepare_connected_controller(producer,transcript,stimulus,loans).unwrap();
-        let foreign = SourceOperationJournal::prepare(loans.inner).unwrap();
-        let measured = foreign.requested(SourceOperationKind::Opening).unwrap().opening(BrowserOpeningSelectionReply::ProjectSelected).ok().unwrap();
-        assert!(matches!(owned.settle_controller_reply(&measured,&lifetime,loans),Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::ForeignAction))));
-        assert!(matches!(run.actions_terminal(), BrowserActionCursorTerminal::Incomplete {consumed:0,pending:Some(0),..}));
-    });
+    with_opening_setup(
+        Duration::from_secs(10),
+        |run, loans, producer, transcript, stimulus, _| {
+            let action = run.next_action(loans).unwrap().unwrap();
+            let (mut owned, lifetime) = action
+                .prepare_connected_controller(producer, transcript, stimulus, loans)
+                .unwrap();
+            let foreign = SourceOperationJournal::prepare(loans.inner).unwrap();
+            let measured = foreign
+                .requested(SourceOperationKind::Opening)
+                .unwrap()
+                .opening(BrowserOpeningSelectionReply::ProjectSelected)
+                .ok()
+                .unwrap();
+            assert!(matches!(
+                owned.settle_controller_reply(&measured, &lifetime, loans),
+                Err(BrowserActionIssueError::Cursor(
+                    BrowserActionCursorFault::ForeignAction
+                ))
+            ));
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+        },
+    );
 }
 
 #[test]
 fn browser_source_settlement_02_matching_unaccepted_data_is_not_logical_success() {
-    with_opening_setup(Duration::from_secs(10), |run, loans, producer, transcript, stimulus, _| {
-        let action = run.next_action(loans).unwrap().unwrap();
-        let (mut owned, lifetime)=action.prepare_connected_controller(producer,transcript,stimulus,loans).unwrap();
-        // Private DATA constructor control, not a controller/client execution.
-        let measured=lock(&run.actions).operations.requested(SourceOperationKind::Opening).unwrap().opening(BrowserOpeningSelectionReply::Unavailable).ok().unwrap();
-        assert!(matches!(owned.settle_controller_reply(&measured,&lifetime,loans),Err(BrowserActionIssueError::Cursor(BrowserActionCursorFault::UnsupportedOperation))));
-        assert!(matches!(run.actions_terminal(), BrowserActionCursorTerminal::Incomplete {consumed:0,pending:Some(0),..}));
-    });
+    with_opening_setup(
+        Duration::from_secs(10),
+        |run, loans, producer, transcript, stimulus, _| {
+            let action = run.next_action(loans).unwrap().unwrap();
+            let (mut owned, lifetime) = action
+                .prepare_connected_controller(producer, transcript, stimulus, loans)
+                .unwrap();
+            // Private DATA constructor control, not a controller/client execution.
+            let measured = lock(&run.actions)
+                .operations
+                .requested(SourceOperationKind::Opening)
+                .unwrap()
+                .opening(BrowserOpeningSelectionReply::Unavailable)
+                .ok()
+                .unwrap();
+            assert!(matches!(
+                owned.settle_controller_reply(&measured, &lifetime, loans),
+                Err(BrowserActionIssueError::Cursor(
+                    BrowserActionCursorFault::UnsupportedOperation
+                ))
+            ));
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+        },
+    );
 }
 
 #[test]
 fn browser_source_settlement_03_earlier_data_cannot_settle_after_original_end() {
-    with_opening_setup(Duration::from_millis(100), |run, loans, producer, transcript, stimulus, end| {
-        let action = run.next_action(loans).unwrap().unwrap();
-        let (mut owned, lifetime)=action.prepare_connected_controller(producer,transcript,stimulus,loans).unwrap();
-        let measured=lock(&run.actions).operations.requested(SourceOperationKind::Opening).unwrap().opening(BrowserOpeningSelectionReply::ProjectSelected).ok().unwrap();
-        std::thread::sleep(end.saturating_duration_since(Instant::now())+Duration::from_millis(1));
-        assert!(matches!(owned.settle_controller_reply(&measured,&lifetime,loans),Err(BrowserActionIssueError::Host(crate::workbench::model_originals::workflow::pipeline::browser::BrowserHostTranscriptFault::End))));
-        assert!(matches!(run.actions_terminal(), BrowserActionCursorTerminal::Incomplete {consumed:0,pending:Some(0),..}));
-    });
+    with_opening_setup(
+        Duration::from_millis(100),
+        |run, loans, producer, transcript, stimulus, end| {
+            let action = run.next_action(loans).unwrap().unwrap();
+            let (mut owned, lifetime) = action
+                .prepare_connected_controller(producer, transcript, stimulus, loans)
+                .unwrap();
+            let measured = lock(&run.actions)
+                .operations
+                .requested(SourceOperationKind::Opening)
+                .unwrap()
+                .opening(BrowserOpeningSelectionReply::ProjectSelected)
+                .ok()
+                .unwrap();
+            std::thread::sleep(
+                end.saturating_duration_since(Instant::now()) + Duration::from_millis(1),
+            );
+            assert!(matches!(owned.settle_controller_reply(&measured,&lifetime,loans),Err(BrowserActionIssueError::Host(crate::workbench::model_originals::workflow::pipeline::browser::BrowserHostTranscriptFault::End))));
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+        },
+    );
 }

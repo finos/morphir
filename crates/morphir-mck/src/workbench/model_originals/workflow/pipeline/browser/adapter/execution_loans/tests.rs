@@ -107,7 +107,13 @@ fn with_compiled_fixture(
     .unwrap();
 }
 
-pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn controlled_clients<'a, 'case, 'sources, 'raw, 'supplied>(
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn controlled_clients<
+    'a,
+    'case,
+    'sources,
+    'raw,
+    'supplied,
+>(
     compiled: &'a [CompiledExecution<'case, 'sources, 'raw, 'supplied>],
 ) -> Vec<
     &'a crate::workbench::model_originals::workflow::source_compile::CompiledSourceCase<
