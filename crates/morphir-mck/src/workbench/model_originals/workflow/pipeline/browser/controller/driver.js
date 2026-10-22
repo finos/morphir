@@ -438,6 +438,7 @@ async function cleanup() {
   }
 }
 async function main() {
+  beforeEffect();
   const { chromium } = await import(pathToFileURL(entry).href);
   beforeEffect();
   browser = await chromium.connectOverCDP(endpoint, { artifactsDir: artifacts, isLocal: true });

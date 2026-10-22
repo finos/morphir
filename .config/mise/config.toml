@@ -408,6 +408,13 @@ run = [
     "cargo run --locked -p morphir -- mck schema check --kit spec/ir/mck",
 ]
 
+[tasks."mck:controller-test"]
+description = "Test fixed driver clock, startup and reference ownership without a browser"
+run = [
+    "bun test crates/morphir-mck/src/workbench/model_originals/workflow/pipeline/browser/controller/driver-clock.test.ts",
+    "node --test crates/morphir-mck/src/workbench/model_originals/workflow/pipeline/browser/controller/driver-startup.test.ts crates/morphir-mck/src/workbench/model_originals/workflow/pipeline/browser/controller/observed-document.test.ts",
+]
+
 [tasks."spec:mep"]
 description = "Compile spec/mep/contract and refresh spec/mep/generated/mep.ir.json"
 # The script compiles in an isolated environment, like the mep_contract test,

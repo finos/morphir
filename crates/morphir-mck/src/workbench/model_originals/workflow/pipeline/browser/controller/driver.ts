@@ -50,6 +50,7 @@ async function cleanup(): Promise<void> {
   }
 }
 async function main(): Promise<void> {
+  beforeEffect();
   const { chromium } = await import(pathToFileURL(entry!).href) as typeof import("playwright-core");
   beforeEffect();
   browser = await chromium.connectOverCDP(endpoint!, { artifactsDir: artifacts!, isLocal: true });
