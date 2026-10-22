@@ -1,7 +1,8 @@
 //! Literal filesystem ownership controls. No browser or product action runs.
 use super::super::adapter::execution_loans::with_source_controller_lifetime;
 use super::super::adapter::execution_loans::{
-    with_foreign_source_controller_lifetime, with_revoked_source_controller_lifetime,
+    with_foreign_source_controller_lifetime, with_full_controller_setup,
+    with_revoked_full_controller_setup,
 };
 use super::acquisition::{
     ControllerAcquisitionFault, ControllerFileInput, ControllerTargetInput,
@@ -41,10 +42,19 @@ fn source_acquisition_01_declared_length_refuses_before_hash_read_and_retains_he
     let root = tempfile::tempdir().unwrap();
     let base = root.path().canonicalize().unwrap();
     let file = actual_file(&base);
-    with_source_controller_lifetime(|lifetime, loans| {
+    with_full_controller_setup(|lifetime, loans| {
         let prepared =
             FundedControllerAcquisition::prepare(input(&file, &base, 2), limits(), lifetime, loans)
-                .unwrap_or_else(|_| panic!("funding"));
+                .unwrap_or_else(|failure| {
+                    panic!(
+                        "controller acquisition preparation refused: {:?}",
+                        failure.fault()
+                    )
+                });
+        eprintln!(
+            "full-controller acquisition usage: {:?}",
+            loans.business_usage().unwrap()
+        );
         let failure = prepared
             .acquire()
             .err()
@@ -64,17 +74,21 @@ fn source_acquisition_01_declared_length_refuses_before_hash_read_and_retains_he
 }
 #[test]
 fn source_acquisition_02_symlink_parent_and_raw_dot_paths_never_read_target() {
+    enum Boundary {
+        SymlinkParent,
+        RawDot,
+    }
     let root = tempfile::tempdir().unwrap();
     let outside = tempfile::tempdir().unwrap();
     let base = root.path().canonicalize().unwrap();
     let outside_base = outside.path().canonicalize().unwrap();
     let file = actual_file(&outside_base);
     symlink(&outside_base, base.join("alias")).unwrap();
-    for path in [
-        base.join("alias/actual"),
-        file.parent().unwrap().join("./actual"),
+    for (boundary, path) in [
+        (Boundary::SymlinkParent, base.join("alias/actual")),
+        (Boundary::RawDot, file.parent().unwrap().join("./actual")),
     ] {
-        with_source_controller_lifetime(|lifetime, loans| {
+        with_full_controller_setup(|lifetime, loans| {
             let failure = match FundedControllerAcquisition::prepare(
                 input(&path, &base, 1),
                 limits(),
@@ -86,6 +100,21 @@ fn source_acquisition_02_symlink_parent_and_raw_dot_paths_never_read_target() {
             };
             assert_eq!(failure.read_bytes(), 0);
             assert!(!root.path().join("profile").exists());
+            match boundary {
+                Boundary::SymlinkParent => {
+                    assert!(
+                        matches!(failure.fault(), ControllerAcquisitionFault::Io(_)),
+                        "the held no-follow walk must refuse the symlink: {:?}",
+                        failure.fault()
+                    );
+                    assert!(failure.held_files() > 0);
+                }
+                Boundary::RawDot => assert!(
+                    matches!(failure.fault(), ControllerAcquisitionFault::Shape),
+                    "raw dot components must be refused before opening: {:?}",
+                    failure.fault()
+                ),
+            }
         });
     }
 }
@@ -95,10 +124,15 @@ fn source_acquisition_03_partial_create_cleanup_refuses_foreign_replacement_and_
     let root = tempfile::tempdir().unwrap();
     let base = root.path().canonicalize().unwrap();
     let file = actual_file(&base);
-    with_source_controller_lifetime(|lifetime, loans| {
+    with_full_controller_setup(|lifetime, loans| {
         let prepared =
             FundedControllerAcquisition::prepare(input(&file, &base, 1), limits(), lifetime, loans)
-                .unwrap_or_else(|_| panic!("funding"));
+                .unwrap_or_else(|failure| {
+                    panic!(
+                        "controller acquisition preparation refused: {:?}",
+                        failure.fault()
+                    )
+                });
         let mut failure = prepared
             .acquire()
             .err()
@@ -175,10 +209,15 @@ fn source_acquisition_05_nonempty_private_tree_and_symlinks_cleanup_without_outs
     let base = root.path().canonicalize().unwrap();
     let file = actual_file(&base);
     fs::write(outside.path().join("must-remain"), b"outside").unwrap();
-    with_source_controller_lifetime(|lifetime, loans| {
+    with_full_controller_setup(|lifetime, loans| {
         let prepared =
             FundedControllerAcquisition::prepare(input(&file, &base, 1), limits(), lifetime, loans)
-                .unwrap_or_else(|_| panic!("funding"));
+                .unwrap_or_else(|failure| {
+                    panic!(
+                        "controller acquisition preparation refused: {:?}",
+                        failure.fault()
+                    )
+                });
         let mut failure = prepared.acquire().err().expect("literal node pin refusal");
         let nested = base.join("profile/Default/cache");
         fs::create_dir_all(&nested).unwrap();
@@ -248,10 +287,15 @@ fn source_acquisition_07_revocation_after_funding_refuses_before_actual_open() {
     let root = tempfile::tempdir().unwrap();
     let base = root.path().canonicalize().unwrap();
     let file = actual_file(&base);
-    with_revoked_source_controller_lifetime(
+    with_revoked_full_controller_setup(
         |lifetime, loans| {
             FundedControllerAcquisition::prepare(input(&file, &base, 1), limits(), lifetime, loans)
-                .unwrap_or_else(|_| panic!("funded preparation"))
+                .unwrap_or_else(|failure| {
+                    panic!(
+                        "controller acquisition preparation refused: {:?}",
+                        failure.fault()
+                    )
+                })
         },
         |prepared| {
             let failure = prepared.acquire().err().expect("actual SAME child revoked");
@@ -270,10 +314,15 @@ fn source_acquisition_08_actual_partial_cleanup_remains_available_after_revocati
     let root = tempfile::tempdir().unwrap();
     let base = root.path().canonicalize().unwrap();
     let file = actual_file(&base);
-    with_revoked_source_controller_lifetime(
+    with_revoked_full_controller_setup(
         |lifetime, loans| {
             FundedControllerAcquisition::prepare(input(&file, &base, 1), limits(), lifetime, loans)
-                .unwrap_or_else(|_| panic!("funded preparation"))
+                .unwrap_or_else(|failure| {
+                    panic!(
+                        "controller acquisition preparation refused: {:?}",
+                        failure.fault()
+                    )
+                })
                 .acquire()
                 .err()
                 .expect("actual literal pin refusal")
@@ -304,14 +353,23 @@ fn source_acquisition_09_cleanup_capacity_retains_actual_debt_without_fresh_work
     let root = tempfile::tempdir().unwrap();
     let base = root.path().canonicalize().unwrap();
     let file = actual_file(&base);
-    with_source_controller_lifetime(|lifetime, loans| {
+    with_full_controller_setup(|lifetime, loans| {
         let mut failure =
             FundedControllerAcquisition::prepare(input(&file, &base, 1), limits(), lifetime, loans)
-                .unwrap_or_else(|_| panic!("funded preparation"))
+                .unwrap_or_else(|failure| {
+                    panic!(
+                        "controller acquisition preparation refused: {:?}",
+                        failure.fault()
+                    )
+                })
                 .acquire()
                 .err()
                 .expect("actual literal pin refusal");
         let capacity = failure.descendant_cleanup().unwrap().capacity();
+        eprintln!(
+            "full-controller cleanup fixture: capacity={capacity},usage={:?}",
+            loans.business_usage().unwrap()
+        );
         for index in 0..=capacity {
             fs::write(base.join("profile").join(format!("actual-{index}")), []).unwrap();
         }

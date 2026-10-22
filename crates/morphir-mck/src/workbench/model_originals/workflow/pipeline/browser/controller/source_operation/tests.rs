@@ -1,6 +1,7 @@
 //! Source/physical budget association only. No browser or UI action runs.
 use super::super::super::adapter::execution_loans::{
-    with_foreign_source_controller_lifetime, with_source_controller_lifetime,
+    with_foreign_source_controller_lifetime, with_full_controller_setup,
+    with_source_controller_lifetime,
 };
 use super::super::{
     Limits,
@@ -33,8 +34,25 @@ fn limits() -> Limits {
 #[test]
 fn source_operation_prepay_01_exact_lifetime_limits_and_target_are_prepared_without_effects() {
     with_source_controller_lifetime(|lifetime, loans| {
-        let prepared =
-            SourceOperationPrepayment::prepare(&target(), limits(), &lifetime, loans).unwrap();
+        let original_end = lifetime.end();
+        let refusal = SourceOperationPrepayment::prepare(&target(), limits(), &lifetime, loans)
+            .err()
+            .expect("ordinary small work input cannot fund a full controller envelope");
+        assert!(
+            loans.business_test_ready().is_err(),
+            "the actual cumulative work refusal must remain sticky: {refusal:?}"
+        );
+        assert_eq!(lifetime.end(), original_end);
+        eprintln!("ordinary full-controller work refusal: {refusal:?}");
+    });
+    with_full_controller_setup(|lifetime, loans| {
+        let before = loans.business_usage().unwrap();
+        let prepared = SourceOperationPrepayment::prepare(&target(), limits(), &lifetime, loans)
+            .unwrap_or_else(|cause| panic!("full-controller prepayment refused: {cause:?}"));
+        eprintln!(
+            "full-controller prepayment usage: before={before:?},after={:?}",
+            loans.business_usage().unwrap()
+        );
         prepared.validate(&lifetime, limits(), loans).unwrap();
         let other = Limits {
             max_frame: 129,

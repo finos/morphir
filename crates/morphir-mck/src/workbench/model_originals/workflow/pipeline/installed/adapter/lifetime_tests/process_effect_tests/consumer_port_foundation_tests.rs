@@ -32,7 +32,11 @@ struct FoundationProbe {
     escaped: Option<(PreparedInstalledConsumerProcess, InstalledConsumerPorts)>,
 }
 fn eof(handle: std::os::fd::BorrowedFd<'_>) -> bool {
-    matches!(rustix::io::read(handle, &mut [0u8; 1]), Ok(0))
+    let observed = rustix::io::read(handle, &mut [0u8; 1]);
+    if !matches!(observed, Ok(0)) {
+        eprintln!("[DEBUG-consumer-eof] actual single read: {observed:?}");
+    }
+    matches!(observed, Ok(0))
 }
 fn parent_flags(handle: std::os::fd::BorrowedFd<'_>) -> bool {
     use std::os::fd::AsRawFd as _;

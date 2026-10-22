@@ -432,6 +432,33 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_r
 
 const SOURCE_CONTROLLER_FIXTURE_LIMITS:&[u8]=br#"{"rpcFrames":"checker-capture","retainedBytes":8388608,"stdoutPrefixBytes":4096,"stderrPrefixBytes":4096,"snapshotReadBytes":1048576,"byteVisits":8388608,"records":0}"#;
 
+// Full controller setup includes its immutable ten-second business envelope.
+// One GiB matches the existing Standard checker work ceiling. Only receiving
+// work differs from the small control above; this is not a production default.
+const FULL_CONTROLLER_SETUP_LIMITS:&[u8]=br#"{"rpcFrames":"checker-capture","retainedBytes":8388608,"stdoutPrefixBytes":4096,"stderrPrefixBytes":4096,"snapshotReadBytes":1048576,"byteVisits":1073741824,"records":0}"#;
+
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_full_controller_setup(
+    action: impl FnOnce(SourceControllerLifetime, &mut BrowserLoans<'_, '_>),
+) {
+    with_source_controller_limits(FULL_CONTROLLER_SETUP_LIMITS, action);
+}
+
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_revoked_full_controller_setup<
+    R,
+>(
+    prepare: impl FnOnce(SourceControllerLifetime, &mut BrowserLoans<'_, '_>) -> R,
+    after_revoke: impl FnOnce(R),
+) {
+    with_source_controller_fixture_limits(
+        FULL_CONTROLLER_SETUP_LIMITS,
+        |lifetime, inner, global, child| {
+            let mut loans = BrowserLoans::execution(inner, global, child).unwrap();
+            prepare(lifetime, &mut loans)
+        },
+        after_revoke,
+    );
+}
+
 /// Initial transcript construction only, never an end mutation or renewal.
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn with_source_controller_end(
     original_for: std::time::Duration,

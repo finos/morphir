@@ -362,7 +362,8 @@ mod operation_tests;
 mod tests;
 #[cfg(test)]
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use tests::{
-    with_foreign_source_controller_lifetime, with_revoked_source_controller_lifetime,
+    with_foreign_source_controller_lifetime, with_full_controller_setup,
+    with_revoked_full_controller_setup, with_revoked_source_controller_lifetime,
     with_source_controller_artifact_control, with_source_controller_artifact_endpoint,
     with_source_controller_cleanup_control, with_source_controller_end,
     with_source_controller_endpoint, with_source_controller_lifetime,
