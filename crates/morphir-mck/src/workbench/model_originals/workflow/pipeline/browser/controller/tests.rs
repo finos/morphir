@@ -222,3 +222,6 @@ fn browser_controller_c04_closed_literal_reply_grammar_has_no_generic_payload_or
         assert_eq!(parse_reply(raw), Err(ControllerFault::Shape));
     }
 }
+
+#[path = "observed_tests.rs"]
+mod observed;

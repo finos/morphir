@@ -24,6 +24,8 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
     time::Instant,
 };
+mod observed_launch;
+pub(super) use observed_launch::ObservedLaunch;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ControllerFault {
@@ -43,12 +45,14 @@ pub(super) enum ControllerFault {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ControllerCommand {
     CreateProbePage,
+    StartObservedDocument,
     ClosePageContextAndDisconnect,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ControllerReply {
     Attached,
     ProbePageCreated,
+    ObservedDocumentStarted,
     Disconnected,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,6 +70,7 @@ pub(super) fn parse_reply(bytes: &[u8]) -> Result<ControllerReply, ControllerFau
     match bytes {
         b"attached\n" => Ok(ControllerReply::Attached),
         b"1 page-created\n" => Ok(ControllerReply::ProbePageCreated),
+        b"1 document-started\n" => Ok(ControllerReply::ObservedDocumentStarted),
         b"2 disconnected\n" => Ok(ControllerReply::Disconnected),
         _ => Err(ControllerFault::Shape),
     }
@@ -316,6 +321,33 @@ enum Driver {
     Finished(InteractiveOutcome),
     Moving,
 }
+/// Selection of the maintained physical operation, never source authority.
+enum ControllerVariant {
+    Probe,
+    Observed(ObservedLaunch),
+}
+impl ControllerVariant {
+    fn accepts_start(&self, command: ControllerCommand) -> bool {
+        matches!(
+            (self, command),
+            (Self::Probe, ControllerCommand::CreateProbePage)
+                | (Self::Observed(_), ControllerCommand::StartObservedDocument)
+        )
+    }
+    fn accepts_reply(&self, reply: ControllerReply) -> bool {
+        matches!(
+            (self, reply),
+            (Self::Probe, ControllerReply::ProbePageCreated)
+                | (Self::Observed(_), ControllerReply::ObservedDocumentStarted)
+        )
+    }
+    fn start_frame(&self) -> &'static [u8] {
+        match self {
+            Self::Probe => b"1 page\n",
+            Self::Observed(_) => b"1 start\n",
+        }
+    }
+}
 #[derive(Clone, Copy)]
 enum Conversation {
     Launching,
@@ -332,6 +364,7 @@ enum Conversation {
 }
 pub(super) struct BrowserController {
     target: AcquiredTarget,
+    variant: ControllerVariant,
     limits: Limits,
     end: Instant,
     clock: clock::deadline::DarwinContinuousDeadline,
@@ -371,6 +404,22 @@ impl BrowserController {
         limits: Limits,
         end: Instant,
     ) -> Result<Self, ControllerFault> {
+        Self::launch_variant(target, limits, end, ControllerVariant::Probe)
+    }
+    pub(super) fn launch_observed(
+        target: AcquiredTarget,
+        limits: Limits,
+        end: Instant,
+        launch: ObservedLaunch,
+    ) -> Result<Self, ControllerFault> {
+        Self::launch_variant(target, limits, end, ControllerVariant::Observed(launch))
+    }
+    fn launch_variant(
+        target: AcquiredTarget,
+        limits: Limits,
+        end: Instant,
+        variant: ControllerVariant,
+    ) -> Result<Self, ControllerFault> {
         if Instant::now() >= end || limits.max_frame == 0 {
             return Err(ControllerFault::End);
         }
@@ -402,6 +451,7 @@ impl BrowserController {
         let chromium = OneShotProcess::spawn(spec, limits).map_err(|_| ControllerFault::Spawn)?;
         Ok(Self {
             target,
+            variant,
             limits,
             end,
             clock,
@@ -446,7 +496,7 @@ impl BrowserController {
             return Err(self.fail(ControllerFault::End));
         }
         self.conversation = match (self.conversation, command) {
-            (Conversation::Ready, ControllerCommand::CreateProbePage) => {
+            (Conversation::Ready, start) if self.variant.accepts_start(start) => {
                 Conversation::SendingPage(0)
             }
             (Conversation::PageReady, ControllerCommand::ClosePageContextAndDisconnect) => {
@@ -458,7 +508,7 @@ impl BrowserController {
     }
     fn start_driver(&mut self, endpoint: String) -> Result<(), ControllerFault> {
         self.target.node.validate()?;
-        let arguments = vec![
+        let mut arguments = vec![
             self.target.driver.as_os_str().to_owned(),
             self.target.entry.as_os_str().to_owned(),
             endpoint.into(),
@@ -468,6 +518,10 @@ impl BrowserController {
             self.clock.timebase().numerator().to_string().into(),
             self.clock.timebase().denominator().to_string().into(),
         ];
+        if let ControllerVariant::Observed(launch) = &self.variant {
+            arguments.push("observed-workbench".into());
+            arguments.push(launch.as_str().into());
+        }
         let spec = CommandSpec::new(
             self.target.node.path.clone(),
             arguments,
@@ -557,7 +611,7 @@ impl BrowserController {
                     (Conversation::AttachedPending, ControllerReply::Attached) => {
                         Conversation::Ready
                     }
-                    (Conversation::PagePending, ControllerReply::ProbePageCreated) => {
+                    (Conversation::PagePending, started) if self.variant.accepts_reply(started) => {
                         Conversation::PageReady
                     }
                     (Conversation::ClosePending, ControllerReply::Disconnected) => {
@@ -615,7 +669,7 @@ impl BrowserController {
             return Err(self.fail(ControllerFault::Process));
         }
         let (frame, offset) = match self.conversation {
-            Conversation::SendingPage(offset) => (Some(b"1 page\n".as_slice()), offset),
+            Conversation::SendingPage(offset) => (Some(self.variant.start_frame()), offset),
             Conversation::SendingClose(offset) => (Some(b"2 close\n".as_slice()), offset),
             _ => (None, 0),
         };
