@@ -62,7 +62,26 @@ enum AssetMime {
     Text,
 }
 // All suffix/equality operands in AssetMime::of, including short-circuited ones.
-const MIME_PROBE_BYTES_PER_PASS: usize = 3 + 5 + 4 + 4 + 4 + 10 + 4;
+const ORDINARY_TEMPLATE: &str = "index.html";
+const OBSERVED_TEMPLATE: &str = "observed-index.html";
+const OBSERVED_ENTRY_MODULE: &str = "observed-document-entry.js";
+const OBSERVED_PREFIX: &str = "/observed/";
+const OBSERVED_QUERY: &str = "mode=connected-originals";
+// Two MIME classifications and one role classification may compare this name.
+// Prepay both operands of every newly introduced equality before the scans.
+const OBSERVED_NAME_PROBES: usize = 3;
+const OBSERVED_NAME_PROBE_BYTES: usize = 2 * OBSERVED_TEMPLATE.len();
+const MIME_PROBE_BYTES_PER_PASS: usize =
+    3 + 5 + 4 + 4 + 4 + ORDINARY_TEMPLATE.len() + OBSERVED_NAME_PROBE_BYTES + 4;
+const ROLE_PROBE_BYTES: usize = OBSERVED_NAME_PROBE_BYTES;
+// Fixed route guards: prefix, both raw-template names, and the sole entry
+// query. Each operand is charged twice; runtime length checks precede scans.
+const ROUTE_GUARD_BYTES: usize = 2
+    * (OBSERVED_PREFIX.len()
+        + ORDINARY_TEMPLATE.len()
+        + OBSERVED_TEMPLATE.len()
+        + OBSERVED_QUERY.len());
+const ROUTE_GUARD_VISITS: usize = 8;
 // Shape bytes, slash splitting, Path::components traversal, and prefix work.
 const PATH_SCAN_PASSES: usize = 5;
 impl AssetMime {
@@ -75,7 +94,7 @@ impl AssetMime {
             Ok(Self::Css)
         } else if path.ends_with(".svg") {
             Ok(Self::Svg)
-        } else if path == "index.html" {
+        } else if path == ORDINARY_TEMPLATE || path == OBSERVED_TEMPLATE {
             Ok(Self::Html)
         } else if path.ends_with(".txt") {
             Ok(Self::Text)
@@ -105,6 +124,7 @@ struct AssetRecord {
 }
 enum AssetRole {
     Template,
+    ObservedTemplate,
     Asset,
 }
 struct ApplicationPin {
@@ -255,13 +275,16 @@ impl RunObservedApplication {
                 0,
                 add(
                     mul(file.path.len(), PATH_SCAN_PASSES)?,
-                    mul(MIME_PROBE_BYTES_PER_PASS, 2)?,
+                    add(mul(MIME_PROBE_BYTES_PER_PASS, 2)?, ROLE_PROBE_BYTES)?,
                 )?,
             )?;
             loans.reserve_application_comparison(
                 source,
-                1,
-                add(previous.map_or(0, str::len), file.path.len())?,
+                add(1, OBSERVED_NAME_PROBES)?,
+                add(
+                    add(previous.map_or(0, str::len), file.path.len())?,
+                    mul(OBSERVED_NAME_PROBE_BYTES, OBSERVED_NAME_PROBES)?,
+                )?,
                 1,
             )?;
             source_work(source, end, || {
@@ -433,7 +456,9 @@ impl RunObservedApplication {
                     name: start..name_arena.len(),
                     content: offset..finish,
                     mime,
-                    role: if matches!(mime, AssetMime::Html) {
+                    role: if matches!(mime, AssetMime::Html) && file.path == OBSERVED_TEMPLATE {
+                        AssetRole::ObservedTemplate
+                    } else if matches!(mime, AssetMime::Html) {
                         AssetRole::Template
                     } else {
                         AssetRole::Asset
@@ -591,6 +616,12 @@ pub(super) struct HostAssets {
     image: Arc<ImmutableApplication>,
     delivery: Mutex<DeliveryState>,
     maximum_uri: usize,
+    entry: EntryPreparation,
+}
+#[derive(Clone, Copy)]
+enum EntryPreparation {
+    Unprepared,
+    Prepared,
 }
 pub(super) enum AssetRouteFault {
     TransportNotPrepared,
@@ -618,17 +649,73 @@ impl HostAssets {
         loans: &mut BrowserLoans<'_, '_>,
         end: Instant,
     ) -> Result<Self, ObservedAssetsFault> {
+        Self::prepare_entries(
+            application,
+            stimulus,
+            loans,
+            end,
+            EntryPreparation::Unprepared,
+        )
+    }
+
+    fn prepare_observed_document(
+        application: &RunObservedApplication,
+        stimulus: &ControlledHostStimulus,
+        loans: &mut BrowserLoans<'_, '_>,
+        end: Instant,
+    ) -> Result<Self, ObservedAssetsFault> {
+        loans.validate_controlled_application(&application.source, stimulus)?;
+        check(&application.source, end)?;
+        let mut both_recorded = true;
+        for required in [
+            OBSERVED_TEMPLATE.as_bytes(),
+            OBSERVED_ENTRY_MODULE.as_bytes(),
+        ] {
+            let names = application.image.names.len();
+            let visits = application.image.records.len();
+            // Slice equality first checks length, so only equal-sized operands
+            // can inspect content; twice the whole name arena covers both sides.
+            let comparisons = mul(names, 2)?;
+            loans.reserve_application_comparison(&application.source, visits, comparisons, 1)?;
+            loans.reserve_application_storage(&application.source, 0, 0, comparisons)?;
+            let recorded = source_work(&application.source, end, || {
+                Ok(application
+                    .image
+                    .records
+                    .iter()
+                    .any(|record| &application.image.names[record.name.clone()] == required))
+            })?;
+            both_recorded &= recorded;
+        }
+        let entry = if both_recorded {
+            EntryPreparation::Prepared
+        } else {
+            EntryPreparation::Unprepared
+        };
+        Self::prepare_entries(application, stimulus, loans, end, entry)
+    }
+
+    fn prepare_entries(
+        application: &RunObservedApplication,
+        stimulus: &ControlledHostStimulus,
+        loans: &mut BrowserLoans<'_, '_>,
+        end: Instant,
+        entry: EntryPreparation,
+    ) -> Result<Self, ObservedAssetsFault> {
         loans.validate_controlled_application(&application.source, stimulus)?;
         check(&application.source, end)?;
         let n = application.image.records.len();
         let tickets = add(n, 1)?;
         let comparisons = usize::try_from(usize::BITS - n.leading_zeros())
             .map_err(|_| ObservedAssetsFault::SizeOverflow)?;
-        let path = add(10, application.image.maximum_path)?;
-        let compare_bytes = mul(tickets, add(mul(mul(comparisons, 2)?, path)?, 20)?)?;
+        let path = add(OBSERVED_PREFIX.len(), application.image.maximum_path)?;
+        let compare_bytes = mul(
+            tickets,
+            add(mul(mul(comparisons, 2)?, path)?, ROUTE_GUARD_BYTES)?,
+        )?;
         loans.reserve_application_comparison(
             &application.source,
-            add(mul(tickets, comparisons)?, 1)?,
+            add(mul(tickets, add(comparisons, ROUTE_GUARD_VISITS)?)?, 1)?,
             compare_bytes,
             tickets,
         )?;
@@ -643,17 +730,22 @@ impl HostAssets {
             array::<AssetDelivery>(n)?,
             add(std::mem::size_of::<Self>(), mul(tickets, body)?)?,
         )?;
-        loans.reserve_application_storage(&application.source, backing, add(n, tickets)?, n)?;
+        loans.reserve_application_storage(
+            &application.source,
+            backing,
+            add(n, tickets)?,
+            add(n, compare_bytes)?,
+        )?;
         let mut entries = allocate::<AssetDelivery>(n, loans, &application.source, end)?;
         for record in &application.image.records {
             let entry = match record.role {
                 AssetRole::Template => AssetDelivery::Taken,
-                AssetRole::Asset => AssetDelivery::Available(prepare_asset_headers(
-                    record.mime,
-                    loans,
-                    &application.source,
-                    end,
-                )?),
+                AssetRole::ObservedTemplate if matches!(entry, EntryPreparation::Unprepared) => {
+                    AssetDelivery::Taken
+                }
+                AssetRole::ObservedTemplate | AssetRole::Asset => AssetDelivery::Available(
+                    prepare_asset_headers(record.mime, loans, &application.source, end)?,
+                ),
             };
             source_work(&application.source, end, || {
                 entries.push(entry);
@@ -668,10 +760,11 @@ impl HostAssets {
                     lookups: tickets,
                 }),
                 maximum_uri: path,
+                entry,
             })
         })
     }
-    pub(super) fn response(&self, path: &str) -> Result<Response, AssetRouteFault> {
+    pub(super) fn response(&self, uri: &axum::http::Uri) -> Result<Response, AssetRouteFault> {
         let mut delivery = self
             .delivery
             .lock()
@@ -681,15 +774,28 @@ impl HostAssets {
             .checked_sub(1)
             .ok_or(AssetRouteFault::Limit)?;
         delivery.lookups = left;
+        let path = uri.path();
         if path.len() > self.maximum_uri {
             return Err(AssetRouteFault::Unknown);
         }
         let path = path
-            .strip_prefix("/observed/")
+            .strip_prefix(OBSERVED_PREFIX)
             .ok_or(AssetRouteFault::Unknown)?;
-        if path.is_empty() || path == "index.html" {
+        if path == ORDINARY_TEMPLATE || path == OBSERVED_TEMPLATE {
             return Err(AssetRouteFault::TransportNotPrepared);
         }
+        let path = if path.is_empty() {
+            let query = uri.query().ok_or(AssetRouteFault::Unknown)?;
+            if query.len() != OBSERVED_QUERY.len() || query != OBSERVED_QUERY {
+                return Err(AssetRouteFault::Unknown);
+            }
+            match self.entry {
+                EntryPreparation::Unprepared => return Err(AssetRouteFault::TransportNotPrepared),
+                EntryPreparation::Prepared => OBSERVED_TEMPLATE,
+            }
+        } else {
+            path
+        };
         let mut low = 0;
         let mut high = self.image.records.len();
         while low < high {
@@ -725,7 +831,7 @@ impl BoundControlledUiHost {
         end: Instant,
     ) -> Result<Self, ingress::DocumentSetupFault> {
         let end = end.min(application.end);
-        let assets = HostAssets::prepare(application, &stimulus, loans, end)
+        let assets = HostAssets::prepare_observed_document(application, &stimulus, loans, end)
             .map_err(ingress::DocumentSetupFault::Assets)?;
         Self::bind_prepared_document(stimulus, Some(assets), loans, limits, end).await
     }

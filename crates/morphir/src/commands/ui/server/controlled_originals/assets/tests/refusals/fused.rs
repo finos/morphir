@@ -1,4 +1,6 @@
 //! Fused-host component controls; no actual browser or profile verdict.
+#[path = "fused/entry.rs"]
+mod entry;
 use super::*;
 use crate::commands::ui::server::controlled_originals::ingress::{
     DocumentIngressLimits, DocumentSetupFault,

@@ -441,7 +441,7 @@ async fn asset_route(
             }
             match &state.assets {
                 Some(assets) => assets
-                    .response(uri.path())
+                    .response(&uri)
                     .unwrap_or_else(assets::AssetRouteFault::response),
                 None => StatusCode::SERVICE_UNAVAILABLE.into_response(),
             }
