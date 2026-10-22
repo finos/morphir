@@ -10,7 +10,8 @@ mod composition;
 #[cfg(target_os = "macos")]
 use composition::{
     SelectedSourceControllerLaunchFailure, SelectedSourceControllerLaunched,
-    SelectedSourceControllerPreparationFailure, SelectedSourceControllerPrepared,
+    SelectedSourceControllerListenerFailure, SelectedSourceControllerPreparationFailure,
+    SelectedSourceControllerPrepared, SelectedSourceControllerRunning,
 };
 
 #[derive(Debug)]
@@ -272,6 +273,14 @@ impl<'a> SelectedSourceLaunch<'a> {
                         std::mem::size_of::<SelectedSourceControllerLaunchFailure<'_>>(),
                     )
                 })
+                .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<SelectedSourceControllerRunning<'_>>())
+                })
+                .and_then(|bytes| {
+                    bytes.checked_add(std::mem::size_of::<
+                        SelectedSourceControllerListenerFailure<'_>,
+                    >())
+                })
                 .ok_or(SelectedSourceStartFault::SizeOverflow)?;
             let work = bytes
                 .checked_add(std::mem::size_of::<super::super::super::ListenerOwner>())
@@ -285,13 +294,25 @@ impl<'a> SelectedSourceLaunch<'a> {
                     work.checked_add(2 * std::mem::size_of::<tokio::runtime::Handle>())
                 })
                 .ok_or(SelectedSourceStartFault::SizeOverflow)?;
-            let slots = if cfg!(target_os = "macos") { 13 } else { 9 };
+            let slots = if cfg!(target_os = "macos") { 15 } else { 9 };
             loans
                 .reserve_controlled_host_storage(bytes, slots, work)
                 .map_err(SelectedSourceStartFault::Funding)?;
-            tokio::runtime::Handle::try_current().map_err(|_| {
-                SelectedSourceStartFault::Native(super::super::super::ControlledHostFault::Listener)
-            })
+            // Funding is not authority to acquire a runtime after a source,
+            // host or original-end refusal. Retain the Handle only inside the
+            // final source gate, then native first, with no loan reentry.
+            self.opening
+                .while_host_active(loans, || {
+                    let _first = SelectedSourceHost::active_native_first(&self.owner.host.state)?;
+                    self.owner
+                        .check_prepared_listener(self.owner.application.end)?;
+                    tokio::runtime::Handle::try_current().map_err(|_| {
+                        SelectedSourceStartFault::Native(
+                            super::super::super::ControlledHostFault::Listener,
+                        )
+                    })
+                })
+                .map_err(SelectedSourceStartFault::Action)?
         })();
         match result {
             Ok(runtime) => Ok(SelectedSourcePrepared {

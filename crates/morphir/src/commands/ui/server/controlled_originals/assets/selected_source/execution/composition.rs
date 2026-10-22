@@ -24,6 +24,16 @@ pub(super) struct SelectedSourceControllerLaunched<'a> {
     pub(super) controller: BrowserFixedController,
 }
 
+pub(super) struct SelectedSourceControllerRunning<'a> {
+    pub(super) native: SelectedSourceStarted<'a>,
+    pub(super) controller: BrowserFixedController,
+}
+
+pub(super) struct SelectedSourceControllerListenerFailure<'a> {
+    pub(super) native: SelectedSourcePrepaidStartFailure<'a>,
+    pub(super) controller: BrowserFixedController,
+}
+
 pub(super) enum SelectedSourceControllerLaunchFailure<'a> {
     BeforeSpawn {
         staged: SelectedSourceControllerPrepared<'a>,
@@ -104,6 +114,27 @@ impl<'a> SelectedSourceControllerPrepared<'a> {
                 listener_credit,
                 controller,
             }),
+        }
+    }
+}
+
+impl<'a> SelectedSourceControllerLaunched<'a> {
+    /// Spend this controller's moved listener allowance while retaining the
+    /// actual physical owner on both native outcomes. Runtime and transition
+    /// storage were acquired before physical cleanup capacity was selected.
+    pub(super) fn start_listener(
+        self,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<SelectedSourceControllerRunning<'a>, SelectedSourceControllerListenerFailure<'a>>
+    {
+        let Self {
+            native,
+            listener_credit,
+            controller,
+        } = self;
+        match native.start_prepaid_listener(listener_credit, loans) {
+            Ok(native) => Ok(SelectedSourceControllerRunning { native, controller }),
+            Err(native) => Err(SelectedSourceControllerListenerFailure { native, controller }),
         }
     }
 }

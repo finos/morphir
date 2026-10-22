@@ -1,14 +1,18 @@
-//! Actual native/physical ownership on a real pre-child spawn refusal.
-//! No Page, listener start, source0 settlement or qualification is produced.
+//! Actual native/physical ownership at spawn and listener refusal boundaries.
+//! No Page, source0 settlement or qualification is produced.
+use super::composition::{
+    SelectedSourceControllerListenerFailure, SelectedSourceControllerRunning,
+};
 use super::*;
 use crate::commands::ui::server::controlled_originals::{
-    ControlledHostFinish, ControlledHostJoined, HostState, ListenerOwner,
+    ControlledHostFault, ControlledHostFinish, ControlledHostJoined, HostState, ListenerOwner,
 };
 use morphir_mck::transport::Limits;
 use morphir_mck::workbench::{
     BrowserActionCursorTerminal, BrowserAdapterCompletion, BrowserControllerFile,
     BrowserControllerFiles, BrowserControllerLaunchStage, BrowserControllerRetirement,
-    BrowserDocumentBounds, RunConfiguration, load, with_executed_browser_originals,
+    BrowserDocumentBounds, BrowserListenerDispatch, RunConfiguration, load,
+    with_executed_browser_originals,
 };
 use std::{path::Path, time::Duration};
 
@@ -29,14 +33,24 @@ fn finish_native(
         launch,
         runtime: retained_runtime,
     } = native;
+    let facts = finish_launch(launch, runtime, original_host, application);
+    // This actual retained Handle remains owned through the native join.
+    drop(retained_runtime);
+    facts
+}
+
+fn finish_launch(
+    launch: SelectedSourceLaunch<'_>,
+    runtime: &tokio::runtime::Runtime,
+    original_host: *const HostState,
+    application: &RunObservedApplication,
+) -> NativeCleanupFacts {
     let same_host = Arc::as_ptr(&launch.owner.host.state) == original_host;
     let same_image = Arc::ptr_eq(&launch.owner.application.image, &application.image);
     let was_bound = matches!(launch.owner.host.listener, ListenerOwner::Bound(_));
     drop(launch.opening);
     let joined = runtime.block_on(launch.owner.host.finish_joined());
     drop(launch.owner.application);
-    // This actual retained Handle remains owned through the native join.
-    drop(retained_runtime);
     NativeCleanupFacts {
         same_host,
         same_image,
@@ -58,9 +72,32 @@ fn assert_native_cleanup(facts: NativeCleanupFacts) {
     ));
 }
 
+#[derive(Clone, Copy)]
+enum CompositionControl {
+    MissingCwd,
+    ListenerFaultAfterLaunch,
+    HealthyListenerAfterLaunch,
+}
+
 #[test]
 #[ignore = "requires selected77 image/archive/Node; actual missing-cwd refusal, no Chrome"]
 fn native_selected_controller_composition_09_spawn_refusal_retains_all_actual_owners() {
+    composition_control(CompositionControl::MissingCwd);
+}
+
+#[test]
+#[ignore = "requires selected77 image/archive/Node; non-browser OS ownership only, no Chrome"]
+fn native_selected_controller_composition_10_listener_refusal_retains_launched_owner() {
+    composition_control(CompositionControl::ListenerFaultAfterLaunch);
+}
+
+#[test]
+#[ignore = "requires selected77 image/archive/Node; non-browser OS ownership only, no Chrome"]
+fn native_selected_controller_composition_11_healthy_listener_retains_launched_owner() {
+    composition_control(CompositionControl::HealthyListenerAfterLaunch);
+}
+
+fn composition_control(control: CompositionControl) {
     use crate::commands::ui::server::controlled_originals_tests::runtime;
     const CONTROL_ONLY: &str = "native composition refusal only; source0 was not executed";
     let input = std::path::PathBuf::from(
@@ -256,10 +293,12 @@ fn native_selected_controller_composition_09_spawn_refusal_retains_all_actual_ow
                 }
             };
             let runtime_was_present = cwd.join("artifacts/runtime/index.mjs").is_file();
-            // The genuine current-directory path disappears while the SAME
-            // owned directory FD/files survive. No replacement executable or
-            // wrapper is invoked, and no process can start from this cwd.
-            std::fs::rename(&cwd, &moved).unwrap();
+            if matches!(control, CompositionControl::MissingCwd) {
+                // The genuine current-directory path disappears while the SAME
+                // owned directory FD/files survive. No replacement executable or
+                // wrapper is invoked, and no process can start from this cwd.
+                std::fs::rename(&cwd, &moved).unwrap();
+            }
             match staged.launch_controller(loans) {
                 Err(SelectedSourceControllerLaunchFailure::Physical {
                     native,
@@ -268,19 +307,33 @@ fn native_selected_controller_composition_09_spawn_refusal_retains_all_actual_ow
                 }) => {
                     let stage = controller.stage();
                     let spawn = controller.spawn_error().map(std::io::Error::kind);
-                    let retained_runtime_file = moved.join("artifacts/runtime/index.mjs").is_file();
+                    let retained_root = match control {
+                        CompositionControl::MissingCwd => &moved,
+                        CompositionControl::ListenerFaultAfterLaunch
+                        | CompositionControl::HealthyListenerAfterLaunch => &cwd,
+                    };
+                    let retained_runtime_file =
+                        retained_root.join("artifacts/runtime/index.mjs").is_file();
                     controller.request_shutdown();
                     while !controller.poll_cleanup() && Instant::now() < original_end {
                         std::thread::sleep(Duration::from_millis(1));
                     }
                     let physical = controller.finish_cleanup();
                     let native = finish_native(native, &runtime, original_host, &application);
-                    let renamed_back = std::fs::rename(&moved, &cwd);
+                    let renamed_back = match control {
+                        CompositionControl::MissingCwd => std::fs::rename(&moved, &cwd),
+                        CompositionControl::ListenerFaultAfterLaunch
+                        | CompositionControl::HealthyListenerAfterLaunch => Ok(()),
+                    };
                     // Keep the actual moved credit through both teardowns.
                     drop(listener_credit);
                     assert!(physical.is_ok(), "actual physical cleanup incomplete");
                     assert_native_cleanup(native);
                     assert!(renamed_back.is_ok());
+                    assert!(
+                        matches!(control, CompositionControl::MissingCwd),
+                        "non-browser process ownership setup refused at {stage:?}: {spawn:?}"
+                    );
                     assert_eq!(stage, BrowserControllerLaunchStage::PreChildSpawn);
                     assert_eq!(spawn, Some(std::io::ErrorKind::NotFound));
                     assert!(runtime_was_present && retained_runtime_file);
@@ -301,7 +354,11 @@ fn native_selected_controller_composition_09_spawn_refusal_retains_all_actual_ow
                     } = staged;
                     let cleanup = materialized.finish_cleanup();
                     let native = finish_native(native, &runtime, original_host, &application);
-                    let renamed_back = std::fs::rename(&moved, &cwd);
+                    let renamed_back = match control {
+                        CompositionControl::MissingCwd => std::fs::rename(&moved, &cwd),
+                        CompositionControl::ListenerFaultAfterLaunch
+                        | CompositionControl::HealthyListenerAfterLaunch => Ok(()),
+                    };
                     drop(listener_credit);
                     assert!(
                         cleanup.is_ok(),
@@ -310,6 +367,22 @@ fn native_selected_controller_composition_09_spawn_refusal_retains_all_actual_ow
                     assert_native_cleanup(native);
                     assert!(renamed_back.is_ok());
                     panic!("target physical spawn refusal was not reached: {cause:?}");
+                }
+                Ok(launched) if !matches!(control, CompositionControl::MissingCwd) => {
+                    listener_boundary(
+                        control,
+                        launched,
+                        loans,
+                        &runtime,
+                        original_host,
+                        &application,
+                        original_end,
+                    );
+                    assert!(runtime_was_present);
+                    assert!(!cwd.join("artifacts").exists());
+                    assert!(!cwd.join("profile").exists());
+                    assert!(!cwd.join("driver.mjs").exists());
+                    assert!(cwd.is_dir());
                 }
                 Ok(SelectedSourceControllerLaunched {
                     native,
@@ -355,4 +428,111 @@ fn native_selected_controller_composition_09_spawn_refusal_retains_all_actual_ow
     )
     .unwrap();
     assert_eq!(callbacks, 1);
+}
+
+fn listener_boundary(
+    control: CompositionControl,
+    launched: SelectedSourceControllerLaunched<'_>,
+    loans: &BrowserLoans<'_, '_>,
+    runtime: &tokio::runtime::Runtime,
+    original_host: *const HostState,
+    application: &RunObservedApplication,
+    original_end: Instant,
+) {
+    // The fixed launcher owns an actual /bin/sleep child with maintained
+    // browser arguments. It is explicitly not a selected browser or Page.
+    if matches!(control, CompositionControl::ListenerFaultAfterLaunch) {
+        // This is the canonical native first cache, not an observed socket error.
+        launched
+            .native
+            .launch
+            .owner
+            .host
+            .state
+            .fault(ControlledHostFault::PeerRead);
+    }
+    let outside_runtime = tokio::runtime::Handle::try_current().is_err();
+    match launched.start_listener(loans) {
+        Err(SelectedSourceControllerListenerFailure {
+            native:
+                SelectedSourcePrepaidStartFailure {
+                    launch,
+                    gate,
+                    native,
+                },
+            mut controller,
+        }) => {
+            controller.request_shutdown();
+            while !controller.poll_cleanup() && Instant::now() < original_end {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            let physical = controller.finish();
+            let retirement = physical.as_ref().ok().map(|finished| finished.retirement());
+            let cleanup = finish_launch(launch, runtime, original_host, application);
+            assert!(
+                physical.is_ok(),
+                "actual launched process cleanup incomplete"
+            );
+            assert_eq!(retirement, Some(BrowserControllerRetirement::Returned));
+            assert!(outside_runtime);
+            assert!(cleanup.same_host && cleanup.same_image);
+            assert!(
+                matches!(control, CompositionControl::ListenerFaultAfterLaunch),
+                "healthy paid listener transition refused: {gate:?}"
+            );
+            assert!(
+                cleanup.was_bound,
+                "native refusal must preserve the Bound listener"
+            );
+            assert!(matches!(
+                cleanup.joined,
+                ControlledHostFinish::Joined(ControlledHostJoined::Fault(
+                    ControlledHostFault::PeerRead
+                ))
+            ));
+            assert!(matches!(gate, Ok(BrowserListenerDispatch::Refused)));
+            assert!(matches!(
+                native,
+                SelectedSourceListenerOutcome::Completed(Err(SelectedSourceStartFault::Native(
+                    ControlledHostFault::PeerRead
+                )))
+            ));
+        }
+        Ok(SelectedSourceControllerRunning {
+            native,
+            mut controller,
+        }) => {
+            let same_host = Arc::as_ptr(&native.owner.host.state) == original_host;
+            let same_image = Arc::ptr_eq(&native.owner.application.image, &application.image);
+            let running = matches!(native.owner.host.listener, ListenerOwner::Running { .. });
+            controller.request_shutdown();
+            while !controller.poll_cleanup() && Instant::now() < original_end {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            let physical = controller.finish();
+            let retirement = physical.as_ref().ok().map(|finished| finished.retirement());
+            drop(native.opening);
+            let joined = runtime.block_on(native.owner.host.finish_joined());
+            drop(native.owner.application);
+            assert!(
+                physical.is_ok(),
+                "actual launched controller teardown incomplete"
+            );
+            assert_eq!(retirement, Some(BrowserControllerRetirement::Returned));
+            assert!(outside_runtime);
+            assert!(same_host && same_image);
+            assert!(
+                running,
+                "successful transition must own the actual Running listener"
+            );
+            assert!(
+                matches!(control, CompositionControl::HealthyListenerAfterLaunch),
+                "native first-cache PeerRead must refuse actual listener installation"
+            );
+            assert!(matches!(
+                joined,
+                ControlledHostFinish::Joined(ControlledHostJoined::Clean)
+            ));
+        }
+    }
 }
