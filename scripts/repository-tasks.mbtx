@@ -5,6 +5,7 @@ import {
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
@@ -14,6 +15,69 @@ suberror TaskError {
   Failed(Int32)
   InvalidTask(String)
 } derive(Debug)
+
+///|
+enum Invocation {
+  SelfTest
+  Task(String)
+}
+
+///|
+fn invocation(argv : Array[String]) -> Invocation raise {
+  // A complete, one-value grammar keeps this control exact, including repeats.
+  let control = @argparse.Command(
+    "repository-tasks",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommand_required=true,
+    subcommands=[
+      @argparse.Command("control:--self-test", disable_help_flag=true),
+    ],
+  )
+  let self_test = try {
+    ignore(control.parse(argv=argv.map(token => "control:" + token)))
+    true
+  } catch {
+    _ => false
+  }
+  if self_test {
+    return SelfTest
+  }
+  let command = @argparse.Command(
+    "repository-tasks",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommands=[
+      for
+        task in [
+          "build", "build:wasi", "build:browser", "build:js", "build:native", "test",
+          "format", "lint:moonbit", "lint", "lint:yaml", "validate", "clean", "list-tasks",
+        ] => {
+        @argparse.Command(task[:], disable_help_flag=true, positionals=[
+          @argparse.PositionArg(
+            "ignored",
+            num_args=@argparse.ValueRange(lower=0),
+            hidden=true,
+          ),
+        ])
+      }
+    ],
+  )
+  // The first token has always been the command; every later token is data.
+  // Insert the library delimiter at that fixed boundary without inspecting data.
+  let normalized = if argv.is_empty() {
+    []
+  } else {
+    [argv[0], "--", ..argv[1:]]
+  }
+  let parsed = command.parse(argv=normalized) catch {
+    _ => raise InvalidTask(argv.get(0).unwrap_or("missing task"))
+  }
+  match parsed.subcommand {
+    Some((task, _)) => Task(task)
+    None => raise InvalidTask(argv.get(0).unwrap_or("missing task"))
+  }
+}
 
 ///|
 fn commands(task : String) -> Array[(String, Array[String])] raise {
@@ -202,6 +266,16 @@ async fn entrypoint_test() -> Unit {
   let invoke = async fn(task) {
     @process.collect_output("moonx", [script, task], cwd=root)
   }
+  for argv in [[], ["unknown"], ["--unknown"], ["--help"], ["help", "clean"]] {
+    let (status, _, _) = @process.collect_output(
+      "moonx",
+      [script, ..argv],
+      cwd=root,
+    )
+    guard status == 1 && @fs.read_file(root + "/sentinel").text() == "preserve" else {
+      raise InvalidTask("invalid entrypoint status or effects changed")
+    }
+  }
   let (build, build_out, build_err) = invoke("build:wasi")
   guard build == 0 &&
     @fs.exists(root + "/_build") &&
@@ -255,6 +329,79 @@ async fn entrypoint_test() -> Unit {
 
 ///|
 async fn self_test() -> Unit {
+  for
+    task in [
+      "build", "build:wasi", "build:browser", "build:js", "build:native", "test",
+      "format", "lint:moonbit", "lint", "lint:yaml", "validate", "clean", "list-tasks",
+    ] {
+    for
+      argv in [
+        [task],
+        [
+          task, "tail", "--unknown", "-path", "", "--", "--self-test", "--help",
+          "--help=x", "help", "ü 雨", "$ ` ;",
+        ],
+      ] {
+      guard invocation(argv) is Task(actual) && actual == task else {
+        abort("task parsing changed")
+      }
+    }
+  }
+  guard invocation(["--self-test"]) is SelfTest else {
+    abort("self-test parsing changed")
+  }
+  for
+    argv in [
+      [],
+      ["unknown"],
+      ["--unknown"],
+      ["--help"],
+      ["help", "build"],
+      ["--", "build"],
+      ["--self-test", "--self-test"],
+      ["--self-test=true"],
+      ["--self-test", "build"],
+      ["--self-test", "tail"],
+    ] {
+    let rejected = try {
+      ignore(invocation(argv))
+      false
+    } catch {
+      _ => true
+    }
+    guard rejected else { abort("invalid task accepted") }
+  }
+  for
+    task in [
+      "build", "test", "build:wasi", "build:browser", "build:js", "build:native",
+      "format", "lint", "lint:moonbit", "validate", "list-tasks",
+    ] {
+    let recorded : Array[(String, Array[String])] = []
+    execute(task, fn(program, args) {
+      recorded.push((program, args))
+      0
+    })
+    guard recorded == commands(task) else {
+      abort("dispatch command boundaries changed")
+    }
+  }
+  for child_status in [-15, -1, 23] {
+    let count = Ref(0)
+    let status = try {
+      execute("test", fn(_, _) {
+        count.val += 1
+        child_status
+      })
+      0
+    } catch {
+      Failed(code) => code
+      _ => -1
+    }
+    guard status == (if child_status < 0 { 1 } else { child_status }) &&
+      count.val == 1 else {
+      abort("child status or short circuit changed")
+    }
+  }
   guard commands("build") ==
     [
       ("mise", ["run", "build:wasi"]),
@@ -400,16 +547,15 @@ async fn self_test() -> Unit {
 ///|
 async fn main {
   try {
-    match @env.args()[1:].to_owned() {
-      ["--self-test"] => self_test()
-      ["lint:yaml", ..] => lint_yaml(".", run)
-      ["clean", ..] => {
+    match invocation(@env.args()[1:].to_owned()) {
+      SelfTest => self_test()
+      Task("lint:yaml") => lint_yaml(".", run)
+      Task("clean") => {
         println("🧹 Cleaning build artifacts...")
         ignore(clean(".", run))
         println("✅ Clean complete")
       }
-      [task, ..] => execute(task, run)
-      _ => raise InvalidTask("missing task")
+      Task(task) => execute(task, run)
     }
   } catch {
     Failed(code) => @sys.exit(code)
