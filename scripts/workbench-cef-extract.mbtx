@@ -7,6 +7,7 @@ import {
   "moonbitlang/async@0.22.4/process",
   "moonbitlang/async@0.22.4/stdio",
   "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
 }
@@ -18,11 +19,94 @@ struct Extraction {
 }
 
 ///|
+fn extraction_command() -> @argparse.Command {
+  @argparse.Command(
+    // Model Proton's exact tar dialect. Generic flags accept broader forms.
+    "workbench-cef-extract.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommand_required=true,
+    subcommands=[
+      @argparse.Command(
+        "word:-xjf",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        subcommand_required=true,
+        options=[@argparse.OptionArg("archive", required=true)],
+        subcommands=[
+          @argparse.Command(
+            "word:-C",
+            disable_help_flag=true,
+            disable_help_subcommand=true,
+            options=[@argparse.OptionArg("destination", required=true)],
+          ),
+        ],
+      ),
+    ],
+  )
+}
+
+///|
 fn parse(args : ArrayView[String]) -> Extraction? {
-  match args {
-    ["-xjf", archive, "-C", destination] if !archive.is_empty() &&
-      !destination.is_empty() => Some({ archive, destination, })
-    _ => None
+  // Slots are fixed independently of token contents. Inline synthetic values
+  // retain every data character; the library recognizes the exact words and
+  // rejects missing, reordered and additional tokens.
+  let slots : Array[String?] = [
+    None,
+    Some("archive"),
+    None,
+    Some("destination"),
+  ]
+  let argv = args
+    .to_owned()
+    .mapi((index, value) => {
+      match slots.get(index).bind(value => value) {
+        Some(name) => "--\{name}=\{value}"
+        None => "word:" + value
+      }
+    })
+  let matches = extraction_command().parse(argv~, env=Map([])) catch {
+    _ => return None
+  }
+  let extraction = matches.subcommand.unwrap().1
+  let directory = extraction.subcommand.unwrap().1
+  let archive = extraction.values["archive"][0]
+  let destination = directory.values["destination"][0]
+  guard !archive.is_empty() && !destination.is_empty() else { return None }
+  Some({ archive, destination, })
+}
+
+///|
+enum Control {
+  SelfTest
+  Roundtrip
+}
+
+///|
+fn control(args : ArrayView[String]) -> Control? {
+  // Every trailing original word is literal, including --, so each control is
+  // exactly one token. The library owns recognition and arity.
+  let normalized = match args {
+    [] => []
+    [first, .. rest] => [first, "--", ..rest]
+  }
+  let matches = @argparse.Command(
+    "workbench-cef-extract.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("self-test"), @argparse.FlagArg("roundtrip")],
+    groups=[
+      @argparse.ArgGroup("control", required=true, multiple=false, args=[
+        "self-test", "roundtrip",
+      ]),
+    ],
+  ).parse(argv=normalized, env=Map([])) catch {
+    _ => return None
+  }
+  if matches.flags.get("self-test").unwrap_or(false) {
+    Some(SelfTest)
+  } else {
+    Some(Roundtrip)
   }
 }
 
@@ -144,7 +228,8 @@ async fn roundtrip(cmake : String) -> Unit {
 ///|
 async fn main {
   let args = @env.args()[1:]
-  if args == ["--self-test"] {
+  let selected = control(args)
+  if selected is Some(SelfTest) {
     guard parse(["-xjf", "input.tar.bz2", "-C", "output"]) is Some(_) else {
       abort("Valid extraction refused")
     }
@@ -154,10 +239,58 @@ async fn main {
         ["-xf", "input", "-C", "output"],
         ["-xjf", "input", "-C", "output", "extra"],
         ["-xjf", "", "-C", "output"],
+        ["-xjf", "input", "-C", ""],
+        ["-xjf", "input", "-Coutput"],
+        ["-xjfinput", "-C", "output"],
+        ["-x", "-j", "-f", "input", "-C", "output"],
+        ["-C", "output", "-xjf", "input"],
+        ["--", "-xjf", "input", "-C", "output"],
+        ["-xjf", "input", "--", "-C", "output"],
+        ["--help"],
       ] {
       guard parse(invalid) is None else {
         abort("Unsupported archive command accepted")
       }
+    }
+    for
+      archive in [
+        "input.tar.bz2", "--", "--help", "-C", "a λ $;= b", "--archive=x=y", "word:-xjf",
+        "資料/input", "a\nline\r\t",
+      ] {
+      for
+        destination in [
+          "output", "--", "--self-test", "-xjf", "a λ $;= b", "--destination=x=y",
+          "word:-C", "資料/output", "a\nline\r\t",
+        ] {
+        guard parse(["-xjf", archive, "-C", destination]) is Some(actual) &&
+          actual.archive == archive &&
+          actual.destination == destination else {
+          abort("Literal archive operands changed")
+        }
+      }
+    }
+    for
+      args in [
+        [],
+        ["--self-test", "--"],
+        ["--self-test", "--self-test"],
+        ["--roundtrip", "--"],
+        ["--roundtrip", "--roundtrip"],
+        ["--help"],
+        ["-h"],
+        ["--self-test", "--roundtrip"],
+        ["--self-test=true"],
+        ["--roundtrip=true"],
+        ["--", "--self-test"],
+        ["--", "--roundtrip"],
+        ["--roundtrip", "--help"],
+        ["help", "--self-test"],
+      ] {
+      guard control(args) is None else { abort("Invalid control accepted") }
+    }
+    guard control(["--self-test"]) is Some(SelfTest) &&
+      control(["--roundtrip"]) is Some(Roundtrip) else {
+      abort("Exact control refused")
     }
     println("Narrow CEF archive command refusal checks passed")
     return
@@ -165,7 +298,7 @@ async fn main {
   guard @env.get_env_var("MORPHIR_CEF_CMAKE") is Some(cmake) else {
     abort("Missing configured CMake executable")
   }
-  if args == ["--roundtrip"] {
+  if selected is Some(Roundtrip) {
     roundtrip(cmake)
     return
   }
