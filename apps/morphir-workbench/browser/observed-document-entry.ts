@@ -16,4 +16,14 @@ addEventListener('pagehide', channel.revoke, {once: true});
 void channel.whenClosed().then(() => removeEventListener('pagehide', channel.revoke));
 // Module completion is the real start-returned boundary. Native STOP must wait
 // for this fixed entry to finish, never infer readiness from101 or the firstFACT.
-await channel.attach(socket, startObservedWorkbench);
+let actual: Awaited<ReturnType<typeof startObservedWorkbench>> | undefined;
+await channel.attach(socket, async (limits, receive) => {
+  actual = await startObservedWorkbench(limits, receive);
+  return actual;
+});
+if (!actual) throw new Error('Workbench observed startup did not return its owner.');
+// The maintained controller retains this fixed namespace export on the SAME
+// Page. No global, evaluator, arbitrary module, source or expected-result input.
+// DocumentChannel alone keeps observer close/state and STOP/END ownership.
+export const connectedControls = channel.connectedControls(actual);
+export const openingControls = channel.openingControls(actual);

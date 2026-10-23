@@ -27,6 +27,10 @@ declare global {
     openOriginals(makeHash: () => import('../pkgs/morphir-host/model-originals-client/originals.ts').Hasher,
       receive: (event: import('../apps/morphir-workbench/browser/connected-originals.ts').ConnectedOriginalsEvent) => void): import('../apps/morphir-workbench/browser/connected-originals.ts').ConnectedOriginalsOpening;
     disposeOriginals(opening: import('../apps/morphir-workbench/browser/connected-originals.ts').ConnectedOriginalsOpening): void;
+    openConnectedModel(makeHash: () => import('../pkgs/morphir-host/model-originals-client/originals.ts').Hasher,
+      receive: (event: import('../apps/morphir-workbench/browser/connected-originals.ts').ConnectedModelEvent) => void): import('../apps/morphir-workbench/browser/connected-originals.ts').ConnectedModelOpening;
+    holdConnectedInspection(stage: import('../apps/morphir-workbench/browser/connected-originals.ts').PendingOriginalInspection, enqueue: () => void): void;
+    inspectConnectedModel(stage: import('../apps/morphir-workbench/browser/connected-originals.ts').PendingOriginalInspection, receive: (reply: string) => void): Promise<void>;
     originalHeaderParts(payload: import('../apps/morphir-workbench/browser/connected-originals.ts').OriginalPayload): number[];
     releaseModel(): void;
     cancelModelOpen(attempt: string): Promise<void>;

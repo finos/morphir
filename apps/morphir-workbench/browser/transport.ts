@@ -12,6 +12,7 @@ import { ArtifactDownloadRegistry, verifiedArtifactDownloads } from './artifact-
 import { openArtifactChannel } from './artifact-rpc.ts';
 import { ConnectedWorkspaceFiles, selectFileSource, type FileSourceSelection } from './connected-workspace-files.ts';
 import { openWorkspaceFilesRpc } from './workspace-files-rpc.ts';
+import {copyVerifiedProjection, type VerifiedProjection} from '../../../pkgs/morphir-host/model-originals-client/originals.ts';
 // Browser host boundary. Private operation envelopes never go onto Morphir RPC.
 export class LocalAdapter {
   workerFactory: () => WorkerPort;
@@ -37,6 +38,25 @@ export class LocalAdapter {
     return { success: true, operation: 'initialize', connected: false, capabilityEvaluator: catalog.capabilityEvaluator, catalog: { ...catalog, frontends: catalog.frontends, targets: catalog.targets }, projects: [], message: 'Browser local · ready to compile' };
   }
   execute(request: WorkRequest, _progress?: Progress): Promise<WorkResult> {
+    if (request.operation === 'inspect-connected-projection') {
+      return Promise.reject(new Error('Connected projection inspection requires receiver-owned bytes.'));
+    }
+    return this.#execute(request, 'ordinary');
+  }
+  inspectProjection(projection: VerifiedProjection): Promise<WorkResult> {
+    try {
+      const bytes = copyVerifiedProjection(projection);
+      if (bytes.length > 64 * 1024 * 1024) throw new Error('Projection exceeds the 64 MiB profile limit.');
+      // Encode only the receiver-owned snapshot. No caller-chosen request or
+      // codec reaches this fixed worker operation.
+      let binary = '';
+      for (let offset = 0; offset < bytes.length; offset += 32768) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+      }
+      return this.#execute({operation: 'inspect-connected-projection', source: '', sourceBase64: btoa(binary)}, 'projection');
+    } catch (error) {return Promise.reject(error);}
+  }
+  #execute(request: WorkRequest, input: 'ordinary' | 'projection'): Promise<WorkResult> {
     if (request.sourceTree !== undefined) {
       try { if (request.operation !== 'inspect') throw new Error('Model trees are inspection inputs.'); validateModelTreeInput(request.sourceTree); }
       catch (error) { return Promise.reject(error); }
@@ -51,7 +71,7 @@ export class LocalAdapter {
       if (worksheet) request.worksheetRequest = worksheet.request;
     }
     catch (error) { return Promise.reject(error); }
-    if (request.sourceBase64 !== undefined && (typeof request.sourceBase64 !== 'string' || request.sourceBase64.length > Math.ceil(16 * 1024 * 1024 / 3) * 4 ||
+    if (input === 'ordinary' && request.sourceBase64 !== undefined && (typeof request.sourceBase64 !== 'string' || request.sourceBase64.length > Math.ceil(16 * 1024 * 1024 / 3) * 4 ||
         request.operation !== 'inspect' || !['morphir-json', 'morphir-yaml', 'ion-text', 'ion-binary'].includes(request.sourceCodec ?? ''))) {
       return Promise.reject(new Error('Model bytes must use a supported codec and fit the 16 MiB import limit.'));
     }

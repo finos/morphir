@@ -37,7 +37,7 @@ async function downloadBytes(page: Page, name: string): Promise<Buffer> {
 
 for (const ending of ['current', 'close', 'replace'] as const)
 test(`connected complete archive publishes only for its actual inventory owner: ${ending}`, {timeout: 20000}, async () => {
-  // Reuse the existing real1002-entry complete/none fixture without modifying it.
+  // The complete inventory remains independent of an unavailable projection.
   const fixture = startOriginalsFixture('paged-inventory');
   const server = createWorkbenchServer({host: fixture.host.url.origin});
   server.listen(0, '127.0.0.1'); await once(server, 'listening');

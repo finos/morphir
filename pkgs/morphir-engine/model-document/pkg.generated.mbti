@@ -46,7 +46,7 @@ pub fn Document::from_reply(Json) -> Self raise DocumentError
 pub fn Document::not_equal(Self, Self) -> Bool
 pub fn Document::to_repr(Self) -> @debug.Repr
 
-pub struct DocumentRevision(Int) derive(Eq, @debug.Debug)
+pub struct DocumentRevision(Int32) derive(Eq, @debug.Debug)
 pub fn DocumentRevision::equal(Self, Self) -> Bool
 pub fn DocumentRevision::not_equal(Self, Self) -> Bool
 pub fn DocumentRevision::to_repr(Self) -> @debug.Repr
@@ -67,13 +67,13 @@ pub(all) enum InventoryPathProfile {
   Connected
 }
 
-pub struct InventoryRevision(Int) derive(Eq, @debug.Debug)
+pub struct InventoryRevision(Int32) derive(Eq, @debug.Debug)
 pub fn InventoryRevision::equal(Self, Self) -> Bool
 pub fn InventoryRevision::not_equal(Self, Self) -> Bool
 pub fn InventoryRevision::to_repr(Self) -> @debug.Repr
 pub fn InventoryRevision::to_string(Self) -> String
 
-pub struct OpenAttempt(Int) derive(Eq, @debug.Debug)
+pub struct OpenAttempt(Int32) derive(Eq, @debug.Debug)
 pub fn OpenAttempt::equal(Self, Self) -> Bool
 pub fn OpenAttempt::not_equal(Self, Self) -> Bool
 pub fn OpenAttempt::to_repr(Self) -> @debug.Repr
@@ -92,7 +92,7 @@ pub struct OriginalFile {
   format_version : @version.FormatVersion
   // private fields
 } derive(Eq, @debug.Debug)
-pub fn OriginalFile::byte_length(Self) -> Int
+pub fn OriginalFile::byte_length(Self) -> Int32
 pub fn OriginalFile::copy_bytes(Self) -> Bytes
 pub fn OriginalFile::download(Self) -> Json
 pub fn OriginalFile::equal(Self, Self) -> Bool
@@ -116,8 +116,8 @@ pub fn OriginalInventory::copy_files(Self) -> Map[String, Bytes]
 pub fn OriginalInventory::directory_paths(Self) -> Array[String]
 pub fn OriginalInventory::download(Self) -> Json
 pub fn OriginalInventory::download_file(Self, OriginalPath) -> Json raise DocumentError
-pub fn OriginalInventory::entry(Self, Int) -> OriginalInventoryEntry?
-pub fn OriginalInventory::entry_count(Self) -> Int
+pub fn OriginalInventory::entry(Self, Int32) -> OriginalInventoryEntry?
+pub fn OriginalInventory::entry_count(Self) -> Int32
 pub fn OriginalInventory::equal(Self, Self) -> Bool
 pub fn OriginalInventory::file_byte_length(Self, OriginalPath) -> UInt64?
 pub fn OriginalInventory::file_paths(Self) -> Array[String]
@@ -144,7 +144,7 @@ pub struct OriginalRelease {
   // private fields
 } derive(Eq, @debug.Debug)
 pub fn OriginalRelease::equal(Self, Self) -> Bool
-pub fn OriginalRelease::new(UInt, UInt, UInt) -> Self
+pub fn OriginalRelease::new(UInt32, UInt32, UInt32) -> Self
 pub fn OriginalRelease::not_equal(Self, Self) -> Bool
 pub fn OriginalRelease::to_release_string(Self) -> String
 pub fn OriginalRelease::to_repr(Self) -> @debug.Repr
@@ -208,6 +208,7 @@ pub fn State::current_revision(Self) -> DocumentRevision?
 pub fn State::document(Self) -> Document?
 pub fn State::equal(Self, Self) -> Bool
 pub fn State::finish(Self, OpenAttempt, Json) -> Self raise DocumentError
+pub fn State::finish_connected(Self, OpenAttempt, Json, OriginalInventory) -> Self raise DocumentError
 pub fn State::finish_originals(Self, OpenAttempt, OriginalInventory) -> Self raise DocumentError
 pub fn State::inspection(Self) -> Json
 pub fn State::inventory_revision(Self) -> InventoryRevision?

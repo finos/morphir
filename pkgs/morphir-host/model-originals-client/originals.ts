@@ -9,7 +9,8 @@ export const ORIGINALS_VERSION = '0.1.0-draft.1';
 const byteLimit = 67108864, entryLimit = 100064;
 const encoder = new TextEncoder();
 export class OriginalsFailure extends Error {
-  constructor(readonly code: string) { super(code); }
+  readonly code: string;
+  constructor(code: string) { super(code); this.code = code; }
 }
 function fail(code = 'originals.invalid_frame'): never { throw new OriginalsFailure(code); }
 type ObjectValue = ReadonlyMap<string, ExactJson>;
@@ -90,7 +91,7 @@ function result(exchange: ModelOriginalsCaptureExchange): ObjectValue {
   if (!(id instanceof ExactJsonNumber) || id.lexeme !== exchange.requestId) fail();
   return object(envelope.get('result'));
 }
-export function readCapture(exchange: ModelOriginalsCaptureExchange, expected: Binding): Capture {
+function captureEnvelope(exchange: ModelOriginalsCaptureExchange, expected: Binding): ObjectValue {
   const value = result(exchange); prefix(value);
   if (value.get('status') === 'unavailable') {
     fields(value,['profile','contractVersion','status','reason']);
@@ -101,7 +102,9 @@ export function readCapture(exchange: ModelOriginalsCaptureExchange, expected: B
   equal(value.get('status'),'ready'); binding(value.get('binding'),expected);
   const coverage = fields(value.get('coverage'),['kind','declaration']);
   equal(coverage.get('kind'),'complete'); equal(coverage.get('declaration'),ORIGINALS_VERSION);
-  equal(fields(value.get('projection'),['status']).get('status'),'not-requested');
+  return value;
+}
+function captureBody(value: ObjectValue): Capture {
   const primary = root(value.get('primary')), companions = list(value.get('companions'));
   if (companions.length > 63) fail();
   const roots = [primary,...companions.map(root)];
@@ -142,6 +145,50 @@ export function readCapture(exchange: ModelOriginalsCaptureExchange, expected: B
   if (capture.entryCount !== capture.fileCount+capture.directoryCount) fail();
   return capture;
 }
+export function readCapture(exchange: ModelOriginalsCaptureExchange, expected: Binding): Capture {
+  const value = captureEnvelope(exchange, expected);
+  equal(fields(value.get('projection'),['status']).get('status'),'not-requested');
+  return captureBody(value);
+}
+export type ProjectionUnavailableReason = 'unsupported_representation' | 'invalid_model' | 'decode_limit' | 'projection_limit' | 'capacity' | 'timeout';
+type ProjectionDescriptor = Readonly<{kind:'available';byteLength:number;sha256:string;formatVersion:string}>
+  | Readonly<{kind:'unavailable';reason:ProjectionUnavailableReason}>;
+function readProjection(value: ExactJson | undefined): ProjectionDescriptor {
+  const item = object(value);
+  if (item.get('status') === 'unavailable') {
+    fields(item,['status','reason']);
+    const reason = text(item.get('reason'));
+    if (!['unsupported_representation','invalid_model','decode_limit','projection_limit','capacity','timeout'].includes(reason)) fail();
+    return {kind:'unavailable',reason:reason as ProjectionUnavailableReason};
+  }
+  fields(item,['status','codec','byteLength','sha256','formatVersion']);
+  equal(item.get('status'),'available'); equal(item.get('codec'),'morphir-json');
+  const release = text(item.get('formatVersion')), parsed = parse(release);
+  if (format(parsed) !== release || parsed.prerelease?.length || parsed.build?.length ||
+      [parsed.major,parsed.minor,parsed.patch].some(n=>n>4294967295)) fail();
+  return {kind:'available',byteLength:count(item.get('byteLength'),byteLimit),sha256:hash(item.get('sha256')),formatVersion:release};
+}
+const verifiedProjection = Symbol('verified-projection');
+/** Receiver-owned projection bytes. Neither construction nor a copy grants source authority. */
+class OwnedVerifiedProjection {
+  readonly #bytes: Uint8Array;
+  readonly formatVersion: string;
+  constructor(token: typeof verifiedProjection, bytes: Uint8Array, formatVersion: string) {
+    if (token !== verifiedProjection) throw new Error('Only the projection receiver constructs verified bytes.');
+    this.#bytes = bytes; this.formatVersion = formatVersion; Object.freeze(this);
+  }
+  copyBytes(): Uint8Array {return this.#bytes.slice();}
+}
+export type VerifiedProjection = OwnedVerifiedProjection;
+// Capture the real private-field reader. A structural object, a changed public
+// method or a prototype-shaped impostor cannot grant projection input ownership.
+const copyOwnedProjection = OwnedVerifiedProjection.prototype.copyBytes;
+export function copyVerifiedProjection(value: VerifiedProjection): Uint8Array {
+  return copyOwnedProjection.call(value);
+}
+export type ReceivedProjection = Readonly<{kind:'verified';value:VerifiedProjection}>
+  | Readonly<{kind:'unavailable';reason:ProjectionUnavailableReason}>
+  | Readonly<{kind:'unusable';reason:'transfer-invalid'|'header-invalid'|'header-mismatch'}>;
 export interface Hasher {update(bytes: Uint8Array): void; hex(): string;}
 export interface OriginalSink {
   inventory(entries: readonly Entry[], capture: Capture): void;
@@ -196,12 +243,8 @@ export function verifyInventory(entries: readonly Entry[], capture: Capture, has
 function retained(value: ObjectValue, expected: Binding, capture: Capture): void {
   prefix(value);binding(value.get('binding'),expected);equal(value.get('captureId'),capture.captureId);
 }
-/** Verify every original on the owning connection, then require release before publication. */
-export async function receiveOriginals(session: ModelOriginalsSession, project: ModelOriginalsProject,
-  expected: Binding, sink: OriginalSink, makeHash:()=>Hasher, current:()=>boolean,
-  accepted?:(value:ReleaseAccepted)=>void): Promise<{capture:Capture;entries:Entry[]}> {
-  const active=()=>{if(!current())fail('originals.cancelled');};
-  active();const capture=readCapture(await session.exchangeCapture(project,{scope:'complete',semantic:'none'}),expected);
+async function receiveInventory(session: ModelOriginalsSession, expected: Binding, capture: Capture,
+  makeHash:()=>Hasher, active:()=>void): Promise<Entry[]> {
   const entries:Entry[]=[];const pages:{start:number;length:number}[]=[];let metadata=0;
   for(;;){
     active();const startIndex=entries.length;
@@ -229,23 +272,40 @@ export async function receiveOriginals(session: ModelOriginalsSession, project: 
     while(low<high){const mid=Math.ceil((low+high)/2);if(fits(mid))low=mid;else high=mid-1;}
     if(page.length!==low)fail('originals.noncanonical_pagination');
   }
+  return entries;
+}
+type ReadTarget = Readonly<{kind:'original';entryId:string}> | Readonly<{kind:'semantic-projection'}>;
+function readChunk(exchange: ModelOriginalsCaptureExchange, expected: Binding, capture: Capture,
+  target: ReadTarget, offset: number, length: number): Uint8Array {
+  const value=result(exchange);
+  fields(value,['profile','contractVersion','binding','captureId','target','offset','nextOffset','content']);retained(value,expected,capture);
+  const observed=fields(value.get('target'),target.kind==='original'?['kind','entryId']:['kind']);
+  equal(observed.get('kind'),target.kind);
+  if(target.kind==='original')equal(observed.get('entryId'),target.entryId);
+  equal(count(value.get('offset'),byteLimit),offset);
+  const next=count(value.get('nextOffset'),byteLimit),encoded=text(value.get('content'));
+  if(encoded.length>87384||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded))fail('originals.invalid_content');
+  const binary=atob(encoded),bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+  if(btoa(binary)!==encoded||bytes.length!==Math.min(65536,length-offset)||next!==offset+bytes.length||next>length)fail('originals.invalid_chunk');
+  return bytes;
+}
+async function receiveFiles(session: ModelOriginalsSession, expected: Binding, capture: Capture,
+  entries: Entry[], sink: OriginalSink, makeHash:()=>Hasher, active:()=>void): Promise<void> {
   active();sink.inventory(entries,capture);
   for(const [index,item] of entries.entries()){
     if(item.kind!=='file')continue;
     active();sink.begin(index);const hasher=makeHash();let offset=0;
     do {
       active();const target={kind:'original',entryId:item.entryId};
-      const value=result(await session.exchangeOriginals('read',{captureId:capture.captureId,target,offset,maxBytes:65536}));
-      fields(value,['profile','contractVersion','binding','captureId','target','offset','nextOffset','content']);retained(value,expected,capture);
-      const observed=fields(value.get('target'),['kind','entryId']);equal(observed.get('kind'),'original');equal(observed.get('entryId'),item.entryId);
-      equal(count(value.get('offset'),byteLimit),offset);const next=count(value.get('nextOffset'),byteLimit),encoded=text(value.get('content'));
-      if(encoded.length>87384||!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded))fail('originals.invalid_content');
-      const binary=atob(encoded),bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
-      if(btoa(binary)!==encoded||bytes.length!==Math.min(65536,item.byteLength-offset)||next!==offset+bytes.length||next>item.byteLength)fail('originals.invalid_chunk');
-      active();hasher.update(bytes);sink.write(bytes);offset=next;
+      const exchange=await session.exchangeOriginals('read',{captureId:capture.captureId,target,offset,maxBytes:65536});
+      const bytes=readChunk(exchange,expected,capture,{kind:'original',entryId:item.entryId},offset,item.byteLength);
+      active();hasher.update(bytes);sink.write(bytes);offset+=bytes.length;
     }while(offset<item.byteLength);
     equal(hasher.hex(),item.sha256);sink.end();
   }
+}
+async function releaseCapture(session: ModelOriginalsSession, expected: Binding, capture: Capture,
+  active:()=>void, accepted?: (value:ReleaseAccepted)=>void): Promise<void> {
   active();const exchange=await session.exchangeOriginals('release',{captureId:capture.captureId});
   const released=result(exchange);
   fields(released,['profile','contractVersion','captureId','status']);prefix(released);equal(released.get('captureId'),capture.captureId);equal(released.get('status'),'released');
@@ -257,5 +317,60 @@ export async function receiveOriginals(session: ModelOriginalsSession, project: 
         exchange:Object.freeze({...exchange})}));
     }catch{/* Observation cannot change the accepted application result. */}
   }
+}
+/** Verify every original on the owning connection, then require release before publication. */
+export async function receiveOriginals(session: ModelOriginalsSession, project: ModelOriginalsProject,
+  expected: Binding, sink: OriginalSink, makeHash:()=>Hasher, current:()=>boolean,
+  accepted?:(value:ReleaseAccepted)=>void): Promise<{capture:Capture;entries:Entry[]}> {
+  const active=()=>{if(!current())fail('originals.cancelled');};
+  active();const capture=readCapture(await session.exchangeCapture(project,{scope:'complete',semantic:'none'}),expected);
+  const entries=await receiveInventory(session,expected,capture,makeHash,active);
+  await receiveFiles(session,expected,capture,entries,sink,makeHash,active);
+  await releaseCapture(session,expected,capture,active,accepted);
   return{capture,entries};
+}
+async function receiveProjection(session: ModelOriginalsSession, expected: Binding, capture: Capture,
+  descriptor: ProjectionDescriptor, makeHash:()=>Hasher, active:()=>void,
+  recognizeHeader:(actualBytes:Uint8Array)=>string): Promise<ReceivedProjection> {
+  if(descriptor.kind==='unavailable')return descriptor;
+  const owned=new Uint8Array(descriptor.byteLength),hasher=makeHash();
+  let offset=0;
+  do {
+    active();const target={kind:'semantic-projection'} as const;
+    // A real transport rejection remains a rejection. Only local validation of
+    // a returned projection frame can leave verified originals usable.
+    const exchange=await session.exchangeOriginals('read',{captureId:capture.captureId,target,offset,maxBytes:65536});
+    active();
+    let bytes:Uint8Array;
+    try{bytes=readChunk(exchange,expected,capture,target,offset,descriptor.byteLength);}
+    catch{return{kind:'unusable',reason:'transfer-invalid'};}
+    owned.set(bytes,offset);hasher.update(bytes);offset+=bytes.length;
+  }while(offset<descriptor.byteLength);
+  if(hasher.hex()!==descriptor.sha256)return{kind:'unusable',reason:'transfer-invalid'};
+  // The recognizer may retain or mutate its input. It never receives the
+  // private backing whose digest was verified or the copy returned to callers.
+  const headerInput=owned.slice();
+  let actualVersion:string;
+  try{actualVersion=recognizeHeader(headerInput);}
+  catch{active();return{kind:'unusable',reason:'header-invalid'};}
+  active();
+  if(actualVersion!==descriptor.formatVersion)return{kind:'unusable',reason:'header-mismatch'};
+  return{kind:'verified',value:new OwnedVerifiedProjection(verifiedProjection,owned,actualVersion)};
+}
+/** Complete originals remain independently verified when projection is unavailable
+ * or unusable. No result is returned before strict release and final currentness.
+ * The injected recognizer is a trusted pure dependency, not consumer authority.
+ */
+export async function receiveOriginalsWithProjection(session: ModelOriginalsSession, project: ModelOriginalsProject,
+  expected: Binding, sink: OriginalSink, makeHash:()=>Hasher, current:()=>boolean,
+  recognizeHeader:(actualBytes:Uint8Array)=>string,
+  accepted?:(value:ReleaseAccepted)=>void): Promise<{capture:Capture;entries:Entry[];projection:ReceivedProjection}> {
+  const active=()=>{if(!current())fail('originals.cancelled');};
+  active();const value=captureEnvelope(await session.exchangeCapture(project,{scope:'complete',semantic:'projection'}),expected);
+  const descriptor=readProjection(value.get('projection')),capture=captureBody(value);
+  const entries=await receiveInventory(session,expected,capture,makeHash,active);
+  await receiveFiles(session,expected,capture,entries,sink,makeHash,active);
+  const projection=await receiveProjection(session,expected,capture,descriptor,makeHash,active,recognizeHeader);
+  await releaseCapture(session,expected,capture,active,accepted);
+  return{capture,entries,projection};
 }

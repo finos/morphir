@@ -83,7 +83,28 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
         ("worksheetReport", Json::string(report.to_json().stringify())),
       ])
     }
-    let imported = if operation == "inspect" &&
+    let connected_projection = operation == "inspect-connected-projection"
+    let imported = if connected_projection {
+      // Private fixed worker operation. The page adapter admits only nominal
+      // receiver-owned bytes; the worker independently enforces profile/parser
+      // bounds and typed support. This changes no ordinary import limit.
+      let encoded = @wire.string(@wire.field(request, "sourceBase64"))
+      guard encoded.length() <= 89478488 else {
+        raise @scheme.Invalid("Projection exceeds the 64-MiB profile limit")
+      }
+      let bytes = @base64.decode(encoded[:])
+      guard @base64.encode(bytes[:]) == encoded else {
+        raise @scheme.Invalid("Projection bytes must use canonical base64")
+      }
+      let limits : @data.Limits = {
+        max_bytes: 64 * 1024 * 1024,
+        max_depth: 128,
+        max_values: 100000,
+      }
+      stage = "model"
+      ignore(@data.recognize_projection_header(bytes, limits))
+      Some(@data.inspect_model_source(@data.JSON, bytes, limits~))
+    } else if operation == "inspect" &&
       @wire.optional(request, "sourceTree") != None {
       stage = "model"
       Some(inspect_tree(request))
@@ -155,7 +176,14 @@ pub fn execute_with(engine : @engine.Engine, request : Json) -> Json {
         @wire.text(source_format_version.to_release_string()),
       ),
     ]
-    if imported is Some(checkpoint) {
+    if connected_projection {
+      result.push(
+        (
+          "modelSource",
+          { "kind": "semantic-projection", "reason": "originals-not-provided" },
+        ),
+      )
+    } else if imported is Some(checkpoint) {
       let unit = checkpoint.unit
       source_ui(result, unit.metadata)
       let registry = @data.Registry::new(limits={

@@ -7,10 +7,56 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
 import type {AddressInfo} from 'node:net';
+import type {IncomingMessage, ServerResponse} from 'node:http';
+import type {Duplex} from 'node:stream';
+import {WebSocketServer} from 'ws';
 import {chromium} from 'playwright';
 import {createWorkbenchServer} from '../scripts/server.ts';
 import {startOriginalsFixture} from '../scripts/originals-fixture-host.ts';
 import type {ProductFact} from './product-observer.ts';
+
+// Real HTTP bootstrap and WebSocket transport for the actual fixed entry. This
+// fixture owns only its loopback endpoint and ACKs, never native host authority.
+function attachDocumentFixture(server: ReturnType<typeof createWorkbenchServer>) {
+  const records = 128, journalBytes = 65536, frameBytes = 2048, backing = journalBytes + 8 * records;
+  const bootstrap = {observation: {owners: 32, events: 128}, records, journalBytes, frameBytes,
+    journalCharge: {retainedBytes: backing, slots: 104 * records + 8, byteVisits: backing + records * (4218 + 66 * frameBytes) + 8},
+    transportCharge: {retainedBytes: frameBytes + 16, slots: 8 + 2 * records, byteVisits: frameBytes + 16 + records * (2 * frameBytes + 64) + 96},
+    credential: 'A'.repeat(43)};
+  const request = server.listeners('request')[0]! as (request: IncomingMessage, response: ServerResponse) => void;
+  server.removeAllListeners('request');
+  server.on('request', (incoming, response) => {
+    if (incoming.url !== '/_mck/document') {request(incoming, response); return;}
+    if (incoming.method !== 'POST') {response.writeHead(405).end(); return;}
+    response.writeHead(200, {'Content-Type': 'application/json', 'Cache-Control': 'no-store'}).end(JSON.stringify(bootstrap));
+  });
+  const upgrade = server.listeners('upgrade')[0]! as (request: IncomingMessage, socket: Duplex, head: Buffer) => void;
+  server.removeAllListeners('upgrade');
+  const sockets = new WebSocketServer({noServer: true, handleProtocols: protocols =>
+    protocols.size === 2 && protocols.has('morphir-document-v1') && protocols.has(`morphir-document-key.${bootstrap.credential}`)
+      ? 'morphir-document-v1' : false});
+  server.on('upgrade', (incoming, socket, head) => {
+    if (incoming.url !== '/_mck/document') {upgrade(incoming, socket, head); return;}
+    sockets.handleUpgrade(incoming, socket, head, peer => sockets.emit('connection', peer, incoming));
+  });
+  const facts: ProductFact[] = [], failures: string[] = [];
+  sockets.on('connection', peer => peer.on('message', (data, binary) => {
+    try {
+      assert(binary && Buffer.isBuffer(data));
+      const header = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      assert.equal(header.getUint8(0), 1); assert.equal(header.getUint8(1), 1);
+      assert.equal(header.getUint16(2), 0); assert.equal(header.getUint32(12), data.byteLength - 16);
+      assert.equal(header.getBigUint64(4), BigInt(facts.length + 1)); assert(facts.length < records);
+      facts.push(JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(data.subarray(16))));
+      const ack = new Uint8Array(16), control = new DataView(ack.buffer);
+      control.setUint8(0, 1); control.setUint8(1, 3); control.setBigUint64(4, header.getBigUint64(4)); peer.send(ack);
+    } catch (error) {failures.push(String(error)); peer.terminate();}
+  }));
+  return {facts, failures, async close() {
+    for (const socket of sockets.clients) socket.terminate();
+    await new Promise<void>((resolve, reject) => sockets.close(error => error ? reject(error) : resolve()));
+  }};
+}
 
 test('actual standard entry remains unobserved and cannot attach after startup', {timeout: 10000}, async () => {
   const server = createWorkbenchServer(); server.listen(0, '127.0.0.1'); await once(server, 'listening');
@@ -29,6 +75,71 @@ test('actual standard entry remains unobserved and cannot attach after startup',
     assert.deepEqual(actual, {state: {kind: 'unobserved'}, attachment: 'late'});
   } finally {
     await browser.close(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+});
+
+for (const ending of ['inspect', 'close-before-core'] as const)
+test(`fixed observed entry holds the genuine projection inspection command: ${ending}`, {timeout: 20000}, async () => {
+  const fixture = startOriginalsFixture('projected-model');
+  const assets = await mkdtemp(join(tmpdir(), 'workbench-inspection-'));
+  await cp(new URL('../dist/', import.meta.url), assets, {recursive: true});
+  await cp(join(assets, 'observed-index.html'), join(assets, 'index.html'));
+  const server = createWorkbenchServer({host: fixture.host.url.origin, root: pathToFileURL(assets + '/')});
+  const document = attachDocumentFixture(server);
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  const browser = await chromium.launch({headless: true});
+  try {
+    const page = await browser.newPage();
+    const workers: string[] = [], errors: string[] = [];
+    page.on('request', request => {if (new URL(request.url()).pathname.endsWith('/worker.js')) workers.push(request.url());});
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${(server.address() as AddressInfo).port}/?mode=connected-originals`);
+    const capture = await page.evaluateHandle(async () => {
+      const url = new URL('/observed-document-entry.js', location.href).href;
+      return (await import(url)).openingControls.prepareOpeningCapture();
+    });
+    await page.locator('button[data-model-connect="originals"]').click();
+    const captured = await capture.evaluateHandle(actual => actual.whenRegistered());
+    // Literal fixture identities, not display names or an assumed row order.
+    await page.locator('[data-model-choice-phase="source"]').waitFor();
+    assert.deepEqual(await captured.evaluate(actual => actual.chooseSource('provider', 'workspace:B')), {kind: 'source-selected'});
+    await page.locator('[data-model-choice-phase="project"]').waitFor();
+    assert.deepEqual(await captured.evaluate(actual => actual.chooseProject('project-B')), {kind: 'project-selected'});
+    await fixture.pendingRelease;
+    assert.deepEqual(workers, []);
+    fixture.release();
+    const pending = await captured.evaluate(actual => actual.awaitInspectionPending());
+    assert.deepEqual(pending, {kind: 'inspection-pending'});
+    assert.deepEqual(workers, [], 'the genuine app command must still be held before worker creation');
+    assert.equal(await page.getByRole('button', {name: 'Download model.yaml', exact: true}).count(), 0);
+    if (ending === 'close-before-core') {
+      await page.getByRole('button', {name: 'Close model', exact: true}).click();
+      await page.getByRole('status').filter({hasText: 'Model closed'}).waitFor();
+      assert.equal(await captured.evaluate(actual => actual.executePendingCore()), 'ignored');
+      assert.deepEqual(workers, []);
+    } else {
+      assert.equal(await captured.evaluate(actual => actual.executePendingCore()), 'enqueued');
+      assert.deepEqual(await captured.evaluate(actual => actual.awaitOpeningSettled()), {kind: 'stored'});
+      assert.equal(await captured.evaluate(actual => actual.executePendingCore()), 'ignored');
+      await page.getByRole('status').filter({hasText: 'captured model inspected'}).waitFor();
+      assert.equal(workers.length, 1);
+      assert.equal(await page.getByRole('button', {name: 'Export IR', exact: true}).isEnabled(), true);
+      await page.getByText('Inspected model and original files from the selected capture', {exact: true}).waitFor();
+      const download = page.waitForEvent('download');
+      await page.getByRole('button', {name: 'Download model.yaml', exact: true}).click();
+      const stream = await (await download).createReadStream();
+      assert(stream);
+      const chunks: Buffer[] = []; for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+      assert.deepEqual(Buffer.concat(chunks), fixture.original);
+    }
+    assert.equal((fixture.requests.find(row => row.method.endsWith('.capture'))!.params as {semantic: string}).semantic, 'projection');
+    assert.deepEqual(document.failures, []);
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+    await document.close();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    await fixture.host.stop(true); await rm(assets, {recursive: true, force: true});
   }
 });
 

@@ -72,7 +72,7 @@ fn product_observation_cmd(
   }
   if after.document.inventory_revision() is Some(revision) &&
     before.document.inventory_revision() != Some(revision) &&
-    before.originals is OriginalOpening(attempt, owner) {
+    original_opening_identity(before.originals) is Some((attempt, owner)) {
     commands.push(
       @cmd.custom_cmd(_ => {
         observe_inventory_adopted(

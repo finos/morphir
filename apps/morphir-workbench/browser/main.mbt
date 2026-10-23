@@ -454,6 +454,12 @@ enum Msg {
   OpenOriginals
   OriginalsStarted(@document.OpenAttempt, ConnectedOpening)
   OriginalsChanged(@document.OpenAttempt, ConnectedOriginalsEvent)
+  ConnectedInspected(
+    @document.OpenAttempt,
+    ConnectedOpening,
+    PendingConnectedInspection,
+    String
+  )
   OriginalsPageChanged(@document.InventoryRevision, OriginalsPage)
   ChooseOriginalSource(@document.OpenAttempt, ConnectedOpening, Int32)
   ChooseOriginalProject(@document.OpenAttempt, ConnectedOpening, Int32)
@@ -1788,6 +1794,7 @@ fn update_core(
     OpenOriginals
     | OriginalsStarted(_, _)
     | OriginalsChanged(_, _)
+    | ConnectedInspected(_, _, _, _)
     | OriginalsPageChanged(_, _)
     | ChooseOriginalSource(_, _, _)
     | ChooseOriginalProject(_, _, _)

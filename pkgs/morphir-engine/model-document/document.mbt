@@ -588,6 +588,37 @@ pub fn State::finish(
 }
 
 ///|
+/// Publish the actual inspection reply and received originals together for one
+/// current connected opening. The caller owns transfer/projection verification,
+/// accepted release and source currentness; this pure transition grants none.
+/// Neither independent revision advances unless both owners can be retained.
+pub fn State::finish_connected(
+  self : State,
+  attempt : OpenAttempt,
+  reply : Json,
+  inventory : OriginalInventory,
+) -> State raise DocumentError {
+  if !self.is_current(attempt) {
+    return self
+  }
+  if self.revision == 2147483647 || self.inventory_sequence == 2147483647 {
+    raise RevisionLimit
+  }
+  let document = Document::from_reply(reply)
+  {
+    ..self,
+    revision: self.revision + 1,
+    inventory_sequence: self.inventory_sequence + 1,
+    phase: Retained(
+      Both({ document, revision: DocumentRevision(self.revision + 1), }, {
+        inventory,
+        revision: InventoryRevision(self.inventory_sequence + 1),
+      }),
+    ),
+  }
+}
+
+///|
 /// Adoption retires any picker/read attempt. The caller already owns the current
 /// compile or inspection reply; malformed original offers never replace a model.
 pub fn State::replace(self : State, reply : Json) -> State raise DocumentError {

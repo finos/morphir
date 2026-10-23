@@ -24,9 +24,9 @@ test(`built originals page owns source/project opening and delivery: ${interrupt
     assert.equal(await page.getByRole('group', {name: 'Source mode', exact: true}).count(), 0);
     assert.equal(await page.getByRole('button', {name: 'Run worksheet', exact: true}).count(), 0);
     if (interruption.startsWith('queued-')) await page.evaluate(() => {
-      const original = globalThis.morphirWorkbench.openOriginals;
+      const original = globalThis.morphirWorkbench.openConnectedModel;
       Reflect.set(globalThis, '__originalsTakeCount', 0);
-      globalThis.morphirWorkbench.openOriginals = (hash, receive) => original(hash, event => {
+      globalThis.morphirWorkbench.openConnectedModel = (hash, receive) => original(hash, event => {
         if (event.kind !== 'received') {receive(event); return;}
         const take = event.stage.take.bind(event.stage);
         event.stage.take = adopt => {
@@ -108,7 +108,7 @@ test(`built originals page owns source/project opening and delivery: ${interrupt
     assert(stream); const chunks: Buffer[] = []; for await (const chunk of stream) chunks.push(Buffer.from(chunk));
     assert.deepEqual(Buffer.concat(chunks), original);
     assert.deepEqual(requests.find(request => request.method.endsWith('.capture'))!.params, {
-      contractVersion: shared.contractVersion, source: binding.source, projectId: 'project-B', scope: 'complete', semantic: 'none',
+      contractVersion: shared.contractVersion, source: binding.source, projectId: 'project-B', scope: 'complete', semantic: 'projection',
     });
     assert.deepEqual(requests.map(request => request.method), ['morphir.session.initialize', 'morphir.workspace.open',
       'morphir.model-originals.capture', ...Array.from({length: interruption === 'pagination' ? 4 : 1}, () => 'morphir.model-originals.inventory'),

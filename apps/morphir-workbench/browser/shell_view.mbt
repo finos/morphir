@@ -1126,6 +1126,7 @@ fn model_document(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         class="secondary small",
         hidden=model.mode != ConnectedOriginals,
         disabled=model.busy || host_execution_blocks_replacement(model),
+        attrs=@html.Attrs::build().data_set("model-connect", "originals"),
         on_click=emit(OpenOriginals),
         "Connect model source",
       ),

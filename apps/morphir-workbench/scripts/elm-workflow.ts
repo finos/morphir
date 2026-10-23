@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
-import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, setTarget, currentTarget, useSourceWorkspace, currentSourceProfile, setSourceProfile, runCommand, forgetSourceWorkspace, replaceSourceDocument } from './workbench-steps.ts';
+import { openSample, showCompile, showSource, showModel, setExplorer, setRightSidebar, showGeneratedFiles, build, buildAction, buildMenuItem, closeBuildMenu, buildMenuEntries, gettingStarted, reopenWorkspace, setTarget, currentTarget, useSourceWorkspace, currentSourceProfile, setSourceProfile, runCommand, forgetSourceWorkspace, replaceSourceDocument, replaceEvaluationArguments } from './workbench-steps.ts';
 
 /** The Generated tab of the source document's output panel; the right sidebar's Generated section has its own name. */
 const generatedTab = (page: Page) => page.locator('.output-panel .tabs').getByRole('button', { name: 'Generated', exact: true });
@@ -603,18 +603,29 @@ export async function stringWorkflow(page: Page) {
   await page.getByRole('button',{name:'Typed invocation',exact:true}).click();
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
   for(const [enabled,expected] of [[true,'Hello, 😀'],[false,'']] as const) {
-    await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill(JSON.stringify([{type:'text',units:[55357,56832]},{type:'bool',value:enabled}]));
+    await replaceEvaluationArguments(page,JSON.stringify([{type:'text',units:[55357,56832]},{type:'bool',value:enabled}]));
     await page.getByRole('button',{name:'Evaluate',exact:true}).click();
     await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
     await page.getByRole('button',{name:'Result JSON',exact:true}).click();
-    await page.waitForFunction(text=>{
-      const result=JSON.parse(document.querySelector<CodeEditor>('#evaluation-output')?.value ?? '{}');
-      return result.type==='text'&&JSON.stringify(result.units)===JSON.stringify(Array.from({length:text.length},(_,i)=>text.charCodeAt(i)));
-    },expected);
+    try {
+      await page.waitForFunction(text=>{
+        const result=JSON.parse(document.querySelector<CodeEditor>('#evaluation-output')?.value ?? '{}');
+        return result.type==='text'&&JSON.stringify(result.units)===JSON.stringify(Array.from({length:text.length},(_,i)=>text.charCodeAt(i)));
+      },expected);
+    } catch (error) {
+      const actual = await page.evaluate(() => ({
+        arguments: document.querySelector<CodeEditor>('#evaluation-input')?.value.slice(0, 1024),
+        result: document.querySelector<CodeEditor>('#evaluation-output')?.value.slice(0, 1024),
+        resultDocument: document.querySelector<CodeEditor>('#evaluation-output')?.dataset.document,
+        statuses: Array.from(document.querySelectorAll('[role="status"]'), element => element.textContent?.slice(0, 256)),
+      }));
+      console.error(JSON.stringify({ stringEvaluationTimeout: { enabled, expected, actual } }));
+      throw error;
+    }
   }
   await tree.filter({hasText:'is_morphir'}).click();
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
-  await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill('[{"type":"text","units":[77,111,114,112,104,105,114]}]');
+  await replaceEvaluationArguments(page,'[{"type":"text","units":[77,111,114,112,104,105,114]}]');
   await page.getByRole('button',{name:'Evaluate',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
   await page.getByRole('button',{name:'Result JSON',exact:true}).click();
@@ -622,7 +633,7 @@ export async function stringWorkflow(page: Page) {
   await tree.filter({hasText:'mentions_morphir'}).click();
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
   for(const [text,expected] of [['Hello, Morphir',true],['',false],['Hello, 😀',false]] as const) {
-    await page.getByRole('textbox',{name:'Function arguments',exact:true}).fill(JSON.stringify([{type:'text',units:Array.from({length:text.length},(_,i)=>text.charCodeAt(i))}]));
+    await replaceEvaluationArguments(page,JSON.stringify([{type:'text',units:Array.from({length:text.length},(_,i)=>text.charCodeAt(i))}]));
     await page.getByRole('button',{name:'Evaluate',exact:true}).click();
     await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
     await page.getByRole('button',{name:'Result JSON',exact:true}).click();

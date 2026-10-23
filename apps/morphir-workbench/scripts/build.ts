@@ -18,7 +18,7 @@ if (JSON.parse(readFileSync(join(zipPackage, 'package.json'), 'utf8')).version !
 // Retired bundles and failed earlier builds must not survive into packaged assets.
 rmSync(dist, { recursive: true, force: true });
 execFileSync('moon', ['build', '--target', 'js', '--release', '--target-dir', build,
-  ...['browser', 'worker', 'execution-host', 'execution-core'].map(name => join(app, name))], { cwd: app, stdio: 'inherit' });
+  ...['browser', 'worker', 'execution-host', 'execution-core', 'projection-header'].map(name => join(app, name))], { cwd: app, stdio: 'inherit' });
 mkdirSync(dist, { recursive: true });
 mkdirSync(join(dist, 'licenses'), {recursive: true});
 for (const name of ['zip.js-LICENSE.txt', 'zip.js-provenance.json']) {
@@ -27,7 +27,7 @@ for (const name of ['zip.js-LICENSE.txt', 'zip.js-provenance.json']) {
 // The MoonBit output keeps long mangled names, so the generated bundles are minified. bootstrap.js imports browser.js
 // and execution-core.js as modules; transport.ts starts worker.js as a classic worker, so it stays a script (an IIFE).
 const generated = (name: string) => join(build, 'js/release/build/finos/morphir-workbench', name, `${name}.js`);
-for (const [name, format] of [['browser', 'esm'], ['execution-core', 'esm'], ['worker', 'iife']] as const) {
+for (const [name, format] of [['browser', 'esm'], ['execution-core', 'esm'], ['projection-header', 'esm'], ['worker', 'iife']] as const) {
   const result = await Bun.build({ entrypoints: [generated(name)], outdir: dist, target: 'browser', format,
     minify: true, env: 'disable', throw: false, plugins: [{name: 'product-observer', setup(build) {
       build.onResolve({filter: /^@morphir\/moonbit-workbench\/product-observer$/}, () => ({path: './product-observer.js', external: true}));
@@ -48,12 +48,14 @@ if (index.split(ordinaryEntry).length !== 2) {
 }
 writeFileSync(join(dist, 'observed-index.html'), index.replace(ordinaryEntry,
   '<script type="module" src="./observed-document-entry.js"></script>'));
-for (const name of ['bootstrap', 'observed-bootstrap', 'observed-document-entry', 'product-observer', 'transport', 'execution-session', 'execution-transport', 'native-session', 'native-workspace', 'artifact-download']) {
+for (const name of ['bootstrap', 'observed-bootstrap', 'observed-document-entry', 'product-observer', 'connected-inspection', 'transport', 'execution-session', 'execution-transport', 'native-session', 'native-workspace', 'artifact-download', 'verify-projection-header']) {
   await checkedBuild({ entrypoints: [join(app, 'browser', `${name}.ts`)], outdir: dist,
     plugins: [{ name: 'built-editor', setup(build) {
       build.onResolve({ filter: /^\.\/code-editor\.js$/ }, ({ path }) => ({ path, external: true }));
+      build.onResolve({ filter: /^\.\/projection-header\.js$/ }, () => ({ path: './projection-header.js', external: true }));
       if (name !== 'product-observer') build.onResolve({ filter: /(?:^|\/)product-observer\.(?:ts|js)$/ }, () => ({path: './product-observer.js', external: true}));
       if (name !== 'observed-bootstrap') build.onResolve({ filter: /(?:^|\/)observed-bootstrap\.(?:ts|js)$/ }, () => ({path: './observed-bootstrap.js', external: true}));
+      if (name !== 'connected-inspection') build.onResolve({ filter: /(?:^|\/)connected-inspection\.(?:ts|js)$/ }, () => ({path: './connected-inspection.js', external: true}));
     } }],
     tsconfig: resolve(app, '../../tsconfig.browser.json') });
 }

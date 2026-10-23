@@ -2,8 +2,10 @@ import {createHash} from 'node:crypto';
 import {inventoryDigest, type Entry} from '../../../pkgs/morphir-host/model-originals-client/originals.ts';
 
 /** Shared actual HTTP/WebSocket host for browser and routed-owner application tests. */
-export function startOriginalsFixture(scenario: 'single-file' | 'paged-inventory' = 'single-file') {
-  const original = Buffer.from('\ufeff# original\r\nformatVersion: 4\r\n');
+export function startOriginalsFixture(scenario: 'single-file' | 'paged-inventory' | 'projected-model' = 'single-file') {
+  const projection = Buffer.from('{"formatVersion":4,"distribution":{"Library":{"packageName":"example","dependencies":{},"def":{"modules":{}}}}}');
+  const original = scenario === 'projected-model' ? Buffer.from('\ufeff' + projection.toString() + '\r\n')
+    : Buffer.from('\ufeff# original\r\nformatVersion: 4\r\n');
   const shared = {profile: 'morphir/workbench/model-originals', contractVersion: '0.1.0-draft.1'};
   const sources = ['A', 'B'].map(id => ({providerId: 'provider', locator: `workspace:${id}`, displayName: 'Same source'}));
   const binding = {sessionId: 'session', source: {providerId: 'provider', locator: 'workspace:B'}, projectId: 'project-B'};
@@ -28,7 +30,7 @@ export function startOriginalsFixture(scenario: 'single-file' | 'paged-inventory
     if (server.upgrade(request)) return;
     return new Response('Not found', {status: 404});
   }, websocket: {message(socket, raw) {
-    const request = JSON.parse(String(raw)) as {id: number; method: string; params: {source: typeof sources[number]; target: unknown; startIndex: number; maxEntries: number}};
+    const request = JSON.parse(String(raw)) as {id: number; method: string; params: {source: typeof sources[number]; target: {kind: string}; offset: number; startIndex: number; maxEntries: number; semantic: string}};
     requests.push(request);
     let result: unknown;
     switch (request.method) {
@@ -41,7 +43,11 @@ export function startOriginalsFixture(scenario: 'single-file' | 'paged-inventory
         origin: {kind: 'compiled', record: {byteLength: 100, sha256: '0'.repeat(64), schema: 1, task: 'compile', module: '',
           ir: {path: 'model.yaml', layout: 'single-file', format: 'yaml', version: 'v4'}}},
         primary: {kind: 'file', path: 'model.yaml'}, companions: scenario === 'paged-inventory' ? [{kind: 'directory', path: 'notes'}] : [], sourceFormatVersion: {status: 'reported', release: '4.0.0'},
-        projection: {status: 'not-requested'}, inventory: {entryCount: entries.length, fileCount: 1, directoryCount: entries.length - 1, sourceByteLength: original.length, sha256: digest}}; break;
+        projection: request.params.semantic === 'projection' ? (scenario === 'projected-model'
+          ? {status: 'available', codec: 'morphir-json', byteLength: projection.length,
+            sha256: createHash('sha256').update(projection).digest('hex'), formatVersion: '4.0.0'}
+          : {status: 'unavailable', reason: 'invalid_model'}) : {status: 'not-requested'},
+        inventory: {entryCount: entries.length, fileCount: 1, directoryCount: entries.length - 1, sourceByteLength: original.length, sha256: digest}}; break;
       case 'morphir.model-originals.inventory': {
         const startIndex = request.params.startIndex;
         if (!Number.isSafeInteger(startIndex) || startIndex < 0 || startIndex >= entries.length || request.params.maxEntries !== 256) throw new Error('Invalid fixture inventory request');
@@ -50,8 +56,12 @@ export function startOriginalsFixture(scenario: 'single-file' | 'paged-inventory
           startIndex, entries: entries.slice(startIndex, finish), next: finish === entries.length ? {kind: 'complete'} : {kind: 'more', startIndex: finish}};
         break;
       }
-      case 'morphir.model-originals.read': result = {...shared, binding, captureId: 'capture', target: request.params.target,
-        offset: 0, nextOffset: original.length, content: original.toString('base64')}; break;
+      case 'morphir.model-originals.read': {
+        const bytes = request.params.target.kind === 'semantic-projection' ? projection : original;
+        const next = Math.min(bytes.length, request.params.offset + 65536);
+        result = {...shared, binding, captureId: 'capture', target: request.params.target,
+          offset: request.params.offset, nextOffset: next, content: bytes.subarray(request.params.offset, next).toString('base64')}; break;
+      }
       case 'morphir.model-originals.release': result = {...shared, captureId: 'capture', status: 'released'}; break;
       default: throw new Error(`Unexpected method ${request.method}`);
     }

@@ -1,0 +1,8 @@
+supported_targets = "js"
+
+pkgtype(kind: "foreign_library")
+
+import {
+  "finos/morphir-engine/data",
+  "finos/morphir-ir/version",
+}

@@ -3,6 +3,8 @@
 // and physical host/Page/source ownership remain separate obligations.
 import {prepareProductJournal, type JournalCharge, type JournalRecord} from './product-fact-journal.ts';
 import type {ObservationLimits, ObservationState, ProductFact} from './product-observer.ts';
+import type {ConnectedBoundary, ConnectedBoundaryOutcome} from './connected-inspection.ts';
+import type {ConnectedChoiceOutcome} from './connected-originals.ts';
 
 type Charge = Readonly<{retainedBytes: number; slots: number; byteVisits: number}>;
 type Bootstrap = Readonly<{observation: ObservationLimits; records: number; journalBytes: number; frameBytes: number;
@@ -14,6 +16,30 @@ type Phase = 'prepared' | 'connecting' | 'starting' | 'active' | 'draining' | 'e
 type State = Readonly<{kind: Phase}> | Terminal;
 type Observer = Readonly<{close(): void; state(): ObservationState}>;
 type Starter = (limits: ObservationLimits, receive: (fact: ProductFact) => void) => Promise<Observer>;
+type ConnectedObserver = Observer & Readonly<{
+  awaitConnectedBoundary(boundary: ConnectedBoundary): Promise<ConnectedBoundaryOutcome>;
+  executePendingCore(): 'enqueued' | 'ignored';
+}>;
+type ConnectedControls = Readonly<{
+  awaitInspectionPending(): Promise<ConnectedBoundaryOutcome>;
+  executePendingCore(): 'enqueued' | 'ignored';
+  awaitOpeningSettled(): Promise<ConnectedBoundaryOutcome>;
+}>;
+type OpeningOwner = Readonly<{
+  awaitBoundary(boundary: ConnectedBoundary): Promise<ConnectedBoundaryOutcome>;
+  executePendingCore(): 'enqueued' | 'ignored';
+  dispose(): void;
+  whenSettled(): Promise<void>;
+  chooseSource(providerId: string, locator: string): Promise<ConnectedChoiceOutcome>;
+  chooseProject(projectId: string): Promise<ConnectedChoiceOutcome>;
+}>;
+type CaptureOwner = Readonly<{whenRegistered(): Promise<OpeningOwner>; cancel(): void}>;
+type OpeningObserver = ConnectedObserver & Readonly<{prepareOpeningCapture(): CaptureOwner}>;
+type CapturedControls = ConnectedControls & Readonly<{dispose(): void; whenSettled(): Promise<void>;
+  chooseSource(providerId: string, locator: string): Promise<ConnectedChoiceOutcome>;
+  chooseProject(projectId: string): Promise<ConnectedChoiceOutcome>}>;
+type CaptureControls = Readonly<{whenRegistered(): Promise<CapturedControls>; cancel(): void}>;
+type OpeningControls = Readonly<{prepareOpeningCapture(): CaptureControls}>;
 const protocol = 'morphir-document-v1', u32 = 0xffff_ffff;
 function natural(value: unknown): value is number {return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;}
 function checked(value: number): number {if (!natural(value)) throw new Error('Size overflow'); return value;}
@@ -84,6 +110,10 @@ class DocumentChannel {
   #lastFactAck = 0;
   #pumping = false;
   readonly #closed: Promise<Terminal>;
+  #connectedControls: ConnectedControls | undefined;
+  #openingControls: OpeningControls | undefined;
+  #pendingControl: Readonly<{kind: 'business' | 'cleanup'; reject: (cause: unknown) => void}> | undefined;
+  #inactiveControl: Error | undefined;
   readonly #selected: Bootstrap;
   readonly #journal: Journal;
   readonly #transport: Mirror;
@@ -101,10 +131,81 @@ class DocumentChannel {
   }
   state(): State {return Object.freeze({...this.#state});}
   whenClosed(): Promise<Terminal> {return this.#closed;}
+  #controlActive(actual: Observer): void {
+    if (this.#state.kind !== 'active' || this.#observer !== actual) {
+      this.#inactiveControl ??= new Error('Workbench document channel inactive.');
+      throw this.#inactiveControl;
+    }
+  }
+  #controlIdle(actual: Observer, kind: 'business' | 'cleanup'): void {
+    if (kind === 'business') this.#controlActive(actual);
+    else if (this.#observer !== actual) throw new Error('Cleanup requires the actual starter.');
+    if (this.#pendingControl) throw new Error('Connected control already outstanding.');
+  }
+  #invalidateControls(): void {
+    const pending = this.#pendingControl;
+    if (!pending || pending.kind === 'cleanup') return;
+    this.#pendingControl = undefined;
+    this.#inactiveControl ??= new Error('Workbench document channel inactive.');
+    pending.reject(this.#inactiveControl);
+  }
+  async #controlWait<T>(actual: Observer, kind: 'business' | 'cleanup', invoke: () => Promise<T>): Promise<T> {
+    this.#controlIdle(actual, kind);
+    return new Promise((resolve, reject) => {
+      const pending = Object.freeze({kind, reject}); this.#pendingControl = pending;
+      // One page-wide pending slot, no new timer or accumulated inactive
+      // listeners. The native owner retains the original end. Cleanup remains
+      // available after authority loss and does not report a physical join.
+      try {
+        invoke().then(result => {
+          if (this.#pendingControl !== pending) return;
+          this.#pendingControl = undefined;
+          try {if (kind === 'business') this.#controlActive(actual); resolve(result);} catch (error) {reject(error);}
+        }, error => {if (this.#pendingControl === pending) {this.#pendingControl = undefined; reject(error);}});
+      } catch (error) {this.#pendingControl = undefined; reject(error);}
+    });
+  }
+  connectedControls(actual: ConnectedObserver): ConnectedControls {
+    if (this.#state.kind !== 'active' || actual !== this.#observer) throw new Error('Controls require the actual active starter.');
+    if (this.#connectedControls) return this.#connectedControls;
+    this.#connectedControls = Object.freeze({
+      awaitInspectionPending: () => this.#controlWait(actual, 'business', () => actual.awaitConnectedBoundary('inspection-pending')),
+      executePendingCore: () => {this.#controlIdle(actual, 'business'); return actual.executePendingCore();},
+      awaitOpeningSettled: () => this.#controlWait(actual, 'business', () => actual.awaitConnectedBoundary('opening-settled')),
+    });
+    return this.#connectedControls;
+  }
+  openingControls(actual: OpeningObserver): OpeningControls {
+    if (this.#state.kind !== 'active' || actual !== this.#observer) throw new Error('Controls require the actual active starter.');
+    if (this.#openingControls) return this.#openingControls;
+    this.#openingControls = Object.freeze({prepareOpeningCapture: () => {
+      this.#controlIdle(actual, 'business');
+      const capture = actual.prepareOpeningCapture();
+      let bound: CapturedControls | undefined;
+      return Object.freeze({
+        whenRegistered: async () => {
+          const owner = await this.#controlWait(actual, 'business', () => capture.whenRegistered());
+          bound ??= Object.freeze({
+            chooseSource: (providerId: string, locator: string) => this.#controlWait(actual, 'business', () => owner.chooseSource(providerId, locator)),
+            chooseProject: (projectId: string) => this.#controlWait(actual, 'business', () => owner.chooseProject(projectId)),
+            awaitInspectionPending: () => this.#controlWait(actual, 'business', () => owner.awaitBoundary('inspection-pending')),
+            executePendingCore: () => {this.#controlIdle(actual, 'business'); return owner.executePendingCore();},
+            awaitOpeningSettled: () => this.#controlWait(actual, 'business', () => owner.awaitBoundary('opening-settled')),
+            dispose: () => owner.dispose(),
+            whenSettled: () => this.#controlWait(actual, 'cleanup', () => owner.whenSettled()),
+          });
+          return bound;
+        },
+        cancel: () => capture.cancel(),
+      });
+    }});
+    return this.#openingControls;
+  }
   #failed(): boolean {return this.#state.kind === 'incomplete' || this.#state.kind === 'closed';}
   #fail(first: Fault): void {
     if (this.#failed()) return;
     this.#state = Object.freeze({kind: 'incomplete', first}); this.#journal.lose();
+    this.#invalidateControls();
     // No later DATA/control writes, retries, renewed waits or synthetic Close
     // record. Actual WebSocket close is disposal, not observed completion.
     try {this.#socket?.close();} catch {}
@@ -152,6 +253,7 @@ class DocumentChannel {
       if (kind === 4) {
         if (this.#state.kind !== 'active' || !this.#observer || sequence !== this.#lastFactAck) {this.#fail('stop'); return;}
         this.#state = {kind: 'draining'};
+        this.#invalidateControls();
         this.#observer.close(); this.#journal.end(this.#observer.state());
         if (this.#journal.state().kind === 'incomplete') {this.#fail('journal'); return;}
         this.#pump(); return;

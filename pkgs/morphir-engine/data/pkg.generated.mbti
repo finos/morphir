@@ -24,7 +24,9 @@ pub fn inspect_model_source(ModelFormat, Bytes, unit_id? : String, limits? : Lim
 
 pub fn inspect_model_tree(Map[String, Bytes], unit_id? : String, limits? : Limits) -> CheckpointInspection raise BoundaryError
 
-pub let model_tree_file_limit : Int
+pub let model_tree_file_limit : Int32
+
+pub fn recognize_projection_header(Bytes, Limits) -> @version.FormatVersion raise BoundaryError
 
 pub fn semantic_json(IRUnit) -> String raise
 
@@ -71,9 +73,9 @@ pub fn IRUnit::validate(Self, limits? : Limits) -> Unit raise
 pub fn IRUnit::with_conceptual_graph(Self, @model.Graph) -> Self raise
 
 pub(all) struct Limits {
-  max_bytes : Int
-  max_depth : Int
-  max_values : Int
+  max_bytes : Int32
+  max_depth : Int32
+  max_values : Int32
 } derive(Eq, @debug.Debug)
 pub fn Limits::default() -> Self
 pub fn Limits::equal(Self, Self) -> Bool

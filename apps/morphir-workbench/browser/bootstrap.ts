@@ -8,7 +8,9 @@ import {createOriginalsArchive, prepareOriginalsArchive} from './originals-archi
 import { fetchText, pickFolder, storage, watchDrop } from './project-io.ts';
 import { ModelImporter, captureOriginalRequest } from './model-import.ts';
 import { selectWorkbenchMode } from './session-mode.ts';
-import {openConnectedOriginals, type ConnectedOriginalsOpening} from './connected-originals.ts';
+import {openConnectedOriginals, openConnectedModel, type ConnectedOriginalsOpening} from './connected-originals.ts';
+import {connectedInspection} from './connected-inspection.ts';
+import {ProjectionHeaderLimits, recognizeProjectionHeader} from './verify-projection-header.ts';
 import {ModelOriginalsConnectionLimits} from './model-originals-session.ts';
 import {parse as parseRelease} from '@std/semver';
 import {productObservation} from './product-observer.ts';
@@ -21,6 +23,7 @@ let generation = 0;
 let activeRequest: { operation: string; modelOpenAttempt?: string } | null = null;
 const importer = new ModelImporter();
 let originalsOpening: ConnectedOriginalsOpening | undefined;
+const projectionHeaderLimits = ProjectionHeaderLimits.create({maxBytes: 64 * 1024 * 1024, maxDepth: 128, maxValues: 100000});
 
 globalThis.morphirWorkbench = {
   mode,
@@ -85,8 +88,32 @@ globalThis.morphirWorkbench = {
     originalsOpening = opening;
     return opening;
   },
+  openConnectedModel(makeHash, receive) {
+    if (mode !== 'connected-originals') throw new Error('Open the model sources experience first.');
+    originalsOpening?.dispose();
+    const opening = openConnectedModel({base: new URL(location.href),
+      limits: ModelOriginalsConnectionLimits.create({manifestBytes: 128 * 1024}), makeHash, receive,
+      recognizeHeader: bytes => recognizeProjectionHeader(bytes, projectionHeaderLimits),
+      current: () => originalsOpening === opening});
+    originalsOpening = opening;
+    connectedInspection.register(opening);
+    return opening;
+  },
+  holdConnectedInspection(stage, enqueue) {
+    connectedInspection.hold(stage, enqueue, () => local.cancelModelOpen());
+  },
+  async inspectConnectedModel(stage, receive) {
+    try {
+      const result = await stage.inspect(projection => local.inspectProjection(projection));
+      if (stage.current()) receive(JSON.stringify(result));
+    } catch (cause) {
+      if (stage.current()) receive(JSON.stringify({success: false,
+        message: workbenchError(cause).message || 'Model inspection failed.'}));
+    }
+  },
   disposeOriginals(opening) {
     if (originalsOpening === opening) originalsOpening = undefined;
+    connectedInspection.unregister(opening);
     opening.dispose();
   },
   originalHeaderParts(payload) {
@@ -116,6 +143,6 @@ globalThis.morphirWorkbench = {
   createOriginalsArchive,
   prepareOriginalsArchive,
 };
-window.addEventListener('pagehide', () => { ++generation; originalsOpening?.dispose(); originalsOpening = undefined; importer.dispose(); adapter.dispose?.(); local.cancel(); });
+window.addEventListener('pagehide', () => { ++generation; if (originalsOpening) connectedInspection.unregister(originalsOpening); originalsOpening?.dispose(); originalsOpening = undefined; importer.dispose(); adapter.dispose?.(); local.cancel(); });
 productObservation.start(document);
 await import(new URL('./browser.js', import.meta.url).href);
