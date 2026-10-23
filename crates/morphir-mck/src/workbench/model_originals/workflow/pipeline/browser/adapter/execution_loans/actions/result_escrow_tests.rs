@@ -751,3 +751,132 @@ fn browser_result_escrow_12_genuine_contended_pool_crosses_original_end_before_t
         );
     }
 }
+
+#[test]
+fn browser_result_escrow_13_preissued_document_uses_same_literal_work_after_sweep() {
+    with_opening_setup(
+        Duration::from_secs(10),
+        |run, loans, producer, transcript, stimulus, end| {
+            let plan = run.prepare_result_plan(loans).unwrap();
+            let action = run.next_action(loans).unwrap().unwrap();
+            let (owned, lifetime) = action
+                .prepare_connected_controller(producer, transcript, stimulus, loans)
+                .unwrap();
+            let sdk = owned
+                .connected_opening(producer, transcript, stimulus, loans)
+                .unwrap();
+            assert_eq!(
+                sdk.validate_host(producer, transcript, stimulus, loans)
+                    .unwrap(),
+                end
+            );
+            // The actual fixture already issued this producer's decoder and
+            // requested journal/frame backing. No new parser or owner is made.
+            let prepared =
+                SourceResultPreparation::prepare_selected_runtime(plan, &lifetime, loans)
+                    .ok()
+                    .unwrap();
+            let remaining = loans.remaining_cleanup_resources(&lifetime).unwrap();
+            assert_eq!(
+                (
+                    remaining.retained_bytes,
+                    remaining.receiving_visits,
+                    remaining.decode_visits,
+                    remaining.decode_slots
+                ),
+                (0, 0, 0, 0)
+            );
+            let before = loans.business_usage().unwrap();
+            producer.validate_host(loans, stimulus).unwrap();
+            lifetime.while_business_active(|| ()).unwrap();
+            assert_eq!(before, loans.business_usage().unwrap());
+
+            // Existing literal decoder controls, not actual product facts or
+            // observations of the authored workflow, native host or Page.
+            let mut fact = vec![1, 1, 0, 0];
+            fact.extend_from_slice(&1u64.to_be_bytes());
+            let payload = br#"{"sequence":1,"kind":"model-closed","actual":{"workspace":"unit","opening":0}}"#;
+            fact.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+            fact.extend_from_slice(payload);
+            let retained_fact = producer.record_frame(loans, &fact, end).unwrap();
+            let mut closed = vec![1, 2, 0, 0];
+            closed.extend_from_slice(&2u64.to_be_bytes());
+            let payload = br#"{"lastSequence":1,"observer":{"kind":"closed"}}"#;
+            closed.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+            closed.extend_from_slice(payload);
+            let retained_end = producer.record_frame(loans, &closed, end).unwrap();
+            let after = loans.business_usage().unwrap();
+            let terminal = lifetime.while_business_active(|| ());
+            drop(prepared);
+            assert!(lifetime.finish_without_acquisition().is_ok());
+
+            assert_eq!((retained_fact.kind(), retained_fact.sequence()), (1, 1));
+            assert_eq!((retained_end.kind(), retained_end.sequence()), (2, 2));
+            assert!(after.0.literal.decode_bytes > before.0.literal.decode_bytes);
+            assert!(after.0.literal.values > before.0.literal.values);
+            assert_eq!(
+                (before.0.byte_visits, before.0.slots, before.1, before.2),
+                (after.0.byte_visits, after.0.slots, after.1, after.2)
+            );
+            assert!(
+                matches!(terminal, Err(error) if matches!(error.test_cause(), inputs::BrowserInputFault::DocumentClosed))
+            );
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+        },
+    );
+}
+
+#[test]
+fn browser_result_escrow_14_delayed_sdk_host_join_still_requires_fresh_operand_work() {
+    with_opening_setup(
+        Duration::from_secs(10),
+        |run, loans, producer, transcript, stimulus, _| {
+            let plan = run.prepare_result_plan(loans).unwrap();
+            let action = run.next_action(loans).unwrap().unwrap();
+            let (owned, lifetime) = action
+                .prepare_connected_controller(producer, transcript, stimulus, loans)
+                .unwrap();
+            let sdk = owned
+                .connected_opening(producer, transcript, stimulus, loans)
+                .unwrap();
+            let prepared =
+                SourceResultPreparation::prepare_selected_runtime(plan, &lifetime, loans)
+                    .ok()
+                    .unwrap();
+            producer.validate_host(loans, stimulus).unwrap();
+            lifetime.while_business_active(|| ()).unwrap();
+            // This is the real unsupported ordering, not an assertion that an
+            // actual host join or transport adapter has somehow been funded.
+            let join = sdk.validate_host(producer, transcript, stimulus, loans);
+            let sticky = loans.business_test_ready();
+            drop(prepared);
+            assert!(lifetime.finish_without_acquisition().is_ok());
+            use crate::workbench::model_originals::workflow::decode::{
+                DecodeError, OperandResource,
+            };
+            assert!(
+                matches!(join, Err(BrowserActionIssueError::Input(error)) if matches!(
+                    error.test_cause(), inputs::BrowserInputFault::Decode(DecodeError::Work(OperandResource::ByteVisits))
+                ))
+            );
+            assert!(matches!(sticky, Err(error) if matches!(
+                error.test_cause(), inputs::BrowserInputFault::Decode(DecodeError::Work(OperandResource::ByteVisits))
+            )));
+            assert!(matches!(
+                run.actions_terminal(),
+                BrowserActionCursorTerminal::Incomplete {
+                    consumed: 0,
+                    pending: Some(0),
+                    ..
+                }
+            ));
+        },
+    );
+}
