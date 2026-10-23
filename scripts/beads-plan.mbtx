@@ -102,7 +102,11 @@ async fn self_test() -> Unit {
     !@fs.exists(failed_cache + "/bd-plan.ts") else {
     fail("Failed acquisition published a cache entry")
   }
-  let args = ["spec", "a b", "quote'\"$;", "--render"]
+  let args = [
+    "spec", "a b", "quote'\"$;`", "λ", "", "--render", "--help", "--unknown", "--self-test",
+    "--", "--render", "--", "", "--self-test", "--self-test", "--self-test", "--",
+    "-h", "-hh", "--help", "--help", "--help=true", "--self-test=true",
+  ]
   let (status, out, _) = @process.collect_output(
     "bun",
     ["run", script, ..args],
@@ -151,6 +155,9 @@ async fn self_test() -> Unit {
 
 ///|
 async fn main {
+  // This exact standalone test switch is the wrapper's only owned syntax.
+  // Every other array, including help, unknown flags and delimiters, belongs
+  // to the pinned bd-plan tool and must reach Bun without local parsing.
   if @env.args() is [_, "--self-test"] {
     self_test()
     return

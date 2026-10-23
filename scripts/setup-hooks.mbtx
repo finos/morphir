@@ -4,7 +4,47 @@ import {
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
+}
+
+///|
+fn setup_command() -> @argparse.Command {
+  @argparse.Command(
+    "setup:hooks",
+    about="Install the managed Git pre-push dispatcher",
+    disable_help_flag=true,
+    flags=[
+      @argparse.FlagArg(
+        "self-test",
+        about="Run isolated hook installation tests",
+        required=true,
+      ),
+    ],
+  )
+}
+
+///|
+fn setup_arguments(argv : Array[String]) -> @argparse.Matches raise {
+  // Only the first token can be a control. The fixed delimiter makes every
+  // trailing raw token an excess operand, including another delimiter.
+  let control_argv = if argv.is_empty() {
+    []
+  } else {
+    [argv[0], "--", ..argv[1:]]
+  }
+  // Catch syntax failure only, before installation or self-test effects.
+  // Every other array, including help, remains historical ignored data.
+  let controls = Some(setup_command().parse(argv=control_argv, env=Map([]))) catch {
+    _ => None
+  }
+  match controls {
+    Some(args) => args
+    None =>
+      @argparse.Command("setup:hooks", disable_help_flag=true, positionals=[
+        @argparse.PositionArg("ignored", num_args=@argparse.ValueRange(lower=0)),
+      ]).parse(argv=["--", ..argv], env=Map([]))
+  }
 }
 
 ///|
@@ -129,6 +169,48 @@ async fn git(root : String, args : Array[String]) -> String {
 
 ///|
 async fn self_test() -> Unit {
+  guard !setup_arguments([]).flags.get("self-test").unwrap_or(false) &&
+    setup_arguments(["--self-test"]).flags.get("self-test") == Some(true) else {
+    fail("Hook setup invocation changed")
+  }
+  for
+    argv in [
+      ["extra"],
+      ["--unknown"],
+      ["--help"],
+      ["-h"],
+      ["-hh"],
+      ["--help=true"],
+      ["--self-test=true"],
+      ["--self-test", "--"],
+      ["--self-test", "--self-test"],
+      ["--"],
+      [""],
+      ["--self-test", "extra"],
+      ["--", "extra"],
+      ["--", "--self-test"],
+      ["--help", "extra"],
+      ["--help", "--self-test"],
+      ["", "--", "--help", "--", "λ ' $;`"],
+    ] {
+    let args = setup_arguments(argv)
+    guard args.flags.is_empty() && args.values.get("ignored") == Some(argv) else {
+      fail("Ignored setup argv changed")
+    }
+  }
+  let tokens = [
+    "--self-test", "--", "--help", "-h", "-hh", "--help=true", "--self-test=true",
+    "--unknown", "", "λ ' $;`", "origin", "location",
+  ]
+  for first in tokens {
+    for second in tokens {
+      let argv = [first, second]
+      let args = setup_arguments(argv)
+      guard args.flags.is_empty() && args.values.get("ignored") == Some(argv) else {
+        fail("Ignored setup pair changed")
+      }
+    }
+  }
   let fixture = @fs.tmpdir(prefix="morphir-hooks-")
   defer @fs.rmdir(fixture, recursive=true)
   let repo = fixture + "/repo's space"
@@ -214,7 +296,8 @@ async fn self_test() -> Unit {
 
 ///|
 async fn main {
-  if @env.args() is [_, "--self-test"] {
+  let args = setup_arguments(@env.args()[1:].to_owned())
+  if args.flags.get("self-test").unwrap_or(false) {
     self_test()
     return
   }

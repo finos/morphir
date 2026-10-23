@@ -4,12 +4,110 @@ import {
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/debug",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
   "moonbitlang/x@0.5.5/path",
   "moonbitlang/x@0.5.5/path/win32" @winpath,
+}
+
+///|
+enum CoreMode {
+  Setup
+  Check
+  SelfTest
+} derive(Eq, @debug.Debug)
+
+///|
+fn core_command() -> @argparse.Command {
+  @argparse.Command(
+    "moonbit-core.mbtx",
+    about="Verify the pinned stock core without changing the toolchain",
+    disable_help_flag=true,
+    flags=[@argparse.FlagArg("self-test", about="Test core identity guards")],
+    positionals=[
+      @argparse.PositionArg(
+        "mode",
+        about="setup or check",
+        num_args=@argparse.ValueRange(upper=1),
+      ),
+    ],
+    groups=[
+      @argparse.ArgGroup("operation", required=true, multiple=false, args=[
+        "mode", "self-test",
+      ]),
+    ],
+  )
+}
+
+///|
+fn core_mode(args : ArrayView[String]) -> CoreMode raise {
+  // Every supported operation is exactly one token. Validate literal arity
+  // before ordinary flag parsing so a raw delimiter or repeated control cannot
+  // turn an old refusal into a bootstrap operation.
+  ignore(
+    @argparse.Command("moonbit-core.mbtx", disable_help_flag=true, positionals=[
+      @argparse.PositionArg(
+        "operation",
+        num_args=@argparse.ValueRange::single(),
+      ),
+    ]).parse(argv=["--"] + args.to_owned(), env=Map([])),
+  )
+  let matches = core_command().parse(argv=args, env=Map([]))
+  if matches.flags.get("self-test").unwrap_or(false) {
+    return SelfTest
+  }
+  match matches.values.get("mode") {
+    Some(["setup"]) => Setup
+    Some(["check"]) => Check
+    _ => fail("Usage: moonbit-core.mbtx setup|check|--self-test")
+  }
+}
+
+///|
+fn cli_self_test() -> Unit raise {
+  for
+    case in [
+      (["setup"], Setup),
+      (["check"], Check),
+      (["--self-test"], SelfTest),
+    ] {
+    let (argv, expected) = case
+    assert_eq(core_mode(argv), expected)
+  }
+  for
+    argv in [
+      [],
+      ["unknown"],
+      ["--", "check"],
+      ["setup", "--"],
+      ["--self-test", "--"],
+      ["--self-test", "--self-test"],
+      ["--help", "extra"],
+      ["--help"],
+      ["-h"],
+      ["-hgarbage"],
+      ["-xh"],
+      ["setup", "extra"],
+      ["--unknown"],
+      ["--self-test", "setup"],
+      ["check", "--self-test"],
+      ["--self-test=true"],
+      ["--", "--self-test"],
+      [""],
+      [" check "],
+    ] {
+    let rejected = try {
+      ignore(core_mode(argv))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(rejected, msg="Expected CLI refusal: " + argv.join(" | "))
+  }
 }
 
 ///|
@@ -148,6 +246,7 @@ async fn verify(root : String, pin : Json, bundles~ : Bool = true) -> Unit {
 
 ///|
 async fn self_test() -> Unit {
+  cli_self_test()
   for
     root in [
       "C:\\workspace", "\\\\server\\share", "\\\\?\\C:\\workspace", "\\\\?\\UNC\\server\\share",
@@ -223,13 +322,12 @@ async fn self_test() -> Unit {
 
 ///|
 async fn main {
-  let args = @env.args()[1:]
-  if args == ["--self-test"] {
+  let mode = core_mode(@env.args()[1:]) catch {
+    error => fail(error.to_string())
+  }
+  if mode == SelfTest {
     self_test()
     return
-  }
-  guard args == ["setup"] || args == ["check"] else {
-    fail("Usage: moonbit-core.mbtx setup|check|--self-test")
   }
   let repository = @fs.realpath(".")
   let pin = @json.parse(
