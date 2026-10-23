@@ -54,7 +54,7 @@ fn project(name : String, unit : @data.IRUnit) -> Json raise {
 ///|
 /// Compiles each corpus program, fills its types and generates MoonBit and Elm. A failure raises, so that the
 /// process exits non-zero.
-fn main raise {
+fn finite_run() -> Json raise {
   let libraries : Array[Json] = []
   let gaps : Array[Json] = []
   let projects : Array[Json] = []
@@ -81,7 +81,5 @@ fn main raise {
       error => fail("\{name}: \{@debug.to_string(error)}")
     }
   }
-  println(
-    ({ "moonbit": libraries, "moonbitGaps": gaps, "elm": projects } : Json).stringify(),
-  )
+  ({ "moonbit": libraries, "moonbitGaps": gaps, "elm": projects } : Json)
 }

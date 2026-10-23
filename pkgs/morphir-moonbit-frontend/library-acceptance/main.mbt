@@ -1,20 +1,24 @@
 ///|
-fn original_name(output : @frontend.LibraryOutput, node : String) -> String {
+fn original_name(
+  output : @frontend.LibraryOutput,
+  node : String,
+  json_mode~ : Bool,
+) -> String raise {
   let metadata = output.metadata.filter(m => m.node_id == node)[0]
   guard metadata.data.kind() is @ion.Struct(fields) else {
-    abort("Expected declaration")
+    finite_refuse("Expected declaration", json_mode~)
   }
   guard fields[0].value().kind() is @ion.Struct(origin) else {
-    abort("Expected origin")
+    finite_refuse("Expected origin", json_mode~)
   }
   guard origin[0].value().kind() is @ion.String(name) else {
-    abort("Expected original name")
+    finite_refuse("Expected original name", json_mode~)
   }
   name
 }
 
 ///|
-fn main raise {
+fn finite_run(json_mode~ : Bool = false) -> Json raise {
   let two = [[false, false], [false, true], [true, false], [true, true]]
   let three = []
   for a in [false, true] {
@@ -95,7 +99,7 @@ fn main raise {
       let symbol = generated.symbols.filter(s => {
           s.fqname == entry.to_canonical()
         })[0]
-      let name = original_name(output, symbol.source_node)
+      let name = original_name(output, symbol.source_node, json_mode~)
       let (_, arguments, expected) = fixtures.filter(f => f.0 == name)[0]
       let observed = arguments.map(args => {
         guard @backend.call_entry(
@@ -104,7 +108,7 @@ fn main raise {
             args.map(arg => @scheme.Value::Boolean(arg)),
           )
           is Boolean(value) else {
-          abort("Expected Bool")
+          finite_refuse("Expected Bool", json_mode~)
         }
         value
       })
@@ -144,7 +148,9 @@ fn main raise {
                   Map::from_array([
                     (
                       "original",
-                      Json::string(original_name(output, s.source_node)),
+                      Json::string(
+                        original_name(output, s.source_node, json_mode~),
+                      ),
                     ),
                     ("function", Json::string(s.generated_name)),
                   ]),
@@ -178,14 +184,12 @@ fn main raise {
       ),
     )
   }
-  println(
-    Json::object(
-      Map::from_array([
-        ("language", Json::string("moonbit")),
-        ("profile", Json::string(@frontend.STABLE_PROFILE)),
-        ("parserVersion", Json::string(@frontend.PARSER_VERSION)),
-        ("models", Json::array(models)),
-      ]),
-    ).stringify(),
+  Json::object(
+    Map::from_array([
+      ("language", Json::string("moonbit")),
+      ("profile", Json::string(@frontend.STABLE_PROFILE)),
+      ("parserVersion", Json::string(@frontend.PARSER_VERSION)),
+      ("models", Json::array(models)),
+    ]),
   )
 }

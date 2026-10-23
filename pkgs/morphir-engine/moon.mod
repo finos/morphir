@@ -11,6 +11,7 @@ readme = "README.md"
 description = "Host-independent project and workspace transformation engine"
 
 import {
+  "moonbitlang/x@0.5.5",
   "finos/morphir-toml-edit@0.1.0",
   "finos/morphir-workbench-native-session@0.1.0",
   "finos/morphir-conceptual@0.1.0",

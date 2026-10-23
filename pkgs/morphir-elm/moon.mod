@@ -11,6 +11,7 @@ readme = "README.md"
 description = "Elm to Morphir IR (the frontend) and Morphir IR to Elm generation with moonrockz/krueger"
 
 import {
+  "moonbitlang/x@0.5.5",
   "finos/morphir-ir@0.1.0",
   "finos/morphir-sdk-spec@0.1.0",
   "finos/morphir-typing@0.1.0",

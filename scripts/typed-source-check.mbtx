@@ -1,6 +1,9 @@
 ///|
 /// Compile original and generated mixed-type libraries on the pinned four targets.
 import {
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -15,20 +18,45 @@ import {
 }
 
 ///|
-fn field(value : Json, key : String) -> Json {
-  guard value is Object(fields) else { abort("Expected object") }
-  fields[key]
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else {
+    if json_mode {
+      fail("Expected object")
+    } else {
+      abort("Expected object")
+    }
+  }
+  if json_mode {
+    match fields.get(key) {
+      Some(value) => value
+      None => fail("Missing object field: " + key)
+    }
+  } else {
+    fields[key]
+  }
 }
 
 ///|
-fn string(value : Json) -> String {
-  guard value is String(text) else { abort("Expected string") }
+fn string(value : Json) -> String raise {
+  guard value is String(text) else {
+    if json_mode {
+      fail("Expected string")
+    } else {
+      abort("Expected string")
+    }
+  }
   text
 }
 
 ///|
-fn array(value : Json) -> Array[Json] {
-  guard value is Array(values) else { abort("Expected array") }
+fn array(value : Json) -> Array[Json] raise {
+  guard value is Array(values) else {
+    if json_mode {
+      fail("Expected array")
+    } else {
+      abort("Expected array")
+    }
+  }
   values
 }
 
@@ -46,7 +74,7 @@ async fn command(
 }
 
 ///|
-async fn main {
+async fn execute() -> Json {
   let repository = @fs.realpath(".")
   let root = repository + "/.dev/typed-source-acceptance"
   @fs.mkdir(root, recursive=true, allow_exist=true)
@@ -163,7 +191,13 @@ async fn main {
             path,
             Bytes::from_array(
               values.map(v => {
-                guard v is Number(n, ..) else { abort("Expected byte") }
+                guard v is Number(n, ..) else {
+                  if json_mode {
+                    fail("Expected byte")
+                  } else {
+                    abort("Expected byte")
+                  }
+                }
                 n.to_int().to_byte()
               }),
             ),
@@ -205,7 +239,11 @@ async fn main {
       module_name.escape() + " @g" + id,
     ])
     let symbols = array(field(model, "symbols"))
-    fn g(name : String) -> String {
+    fn g(name : String) -> String raise {
+      if json_mode &&
+        !symbols.any(s => string(field(s, "fqname")).has_suffix("#" + name)) {
+        fail("Missing generated symbol: " + name)
+      }
       "@g" +
       id +
       "." +
@@ -855,9 +893,95 @@ async fn main {
   assert_true(@text.read_ion(text).equals(ion))
   @fs.write_file(root + "/receipt.ionb", bytes)
   @fs.write_file(root + "/receipt.ion", text)
-  println(
-    "Mixed typed source and String consumers pass all eight target/mode lanes; Ion receipt: " +
-    root +
-    "/receipt.ionb",
+  if !json_mode {
+    println(
+      "Mixed typed source and String consumers pass all eight target/mode lanes; Ion receipt: " +
+      root +
+      "/receipt.ionb",
+    )
+  }
+  ({ "receiptPath": root + "/receipt.ionb", "receipt": receipt } : Json)
+}
+
+///|
+let json_mode : Bool = match @env.args() {
+  [_, "--json", ..] => true
+  _ => false
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "typed-source-check",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    about="Opt-in JSON results. Use --json [--help] or --json -- RAW. Other argv retains legacy ignored-tail behavior. stdout is one compact command-result 0.1.0 value plus LF; progress and live child stdout go to stderr. Success has result and diagnostics; failure has error {code,message}, diagnostics and the mapped exitCode. Expected refusals and ordinary errors exit 1, JSON syntax exits 2; explicitly propagated positive child statuses are retained, negative statuses map to 1. Default abort/signal behavior is unchanged; JSON refusals use normal exit 1. Help returns result.render_help without effects. Operation result fields: receiptPath and receipt, the actual typed-consumer receipt after text and binary Ion writes.",
+    flags=[@argparse.FlagArg("json"), @argparse.FlagArg("help")],
+    positionals=[
+      @argparse.PositionArg("legacy", num_args=@argparse.ValueRange(lower=0)),
+    ],
   )
+}
+
+///|
+async fn success(result : Json) -> Unit {
+  @stdio.stdout.write(
+    (
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "typed.source.check",
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result,
+        "diagnostics": [],
+      } : Json).stringify() +
+    "\n",
+  )
+}
+
+///|
+async fn failure(code : Int32, category : String, message : String) -> Unit {
+  @stdio.stdout.write(
+    (
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "typed.source.check",
+        "state": "failed",
+        "exitCode": code,
+        "error": { "code": category, "message": message },
+        "diagnostics": [],
+      } : Json).stringify() +
+    "\n",
+  )
+}
+
+///|
+async fn main {
+  if !json_mode {
+    ignore(execute())
+    return
+  }
+  let command = json_command()
+  let matches = command.parse(argv=@env.args()[1:]) catch {
+    error => {
+      failure(2, "invalid_arguments", error.to_string())
+      @sys.exit(2)
+      panic()
+    }
+  }
+  if matches.flags.get("help").unwrap_or(false) {
+    success({ "render_help": command.render_help() })
+    return
+  }
+  try {
+    let result = execute()
+    success(result)
+  } catch {
+    error => {
+      failure(1, "command_failed", error.to_string())
+      @sys.exit(1)
+    }
+  }
 }

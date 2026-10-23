@@ -1,10 +1,10 @@
 ///|
 // This fixture goes through the production generator. It includes public and
 // private modules, a cross-module reference and an actual external SDK call.
-fn main raise {
+fn finite_run(json_mode~ : Bool = false) -> Json raise {
   let file = @fixtures.library()
   guard file.distribution is Library(name, dependencies, definition) else {
-    abort("Expected library")
+    finite_refuse("Expected library", json_mode~)
   }
   let integer = @fixtures.scalar("morphir/SDK:basics#int")
   let modules = definition.modules.copy()
@@ -68,30 +68,28 @@ fn main raise {
       @data.IRUnit::new("assembly", model),
     ) {
     Binary(bytes) => bytes
-    Text(_) => abort("Expected binary Ion model")
+    Text(_) => finite_refuse("Expected binary Ion model", json_mode~)
   }
-  println(
-    (
-      {
-        "package": generated.project.module_name,
-        "modules": modules.length(),
-        "modelIon": model_bytes.to_array().map(b => b.to_int()),
-        "symbols": generated.symbols.map(s => {
-          ({ "fqname": s.fqname, "name": s.generated_name } : Json)
-        }),
-        "artifacts": generated.artifacts.map(a => {
-          (
-            {
-              "path": a.path,
-              "content": match a.content {
-                Text(s) => Json::string(s)
-                Binary(b) =>
-                  Json::array(
-                    b.to_array().map(b => Json::number(b.to_int().to_double())),
-                  )
-              },
-            } : Json)
-        }),
-      } : Json).stringify(),
-  )
+  (
+    {
+      "package": generated.project.module_name,
+      "modules": modules.length(),
+      "modelIon": model_bytes.to_array().map(b => b.to_int()),
+      "symbols": generated.symbols.map(s => {
+        ({ "fqname": s.fqname, "name": s.generated_name } : Json)
+      }),
+      "artifacts": generated.artifacts.map(a => {
+        (
+          {
+            "path": a.path,
+            "content": match a.content {
+              Text(s) => Json::string(s)
+              Binary(b) =>
+                Json::array(
+                  b.to_array().map(b => Json::number(b.to_int().to_double())),
+                )
+            },
+          } : Json)
+      }),
+    } : Json)
 }

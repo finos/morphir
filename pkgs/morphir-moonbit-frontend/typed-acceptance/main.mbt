@@ -167,7 +167,7 @@ fn string_sdk_rows() -> Array[(String, Array[String], Bool)] {
 }
 
 ///|
-fn main raise {
+fn finite_run() -> Json raise {
   let sources = [
     (
       "foundation", "pub fn choose(flag : Bool, a : Int32, b : Int) -> Int32 { let value : Int = if flag { a } else { b }; identity(value) }\nfn identity(value : Int32) -> Int { value }",
@@ -803,7 +803,5 @@ fn main raise {
         } : Json),
     )
   }
-  println(
-    ({ "models": models, "parser": @frontend.PARSER_VERSION } : Json).stringify(),
-  )
+  ({ "models": models, "parser": @frontend.PARSER_VERSION } : Json)
 }

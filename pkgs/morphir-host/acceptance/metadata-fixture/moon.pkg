@@ -1,6 +1,9 @@
 pkgtype(kind: "executable")
 
 import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/x/sys",
   "finos/morphir-metadata/fixtures",
   "finos/morphir-engine/data",
 }

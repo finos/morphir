@@ -1,10 +1,12 @@
 pkgtype(kind: "executable")
 
 import {
+  "moonbitlang/x/sys",
   "moonbitlang/core/argparse",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/process",
+  "moonbitlang/async/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/buffer",

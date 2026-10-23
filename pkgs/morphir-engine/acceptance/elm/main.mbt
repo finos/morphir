@@ -134,7 +134,7 @@ fn check(
 ///|
 /// Compiles every corpus project through the engine and generates MoonBit and Elm. A failure raises, so that the
 /// process exits non-zero.
-fn main raise {
+fn finite_run() -> Json raise {
   let projects = elm_projects()
   let keys = gaps.keys().collect()
   keys.append(build_gaps.keys().collect())
@@ -163,13 +163,11 @@ fn main raise {
     )
     check(project.name, "elm", generate(project, "elm"), "files", elm, elm_gaps)
   }
-  println(
-    (
-      {
-        "moonbit": libraries,
-        "moonbitGaps": moonbit_gaps,
-        "elm": elm,
-        "elmGaps": elm_gaps,
-      } : Json).stringify(),
-  )
+  (
+    {
+      "moonbit": libraries,
+      "moonbitGaps": moonbit_gaps,
+      "elm": elm,
+      "elmGaps": elm_gaps,
+    } : Json)
 }

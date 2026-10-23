@@ -109,6 +109,12 @@ jobs:
           MORPHIR_OTEL_PIN: .dev/native-otel/pin.json
           MORPHIR_TELEMETRY_RECEIPTS: .dev/telemetry-ci
         run: mise run test:native-telemetry
+      - name: Check native telemetry JSON presentation
+        env:
+          MORPHIR_FINITE_SECTION: telemetry
+          MORPHIR_FINITE_OTEL_BINARY: ${{ github.workspace }}/.dev/native-otel/morphir-otel
+          MORPHIR_FINITE_RECEIPTS: .dev/telemetry-ci/json-presentation
+        run: node apps/morphir/scripts/test-finite-json-presentation.ts
       - name: Retain telemetry capture and baseline
         if: always()
         uses: actions/upload-artifact@v7

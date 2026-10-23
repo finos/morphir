@@ -1,21 +1,19 @@
 ///|
-fn main raise {
+fn finite_run(json_mode~ : Bool = false) -> Json raise {
   let registry = @data.Registry::new()
   let unit = @data.IRUnit::new("model", @fixtures.conformance())
   let text = match registry.encode("ion-text", unit) {
     Text(text) => text
-    Binary(_) => abort("Expected text")
+    Binary(_) => finite_refuse("Expected text", json_mode~)
   }
   let bytes = match registry.encode("ion-binary", unit) {
     Binary(bytes) => bytes
-    Text(_) => abort("Expected bytes")
+    Text(_) => finite_refuse("Expected bytes", json_mode~)
   }
-  println(
-    (
-      {
-        "ionText": text,
-        "ionBinary": bytes.to_array().map(b => b.to_int()),
-        "naming": naming_fixtures(),
-      } : Json).stringify(),
-  )
+  (
+    {
+      "ionText": text,
+      "ionBinary": bytes.to_array().map(b => b.to_int()),
+      "naming": naming_fixtures(),
+    } : Json)
 }

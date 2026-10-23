@@ -1,4 +1,7 @@
 import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/x/sys",
   "finos/morphir-engine/data",
 }
 

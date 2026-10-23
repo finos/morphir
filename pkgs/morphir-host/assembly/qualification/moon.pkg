@@ -3,6 +3,9 @@ supported_targets = "js"
 pkgtype(kind: "executable")
 
 import {
+  "moonbitlang/x/sys",
+  "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
   "finos/morphir-ir" @ir,
   "finos/morphir-moonbit" @generator,
   "finos/morphir-moonbit/fixtures",

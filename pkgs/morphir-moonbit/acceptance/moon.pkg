@@ -1,6 +1,9 @@
 pkgtype(kind: "executable")
 
 import {
+  "moonbitlang/x/sys",
+  "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
   "finos/morphir-execution" @execution,
   "finos/morphir-ir" @ir,
   "finos/morphir-ir/json" @ir_json,

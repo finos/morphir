@@ -1,5 +1,5 @@
 ///|
-fn main raise {
+fn finite_run(json_mode~ : Bool = false) -> Json raise {
   let cases = [
     ("and", "active && vip", [false, false, false, true]),
     ("or", "active || vip", [false, true, true, true]),
@@ -52,7 +52,7 @@ fn main raise {
           @scheme.Boolean(vip),
         ])
         is Boolean(value) else {
-        abort("Expected Boolean evaluator output")
+        finite_refuse("Expected Boolean evaluator output", json_mode~)
       }
       observed.push(value)
     }
@@ -101,13 +101,11 @@ fn main raise {
       ),
     )
   }
-  println(
-    Json::object(
-      Map::from_array([
-        ("profile", Json::string(@frontend.STABLE_PROFILE)),
-        ("parserVersion", Json::string(@frontend.PARSER_VERSION)),
-        ("models", Json::array(models)),
-      ]),
-    ).stringify(),
+  Json::object(
+    Map::from_array([
+      ("profile", Json::string(@frontend.STABLE_PROFILE)),
+      ("parserVersion", Json::string(@frontend.PARSER_VERSION)),
+      ("models", Json::array(models)),
+    ]),
   )
 }

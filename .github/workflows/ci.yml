@@ -116,6 +116,12 @@ jobs:
         run: mise run package:mep-extension
       - name: Qualify fresh saved MEP sessions and generated consumer
         run: mise run test:portable-mep
+      - name: Check native extension JSON presentation
+        env:
+          MORPHIR_FINITE_SECTION: extension
+          MORPHIR_FINITE_EXTENSION_BINARY: ${{ github.workspace }}/_build/native/release/build/finos/morphir-extension/acceptance/acceptance.exe
+          MORPHIR_FINITE_RECEIPTS: .dev/portable-mep-acceptance/json-presentation
+        run: node apps/morphir/scripts/test-finite-json-presentation.ts
       - name: Retain portable MEP artifacts and operation evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -339,6 +345,12 @@ jobs:
 
       - name: Check Scheme docs examples
         run: mise run scheme-docs:check
+
+      - name: Check finite portable command JSON presentation
+        env:
+          MORPHIR_FINITE_SECTION: portable
+          MORPHIR_FINITE_TARGET: js
+        run: node apps/morphir/scripts/test-finite-json-presentation.ts
 
   test:
     name: Test

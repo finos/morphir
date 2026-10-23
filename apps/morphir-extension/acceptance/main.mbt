@@ -343,8 +343,7 @@ fn parse_acceptance_operands(
 }
 
 ///|
-async fn main {
-  let args = parse_acceptance_operands(@env.args()[1:])
+async fn finite_run(args : @argparse.Matches) -> Json {
   let guest = @fs.realpath(args.values["guest"][0])
   let repository = @fs.realpath(args.values["repository"][0])
   let evidence_path = args.values["evidence"][0]
@@ -406,5 +405,5 @@ async fn main {
   @fs.write_file(evidence + "/receipt.ionb", @binary.write_binary([ion]))
   @fs.write_file(evidence + "/receipt.ion", @ion_text.write_ion(ion))
   @fs.write_file(evidence + "/receipt.json", receipt.stringify())
-  println(receipt.stringify())
+  receipt
 }

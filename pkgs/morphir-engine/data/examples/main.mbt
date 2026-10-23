@@ -1,5 +1,5 @@
 ///|
-fn main raise {
+fn finite_run(json_mode~ : Bool = false) -> String raise {
   let registry = @data.Registry::new()
   let source = @data.SourceSnapshot::{
     unit_id: "Pricing",
@@ -16,7 +16,8 @@ fn main raise {
   assert_eq(restored.distribution, unit.distribution)
   let text = registry.checkpoint(restored, codec="ion-text")
   match text {
-    Text(value) => println(value)
-    Binary(_) => abort("Ion text codec returned binary content")
+    Text(value) => value
+    Binary(_) =>
+      finite_refuse("Ion text codec returned binary content", json_mode~)
   }
 }

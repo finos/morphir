@@ -167,6 +167,8 @@ run = [
   "moonx scripts/setup-hooks.mbtx --self-test",
   "moonx scripts/pre-push.mbtx --self-test",
   "moonx scripts/beads-plan.mbtx --self-test",
+  "bun tools/build-command-json.test.ts",
+  "bun tools/portable-command-json.test.ts",
 ]
 
 [tasks."ci:measure"]

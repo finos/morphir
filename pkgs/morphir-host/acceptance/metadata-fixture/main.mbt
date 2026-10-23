@@ -1,7 +1,7 @@
 ///|
 /// Deterministic consumer checkpoint for installed provider acceptance drivers.
 /// Trust provisioning and service selection remain explicit driver operations.
-fn main raise {
+fn finite_run() -> String raise {
   let unit = @data.IRUnit::new("main", @fixtures.input(), metadata=[
     {
       node_id: "value:example:main#ready",
@@ -13,5 +13,5 @@ fn main raise {
   guard @data.Registry::new().encode("ion-text", unit) is @data.Text(text) else {
     fail("Ion text fixture")
   }
-  println(text)
+  text
 }

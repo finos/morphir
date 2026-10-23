@@ -4,6 +4,8 @@
 
 ///|
 import {
+  "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/stdio",
@@ -21,31 +23,28 @@ let output : String = "apps/morphir-workbench/assets/samples/elm"
 /// The samples, in menu order: corpus id, title, and the notice from SOURCES.md.
 let samples : Array[(String, String, String)] = [
   (
-    "examples-tutorial",
-    "Rentals tutorial (morphir-examples)",
-    "From finos/morphir-examples 74db4db, tutorial/step_3_catching_bugs. Apache-2.0, finos/morphir-examples.",
+    "examples-tutorial", "Rentals tutorial (morphir-examples)", "From finos/morphir-examples 74db4db, tutorial/step_3_catching_bugs. Apache-2.0, finos/morphir-examples.",
   ),
   (
-    "elm-rentals",
-    "Rentals rules (morphir-elm tests)",
-    "From finos/morphir-elm 71ca7ee, tests-integration/cli/test-data/rentals. Apache-2.0, finos/morphir-elm.",
+    "elm-rentals", "Rentals rules (morphir-elm tests)", "From finos/morphir-elm 71ca7ee, tests-integration/cli/test-data/rentals. Apache-2.0, finos/morphir-elm.",
   ),
   (
-    "records",
-    "Records (parity corpus)",
-    "From this repository's Elm parity corpus. Apache-2.0.",
+    "records", "Records (parity corpus)", "From this repository's Elm parity corpus. Apache-2.0.",
   ),
 ]
 
 ///|
 async fn fail(message : String) -> Unit {
   @stdio.stderr.write("workbench-samples: \{message}\n")
+  if json_mode {
+    failure(1, "validation_failed", message)
+  }
   @sys.exit(1)
 }
 
 ///|
 /// Compares by code unit. `String::compare` compares the length first.
-fn lexical(a : String, b : String) -> Int {
+fn lexical(a : String, b : String) -> Int32 {
   let n = if a.length() < b.length() { a.length() } else { b.length() }
   for i in 0..<n {
     let c = a[i].compare(b[i])
@@ -85,7 +84,7 @@ async fn elm_sources(
 }
 
 ///|
-async fn main {
+async fn execute() -> Json {
   for directory in ["apps/morphir-workbench/assets/samples", output] {
     if !@fs.exists(directory) {
       @fs.mkdir(directory, permission=0o755)
@@ -123,10 +122,9 @@ async fn main {
       fail("\{dir}/\{source_dir} holds no .elm file")
     }
     let files : Array[Json] = sources.map(s => {
-      ({
-        "path": Json::string("src/" + s.0),
-        "content": Json::string(s.1),
-      } : Json)
+      (
+        { "path": Json::string("src/" + s.0), "content": Json::string(s.1) } :
+        Json)
     })
     let asset : Json = {
       "version": 1,
@@ -143,9 +141,104 @@ async fn main {
         "active": Json::string("src/" + sources[0].0),
       },
     }
-    @fs.write_file(output + "/" + id + ".json", asset.stringify(indent=2) + "\n")
+    @fs.write_file(
+      output + "/" + id + ".json",
+      asset.stringify(indent=2) + "\n",
+    )
     index.push({ "id": id, "title": title })
   }
   let list : Json = { "version": 1, "samples": Json::array(index) }
   @fs.write_file(output + "/index.json", list.stringify(indent=2) + "\n")
+  (
+    {
+      "directory": output,
+      "samples": index,
+      "writtenFiles": Json::array(
+        samples.map(s => Json::string(output + "/" + s.0 + ".json")) +
+        [Json::string(output + "/index.json")],
+      ),
+    } : Json)
+}
+
+///|
+let json_mode : Bool = match @env.args() {
+  [_, "--json", ..] => true
+  _ => false
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "workbench-samples",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    about="Opt-in JSON results. Use --json [--help] or --json -- RAW. Other argv retains legacy ignored-tail behavior. stdout is one compact command-result 0.1.0 value plus LF; progress and live child stdout go to stderr. Success has result and diagnostics; failure has error {code,message}, diagnostics and the mapped exitCode. Expected refusals and ordinary errors exit 1, JSON syntax exits 2; explicitly propagated positive child statuses are retained, negative statuses map to 1. Default abort/signal behavior is unchanged; JSON refusals use normal exit 1. Help returns result.render_help without effects. Operation result fields: directory, samples [{id,title}] and writtenFiles, after all sample assets and index are written.",
+    flags=[@argparse.FlagArg("json"), @argparse.FlagArg("help")],
+    positionals=[
+      @argparse.PositionArg("legacy", num_args=@argparse.ValueRange(lower=0)),
+    ],
+  )
+}
+
+///|
+async fn success(result : Json) -> Unit {
+  @stdio.stdout.write(
+    (
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "workbench.samples",
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result,
+        "diagnostics": [],
+      } : Json).stringify() +
+    "\n",
+  )
+}
+
+///|
+async fn failure(code : Int32, category : String, message : String) -> Unit {
+  @stdio.stdout.write(
+    (
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "workbench.samples",
+        "state": "failed",
+        "exitCode": code,
+        "error": { "code": category, "message": message },
+        "diagnostics": [],
+      } : Json).stringify() +
+    "\n",
+  )
+}
+
+///|
+async fn main {
+  if !json_mode {
+    ignore(execute())
+    return
+  }
+  let command = json_command()
+  let matches = command.parse(argv=@env.args()[1:]) catch {
+    error => {
+      failure(2, "invalid_arguments", error.to_string())
+      @sys.exit(2)
+      panic()
+    }
+  }
+  if matches.flags.get("help").unwrap_or(false) {
+    success({ "render_help": command.render_help() })
+    return
+  }
+  try {
+    let result = execute()
+    success(result)
+  } catch {
+    error => {
+      failure(1, "command_failed", error.to_string())
+      @sys.exit(1)
+    }
+  }
 }

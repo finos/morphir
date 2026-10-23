@@ -5,7 +5,9 @@ import {
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/x@0.5.5/crypto",
 }
 
@@ -26,6 +28,17 @@ async fn checked(
     extra_env=environment,
   )
   guard code == 0 else {
+    if json_output.val {
+      @stdio.stderr.write(out.text() + err.text())
+      raise ChildFailed(
+        if code > 0 {
+          code
+        } else {
+          1
+        },
+        "Child process failed: " + program,
+      )
+    }
     @stdio.stderr.write(out.text() + err.text())
     fail("Portable MEP acceptance failed: " + program)
   }
@@ -33,7 +46,7 @@ async fn checked(
 }
 
 ///|
-async fn main {
+async fn execute() -> Json {
   let root = @fs.realpath(".")
   let artifacts = @fs.realpath(
     @env.get_env_var("MORPHIR_MEP_ARTIFACTS").unwrap_or(".dev/portable-mep") +
@@ -116,5 +129,129 @@ async fn main {
     evidence + "/portable-receipt.ion",
     "portable_mep_acceptance::" + receipt.stringify() + "\n",
   )
-  println("Fresh saved MEP process and source consumer acceptance passed")
+  (if json_output.val { @stdio.stderr } else { @stdio.stdout }).write(
+    "Fresh saved MEP process and source consumer acceptance passed" + "\n",
+  )
+  receipt
+}
+
+///|
+let json_output : Ref[Bool] = Ref(false)
+
+///|
+suberror CommandFailure {
+  ChildFailed(Int32, String)
+}
+
+///|
+fn legacy_command() -> @argparse.Command {
+  @argparse.Command(
+    "portable-mep-check.mbtx",
+    about="Check saved portable MEP local operation acceptance",
+  )
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "portable-mep-check.mbtx",
+    about="Check saved portable MEP local operation acceptance. Leading --json selects JSON mode. JSON emits one compact morphir/command-result 0.1.0 value plus LF on stdout after completion; progress goes to stderr. Success has result and diagnostics; failure has error.code/message and exitCode matching process status. Expected refusals and legacy child-failure branches exit 1; error.message retains the child status. Default abort presentation is unchanged. Result fields scope, node, nodeSha256, runtime, hostModules, guestCompilerAccess, wasmSha256, manifestSha256, compiler and acceptance describe completed local acceptance. A leading -- protects a literal --json in legacy argv.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    positionals=[
+      @argparse.PositionArg("IGNORED", num_args=@argparse.ValueRange()),
+    ],
+    subcommands=[
+      @argparse.Command(
+        "help",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h')],
+      ),
+    ],
+    flags=[
+      @argparse.FlagArg("json", about="Emit the completed command result"),
+      @argparse.FlagArg(
+        "help",
+        short='h',
+        about="Return render_help without effects",
+      ),
+    ],
+  )
+}
+
+///|
+fn wants_json(argv : ArrayView[String]) -> Bool {
+  // Only the leading control is reserved. The library owns its syntax; all
+  // other legacy argv stays untouched, including literal --json after --.
+  let prefix = argv[:if argv.is_empty() { 0 } else { 1 }]
+  let matches = @argparse.Command(
+    "portable-mep-check.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("json", required=true)],
+  ).parse(argv=prefix) catch {
+    _ => return false
+  }
+  matches.flags.get_or_default("json", false)
+}
+
+///|
+fn success(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "portable.mep.check",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:]
+  json_output.val = wants_json(argv)
+  if !json_output.val {
+    ignore(execute())
+    return
+  }
+  let result : Json = try {
+    let matches = json_command().parse(argv~)
+    if matches.flags.get_or_default("help", false) ||
+      matches.subcommand.is_some() {
+      {
+        "render_help": legacy_command().render_help(),
+        "json_help": json_command().render_help(),
+      }
+    } else {
+      execute()
+    }
+  } catch {
+    error => {
+      let (code, message, kind) = match error {
+        ChildFailed(code, message) =>
+          (
+            1,
+            message + " (child exit " + code.to_string() + ")",
+            "child.failed",
+          )
+        _ => (1, error.to_string(), "command.failed")
+      }
+      let failure : Json = {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "portable.mep.check",
+        "state": "failed",
+        "exitCode": code,
+        "error": { "code": kind, "message": message },
+        "diagnostics": [],
+      }
+      @stdio.stdout.write(failure.stringify() + "\n")
+      @sys.exit(code)
+      return
+    }
+  }
+  @stdio.stdout.write(success(result).stringify() + "\n")
 }

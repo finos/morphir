@@ -3,6 +3,8 @@
 /// The selected Rust checkout must be clean and at the accepted source revision.
 /// Test keys and fresh trust are confined to disposable test fixture destinations.
 import {
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -111,7 +113,7 @@ fn rich_values(value : @ion.IonValue) -> Array[@ion.IonValue] {
 }
 
 ///|
-async fn main {
+async fn execute() -> Json {
   let receipts = @env.get_env_var("MORPHIR_PROVIDER_RECEIPTS").unwrap_or(
     ".dev/installed-provider",
   )
@@ -350,7 +352,93 @@ async fn main {
   @fs.write_file(receipts + "/summary.ionb", @binary.write_binary_value(ion))
   // JSON is an explicit convenient inspection view of the primary Ion receipt.
   @fs.write_file(receipts + "/summary.json", summary.stringify(indent=2) + "\n")
-  println(
-    "Installed npm/native signed provider checks and binary Ion audit verification passed.",
+  if !json_mode {
+    println(
+      "Installed npm/native signed provider checks and binary Ion audit verification passed.",
+    )
+  }
+  ({ "receiptDirectory": receipts, "receipt": summary } : Json)
+}
+
+///|
+let json_mode : Bool = match @env.args() {
+  [_, "--json", ..] => true
+  _ => false
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "installed-provider-check",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    about="Opt-in JSON results. Use --json [--help] or --json -- RAW. Other argv retains legacy ignored-tail behavior. stdout is one compact command-result 0.1.0 value plus LF; progress and live child stdout go to stderr. Success has result and diagnostics; failure has error {code,message}, diagnostics and the mapped exitCode. Expected refusals and ordinary errors exit 1, JSON syntax exits 2; explicitly propagated positive child statuses are retained, negative statuses map to 1. Default abort/signal behavior is unchanged; JSON refusals use normal exit 1. Help returns result.render_help without effects. Operation result fields: receiptDirectory and receipt, the verified installed-provider summary after Ion writes.",
+    flags=[@argparse.FlagArg("json"), @argparse.FlagArg("help")],
+    positionals=[
+      @argparse.PositionArg("legacy", num_args=@argparse.ValueRange(lower=0)),
+    ],
   )
+}
+
+///|
+async fn success(result : Json) -> Unit {
+  @stdio.stdout.write(
+    (
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "installed.provider.check",
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result,
+        "diagnostics": [],
+      } : Json).stringify() +
+    "\n",
+  )
+}
+
+///|
+async fn failure(code : Int32, category : String, message : String) -> Unit {
+  @stdio.stdout.write(
+    (
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "installed.provider.check",
+        "state": "failed",
+        "exitCode": code,
+        "error": { "code": category, "message": message },
+        "diagnostics": [],
+      } : Json).stringify() +
+    "\n",
+  )
+}
+
+///|
+async fn main {
+  if !json_mode {
+    ignore(execute())
+    return
+  }
+  let command = json_command()
+  let matches = command.parse(argv=@env.args()[1:]) catch {
+    error => {
+      failure(2, "invalid_arguments", error.to_string())
+      @sys.exit(2)
+      panic()
+    }
+  }
+  if matches.flags.get("help").unwrap_or(false) {
+    success({ "render_help": command.render_help() })
+    return
+  }
+  try {
+    let result = execute()
+    success(result)
+  } catch {
+    error => {
+      failure(1, "command_failed", error.to_string())
+      @sys.exit(1)
+    }
+  }
 }

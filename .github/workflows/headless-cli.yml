@@ -67,6 +67,40 @@ jobs:
       - uses: ./.github/actions/setup-typescript
       - name: Resolve pinned MoonBit packages
         run: moon update
+      - name: Check native finite JSON presentation
+        if: runner.os != 'macOS'
+        env:
+          MORPHIR_FINITE_SECTION: pure-presentation
+          MORPHIR_FINITE_TARGET: native
+          MORPHIR_FINITE_RECEIPTS: .dev/guidance-native-json/I
+        run: node apps/morphir/scripts/test-finite-json-presentation.ts
+      - name: Retain native finite JSON receipts
+        if: always() && runner.os != 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          name: finite-json-I-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .dev/guidance-native-json/I/
+          include-hidden-files: true
+          if-no-files-found: warn
+      - name: Check native build command JSON boundaries on Windows
+        if: runner.os == 'Windows'
+        env:
+          MORPHIR_BUILD_JSON_TEST_RECEIPT: .dev/guidance-native-json/D.json
+        run: bun tools/build-command-json.test.ts
+      - name: Check native portable command JSON boundaries on Windows
+        if: runner.os == 'Windows'
+        env:
+          PORTABLE_JSON_TARGET: native
+          PORTABLE_JSON_RECEIPTS: .dev/guidance-native-json/F.json
+        run: bun tools/portable-command-json.test.ts
+      - name: Retain native command JSON boundary receipts
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-command-json-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .dev/guidance-native-json/
+          include-hidden-files: true
+          if-no-files-found: warn
       - name: Qualify native log snapshots and rotation
         run: moon test pkgs/morphir-host/platform/flush_test.mbt --target native --target-dir .dev/headless-native-flush
       - name: Install pinned generation compilers

@@ -1,6 +1,9 @@
 ///|
 /// The required target list is explicit in CI; missing capabilities fail.
 import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
@@ -8,7 +11,7 @@ import {
 }
 
 ///|
-async fn main {
+async fn execute() -> Json {
   // These development gates consume portable provider modules on a fresh checkout.
   let (runtime_status, _, runtime_error) = @process.collect_output("bun", [
     "run", "build:runtimes",
@@ -16,14 +19,124 @@ async fn main {
   guard runtime_status == 0 else {
     fail("Runtime JavaScript build failed: " + runtime_error.text())
   }
+  completed_steps.push({
+    "program": "bun",
+    "args": ["run", "build:runtimes"],
+    "exitCode": 0,
+  })
 
+  let code = run_step("node", [
+    "apps/morphir/scripts/test-installed-lifecycle.ts",
+  ])
+  if code != 0 {
+    exit_child(code)
+  }
+  ({ "steps": completed_steps, "passed": true } : Json)
+}
+
+///|
+let json_mode : Bool = match @env.args() {
+  [_, "--json", ..] => true
+  _ => false
+}
+
+///|
+let completed_steps : Array[Json] = []
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "installed-lifecycle-check",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    about="Opt-in JSON results. Use --json [--help] or --json -- RAW. Other argv retains legacy ignored-tail behavior. stdout is one compact command-result 0.1.0 value plus LF; progress and live child stdout go to stderr. Success has result and diagnostics; failure has error {code,message}, diagnostics and the mapped exitCode. Expected refusals and ordinary errors exit 1, JSON syntax exits 2; explicitly propagated positive child statuses are retained, negative statuses map to 1. Default abort/signal behavior is unchanged; JSON refusals use normal exit 1. Help returns result.render_help without effects. Operation result fields: completed steps [{program,args,exitCode}] in execution order and passed.",
+    flags=[@argparse.FlagArg("json"), @argparse.FlagArg("help")],
+    positionals=[
+      @argparse.PositionArg("legacy", num_args=@argparse.ValueRange(lower=0)),
+    ],
+  )
+}
+
+///|
+async fn success(result : Json) -> Unit {
+  @stdio.stdout.write(
+    (
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "installed.lifecycle.check",
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result,
+        "diagnostics": [],
+      } : Json).stringify() +
+    "\n",
+  )
+}
+
+///|
+async fn failure(code : Int32, category : String, message : String) -> Unit {
+  @stdio.stdout.write(
+    (
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "installed.lifecycle.check",
+        "state": "failed",
+        "exitCode": code,
+        "error": { "code": category, "message": message },
+        "diagnostics": [],
+      } : Json).stringify() +
+    "\n",
+  )
+}
+
+///|
+async fn exit_child(code : Int32) -> Unit {
+  let mapped = if code > 0 { code } else { 1 }
+  if json_mode {
+    failure(mapped, "child_failed", "Child command failed")
+  }
+  @sys.exit(mapped)
+}
+
+///|
+async fn run_step(program : String, args : Array[String]) -> Int32 {
   let code = @process.run(
-    "node",
-    ["apps/morphir/scripts/test-installed-lifecycle.ts"],
-    stdout=@stdio.stdout,
+    program,
+    args,
+    stdout=if json_mode { @stdio.stderr } else { @stdio.stdout },
     stderr=@stdio.stderr,
   )
-  if code != 0 {
-    @sys.exit(if code > 0 { code } else { 1 })
+  completed_steps.push({ "program": program, "args": args, "exitCode": code })
+  code
+}
+
+///|
+async fn main {
+  if !json_mode {
+    ignore(execute())
+    return
+  }
+  let command = json_command()
+  let matches = command.parse(argv=@env.args()[1:]) catch {
+    error => {
+      failure(2, "invalid_arguments", error.to_string())
+      @sys.exit(2)
+      panic()
+    }
+  }
+  if matches.flags.get("help").unwrap_or(false) {
+    success({ "render_help": command.render_help() })
+    return
+  }
+  try {
+    let result = execute()
+    success(result)
+  } catch {
+    error => {
+      failure(1, "command_failed", error.to_string())
+      @sys.exit(1)
+    }
   }
 }
