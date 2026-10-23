@@ -1,0 +1,72 @@
+{
+  "kind": "explicit-observed-effect-vocabulary-source-correction",
+  "predecessor": {
+    "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/model-originals-mck-authorship/coverage-refinement-v2/observation.schema.json",
+    "sha256": "1b94cefb1fbb4a95c45efc41787c9d2ca0c6a283ca0e3f9ed0e921efee64b2bc",
+    "id": "urn:morphir:workbench:model-originals:author-observation-coverage-v2"
+  },
+  "inputSource": {
+    "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/model-originals-mck-authorship/schema-candidate-v27/scenario.schema.json",
+    "sha256": "71e64def66d7e5e48249517a36ebebbf539fb984ae7a190e168743005289932c",
+    "effectKinds": [
+      "picker",
+      "file-read",
+      "native-capture",
+      "initialize",
+      "capture",
+      "inventory",
+      "read-original",
+      "read-projection",
+      "release",
+      "digest",
+      "inspection",
+      "execution-submit",
+      "execution-observe",
+      "execution-release",
+      "local-evaluation",
+      "catalog",
+      "native-invoke",
+      "manifest-fetch",
+      "workspace-open"
+    ]
+  },
+  "successor": {
+    "path": "spec/workbench/model-originals/0.1.0-draft.1/schemas/mck-workflow-observation.schema.json",
+    "sha256": "e68d95e848d0735b9043f65f0fa6f27b6c945a0d5a1785221980112c6c5d1f29",
+    "id": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/mck-workflow-observation.schema.json"
+  },
+  "changedPointers": [
+    "/$id",
+    "/$defs/EffectKind/enum"
+  ],
+  "previousKinds": [
+    "picker",
+    "file-read",
+    "native-capture",
+    "initialize",
+    "capture",
+    "inventory",
+    "read-original",
+    "read-projection",
+    "release",
+    "digest",
+    "inspection",
+    "execution-submit",
+    "execution-observe",
+    "execution-release"
+  ],
+  "addedKinds": [
+    "local-evaluation",
+    "catalog",
+    "native-invoke",
+    "manifest-fetch",
+    "workspace-open"
+  ],
+  "semanticReversalExact": true,
+  "originalTrackedFilesVerified": 133,
+  "originalFilesManifestSHA256": "cc11718b9df08ff0f05ef4e9d885ae68ff0f9495140f9145f6d54e4b343c88cd",
+  "productContractVersionChanged": false,
+  "rpcValidatorsChanged": false,
+  "effectEligibilityChanged": false,
+  "runtimeQualification": false
+}

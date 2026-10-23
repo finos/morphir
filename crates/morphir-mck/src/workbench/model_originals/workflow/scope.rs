@@ -593,7 +593,9 @@ impl<'source> Sources<'source> {
                             | EffectKind::ReadProjection
                             | EffectKind::Release
                             | EffectKind::Digest
-                            | EffectKind::Inspection => SubjectRoles::Opening,
+                            | EffectKind::Inspection
+                            | EffectKind::ManifestFetch
+                            | EffectKind::WorkspaceOpen => SubjectRoles::Opening,
                         }
                     }
                     SubjectKind::ManifestFetch | SubjectKind::WorkspaceOpen => {

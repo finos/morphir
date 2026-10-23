@@ -1,5 +1,7 @@
-//! Independent observed evidence types from frozen1b94 plus the sealed
-//! identity-controller schema, not expected predicates.
+//! Independent observed evidence types from frozen1b94 plus the explicit
+//! nineteen-kind workflow observation successor and sealed identity schema.
+//! The maintained source is schemas/mck-workflow-observation.schema.json;
+//! reviewed-sources/observed-effect-vocabulary-v2 records its exact delta.
 //! Exact reused input types were checked through their whole reference closure.
 //! No authority/runtime/semantic lineage follows from decoding this evidence.
 use super::*;
@@ -161,6 +163,11 @@ words! { EffectKind {
     ExecutionSubmit => "execution-submit",
     ExecutionObserve => "execution-observe",
     ExecutionRelease => "execution-release",
+    LocalEvaluation => "local-evaluation",
+    Catalog => "catalog",
+    NativeInvoke => "native-invoke",
+    ManifestFetch => "manifest-fetch",
+    WorkspaceOpen => "workspace-open",
 } }
 
 words! { EffectRecordPendingPort {

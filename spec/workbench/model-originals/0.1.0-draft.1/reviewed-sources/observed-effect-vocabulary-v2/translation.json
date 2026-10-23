@@ -1,0 +1,5814 @@
+{
+  "kind": "observed-domain-explicit-effect-vocabulary-successor",
+  "sourceSchemaPath": "spec/workbench/model-originals/0.1.0-draft.1/schemas/mck-workflow-observation.schema.json",
+  "sourceSchemaSHA256": "e68d95e848d0735b9043f65f0fa6f27b6c945a0d5a1785221980112c6c5d1f29",
+  "exactTransitiveInputReuse": [
+    "Alias",
+    "AtomicBytes",
+    "U8",
+    "Bytes",
+    "Count",
+    "DeliveredReply",
+    "Frame",
+    "FramePart",
+    "JsonDeliveryOperation",
+    "RawJsonSource",
+    "RawJson",
+    "Sha256",
+    "Entry",
+    "SourcePath",
+    "ModelCodec",
+    "PickerSignal",
+    "RejectedEffect",
+    "U64Token"
+  ],
+  "rustRepresentationRename": "Source #/$defs/ExpectedSource maps only its Rust name to SourceRoles; unchanged wire fields/schema/pointers. It is observed evidence, not an expectation predicate.",
+  "rootSchemaReference": "#/$defs/Observation",
+  "topLevelDefinitions": 49,
+  "commonValidatedLeaves": [
+    {
+      "definition": "Alias",
+      "rustType": "FixtureAlias",
+      "schemaPointer": "#/$defs/Alias",
+      "exactSchema": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9._-]{0,127}$"
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "AtomicBytes",
+      "rustType": "super::input::AtomicBytes",
+      "schemaPointer": "#/$defs/AtomicBytes",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "hex": {
+                "type": "string",
+                "pattern": "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$",
+                "maxLength": 1048576
+              },
+              "kind": {
+                "const": "hex"
+              }
+            },
+            "required": [
+              "hex",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 1048576
+              },
+              "kind": {
+                "const": "utf8"
+              }
+            },
+            "required": [
+              "text",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "byte": {
+                "$ref": "#/$defs/U8"
+              },
+              "length": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 268435456
+              },
+              "kind": {
+                "const": "repeat-u8"
+              }
+            },
+            "required": [
+              "byte",
+              "length",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "seed": {
+                "$ref": "#/$defs/U8"
+              },
+              "length": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 268435456
+              },
+              "kind": {
+                "const": "cycle-u8"
+              }
+            },
+            "required": [
+              "seed",
+              "length",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "seed": {
+                "$ref": "#/$defs/U8"
+              },
+              "length": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 268435456
+              },
+              "kind": {
+                "const": "chunk-indexed-u8"
+              }
+            },
+            "required": [
+              "seed",
+              "length",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "Bytes",
+      "rustType": "super::input::Bytes",
+      "schemaPointer": "#/$defs/Bytes",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/AtomicBytes"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "parts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/AtomicBytes"
+                },
+                "minItems": 1,
+                "maxItems": 4096
+              },
+              "kind": {
+                "const": "concat"
+              }
+            },
+            "required": [
+              "parts",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "Count",
+      "rustType": "super::input::Count",
+      "schemaPointer": "#/$defs/Count",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "DeliveredReply",
+      "rustType": "super::input::DeliveredReply",
+      "schemaPointer": "#/$defs/DeliveredReply",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/Frame"
+              },
+              "kind": {
+                "const": "frame"
+              }
+            },
+            "required": [
+              "value",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/Bytes"
+              },
+              "kind": {
+                "const": "bytes"
+              }
+            },
+            "required": [
+              "value",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "$ref": "#/$defs/JsonDeliveryOperation"
+              },
+              "source": {
+                "$ref": "#/$defs/RawJsonSource"
+              },
+              "kind": {
+                "const": "json"
+              }
+            },
+            "required": [
+              "operation",
+              "source",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "enum": [
+                  "execution.native-descriptor",
+                  "execution.native-request"
+                ]
+              },
+              "source": {
+                "$ref": "#/$defs/RawJsonSource"
+              },
+              "kind": {
+                "const": "text"
+              }
+            },
+            "required": [
+              "operation",
+              "source",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/Sha256"
+              },
+              "kind": {
+                "const": "sha256"
+              }
+            },
+            "required": [
+              "value",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "file": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "file-selection"
+              }
+            },
+            "required": [
+              "file",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "picker-cancelled"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "enum": [
+                  "adapter.cancel-model-open",
+                  "adapter.cancel"
+                ]
+              },
+              "kind": {
+                "const": "void"
+              }
+            },
+            "required": [
+              "operation",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "Entry",
+      "rustType": "super::input::Entry",
+      "schemaPointer": "#/$defs/Entry",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/SourcePath"
+              },
+              "bytes": {
+                "$ref": "#/$defs/Bytes"
+              },
+              "kind": {
+                "const": "file"
+              }
+            },
+            "required": [
+              "path",
+              "bytes",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/SourcePath"
+              },
+              "kind": {
+                "const": "directory"
+              }
+            },
+            "required": [
+              "path",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "Frame",
+      "rustType": "super::input::Frame",
+      "schemaPointer": "#/$defs/Frame",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 1048576
+              },
+              "kind": {
+                "const": "literal"
+              }
+            },
+            "required": [
+              "text",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "parts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/FramePart"
+                },
+                "minItems": 1,
+                "maxItems": 4096
+              },
+              "kind": {
+                "const": "segments"
+              }
+            },
+            "required": [
+              "parts",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "FramePart",
+      "rustType": "super::input::FramePart",
+      "schemaPointer": "#/$defs/FramePart",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 1048576
+              },
+              "kind": {
+                "const": "literal"
+              }
+            },
+            "required": [
+              "text",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 16384
+              },
+              "count": {
+                "$ref": "#/$defs/Count"
+              },
+              "kind": {
+                "const": "repeat"
+              }
+            },
+            "required": [
+              "text",
+              "count",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "JsonDeliveryOperation",
+      "rustType": "super::input::JsonDeliveryOperation",
+      "schemaPointer": "#/$defs/JsonDeliveryOperation",
+      "exactSchema": {
+        "enum": [
+          "adapter.initialize",
+          "adapter.execute",
+          "worker.message",
+          "execution.transport-response",
+          "native.workspace.open",
+          "native.workspace.read",
+          "native.workspace.release",
+          "native.workspace.choose",
+          "native.workspace.revoke"
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "ModelCodec",
+      "rustType": "super::input::ModelCodec",
+      "schemaPointer": "#/$defs/ModelCodec",
+      "exactSchema": {
+        "enum": [
+          "morphir-json",
+          "ion-text",
+          "ion-binary"
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "PickerSignal",
+      "rustType": "super::input::PickerSignal",
+      "schemaPointer": "#/$defs/PickerSignal",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "file": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "file-selection"
+              }
+            },
+            "required": [
+              "file",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "picker-cancel-event"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "empty-selection"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "RawJson",
+      "rustType": "RawJson",
+      "schemaPointer": "#/$defs/RawJson",
+      "exactSchema": {
+        "type": "string",
+        "maxLength": 1048576,
+        "description": "Validate raw text with existing duplicate-aware exact literal parser; check UTF8 bytes, nesting and complete case budget before effects, preserving numeric tokens and literal private-looking object keys"
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "RawJsonSource",
+      "rustType": "super::input::RawJsonSource",
+      "schemaPointer": "#/$defs/RawJsonSource",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/RawJson"
+          },
+          {
+            "$ref": "#/$defs/Frame"
+          }
+        ]
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "RejectedEffect",
+      "rustType": "super::input::RejectedEffect",
+      "schemaPointer": "#/$defs/RejectedEffect",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "enum": [
+              "Error",
+              "TypeError",
+              "AbortError"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "kind": {
+            "const": "error"
+          }
+        },
+        "required": [
+          "name",
+          "message",
+          "kind"
+        ],
+        "additionalProperties": false
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "Sha256",
+      "rustType": "ContentSha256",
+      "schemaPointer": "#/$defs/Sha256",
+      "exactSchema": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "SourcePath",
+      "rustType": "SourcePath",
+      "schemaPointer": "#/$defs/SourcePath",
+      "exactSchema": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096,
+        "description": "Shared portable path constructor enforces UTF8, UTF16, component and alias rules; raw hostile filesystem names use raw-name-file"
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "U64Token",
+      "rustType": "U64Token",
+      "schemaPointer": "#/$defs/U64Token",
+      "exactSchema": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]{0,19})$",
+        "description": "Compare the original canonical unsigned decimal token to 18446744073709551615 before copying it; never pass through JS Number"
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    },
+    {
+      "definition": "U8",
+      "rustType": "super::input::U8",
+      "schemaPointer": "#/$defs/U8",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 255
+      },
+      "requirement": "Use actual shared validated constructor plus these exact role constraints and description; never string alias coercion."
+    }
+  ],
+  "generatedDeclarations": [
+    {
+      "name": "BytesWitness",
+      "schemaPointer": "#/$defs/BytesWitness",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "byteLength": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 134217728
+          },
+          "sha256": {
+            "$ref": "#/$defs/Sha256"
+          },
+          "bytes": {
+            "$ref": "#/$defs/Bytes"
+          }
+        },
+        "required": [
+          "byteLength",
+          "sha256",
+          "bytes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "CancellationCause",
+      "schemaPointer": "#/$defs/CancellationCause",
+      "exactSchema": {
+        "enum": [
+          "cancel-opening",
+          "close-current-model",
+          "close-model",
+          "replacement",
+          "teardown"
+        ]
+      }
+    },
+    {
+      "name": "CaptureCleanup",
+      "schemaPointer": "#/$defs/CaptureCleanup",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "capture": {
+                "$ref": "#/$defs/Alias"
+              },
+              "connection": {
+                "$ref": "#/$defs/Alias"
+              },
+              "requestId": {
+                "$ref": "#/$defs/U64Token"
+              },
+              "kind": {
+                "const": "release-confirmed"
+              }
+            },
+            "required": [
+              "capture",
+              "connection",
+              "requestId",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "connection": {
+                "$ref": "#/$defs/Alias"
+              },
+              "attempt": {
+                "$ref": "#/$defs/Alias"
+              },
+              "capture": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "unknown"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "capture": {
+                        "$ref": "#/$defs/Alias"
+                      },
+                      "kind": {
+                        "const": "known"
+                      }
+                    },
+                    "required": [
+                      "capture",
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "kind": {
+                "const": "own-connection-closed"
+              }
+            },
+            "required": [
+              "connection",
+              "attempt",
+              "capture",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "CaptureCleanupOwnConnectionClosedCapture",
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/2/properties/capture",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "unknown"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "capture": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "known"
+              }
+            },
+            "required": [
+              "capture",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "CaptureCoverage",
+      "schemaPointer": "#/$defs/CaptureCoverage",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "const": "primary"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "kind",
+              "declaration"
+            ],
+            "properties": {
+              "kind": {
+                "const": "complete"
+              },
+              "declaration": {
+                "const": "0.1.0-draft.1"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "CaptureCoverageCompleteDeclaration",
+      "schemaPointer": "#/$defs/CaptureCoverage/oneOf/1/properties/declaration",
+      "exactSchema": {
+        "const": "0.1.0-draft.1"
+      }
+    },
+    {
+      "name": "CaptureState",
+      "schemaPointer": "#/$defs/CaptureState",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "empty"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "attempt": {
+                "$ref": "#/$defs/Alias"
+              },
+              "worker": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "capturing"
+              }
+            },
+            "required": [
+              "attempt",
+              "worker",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "attempt": {
+                "$ref": "#/$defs/Alias"
+              },
+              "worker": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "prepared-private"
+              }
+            },
+            "required": [
+              "attempt",
+              "worker",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "capture": {
+                "$ref": "#/$defs/Alias"
+              },
+              "connection": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "ready"
+              }
+            },
+            "required": [
+              "capture",
+              "connection",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "lastCapture": {
+                "$ref": "#/$defs/Alias"
+              },
+              "connection": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "released"
+              }
+            },
+            "required": [
+              "lastCapture",
+              "connection",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "cleanup": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "const": "none"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "attempt": {
+                        "$ref": "#/$defs/Alias"
+                      },
+                      "worker": {
+                        "$ref": "#/$defs/Alias"
+                      },
+                      "kind": {
+                        "const": "worker-owned"
+                      }
+                    },
+                    "required": [
+                      "attempt",
+                      "worker",
+                      "kind"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "kind": {
+                "const": "closed"
+              }
+            },
+            "required": [
+              "cleanup",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "CaptureStateClosedCleanup",
+      "schemaPointer": "#/$defs/CaptureState/oneOf/5/properties/cleanup",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "attempt": {
+                "$ref": "#/$defs/Alias"
+              },
+              "worker": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "worker-owned"
+              }
+            },
+            "required": [
+              "attempt",
+              "worker",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "CapturedEvidence",
+      "schemaPointer": "#/$defs/CapturedEvidence",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "capture": {
+            "$ref": "#/$defs/Alias"
+          },
+          "source": {
+            "$ref": "#/$defs/ExpectedSource"
+          },
+          "inventory": {
+            "$ref": "#/$defs/InventoryEvidence"
+          },
+          "projection": {
+            "$ref": "#/$defs/ProjectionWitness"
+          },
+          "coverage": {
+            "$ref": "#/$defs/CaptureCoverage"
+          }
+        },
+        "required": [
+          "capture",
+          "source",
+          "inventory",
+          "projection",
+          "coverage"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ClientCheckpoint",
+      "schemaPointer": "#/$defs/ClientCheckpoint",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/Alias"
+          },
+          "currentOpening": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Alias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentModel": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Alias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner": {
+            "$ref": "#/$defs/OwnerEvidence"
+          },
+          "pendingEffects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "maxItems": 8192
+          },
+          "preparedCoreEffects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "maxItems": 8192
+          },
+          "heldCoreResultBytes": {
+            "$ref": "#/$defs/Count"
+          },
+          "eventCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8192
+          },
+          "executionOwner": {
+            "$ref": "#/$defs/ExecutionOwner"
+          },
+          "captureCleanup": {
+            "$ref": "#/$defs/CaptureCleanup"
+          },
+          "navigation": {
+            "type": "object",
+            "properties": {
+              "inspectionOwner": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Alias"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "searchOwner": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Alias"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "outputOwner": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Alias"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "destinationCount": {
+                "$ref": "#/$defs/Count"
+              }
+            },
+            "required": [
+              "inspectionOwner",
+              "searchOwner",
+              "outputOwner",
+              "destinationCount"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "currentOpening",
+          "currentModel",
+          "owner",
+          "pendingEffects",
+          "preparedCoreEffects",
+          "heldCoreResultBytes",
+          "eventCount",
+          "executionOwner",
+          "captureCleanup",
+          "navigation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ClientCheckpointCurrentModel",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/currentModel",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClientCheckpointCurrentOpening",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/currentOpening",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClientCheckpointNavigation",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "inspectionOwner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Alias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "searchOwner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Alias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outputOwner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Alias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "destinationCount": {
+            "$ref": "#/$defs/Count"
+          }
+        },
+        "required": [
+          "inspectionOwner",
+          "searchOwner",
+          "outputOwner",
+          "destinationCount"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ClientCheckpointNavigationInspectionOwner",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/inspectionOwner",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClientCheckpointNavigationOutputOwner",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/outputOwner",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClientCheckpointNavigationSearchOwner",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/searchOwner",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EffectInput",
+      "schemaPointer": "#/$defs/EffectInput",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8191
+              },
+              "kind": {
+                "const": "outbound-frame"
+              }
+            },
+            "required": [
+              "index",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "value": {
+                "$ref": "#/$defs/BytesWitness"
+              },
+              "kind": {
+                "const": "bytes"
+              }
+            },
+            "required": [
+              "value",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/RawJsonSource"
+              },
+              "kind": {
+                "const": "json"
+              }
+            },
+            "required": [
+              "source",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/Frame"
+              },
+              "kind": {
+                "const": "text"
+              }
+            },
+            "required": [
+              "source",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "EffectKind",
+      "schemaPointer": "#/$defs/EffectKind",
+      "exactSchema": {
+        "enum": [
+          "picker",
+          "file-read",
+          "native-capture",
+          "initialize",
+          "capture",
+          "inventory",
+          "read-original",
+          "read-projection",
+          "release",
+          "digest",
+          "inspection",
+          "execution-submit",
+          "execution-observe",
+          "execution-release",
+          "local-evaluation",
+          "catalog",
+          "native-invoke",
+          "manifest-fetch",
+          "workspace-open"
+        ]
+      }
+    },
+    {
+      "name": "EffectRecord",
+      "schemaPointer": "#/$defs/EffectRecord",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "port": {
+                "enum": [
+                  "promise",
+                  "picker-receive-callback"
+                ]
+              },
+              "input": {
+                "$ref": "#/$defs/EffectInput"
+              },
+              "kind": {
+                "const": "pending"
+              }
+            },
+            "required": [
+              "effect",
+              "port",
+              "input",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "signal": {
+                "$ref": "#/$defs/PickerSignal"
+              },
+              "kind": {
+                "const": "picker-input-signal"
+              }
+            },
+            "required": [
+              "effect",
+              "signal",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "actionIndex": {
+                "$ref": "#/$defs/Count"
+              },
+              "cause": {
+                "$ref": "#/$defs/CancellationCause"
+              },
+              "kind": {
+                "const": "cancellation-requested"
+              }
+            },
+            "required": [
+              "effect",
+              "actionIndex",
+              "cause",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "work": {
+                "$ref": "#/$defs/Alias"
+              },
+              "owner": {
+                "$ref": "#/$defs/WorkOwner"
+              },
+              "kind": {
+                "const": "work-started"
+              }
+            },
+            "required": [
+              "effect",
+              "work",
+              "owner",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "work": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "work-exited"
+              }
+            },
+            "required": [
+              "effect",
+              "work",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "work": {
+                "$ref": "#/$defs/Alias"
+              },
+              "rawReply": {
+                "$ref": "#/$defs/Frame"
+              },
+              "actualResultByteLength": {
+                "$ref": "#/$defs/Count"
+              },
+              "kind": {
+                "const": "prepared-core-result"
+              }
+            },
+            "required": [
+              "effect",
+              "work",
+              "rawReply",
+              "actualResultByteLength",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "reply": {
+                "$ref": "#/$defs/DeliveredReply"
+              },
+              "kind": {
+                "const": "promise-resolved"
+              }
+            },
+            "required": [
+              "effect",
+              "reply",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "error": {
+                "$ref": "#/$defs/RejectedEffect"
+              },
+              "kind": {
+                "const": "promise-rejected"
+              }
+            },
+            "required": [
+              "effect",
+              "error",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "actualRawCallbackArgument": {
+                "$ref": "#/$defs/Frame"
+              },
+              "kind": {
+                "const": "callback-delivered"
+              }
+            },
+            "required": [
+              "effect",
+              "actualRawCallbackArgument",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "actionIndex": {
+                "$ref": "#/$defs/Count"
+              },
+              "cause": {
+                "$ref": "#/$defs/CancellationCause"
+              },
+              "kind": {
+                "const": "callback-retired"
+              }
+            },
+            "required": [
+              "effect",
+              "actionIndex",
+              "cause",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "actualSignal": {
+                "$ref": "#/$defs/DeliveredReply"
+              },
+              "disposition": {
+                "enum": [
+                  "ignored-by-retired-callback",
+                  "ignored-by-consumed-callback",
+                  "ignored-by-settled-port"
+                ]
+              },
+              "causalSource": {
+                "$ref": "#/$defs/LateSignalSource"
+              },
+              "kind": {
+                "const": "late-signal"
+              }
+            },
+            "required": [
+              "effect",
+              "actualSignal",
+              "disposition",
+              "causalSource",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "disposition": {
+                "enum": [
+                  "forwarded-by-currentness-guard",
+                  "ignored-by-currentness-guard"
+                ]
+              },
+              "actualOpeningOwner": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Alias"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "const": "publication-disposition"
+              }
+            },
+            "required": [
+              "effect",
+              "disposition",
+              "actualOpeningOwner",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "byteLength": {
+                "$ref": "#/$defs/Count"
+              },
+              "disposition": {
+                "enum": [
+                  "delivered-to-production-port",
+                  "discarded-after-production-guard",
+                  "discarded-on-owned-teardown"
+                ]
+              },
+              "kind": {
+                "const": "held-result-retired"
+              }
+            },
+            "required": [
+              "effect",
+              "byteLength",
+              "disposition",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "EffectRecordPendingPort",
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/0/properties/port",
+      "exactSchema": {
+        "enum": [
+          "promise",
+          "picker-receive-callback"
+        ]
+      }
+    },
+    {
+      "name": "EffectRecordLateSignalDisposition",
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/10/properties/disposition",
+      "exactSchema": {
+        "enum": [
+          "ignored-by-retired-callback",
+          "ignored-by-consumed-callback",
+          "ignored-by-settled-port"
+        ]
+      }
+    },
+    {
+      "name": "EffectRecordPublicationDispositionActualOpeningOwner",
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/11/properties/actualOpeningOwner",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EffectRecordPublicationDispositionDisposition",
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/11/properties/disposition",
+      "exactSchema": {
+        "enum": [
+          "forwarded-by-currentness-guard",
+          "ignored-by-currentness-guard"
+        ]
+      }
+    },
+    {
+      "name": "EffectRecordHeldResultRetiredDisposition",
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/12/properties/disposition",
+      "exactSchema": {
+        "enum": [
+          "delivered-to-production-port",
+          "discarded-after-production-guard",
+          "discarded-on-owned-teardown"
+        ]
+      }
+    },
+    {
+      "name": "EffectRef",
+      "schemaPointer": "#/$defs/EffectRef",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "attempt": {
+            "$ref": "#/$defs/Alias"
+          },
+          "kind": {
+            "$ref": "#/$defs/EffectKind"
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8191
+          }
+        },
+        "required": [
+          "attempt",
+          "kind",
+          "ordinal"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ExecutionOwner",
+      "schemaPointer": "#/$defs/ExecutionOwner",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "execution": {
+                "$ref": "#/$defs/Alias"
+              },
+              "model": {
+                "$ref": "#/$defs/Alias"
+              },
+              "phase": {
+                "enum": [
+                  "pending",
+                  "unknown",
+                  "running",
+                  "terminal-unreleased",
+                  "disconnected"
+                ]
+              },
+              "kind": {
+                "const": "retained"
+              }
+            },
+            "required": [
+              "execution",
+              "model",
+              "phase",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExecutionOwnerRetainedPhase",
+      "schemaPointer": "#/$defs/ExecutionOwner/oneOf/1/properties/phase",
+      "exactSchema": {
+        "enum": [
+          "pending",
+          "unknown",
+          "running",
+          "terminal-unreleased",
+          "disconnected"
+        ]
+      }
+    },
+    {
+      "name": "SourceRoles",
+      "schemaPointer": "#/$defs/ExpectedSource",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "primaryRoot": {
+            "$ref": "#/$defs/Root"
+          },
+          "companionRoots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Root"
+            },
+            "maxItems": 63
+          },
+          "sourceFormatVersion": {
+            "$ref": "#/$defs/SourceHeader"
+          }
+        },
+        "required": [
+          "primaryRoot",
+          "companionRoots",
+          "sourceFormatVersion"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "HarnessTeardown",
+      "schemaPointer": "#/$defs/HarnessTeardown",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "pendingEffects": {
+                "const": 0
+              },
+              "heldCoreResults": {
+                "const": 0
+              },
+              "stillOwnedWorkers": {
+                "const": 0
+              },
+              "workersStarted": {
+                "$ref": "#/$defs/Count"
+              },
+              "workersExited": {
+                "$ref": "#/$defs/Count"
+              },
+              "disposedTransports": {
+                "$ref": "#/$defs/Count"
+              },
+              "productReleaseInferred": {
+                "const": false
+              },
+              "kind": {
+                "const": "confirmed"
+              }
+            },
+            "required": [
+              "pendingEffects",
+              "heldCoreResults",
+              "stillOwnedWorkers",
+              "workersStarted",
+              "workersExited",
+              "disposedTransports",
+              "productReleaseInferred",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "pendingEffects": {
+                "$ref": "#/$defs/Count"
+              },
+              "heldCoreResults": {
+                "$ref": "#/$defs/Count"
+              },
+              "stillOwnedWorkers": {
+                "$ref": "#/$defs/Count"
+              },
+              "reason": {
+                "enum": [
+                  "timeout",
+                  "disposal-failed"
+                ]
+              },
+              "productReleaseInferred": {
+                "const": false
+              },
+              "kind": {
+                "const": "failed"
+              }
+            },
+            "required": [
+              "pendingEffects",
+              "heldCoreResults",
+              "stillOwnedWorkers",
+              "reason",
+              "productReleaseInferred",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "HarnessTeardownConfirmedHeldCoreResults",
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/heldCoreResults",
+      "exactSchema": {
+        "const": 0
+      }
+    },
+    {
+      "name": "HarnessTeardownConfirmedPendingEffects",
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/pendingEffects",
+      "exactSchema": {
+        "const": 0
+      }
+    },
+    {
+      "name": "HarnessTeardownConfirmedProductReleaseInferred",
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/productReleaseInferred",
+      "exactSchema": {
+        "const": false
+      }
+    },
+    {
+      "name": "HarnessTeardownConfirmedStillOwnedWorkers",
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/stillOwnedWorkers",
+      "exactSchema": {
+        "const": 0
+      }
+    },
+    {
+      "name": "HarnessTeardownFailedProductReleaseInferred",
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/1/properties/productReleaseInferred",
+      "exactSchema": {
+        "const": false
+      }
+    },
+    {
+      "name": "HarnessTeardownFailedReason",
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/1/properties/reason",
+      "exactSchema": {
+        "enum": [
+          "timeout",
+          "disposal-failed"
+        ]
+      }
+    },
+    {
+      "name": "InventoryEvidence",
+      "schemaPointer": "#/$defs/InventoryEvidence",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "entryCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100064
+          },
+          "fileCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100064
+          },
+          "directoryCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100064
+          },
+          "sourceByteLength": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 67108864
+          },
+          "sha256": {
+            "$ref": "#/$defs/Sha256"
+          }
+        },
+        "required": [
+          "entryCount",
+          "fileCount",
+          "directoryCount",
+          "sourceByteLength",
+          "sha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "LateSignalSource",
+      "schemaPointer": "#/$defs/LateSignalSource",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "effect": {
+                "$ref": "#/$defs/EffectRef"
+              },
+              "kind": {
+                "const": "actual-file-read-completion"
+              }
+            },
+            "required": [
+              "effect",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "actual-held-worker-result"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "actual-picker-cancel-event"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "actual-empty-selection-event"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "enum": [
+                  "invalid-name",
+                  "unsupported-codec",
+                  "oversized"
+                ]
+              },
+              "kind": {
+                "const": "actual-selection-validation"
+              }
+            },
+            "required": [
+              "reason",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "LateSignalSourceActualSelectionValidationReason",
+      "schemaPointer": "#/$defs/LateSignalSource/oneOf/4/properties/reason",
+      "exactSchema": {
+        "enum": [
+          "invalid-name",
+          "unsupported-codec",
+          "oversized"
+        ]
+      }
+    },
+    {
+      "name": "MeasuredTranscript",
+      "schemaPointer": "#/$defs/MeasuredTranscript",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "exchanges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "request": {
+                  "$ref": "#/$defs/Frame"
+                },
+                "reply": {
+                  "$ref": "#/$defs/Frame"
+                }
+              },
+              "required": [
+                "request",
+                "reply"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 8192
+          }
+        },
+        "required": [
+          "exchanges"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "MeasuredTranscriptExchangesItem",
+      "schemaPointer": "#/$defs/MeasuredTranscript/properties/exchanges/items",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "#/$defs/Frame"
+          },
+          "reply": {
+            "$ref": "#/$defs/Frame"
+          }
+        },
+        "required": [
+          "request",
+          "reply"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "Observation",
+      "schemaPointer": "#/$defs/Observation",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "role": {
+                "const": "model-originals-server"
+              },
+              "transcript": {
+                "$ref": "#/$defs/MeasuredTranscript"
+              },
+              "checkpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/ServerCheckpoint"
+                },
+                "minItems": 1,
+                "maxItems": 8192
+              },
+              "captures": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/CapturedEvidence"
+                },
+                "maxItems": 8192
+              },
+              "outcome": {
+                "$ref": "#/$defs/ScenarioOutcome"
+              },
+              "teardown": {
+                "$ref": "#/$defs/HarnessTeardown"
+              }
+            },
+            "required": [
+              "role",
+              "transcript",
+              "checkpoints",
+              "captures",
+              "outcome",
+              "teardown"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "role": {
+                "const": "model-originals-client"
+              },
+              "outbound": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Frame"
+                },
+                "maxItems": 8192
+              },
+              "effects": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/EffectRecord"
+                },
+                "maxItems": 8192
+              },
+              "checkpoints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/ClientCheckpoint"
+                },
+                "minItems": 1,
+                "maxItems": 8192
+              },
+              "downloads": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/BytesWitness"
+                },
+                "maxItems": 256
+              },
+              "coreResults": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/ProducedCoreResult"
+                },
+                "maxItems": 8192
+              },
+              "richOwners": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/RichOwnerEvidence"
+                },
+                "maxItems": 256
+              },
+              "outcome": {
+                "$ref": "#/$defs/ScenarioOutcome"
+              },
+              "teardown": {
+                "$ref": "#/$defs/HarnessTeardown"
+              }
+            },
+            "required": [
+              "role",
+              "outbound",
+              "effects",
+              "checkpoints",
+              "downloads",
+              "coreResults",
+              "richOwners",
+              "outcome",
+              "teardown"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "OfferEvidence",
+      "schemaPointer": "#/$defs/OfferEvidence",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "registration": {
+                "$ref": "#/$defs/Alias"
+              },
+              "provider": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "held"
+              }
+            },
+            "required": [
+              "registration",
+              "provider",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "registration": {
+                "$ref": "#/$defs/Alias"
+              },
+              "provider": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "revoked"
+              }
+            },
+            "required": [
+              "registration",
+              "provider",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "previousRegistration": {
+                "$ref": "#/$defs/Alias"
+              },
+              "currentRegistration": {
+                "$ref": "#/$defs/Alias"
+              },
+              "provider": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "replaced"
+              }
+            },
+            "required": [
+              "previousRegistration",
+              "currentRegistration",
+              "provider",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "OwnerEvidence",
+      "schemaPointer": "#/$defs/OwnerEvidence",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "opening": {
+                "$ref": "#/$defs/Alias"
+              },
+              "adoption": {
+                "$ref": "#/$defs/TypedAdoption"
+              },
+              "filename": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "codec": {
+                "$ref": "#/$defs/ModelCodec"
+              },
+              "original": {
+                "$ref": "#/$defs/BytesWitness"
+              },
+              "kind": {
+                "const": "verified-original-file"
+              }
+            },
+            "required": [
+              "opening",
+              "adoption",
+              "filename",
+              "codec",
+              "original",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "opening": {
+                "$ref": "#/$defs/Alias"
+              },
+              "adoption": {
+                "$ref": "#/$defs/TypedAdoption"
+              },
+              "source": {
+                "$ref": "#/$defs/ExpectedSource"
+              },
+              "entries": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Entry"
+                },
+                "maxItems": 100064
+              },
+              "projection": {
+                "$ref": "#/$defs/ProjectionWitness"
+              },
+              "kind": {
+                "const": "verified-original-inventory"
+              }
+            },
+            "required": [
+              "opening",
+              "adoption",
+              "source",
+              "entries",
+              "projection",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "model": {
+                "$ref": "#/$defs/Alias"
+              },
+              "reason": {
+                "enum": [
+                  "originals-not-provided",
+                  "generated-model"
+                ]
+              },
+              "kind": {
+                "const": "semantic-only"
+              }
+            },
+            "required": [
+              "model",
+              "reason",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "OwnerEvidenceSemanticOnlyReason",
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/3/properties/reason",
+      "exactSchema": {
+        "enum": [
+          "originals-not-provided",
+          "generated-model"
+        ]
+      }
+    },
+    {
+      "name": "ProducedCoreResult",
+      "schemaPointer": "#/$defs/ProducedCoreResult",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "effect": {
+            "$ref": "#/$defs/EffectRef"
+          },
+          "opening": {
+            "$ref": "#/$defs/Alias"
+          },
+          "modelBinding": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "none"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "$ref": "#/$defs/Alias"
+                  },
+                  "kind": {
+                    "const": "retained-owner"
+                  }
+                },
+                "required": [
+                  "model",
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "operation": {
+            "enum": [
+              "inspect",
+              "search",
+              "conceptual-specification"
+            ]
+          },
+          "rawReply": {
+            "$ref": "#/$defs/Frame"
+          }
+        },
+        "required": [
+          "effect",
+          "opening",
+          "modelBinding",
+          "operation",
+          "rawReply"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ProducedCoreResultModelBinding",
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/modelBinding",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "model": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "retained-owner"
+              }
+            },
+            "required": [
+              "model",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProducedCoreResultOperation",
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/operation",
+      "exactSchema": {
+        "enum": [
+          "inspect",
+          "search",
+          "conceptual-specification"
+        ]
+      }
+    },
+    {
+      "name": "ProjectionWitness",
+      "schemaPointer": "#/$defs/ProjectionWitness",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "not-requested"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "enum": [
+                  "unsupported_representation",
+                  "invalid_model",
+                  "decode_limit",
+                  "projection_limit",
+                  "capacity",
+                  "timeout"
+                ]
+              },
+              "kind": {
+                "const": "unavailable"
+              }
+            },
+            "required": [
+              "reason",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "byteLength": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 67108864
+              },
+              "sha256": {
+                "$ref": "#/$defs/Sha256"
+              },
+              "actualFormatVersion": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "kind": {
+                "const": "available"
+              }
+            },
+            "required": [
+              "byteLength",
+              "sha256",
+              "actualFormatVersion",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProjectionWitnessUnavailableReason",
+      "schemaPointer": "#/$defs/ProjectionWitness/oneOf/1/properties/reason",
+      "exactSchema": {
+        "enum": [
+          "unsupported_representation",
+          "invalid_model",
+          "decode_limit",
+          "projection_limit",
+          "capacity",
+          "timeout"
+        ]
+      }
+    },
+    {
+      "name": "ResourceEvidence",
+      "schemaPointer": "#/$defs/ResourceEvidence",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "slots": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "activeWorkers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "sourceBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 134217728
+          },
+          "projectionBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 134217728
+          },
+          "metadataBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 67108864
+          },
+          "recordBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 67108864
+          }
+        },
+        "required": [
+          "slots",
+          "activeWorkers",
+          "sourceBytes",
+          "projectionBytes",
+          "metadataBytes",
+          "recordBytes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "RichOwnerEvidence",
+      "schemaPointer": "#/$defs/RichOwnerEvidence",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "model": {
+                "$ref": "#/$defs/Alias"
+              },
+              "actualCarrier": {
+                "$ref": "#/$defs/Frame"
+              },
+              "kind": {
+                "const": "graph-free"
+              }
+            },
+            "required": [
+              "model",
+              "actualCarrier",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "model": {
+                "$ref": "#/$defs/Alias"
+              },
+              "actualCarrier": {
+                "$ref": "#/$defs/Frame"
+              },
+              "actualGraph": {
+                "$ref": "#/$defs/Frame"
+              },
+              "actualProvenance": {
+                "$ref": "#/$defs/Frame"
+              },
+              "kind": {
+                "const": "rich"
+              }
+            },
+            "required": [
+              "model",
+              "actualCarrier",
+              "actualGraph",
+              "actualProvenance",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "Root",
+      "schemaPointer": "#/$defs/Root",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/SourcePath"
+              },
+              "kind": {
+                "const": "file"
+              }
+            },
+            "required": [
+              "path",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "$ref": "#/$defs/SourcePath"
+              },
+              "kind": {
+                "const": "directory"
+              }
+            },
+            "required": [
+              "path",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScenarioOutcome",
+      "schemaPointer": "#/$defs/ScenarioOutcome",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "finalCheckpoint": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "clean"
+              }
+            },
+            "required": [
+              "finalCheckpoint",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "finalCheckpoint": {
+                "$ref": "#/$defs/Alias"
+              },
+              "model": {
+                "$ref": "#/$defs/Alias"
+              },
+              "execution": {
+                "$ref": "#/$defs/Alias"
+              },
+              "phase": {
+                "enum": [
+                  "unknown",
+                  "disconnected"
+                ]
+              },
+              "cleanupReason": {
+                "enum": [
+                  "submission-status-unknown",
+                  "transport-disconnected"
+                ]
+              },
+              "kind": {
+                "const": "intentionally-retained-uncertain"
+              }
+            },
+            "required": [
+              "finalCheckpoint",
+              "model",
+              "execution",
+              "phase",
+              "cleanupReason",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "ScenarioOutcomeIntentionallyRetainedUncertainCleanupReason",
+      "schemaPointer": "#/$defs/ScenarioOutcome/oneOf/1/properties/cleanupReason",
+      "exactSchema": {
+        "enum": [
+          "submission-status-unknown",
+          "transport-disconnected"
+        ]
+      }
+    },
+    {
+      "name": "ScenarioOutcomeIntentionallyRetainedUncertainPhase",
+      "schemaPointer": "#/$defs/ScenarioOutcome/oneOf/1/properties/phase",
+      "exactSchema": {
+        "enum": [
+          "unknown",
+          "disconnected"
+        ]
+      }
+    },
+    {
+      "name": "ServerCheckpoint",
+      "schemaPointer": "#/$defs/ServerCheckpoint",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/Alias"
+          },
+          "connection": {
+            "$ref": "#/$defs/Alias"
+          },
+          "state": {
+            "$ref": "#/$defs/CaptureState"
+          },
+          "resources": {
+            "$ref": "#/$defs/ResourceEvidence"
+          },
+          "effects": {
+            "$ref": "#/$defs/SourceEffects"
+          },
+          "offer": {
+            "$ref": "#/$defs/OfferEvidence"
+          },
+          "workers": {
+            "type": "object",
+            "properties": {
+              "started": {
+                "$ref": "#/$defs/Count"
+              },
+              "exited": {
+                "$ref": "#/$defs/Count"
+              },
+              "stillOwned": {
+                "$ref": "#/$defs/Count"
+              },
+              "latePublications": {
+                "$ref": "#/$defs/Count"
+              }
+            },
+            "required": [
+              "started",
+              "exited",
+              "stillOwned",
+              "latePublications"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "connection",
+          "state",
+          "resources",
+          "effects",
+          "offer",
+          "workers"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ServerCheckpointWorkers",
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/workers",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "started": {
+            "$ref": "#/$defs/Count"
+          },
+          "exited": {
+            "$ref": "#/$defs/Count"
+          },
+          "stillOwned": {
+            "$ref": "#/$defs/Count"
+          },
+          "latePublications": {
+            "$ref": "#/$defs/Count"
+          }
+        },
+        "required": [
+          "started",
+          "exited",
+          "stillOwned",
+          "latePublications"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "SourceEffects",
+      "schemaPointer": "#/$defs/SourceEffects",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "discovery": {
+            "$ref": "#/$defs/Count"
+          },
+          "projectResolution": {
+            "$ref": "#/$defs/Count"
+          },
+          "outputResolution": {
+            "$ref": "#/$defs/Count"
+          },
+          "recordReads": {
+            "$ref": "#/$defs/Count"
+          },
+          "sourceReads": {
+            "$ref": "#/$defs/Count"
+          },
+          "sourceBytes": {
+            "$ref": "#/$defs/Count"
+          },
+          "projectionAttempts": {
+            "$ref": "#/$defs/Count"
+          },
+          "compileCalls": {
+            "$ref": "#/$defs/Count"
+          },
+          "legacyOpenCalls": {
+            "$ref": "#/$defs/Count"
+          }
+        },
+        "required": [
+          "discovery",
+          "projectResolution",
+          "outputResolution",
+          "recordReads",
+          "sourceReads",
+          "sourceBytes",
+          "projectionAttempts",
+          "compileCalls",
+          "legacyOpenCalls"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "SourceHeader",
+      "schemaPointer": "#/$defs/SourceHeader",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "release": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "kind": {
+                "const": "reported"
+              }
+            },
+            "required": [
+              "release",
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "not-reported"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "TypedAdoption",
+      "schemaPointer": "#/$defs/TypedAdoption",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "not-adopted"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "model": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "adopted"
+              }
+            },
+            "required": [
+              "model",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "WorkOwner",
+      "schemaPointer": "#/$defs/WorkOwner",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "inline-production-invocation"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "worker": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "actual-worker"
+              }
+            },
+            "required": [
+              "worker",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  ],
+  "typeUses": [
+    {
+      "schemaPointer": "#/$defs/BytesWitness/properties/byteLength",
+      "generatedType": "Natural<0, 134217728>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 134217728
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/BytesWitness/properties/bytes",
+      "generatedType": "super::input::Bytes",
+      "exactSchema": {
+        "$ref": "#/$defs/Bytes"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/BytesWitness/properties/sha256",
+      "generatedType": "ContentSha256",
+      "exactSchema": {
+        "$ref": "#/$defs/Sha256"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/1/properties/capture",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/1/properties/connection",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/1/properties/requestId",
+      "generatedType": "U64Token",
+      "exactSchema": {
+        "$ref": "#/$defs/U64Token"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/2/properties/attempt",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/2/properties/capture/oneOf/1/properties/capture",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/2/properties/capture",
+      "generatedType": "CaptureCleanupOwnConnectionClosedCapture",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "unknown"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "capture": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "known"
+              }
+            },
+            "required": [
+              "capture",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/2/properties/connection",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureCoverage/oneOf/1/properties/declaration",
+      "generatedType": "CaptureCoverageCompleteDeclaration",
+      "exactSchema": {
+        "const": "0.1.0-draft.1"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/1/properties/attempt",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/1/properties/worker",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/2/properties/attempt",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/2/properties/worker",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/3/properties/capture",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/3/properties/connection",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/4/properties/connection",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/4/properties/lastCapture",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/5/properties/cleanup/oneOf/1/properties/attempt",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/5/properties/cleanup/oneOf/1/properties/worker",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CaptureState/oneOf/5/properties/cleanup",
+      "generatedType": "CaptureStateClosedCleanup",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "attempt": {
+                "$ref": "#/$defs/Alias"
+              },
+              "worker": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "worker-owned"
+              }
+            },
+            "required": [
+              "attempt",
+              "worker",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CapturedEvidence/properties/capture",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CapturedEvidence/properties/coverage",
+      "generatedType": "CaptureCoverage",
+      "exactSchema": {
+        "$ref": "#/$defs/CaptureCoverage"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CapturedEvidence/properties/inventory",
+      "generatedType": "InventoryEvidence",
+      "exactSchema": {
+        "$ref": "#/$defs/InventoryEvidence"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CapturedEvidence/properties/projection",
+      "generatedType": "ProjectionWitness",
+      "exactSchema": {
+        "$ref": "#/$defs/ProjectionWitness"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/CapturedEvidence/properties/source",
+      "generatedType": "SourceRoles",
+      "exactSchema": {
+        "$ref": "#/$defs/ExpectedSource"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/captureCleanup",
+      "generatedType": "CaptureCleanup",
+      "exactSchema": {
+        "$ref": "#/$defs/CaptureCleanup"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/currentModel/anyOf/0",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/currentModel",
+      "generatedType": "ClientCheckpointCurrentModel",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/currentOpening/anyOf/0",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/currentOpening",
+      "generatedType": "ClientCheckpointCurrentOpening",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/eventCount",
+      "generatedType": "Natural<0, 8192>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/executionOwner",
+      "generatedType": "ExecutionOwner",
+      "exactSchema": {
+        "$ref": "#/$defs/ExecutionOwner"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/heldCoreResultBytes",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/name",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/destinationCount",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/inspectionOwner/anyOf/0",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/inspectionOwner",
+      "generatedType": "ClientCheckpointNavigationInspectionOwner",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/outputOwner/anyOf/0",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/outputOwner",
+      "generatedType": "ClientCheckpointNavigationOutputOwner",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/searchOwner/anyOf/0",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/searchOwner",
+      "generatedType": "ClientCheckpointNavigationSearchOwner",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation",
+      "generatedType": "ClientCheckpointNavigation",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "inspectionOwner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Alias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "searchOwner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Alias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outputOwner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Alias"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "destinationCount": {
+            "$ref": "#/$defs/Count"
+          }
+        },
+        "required": [
+          "inspectionOwner",
+          "searchOwner",
+          "outputOwner",
+          "destinationCount"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/owner",
+      "generatedType": "OwnerEvidence",
+      "exactSchema": {
+        "$ref": "#/$defs/OwnerEvidence"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/pendingEffects/items",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/pendingEffects",
+      "generatedType": "Items<EffectRef, 0, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/EffectRef"
+        },
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/preparedCoreEffects/items",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/preparedCoreEffects",
+      "generatedType": "Items<EffectRef, 0, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/EffectRef"
+        },
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectInput/oneOf/1/properties/index",
+      "generatedType": "Natural<0, 8191>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 8191
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectInput/oneOf/2/properties/value",
+      "generatedType": "BytesWitness",
+      "exactSchema": {
+        "$ref": "#/$defs/BytesWitness"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectInput/oneOf/3/properties/source",
+      "generatedType": "super::input::RawJsonSource",
+      "exactSchema": {
+        "$ref": "#/$defs/RawJsonSource"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectInput/oneOf/4/properties/source",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/0/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/0/properties/input",
+      "generatedType": "EffectInput",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectInput"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/0/properties/port",
+      "generatedType": "EffectRecordPendingPort",
+      "exactSchema": {
+        "enum": [
+          "promise",
+          "picker-receive-callback"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/1/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/1/properties/signal",
+      "generatedType": "super::input::PickerSignal",
+      "exactSchema": {
+        "$ref": "#/$defs/PickerSignal"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/2/properties/actionIndex",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/2/properties/cause",
+      "generatedType": "CancellationCause",
+      "exactSchema": {
+        "$ref": "#/$defs/CancellationCause"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/2/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/3/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/3/properties/owner",
+      "generatedType": "WorkOwner",
+      "exactSchema": {
+        "$ref": "#/$defs/WorkOwner"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/3/properties/work",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/4/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/4/properties/work",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/5/properties/actualResultByteLength",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/5/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/5/properties/rawReply",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/5/properties/work",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/6/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/6/properties/reply",
+      "generatedType": "super::input::DeliveredReply",
+      "exactSchema": {
+        "$ref": "#/$defs/DeliveredReply"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/7/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/7/properties/error",
+      "generatedType": "super::input::RejectedEffect",
+      "exactSchema": {
+        "$ref": "#/$defs/RejectedEffect"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/8/properties/actualRawCallbackArgument",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/8/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/9/properties/actionIndex",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/9/properties/cause",
+      "generatedType": "CancellationCause",
+      "exactSchema": {
+        "$ref": "#/$defs/CancellationCause"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/9/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/10/properties/actualSignal",
+      "generatedType": "super::input::DeliveredReply",
+      "exactSchema": {
+        "$ref": "#/$defs/DeliveredReply"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/10/properties/causalSource",
+      "generatedType": "LateSignalSource",
+      "exactSchema": {
+        "$ref": "#/$defs/LateSignalSource"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/10/properties/disposition",
+      "generatedType": "EffectRecordLateSignalDisposition",
+      "exactSchema": {
+        "enum": [
+          "ignored-by-retired-callback",
+          "ignored-by-consumed-callback",
+          "ignored-by-settled-port"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/10/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/11/properties/actualOpeningOwner/anyOf/0",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/11/properties/actualOpeningOwner",
+      "generatedType": "EffectRecordPublicationDispositionActualOpeningOwner",
+      "exactSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Alias"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/11/properties/disposition",
+      "generatedType": "EffectRecordPublicationDispositionDisposition",
+      "exactSchema": {
+        "enum": [
+          "forwarded-by-currentness-guard",
+          "ignored-by-currentness-guard"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/11/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/12/properties/byteLength",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/12/properties/disposition",
+      "generatedType": "EffectRecordHeldResultRetiredDisposition",
+      "exactSchema": {
+        "enum": [
+          "delivered-to-production-port",
+          "discarded-after-production-guard",
+          "discarded-on-owned-teardown"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/12/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRef/properties/attempt",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRef/properties/kind",
+      "generatedType": "EffectKind",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectKind"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/EffectRef/properties/ordinal",
+      "generatedType": "Natural<0, 8191>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 8191
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ExecutionOwner/oneOf/1/properties/execution",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ExecutionOwner/oneOf/1/properties/model",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ExecutionOwner/oneOf/1/properties/phase",
+      "generatedType": "ExecutionOwnerRetainedPhase",
+      "exactSchema": {
+        "enum": [
+          "pending",
+          "unknown",
+          "running",
+          "terminal-unreleased",
+          "disconnected"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ExpectedSource/properties/companionRoots/items",
+      "generatedType": "Root",
+      "exactSchema": {
+        "$ref": "#/$defs/Root"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ExpectedSource/properties/companionRoots",
+      "generatedType": "Items<Root, 0, 63>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/Root"
+        },
+        "maxItems": 63
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ExpectedSource/properties/primaryRoot",
+      "generatedType": "Root",
+      "exactSchema": {
+        "$ref": "#/$defs/Root"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ExpectedSource/properties/sourceFormatVersion",
+      "generatedType": "SourceHeader",
+      "exactSchema": {
+        "$ref": "#/$defs/SourceHeader"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/disposedTransports",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/heldCoreResults",
+      "generatedType": "HarnessTeardownConfirmedHeldCoreResults",
+      "exactSchema": {
+        "const": 0
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/pendingEffects",
+      "generatedType": "HarnessTeardownConfirmedPendingEffects",
+      "exactSchema": {
+        "const": 0
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/productReleaseInferred",
+      "generatedType": "HarnessTeardownConfirmedProductReleaseInferred",
+      "exactSchema": {
+        "const": false
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/stillOwnedWorkers",
+      "generatedType": "HarnessTeardownConfirmedStillOwnedWorkers",
+      "exactSchema": {
+        "const": 0
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/workersExited",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/0/properties/workersStarted",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/1/properties/heldCoreResults",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/1/properties/pendingEffects",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/1/properties/productReleaseInferred",
+      "generatedType": "HarnessTeardownFailedProductReleaseInferred",
+      "exactSchema": {
+        "const": false
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/1/properties/reason",
+      "generatedType": "HarnessTeardownFailedReason",
+      "exactSchema": {
+        "enum": [
+          "timeout",
+          "disposal-failed"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/HarnessTeardown/oneOf/1/properties/stillOwnedWorkers",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/InventoryEvidence/properties/directoryCount",
+      "generatedType": "Natural<0, 100064>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100064
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/InventoryEvidence/properties/entryCount",
+      "generatedType": "Natural<0, 100064>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100064
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/InventoryEvidence/properties/fileCount",
+      "generatedType": "Natural<0, 100064>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100064
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/InventoryEvidence/properties/sha256",
+      "generatedType": "ContentSha256",
+      "exactSchema": {
+        "$ref": "#/$defs/Sha256"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/InventoryEvidence/properties/sourceByteLength",
+      "generatedType": "Natural<0, 67108864>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 67108864
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/LateSignalSource/oneOf/0/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/LateSignalSource/oneOf/4/properties/reason",
+      "generatedType": "LateSignalSourceActualSelectionValidationReason",
+      "exactSchema": {
+        "enum": [
+          "invalid-name",
+          "unsupported-codec",
+          "oversized"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/MeasuredTranscript/properties/exchanges/items/properties/reply",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/MeasuredTranscript/properties/exchanges/items/properties/request",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/MeasuredTranscript/properties/exchanges/items",
+      "generatedType": "MeasuredTranscriptExchangesItem",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "#/$defs/Frame"
+          },
+          "reply": {
+            "$ref": "#/$defs/Frame"
+          }
+        },
+        "required": [
+          "request",
+          "reply"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/MeasuredTranscript/properties/exchanges",
+      "generatedType": "Items<MeasuredTranscriptExchangesItem, 0, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "$ref": "#/$defs/Frame"
+            },
+            "reply": {
+              "$ref": "#/$defs/Frame"
+            }
+          },
+          "required": [
+            "request",
+            "reply"
+          ],
+          "additionalProperties": false
+        },
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/0/properties/captures/items",
+      "generatedType": "CapturedEvidence",
+      "exactSchema": {
+        "$ref": "#/$defs/CapturedEvidence"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/0/properties/captures",
+      "generatedType": "Items<CapturedEvidence, 0, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/CapturedEvidence"
+        },
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/0/properties/checkpoints/items",
+      "generatedType": "ServerCheckpoint",
+      "exactSchema": {
+        "$ref": "#/$defs/ServerCheckpoint"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/0/properties/checkpoints",
+      "generatedType": "Items<ServerCheckpoint, 1, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/ServerCheckpoint"
+        },
+        "minItems": 1,
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/0/properties/outcome",
+      "generatedType": "ScenarioOutcome",
+      "exactSchema": {
+        "$ref": "#/$defs/ScenarioOutcome"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/0/properties/teardown",
+      "generatedType": "HarnessTeardown",
+      "exactSchema": {
+        "$ref": "#/$defs/HarnessTeardown"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/0/properties/transcript",
+      "generatedType": "MeasuredTranscript",
+      "exactSchema": {
+        "$ref": "#/$defs/MeasuredTranscript"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/checkpoints/items",
+      "generatedType": "ClientCheckpoint",
+      "exactSchema": {
+        "$ref": "#/$defs/ClientCheckpoint"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/checkpoints",
+      "generatedType": "Items<ClientCheckpoint, 1, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/ClientCheckpoint"
+        },
+        "minItems": 1,
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/coreResults/items",
+      "generatedType": "ProducedCoreResult",
+      "exactSchema": {
+        "$ref": "#/$defs/ProducedCoreResult"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/coreResults",
+      "generatedType": "Items<ProducedCoreResult, 0, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/ProducedCoreResult"
+        },
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/downloads/items",
+      "generatedType": "BytesWitness",
+      "exactSchema": {
+        "$ref": "#/$defs/BytesWitness"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/downloads",
+      "generatedType": "Items<BytesWitness, 0, 256>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/BytesWitness"
+        },
+        "maxItems": 256
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/effects/items",
+      "generatedType": "EffectRecord",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRecord"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/effects",
+      "generatedType": "Items<EffectRecord, 0, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/EffectRecord"
+        },
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/outbound/items",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/outbound",
+      "generatedType": "Items<super::input::Frame, 0, 8192>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/Frame"
+        },
+        "maxItems": 8192
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/outcome",
+      "generatedType": "ScenarioOutcome",
+      "exactSchema": {
+        "$ref": "#/$defs/ScenarioOutcome"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/richOwners/items",
+      "generatedType": "RichOwnerEvidence",
+      "exactSchema": {
+        "$ref": "#/$defs/RichOwnerEvidence"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/richOwners",
+      "generatedType": "Items<RichOwnerEvidence, 0, 256>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/RichOwnerEvidence"
+        },
+        "maxItems": 256
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Observation/oneOf/1/properties/teardown",
+      "generatedType": "HarnessTeardown",
+      "exactSchema": {
+        "$ref": "#/$defs/HarnessTeardown"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OfferEvidence/oneOf/0/properties/provider",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OfferEvidence/oneOf/0/properties/registration",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OfferEvidence/oneOf/1/properties/provider",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OfferEvidence/oneOf/1/properties/registration",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OfferEvidence/oneOf/2/properties/currentRegistration",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OfferEvidence/oneOf/2/properties/previousRegistration",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OfferEvidence/oneOf/2/properties/provider",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/1/properties/adoption",
+      "generatedType": "TypedAdoption",
+      "exactSchema": {
+        "$ref": "#/$defs/TypedAdoption"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/1/properties/codec",
+      "generatedType": "super::input::ModelCodec",
+      "exactSchema": {
+        "$ref": "#/$defs/ModelCodec"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/1/properties/filename",
+      "generatedType": "Text<0, 4096>",
+      "exactSchema": {
+        "type": "string",
+        "maxLength": 4096
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/1/properties/opening",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/1/properties/original",
+      "generatedType": "BytesWitness",
+      "exactSchema": {
+        "$ref": "#/$defs/BytesWitness"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/2/properties/adoption",
+      "generatedType": "TypedAdoption",
+      "exactSchema": {
+        "$ref": "#/$defs/TypedAdoption"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/2/properties/entries/items",
+      "generatedType": "super::input::Entry",
+      "exactSchema": {
+        "$ref": "#/$defs/Entry"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/2/properties/entries",
+      "generatedType": "Items<super::input::Entry, 0, 100064>",
+      "exactSchema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/Entry"
+        },
+        "maxItems": 100064
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/2/properties/opening",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/2/properties/projection",
+      "generatedType": "ProjectionWitness",
+      "exactSchema": {
+        "$ref": "#/$defs/ProjectionWitness"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/2/properties/source",
+      "generatedType": "SourceRoles",
+      "exactSchema": {
+        "$ref": "#/$defs/ExpectedSource"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/3/properties/model",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/OwnerEvidence/oneOf/3/properties/reason",
+      "generatedType": "OwnerEvidenceSemanticOnlyReason",
+      "exactSchema": {
+        "enum": [
+          "originals-not-provided",
+          "generated-model"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/effect",
+      "generatedType": "EffectRef",
+      "exactSchema": {
+        "$ref": "#/$defs/EffectRef"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/modelBinding/oneOf/1/properties/model",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/modelBinding",
+      "generatedType": "ProducedCoreResultModelBinding",
+      "exactSchema": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "model": {
+                "$ref": "#/$defs/Alias"
+              },
+              "kind": {
+                "const": "retained-owner"
+              }
+            },
+            "required": [
+              "model",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/opening",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/operation",
+      "generatedType": "ProducedCoreResultOperation",
+      "exactSchema": {
+        "enum": [
+          "inspect",
+          "search",
+          "conceptual-specification"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/rawReply",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProjectionWitness/oneOf/1/properties/reason",
+      "generatedType": "ProjectionWitnessUnavailableReason",
+      "exactSchema": {
+        "enum": [
+          "unsupported_representation",
+          "invalid_model",
+          "decode_limit",
+          "projection_limit",
+          "capacity",
+          "timeout"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProjectionWitness/oneOf/2/properties/actualFormatVersion",
+      "generatedType": "Text<0, 128>",
+      "exactSchema": {
+        "type": "string",
+        "maxLength": 128
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProjectionWitness/oneOf/2/properties/byteLength",
+      "generatedType": "Natural<0, 67108864>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 67108864
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ProjectionWitness/oneOf/2/properties/sha256",
+      "generatedType": "ContentSha256",
+      "exactSchema": {
+        "$ref": "#/$defs/Sha256"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ResourceEvidence/properties/activeWorkers",
+      "generatedType": "Natural<0, 1>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ResourceEvidence/properties/metadataBytes",
+      "generatedType": "Natural<0, 67108864>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 67108864
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ResourceEvidence/properties/projectionBytes",
+      "generatedType": "Natural<0, 134217728>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 134217728
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ResourceEvidence/properties/recordBytes",
+      "generatedType": "Natural<0, 67108864>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 67108864
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ResourceEvidence/properties/slots",
+      "generatedType": "Natural<0, 64>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 64
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ResourceEvidence/properties/sourceBytes",
+      "generatedType": "Natural<0, 134217728>",
+      "exactSchema": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 134217728
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/RichOwnerEvidence/oneOf/0/properties/actualCarrier",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/RichOwnerEvidence/oneOf/0/properties/model",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/RichOwnerEvidence/oneOf/1/properties/actualCarrier",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/RichOwnerEvidence/oneOf/1/properties/actualGraph",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/RichOwnerEvidence/oneOf/1/properties/actualProvenance",
+      "generatedType": "super::input::Frame",
+      "exactSchema": {
+        "$ref": "#/$defs/Frame"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/RichOwnerEvidence/oneOf/1/properties/model",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Root/oneOf/0/properties/path",
+      "generatedType": "SourcePath",
+      "exactSchema": {
+        "$ref": "#/$defs/SourcePath"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/Root/oneOf/1/properties/path",
+      "generatedType": "SourcePath",
+      "exactSchema": {
+        "$ref": "#/$defs/SourcePath"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ScenarioOutcome/oneOf/0/properties/finalCheckpoint",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ScenarioOutcome/oneOf/1/properties/cleanupReason",
+      "generatedType": "ScenarioOutcomeIntentionallyRetainedUncertainCleanupReason",
+      "exactSchema": {
+        "enum": [
+          "submission-status-unknown",
+          "transport-disconnected"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ScenarioOutcome/oneOf/1/properties/execution",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ScenarioOutcome/oneOf/1/properties/finalCheckpoint",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ScenarioOutcome/oneOf/1/properties/model",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ScenarioOutcome/oneOf/1/properties/phase",
+      "generatedType": "ScenarioOutcomeIntentionallyRetainedUncertainPhase",
+      "exactSchema": {
+        "enum": [
+          "unknown",
+          "disconnected"
+        ]
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/connection",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/effects",
+      "generatedType": "SourceEffects",
+      "exactSchema": {
+        "$ref": "#/$defs/SourceEffects"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/name",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/offer",
+      "generatedType": "OfferEvidence",
+      "exactSchema": {
+        "$ref": "#/$defs/OfferEvidence"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/resources",
+      "generatedType": "ResourceEvidence",
+      "exactSchema": {
+        "$ref": "#/$defs/ResourceEvidence"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/state",
+      "generatedType": "CaptureState",
+      "exactSchema": {
+        "$ref": "#/$defs/CaptureState"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/workers/properties/exited",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/workers/properties/latePublications",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/workers/properties/started",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/workers/properties/stillOwned",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/ServerCheckpoint/properties/workers",
+      "generatedType": "ServerCheckpointWorkers",
+      "exactSchema": {
+        "type": "object",
+        "properties": {
+          "started": {
+            "$ref": "#/$defs/Count"
+          },
+          "exited": {
+            "$ref": "#/$defs/Count"
+          },
+          "stillOwned": {
+            "$ref": "#/$defs/Count"
+          },
+          "latePublications": {
+            "$ref": "#/$defs/Count"
+          }
+        },
+        "required": [
+          "started",
+          "exited",
+          "stillOwned",
+          "latePublications"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/compileCalls",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/discovery",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/legacyOpenCalls",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/outputResolution",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/projectResolution",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/projectionAttempts",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/recordReads",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/sourceBytes",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceEffects/properties/sourceReads",
+      "generatedType": "super::input::Count",
+      "exactSchema": {
+        "$ref": "#/$defs/Count"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/SourceHeader/oneOf/0/properties/release",
+      "generatedType": "Text<0, 128>",
+      "exactSchema": {
+        "type": "string",
+        "maxLength": 128
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/TypedAdoption/oneOf/1/properties/model",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    },
+    {
+      "schemaPointer": "#/$defs/WorkOwner/oneOf/1/properties/worker",
+      "generatedType": "FixtureAlias",
+      "exactSchema": {
+        "$ref": "#/$defs/Alias"
+      }
+    }
+  ],
+  "unions": [
+    {
+      "name": "CaptureCleanupOwnConnectionClosedCapture",
+      "schemaPointer": "#/$defs/CaptureCleanup/oneOf/2/properties/capture",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "unknown",
+          "rustVariant": "Unknown",
+          "branchSchemaPointer": "#/$defs/CaptureCleanup/oneOf/2/properties/capture/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "known",
+          "rustVariant": "Known",
+          "branchSchemaPointer": "#/$defs/CaptureCleanup/oneOf/2/properties/capture/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "CaptureCleanup",
+      "schemaPointer": "#/$defs/CaptureCleanup",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "none",
+          "rustVariant": "None",
+          "branchSchemaPointer": "#/$defs/CaptureCleanup/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "release-confirmed",
+          "rustVariant": "ReleaseConfirmed",
+          "branchSchemaPointer": "#/$defs/CaptureCleanup/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "own-connection-closed",
+          "rustVariant": "OwnConnectionClosed",
+          "branchSchemaPointer": "#/$defs/CaptureCleanup/oneOf/2",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "CaptureCoverage",
+      "schemaPointer": "#/$defs/CaptureCoverage",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "primary",
+          "rustVariant": "Primary",
+          "branchSchemaPointer": "#/$defs/CaptureCoverage/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "complete",
+          "rustVariant": "Complete",
+          "branchSchemaPointer": "#/$defs/CaptureCoverage/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "CaptureStateClosedCleanup",
+      "schemaPointer": "#/$defs/CaptureState/oneOf/5/properties/cleanup",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "none",
+          "rustVariant": "None",
+          "branchSchemaPointer": "#/$defs/CaptureState/oneOf/5/properties/cleanup/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "worker-owned",
+          "rustVariant": "WorkerOwned",
+          "branchSchemaPointer": "#/$defs/CaptureState/oneOf/5/properties/cleanup/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "CaptureState",
+      "schemaPointer": "#/$defs/CaptureState",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "empty",
+          "rustVariant": "Empty",
+          "branchSchemaPointer": "#/$defs/CaptureState/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "capturing",
+          "rustVariant": "Capturing",
+          "branchSchemaPointer": "#/$defs/CaptureState/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "prepared-private",
+          "rustVariant": "PreparedPrivate",
+          "branchSchemaPointer": "#/$defs/CaptureState/oneOf/2",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "ready",
+          "rustVariant": "Ready",
+          "branchSchemaPointer": "#/$defs/CaptureState/oneOf/3",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "released",
+          "rustVariant": "Released",
+          "branchSchemaPointer": "#/$defs/CaptureState/oneOf/4",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "closed",
+          "rustVariant": "Closed",
+          "branchSchemaPointer": "#/$defs/CaptureState/oneOf/5",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "ClientCheckpointCurrentModel",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/currentModel",
+      "kind": "required-nullable",
+      "sourceKeyword": "anyOf",
+      "explicitNullRequired": true
+    },
+    {
+      "name": "ClientCheckpointCurrentOpening",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/currentOpening",
+      "kind": "required-nullable",
+      "sourceKeyword": "anyOf",
+      "explicitNullRequired": true
+    },
+    {
+      "name": "ClientCheckpointNavigationInspectionOwner",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/inspectionOwner",
+      "kind": "required-nullable",
+      "sourceKeyword": "anyOf",
+      "explicitNullRequired": true
+    },
+    {
+      "name": "ClientCheckpointNavigationOutputOwner",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/outputOwner",
+      "kind": "required-nullable",
+      "sourceKeyword": "anyOf",
+      "explicitNullRequired": true
+    },
+    {
+      "name": "ClientCheckpointNavigationSearchOwner",
+      "schemaPointer": "#/$defs/ClientCheckpoint/properties/navigation/properties/searchOwner",
+      "kind": "required-nullable",
+      "sourceKeyword": "anyOf",
+      "explicitNullRequired": true
+    },
+    {
+      "name": "EffectInput",
+      "schemaPointer": "#/$defs/EffectInput",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "none",
+          "rustVariant": "None",
+          "branchSchemaPointer": "#/$defs/EffectInput/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "outbound-frame",
+          "rustVariant": "OutboundFrame",
+          "branchSchemaPointer": "#/$defs/EffectInput/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "bytes",
+          "rustVariant": "Bytes",
+          "branchSchemaPointer": "#/$defs/EffectInput/oneOf/2",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "json",
+          "rustVariant": "Json",
+          "branchSchemaPointer": "#/$defs/EffectInput/oneOf/3",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "text",
+          "rustVariant": "Text",
+          "branchSchemaPointer": "#/$defs/EffectInput/oneOf/4",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "EffectRecordPublicationDispositionActualOpeningOwner",
+      "schemaPointer": "#/$defs/EffectRecord/oneOf/11/properties/actualOpeningOwner",
+      "kind": "required-nullable",
+      "sourceKeyword": "anyOf",
+      "explicitNullRequired": true
+    },
+    {
+      "name": "EffectRecord",
+      "schemaPointer": "#/$defs/EffectRecord",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "pending",
+          "rustVariant": "Pending",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "picker-input-signal",
+          "rustVariant": "PickerInputSignal",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "cancellation-requested",
+          "rustVariant": "CancellationRequested",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/2",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "work-started",
+          "rustVariant": "WorkStarted",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/3",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "work-exited",
+          "rustVariant": "WorkExited",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/4",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "prepared-core-result",
+          "rustVariant": "PreparedCoreResult",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/5",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "promise-resolved",
+          "rustVariant": "PromiseResolved",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/6",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "promise-rejected",
+          "rustVariant": "PromiseRejected",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/7",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "callback-delivered",
+          "rustVariant": "CallbackDelivered",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/8",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "callback-retired",
+          "rustVariant": "CallbackRetired",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/9",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "late-signal",
+          "rustVariant": "LateSignal",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/10",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "publication-disposition",
+          "rustVariant": "PublicationDisposition",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/11",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "held-result-retired",
+          "rustVariant": "HeldResultRetired",
+          "branchSchemaPointer": "#/$defs/EffectRecord/oneOf/12",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "ExecutionOwner",
+      "schemaPointer": "#/$defs/ExecutionOwner",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "none",
+          "rustVariant": "None",
+          "branchSchemaPointer": "#/$defs/ExecutionOwner/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "retained",
+          "rustVariant": "Retained",
+          "branchSchemaPointer": "#/$defs/ExecutionOwner/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "HarnessTeardown",
+      "schemaPointer": "#/$defs/HarnessTeardown",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "confirmed",
+          "rustVariant": "Confirmed",
+          "branchSchemaPointer": "#/$defs/HarnessTeardown/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "failed",
+          "rustVariant": "Failed",
+          "branchSchemaPointer": "#/$defs/HarnessTeardown/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "LateSignalSource",
+      "schemaPointer": "#/$defs/LateSignalSource",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "actual-file-read-completion",
+          "rustVariant": "ActualFileReadCompletion",
+          "branchSchemaPointer": "#/$defs/LateSignalSource/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "actual-held-worker-result",
+          "rustVariant": "ActualHeldWorkerResult",
+          "branchSchemaPointer": "#/$defs/LateSignalSource/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "actual-picker-cancel-event",
+          "rustVariant": "ActualPickerCancelEvent",
+          "branchSchemaPointer": "#/$defs/LateSignalSource/oneOf/2",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "actual-empty-selection-event",
+          "rustVariant": "ActualEmptySelectionEvent",
+          "branchSchemaPointer": "#/$defs/LateSignalSource/oneOf/3",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "actual-selection-validation",
+          "rustVariant": "ActualSelectionValidation",
+          "branchSchemaPointer": "#/$defs/LateSignalSource/oneOf/4",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "Observation",
+      "schemaPointer": "#/$defs/Observation",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "role",
+      "expandedVariants": [
+        {
+          "wireTag": "model-originals-server",
+          "rustVariant": "ModelOriginalsServer",
+          "branchSchemaPointer": "#/$defs/Observation/oneOf/0",
+          "implicitRequiredDiscriminator": "role"
+        },
+        {
+          "wireTag": "model-originals-client",
+          "rustVariant": "ModelOriginalsClient",
+          "branchSchemaPointer": "#/$defs/Observation/oneOf/1",
+          "implicitRequiredDiscriminator": "role"
+        }
+      ]
+    },
+    {
+      "name": "OfferEvidence",
+      "schemaPointer": "#/$defs/OfferEvidence",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "held",
+          "rustVariant": "Held",
+          "branchSchemaPointer": "#/$defs/OfferEvidence/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "revoked",
+          "rustVariant": "Revoked",
+          "branchSchemaPointer": "#/$defs/OfferEvidence/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "replaced",
+          "rustVariant": "Replaced",
+          "branchSchemaPointer": "#/$defs/OfferEvidence/oneOf/2",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "OwnerEvidence",
+      "schemaPointer": "#/$defs/OwnerEvidence",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "none",
+          "rustVariant": "None",
+          "branchSchemaPointer": "#/$defs/OwnerEvidence/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "verified-original-file",
+          "rustVariant": "VerifiedOriginalFile",
+          "branchSchemaPointer": "#/$defs/OwnerEvidence/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "verified-original-inventory",
+          "rustVariant": "VerifiedOriginalInventory",
+          "branchSchemaPointer": "#/$defs/OwnerEvidence/oneOf/2",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "semantic-only",
+          "rustVariant": "SemanticOnly",
+          "branchSchemaPointer": "#/$defs/OwnerEvidence/oneOf/3",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "ProducedCoreResultModelBinding",
+      "schemaPointer": "#/$defs/ProducedCoreResult/properties/modelBinding",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "none",
+          "rustVariant": "None",
+          "branchSchemaPointer": "#/$defs/ProducedCoreResult/properties/modelBinding/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "retained-owner",
+          "rustVariant": "RetainedOwner",
+          "branchSchemaPointer": "#/$defs/ProducedCoreResult/properties/modelBinding/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "ProjectionWitness",
+      "schemaPointer": "#/$defs/ProjectionWitness",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "not-requested",
+          "rustVariant": "NotRequested",
+          "branchSchemaPointer": "#/$defs/ProjectionWitness/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "unavailable",
+          "rustVariant": "Unavailable",
+          "branchSchemaPointer": "#/$defs/ProjectionWitness/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "available",
+          "rustVariant": "Available",
+          "branchSchemaPointer": "#/$defs/ProjectionWitness/oneOf/2",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "RichOwnerEvidence",
+      "schemaPointer": "#/$defs/RichOwnerEvidence",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "graph-free",
+          "rustVariant": "GraphFree",
+          "branchSchemaPointer": "#/$defs/RichOwnerEvidence/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "rich",
+          "rustVariant": "Rich",
+          "branchSchemaPointer": "#/$defs/RichOwnerEvidence/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "Root",
+      "schemaPointer": "#/$defs/Root",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "file",
+          "rustVariant": "File",
+          "branchSchemaPointer": "#/$defs/Root/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "directory",
+          "rustVariant": "Directory",
+          "branchSchemaPointer": "#/$defs/Root/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "ScenarioOutcome",
+      "schemaPointer": "#/$defs/ScenarioOutcome",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "clean",
+          "rustVariant": "Clean",
+          "branchSchemaPointer": "#/$defs/ScenarioOutcome/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "intentionally-retained-uncertain",
+          "rustVariant": "IntentionallyRetainedUncertain",
+          "branchSchemaPointer": "#/$defs/ScenarioOutcome/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "SourceHeader",
+      "schemaPointer": "#/$defs/SourceHeader",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "reported",
+          "rustVariant": "Reported",
+          "branchSchemaPointer": "#/$defs/SourceHeader/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "not-reported",
+          "rustVariant": "NotReported",
+          "branchSchemaPointer": "#/$defs/SourceHeader/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "TypedAdoption",
+      "schemaPointer": "#/$defs/TypedAdoption",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "not-adopted",
+          "rustVariant": "NotAdopted",
+          "branchSchemaPointer": "#/$defs/TypedAdoption/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "adopted",
+          "rustVariant": "Adopted",
+          "branchSchemaPointer": "#/$defs/TypedAdoption/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    },
+    {
+      "name": "WorkOwner",
+      "schemaPointer": "#/$defs/WorkOwner",
+      "kind": "closed-tagged",
+      "sourceKeyword": "oneOf",
+      "discriminator": "kind",
+      "expandedVariants": [
+        {
+          "wireTag": "inline-production-invocation",
+          "rustVariant": "InlineProductionInvocation",
+          "branchSchemaPointer": "#/$defs/WorkOwner/oneOf/0",
+          "implicitRequiredDiscriminator": "kind"
+        },
+        {
+          "wireTag": "actual-worker",
+          "rustVariant": "ActualWorker",
+          "branchSchemaPointer": "#/$defs/WorkOwner/oneOf/1",
+          "implicitRequiredDiscriminator": "kind"
+        }
+      ]
+    }
+  ],
+  "exactEqualPayloadFactorings": [],
+  "guardedKeywords": [
+    "$ref",
+    "description",
+    "type",
+    "properties",
+    "required",
+    "additionalProperties",
+    "const",
+    "enum",
+    "oneOf",
+    "anyOf",
+    "items",
+    "minItems",
+    "maxItems",
+    "uniqueItems",
+    "minimum",
+    "maximum",
+    "minLength",
+    "maxLength",
+    "pattern"
+  ],
+  "unsupportedConstructsRefuse": true,
+  "ambiguousUnionsRefuse": true,
+  "allFieldsRequiredClosed": true,
+  "tagEnumExpansion": "Each closed discriminator enum spelling is a separate Rust variant; no untagged coercion or payload catch-all.",
+  "nullable": "Only disjoint exact two-arm null/non-null anyOf or oneOf maps to Nullable<T>; the enclosing record still requires the field.",
+  "constants": "Discriminator constants are checked implicitly by tagged!. Every other const is a distinct literal! marker type. Numeric/string/bool/null distinctions preserved.",
+  "bounds": "Schema string lengths and array bounds preserved as declared. Missing min is0; missing max remains unbounded/usize::MAX physical representability, not a new policy cap. Pattern strings preserved exactly. All actual decode/copy/history budgets remain separate cumulative caller authority.",
+  "domainSHA256": "4c8fdaeec23446442fe53436615dbef095ce4abc6615b04c51facffaf328f1f8",
+  "runtimeOrRoleCredit": 0,
+  "predecessorTranslation": {
+    "path": "/Users/damian/orca/workspaces/morphir-moonbit/wrasse/.dev/model-originals-mck-authorship/rust-observed-domain-v1/descriptor/translation.json",
+    "sha256": "24fe1554f72649743409183ed1741480ddae3237d32db2c26eb9c1aa230fccb5"
+  },
+  "predecessorObservationReceiptSHA256": "d08b706c2c5da987db35438617d695cae57093536f81f081a9cf9c3f924a8606",
+  "sourceCorrection": {
+    "schemaDeltaProofPath": "spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/observed-effect-vocabulary-v2/schema-delta-proof.json",
+    "schemaDeltaProofSHA256": "36cbd6708f40145ec5ac9836a831bd0dc1744d61aa28b97f1e6652403a58e7d2"
+  }
+}

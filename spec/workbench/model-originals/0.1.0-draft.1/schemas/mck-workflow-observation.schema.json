@@ -1,0 +1,2257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://morphir.finos.org/spec/workbench/model-originals/0.1.0-draft.1/mck-workflow-observation.schema.json",
+  "title": "Private measured connected observation candidate",
+  "description": "Complete actual effect and frame evidence with closed owners, capture lifecycle, cleanup and independently bound original source roles; observations cannot create input fixture authority",
+  "examples": [
+    {
+      "role": "model-originals-client",
+      "outbound": [],
+      "effects": [],
+      "checkpoints": [
+        {
+          "name": "empty",
+          "currentOpening": null,
+          "currentModel": null,
+          "owner": {
+            "kind": "none"
+          },
+          "pendingEffects": [],
+          "preparedCoreEffects": [],
+          "heldCoreResultBytes": 0,
+          "eventCount": 0,
+          "executionOwner": {
+            "kind": "none"
+          },
+          "captureCleanup": {
+            "kind": "none"
+          },
+          "navigation": {
+            "inspectionOwner": null,
+            "searchOwner": null,
+            "outputOwner": null,
+            "destinationCount": 0
+          }
+        }
+      ],
+      "downloads": [],
+      "coreResults": [],
+      "richOwners": [],
+      "outcome": {
+        "kind": "clean",
+        "finalCheckpoint": "empty"
+      },
+      "teardown": {
+        "kind": "confirmed",
+        "pendingEffects": 0,
+        "heldCoreResults": 0,
+        "stillOwnedWorkers": 0,
+        "workersStarted": 0,
+        "workersExited": 0,
+        "disposedTransports": 0,
+        "productReleaseInferred": false
+      }
+    }
+  ],
+  "$ref": "#/$defs/Observation",
+  "$defs": {
+    "Observation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "role",
+            "transcript",
+            "checkpoints",
+            "captures",
+            "outcome",
+            "teardown"
+          ],
+          "properties": {
+            "role": {
+              "const": "model-originals-server"
+            },
+            "transcript": {
+              "$ref": "#/$defs/MeasuredTranscript"
+            },
+            "checkpoints": {
+              "type": "array",
+              "maxItems": 8192,
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/ServerCheckpoint"
+              }
+            },
+            "captures": {
+              "type": "array",
+              "maxItems": 8192,
+              "items": {
+                "$ref": "#/$defs/CapturedEvidence"
+              }
+            },
+            "outcome": {
+              "$ref": "#/$defs/ScenarioOutcome"
+            },
+            "teardown": {
+              "$ref": "#/$defs/HarnessTeardown"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "role",
+            "outbound",
+            "effects",
+            "checkpoints",
+            "downloads",
+            "coreResults",
+            "richOwners",
+            "outcome",
+            "teardown"
+          ],
+          "properties": {
+            "role": {
+              "const": "model-originals-client"
+            },
+            "outbound": {
+              "type": "array",
+              "maxItems": 8192,
+              "items": {
+                "$ref": "#/$defs/Frame"
+              }
+            },
+            "effects": {
+              "type": "array",
+              "maxItems": 8192,
+              "items": {
+                "$ref": "#/$defs/EffectRecord"
+              }
+            },
+            "checkpoints": {
+              "type": "array",
+              "maxItems": 8192,
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/ClientCheckpoint"
+              }
+            },
+            "downloads": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "#/$defs/BytesWitness"
+              }
+            },
+            "coreResults": {
+              "type": "array",
+              "maxItems": 8192,
+              "items": {
+                "$ref": "#/$defs/ProducedCoreResult"
+              }
+            },
+            "richOwners": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "#/$defs/RichOwnerEvidence"
+              }
+            },
+            "outcome": {
+              "$ref": "#/$defs/ScenarioOutcome"
+            },
+            "teardown": {
+              "$ref": "#/$defs/HarnessTeardown"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "MeasuredTranscript": {
+      "type": "object",
+      "required": [ "exchanges" ],
+      "properties": {
+        "exchanges": {
+          "type": "array",
+          "maxItems": 8192,
+          "items": {
+            "type": "object",
+            "required": [ "request", "reply" ],
+            "properties": {
+              "request": {
+                "$ref": "#/$defs/Frame"
+              },
+              "reply": {
+                "$ref": "#/$defs/Frame"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ServerCheckpoint": {
+      "type": "object",
+      "required": [
+        "name",
+        "connection",
+        "state",
+        "resources",
+        "effects",
+        "offer",
+        "workers"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Alias"
+        },
+        "connection": {
+          "$ref": "#/$defs/Alias"
+        },
+        "state": {
+          "$ref": "#/$defs/CaptureState"
+        },
+        "resources": {
+          "$ref": "#/$defs/ResourceEvidence"
+        },
+        "effects": {
+          "$ref": "#/$defs/SourceEffects"
+        },
+        "offer": {
+          "$ref": "#/$defs/OfferEvidence"
+        },
+        "workers": {
+          "type": "object",
+          "required": [ "started", "exited", "stillOwned", "latePublications" ],
+          "properties": {
+            "started": {
+              "$ref": "#/$defs/Count"
+            },
+            "exited": {
+              "$ref": "#/$defs/Count"
+            },
+            "stillOwned": {
+              "$ref": "#/$defs/Count"
+            },
+            "latePublications": {
+              "$ref": "#/$defs/Count"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CapturedEvidence": {
+      "type": "object",
+      "required": [ "capture", "source", "inventory", "projection", "coverage" ],
+      "properties": {
+        "capture": {
+          "$ref": "#/$defs/Alias"
+        },
+        "source": {
+          "$ref": "#/$defs/ExpectedSource"
+        },
+        "inventory": {
+          "$ref": "#/$defs/InventoryEvidence"
+        },
+        "projection": {
+          "$ref": "#/$defs/ProjectionWitness"
+        },
+        "coverage": {
+          "$ref": "#/$defs/CaptureCoverage"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScenarioOutcome": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "finalCheckpoint", "kind" ],
+          "properties": {
+            "finalCheckpoint": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "clean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "finalCheckpoint",
+            "model",
+            "execution",
+            "phase",
+            "cleanupReason",
+            "kind"
+          ],
+          "properties": {
+            "finalCheckpoint": {
+              "$ref": "#/$defs/Alias"
+            },
+            "model": {
+              "$ref": "#/$defs/Alias"
+            },
+            "execution": {
+              "$ref": "#/$defs/Alias"
+            },
+            "phase": {
+              "enum": [ "unknown", "disconnected" ]
+            },
+            "cleanupReason": {
+              "enum": [ "submission-status-unknown", "transport-disconnected" ]
+            },
+            "kind": {
+              "const": "intentionally-retained-uncertain"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "HarnessTeardown": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "pendingEffects",
+            "heldCoreResults",
+            "stillOwnedWorkers",
+            "workersStarted",
+            "workersExited",
+            "disposedTransports",
+            "productReleaseInferred",
+            "kind"
+          ],
+          "properties": {
+            "pendingEffects": {
+              "const": 0
+            },
+            "heldCoreResults": {
+              "const": 0
+            },
+            "stillOwnedWorkers": {
+              "const": 0
+            },
+            "workersStarted": {
+              "$ref": "#/$defs/Count"
+            },
+            "workersExited": {
+              "$ref": "#/$defs/Count"
+            },
+            "disposedTransports": {
+              "$ref": "#/$defs/Count"
+            },
+            "productReleaseInferred": {
+              "const": false
+            },
+            "kind": {
+              "const": "confirmed"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "pendingEffects",
+            "heldCoreResults",
+            "stillOwnedWorkers",
+            "reason",
+            "productReleaseInferred",
+            "kind"
+          ],
+          "properties": {
+            "pendingEffects": {
+              "$ref": "#/$defs/Count"
+            },
+            "heldCoreResults": {
+              "$ref": "#/$defs/Count"
+            },
+            "stillOwnedWorkers": {
+              "$ref": "#/$defs/Count"
+            },
+            "reason": {
+              "enum": [ "timeout", "disposal-failed" ]
+            },
+            "productReleaseInferred": {
+              "const": false
+            },
+            "kind": {
+              "const": "failed"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Frame": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "text", "kind" ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 1048576
+            },
+            "kind": {
+              "const": "literal"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "parts", "kind" ],
+          "properties": {
+            "parts": {
+              "type": "array",
+              "maxItems": 4096,
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/FramePart"
+              }
+            },
+            "kind": {
+              "const": "segments"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "EffectRecord": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "effect", "port", "input", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "port": {
+              "enum": [ "promise", "picker-receive-callback" ]
+            },
+            "input": {
+              "$ref": "#/$defs/EffectInput"
+            },
+            "kind": {
+              "const": "pending"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "signal", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "signal": {
+              "$ref": "#/$defs/PickerSignal"
+            },
+            "kind": {
+              "const": "picker-input-signal"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "actionIndex", "cause", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "actionIndex": {
+              "$ref": "#/$defs/Count"
+            },
+            "cause": {
+              "$ref": "#/$defs/CancellationCause"
+            },
+            "kind": {
+              "const": "cancellation-requested"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "work", "owner", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "work": {
+              "$ref": "#/$defs/Alias"
+            },
+            "owner": {
+              "$ref": "#/$defs/WorkOwner"
+            },
+            "kind": {
+              "const": "work-started"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "work", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "work": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "work-exited"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "effect",
+            "work",
+            "rawReply",
+            "actualResultByteLength",
+            "kind"
+          ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "work": {
+              "$ref": "#/$defs/Alias"
+            },
+            "rawReply": {
+              "$ref": "#/$defs/Frame"
+            },
+            "actualResultByteLength": {
+              "$ref": "#/$defs/Count"
+            },
+            "kind": {
+              "const": "prepared-core-result"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "reply", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "reply": {
+              "$ref": "#/$defs/DeliveredReply"
+            },
+            "kind": {
+              "const": "promise-resolved"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "error", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "error": {
+              "$ref": "#/$defs/RejectedEffect"
+            },
+            "kind": {
+              "const": "promise-rejected"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "actualRawCallbackArgument", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "actualRawCallbackArgument": {
+              "$ref": "#/$defs/Frame"
+            },
+            "kind": {
+              "const": "callback-delivered"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "actionIndex", "cause", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "actionIndex": {
+              "$ref": "#/$defs/Count"
+            },
+            "cause": {
+              "$ref": "#/$defs/CancellationCause"
+            },
+            "kind": {
+              "const": "callback-retired"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "effect",
+            "actualSignal",
+            "disposition",
+            "causalSource",
+            "kind"
+          ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "actualSignal": {
+              "$ref": "#/$defs/DeliveredReply"
+            },
+            "disposition": {
+              "enum": [
+                "ignored-by-retired-callback",
+                "ignored-by-consumed-callback",
+                "ignored-by-settled-port"
+              ]
+            },
+            "causalSource": {
+              "$ref": "#/$defs/LateSignalSource"
+            },
+            "kind": {
+              "const": "late-signal"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "disposition", "actualOpeningOwner", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "disposition": {
+              "enum": [
+                "forwarded-by-currentness-guard",
+                "ignored-by-currentness-guard"
+              ]
+            },
+            "actualOpeningOwner": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Alias"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "const": "publication-disposition"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "effect", "byteLength", "disposition", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "byteLength": {
+              "$ref": "#/$defs/Count"
+            },
+            "disposition": {
+              "enum": [
+                "delivered-to-production-port",
+                "discarded-after-production-guard",
+                "discarded-on-owned-teardown"
+              ]
+            },
+            "kind": {
+              "const": "held-result-retired"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ClientCheckpoint": {
+      "type": "object",
+      "required": [
+        "name",
+        "currentOpening",
+        "currentModel",
+        "owner",
+        "pendingEffects",
+        "preparedCoreEffects",
+        "heldCoreResultBytes",
+        "eventCount",
+        "executionOwner",
+        "captureCleanup",
+        "navigation"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Alias"
+        },
+        "currentOpening": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Alias"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currentModel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Alias"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "owner": {
+          "$ref": "#/$defs/OwnerEvidence"
+        },
+        "pendingEffects": {
+          "type": "array",
+          "maxItems": 8192,
+          "items": {
+            "$ref": "#/$defs/EffectRef"
+          }
+        },
+        "preparedCoreEffects": {
+          "type": "array",
+          "maxItems": 8192,
+          "items": {
+            "$ref": "#/$defs/EffectRef"
+          }
+        },
+        "heldCoreResultBytes": {
+          "$ref": "#/$defs/Count"
+        },
+        "eventCount": {
+          "type": "integer",
+          "maximum": 8192,
+          "minimum": 0
+        },
+        "executionOwner": {
+          "$ref": "#/$defs/ExecutionOwner"
+        },
+        "captureCleanup": {
+          "$ref": "#/$defs/CaptureCleanup"
+        },
+        "navigation": {
+          "type": "object",
+          "required": [
+            "inspectionOwner",
+            "searchOwner",
+            "outputOwner",
+            "destinationCount"
+          ],
+          "properties": {
+            "inspectionOwner": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Alias"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "searchOwner": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Alias"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "outputOwner": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Alias"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "destinationCount": {
+              "$ref": "#/$defs/Count"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "BytesWitness": {
+      "type": "object",
+      "required": [ "byteLength", "sha256", "bytes" ],
+      "properties": {
+        "byteLength": {
+          "type": "integer",
+          "maximum": 134217728,
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        },
+        "bytes": {
+          "$ref": "#/$defs/Bytes"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProducedCoreResult": {
+      "type": "object",
+      "required": [
+        "effect",
+        "opening",
+        "modelBinding",
+        "operation",
+        "rawReply"
+      ],
+      "properties": {
+        "effect": {
+          "$ref": "#/$defs/EffectRef"
+        },
+        "opening": {
+          "$ref": "#/$defs/Alias"
+        },
+        "modelBinding": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [ "kind" ],
+              "properties": {
+                "kind": {
+                  "const": "none"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [ "model", "kind" ],
+              "properties": {
+                "model": {
+                  "$ref": "#/$defs/Alias"
+                },
+                "kind": {
+                  "const": "retained-owner"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "operation": {
+          "enum": [ "inspect", "search", "conceptual-specification" ]
+        },
+        "rawReply": {
+          "$ref": "#/$defs/Frame"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RichOwnerEvidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "model", "actualCarrier", "kind" ],
+          "properties": {
+            "model": {
+              "$ref": "#/$defs/Alias"
+            },
+            "actualCarrier": {
+              "$ref": "#/$defs/Frame"
+            },
+            "kind": {
+              "const": "graph-free"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "model",
+            "actualCarrier",
+            "actualGraph",
+            "actualProvenance",
+            "kind"
+          ],
+          "properties": {
+            "model": {
+              "$ref": "#/$defs/Alias"
+            },
+            "actualCarrier": {
+              "$ref": "#/$defs/Frame"
+            },
+            "actualGraph": {
+              "$ref": "#/$defs/Frame"
+            },
+            "actualProvenance": {
+              "$ref": "#/$defs/Frame"
+            },
+            "kind": {
+              "const": "rich"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Alias": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._-]{0,127}$"
+    },
+    "CaptureState": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "empty"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "attempt", "worker", "kind" ],
+          "properties": {
+            "attempt": {
+              "$ref": "#/$defs/Alias"
+            },
+            "worker": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "capturing"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "attempt", "worker", "kind" ],
+          "properties": {
+            "attempt": {
+              "$ref": "#/$defs/Alias"
+            },
+            "worker": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "prepared-private"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "capture", "connection", "kind" ],
+          "properties": {
+            "capture": {
+              "$ref": "#/$defs/Alias"
+            },
+            "connection": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "ready"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "lastCapture", "connection", "kind" ],
+          "properties": {
+            "lastCapture": {
+              "$ref": "#/$defs/Alias"
+            },
+            "connection": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "released"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "cleanup", "kind" ],
+          "properties": {
+            "cleanup": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": [ "kind" ],
+                  "properties": {
+                    "kind": {
+                      "const": "none"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [ "attempt", "worker", "kind" ],
+                  "properties": {
+                    "attempt": {
+                      "$ref": "#/$defs/Alias"
+                    },
+                    "worker": {
+                      "$ref": "#/$defs/Alias"
+                    },
+                    "kind": {
+                      "const": "worker-owned"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "kind": {
+              "const": "closed"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ResourceEvidence": {
+      "type": "object",
+      "required": [
+        "slots",
+        "activeWorkers",
+        "sourceBytes",
+        "projectionBytes",
+        "metadataBytes",
+        "recordBytes"
+      ],
+      "properties": {
+        "slots": {
+          "type": "integer",
+          "maximum": 64,
+          "minimum": 0
+        },
+        "activeWorkers": {
+          "type": "integer",
+          "maximum": 1,
+          "minimum": 0
+        },
+        "sourceBytes": {
+          "type": "integer",
+          "maximum": 134217728,
+          "minimum": 0
+        },
+        "projectionBytes": {
+          "type": "integer",
+          "maximum": 134217728,
+          "minimum": 0
+        },
+        "metadataBytes": {
+          "type": "integer",
+          "maximum": 67108864,
+          "minimum": 0
+        },
+        "recordBytes": {
+          "type": "integer",
+          "maximum": 67108864,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "SourceEffects": {
+      "type": "object",
+      "required": [
+        "discovery",
+        "projectResolution",
+        "outputResolution",
+        "recordReads",
+        "sourceReads",
+        "sourceBytes",
+        "projectionAttempts",
+        "compileCalls",
+        "legacyOpenCalls"
+      ],
+      "properties": {
+        "discovery": {
+          "$ref": "#/$defs/Count"
+        },
+        "projectResolution": {
+          "$ref": "#/$defs/Count"
+        },
+        "outputResolution": {
+          "$ref": "#/$defs/Count"
+        },
+        "recordReads": {
+          "$ref": "#/$defs/Count"
+        },
+        "sourceReads": {
+          "$ref": "#/$defs/Count"
+        },
+        "sourceBytes": {
+          "$ref": "#/$defs/Count"
+        },
+        "projectionAttempts": {
+          "$ref": "#/$defs/Count"
+        },
+        "compileCalls": {
+          "$ref": "#/$defs/Count"
+        },
+        "legacyOpenCalls": {
+          "$ref": "#/$defs/Count"
+        }
+      },
+      "additionalProperties": false
+    },
+    "OfferEvidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "registration", "provider", "kind" ],
+          "properties": {
+            "registration": {
+              "$ref": "#/$defs/Alias"
+            },
+            "provider": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "held"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "registration", "provider", "kind" ],
+          "properties": {
+            "registration": {
+              "$ref": "#/$defs/Alias"
+            },
+            "provider": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "revoked"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "previousRegistration",
+            "currentRegistration",
+            "provider",
+            "kind"
+          ],
+          "properties": {
+            "previousRegistration": {
+              "$ref": "#/$defs/Alias"
+            },
+            "currentRegistration": {
+              "$ref": "#/$defs/Alias"
+            },
+            "provider": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "replaced"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Count": {
+      "type": "integer",
+      "maximum": 9007199254740991,
+      "minimum": 0
+    },
+    "ExpectedSource": {
+      "type": "object",
+      "required": [ "primaryRoot", "companionRoots", "sourceFormatVersion" ],
+      "properties": {
+        "primaryRoot": {
+          "$ref": "#/$defs/Root"
+        },
+        "companionRoots": {
+          "type": "array",
+          "maxItems": 63,
+          "items": {
+            "$ref": "#/$defs/Root"
+          }
+        },
+        "sourceFormatVersion": {
+          "$ref": "#/$defs/SourceHeader"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InventoryEvidence": {
+      "type": "object",
+      "required": [
+        "entryCount",
+        "fileCount",
+        "directoryCount",
+        "sourceByteLength",
+        "sha256"
+      ],
+      "properties": {
+        "entryCount": {
+          "type": "integer",
+          "maximum": 100064,
+          "minimum": 0
+        },
+        "fileCount": {
+          "type": "integer",
+          "maximum": 100064,
+          "minimum": 0
+        },
+        "directoryCount": {
+          "type": "integer",
+          "maximum": 100064,
+          "minimum": 0
+        },
+        "sourceByteLength": {
+          "type": "integer",
+          "maximum": 67108864,
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/Sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProjectionWitness": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "not-requested"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "reason", "kind" ],
+          "properties": {
+            "reason": {
+              "enum": [
+                "unsupported_representation",
+                "invalid_model",
+                "decode_limit",
+                "projection_limit",
+                "capacity",
+                "timeout"
+              ]
+            },
+            "kind": {
+              "const": "unavailable"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "byteLength", "sha256", "actualFormatVersion", "kind" ],
+          "properties": {
+            "byteLength": {
+              "type": "integer",
+              "maximum": 67108864,
+              "minimum": 0
+            },
+            "sha256": {
+              "$ref": "#/$defs/Sha256"
+            },
+            "actualFormatVersion": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "kind": {
+              "const": "available"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FramePart": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "text", "kind" ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 1048576
+            },
+            "kind": {
+              "const": "literal"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "text", "count", "kind" ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 16384
+            },
+            "count": {
+              "$ref": "#/$defs/Count"
+            },
+            "kind": {
+              "const": "repeat"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "EffectRef": {
+      "type": "object",
+      "required": [ "attempt", "kind", "ordinal" ],
+      "properties": {
+        "attempt": {
+          "$ref": "#/$defs/Alias"
+        },
+        "kind": {
+          "$ref": "#/$defs/EffectKind"
+        },
+        "ordinal": {
+          "type": "integer",
+          "maximum": 8191,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "EffectInput": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "index", "kind" ],
+          "properties": {
+            "index": {
+              "type": "integer",
+              "maximum": 8191,
+              "minimum": 0
+            },
+            "kind": {
+              "const": "outbound-frame"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "value", "kind" ],
+          "properties": {
+            "value": {
+              "$ref": "#/$defs/BytesWitness"
+            },
+            "kind": {
+              "const": "bytes"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "source", "kind" ],
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/RawJsonSource"
+            },
+            "kind": {
+              "const": "json"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "source", "kind" ],
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/Frame"
+            },
+            "kind": {
+              "const": "text"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PickerSignal": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "file", "kind" ],
+          "properties": {
+            "file": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "file-selection"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "picker-cancel-event"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "empty-selection"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CancellationCause": {
+      "enum": [
+        "cancel-opening",
+        "close-current-model",
+        "close-model",
+        "replacement",
+        "teardown"
+      ]
+    },
+    "WorkOwner": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "inline-production-invocation"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "worker", "kind" ],
+          "properties": {
+            "worker": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "actual-worker"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DeliveredReply": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "value", "kind" ],
+          "properties": {
+            "value": {
+              "$ref": "#/$defs/Frame"
+            },
+            "kind": {
+              "const": "frame"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "value", "kind" ],
+          "properties": {
+            "value": {
+              "$ref": "#/$defs/Bytes"
+            },
+            "kind": {
+              "const": "bytes"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "operation", "source", "kind" ],
+          "properties": {
+            "operation": {
+              "$ref": "#/$defs/JsonDeliveryOperation"
+            },
+            "source": {
+              "$ref": "#/$defs/RawJsonSource"
+            },
+            "kind": {
+              "const": "json"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "operation", "source", "kind" ],
+          "properties": {
+            "operation": {
+              "enum": [
+                "execution.native-descriptor",
+                "execution.native-request"
+              ]
+            },
+            "source": {
+              "$ref": "#/$defs/RawJsonSource"
+            },
+            "kind": {
+              "const": "text"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "value", "kind" ],
+          "properties": {
+            "value": {
+              "$ref": "#/$defs/Sha256"
+            },
+            "kind": {
+              "const": "sha256"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "file", "kind" ],
+          "properties": {
+            "file": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "file-selection"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "picker-cancelled"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "operation", "kind" ],
+          "properties": {
+            "operation": {
+              "enum": [ "adapter.cancel-model-open", "adapter.cancel" ]
+            },
+            "kind": {
+              "const": "void"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "RejectedEffect": {
+      "type": "object",
+      "required": [ "name", "message", "kind" ],
+      "properties": {
+        "name": {
+          "enum": [ "Error", "TypeError", "AbortError" ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "kind": {
+          "const": "error"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LateSignalSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "effect", "kind" ],
+          "properties": {
+            "effect": {
+              "$ref": "#/$defs/EffectRef"
+            },
+            "kind": {
+              "const": "actual-file-read-completion"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "actual-held-worker-result"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "actual-picker-cancel-event"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "actual-empty-selection-event"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "reason", "kind" ],
+          "properties": {
+            "reason": {
+              "enum": [ "invalid-name", "unsupported-codec", "oversized" ]
+            },
+            "kind": {
+              "const": "actual-selection-validation"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "OwnerEvidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "opening",
+            "adoption",
+            "filename",
+            "codec",
+            "original",
+            "kind"
+          ],
+          "properties": {
+            "opening": {
+              "$ref": "#/$defs/Alias"
+            },
+            "adoption": {
+              "$ref": "#/$defs/TypedAdoption"
+            },
+            "filename": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "codec": {
+              "$ref": "#/$defs/ModelCodec"
+            },
+            "original": {
+              "$ref": "#/$defs/BytesWitness"
+            },
+            "kind": {
+              "const": "verified-original-file"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "opening",
+            "adoption",
+            "source",
+            "entries",
+            "projection",
+            "kind"
+          ],
+          "properties": {
+            "opening": {
+              "$ref": "#/$defs/Alias"
+            },
+            "adoption": {
+              "$ref": "#/$defs/TypedAdoption"
+            },
+            "source": {
+              "$ref": "#/$defs/ExpectedSource"
+            },
+            "entries": {
+              "type": "array",
+              "maxItems": 100064,
+              "items": {
+                "$ref": "#/$defs/Entry"
+              }
+            },
+            "projection": {
+              "$ref": "#/$defs/ProjectionWitness"
+            },
+            "kind": {
+              "const": "verified-original-inventory"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "model", "reason", "kind" ],
+          "properties": {
+            "model": {
+              "$ref": "#/$defs/Alias"
+            },
+            "reason": {
+              "enum": [ "originals-not-provided", "generated-model" ]
+            },
+            "kind": {
+              "const": "semantic-only"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ExecutionOwner": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "execution", "model", "phase", "kind" ],
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/Alias"
+            },
+            "model": {
+              "$ref": "#/$defs/Alias"
+            },
+            "phase": {
+              "enum": [
+                "pending",
+                "unknown",
+                "running",
+                "terminal-unreleased",
+                "disconnected"
+              ]
+            },
+            "kind": {
+              "const": "retained"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CaptureCleanup": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "capture", "connection", "requestId", "kind" ],
+          "properties": {
+            "capture": {
+              "$ref": "#/$defs/Alias"
+            },
+            "connection": {
+              "$ref": "#/$defs/Alias"
+            },
+            "requestId": {
+              "$ref": "#/$defs/U64Token"
+            },
+            "kind": {
+              "const": "release-confirmed"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "connection", "attempt", "capture", "kind" ],
+          "properties": {
+            "connection": {
+              "$ref": "#/$defs/Alias"
+            },
+            "attempt": {
+              "$ref": "#/$defs/Alias"
+            },
+            "capture": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "required": [ "kind" ],
+                  "properties": {
+                    "kind": {
+                      "const": "unknown"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "required": [ "capture", "kind" ],
+                  "properties": {
+                    "capture": {
+                      "$ref": "#/$defs/Alias"
+                    },
+                    "kind": {
+                      "const": "known"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "kind": {
+              "const": "own-connection-closed"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "Bytes": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/AtomicBytes"
+        },
+        {
+          "type": "object",
+          "required": [ "parts", "kind" ],
+          "properties": {
+            "parts": {
+              "type": "array",
+              "maxItems": 4096,
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/AtomicBytes"
+              }
+            },
+            "kind": {
+              "const": "concat"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Root": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "path", "kind" ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/SourcePath"
+            },
+            "kind": {
+              "const": "file"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "path", "kind" ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/SourcePath"
+            },
+            "kind": {
+              "const": "directory"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SourceHeader": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "release", "kind" ],
+          "properties": {
+            "release": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "kind": {
+              "const": "reported"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "not-reported"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "EffectKind": {
+      "enum": [
+        "picker",
+        "file-read",
+        "native-capture",
+        "initialize",
+        "capture",
+        "inventory",
+        "read-original",
+        "read-projection",
+        "release",
+        "digest",
+        "inspection",
+        "execution-submit",
+        "execution-observe",
+        "execution-release",
+        "local-evaluation",
+        "catalog",
+        "native-invoke",
+        "manifest-fetch",
+        "workspace-open"
+      ]
+    },
+    "RawJsonSource": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RawJson"
+        },
+        {
+          "$ref": "#/$defs/Frame"
+        }
+      ]
+    },
+    "JsonDeliveryOperation": {
+      "enum": [
+        "adapter.initialize",
+        "adapter.execute",
+        "worker.message",
+        "execution.transport-response",
+        "native.workspace.open",
+        "native.workspace.read",
+        "native.workspace.release",
+        "native.workspace.choose",
+        "native.workspace.revoke"
+      ]
+    },
+    "TypedAdoption": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "not-adopted"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "model", "kind" ],
+          "properties": {
+            "model": {
+              "$ref": "#/$defs/Alias"
+            },
+            "kind": {
+              "const": "adopted"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ModelCodec": {
+      "enum": [ "morphir-json", "ion-text", "ion-binary" ]
+    },
+    "Entry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "path", "bytes", "kind" ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/SourcePath"
+            },
+            "bytes": {
+              "$ref": "#/$defs/Bytes"
+            },
+            "kind": {
+              "const": "file"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "path", "kind" ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/SourcePath"
+            },
+            "kind": {
+              "const": "directory"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "U64Token": {
+      "description": "Compare the original canonical unsigned decimal token to 18446744073709551615 before copying it; never pass through JS Number",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$"
+    },
+    "AtomicBytes": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "hex", "kind" ],
+          "properties": {
+            "hex": {
+              "type": "string",
+              "pattern": "^(?:[0-9a-f]{1024})*(?:[0-9a-f]{2}){0,511}$",
+              "maxLength": 1048576
+            },
+            "kind": {
+              "const": "hex"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "text", "kind" ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 1048576
+            },
+            "kind": {
+              "const": "utf8"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "byte", "length", "kind" ],
+          "properties": {
+            "byte": {
+              "$ref": "#/$defs/U8"
+            },
+            "length": {
+              "type": "integer",
+              "maximum": 268435456,
+              "minimum": 0
+            },
+            "kind": {
+              "const": "repeat-u8"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "seed", "length", "kind" ],
+          "properties": {
+            "seed": {
+              "$ref": "#/$defs/U8"
+            },
+            "length": {
+              "type": "integer",
+              "maximum": 268435456,
+              "minimum": 0
+            },
+            "kind": {
+              "const": "cycle-u8"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "seed", "length", "kind" ],
+          "properties": {
+            "seed": {
+              "$ref": "#/$defs/U8"
+            },
+            "length": {
+              "type": "integer",
+              "maximum": 268435456,
+              "minimum": 0
+            },
+            "kind": {
+              "const": "chunk-indexed-u8"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SourcePath": {
+      "description": "Shared portable path constructor enforces UTF8, UTF16, component and alias rules; raw hostile filesystem names use raw-name-file",
+      "type": "string",
+      "maxLength": 4096,
+      "minLength": 1
+    },
+    "RawJson": {
+      "description": "Validate raw text with existing duplicate-aware exact literal parser; check UTF8 bytes, nesting and complete case budget before effects, preserving numeric tokens and literal private-looking object keys",
+      "type": "string",
+      "maxLength": 1048576
+    },
+    "U8": {
+      "type": "integer",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "CaptureCoverage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [ "kind" ],
+          "properties": {
+            "kind": {
+              "const": "primary"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [ "kind", "declaration" ],
+          "properties": {
+            "kind": {
+              "const": "complete"
+            },
+            "declaration": {
+              "const": "0.1.0-draft.1"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

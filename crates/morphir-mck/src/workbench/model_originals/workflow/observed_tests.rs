@@ -24,6 +24,149 @@ const CASE: &str = include_str!("observed_controls/component.corpus.json");
 const GOOD: &str = include_str!("observed_controls/positive.observed.json");
 
 #[test]
+fn workflow_effect_vocabulary_matches_the_explicit_nineteen_kind_source() {
+    use crate::workbench::model_originals::EffectKind as Ledger;
+    use input::EffectKind as Input;
+    use observed::EffectKind as Observed;
+    let schema: serde_json::Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../spec/workbench/model-originals/0.1.0-draft.1/schemas/mck-workflow-observation.schema.json"
+    )))
+    .unwrap();
+    let kinds = [
+        (Input::Picker, Observed::Picker, Ledger::Picker),
+        (Input::FileRead, Observed::FileRead, Ledger::FileRead),
+        (
+            Input::NativeCapture,
+            Observed::NativeCapture,
+            Ledger::NativeCapture,
+        ),
+        (Input::Initialize, Observed::Initialize, Ledger::Initialize),
+        (Input::Capture, Observed::Capture, Ledger::Capture),
+        (Input::Inventory, Observed::Inventory, Ledger::Inventory),
+        (
+            Input::ReadOriginal,
+            Observed::ReadOriginal,
+            Ledger::ReadOriginal,
+        ),
+        (
+            Input::ReadProjection,
+            Observed::ReadProjection,
+            Ledger::ReadProjection,
+        ),
+        (Input::Release, Observed::Release, Ledger::Release),
+        (Input::Digest, Observed::Digest, Ledger::Digest),
+        (Input::Inspection, Observed::Inspection, Ledger::Inspection),
+        (
+            Input::ExecutionSubmit,
+            Observed::ExecutionSubmit,
+            Ledger::ExecutionSubmit,
+        ),
+        (
+            Input::ExecutionObserve,
+            Observed::ExecutionObserve,
+            Ledger::ExecutionObserve,
+        ),
+        (
+            Input::ExecutionRelease,
+            Observed::ExecutionRelease,
+            Ledger::ExecutionRelease,
+        ),
+        (
+            Input::LocalEvaluation,
+            Observed::LocalEvaluation,
+            Ledger::LocalEvaluation,
+        ),
+        (Input::Catalog, Observed::Catalog, Ledger::Catalog),
+        (
+            Input::NativeInvoke,
+            Observed::NativeInvoke,
+            Ledger::NativeInvoke,
+        ),
+        (
+            Input::ManifestFetch,
+            Observed::ManifestFetch,
+            Ledger::ManifestFetch,
+        ),
+        (
+            Input::WorkspaceOpen,
+            Observed::WorkspaceOpen,
+            Ledger::WorkspaceOpen,
+        ),
+    ];
+    let source = schema["$defs"]["EffectKind"]["enum"].as_array().unwrap();
+    assert_eq!(source.len(), kinds.len());
+    let mut ledger_kinds = std::collections::BTreeSet::new();
+    for ((input, observed, ledger), source) in kinds.into_iter().zip(source) {
+        let wire = source.as_str().unwrap();
+        assert_eq!(input.key(), wire);
+        assert_eq!(observed.key(), wire);
+        let raw = serde_json::to_string(wire).unwrap();
+        assert_eq!(decoder().decode::<Input>(&raw).unwrap(), input);
+        assert_eq!(decoder().decode::<Observed>(&raw).unwrap(), observed);
+        assert!(
+            ledger_kinds.insert(ledger),
+            "duplicate ledger mapping for {wire}"
+        );
+    }
+    assert_eq!(ledger_kinds.len(), source.len());
+}
+
+#[test]
+fn workflow_effect_vocabulary_refuses_unknown_and_noncanonical_kinds() {
+    for raw in [
+        "\"manifest_fetch\"",
+        "\"workspace-open-extra\"",
+        "\"unknown\"",
+        "\"Catalog\"",
+        "null",
+        "19",
+    ] {
+        assert!(decoder().decode::<input::EffectKind>(raw).is_err());
+        assert!(decoder().decode::<observed::EffectKind>(raw).is_err());
+    }
+}
+
+#[test]
+fn workflow_effect_vocabulary_decodes_new_kinds_in_complete_observed_records() {
+    let schema: serde_json::Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../spec/workbench/model-originals/0.1.0-draft.1/schemas/mck-workflow-observation.schema.json"
+    )))
+    .unwrap();
+    let validator = jsonschema::options()
+        .with_draft(jsonschema::Draft::Draft202012)
+        .build(&schema)
+        .unwrap();
+    for kind in [
+        "local-evaluation",
+        "catalog",
+        "native-invoke",
+        "manifest-fetch",
+        "workspace-open",
+    ] {
+        let effect = serde_json::json!({"attempt":"actual-attempt","kind":kind,"ordinal":0});
+        let mut complete: serde_json::Value = serde_json::from_str(GOOD).unwrap();
+        complete["effects"] = serde_json::json!([{"kind":"pending","effect":effect,"input":{"kind":"none"},"port":"promise"}]);
+        complete["checkpoints"][0]["pendingEffects"] = serde_json::json!([effect]);
+        complete["checkpoints"][0]["eventCount"] = serde_json::json!(1);
+        validator.validate(&complete).unwrap();
+        decoder()
+            .decode::<observed::Observation>(&complete.to_string())
+            .unwrap();
+        complete["effects"][0]["effect"]["kind"] = serde_json::json!("unknown-effect");
+        assert!(validator.validate(&complete).is_err());
+        assert!(
+            decoder()
+                .decode::<observed::Observation>(&complete.to_string())
+                .is_err()
+        );
+        // Literal evidence decoding only: no producer authority, completed
+        // lifecycle, expected predicate or qualification follows from this.
+    }
+}
+
+#[test]
 fn independently_typed_observed_client_decodes_and_all_four_real_predicates_compare() {
     let mut decode = decoder();
     let corpus = ingress::BoundCorpus::decode(CASE, &mut decode).unwrap();

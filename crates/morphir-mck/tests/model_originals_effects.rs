@@ -19,6 +19,90 @@ fn promise(ledger: &mut EffectLedger<'_>, effect: &EffectRef) {
 }
 
 #[test]
+fn workflow_effect_vocabulary_manifest_and_workspace_ports_keep_independent_ordinals_and_settlement()
+ {
+    let manifest0 = reference("actual-attempt", Kind::ManifestFetch, 0);
+    let workspace0 = reference("actual-attempt", Kind::WorkspaceOpen, 0);
+    let manifest1 = reference("actual-attempt", Kind::ManifestFetch, 1);
+    let workspace1 = reference("actual-attempt", Kind::WorkspaceOpen, 1);
+    let mut actual = ledger();
+    promise(&mut actual, &manifest0);
+    promise(&mut actual, &workspace0);
+    assert_eq!(actual.port_count(), 2);
+    assert_eq!(actual.finish(), Err(EffectLedgerError::PendingPorts));
+    assert_eq!(
+        actual.record(&manifest0, Event::Pending(EffectPort::Promise)),
+        Err(EffectLedgerError::Duplicate)
+    );
+    assert_eq!(
+        actual.record(
+            &reference("actual-attempt", Kind::WorkspaceOpen, 2),
+            Event::Pending(EffectPort::Promise)
+        ),
+        Err(EffectLedgerError::Ordinal)
+    );
+    actual
+        .record(
+            &manifest0,
+            Event::PromiseResolved {
+                actual_reply: "actual manifest response",
+            },
+        )
+        .unwrap();
+    assert_eq!(actual.finish(), Err(EffectLedgerError::PendingPorts));
+    actual.record(&workspace0, Event::PromiseRejected).unwrap();
+    actual.finish().unwrap();
+    promise(&mut actual, &manifest1);
+    promise(&mut actual, &workspace1);
+    actual.record(&manifest1, Event::PromiseRejected).unwrap();
+    actual
+        .record(
+            &workspace1,
+            Event::PromiseResolved {
+                actual_reply: "actual workspace response",
+            },
+        )
+        .unwrap();
+    assert_eq!(actual.port_count(), 4);
+    assert_eq!(actual.event_count(), 8);
+    assert_eq!(actual.held_result_bytes(), 0);
+    actual.finish().unwrap();
+}
+
+#[test]
+fn workflow_effect_vocabulary_new_io_kinds_cannot_prepare_core_results_or_work() {
+    let work = FixtureAlias::new("actual-work").unwrap();
+    for kind in [Kind::ManifestFetch, Kind::WorkspaceOpen] {
+        let effect = reference("actual-attempt", kind, 0);
+        let mut actual = ledger();
+        promise(&mut actual, &effect);
+        assert_eq!(
+            actual.record(
+                &effect,
+                Event::WorkStarted {
+                    work: &work,
+                    owner: WorkOwner::Inline
+                }
+            ),
+            Err(EffectLedgerError::Work)
+        );
+        assert_eq!(
+            actual.record(
+                &effect,
+                Event::ResultPrepared {
+                    work: &work,
+                    raw_reply: "actual IO reply"
+                }
+            ),
+            Err(EffectLedgerError::Work)
+        );
+        assert_eq!(actual.held_result_bytes(), 0);
+        actual.record(&effect, Event::PromiseRejected).unwrap();
+        actual.finish().unwrap();
+    }
+}
+
+#[test]
 fn local_evaluation_settlement_does_not_retire_work_or_exact_result() {
     let work = FixtureAlias::new("local-evaluation-A").unwrap();
     let effect = reference("A", Kind::LocalEvaluation, 0);

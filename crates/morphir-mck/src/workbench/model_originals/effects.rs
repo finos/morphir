@@ -30,6 +30,8 @@ pub enum EffectKind {
     ExecutionSubmit,
     ExecutionObserve,
     ExecutionRelease,
+    ManifestFetch,
+    WorkspaceOpen,
 }
 
 /// A measured effect reference, not a token granting access to a pending port.

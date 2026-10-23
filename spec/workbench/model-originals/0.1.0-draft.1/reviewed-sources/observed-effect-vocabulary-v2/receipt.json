@@ -1,0 +1,18 @@
+{
+  "kind": "explicit-reviewed-observed-effect-vocabulary-successor",
+  "canonicalSchema": "spec/workbench/model-originals/0.1.0-draft.1/schemas/mck-workflow-observation.schema.json",
+  "schemaSHA256": "e68d95e848d0735b9043f65f0fa6f27b6c945a0d5a1785221980112c6c5d1f29",
+  "deltaProof": {
+    "path": "spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/observed-effect-vocabulary-v2/schema-delta-proof.json",
+    "sha256": "36cbd6708f40145ec5ac9836a831bd0dc1744d61aa28b97f1e6652403a58e7d2"
+  },
+  "translation": {
+    "path": "spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/observed-effect-vocabulary-v2/translation.json",
+    "sha256": "8601d227db875881f962fb184b41ae65539da14b88e133b1e68495d99906a467"
+  },
+  "predecessorFrozen": true,
+  "canonicalAndAuthoredCopyByteIdentical": true,
+  "originalTrackedFilesVerified": 133,
+  "purpose": "Workflow observation vocabulary only. RPC validators, product contract draft, eligibility, limits and original151/175 cases remain unchanged.",
+  "runtimeQualification": false
+}
