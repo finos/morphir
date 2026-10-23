@@ -6,62 +6,305 @@ import {
   "moonbitlang/async@0.22.4/fs",
   "moonbitlang/async@0.22.4/stdio",
   "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
 }
 
 ///|
-async fn checked(program : String, args : Array[String]) -> Unit {
-  let code = @process.run(
-    program,
-    args,
-    stdout=@stdio.stdout,
-    stderr=@stdio.stderr,
+enum Action {
+  Build
+  Bundle
+  Test
+  SelfTest
+} derive(Eq, Debug)
+
+///|
+fn command() -> @argparse.Command {
+  @argparse.Command(
+    "moonbit-extension",
+    about="Build, bundle or test the native MoonBit MEP guest.",
+    disable_help_flag=true,
+    positionals=[
+      @argparse.PositionArg(
+        "mode",
+        num_args=@argparse.ValueRange(lower=1, upper=1),
+        about="build | bundle | test",
+      ),
+    ],
   )
+}
+
+///|
+fn action(argv : Array[String]) -> Action raise {
+  // Modes are literal operands. A fixed delimiter preserves every original
+  // token, including raw --, while the library owns exact single-operand arity.
+  let matches = command().parse(argv=["--"] + argv) catch {
+    _ => fail("Expected build, bundle or test")
+  }
+  match matches.values.get("mode") {
+    Some(["build"]) => Build
+    Some(["bundle"]) => Bundle
+    Some(["test"]) => Test
+    Some(["--self-test"]) => SelfTest
+    _ => fail("Expected build, bundle or test")
+  }
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Int32 {
+  @process.run(program, args, stdout=@stdio.stdout, stderr=@stdio.stderr)
+}
+
+///|
+async fn checked_child(
+  program : String,
+  args : Array[String],
+  invoke : async (String, Array[String]) -> Int32,
+) -> Unit {
+  let code = invoke(program, args)
   guard code == 0 else { fail(program + " failed") }
 }
 
 ///|
-async fn main {
-  let args = @env.args()
-  guard args.length() == 2 && ["build", "bundle", "test"].contains(args[1]) else {
-    fail("Expected build, bundle or test")
+async fn execute(
+  action : Action,
+  invoke : async (String, Array[String]) -> Int32,
+  resolve : async (String) -> String,
+  environment : (String) -> String?,
+) -> String? {
+  guard action != SelfTest else { fail("Self-test is not an execution action") }
+  async fn checked(program : String, args : Array[String]) -> Unit {
+    checked_child(program, args, invoke)
   }
-  let action = args[1]
-  if action == "test" {
+  if action == Test {
     checked("moon", ["test", "--target", "native", "pkgs/morphir-moonbit/mep"])
     checked("moon", [
       "test", "--target", "native", "apps/morphir-extension/frontend",
     ])
   }
-  let packages = if action == "test" {
+  let packages = if action == Test {
     ["apps/morphir-extension", "apps/morphir-extension/acceptance"]
   } else {
     ["apps/morphir-extension"]
   }
   checked("moon", ["build", "--target", "native", "--release"] + packages)
   let prefix = "_build/native/release/build/finos/morphir-extension/"
-  let guest = @fs.realpath(prefix + "morphir-extension.exe")
-  if action == "build" {
-    println(guest)
-    return
+  let guest = resolve(prefix + "morphir-extension.exe")
+  if action == Build {
+    return Some(guest)
   }
-  if action == "test" {
-    checked(@fs.realpath(prefix + "acceptance/acceptance.exe"), [
+  if action == Test {
+    checked(resolve(prefix + "acceptance/acceptance.exe"), [
       guest,
-      @fs.realpath("."),
-      @env.get_env_var("MORPHIR_MEP_EVIDENCE").unwrap_or(".dev/mep-process"),
+      resolve("."),
+      environment("MORPHIR_MEP_EVIDENCE").unwrap_or(".dev/mep-process"),
     ])
-    return
+    return None
   }
-  guard @env.get_env_var("MORPHIR_MEP_HOST") is Some(host) &&
-    @env.get_env_var("MORPHIR_MEP_PLATFORM") is Some(platform) &&
-    @env.get_env_var("MORPHIR_MEP_BUNDLE") is Some(output) else {
+  guard environment("MORPHIR_MEP_HOST") is Some(host) &&
+    environment("MORPHIR_MEP_PLATFORM") is Some(platform) &&
+    environment("MORPHIR_MEP_BUNDLE") is Some(output) else {
     fail(
       "MORPHIR_MEP_HOST, MORPHIR_MEP_PLATFORM and MORPHIR_MEP_BUNDLE are required",
     )
   }
-  checked(@fs.realpath(host), [
+  checked(resolve(host), [
     "--no-banner", "extension", "bundle", "--executable", guest, "--extension-id",
     "morphir-moonbit", "--short-id", "moonbit", "--version", "0.1.0", "--platform",
     platform, "--output", output,
   ])
+  None
+}
+
+///|
+async fn main {
+  let selected = action(@env.args()[1:].to_owned())
+  if selected == SelfTest {
+    self_test()
+    return
+  }
+  if execute(selected, run, path => @fs.realpath(path), @env.get_env_var)
+    is Some(guest) {
+    println(guest)
+  }
+}
+
+///|
+async fn self_test() -> Unit {
+  for
+    (argv, expected) in [
+      (["build"], Build),
+      (["bundle"], Bundle),
+      (["test"], Test),
+      (["--self-test"], SelfTest),
+    ] {
+    guard action(argv) == expected else { fail("Wrong action") }
+  }
+  for
+    argv in [
+      [],
+      ["--"],
+      ["--", "build"],
+      ["build", "--"],
+      ["--", "--"],
+      ["--help"],
+      ["-h"],
+      ["help"],
+      ["--help", "unknown"],
+      ["test", "--help"],
+      ["unknown"],
+      [""],
+      ["build", "extra"],
+      ["--unknown"],
+      ["build", "--unknown"],
+      ["--self-test", "build"],
+      ["--self-test", "--self-test"],
+      ["--self-test", "--"],
+      ["--", "--self-test"],
+      ["--self-test", "--help"],
+      ["--self-test=true"],
+      ["--", "--help"],
+    ] {
+    let calls = []
+    let refused = try {
+      ignore(
+        execute(
+          action(argv),
+          (program, args) => {
+            calls.push((program, args.copy()))
+            0
+          },
+          path => fail("Invalid argv reached path resolution: " + path),
+          _ => None,
+        ),
+      )
+      false
+    } catch {
+      _ => true
+    }
+    guard refused && calls.is_empty() else {
+      fail("Invalid argv was accepted or reached child execution")
+    }
+  }
+  let prefix = "_build/native/release/build/finos/morphir-extension/"
+  let guest = "/resolved/" + prefix + "morphir-extension.exe"
+  let acceptance = "/resolved/" + prefix + "acceptance/acceptance.exe"
+  let host = "host space/😀"
+  let output = "bundle space/😀"
+  let evidence = "evidence space/😀"
+  let environment = fn(name) {
+    match name {
+      "MORPHIR_MEP_HOST" => Some(host)
+      "MORPHIR_MEP_PLATFORM" => Some("darwin-arm64")
+      "MORPHIR_MEP_BUNDLE" => Some(output)
+      "MORPHIR_MEP_EVIDENCE" => Some(evidence)
+      _ => None
+    }
+  }
+  let resolve : async (String) -> String = fn(path) { "/resolved/" + path }
+  let build_args = [
+    "build", "--target", "native", "--release", "apps/morphir-extension",
+  ]
+  let test_steps = [
+    ("moon", ["test", "--target", "native", "pkgs/morphir-moonbit/mep"]),
+    ("moon", ["test", "--target", "native", "apps/morphir-extension/frontend"]),
+    ("moon", build_args + ["apps/morphir-extension/acceptance"]),
+    (acceptance, [guest, "/resolved/.", evidence]),
+  ]
+  let bundle_steps = [
+    ("moon", build_args),
+    (
+      "/resolved/" + host,
+      [
+        "--no-banner", "extension", "bundle", "--executable", guest, "--extension-id",
+        "morphir-moonbit", "--short-id", "moonbit", "--version", "0.1.0", "--platform",
+        "darwin-arm64", "--output", output,
+      ],
+    ),
+  ]
+  for
+    (selected, expected, result) in [
+      (Build, [("moon", build_args)], Some(guest)),
+      (Bundle, bundle_steps, None),
+      (Test, test_steps, None),
+    ] {
+    let calls = []
+    let invoke : async (String, Array[String]) -> Int32 = fn(program, args) {
+      calls.push((program, args.copy()))
+      0
+    }
+    guard execute(selected, invoke, resolve, environment) == result &&
+      calls == expected else {
+      fail("Changed command contract")
+    }
+    for failure in [1, 23, -9] {
+      for stop in 0..<expected.length() {
+        calls.clear()
+        let failed = try {
+          ignore(
+            execute(
+              selected,
+              fn(program, args) {
+                calls.push((program, args.copy()))
+                if calls.length() == stop + 1 {
+                  failure
+                } else {
+                  0
+                }
+              },
+              resolve,
+              environment,
+            ),
+          )
+          false
+        } catch {
+          _ => true
+        }
+        guard failed && calls == expected[:stop + 1].to_owned() else {
+          fail("Child failure did not stop execution")
+        }
+      }
+    }
+  }
+  for
+    missing in [
+      "MORPHIR_MEP_HOST", "MORPHIR_MEP_PLATFORM", "MORPHIR_MEP_BUNDLE",
+    ] {
+    let calls = []
+    let failed = try {
+      ignore(
+        execute(
+          Bundle,
+          fn(program, args) {
+            calls.push((program, args.copy()))
+            0
+          },
+          resolve,
+          name => if name == missing { None } else { environment(name) },
+        ),
+      )
+      false
+    } catch {
+      _ => true
+    }
+    guard failed && calls == [("moon", build_args)] else {
+      fail("Missing bundle environment did not refuse after the build")
+    }
+  }
+  let calls = []
+  ignore(
+    execute(
+      Test,
+      fn(program, args) {
+        calls.push((program, args.copy()))
+        0
+      },
+      resolve,
+      _ => None,
+    ),
+  )
+  guard calls.last() ==
+    Some((acceptance, [guest, "/resolved/.", ".dev/mep-process"])) else {
+    fail("Changed default evidence directory")
+  }
+  println("moonbit-extension: parser, command boundaries and failures pass")
 }
