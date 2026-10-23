@@ -135,7 +135,8 @@ The actual components from this rerun have SHA-256 identities:
 | Host callbacks | `40fa2815b74338f1fb188e5158aab98e61b36902d3be9487d16505e94304f414` |
 
 Required first-delivery evidence is the saved core-Wasm/Node process route, already
-qualified by the separate portable MEP adapter suite. Direct Component Model
+qualified by the separate portable MEP adapter suite. The primary MoonBit CLI now
+dispatches that route through `morphir extension`. Direct Component Model
 integration in the canonical CLI and primary MoonBit CLI remains open work.
 Browser and native component-runtime candidates are optional for that first route.
 
@@ -146,7 +147,7 @@ Browser and native component-runtime candidates are optional for that first rout
 | Production JS embedding in Node/Chromium | Direct components refused | The suite passes actual component bytes to `createEmbeddedToolchain().request({operation:'run', ...})` and requires `WebAssembly.CompileError`. |
 | Wasmoon public native facade, pin 5490d6b | Historical values pass; resource/callback gaps | This current run is not-run for native. Do not apply the historical result to another checkout/version/platform. |
 | Canonical Extism public loader, Extism 1.30.0 / Wasmtime 43.0.2 | Components refused during module parsing | The same fixture component is validated and runs in the reference host. A core control reaches the separate missing Extism guest-info export. This does not qualify the core fixture as an Extism guest. |
-| Primary MoonBit CLI, source 4af58d0 | Component binding not integrated | `apps/morphir/arguments.mbt` registers no component/extension loader. `toolchain run` calls the process provider's `moon run`; the CLI's own Wasm target is a separate fact. |
+| Primary MoonBit CLI | Component binding not integrated; saved core-Wasm route dispatched | `morphir extension` dispatches only the pinned `core-wasm-process` binding, the saved core-Wasm guest in the Node process host, and refuses component bindings. `mise run test:portable-mep-cli` qualifies it on the JS and native CLI builds. See `apps/morphir/docs/extension.md`. |
 | Workbench/Proton application paths | Not qualified for components by this suite | The Chromium fixture is a harness, not the shipped desktop/web application's load/invoke path. |
 
 The shared canonical host is inspected independently at finos/morphir

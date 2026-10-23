@@ -126,12 +126,19 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("packages/core/src/nested/Other.scm", '41');
   put("packages/tools/lib/Main.scm", '"hello λ😀"');
   checkHelp(run([]).stdout);
-  assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "connected originals", "workspace", "workspace init", "project list", "project add", "project remove", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec", "mck"]);
+  assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "connected originals", "workspace", "workspace init", "project list", "project add", "project remove", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec", "mck", "extension describe", "extension compile", "extension generate"]);
   assert.match(run(['mck', '--help']).stdout, /explicitly pinned canonical MCK runner/);
   assert.match(JSON.parse(run(['mck', '--help', '--json']).stdout).usage, /report check\/render\/compare/);
   if (target === 'wasm' || target === 'wasm-gc' || (target === 'native' && process.platform === 'win32')) {
     assert.match(JSON.parse(run(['--json', 'mck', 'check', 'kit'], 2).stdout).error, /mck.runtime_unavailable/);
+    assert.match(JSON.parse(run(['--json', 'extension', 'describe'], 2).stdout).error, /extension.runtime_unavailable/);
+  } else {
+    // Hosts with process effects still select nothing implicitly.
+    assert.match(JSON.parse(run(['--json', 'extension', 'describe'], 2).stdout).error, /extension.explicit_pin_and_helper_required/);
   }
+  // Help remains portable on every target, including those that refuse dispatch.
+  assert.match(run(['extension', 'compile', '--help']).stdout, /Usage: morphir extension compile <source.mbt>[\s\S]*core-wasm-process/);
+  assert.match(JSON.parse(run(['--json', 'extension', 'compile', 'x.mbt', '--target', 'moonbit'], 2).stdout).error, /--target/);
   exerciseScaffolding(directory, run);
   assert.equal(lines(["--help"])[0].type, "help");
   for (const args of [["run", "--help"], ["workspace", "--help"], ["project", "list", "--help"]]) {
@@ -779,7 +786,8 @@ function exercise(command: string, prefix: readonly string[], directory: string,
 
 if (selected.some(target => target === 'js' || target === 'native')) {
   execFileSync(process.execPath, ['--experimental-transform-types', '--test',
-    join(appDirectory, 'scripts/test-connected-session.ts'), join(appDirectory, 'scripts/test-mck-provider.ts')], {
+    join(appDirectory, 'scripts/test-connected-session.ts'), join(appDirectory, 'scripts/test-mck-provider.ts'),
+    join(appDirectory, 'scripts/test-extension-provider.ts')], {
     cwd: workspaceDirectory, stdio: 'inherit', timeout: 30000,
   });
 }

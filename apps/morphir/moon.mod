@@ -16,4 +16,5 @@ import {
   "finos/morphir-engine@0.1.0",
   "finos/morphir-host@0.1.0",
   "finos/morphir-ir@0.1.0",
+  "finos/morphir-moonbit@0.1.0",
 }

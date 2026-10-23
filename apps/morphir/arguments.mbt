@@ -67,6 +67,11 @@ let generation_cli_options : Array[String] = [
 let model_options : Array[String] = ["model-format", "unit-id", "filename"]
 
 ///|
+let extension_options : Array[String] = [
+  "extension-pin", "extension-helper", "node", "timeout", "cancel-file",
+]
+
+///|
 fn command_schema(path : String) -> CliSchema {
   let mut flags = []
   let mut options = []
@@ -77,7 +82,7 @@ fn command_schema(path : String) -> CliSchema {
     "" =>
       children = [
         "run", "workspace", "execute", "verify", "conform", "eval", "worksheet",
-        "generate", "model", "connected", "project", "toolchain", "mck",
+        "generate", "model", "connected", "project", "toolchain", "mck", "extension",
       ]
     "run" => {
       flags = ["all", "dry-run", "file", "directory", "log"]
@@ -146,6 +151,17 @@ fn command_schema(path : String) -> CliSchema {
     "model" => children = ["inspect", "export-original"]
     "mck" =>
       options = ["runner-pin", "mck-helper", "node", "timeout", "cancel-file"]
+    "extension" => children = ["describe", "compile", "generate"]
+    "extension describe" => options = extension_options
+    "extension compile" => {
+      options = extension_options +
+        ["package", "frontend-profile", "model-format", "output"]
+      positional = true
+    }
+    "extension generate" => {
+      options = extension_options + ["target", "output"]
+      positional = true
+    }
     "model inspect" => {
       options = model_options
       positional = true
@@ -208,6 +224,10 @@ fn render_help(path : String) -> String {
       " <model>"
     } else if path == "worksheet" {
       " <file|->"
+    } else if path == "extension compile" {
+      " <source.mbt>"
+    } else if path == "extension generate" {
+      " <model-envelope.json>"
     } else {
       " [path]"
     }
@@ -230,6 +250,15 @@ fn render_help(path : String) -> String {
     text += "It does not see members nested under entry-point documents.\n"
     text += "No runner, interpreter or kit is acquired automatically.\n"
     text += "\nExample: morphir mck --runner-pin runner.json workbench check --kit KIT --report REPORT\n"
+  } else if path.has_prefix("extension") {
+    text += "\nRun one fresh MEP session with an explicitly pinned extension binding.\n"
+    text += "Binding: core-wasm-process, a saved core-Wasm guest in the pinned Node host.\n"
+    text += "The pin fixes the runtime, host modules, guest Wasm/manifest and execution profile.\n"
+    text += "Component Model, native and Extism bindings are not dispatched by this command.\n"
+    text += "compile writes model-envelope.json plus model.ionb (Ion, default) or model.json.\n"
+    text += "generate reads a model envelope and writes the returned artifacts.\n"
+    text += "Wire cancellation is unsupported; cancellation terminates the guest process.\n"
+    text += "\nExample: morphir extension compile src/main.mbt --extension-pin pin.json --package my/pkg --output out\n"
   }
   if !schema.children.is_empty() {
     text += "\nCommands:\n  " + schema.children.join("\n  ") + "\n"

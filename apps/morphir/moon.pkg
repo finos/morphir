@@ -27,4 +27,6 @@ import {
   "finos/morphir-host/toolchain",
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/encoding/base64",
+  "finos/morphir-moonbit/mep",
 }

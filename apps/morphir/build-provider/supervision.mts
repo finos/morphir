@@ -13,8 +13,8 @@ export function supervised(program: string,args: string[],options: SuperviseOpti
 // Model payloads use a separate byte channel. The text API keeps its original
 // combined one-MiB cap; binary stdout has a fixed 16-MiB cap and diagnostics an
 // independent 64-KiB cap. Both paths share tree ownership and quiescence checks.
-export function supervisedBytes(program: string,args: string[],{cwd,env,timeout,cancelFile='',input}: SuperviseOptions): Promise<SupervisedResult<Buffer>> {
-  return supervise(program,args,{cwd,env,timeout,cancelFile,input},true) as Promise<SupervisedResult<Buffer>>;
+export function supervisedBytes(program: string,args: string[],{cwd,env,timeout,cancelFile='',cancelled,input}: SuperviseOptions): Promise<SupervisedResult<Buffer>> {
+  return supervise(program,args,{cwd,env,timeout,cancelFile,cancelled,input},true) as Promise<SupervisedResult<Buffer>>;
 }
 
 async function supervise(program: string,args: string[],{cwd,env,timeout,cancelFile='',cancelled,interruptGraceMs=0,limit=1048576,input}: SuperviseOptions,binary: boolean) {

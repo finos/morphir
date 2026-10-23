@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
-import { closeSync, constants, existsSync, fstatSync, lstatSync, openSync, readFileSync, readSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { supervised } from './supervision.mjs';
+import { pinnedFileHash } from './identity.mjs';
 
 interface RunnerPin {
   contractVersion: '0.1.0-draft.1'; runnerVersion: '0.4.0-beta.10';
@@ -46,30 +46,6 @@ function request(value: unknown): MckRequest {
   return value as unknown as MckRequest;
 }
 
-/** Check identity through a bounded, no-follow descriptor, not through PATH. */
-function executableHash(path: string, tick: () => void): string {
-  const before = lstatSync(path);
-  check(before.isFile() && before.size <= 536870912, 'mck.executable_unavailable');
-  const fd = openSync(path, constants.O_RDONLY | (constants.O_NOFOLLOW || 0) | (constants.O_NONBLOCK || 0));
-  try {
-    const opened = fstatSync(fd);
-    check(opened.isFile() && opened.dev === before.dev && opened.ino === before.ino, 'mck.executable_changed');
-    const hash = createHash('sha256'), buffer = Buffer.alloc(65536);
-    let total = 0;
-    for (;;) {
-      tick();
-      const count = readSync(fd, buffer, 0, buffer.length, null);
-      if (!count) break;
-      total += count; check(total <= 536870912, 'mck.executable_limit');
-      hash.update(buffer.subarray(0, count));
-    }
-    const after = fstatSync(fd), named = lstatSync(path);
-    check(after.size === opened.size && after.mtimeMs === opened.mtimeMs && after.ctimeMs === opened.ctimeMs &&
-      named.isFile() && named.dev === opened.dev && named.ino === opened.ino, 'mck.executable_changed');
-    return hash.digest('hex');
-  } finally { closeSync(fd); }
-}
-
 /** Effects only: the canonical runner retains every kit, suite and verdict. */
 export async function mckCommand(value: unknown, interrupted: () => boolean = () => false): Promise<MckResult> {
   let config: MckRequest | undefined, started = false;
@@ -81,7 +57,7 @@ export async function mckCommand(value: unknown, interrupted: () => boolean = ()
       check(!interrupted() && (!cancelFile || !existsSync(cancelFile)), 'execution.cancelled');
       check(performance.now() < deadline, 'execution.deadline');
     };
-    const pin = () => check(executableHash(config!.pin.executable, tick) === config!.pin.sha256, 'mck.executable_changed');
+    const pin = () => check(pinnedFileHash(config!.pin.executable, tick, 'mck.executable') === config!.pin.sha256, 'mck.executable_changed');
     const run = (args: string[]) => {
       tick();
       return supervised(config!.pin.executable, args, {

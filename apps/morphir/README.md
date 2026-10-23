@@ -42,6 +42,10 @@ The package is named `@morphir/morphir`. After installing a packed or published 
 commands to an explicitly pinned prebuilt canonical backend. See the
 [MCK guide](docs/mck.md) for provisioning, supported hosts, output and cancellation.
 
+`morphir extension describe|compile|generate` runs an explicitly pinned MEP extension in a fresh
+guest process. Its one binding runs the saved core-Wasm MoonBit guest in the pinned Node host;
+see the [extension guide](docs/extension.md) for pins, reports, limits and cancellation.
+
 ## WASM and WASM-GC
 
 ```sh
