@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Load a saved library in a fresh host",
+    "locale": "en",
+    "output": ".dev/diagrams/wasm-library-assembly/fresh-host.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/finos/morphir-moonbit.git",
+      "revision": "4af58d0d3b320c4b81c3212aeff449d8abd02b08"
+    }
+  },
+  "participants": [
+    {
+      "id": "app",
+      "type": "external",
+      "label": "Application",
+      "sublabel": "fresh process",
+      "sources": [
+        {
+          "path": "pkgs/morphir-host/embedding/test/generated.mts",
+          "line": 164,
+          "end_line": 173
+        }
+      ]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "Saved pair",
+      "sublabel": "Wasm + Ion",
+      "sources": [
+        {
+          "path": "pkgs/morphir-host/embedding/node-artifacts.mts",
+          "line": 57,
+          "end_line": 61
+        }
+      ]
+    },
+    {
+      "id": "loader",
+      "type": "backend",
+      "label": "Loader",
+      "sublabel": "host policy",
+      "sources": [
+        {
+          "path": "pkgs/morphir-host/embedding/artifacts.mts",
+          "line": 170,
+          "end_line": 196
+        }
+      ]
+    },
+    {
+      "id": "instance",
+      "type": "backend",
+      "label": "Instance",
+      "sublabel": "checked exports",
+      "sources": [
+        {
+          "path": "pkgs/morphir-host/embedding/artifacts.mts",
+          "line": 196,
+          "end_line": 208
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "read",
+      "from": "app",
+      "to": "store",
+      "y": 160,
+      "label": "readDirectoryArtifact(path)"
+    },
+    {
+      "id": "bytes",
+      "from": "store",
+      "to": "app",
+      "y": 196,
+      "label": "Wasm and manifest bytes",
+      "variant": "return"
+    },
+    {
+      "id": "load",
+      "from": "app",
+      "to": "loader",
+      "y": 232,
+      "label": "loadArtifact(pair, host)",
+      "note": "Check digest, target, profile and imports before execution."
+    },
+    {
+      "id": "instantiate",
+      "from": "loader",
+      "to": "instance",
+      "y": 310,
+      "label": "instantiate with host imports"
+    },
+    {
+      "id": "loaded",
+      "from": "loader",
+      "to": "app",
+      "y": 350,
+      "label": "LoadedArtifact",
+      "variant": "return"
+    },
+    {
+      "id": "invoke",
+      "from": "app",
+      "to": "instance",
+      "y": 390,
+      "label": "invoke(\"answer\")"
+    },
+    {
+      "id": "result",
+      "from": "instance",
+      "to": "app",
+      "y": 430,
+      "label": "42",
+      "variant": "return"
+    },
+    {
+      "id": "dispose",
+      "from": "app",
+      "to": "instance",
+      "y": 470,
+      "label": "dispose()",
+      "note": "Drop the host reference; later invoke calls refuse. This is not worker cancellation."
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Runtime deployment",
+      "items": [
+        "The loader reads the saved pair and host policy. It does not compile MoonBit source."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Execution boundary",
+      "items": [
+        "A synchronous export needs an isolated worker for enforced interruption. Disposal alone does not stop a running call."
+      ]
+    }
+  ]
+}

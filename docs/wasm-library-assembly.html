@@ -9,12 +9,13 @@ order: 25
 and save the resulting WebAssembly module with an Ion manifest. A compatible host can then load that
 saved pair and invoke its exports. The runtime deployment needs the compiler only if it also compiles code.</p>
 <p>This guide explains the supplied-dependency assembly path implemented in Morphir's host libraries.
-It is intended for application and host integrators. It describes library APIs and their contracts;
+It is intended for application developers, host integrators and contributors. It describes library APIs and their contracts;
 the reproduction command below runs the maintained qualification example.</p>
 
 <nav class="toc" aria-label="Contents">
 <ul>
 <li><a href="#flow">From a model to a saved artifact</a></li>
+<li><a href="#journey">Follow a concrete library through the pipeline</a></li>
 <li><a href="#inputs">Supply the complete dependency graph</a></li>
 <li><a href="#compile">Plan, compile and link</a></li>
 <li><a href="#save">Save Wasm and its manifest together</a></li>
@@ -23,6 +24,7 @@ the reproduction command below runs the maintained qualification example.</p>
 <li><a href="#optimization">Exports, initialization and tree shaking</a></li>
 <li><a href="#example">Run the qualification example</a></li>
 <li><a href="#scope">Choose the right hosting boundary</a></li>
+<li><a href="#contribute">Find the code responsible for each stage</a></li>
 <li><a href="#references">Implementation references</a></li>
 </ul>
 </nav>
@@ -57,11 +59,40 @@ The result is saved as Wasm and a manifest, then checked and invoked by a fresh 
 an assembly plan and a published artifact are separate build products with their own identities.</p>
 </section>
 
+<section id="journey">
+<h2>Follow a concrete library through the pipeline</h2>
+<p>Suppose you maintain a pricing model and want to use its calculation in another application. In the
+maintained example, <code>pricing:scalars#huge</code> returns 40 and <code>pricing:other#total</code> adds 2
+through the Morphir SDK. The model contains three modules, including a private module. The production
+generator turns those modules into a MoonBit library; a small driver exposes <code>answer()</code>, which
+returns 42, and other entry points used to check cross-module behavior and initialization.</p>
+<p>Your build supplies that generated library, the driver and every referenced SDK and core package.
+The embedded compiler receives their exact source or prebuilt assets. It does not search your machine for
+an installed compiler or invent a missing dependency. After compilation and linking, your build publishes
+<code>model.wasm</code> and <code>manifest.ion</code> as one saved pair.</p>
+<p>The consuming application can start in a fresh process, read that pair and supply the declared host
+imports. In this example the host provides <code>qualification.init</code>, which observes initialization.
+Loading runs initialization once; repeated <code>answer()</code> calls return 42. The consumer does not
+need to regenerate source or invoke the MoonBit compiler. It does need the loader, its runtime assets and
+a Wasm engine supporting the artifact's target and instructions.</p>
+<p>This is a library API workflow. The example below makes it reproducible; it is not a claim that an
+installed CLI already offers a single command for every stage.</p>
+</section>
+
 <section id="inputs">
 <h2>Supply the complete dependency graph</h2>
 <p>Begin with an explicit set of packages and an exact root package. Include every referenced library and its
 transitive dependencies, including the matching Morphir SDK and MoonBit core assets. Registry resolution and
 download are the dependency provider's responsibility; the assembly planner consumes the supplied set.</p>
+<figure>
+<img src="diagrams/wasm-library-assembly/dependencies.svg" alt="The driver imports the generated pricing library and SDK. The generated library also uses the SDK. All require the matching MoonBit core closure." width="400" style="max-width:100%;height:auto">
+<figcaption>The supplied graph has a generated library and driver above shared SDK and core assets.
+The SDK box groups four packages; the core box groups its transitive package closure.
+<a href="diagrams/wasm-library-assembly/dependencies.mmd">Editable Mermaid source</a>.</figcaption>
+</figure>
+<p>A shared library appears once in the graph even when several packages import it. The diagram groups
+packages to show responsibilities; the actual request retains each package's own identity and imports.
+A missing SDK dependency must fail before tree shaking, even if the optimizer could remove its callers.</p>
 <p>A package pin combines its canonical MoonBit package path with a SHA-256 content identity. Each import records
 an alias and an exact dependency pin. Aliases belong to the importing package, so different packages can use
 different aliases for the same dependency.</p>
@@ -126,6 +157,19 @@ compiler command. The existing loader can run without the packaged compiler payl
 <p>Successful loading exposes the retained functions through the loaded artifact's invocation interface.
 The host owns the instance's lifetime and disposal. Unsupported targets, profiles, encodings or imports produce
 compatibility failures before instantiation; altered Wasm bytes produce integrity failures.</p>
+
+<figure>
+<div role="region" aria-label="Saved library invocation sequence; scroll horizontally on small screens" tabindex="0" style="overflow-x:auto">
+<img src="diagrams/wasm-library-assembly/fresh-host.svg" alt="A fresh application reads saved Wasm and Ion bytes. The loader checks integrity and compatibility before instantiation. The application invokes answer, receives 42 and disposes the instance." width="920" style="max-width:none;height:auto;display:block">
+</div>
+<figcaption>Fresh-host invocation, rendered with Archify. Read the saved bytes, check them, instantiate,
+invoke, then dispose. Scroll the diagram horizontally to read its full width, or
+<a href="diagrams/wasm-library-assembly/fresh-host.svg">open the SVG</a>. <a href="diagrams/wasm-library-assembly/fresh-host.sequence.json">Editable diagram source</a>.</figcaption>
+</figure>
+<p>Disposal drops the loader's reference and makes later invocations fail. It does not interrupt a
+synchronous export that is already running. Put untrusted or potentially nonterminating work behind a
+host boundary that can enforce its limits. The byte-profile worker hosts provide a separate lifecycle;
+the direct scalar loader shown here does not itself provide a deadline.</p>
 </section>
 
 <section id="profiles">
@@ -165,6 +209,11 @@ compilation uses the embedded provider with an empty <code>PATH</code> and no <c
 The task writes its report to <code>.dev/assembly-qualification-report.json</code> and prints the temporary
 workspace path. Successful temporary publications are removed after consumption;
 failed workspaces are retained for diagnosis.</p>
+<p>A fresh run on 22 October 2026 with compiler <code>0.10.16+b1a0e846e</code> supplied 42 packages,
+including 36 core packages. It produced 17,494-byte optimized and 18,742-byte unoptimized artifacts;
+both returned the expected values and initialized once in fresh Node processes. The graph size changes
+with the pinned core, so reproduce the result with the checked toolchain rather than treating these sizes
+or package counts as an interface contract.</p>
 <details><summary>Historical qualification measurements</summary>
 <p>The 18 October 2026 qualification used compiler <code>0.10.15+943464bfa</code> and a supplied graph of 44 packages,
 including 38 pinned core packages. These are historical measurements, not a required current toolchain or a
@@ -190,6 +239,28 @@ MEP negotiation, installed CLI integration or conformance through the shared MCK
 <p>Production codec adapters can reuse the assembly path behind the existing MCK process boundary. That adapter's
 codec and lifecycle evidence remains scoped to its tested profile and host. Registry solving, native compiler
 embedding and further component/MEP hosting remain separate integration work.</p>
+</section>
+
+<section id="contribute">
+<h2>Find the code responsible for each stage</h2>
+<p>When a build fails, first locate the stage that owns the failed contract. A missing package is a graph
+problem; incompatible prebuilt assets or a compiler mismatch are build-input problems. A digest mismatch
+or an undeclared import at load time is a saved-artifact or host-compatibility problem. Moving one of these
+checks into every frontend or transport adapter would make their behavior harder to keep consistent.</p>
+<table><thead><tr><th>Responsibility</th><th>Implementation</th><th>What a contributor should preserve</th></tr></thead><tbody>
+<tr><td>Validate and order the complete supplied graph</td><td><code>pkgs/morphir-host/assembly/plan.mbt</code></td><td>Pure decisions, exact identities, deterministic order and useful dependency diagnostics.</td></tr>
+<tr><td>Verify assets, compile packages and link exports</td><td><code>pkgs/morphir-host/embedding/assembly.mts</code></td><td>Provider compatibility, complete direct/transitive interfaces and retention roots.</td></tr>
+<tr><td>Describe and check the saved pair</td><td><code>pkgs/morphir-host/embedding/artifacts.mts</code></td><td>Ion metadata, exact bytes, declared ABI/imports/exports and host compatibility before execution.</td></tr>
+<tr><td>Publish and read filesystem artifacts</td><td><code>pkgs/morphir-host/embedding/node-artifacts.mts</code></td><td>Whole-pair publication, private staging cleanup and compiler-free reads.</td></tr>
+<tr><td>Prove source-to-saved-library behavior</td><td><code>pkgs/morphir-host/embedding/test/generated.mts</code></td><td>Real SDK/core inputs, fresh-process execution, failures, initialization and optimization equivalence.</td></tr>
+</tbody></table>
+<p>Start with the smallest check that exercises your change. Use <code>mise run test:assembly</code> for the
+complete generated-library path and <code>mise run test:embedding</code> for the host API suite.
+<code>mise run test:wasm-hosts</code> checks a separate real Component Model fixture in reference and adapted
+hosts. A passing component fixture does not add a component binding to the production CLI.</p>
+<p>Diagram sources live beside their static SVGs in <code>docs/diagrams/wasm-library-assembly/</code>.
+Keep source and rendering consistent when changing a contract. The diagrams are readable without
+JavaScript; the narrative states the same responsibilities and lifecycle in words.</p>
 </section>
 
 <section id="references">

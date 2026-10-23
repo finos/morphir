@@ -215,6 +215,15 @@ async fn main {
   }
   checked("bun", ["install", "--frozen-lockfile", "--cwd", "tests/wasm-host"])
   |> ignore
+  // Exercise the built production adapter, including its adjacent .mjs imports.
+  // A clean checkout has no generated runtime files from other test tasks.
+  checked("bun", ["install", "--frozen-lockfile"]) |> ignore
+  checked("bun", [
+    "install", "--frozen-lockfile", "--cwd", "pkgs/morphir-host/embedding",
+  ])
+  |> ignore
+  checked("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"])
+  |> ignore
   checked("bun", ["check", "--project", "tests/wasm-host/tsconfig.json"])
   |> ignore
   let generator = checked("mise", [

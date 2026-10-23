@@ -1,8 +1,7 @@
 # Wasm host qualification
 
 This opt-in suite builds a real component from MoonBit source and WIT. It supplies
-repeatable evidence for `morphir-ukvn.5.55.7` before we choose the portable MEP
-adapter. The fixture's `morphir:host-probe` interface is a test contract. It is not
+repeatable evidence for `morphir-ukvn.5.55.7` and its host-specific route decisions. The fixture's `morphir:host-probe` interface is a test contract. It is not
 a new MEP binding or a capability advertised by the CLI.
 
 Run from the repository root:
@@ -13,7 +12,7 @@ mise run test:wasm-hosts
 ```
 
 Setup installs the frozen test dependencies and Chromium. The check acquires
-released tools through mise, generates bindings beneath `.dev/`, builds the
+released tools through mise, builds the production embedding runtimes from frozen dependencies, generates bindings beneath `.dev/`, builds the
 MoonBit guest, validates/packages it, invokes the component in Wasmtime, and
 tests jco's generated bindings in Node and Chromium. It does not build Rust.
 This task is not added to routine CLI CI or the installed qualification gate.
@@ -115,3 +114,79 @@ resource APIs, or resolve the pinned facade gaps, before selecting a direct nati
 component route. Actual MEP model operations and the production JS adapter can
 advance using the demonstrated JS route. Keep per-host evidence and capability
 claims separate.
+
+## Current evidence audit, 22 October 2026
+
+At MoonBit-repo source `4af58d0d3b320c4b81c3212aeff449d8abd02b08`, the clean-checkout
+runner needed the embedding build prerequisite added in this change. The completed
+rerun uses MoonBit `0.10.16+b1a0e846e`, Node `24.22.0`, Chromium `156.0.8078.4`,
+jco `1.39.0`, Wasmtime `49.0.3` and the tool pins above. Node and Chromium pass the
+value, callback, guest-resource, refusal, trap, fresh-instance and worker cases.
+Browser termination is a request, not an acknowledged exit. This rerun did not
+supply the optional native Wasmoon checkout, so that result is **not-run**. The
+native unsupported diagnostics above are historical evidence at their exact pin.
+
+The actual components from this rerun have SHA-256 identities:
+
+| Fixture | SHA-256 |
+| --- | --- |
+| Values | `4d9a5fd82743fabdd89be1f2405a427f39c22229cabed3bdac23200d569947a8` |
+| Guest resources | `231718a3dd2fc3accbe039ee653e32ccd4b76fafad16bffede322e5c852a0c10` |
+| Host callbacks | `40fa2815b74338f1fb188e5158aab98e61b36902d3be9487d16505e94304f414` |
+
+Required first-delivery evidence is the saved core-Wasm/Node process route, already
+qualified by the separate portable MEP adapter suite. Direct Component Model
+integration in the canonical CLI and primary MoonBit CLI remains open work.
+Browser and native component-runtime candidates are optional for that first route.
+
+| Actual boundary | Component status | Evidence and remaining gap |
+| --- | --- | --- |
+| Wasmtime reference CLI, 49.0.3 | Demonstrated bounded record invocation | This is a reference engine, not either production Morphir CLI. |
+| jco 1.39.0 in Node/Chromium | Demonstrated adaptation and fixture lifecycle | Generated JS bindings coordinate the core modules. This is not direct component acceptance by `WebAssembly.instantiate`. |
+| Production JS embedding in Node/Chromium | Direct components refused | The suite passes actual component bytes to `createEmbeddedToolchain().request({operation:'run', ...})` and requires `WebAssembly.CompileError`. |
+| Wasmoon public native facade, pin 5490d6b | Historical values pass; resource/callback gaps | This current run is not-run for native. Do not apply the historical result to another checkout/version/platform. |
+| Canonical Extism public loader, Extism 1.30.0 / Wasmtime 43.0.2 | Components refused during module parsing | The same fixture component is validated and runs in the reference host. A core control reaches the separate missing Extism guest-info export. This does not qualify the core fixture as an Extism guest. |
+| Primary MoonBit CLI, source 4af58d0 | Component binding not integrated | `apps/morphir/arguments.mbt` registers no component/extension loader. `toolchain run` calls the process provider's `moon run`; the CLI's own Wasm target is a separate fact. |
+| Workbench/Proton application paths | Not qualified for components by this suite | The Chromium fixture is a harness, not the shipped desktop/web application's load/invoke path. |
+
+The shared canonical host is inspected independently at finos/morphir
+`ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409`, with morphir-rust submodule
+`73965e04fc19005f1725d09f95f2dc042d42734a`. Its lockfile uses Extism `1.30.0`
+and Wasmtime `43.0.2`. Its installed Wasm activation path calls
+`morphir-host-native/src/activate.rs` and the public
+`extism::ExtensionContainer` loader. This configuration is distinct from the
+reference engine above. The opt-in `canonical-host-probe.rs` fixture tests that
+actual public loader; it never labels Extism as a component binding.
+
+A complete matrix must retain the open production-host, native callback/resource
+and installed CLI qualification gaps. The guide and this evidence audit do not
+close those implementation tasks or claim all intended hosts support components.
+
+### Reproduce the canonical loader refusal
+
+Use an isolated finos/morphir checkout at the exact canonical commit above and
+initialize its pinned `ecosystem/morphir-rust` submodule. Keep its root
+`Cargo.lock` and normal default feature selection, with no `http` feature.
+Copy this directory's `canonical-host-probe.rs` to
+`ecosystem/morphir-rust/crates/morphir-host-native/examples/component-host-probe.rs`
+in that isolated checkout. Do not modify a shared or dirty checkout. After the
+MoonBit suite has generated and validated the fixtures, run:
+
+```console
+cargo run --manifest-path /isolated/morphir/Cargo.toml --locked \
+  -p morphir-host-native --example component-host-probe -- \
+  /moonbit-checkout/.dev/wasm-host-qualification/probe.component.wasm \
+  /moonbit-checkout/.dev/wasm-host-qualification/probe.core.wasm
+```
+
+On the pinned host this prints:
+
+```text
+unsupported: Failed to create plugin: failed to parse WebAssembly module
+```
+
+The probe accepts only that exact component refusal, after requiring the core
+control to reach `morphir_extension_info` lookup. Unexpected errors and an
+unexpected component success fail the probe, prompting a new host assessment.
+The test is opt-in and does not add Rust or a component runtime to routine CLI CI.
+This execution qualified the loader refusal on Linux ARM64, not every platform.

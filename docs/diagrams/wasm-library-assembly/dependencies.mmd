@@ -1,0 +1,7 @@
+flowchart TB
+  Driver["qualification/main: retained exports"] --> Model["Generated pricing library: 3 modules"]
+  Driver --> SDK["Morphir SDK: root, basics, integer, list"]
+  Model --> SDK
+  Driver --> Core["Matching MoonBit core dependency closure"]
+  Model --> Core
+  SDK --> Core
