@@ -591,6 +591,12 @@ fn qualification_self_test() -> Unit raise {
       fail("Wrong \{mode.to_string()} qualification receipt")
     }
   }
+  guard qualification_jobs() ==
+    { "base": Json(base_jobs), "macos": Json(macos_jobs) } &&
+    qualification_jobs().stringify() ==
+    "{\"base\":[\"plan\",\"setup\",\"native\",\"installed\",\"packaged\"],\"macos\":[\"macos-setup\",\"macos-native\",\"macos-installed\",\"macos-supervision\",\"macos-headless\"]}" else {
+    fail("qualification_jobs: wrong fixed job lists")
+  }
   guard qualification_required(Run) == Json(base_jobs + macos_jobs) &&
     qualification_required(Skip) == Json(base_jobs) &&
     qualification_required(Reuse) == Json(base_jobs) else {
@@ -642,6 +648,7 @@ fn cli_self_test() -> Unit raise {
     (["--self-test"], "self-test", None),
     (["--qualification"], "qualification", None),
     (["--qualification-plan"], "qualification-plan", None),
+    (["--qualification-jobs"], "qualification-jobs", None),
     (["--native"], "native", None),
     (["--installed"], "installed", None),
     (
@@ -665,6 +672,8 @@ fn cli_self_test() -> Unit raise {
       ["--native", "--receipt", "x"],
       ["--qualification-plan", "--qualification"],
       ["--qualification-plan", "--receipt", "x"],
+      ["--qualification-jobs", "--qualification"],
+      ["--qualification-jobs", "--receipt", "x"],
     ] {
     let refused = try {
       ignore(command.parse(argv~))
@@ -871,6 +880,14 @@ let base_jobs : Array[String] = [
 let macos_jobs : Array[String] = [
   "macos-setup", "macos-native", "macos-installed", "macos-supervision", "macos-headless",
 ]
+
+///|
+/// The fixed job lists as one object, `{"base": [...], "macos": [...]}`. The
+/// `test:ci` task feeds it to `ci-platforms.mbtx --expect-guarded`, so the
+/// guard and the gate cannot disagree about which jobs are macOS lanes.
+fn qualification_jobs() -> Json {
+  { "base": Json(base_jobs), "macos": Json(macos_jobs) }
+}
 
 ///|
 /// Check the macOS mode against the event before any macOS lane starts. Pull
@@ -1158,6 +1175,9 @@ fn gate_command(json~ : Bool = false) -> @argparse.Command {
       mode_flag(
         "qualification-plan", "Check the macOS mode of a qualification run",
       ),
+      mode_flag(
+        "qualification-jobs", "Print the fixed base and macOS job lists as JSON",
+      ),
       mode_flag("native", "Gate the reusable native workflow"),
       mode_flag("installed", "Gate the reusable installed workflow"),
     ],
@@ -1172,7 +1192,8 @@ fn gate_command(json~ : Bool = false) -> @argparse.Command {
 
 ///|
 let gate_modes : Array[String] = [
-  "self-test", "qualification", "qualification-plan", "native", "installed",
+  "self-test", "qualification", "qualification-plan", "qualification-jobs", "native",
+  "installed",
 ]
 
 ///|
@@ -1241,6 +1262,10 @@ async fn execute(argv : Array[String]) -> Unit {
       evidence_input(optional_environment("CI_MACOS_EVIDENCE")),
     )
     println(Json::object({ "macos": macos.to_string() }).stringify())
+    return
+  }
+  if mode == "qualification-jobs" {
+    println(qualification_jobs().stringify())
     return
   }
   let needs = @json.parse(environment("CI_NEEDS"))

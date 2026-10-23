@@ -4,8 +4,15 @@ name: Nightly qualification
 # scheduled caller of qualification.yml, so macOS runners never run on a pull
 # request, merge queue or branch push. See qualification.yml for the modes.
 #
+# The `evidence` job fingerprints the macOS inputs and looks for trusted evidence
+# under that fingerprint (scripts/ci-evidence.mbtx mode). On a hit the call runs
+# with `macos: reuse` and the macOS jobs skip. On a miss, for a dispatch with
+# `macos=run`, or while a `macos-breach` issue is open, they run. After a `run`
+# pass on main, `record` uploads the evidence artifact
+# `macos-evidence-v1-<fingerprint>` (8 days; trusted for 7).
+#
 # The `report` job keeps one `macos-breach` issue: a run that does not pass opens
-# it or comments on it, and a run that passes closes it.
+# it or comments on it, and only a passing `run` closes it.
 on:
   schedule:
     - cron: '23 3 * * *'
@@ -25,17 +32,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # TODO(task 9): replace this with the evidence lookup. Until then every run
-  # runs the macOS lanes, whatever the dispatch input says.
   evidence:
     name: Choose the macOS mode
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    # actions: read lists the evidence artifacts and reads the runs that
+    # uploaded them. issues: read finds an open macos-breach issue: while one
+    # is open, the lookup chooses run, so old evidence cannot hide a newer
+    # failed run on the same inputs.
+    permissions:
+      contents: read
+      actions: read
+      issues: read
     outputs:
       macos: ${{ steps.mode.outputs.macos }}
+      evidence: ${{ steps.mode.outputs.evidence }}
+      fingerprint: ${{ steps.mode.outputs.fingerprint }}
     steps:
-      - id: mode
-        run: echo "macos=run" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for the evidence script
+        run: moon update
+      # The schedule has no inputs, so it asks for evidence. The script writes
+      # fingerprint=, macos= and evidence= to GITHUB_OUTPUT; `run` gets an empty
+      # evidence reference, because the gate refuses one.
+      - name: Choose the macOS mode
+        id: mode
+        env:
+          CI_MACOS_REQUESTED: ${{ inputs.macos || 'evidence' }}
+          GH_TOKEN: ${{ github.token }}
+        run: moonx scripts/ci-evidence.mbtx mode --github-output --json
 
   qualification:
     name: Full qualification
@@ -43,25 +69,70 @@ jobs:
     uses: ./.github/workflows/qualification.yml
     with:
       macos: ${{ needs.evidence.outputs.macos }}
+      macos-evidence: ${{ needs.evidence.outputs.evidence }}
     permissions:
       contents: read
       attestations: read
 
+  # Records evidence only after the macOS lanes ran and the whole call passed on
+  # main. It uploads the fingerprint that the evidence job chose and fails if
+  # HEAD has another one. A reuse run records nothing, so evidence never
+  # renews itself.
+  record:
+    name: Record the macOS evidence
+    needs: [evidence, qualification]
+    if: >-
+      needs.qualification.result == 'success' &&
+      needs.evidence.outputs.macos == 'run' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for the evidence script
+        run: moon update
+      - name: Write the evidence file
+        env:
+          FINGERPRINT: ${{ needs.evidence.outputs.fingerprint }}
+        run: >-
+          moonx scripts/ci-evidence.mbtx record --fingerprint "$FINGERPRINT"
+          --sha "$GITHUB_SHA" --run "$GITHUB_RUN_ID"
+          --out "$RUNNER_TEMP/evidence.json"
+      - name: Upload the evidence artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-evidence-v1-${{ needs.evidence.outputs.fingerprint }}
+          path: ${{ runner.temp }}/evidence.json
+          retention-days: 8
+          if-no-files-found: error
+          # A re-run of all jobs of a run that already recorded uploads again.
+          overwrite: true
+
   report:
     name: Report the breach issue
-    needs: [evidence, qualification]
+    needs: [evidence, qualification, record]
     # Fires on every outcome of the jobs above, so that a failure cannot stay
     # silent. Only runs on main: a dispatch on another ref must not touch the issue.
     if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # actions: read lists the failed jobs of this run in the issue.
     permissions:
       contents: read
+      actions: read
       issues: write
     env:
       # An evidence job that did not succeed is a failure, even though the call
-      # was then skipped.
-      RESULT: ${{ needs.evidence.result == 'success' && needs.qualification.result || 'failure' }}
+      # was then skipped. `record` skips in reuse mode and after a failed call;
+      # only its failure or cancellation is a breach of its own.
+      RESULT: >-
+        ${{ (needs.evidence.result != 'success' ||
+        needs.record.result == 'failure' ||
+        needs.record.result == 'cancelled') && 'failure' ||
+        needs.qualification.result }}
       MODE: ${{ needs.evidence.outputs.macos }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
@@ -69,18 +140,20 @@ jobs:
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for the report script
         run: moon update
-      # Open the issue or comment on it. A failure here fails the run.
+      # Open the issue or comment on it, with the failed jobs of this run. A
+      # failure here fails the run.
       - name: Report the breach
         if: env.RESULT != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
           moonx scripts/ci-breach.mbtx --result "$RESULT" --run-url "$RUN_URL"
-          --sha "$GITHUB_SHA" --mode "$MODE"
-      # Closing is housekeeping: the qualification passed, so a failed close
-      # must not turn the run red.
+          --sha "$GITHUB_SHA" --mode "$MODE" --run-id "$GITHUB_RUN_ID"
+      # Only a pass that ran the macOS lanes closes the issue; a reuse pass
+      # proves nothing new. Closing is housekeeping: the qualification passed,
+      # so a failed close must not turn the run red.
       - name: Close the breach issue
-        if: env.RESULT == 'success'
+        if: env.RESULT == 'success' && env.MODE == 'run'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

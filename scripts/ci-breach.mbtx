@@ -4,6 +4,11 @@
 /// comments on the open one, and a pass closes the open one. The exit status is
 /// non-zero when the arguments are invalid or a `gh` call fails.
 ///
+/// With `--run-id N`, a breach body lists the jobs of run N that finished
+/// without passing (`gh run view N --json jobs`, which needs `actions: read`).
+/// A failed read does not stop the report: the body says that the list is
+/// missing.
+///
 /// `--dry-run` calls no `gh` command. It takes the open issue from
 /// `--open-issue N` (default: none) and prints the action and the text it
 /// would send.
@@ -155,14 +160,114 @@ fn breach_action(result : CallResult, open_issue : Int32?) -> BreachAction {
 }
 
 ///|
+/// A workflow run id, as in `github.run_id`.
+struct RunId(Int64) derive(Eq, Debug)
+
+///|
+fn RunId::parse(text : String) -> RunId raise {
+  let id = @string.parse_int64(text) catch {
+    _ => fail("--run-id: expected a run id, got \{text}")
+  }
+  guard id >= 1L else {
+    fail("--run-id: expected a positive run id, got \{text}")
+  }
+  RunId(id)
+}
+
+///|
+/// A job of the run that finished without passing.
+struct FailedJob {
+  name : String
+  conclusion : String
+  url : String
+} derive(Eq, Debug)
+
+///|
+/// The jobs of `gh run view <id> --json jobs` that finished without passing,
+/// in run order. A job that passed, was skipped or is still running (such as
+/// the report job itself) is left out. Skipped jobs are expected: the macOS
+/// jobs skip in reuse mode and `record` skips unless the macOS lanes ran.
+fn failed_jobs(json : Json) -> Array[FailedJob] raise {
+  guard json is { "jobs": Array(jobs), .. } else {
+    fail("gh run view: expected an object with a jobs array")
+  }
+  let failed = []
+  for job in jobs {
+    guard job
+      is {
+        "name": String(name),
+        "status": String(status),
+        "conclusion": conclusion,
+        ..
+      } else {
+      fail("gh run view: a job without a name or status")
+    }
+    let conclusion = match conclusion {
+      String(text) => text
+      _ => ""
+    }
+    guard status == "completed" &&
+      !conclusion.is_empty() &&
+      !(conclusion is ("success" | "skipped" | "neutral")) else {
+      continue
+    }
+    let url = match job {
+      { "url": String(url), .. } => url
+      _ => ""
+    }
+    failed.push({ name, conclusion, url, })
+  }
+  failed
+}
+
+///|
+/// The failed jobs that a breach body lists.
+enum JobList {
+  /// No run id was given, so the body has no job list.
+  NotAsked
+  Listed(Array[FailedJob])
+  /// The read failed; the body says why instead of hiding the gap.
+  Unread(String)
+}
+
+///|
+fn JobList::lines(self : JobList) -> Array[String] {
+  match self {
+    NotAsked => []
+    Listed([]) =>
+      [
+        "- Failed jobs: none finished without passing; see the run for the cause.",
+      ]
+    Listed(jobs) =>
+      [
+        "- Failed jobs:",
+        ..jobs.map(job => {
+          let link = if job.url.is_empty() { "" } else { ": \{job.url}" }
+          "  - \{job.name} (\{job.conclusion})\{link}"
+        }),
+      ]
+    Unread(reason) => ["- Failed jobs: not read (\{reason}); see the run."]
+  }
+}
+
+///|
+fn JobList::to_json(self : JobList) -> Json {
+  match self {
+    Listed(jobs) => Json::array(jobs.map(job => Json::string(job.name)))
+    NotAsked | Unread(_) => Json::null()
+  }
+}
+
+///|
 /// The text of the issue, and of each later comment about a breach.
-fn breach_body(report : Report) -> String {
+fn breach_body(report : Report, jobs : JobList) -> String {
   [
     "\{breach_title}: the nightly macOS qualification did not pass (\{report.result.to_string()}).",
     "",
     "- Run: \{report.run_url.0}",
     "- Commit: \{report.sha.0}",
     "- macOS mode: \{report.mode.label()}",
+    ..jobs.lines(),
     "",
     "This issue is closed by the next nightly run that passes.",
   ].join("\n")
@@ -232,7 +337,28 @@ async fn find_open_issue() -> Int32? {
 }
 
 ///|
-async fn apply(action : BreachAction, report : Report) -> Unit {
+/// The failed jobs of the run. A failed read becomes `Unread`: the breach is
+/// still reported, and the body says that the list is missing.
+async fn read_failed_jobs(run_id : RunId?) -> JobList {
+  guard run_id is Some(RunId(id)) else { return NotAsked }
+  try {
+    let out = gh(["run", "view", id.to_string(), "--json", "jobs"])
+    Listed(failed_jobs(@json.parse(out)))
+  } catch {
+    // `fail` puts the source location first; the reader needs only the cause.
+    Failure(message) =>
+      Unread(
+        match message.find("FAILED: ") {
+          Some(at) => message.view(start_offset=at + 8).to_owned()
+          None => message
+        },
+      )
+    error => Unread("\{error}")
+  }
+}
+
+///|
+async fn apply(action : BreachAction, report : Report, jobs : JobList) -> Unit {
   match action {
     Open => {
       // The label may not exist yet; `--force` makes this safe to repeat.
@@ -250,7 +376,7 @@ async fn apply(action : BreachAction, report : Report) -> Unit {
           "--label",
           breach_label,
           "--body",
-          breach_body(report),
+          breach_body(report, jobs),
         ]),
       )
     }
@@ -261,7 +387,7 @@ async fn apply(action : BreachAction, report : Report) -> Unit {
           "comment",
           number.to_string(),
           "--body",
-          breach_body(report),
+          breach_body(report, jobs),
         ]),
       )
     Close(number) =>
@@ -282,6 +408,7 @@ async fn apply(action : BreachAction, report : Report) -> Unit {
 struct Outcome {
   action : BreachAction
   report : Report
+  jobs : JobList
   dry_run : Bool
 }
 
@@ -297,6 +424,7 @@ fn Outcome::to_json(self : Outcome) -> Json {
     "runUrl": self.report.run_url.0,
     "sha": self.report.sha.0,
     "mode": self.report.mode.label(),
+    "failedJobs": self.jobs.to_json(),
     "dryRun": self.dry_run,
   }
 }
@@ -318,7 +446,13 @@ fn Outcome::summary(self : Outcome) -> String {
 ///|
 priv enum Mode_ {
   SelfTest
-  Report(Report, open_issue~ : Int32?, dry_run~ : Bool, json~ : Bool)
+  Report(
+    Report,
+    open_issue~ : Int32?,
+    run_id~ : RunId?,
+    dry_run~ : Bool,
+    json~ : Bool
+  )
 }
 
 ///|
@@ -328,7 +462,7 @@ fn breach_command() -> @argparse.Command {
     about="Open, update or close the macOS qualification breach issue",
     flags=[
       @argparse.FlagArg("self-test", about="Run the built-in tests", conflicts_with=[
-        "result", "run-url", "sha", "mode", "dry-run", "json", "open-issue",
+        "result", "run-url", "sha", "mode", "dry-run", "json", "open-issue", "run-id",
       ]),
       @argparse.FlagArg(
         "dry-run",
@@ -344,6 +478,10 @@ fn breach_command() -> @argparse.Command {
       @argparse.OptionArg("run-url", about="URL of this workflow run"),
       @argparse.OptionArg("sha", about="Commit that the run qualified"),
       @argparse.OptionArg("mode", about="macOS mode of the run (may be empty)"),
+      @argparse.OptionArg(
+        "run-id",
+        about="Id of this workflow run; a breach body then lists its failed jobs",
+      ),
       @argparse.OptionArg(
         "open-issue",
         about="With --dry-run: number of the open breach issue (default: none)",
@@ -382,7 +520,17 @@ fn invocation(matches : @argparse.Matches) -> Mode_ raise {
       )
     _ => None
   }
-  Report(report, open_issue~, dry_run=flag("dry-run"), json=flag("json"))
+  let run_id = match matches.values.get("run-id") {
+    Some([text]) => Some(RunId::parse(text))
+    _ => None
+  }
+  Report(
+    report,
+    open_issue~,
+    run_id~,
+    dry_run=flag("dry-run"),
+    json=flag("json"),
+  )
 }
 
 ///|
@@ -407,7 +555,7 @@ fn self_test() -> Unit raise {
       fail("\{name}: wrong action")
     }
   }
-  let body = breach_body(report)
+  let body = breach_body(report, NotAsked)
   for
     part in [
       "https://github.com/finos/morphir-moonbit/actions/runs/42", "0123456789abcdef0123456789abcdef01234567",
@@ -415,7 +563,11 @@ fn self_test() -> Unit raise {
     ] {
     guard body.contains(part) else { fail("breach_body: missing \{part}") }
   }
+  guard !body.contains("Failed jobs") else {
+    fail("breach_body: a job list that was not asked for")
+  }
   println("ci-breach: \{cases.length() + 1} breach cases pass")
+  jobs_self_test(report)
   // lookup_lowest_open: no issue, one issue, and several (the lowest wins).
   guard open_issue_from([]) is None &&
     open_issue_from([{ "number": 7 }]) == Some(7) &&
@@ -424,7 +576,12 @@ fn self_test() -> Unit raise {
     fail("lookup_lowest_open: wrong issue number")
   }
   // outcome_json: the JSON line of one outcome.
-  let outcome : Outcome = { action: Comment(12), report, dry_run: true, }
+  let outcome : Outcome = {
+    action: Comment(12),
+    report,
+    jobs: Listed([{ name: "plan", conclusion: "failure", url: "", }]),
+    dry_run: true,
+  }
   guard outcome.to_json() ==
     {
       "action": "comment",
@@ -433,12 +590,93 @@ fn self_test() -> Unit raise {
       "runUrl": "https://github.com/finos/morphir-moonbit/actions/runs/42",
       "sha": "0123456789abcdef0123456789abcdef01234567",
       "mode": "run",
+      "failedJobs": ["plan"],
       "dryRun": true,
     } else {
     fail("outcome_json: wrong shape")
   }
   println("ci-breach: issue lookup and outcome JSON pass")
   cli_self_test()
+}
+
+///|
+/// `gh run view <id> --json jobs` of a nightly run while the report job runs,
+/// trimmed to the fields that matter and a few that do not.
+let fixture_run_jobs : String =
+  #|{"jobs":[
+  #|{"name":"Choose the macOS mode","status":"completed","conclusion":"success","databaseId":1,"steps":[],
+  #| "url":"https://github.com/finos/morphir-moonbit/actions/runs/42/job/1"},
+  #|{"name":"Full qualification / Plan macOS qualification","status":"completed","conclusion":"success",
+  #| "url":"https://github.com/finos/morphir-moonbit/actions/runs/42/job/2"},
+  #|{"name":"Full qualification / Native lanes (macos-15) / Native acceptance (compiler)","status":"completed",
+  #| "conclusion":"failure","url":"https://github.com/finos/morphir-moonbit/actions/runs/42/job/3"},
+  #|{"name":"Full qualification / Process supervision (macos-15)","status":"completed","conclusion":"cancelled",
+  #| "url":"https://github.com/finos/morphir-moonbit/actions/runs/42/job/4"},
+  #|{"name":"Full qualification / Headless CLI (macos-15)","status":"completed","conclusion":"timed_out",
+  #| "url":"https://github.com/finos/morphir-moonbit/actions/runs/42/job/5"},
+  #|{"name":"Record the macOS evidence","status":"completed","conclusion":"skipped",
+  #| "url":"https://github.com/finos/morphir-moonbit/actions/runs/42/job/6"},
+  #|{"name":"Report the breach issue","status":"in_progress","conclusion":"",
+  #| "url":"https://github.com/finos/morphir-moonbit/actions/runs/42/job/7"}]}
+
+///|
+fn jobs_self_test(report : Report) -> Unit raise {
+  // failed_jobs_from_run: finished jobs that did not pass, in run order.
+  let failed = failed_jobs(@json.parse(fixture_run_jobs))
+  guard failed.map(job => job.name) ==
+    [
+      "Full qualification / Native lanes (macos-15) / Native acceptance (compiler)",
+      "Full qualification / Process supervision (macos-15)", "Full qualification / Headless CLI (macos-15)",
+    ] &&
+    failed.map(job => job.conclusion) == ["failure", "cancelled", "timed_out"] else {
+    fail("failed_jobs_from_run: wrong jobs")
+  }
+  // breach_body_lists_failed_jobs: each failed job with its result and link.
+  let body = breach_body(report, Listed(failed))
+  for
+    part in [
+      "Failed jobs:", "Full qualification / Native lanes (macos-15) / Native acceptance (compiler) (failure): https://github.com/finos/morphir-moonbit/actions/runs/42/job/3",
+      "Full qualification / Process supervision (macos-15) (cancelled)", "Full qualification / Headless CLI (macos-15) (timed_out)",
+    ] {
+    guard body.contains(part) else {
+      fail("breach_body_lists_failed_jobs: missing \{part}")
+    }
+  }
+  for
+    part in [
+      "Choose the macOS mode", "Record the macOS evidence", "Report the breach issue",
+    ] {
+    guard !body.contains(part) else {
+      fail("breach_body_lists_failed_jobs: lists \{part}")
+    }
+  }
+  // breach_body_no_failed_jobs: a breach with no failed job says so, as when the
+  // evidence job output is wrong or a job of the call was skipped.
+  guard breach_body(report, Listed([])).contains(
+    "Failed jobs: none finished without passing",
+  ) else {
+    fail("breach_body_no_failed_jobs: wrong text")
+  }
+  // breach_body_jobs_unread: a failed read is reported, not hidden.
+  guard breach_body(report, Unread("gh run view exited 1")).contains(
+    "Failed jobs: not read (gh run view exited 1)",
+  ) else {
+    fail("breach_body_jobs_unread: wrong text")
+  }
+  // failed_jobs_malformed: an answer in another form is an error.
+  for
+    text in [
+      "{}", "{\"jobs\":{}}", "{\"jobs\":[{\"status\":\"completed\"}]}", "[]",
+    ] {
+    let refused = try {
+      ignore(failed_jobs(@json.parse(text)))
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else { fail("failed_jobs_malformed: accepted \{text}") }
+  }
+  println("ci-breach: failed-job list cases pass")
 }
 
 ///|
@@ -454,15 +692,22 @@ fn cli_self_test() -> Unit raise {
       argv=base + ["--dry-run", "--json", "--open-issue", "12"],
     )
     |> invocation
-  guard dry is Report(r, open_issue=Some(12), dry_run=true, json=true) &&
+  guard dry
+    is Report(r, open_issue=Some(12), dry_run=true, json=true, run_id=None) &&
     r.result == Failure else {
     fail("cli_argparse_forms: full dry run")
+  }
+  let with_run = command.parse(argv=base + ["--run-id", "42"]) |> invocation
+  guard with_run is Report(_, run_id=Some(RunId(42L)), dry_run=false, ..) else {
+    fail("cli_argparse_forms: --run-id")
   }
   for
     argv in [
       base.map(a => if a == "failure" { "bogus" } else { a }),
       base + ["--open-issue", "12"],
       base + ["--dry-run", "--open-issue", "x"],
+      base + ["--run-id", "x"],
+      base + ["--run-id", "0"],
       base.map(a => if a.has_prefix("0123") { "XYZ" } else { a }),
       base.map(a => if a.has_prefix("https") { "ftp://x" } else { a }),
       ["--result", "success"],
@@ -484,15 +729,21 @@ fn cli_self_test() -> Unit raise {
 ///|
 async fn main {
   let invocation = breach_command().parse() |> invocation
-  guard invocation is Report(report, open_issue~, dry_run~, json~) else {
+  guard invocation is Report(report, open_issue~, run_id~, dry_run~, json~) else {
     self_test()
     return
   }
   let open_issue = if dry_run { open_issue } else { find_open_issue() }
   let action = breach_action(report.result, open_issue)
-  let outcome : Outcome = { action, report, dry_run, }
+  // Only a breach body lists jobs, and a dry run calls no gh command.
+  let jobs = if dry_run || !(action is (Open | Comment(_))) {
+    NotAsked
+  } else {
+    read_failed_jobs(run_id)
+  }
+  let outcome : Outcome = { action, report, jobs, dry_run, }
   if !dry_run {
-    apply(action, report)
+    apply(action, report, jobs)
   }
   println(if json { outcome.to_json().stringify() } else { outcome.summary() })
 }
