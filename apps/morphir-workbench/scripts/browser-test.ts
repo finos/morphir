@@ -6,7 +6,7 @@ interface RpcCall { method: string; params: { source?: InitialSource; projectId?
 import type { Page, Locator, Request, Response, WebSocket, Browser, BrowserContext } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import { readFile, mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -194,6 +194,8 @@ if (process.env.MORPHIR_WORKBENCH_LIVE_HOST_BIN) {
   await liveHostWorkflow(process.env.MORPHIR_WORKBENCH_LIVE_HOST_BIN);
   process.exit(0);
 }
+
+execFileSync(process.execPath, ['--test', fileURLToPath(new URL('./elm-workflow-save.test.ts', import.meta.url))], { stdio: 'inherit' });
 
 const server = spawn(process.execPath, [fileURLToPath(new URL('./serve.ts', import.meta.url))], {
   env: { ...process.env, MORPHIR_WORKBENCH_PORT: '0' }, stdio: ['ignore', 'pipe', 'inherit'],

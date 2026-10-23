@@ -33,6 +33,25 @@ async function reloadWorkspace(page: Page) {
   await page.getByRole('status').filter({ hasText: 'ready to compile' }).waitFor();
 }
 
+/** Waits for this workspace's edited core and lossless import sidecars before reloading. */
+export async function waitForSavedCoreSource(page: Page, expected: string) {
+  const sourceDocument = await page.locator('#source').getAttribute('data-document');
+  const workspaceId = sourceDocument?.match(/^compile-source\|([^|]+)\|/)?.[1];
+  assert.ok(workspaceId, 'The imported source identifies its active workspace');
+  await page.waitForFunction(({ workspaceId, expected }) => {
+    const tree = localStorage.getItem(`morphir-workbench.workspace.${workspaceId}.tree.v1`);
+    if (!tree) return false;
+    const manifest = JSON.parse(tree);
+    const core = manifest.files['packages/core/src/main.scm'];
+    const binary = manifest.files['models/original.bin'];
+    const notes = manifest.files['notes.md'];
+    return core && binary && notes &&
+      JSON.parse(localStorage.getItem(core)!) === expected &&
+      JSON.parse(localStorage.getItem(binary)!).content === 'AP+A' &&
+      JSON.parse(localStorage.getItem(notes)!) === '\ufeffkeep\r\n';
+  }, { workspaceId, expected });
+}
+
 // The same generated-file component and worker run in Chromium and packaged CEF.
 export async function elmWorkflow(page: Page, {
   nativeDownloads = true,
@@ -218,12 +237,7 @@ export async function elmWorkflow(page: Page, {
   await page.getByRole('status').filter({ hasText: 'Compiled 1/2 projects' }).waitFor();
   await row('packages/utils/src/main.scm').click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value.includes('identity'));
-  await page.waitForFunction(() => Object.keys(localStorage).filter(key => key.endsWith('.tree.v1')).some(key => {
-    const manifest = JSON.parse(localStorage.getItem(key)!);
-    const binary = manifest.files['models/original.bin'];
-    const notes = manifest.files['notes.md'];
-    return binary && notes && JSON.parse(localStorage.getItem(binary)!).content === 'AP+A' && JSON.parse(localStorage.getItem(notes)!) === '\ufeffkeep\r\n';
-  }));
+  await waitForSavedCoreSource(page, invalidCoreSource);
   await reloadWorkspace(page);
   await row('packages/core/src/main.scm').waitFor();
   await row('models/original.bin').waitFor();
