@@ -6,6 +6,7 @@ import {
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/sys",
@@ -45,25 +46,179 @@ struct Issue {
 }
 
 ///|
-fn parse_command(args : Array[String]) -> Result[Command, String] {
-  match args {
-    [] | ["--help"] => Ok(Help)
-    ["--self-test"] => Ok(SelfTest)
-    ["--self-test-write", directory, content] =>
-      Ok(SelfTestWrite(directory, content))
-    ["design", "inspect", id] => Ok(Inspect(id))
-    ["design", "export", id] => Ok(Export(id, None, Create))
-    ["design", "export", id, path] if path != "--replace" =>
-      Ok(Export(id, Some(path), Create))
-    ["design", "export", id, "--replace"] => Ok(Export(id, None, Replace))
-    ["design", "export", id, path, "--replace"] =>
-      Ok(Export(id, Some(path), Replace))
-    ["design", "store", id, path] => Ok(Store(id, path, Create))
-    ["design", "store", id, path, "--replace"] => Ok(Store(id, path, Replace))
-    ["note", id, path] => Ok(Note(id, path))
-    ["remember", key, path] => Ok(Remember(key, path))
-    _ => Err("Unknown command or arguments; use --help.")
+enum Grammar {
+  Controls
+  Pair
+  Design
+  DefaultReplace
+  PathReplace
+}
+
+///|
+fn grammar_command(
+  name : String,
+  options~ : Array[@argparse.OptionArg] = [],
+  subcommands~ : Array[@argparse.Command] = [],
+  required~ : Bool = false,
+) -> @argparse.Command {
+  @argparse.Command(
+    name[:],
+    options~,
+    subcommands~,
+    subcommand_required=required,
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+  )
+}
+
+///|
+fn grammar_option(
+  name : String,
+  required~ : Bool = true,
+) -> @argparse.OptionArg {
+  @argparse.OptionArg(name[:], required~)
+}
+
+///|
+fn companion_grammar(grammar : Grammar) -> @argparse.Command {
+  let id = grammar_option("id")
+  let path = grammar_option("path")
+  let replace = grammar_command("word:--replace")
+  match grammar {
+    Controls =>
+      grammar_command("beads-companion", subcommands=[
+        grammar_command("word:--help"),
+        grammar_command("word:--self-test"),
+      ])
+    Pair =>
+      grammar_command("beads-companion", required=true, subcommands=[
+        grammar_command("word:note", options=[id, path]),
+        grammar_command("word:remember", options=[id, path]),
+        grammar_command("word:--self-test-write", options=[id, path]),
+      ])
+    Design | DefaultReplace | PathReplace => {
+      let operations = match grammar {
+        Design =>
+          [
+            grammar_command("word:inspect", options=[id]),
+            grammar_command("word:export", options=[
+              id,
+              grammar_option("path", required=false),
+            ]),
+            grammar_command("word:store", options=[id, path]),
+          ]
+        DefaultReplace =>
+          [
+            grammar_command(
+              "word:export",
+              options=[id],
+              subcommands=[replace],
+              required=true,
+            ),
+          ]
+        PathReplace =>
+          [
+            grammar_command(
+              "word:export",
+              options=[id, path],
+              subcommands=[replace],
+              required=true,
+            ),
+            grammar_command(
+              "word:store",
+              options=[id, path],
+              subcommands=[replace],
+              required=true,
+            ),
+          ]
+        _ => abort("not a design grammar")
+      }
+      grammar_command("beads-companion", required=true, subcommands=[
+        grammar_command("word:design", subcommands=operations, required=true),
+      ])
+    }
   }
+}
+
+///|
+fn grammar_argv(args : Array[String], grammar : Grammar) -> Array[String] {
+  // Each complete alternative has a fixed command/data layout. Encoding every
+  // word prevents built-in option and delimiter semantics from consuming data.
+  // Inline synthetic options keep literal values, including empty strings and
+  // `--`, intact. The library alone recognizes command words and exact arity.
+  let slots : Array[String?] = match grammar {
+    Controls => []
+    Pair => [None, Some("id"), Some("path")]
+    Design | PathReplace => [None, None, Some("id"), Some("path")]
+    DefaultReplace => [None, None, Some("id")]
+  }
+  args.mapi((index, value) => {
+    match slots.get(index).bind(value => value) {
+      Some(name) => "--\{name}=\{value}"
+      None => "word:\{value}"
+    }
+  })
+}
+
+///|
+fn parsed_value(matches : @argparse.Matches, name : String) -> String {
+  matches.values.get(name).unwrap()[0]
+}
+
+///|
+fn parse_command(args : Array[String]) -> Result[Command, String] {
+  // Replacement alternatives precede literal export paths because the legacy
+  // four-token export reserves --replace; with five tokens it is literal data.
+  // Only the pure library parse is caught. Domain validation and effects never
+  // participate in alternative selection.
+  for grammar in [Controls, Pair, PathReplace, DefaultReplace, Design] {
+    let parsed = Some(
+      companion_grammar(grammar).parse(
+        argv=grammar_argv(args, grammar),
+        env=Map([]),
+      ),
+    ) catch {
+      _ => None
+    }
+    guard parsed is Some(matches) else { continue }
+    guard matches.subcommand is Some((name, selected)) else { return Ok(Help) }
+    match name {
+      "word:--help" => return Ok(Help)
+      "word:--self-test" => return Ok(SelfTest)
+      "word:--self-test-write" =>
+        return Ok(
+          SelfTestWrite(
+            parsed_value(selected, "id"),
+            parsed_value(selected, "path"),
+          ),
+        )
+      "word:note" =>
+        return Ok(
+          Note(parsed_value(selected, "id"), parsed_value(selected, "path")),
+        )
+      "word:remember" =>
+        return Ok(
+          Remember(parsed_value(selected, "id"), parsed_value(selected, "path")),
+        )
+      "word:design" => {
+        let (operation, values) = selected.subcommand.unwrap()
+        let id = parsed_value(values, "id")
+        let mode = if values.subcommand is Some(_) { Replace } else { Create }
+        match operation {
+          "word:inspect" => return Ok(Inspect(id))
+          "word:export" =>
+            return Ok(
+              Export(id, values.values.get("path").map(paths => paths[0]), mode),
+            )
+          "word:store" =>
+            return Ok(Store(id, parsed_value(values, "path"), mode))
+          _ => abort("undeclared design command")
+        }
+      }
+      _ => abort("undeclared companion command")
+    }
+  }
+  Err("Unknown command or arguments; use --help.")
 }
 
 ///|
@@ -349,7 +504,151 @@ async fn run(command : Command) -> Unit {
 }
 
 ///|
+fn parser_self_test() -> Unit raise {
+  assert_true(parse_command([]) is Ok(Help))
+  assert_true(parse_command(["--help"]) is Ok(Help))
+  assert_true(parse_command(["--self-test"]) is Ok(SelfTest))
+  assert_true(
+    parse_command(["--self-test-write", "-directory", "--help"])
+    is Ok(SelfTestWrite("-directory", "--help")),
+  )
+  assert_true(
+    parse_command(["design", "inspect", "test-1"]) is Ok(Inspect("test-1")),
+  )
+  assert_true(
+    parse_command(["design", "export", "test-1"])
+    is Ok(Export("test-1", None, Create)),
+  )
+  assert_true(
+    parse_command(["design", "export", "test-1", "path with spaces"])
+    is Ok(Export("test-1", Some("path with spaces"), Create)),
+  )
+  assert_true(
+    parse_command(["design", "export", "test-1", "--replace"])
+    is Ok(Export("test-1", None, Replace)),
+  )
+  assert_true(
+    parse_command(["design", "export", "test-1", "-path", "--replace"])
+    is Ok(Export("test-1", Some("-path"), Replace)),
+  )
+  assert_true(
+    parse_command(["design", "store", "test-1", "path"])
+    is Ok(Store("test-1", "path", Create)),
+  )
+  assert_true(
+    parse_command(["design", "store", "test-1", "path", "--replace"])
+    is Ok(Store("test-1", "path", Replace)),
+  )
+  assert_true(
+    parse_command(["note", "test-1", "--self-test"])
+    is Ok(Note("test-1", "--self-test")),
+  )
+  assert_true(
+    parse_command(["remember", "key", "--help"])
+    is Ok(Remember("key", "--help")),
+  )
+  for
+    path in [
+      "-path", "--unknown", "--help", "--self-test", "--", "--replace=true", "",
+      "quote'\"$; 日本語",
+    ] {
+    assert_true(
+      parse_command(["design", "export", "test-1", path])
+      is Ok(Export("test-1", Some(actual), Create)) &&
+      actual == path,
+    )
+    assert_true(
+      parse_command(["note", "test-1", path]) is Ok(Note("test-1", actual)) &&
+      actual == path,
+    )
+  }
+  // Literal delimiters and reserved words keep their legacy operand positions.
+  assert_true(
+    parse_command(["design", "store", "test-1", "--", "--replace"])
+    is Ok(Store("test-1", "--", Replace)),
+  )
+  assert_true(
+    parse_command(["design", "store", "test-1", "--replace"])
+    is Ok(Store("test-1", "--replace", Create)),
+  )
+  assert_true(
+    parse_command(["design", "export", "test-1", "--replace", "--replace"])
+    is Ok(Export("test-1", Some("--replace"), Replace)),
+  )
+  assert_true(
+    parse_command(["design", "store", "test-1", "--replace", "--replace"])
+    is Ok(Store("test-1", "--replace", Replace)),
+  )
+  for
+    literal in [
+      "--", "--replace", "--self-test-write", "--help", "", "word:note", "--id=x",
+    ] {
+    assert_true(
+      parse_command(["--self-test-write", literal, literal])
+      is Ok(SelfTestWrite(a, b)) &&
+      a == literal &&
+      b == literal,
+    )
+    assert_true(
+      parse_command(["note", literal, literal]) is Ok(Note(a, b)) &&
+      a == literal &&
+      b == literal,
+    )
+    assert_true(
+      parse_command(["design", "inspect", literal]) is Ok(Inspect(actual)) &&
+      actual == literal,
+    )
+  }
+  for args in invalid_invocations() {
+    assert_true(parse_command(args) is Err(_))
+  }
+}
+
+///|
+fn invalid_invocations() -> Array[Array[String]] {
+  [
+    ["unknown"],
+    ["--unknown"],
+    ["-h"],
+    ["help"],
+    ["design"],
+    ["design", "help"],
+    ["design", "inspect"],
+    ["design", "inspect", "test-1", "extra"],
+    ["design", "export"],
+    ["design", "export", "test-1", "path", "extra"],
+    ["design", "export", "test-1", "path", "--unknown"],
+    ["design", "store", "test-1"],
+    ["note", "test-1"],
+    ["remember", "key"],
+    ["remember", "key", "path", "extra"],
+    ["--help", "--self-test"],
+    ["--self-test", "extra"],
+    ["--self-test-write", "directory"],
+    ["--self-test-write", "directory", "content", "extra"],
+    ["--help", "design", "inspect", "test-1"],
+    ["--self-test", "note", "test-1", "path"],
+    ["note", "test-1", "path", "--help"],
+    ["design", "inspect", "test-1", "--self-test"],
+    ["--self-test-write", "directory", "content", "note", "test-1", "path"],
+    ["design", "export", "test-1", "path", "--replace=true"],
+    ["--"],
+    ["--help", "--help"],
+    ["--self-test", "--self-test"],
+    ["--self-test-write=directory", "content"],
+    ["content", "--self-test-write", "directory"],
+    ["note", "test-1", "--", "--"],
+    ["design", "export", "--replace", "test-1", "path"],
+    ["design", "export", "test-1", "--replace", "path"],
+    ["design", "export", "test-1", "--", "path"],
+    ["design", "store", "test-1", "path", "--replace", "--replace"],
+    ["design", "export", "test-1", "path", "--replace", "--replace"],
+  ]
+}
+
+///|
 async fn self_test() -> Unit {
+  parser_self_test()
   let html = "<!DOCTYPE html>\n<html><body>\"Ion\" λ &amp; 日本語<svg></svg></body></html>\n"
   let payload : Json = [
     { "id": "test-1", "title": "Test design", "status": "open", "design": html },
@@ -398,6 +697,39 @@ async fn self_test() -> Unit {
   assert_eq(@fs.read_file(destination).text(), html)
   @fs.write_file(root + "/state", "")
   let script = @fs.realpath("scripts/beads-companion.mbtx")
+  // A temporary cwd has no beads-check script, so even an accidental parse
+  // success cannot reach a live tracker. Syntax failures must happen first.
+  for args in invalid_invocations() {
+    let (status, out, err) = @process.collect_output(
+      "moonx",
+      [script, "--", ..args],
+      cwd=root,
+    )
+    assert_eq(status, 1)
+    assert_eq(out.text(), "")
+    assert_eq(
+      err.text(),
+      "beads:companion: Unknown command or arguments; use --help.\n",
+    )
+  }
+  let (help_status, help_out, help_err) = @process.collect_output(
+    "moonx",
+    [script, "--help"],
+    cwd=root,
+  )
+  let (empty_status, empty_out, empty_err) = @process.collect_output(
+    "moonx",
+    [script],
+    cwd=root,
+  )
+  assert_eq(help_status, 0)
+  assert_eq(empty_status, 0)
+  assert_eq(help_out.text(), empty_out.text())
+  assert_true(
+    help_out.text().has_prefix("moonx scripts/beads-companion.mbtx COMMAND\n"),
+  )
+  assert_eq(help_err.text(), "")
+  assert_eq(empty_err.text(), "")
   let results = @async.all([
     () => {
       @process.collect_output("moonx", [
