@@ -185,13 +185,15 @@ extern "js" fn dispose_ready_originals_archive(archive : ReadyOriginalArchive) =
 
 ///|
 extern "js" fn request_originals_archive_download(
+  request : (OriginalArchiveOperation, ReadyOriginalArchive) -> ArchiveDownloadEffect,
+  operation : OriginalArchiveOperation,
   archive : ReadyOriginalArchive,
   requested : () -> ArchiveDownloadResult,
   retired : () -> ArchiveDownloadResult,
   failed : (String, String) -> ArchiveDownloadResult,
 ) -> ArchiveDownloadResult =
-  #| (archive, requested, retired, failed) => {
-  #|   const result = archive.requestDownload();
+  #| (request, operation, archive, requested, retired, failed) => {
+  #|   const result = request(operation, archive);
   #|   switch (result.kind) {
   #|     case 'download-requested': return requested();
   #|     case 'retired': return retired();
@@ -311,6 +313,8 @@ fn update_original_archive(
         "ready" =>
           match
             request_originals_archive_download(
+              observe_download_call,
+              operation,
               archive_event_ready(event),
               () => DownloadRequested,
               () => DownloadRetired,

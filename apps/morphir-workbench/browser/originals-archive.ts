@@ -1,4 +1,5 @@
 import {requestOriginalArchiveDownload} from './originals-archive-download.ts';
+import {productObservation} from './product-observer.ts';
 import {Uint8ArrayReader, ZipWriter} from '@zip.js/zip.js';
 import {originalPath} from '../../../pkgs/morphir-host/model-originals-client/originals.ts';
 import {parseRelativeArtifactPath, portableArtifactKey} from '../../../pkgs/morphir-host/artifact-client/artifact-client/artifact-path.ts';
@@ -170,6 +171,7 @@ class ArchiveOperation implements OriginalArchiveOperation {
     // until its library calls and finally cleanup have actually settled.
     this.#pending = this.#pending.then(() => {
       this.#delivery = {kind: 'closed'};
+      productObservation.archive(this, 'archive-settled-retired');
       this.#notify(receive, {kind: 'failed', operation: this, failure: {kind: 'retired', message: 'Original archive was retired.'}});
     });
   }
@@ -189,6 +191,7 @@ class ArchiveOperation implements OriginalArchiveOperation {
         previous.writer.retire(); previous.abort.abort(); break;
       case 'retiring': case 'retired': case 'failed': break;
     }
+    if (previous.kind !== 'retiring' && previous.kind !== 'retired' && previous.kind !== 'failed') productObservation.archive(this, 'archive-retirement-requested');
   }
   start(receive: (event: OriginalArchiveEvent) => void): void {
     if (this.#delivery.kind !== 'unstarted') return;
@@ -229,7 +232,7 @@ class ArchiveOperation implements OriginalArchiveOperation {
       if (abort.signal.aborted) refuse('retired', 'Original archive was retired.');
       if (zip.hasCorruptedEntries || zip.warnings?.length || bytes.buffer.byteLength !== snapshot.plan.output) refuse('encoding', 'Original archive encoding did not finish cleanly.');
       const archive = new ReadyArchive(construction, bytes, snapshot.plan, () => this.#finishDelivery());
-      this.#state = {kind: 'ready', archive}; this.#notify(receive, {kind: 'ready', operation: this, archive});
+      this.#state = {kind: 'ready', archive}; productObservation.ready(this, archive); this.#notify(receive, {kind: 'ready', operation: this, archive});
     } catch (error) {
       this.#removePagehide();
       const previous = this.#currentState();

@@ -1675,7 +1675,10 @@ fn update(model : Model, msg : Msg, emit : @cmd.Emit[Msg]) -> (Model, @cmd.Cmd) 
     Routed(visit, inner) => in_workspace(model, visit, inner, emit)
     _ => update_here(model, msg, emit)
   }
-  (track_busy_origin(model, msg, next), cmd)
+  (
+    track_busy_origin(model, msg, next),
+    @cmd.batch([product_workspace_close_cmd(model, msg, next), cmd]),
+  )
 }
 
 ///|
@@ -1691,6 +1694,7 @@ fn update_here(
     model,
     sync_registry(model, msg, settle(model, msg, next)),
   )
+  let cmd = @cmd.batch([product_observation_cmd(model, msg, next), cmd])
   if next.language == "elm" &&
     !next.connected &&
     !next.samples_requested &&

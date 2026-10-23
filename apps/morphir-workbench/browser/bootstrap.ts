@@ -11,6 +11,7 @@ import { selectWorkbenchMode } from './session-mode.ts';
 import {openConnectedOriginals, type ConnectedOriginalsOpening} from './connected-originals.ts';
 import {ModelOriginalsConnectionLimits} from './model-originals-session.ts';
 import {parse as parseRelease} from '@std/semver';
+import {productObservation} from './product-observer.ts';
 
 const local = new LocalAdapter();
 const mode = selectWorkbenchMode(location.search, document.querySelector<HTMLMetaElement>('meta[name="morphir-host-mode"]')?.content);
@@ -116,4 +117,5 @@ globalThis.morphirWorkbench = {
   prepareOriginalsArchive,
 };
 window.addEventListener('pagehide', () => { ++generation; originalsOpening?.dispose(); originalsOpening = undefined; importer.dispose(); adapter.dispose?.(); local.cancel(); });
+productObservation.start(document);
 await import(new URL('./browser.js', import.meta.url).href);

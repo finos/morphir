@@ -1,4 +1,5 @@
 import type {RpcSocket} from '../../../pkgs/morphir-host/artifact-client/contracts.ts';
+import {productObservation} from './product-observer.ts';
 import {
   ModelOriginalsConnectionLimits, openModelOriginalsSession,
   type ModelOriginalsProject, type ModelOriginalsSession, type ModelOriginalsSource,
@@ -129,6 +130,7 @@ class OwnedOpening {
     if (!source) return 'ignored';
     const selection = {session: this.#state.session, source};
     this.#state = {kind: 'opening', ...selection};
+    productObservation.selected(this, 'source-selected', selection.session, source);
     this.#pending = this.#projects(selection);
     return 'started';
   }
@@ -146,6 +148,7 @@ class OwnedOpening {
     if (!project) return 'ignored';
     const selection = {session: this.#state.session, source: this.#state.source, project};
     this.#state = {kind: 'receiving', ...selection};
+    productObservation.selected(this, 'project-selected', selection.session, selection.source, project);
     this.#pending = this.#receive(selection);
     return 'started';
   }
@@ -157,6 +160,7 @@ class OwnedOpening {
         source: {providerId: selection.source.providerId, locator: selection.source.locator}, projectId: selection.project.projectId,
       }, sink, this.#options.makeHash, () => this.#current());
       if (!this.#active()) return;
+      productObservation.selected(this, 'transfer-verified', selection.session, selection.source, selection.project);
       const stage = new OriginalsStage(construction, sink.finish(result.capture),
         () => this.#current() && this.#state.kind === 'queued' && this.#state.stage === stage,
         () => {

@@ -2,6 +2,7 @@
   "name": "morphir-moonbit-tooling",
   "private": true,
   "type": "module",
+  "workspaces": ["apps/morphir-workbench"],
   "packageManager": "bun@1.4.4",
   "scripts": {
     "typecheck": "bun check",
@@ -9,6 +10,7 @@
     "test:types": "bun --check tools/typecheck-test.ts"
   },
   "devDependencies": {
+    "@morphir/moonbit-workbench": "workspace:*",
     "@resvg/resvg-js": "2.6.2",
     "@std/semver": "npm:@jsr/std__semver@1.0.8",
     "@types/bun": "1.4.4",
