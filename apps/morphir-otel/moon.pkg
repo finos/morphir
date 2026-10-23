@@ -6,6 +6,7 @@ import {
   "moonbitlang/core/string",
   "moonbitlang/x/sys",
   "moonbit-community/opentelemetry/interface/context",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/buffer",
   "moonrockz/ion/ion",

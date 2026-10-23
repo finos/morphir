@@ -12,7 +12,7 @@ interface Payload {
   resourceMetrics?: { scopeMetrics: { metrics: Metric[] }[] }[];
 }
 import assert from 'node:assert/strict';
-import {spawn,spawnSync} from 'node:child_process';
+import {spawn,spawnSync,type SpawnSyncReturns} from 'node:child_process';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {tmpdir,cpus,release} from 'node:os';
@@ -22,6 +22,12 @@ import {performance} from 'node:perf_hooks';
 const repo=fileURLToPath(new URL('../../../',import.meta.url));
 const home=process.env.MOON_HOME,binary=process.env.MORPHIR_OTEL_BINARY,pin=process.env.MORPHIR_OTEL_PIN;
 assert.ok(home&&binary&&pin,'Supply pinned compiler and explicit native adapter binary/pin');
+// Reject invalid CLI syntax/domain values before consuming a batch or exporting.
+for (const operands of [[],['--help'],['-h'],['--'],['--','http://127.0.0.1','http/json','1'],['--help','http/json','1'],['http://127.0.0.1','--help','1'],['http://127.0.0.1','http/json','--'],['http://127.0.0.1'],['http://127.0.0.1','http/json'],['http://127.0.0.1','http/json','1','extra'],['file:///tmp/local','http/json','1'],['http://127.0.0.1','grpc','1'],...['0','5001','bad','-1'].map(timeout=>['http://127.0.0.1','http/json',timeout])]) {
+  const result: SpawnSyncReturns<string>=spawnSync(binary,operands,{encoding:'utf8',input:'',timeout:5000});
+  assert.equal(result.error,undefined);assert.equal(result.status,1);assert.equal(result.stdout,'');
+  assert.equal(result.stderr,'observability.native_export_failed\n');
+}
 const root=mkdtempSync(join(tmpdir(),'morphir-native-telemetry-'));
 const receipts=resolve(process.env.MORPHIR_TELEMETRY_RECEIPTS||join(root,'receipts'));mkdirSync(receipts,{recursive:true});
 function run(program: string,args: string[],cwd=repo) {

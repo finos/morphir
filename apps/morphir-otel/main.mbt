@@ -4,6 +4,36 @@ suberror AdapterError {
 }
 
 ///|
+fn adapter_command() -> @argparse.Command {
+  @argparse.Command(
+    "morphir-otel",
+    about="Export an explicit bounded Ion batch to an HTTP telemetry endpoint",
+    disable_help_flag=true,
+    positionals=[
+      @argparse.PositionArg(
+        "ENDPOINT",
+        num_args=@argparse.ValueRange::single(),
+      ),
+      @argparse.PositionArg(
+        "PROTOCOL",
+        num_args=@argparse.ValueRange::single(),
+      ),
+      @argparse.PositionArg(
+        "TIMEOUT",
+        num_args=@argparse.ValueRange::single(),
+      ),
+    ],
+  )
+}
+
+///|
+fn adapter_arguments(argv : ArrayView[String]) -> @argparse.Matches raise {
+  // All three operands are application data. Preserve literal delimiters and
+  // control spellings while the library validates their exact arity.
+  adapter_command().parse(argv=["--"] + argv.to_owned(), env=Map([]))
+}
+
+///|
 fn field(value : @ion.IonValue, name : String) -> @ion.IonValue raise {
   guard value.kind() is Struct(fields) else { raise Invalid("record required") }
   let found = fields.filter(f => f.name.text() == Some(name))
@@ -46,20 +76,17 @@ fn context(record : @ion.IonValue, key : String) -> @common.SpanContext raise {
 ///|
 async fn main {
   try {
-    let args = @env.args()
-    guard args.length() == 4 else {
-      raise Invalid("endpoint protocol timeout required")
-    }
-    let endpoint = args[1]
+    let args = adapter_arguments(@env.args()[1:])
+    let endpoint = args.values["ENDPOINT"][0]
     guard endpoint.has_prefix("http://") || endpoint.has_prefix("https://") else {
       raise Invalid("explicit HTTP endpoint required")
     }
-    let protocol = match args[2] {
+    let protocol = match args.values["PROTOCOL"][0] {
       "http/json" => @otlp.HttpJson
       "http/protobuf" => @otlp.HttpBinary
       _ => raise Invalid("unsupported protocol")
     }
-    let timeout = @string.parse_int(args[3])
+    let timeout = @string.parse_int(args.values["TIMEOUT"][0])
     guard timeout > 0 && timeout <= 5000 else {
       raise Invalid("invalid flush allowance")
     }
