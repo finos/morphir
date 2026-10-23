@@ -22,13 +22,29 @@ on:
       - '.github/actions/**'
       - '.github/workflows/headless-cli.yml'
   workflow_dispatch:
+    inputs:
+      runners:
+        description: JSON array of runner labels, for example ["macos-15"]
+        required: false
+        type: string
+        default: ''
+  # qualification.yml calls this with runners '["macos-15"]' for its macOS lane.
+  workflow_call:
+    inputs:
+      runners:
+        description: JSON array of runner labels; empty uses the default runners
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
+# Pull requests share one group per ref and cancel older runs. Dispatch and called
+# runs get a group per run, so a nightly call never cancels or waits on a PR run.
 concurrency:
-  group: headless-cli-${{ github.ref }}
-  cancel-in-progress: true
+  group: headless-cli-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   headless:
@@ -38,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-latest]
+        os: ${{ fromJSON(inputs.runners || '["ubuntu-24.04","windows-latest"]') }}
     env:
       MORPHIR_HEADLESS_ONLY: '1'
       MORPHIR_MCK_REQUIRED: '1'

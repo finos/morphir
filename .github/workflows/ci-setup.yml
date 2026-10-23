@@ -1,0 +1,42 @@
+name: Toolchain setup
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: Runner label for the toolchain setup checks
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    name: Toolchain setup (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v6
+      # Exercise a fresh local-style install without the CI cache repair step.
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: http:moonbit bun
+          cache: false
+      - name: Verify the stock core after a fresh install
+        run: mise run setup:core
+      - name: Check the stock core and decimal parsing after a fresh install
+        run: mise run check:core
+      - name: Update Mooncakes registry for script dependencies
+        run: mise exec -- moon update
+      - name: Check MoonBit script execution
+        run: mise exec -- moonx scripts/ci-gate.mbtx --self-test
+      - name: Check repository tasks and failure propagation
+        run: mise exec -- moonx scripts/repository-tasks.mbtx --self-test
+      - name: Check pinned IR fixture regeneration
+        run: mise exec -- moonx scripts/refresh-ir-fixtures.mbtx --self-test
+      - name: Check Git hook installation in checkouts and worktrees
+        run: mise exec -- moonx scripts/setup-hooks.mbtx --self-test
+      - name: Check pre-push validation failures
+        run: mise exec -- moonx scripts/pre-push.mbtx --self-test
+      - name: Check pinned beads helper caching and arguments
+        run: mise exec -- moonx scripts/beads-plan.mbtx --self-test

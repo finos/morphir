@@ -144,11 +144,14 @@ description = "Test focused CI selection and fail-closed aggregate gates"
 run = [
   "actionlint",
   "moon run scripts/moonbit-core.mbtx --self-test",
-  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx scripts/ci-mise-impact.mbtx scripts/ci-reuse.mbtx",
+  "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx scripts/ci-mise-impact.mbtx scripts/ci-reuse.mbtx scripts/ci-platforms.mbtx scripts/ci-breach.mbtx",
   "moonx scripts/ci-changes.mbtx --self-test",
   "moonx scripts/ci-mise-impact.mbtx --self-test",
   "moonx scripts/ci-gate.mbtx --self-test",
   "moonx scripts/ci-reuse.mbtx --self-test",
+  "moonx scripts/ci-platforms.mbtx --self-test",
+  "moonx scripts/ci-platforms.mbtx",
+  "moonx scripts/ci-breach.mbtx --self-test",
   "moonx scripts/ci-measure.mbtx --self-test",
   "moonx scripts/beads-companion.mbtx --self-test",
   "moonx scripts/headless-host.mbtx --self-test",
@@ -169,6 +172,10 @@ run = "moonx scripts/ci-measure.mbtx"
 [tasks."ci:changes"]
 description = "Select focused CI jobs from the GitHub event and exact commits"
 run = "moonx scripts/ci-changes.mbtx --event"
+
+[tasks."ci:platforms"]
+description = "Fail when a merge-path CI job can get a macOS runner"
+run = "moonx scripts/ci-platforms.mbtx"
 
 [tasks."ci:gate"]
 description = "Require every selected CI job to pass"

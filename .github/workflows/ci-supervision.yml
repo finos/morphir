@@ -1,0 +1,29 @@
+name: Process supervision
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: Runner label for the process lifecycle test
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  supervision:
+    name: Process supervision (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.22.0'
+      - name: Set up Bun and portable runtime JavaScript
+        uses: ./.github/actions/setup-typescript
+      - name: Test process lifecycle
+        run: node apps/morphir/build-provider/test-supervision.mts

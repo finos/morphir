@@ -74,25 +74,15 @@ jobs:
 
   supervision:
     name: Process supervision (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
     needs: changes
     if: needs.changes.outputs.supervision == 'true'
-    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-      - name: Install Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: '24.22.0'
-      - name: Set up Bun and portable runtime JavaScript
-        uses: ./.github/actions/setup-typescript
-      - name: Test process lifecycle
-        run: node apps/morphir/build-provider/test-supervision.mts
+        os: [ubuntu-latest, windows-latest]
+    uses: ./.github/workflows/ci-supervision.yml
+    with:
+      runner: ${{ matrix.os }}
 
   embedding:
     name: Embedded Toolchain
@@ -283,6 +273,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.full == 'true'
     uses: ./.github/workflows/qualification.yml
+    # Merge paths never run macOS lanes; the nightly entry workflow runs them.
+    with:
+      macos: skip
 
   # The Elm and Scheme checks compile their own programs and do not use the output of the native
   # build, so they run beside `build` instead of after the native leg's steps.

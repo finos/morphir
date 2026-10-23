@@ -1,0 +1,498 @@
+///|
+/// Keep one GitHub issue per macOS qualification breach. The nightly report job
+/// passes the result of the qualification call: a failure opens the issue or
+/// comments on the open one, and a pass closes the open one. The exit status is
+/// non-zero when the arguments are invalid or a `gh` call fails.
+///
+/// `--dry-run` calls no `gh` command. It takes the open issue from
+/// `--open-issue N` (default: none) and prints the action and the text it
+/// would send.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+///|
+let breach_label : String = "macos-breach"
+
+///|
+let breach_title : String = "macOS qualification breach"
+
+///|
+let breach_label_about : String = "Nightly macOS qualification failed"
+
+///|
+let gh_timeout_ms : Int32 = 30000
+
+///|
+/// The result of the `qualification` call, as GitHub reports it in
+/// `needs.<job>.result`.
+enum CallResult {
+  Success
+  Failure
+  Cancelled
+  Skipped
+} derive(Eq, Debug)
+
+///|
+fn CallResult::parse(text : String) -> CallResult raise {
+  match text {
+    "success" => Success
+    "failure" => Failure
+    "cancelled" => Cancelled
+    "skipped" => Skipped
+    _ =>
+      fail(
+        "--result: expected success, failure, cancelled or skipped, got \{text}",
+      )
+  }
+}
+
+///|
+fn CallResult::to_string(self : CallResult) -> String {
+  match self {
+    Success => "success"
+    Failure => "failure"
+    Cancelled => "cancelled"
+    Skipped => "skipped"
+  }
+}
+
+///|
+/// A call that did not succeed is a breach. A skipped call counts: it means
+/// that something upstream of the call broke, and a failure must not stay silent.
+fn CallResult::is_breach(self : CallResult) -> Bool {
+  !(self is Success)
+}
+
+///|
+/// A full commit SHA: 40 or 64 lowercase hex digits.
+struct Sha(String) derive(Eq)
+
+///|
+fn Sha::parse(text : String) -> Sha raise {
+  guard (text.length() == 40 || text.length() == 64) &&
+    text.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+    fail("--sha: expected 40 or 64 lowercase hex digits, got \{text}")
+  }
+  Sha(text)
+}
+
+///|
+struct RunUrl(String) derive(Eq)
+
+///|
+fn RunUrl::parse(text : String) -> RunUrl raise {
+  guard text.has_prefix("https://") || text.has_prefix("http://") else {
+    fail("--run-url: expected an http(s) URL, got \{text}")
+  }
+  RunUrl(text)
+}
+
+///|
+/// The macOS mode of the run, `run` or `reuse`. It is empty when the evidence
+/// job failed before it could choose, which is itself reported as a breach.
+struct Mode(String) derive(Eq)
+
+///|
+fn Mode::label(self : Mode) -> String {
+  if self.0.is_empty() {
+    "unknown"
+  } else {
+    self.0
+  }
+}
+
+///|
+struct Report {
+  result : CallResult
+  run_url : RunUrl
+  sha : Sha
+  mode : Mode
+}
+
+///|
+enum BreachAction {
+  Open
+  Comment(Int32)
+  Close(Int32)
+  Nothing
+} derive(Eq, Debug)
+
+///|
+fn BreachAction::name(self : BreachAction) -> String {
+  match self {
+    Open => "open"
+    Comment(_) => "comment"
+    Close(_) => "close"
+    Nothing => "nothing"
+  }
+}
+
+///|
+fn BreachAction::issue(self : BreachAction) -> Int32? {
+  match self {
+    Comment(number) | Close(number) => Some(number)
+    Open | Nothing => None
+  }
+}
+
+///|
+/// One open issue at a time: a breach opens it only when none is open, later
+/// breaches comment on it, and a pass closes it.
+fn breach_action(result : CallResult, open_issue : Int32?) -> BreachAction {
+  match (result.is_breach(), open_issue) {
+    (true, None) => Open
+    (true, Some(number)) => Comment(number)
+    (false, Some(number)) => Close(number)
+    (false, None) => Nothing
+  }
+}
+
+///|
+/// The text of the issue, and of each later comment about a breach.
+fn breach_body(report : Report) -> String {
+  [
+    "\{breach_title}: the nightly macOS qualification did not pass (\{report.result.to_string()}).",
+    "",
+    "- Run: \{report.run_url.0}",
+    "- Commit: \{report.sha.0}",
+    "- macOS mode: \{report.mode.label()}",
+    "",
+    "This issue is closed by the next nightly run that passes.",
+  ].join("\n")
+}
+
+///|
+/// The comment that closes the issue after a passing run.
+fn close_body(report : Report) -> String {
+  [
+    "The nightly macOS qualification passed again, so this breach is over.",
+    "",
+    "- Run: \{report.run_url.0}",
+    "- Commit: \{report.sha.0}",
+    "- macOS mode: \{report.mode.label()}",
+  ].join("\n")
+}
+
+///|
+/// The issue number of an open breach issue, from the JSON that
+/// `gh issue list --json number` prints. With several, the lowest number wins.
+fn open_issue_from(json : Json) -> Int32? raise {
+  guard json is Array(items) else {
+    fail("gh issue list: expected a JSON array")
+  }
+  let mut lowest : Int32? = None
+  for item in items {
+    guard item is { "number": Number(number, ..), .. } else {
+      fail("gh issue list: item without a number")
+    }
+    let number = number.to_int()
+    if lowest is Some(known) && known <= number {
+      continue
+    }
+    lowest = Some(number)
+  }
+  lowest
+}
+
+///|
+async fn gh(args : Array[String]) -> String {
+  let label = (["gh"] + args.iter().take(2).collect()).join(" ")
+  let run = @async.with_timeout_opt(gh_timeout_ms, () => {
+    let (status, out, err) = @process.collect_output("gh", args)
+    (status, out.text(), err.text())
+  }) catch {
+    error => fail("\{label}: \{error}")
+  }
+  guard run is Some((status, out, err)) else {
+    fail("\{label}: timeout after \{gh_timeout_ms} ms")
+  }
+  guard status == 0 else {
+    fail("\{label} exited \{status}: \{err.trim().to_owned()}")
+  }
+  out
+}
+
+///|
+async fn find_open_issue() -> Int32? {
+  let out = gh([
+    "issue", "list", "--label", breach_label, "--state", "open", "--json", "number",
+    "--limit", "100",
+  ])
+  let json = @json.parse(out) catch {
+    _ => fail("gh issue list returned no JSON")
+  }
+  open_issue_from(json)
+}
+
+///|
+async fn apply(action : BreachAction, report : Report) -> Unit {
+  match action {
+    Open => {
+      // The label may not exist yet; `--force` makes this safe to repeat.
+      ignore(
+        gh([
+          "label", "create", breach_label, "--description", breach_label_about, "--force",
+        ]),
+      )
+      ignore(
+        gh([
+          "issue",
+          "create",
+          "--title",
+          breach_title,
+          "--label",
+          breach_label,
+          "--body",
+          breach_body(report),
+        ]),
+      )
+    }
+    Comment(number) =>
+      ignore(
+        gh([
+          "issue",
+          "comment",
+          number.to_string(),
+          "--body",
+          breach_body(report),
+        ]),
+      )
+    Close(number) =>
+      ignore(
+        gh([
+          "issue",
+          "close",
+          number.to_string(),
+          "--comment",
+          close_body(report),
+        ]),
+      )
+    Nothing => ()
+  }
+}
+
+///|
+struct Outcome {
+  action : BreachAction
+  report : Report
+  dry_run : Bool
+}
+
+///|
+fn Outcome::to_json(self : Outcome) -> Json {
+  {
+    "action": self.action.name(),
+    "issue": match self.action.issue() {
+      Some(number) => Json(number)
+      None => Json::null()
+    },
+    "result": self.report.result.to_string(),
+    "runUrl": self.report.run_url.0,
+    "sha": self.report.sha.0,
+    "mode": self.report.mode.label(),
+    "dryRun": self.dry_run,
+  }
+}
+
+///|
+fn Outcome::summary(self : Outcome) -> String {
+  let target = match self.action.issue() {
+    Some(number) => " #\{number}"
+    None => ""
+  }
+  let prefix = if self.dry_run {
+    "ci-breach (dry run): "
+  } else {
+    "ci-breach: "
+  }
+  "\{prefix}\{self.action.name()}\{target} (result \{self.report.result.to_string()})"
+}
+
+///|
+priv enum Mode_ {
+  SelfTest
+  Report(Report, open_issue~ : Int32?, dry_run~ : Bool, json~ : Bool)
+}
+
+///|
+fn breach_command() -> @argparse.Command {
+  @argparse.Command(
+    "ci-breach",
+    about="Open, update or close the macOS qualification breach issue",
+    flags=[
+      @argparse.FlagArg("self-test", about="Run the built-in tests", conflicts_with=[
+        "result", "run-url", "sha", "mode", "dry-run", "json", "open-issue",
+      ]),
+      @argparse.FlagArg(
+        "dry-run",
+        about="Print the action and call no gh command",
+      ),
+      @argparse.FlagArg("json", about="Print the outcome as one JSON line"),
+    ],
+    options=[
+      @argparse.OptionArg(
+        "result",
+        about="Result of the qualification call: success, failure, cancelled or skipped",
+      ),
+      @argparse.OptionArg("run-url", about="URL of this workflow run"),
+      @argparse.OptionArg("sha", about="Commit that the run qualified"),
+      @argparse.OptionArg("mode", about="macOS mode of the run (may be empty)"),
+      @argparse.OptionArg(
+        "open-issue",
+        about="With --dry-run: number of the open breach issue (default: none)",
+        requires=["dry-run"],
+      ),
+    ],
+  )
+}
+
+///|
+fn value(matches : @argparse.Matches, name : String) -> String raise {
+  match matches.values.get(name) {
+    Some([text]) => text
+    _ => fail("Missing --\{name}")
+  }
+}
+
+///|
+fn invocation(matches : @argparse.Matches) -> Mode_ raise {
+  let flag = (name : String) => matches.flags.get(name).unwrap_or(false)
+  if flag("self-test") {
+    return SelfTest
+  }
+  let report : Report = {
+    result: CallResult::parse(value(matches, "result")),
+    run_url: RunUrl::parse(value(matches, "run-url")),
+    sha: Sha::parse(value(matches, "sha")),
+    mode: Mode(matches.values.get("mode").map(v => v.join("")).unwrap_or("")),
+  }
+  let open_issue = match matches.values.get("open-issue") {
+    Some([text]) =>
+      Some(
+        @string.parse_int(text) catch {
+          _ => fail("--open-issue: expected an issue number, got \{text}")
+        },
+      )
+    _ => None
+  }
+  Report(report, open_issue~, dry_run=flag("dry-run"), json=flag("json"))
+}
+
+///|
+fn self_test() -> Unit raise {
+  let report : Report = {
+    result: Failure,
+    run_url: RunUrl("https://github.com/finos/morphir-moonbit/actions/runs/42"),
+    sha: Sha("0123456789abcdef0123456789abcdef01234567"),
+    mode: Mode("run"),
+  }
+  let cases : Array[(String, CallResult, Int32?, BreachAction)] = [
+    ("breach_first_failure_opens", Failure, None, Open),
+    ("breach_second_failure_comments", Failure, Some(12), Comment(12)),
+    ("breach_cancelled_counts", Cancelled, None, Open),
+    ("breach_skipped_counts", Skipped, None, Open),
+    ("breach_rerun_pass_closes", Success, Some(12), Close(12)),
+    ("breach_pass_without_issue", Success, None, Nothing),
+  ]
+  for case in cases {
+    let (name, result, open_issue, expected) = case
+    guard breach_action(result, open_issue) == expected else {
+      fail("\{name}: wrong action")
+    }
+  }
+  let body = breach_body(report)
+  for
+    part in [
+      "https://github.com/finos/morphir-moonbit/actions/runs/42", "0123456789abcdef0123456789abcdef01234567",
+      "run", "macOS qualification breach",
+    ] {
+    guard body.contains(part) else { fail("breach_body: missing \{part}") }
+  }
+  println("ci-breach: \{cases.length() + 1} breach cases pass")
+  // lookup_lowest_open: no issue, one issue, and several (the lowest wins).
+  guard open_issue_from([]) is None &&
+    open_issue_from([{ "number": 7 }]) == Some(7) &&
+    open_issue_from([{ "number": 9 }, { "number": 4 }, { "number": 6 }]) ==
+    Some(4) else {
+    fail("lookup_lowest_open: wrong issue number")
+  }
+  // outcome_json: the JSON line of one outcome.
+  let outcome : Outcome = { action: Comment(12), report, dry_run: true, }
+  guard outcome.to_json() ==
+    {
+      "action": "comment",
+      "issue": 12,
+      "result": "failure",
+      "runUrl": "https://github.com/finos/morphir-moonbit/actions/runs/42",
+      "sha": "0123456789abcdef0123456789abcdef01234567",
+      "mode": "run",
+      "dryRun": true,
+    } else {
+    fail("outcome_json: wrong shape")
+  }
+  println("ci-breach: issue lookup and outcome JSON pass")
+  cli_self_test()
+}
+
+///|
+fn cli_self_test() -> Unit raise {
+  let command = breach_command()
+  let base = [
+    "--result", "failure", "--run-url", "https://example.com/run/1", "--sha", "0123456789abcdef0123456789abcdef01234567",
+    "--mode", "run",
+  ]
+  let self_test = command.parse(argv=["--self-test"]) |> invocation
+  guard self_test is SelfTest else { fail("cli_argparse_forms: --self-test") }
+  let dry = command.parse(
+      argv=base + ["--dry-run", "--json", "--open-issue", "12"],
+    )
+    |> invocation
+  guard dry is Report(r, open_issue=Some(12), dry_run=true, json=true) &&
+    r.result == Failure else {
+    fail("cli_argparse_forms: full dry run")
+  }
+  for
+    argv in [
+      base.map(a => if a == "failure" { "bogus" } else { a }),
+      base + ["--open-issue", "12"],
+      base + ["--dry-run", "--open-issue", "x"],
+      base.map(a => if a.has_prefix("0123") { "XYZ" } else { a }),
+      base.map(a => if a.has_prefix("https") { "ftp://x" } else { a }),
+      ["--result", "success"],
+      ["--self-test", "--dry-run"],
+    ] {
+    let refused = try {
+      ignore(command.parse(argv~) |> invocation)
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else {
+      fail("cli_argparse_forms: accepted \{argv.join(" ")}")
+    }
+  }
+  println("ci-breach: argparse forms and refusals pass")
+}
+
+///|
+async fn main {
+  let invocation = breach_command().parse() |> invocation
+  guard invocation is Report(report, open_issue~, dry_run~, json~) else {
+    self_test()
+    return
+  }
+  let open_issue = if dry_run { open_issue } else { find_open_issue() }
+  let action = breach_action(report.result, open_issue)
+  let outcome : Outcome = { action, report, dry_run, }
+  if !dry_run {
+    apply(action, report)
+  }
+  println(if json { outcome.to_json().stringify() } else { outcome.summary() })
+}

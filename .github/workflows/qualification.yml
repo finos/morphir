@@ -2,76 +2,69 @@ name: Full qualification
 
 # Each run checks its exact github.sha. Release callers must use that candidate,
 # including the workflow's own artifacts, rather than a previous main result.
+#
+# Only entry workflows call this file, and they own its triggers and concurrency.
+# The macOS lanes are separate jobs that run only when the caller passes
+# `macos: run`, so pull request, merge queue and branch push callers pass
+# `macos: skip` and never get a macOS runner. `plan` refuses run and reuse on
+# those events, and `qualification-ok` binds the mode into the receipt.
 on:
-  schedule:
-    - cron: '23 3 * * *'
-  workflow_dispatch:
   workflow_call:
+    inputs:
+      macos:
+        description: macOS lanes mode, one of skip, run or reuse
+        required: true
+        type: string
+      macos-evidence:
+        description: JSON evidence reference, only for macOS mode reuse
+        type: string
+        default: ''
 
 permissions:
   contents: read
   attestations: read
 
-concurrency:
-  group: qualification-${{ github.sha }}-${{ github.event_name }}
-  cancel-in-progress: false
-
 jobs:
+  plan:
+    name: Plan macOS qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for pinned gate dependencies
+        run: moon update
+      - name: Check the macOS mode against the event
+        env:
+          CI_MACOS_MODE: ${{ inputs.macos }}
+          CI_MACOS_EVIDENCE: ${{ inputs.macos-evidence }}
+          EVENT: ${{ github.event_name }}
+        run: moonx scripts/ci-gate.mbtx --qualification-plan
+
   setup:
     name: Toolchain setup (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-      # Exercise a fresh local-style install without the CI cache repair step.
-      - uses: jdx/mise-action@v5
-        with:
-          install_args: http:moonbit bun
-          cache: false
-      - name: Verify the stock core after a fresh install
-        run: mise run setup:core
-      - name: Check the stock core and decimal parsing after a fresh install
-        run: mise run check:core
-      - name: Update Mooncakes registry for script dependencies
-        run: mise exec -- moon update
-      - name: Check MoonBit script execution
-        run: mise exec -- moonx scripts/ci-gate.mbtx --self-test
-      - name: Check repository tasks and failure propagation
-        run: mise exec -- moonx scripts/repository-tasks.mbtx --self-test
-      - name: Check pinned IR fixture regeneration
-        run: mise exec -- moonx scripts/refresh-ir-fixtures.mbtx --self-test
-      - name: Check Git hook installation in checkouts and worktrees
-        run: mise exec -- moonx scripts/setup-hooks.mbtx --self-test
-      - name: Check pre-push validation failures
-        run: mise exec -- moonx scripts/pre-push.mbtx --self-test
-      - name: Check pinned beads helper caching and arguments
-        run: mise exec -- moonx scripts/beads-plan.mbtx --self-test
-
-  native:
-    name: Full native (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15]
-    uses: ./.github/workflows/ci-native.yml
+        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-latest]
+    uses: ./.github/workflows/ci-setup.yml
     with:
       runner: ${{ matrix.os }}
+
+  native:
+    name: Full native (ubuntu-24.04)
+    uses: ./.github/workflows/ci-native.yml
+    with:
+      runner: ubuntu-24.04
       acceptance-lanes: '["compiler","frontend","conformance"]'
       provider: true
       full: true
 
   installed:
-    name: Full installed (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15]
+    name: Full installed (ubuntu-24.04)
     uses: ./.github/workflows/ci-installed.yml
     with:
-      runner: ${{ matrix.os }}
+      runner: ubuntu-24.04
       lifecycle: true
       telemetry: true
       workbench: true
@@ -80,21 +73,79 @@ jobs:
     name: Actual packaged fallback
     uses: ./.github/workflows/ci-packaged.yml
 
+  # Keep each macOS job's `if:` exactly `inputs.macos == 'run'`: the static guard
+  # (scripts/ci-platforms.mbtx) reads it to prove that merge-path callers skip it.
+  macos-setup:
+    name: Toolchain setup (macos-15)
+    needs: plan
+    if: inputs.macos == 'run'
+    uses: ./.github/workflows/ci-setup.yml
+    with:
+      runner: macos-15
+
+  macos-native:
+    name: Full native (macos-15)
+    needs: plan
+    if: inputs.macos == 'run'
+    uses: ./.github/workflows/ci-native.yml
+    with:
+      runner: macos-15
+      # Without provider, the inner gate drops provider-tools and installed-provider.
+      provider: true
+
+  macos-installed:
+    name: Full installed (macos-15)
+    needs: plan
+    if: inputs.macos == 'run'
+    uses: ./.github/workflows/ci-installed.yml
+    with:
+      runner: macos-15
+      lifecycle: true
+      telemetry: true
+      workbench: true
+
+  macos-supervision:
+    name: Process supervision (macos-15)
+    needs: plan
+    if: inputs.macos == 'run'
+    uses: ./.github/workflows/ci-supervision.yml
+    with:
+      runner: macos-15
+
+  macos-headless:
+    name: Headless CLI (macos-15)
+    needs: plan
+    if: inputs.macos == 'run'
+    uses: ./.github/workflows/headless-cli.yml
+    with:
+      runners: '["macos-15"]'
+
   qualification-ok:
     name: qualification-ok
     runs-on: ubuntu-latest
     if: always()
-    needs: [setup, native, installed, packaged]
+    needs:
+      - plan
+      - setup
+      - native
+      - installed
+      - packaged
+      - macos-setup
+      - macos-native
+      - macos-installed
+      - macos-supervision
+      - macos-headless
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for pinned gate dependencies
         run: moon update
-      - name: Require the full matrix and bind its candidate receipt
+      - name: Require the lanes of the macOS mode and bind its candidate receipt
         env:
           CI_NEEDS: ${{ toJSON(needs) }}
-          CI_REQUIRED_JOBS: '["setup","native","installed","packaged"]'
+          CI_MACOS_MODE: ${{ inputs.macos }}
+          CI_MACOS_EVIDENCE: ${{ inputs.macos-evidence }}
         run: moonx scripts/ci-gate.mbtx --qualification
       - name: Retain exact candidate qualification receipt
         uses: actions/upload-artifact@v7

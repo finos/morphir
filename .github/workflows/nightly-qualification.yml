@@ -1,0 +1,89 @@
+name: Nightly qualification
+
+# Entry workflow of the full qualification with the macOS lanes. It is the only
+# scheduled caller of qualification.yml, so macOS runners never run on a pull
+# request, merge queue or branch push. See qualification.yml for the modes.
+#
+# The `report` job keeps one `macos-breach` issue: a run that does not pass opens
+# it or comments on it, and a run that passes closes it.
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: 'macOS lanes: evidence reuses proven results when it can, run always runs them'
+        type: choice
+        options: [evidence, run]
+        default: evidence
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-qualification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # TODO(task 9): replace this with the evidence lookup. Until then every run
+  # runs the macOS lanes, whatever the dispatch input says.
+  evidence:
+    name: Choose the macOS mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      macos: ${{ steps.mode.outputs.macos }}
+    steps:
+      - id: mode
+        run: echo "macos=run" >> "$GITHUB_OUTPUT"
+
+  qualification:
+    name: Full qualification
+    needs: evidence
+    uses: ./.github/workflows/qualification.yml
+    with:
+      macos: ${{ needs.evidence.outputs.macos }}
+    permissions:
+      contents: read
+      attestations: read
+
+  report:
+    name: Report the breach issue
+    needs: [evidence, qualification]
+    # Fires on every outcome of the jobs above, so that a failure cannot stay
+    # silent. Only runs on main: a dispatch on another ref must not touch the issue.
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    env:
+      # An evidence job that did not succeed is a failure, even though the call
+      # was then skipped.
+      RESULT: ${{ needs.evidence.result == 'success' && needs.qualification.result || 'failure' }}
+      MODE: ${{ needs.evidence.outputs.macos }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-moonbit
+      - name: Update Mooncakes registry for the report script
+        run: moon update
+      # Open the issue or comment on it. A failure here fails the run.
+      - name: Report the breach
+        if: env.RESULT != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          moonx scripts/ci-breach.mbtx --result "$RESULT" --run-url "$RUN_URL"
+          --sha "$GITHUB_SHA" --mode "$MODE"
+      # Closing is housekeeping: the qualification passed, so a failed close
+      # must not turn the run red.
+      - name: Close the breach issue
+        if: env.RESULT == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          moonx scripts/ci-breach.mbtx --result "$RESULT" --run-url "$RUN_URL"
+          --sha "$GITHUB_SHA" --mode "$MODE"

@@ -136,7 +136,7 @@ The Bash/PowerShell task pairs and Python fixture generator have been removed.
 Toolchain installation still uses the small bootstrap in `tools/`; application
 compilers and tests retain their own languages. Run `mise run test:ci` for script
 formatting and automation regression checks. The existing qualification setup matrix
-also runs those regressions on Linux x64/ARM64, macOS and Windows.
+also runs those regressions on Linux x64/ARM64 and Windows, and on macOS in the nightly run.
 
 ## Common Workflows
 
@@ -212,14 +212,14 @@ postinstall runs the official installer for the pinned release, including the
 matching `moonbitlang/core` standard library and `moonx`. Local `mise install`
 and CI therefore use the same complete Unix toolchain. CI's setup action also
 repairs older cached installations before running `moon build` / `moon test`.
-Full qualification checks uncached mise installs on all three Unix platforms.
+Full qualification checks uncached mise installs on Linux x64 and ARM64, and on Apple Silicon in the nightly and release runs.
 
 ### Main CI Workflow (`.github/workflows/ci.yml`)
 
 - **Lint** runs YAML lint once. **Validate Configuration Files** lists the task configuration and runs `mise run validate:packages`. Local `mise run validate` still includes YAML lint.
 - **TypeScript** installs frozen dependencies, checks all projects and proves invalid types fail checked builds once on Linux. `setup-typescript` accepts `build-runtimes: 'false'` for static consumers; runtime consumers retain JavaScript emission by default.
 - **Build** retains Wasm, Wasm GC and JavaScript release CLI smoke tests and JavaScript Workbench checks. **Test** retains Wasm, Wasm GC, JavaScript and native workspace tests. Native qualification retains the separate native CLI artifact and MEP process checks.
-- **Process supervision** retains Linux, macOS and Windows execution whenever selected. Installed and signed-provider qualification retain their platform, trust and debug/release checks.
+- **Process supervision** retains Linux and Windows execution whenever selected, and macOS execution in the nightly and release qualification. Installed and signed-provider qualification retain their platform, trust and debug/release checks.
 - **ci-ok** requires every selected job to succeed and refuses any failed or cancelled dependency. A selected job that is missing or skipped fails the gate.
 
 ### Component selection
@@ -239,7 +239,7 @@ Full qualification checks uncached mise installs on all three Unix platforms.
 
 Shared inputs and combinations union their dependencies. Renames count both the old and new paths, including code moved to documentation. A manual run selects everything. Main pushes use a two-commit diff and PR/merge-queue events use the merge base. An unreachable push base selects everything. The separate Site workflow owns main deployment.
 
-CI policy, shared setup, workspace and mise toolchain changes still exercise full qualification. The known site workflows exercise the site build without native qualification. Further workflow narrowing requires a tested mapping. Scheduled full runs, uncached Linux x64/ARM64 and macOS toolchain installs, installed OS matrices and exact-candidate release qualification remain in `qualification.yml`.
+CI policy, shared setup, workspace and mise toolchain changes still exercise full qualification. The known site workflows exercise the site build without native qualification. Further workflow narrowing requires a tested mapping. Uncached Linux x64/ARM64 and macOS toolchain installs, installed OS matrices and exact-candidate release qualification remain in `qualification.yml`, which has no trigger of its own. Pull request, merge-queue and main runs call it with the macOS jobs skipped. The scheduled macOS runs are in `nightly-qualification.yml`.
 
 ### CI measurements and rollback
 

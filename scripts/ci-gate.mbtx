@@ -145,6 +145,7 @@ async fn self_test() -> Unit {
     fail("Accepted qualification for a different commit")
   }
   receipt_self_test()
+  qualification_self_test()
   cli_self_test()
   println(
     "ci-gate: success, optional skip and selected baseline refusal cases pass",
@@ -346,12 +347,296 @@ async fn merge_parent_self_test() -> Unit {
 }
 
 ///|
+fn evidence_fixture() -> EvidenceRef {
+  {
+    run: 39549808921L,
+    artifact: 4012345678L,
+    fingerprint: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    sha: "1111111111111111111111111111111111111111",
+  }
+}
+
+///|
+fn plans(
+  mode : MacosMode,
+  event : String,
+  ref_ : String,
+  evidence : EvidenceRef?,
+) -> Bool {
+  try {
+    plan_qualification(mode, event, ref_, evidence)
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+fn qualifies(needs : Json, mode : MacosMode) -> Bool {
+  try {
+    check_qualification(needs, mode)
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+/// Job results of a qualification run: every base job and every macOS job
+/// with the given result.
+fn qualification_needs(macos : String) -> Map[String, Json] {
+  let needs : Map[String, Json] = Map([])
+  for job in base_jobs {
+    needs.set(job, { "result": "success" })
+  }
+  for job in macos_jobs {
+    needs.set(job, { "result": macos })
+  }
+  needs
+}
+
+///|
+fn qualification_self_test() -> Unit raise {
+  let evidence = evidence_fixture()
+  // plan_rejects_merge_paths: only skip runs on a pull request, merge queue
+  // or branch push event.
+  let merge_paths = [
+    ("pull_request", "refs/pull/1/merge"),
+    ("pull_request_target", "refs/heads/main"),
+    ("merge_group", "refs/heads/gh-readonly-queue/main/pr-1-abc"),
+    ("push", "refs/heads/main"),
+  ]
+  for path in merge_paths {
+    let (event, ref_) = path
+    guard !plans(Run, event, ref_, None) &&
+      !plans(Reuse, event, ref_, Some(evidence)) else {
+      fail("Planned macOS lanes for \{event} on \{ref_}")
+    }
+    guard plans(Skip, event, ref_, None) else {
+      fail("Refused skip for \{event} on \{ref_}")
+    }
+  }
+  // plan_allows_release_and_nightly: a tag push, the schedule and a manual
+  // dispatch can run macOS.
+  for
+    path in [
+      ("push", "refs/tags/v1.0.0"),
+      ("schedule", "refs/heads/main"),
+      ("workflow_dispatch", "refs/heads/main"),
+    ] {
+    let (event, ref_) = path
+    guard plans(Run, event, ref_, None) else {
+      fail("Refused run for \{event} on \{ref_}")
+    }
+  }
+  // plan_reuse_needs_evidence: reuse needs a well-formed evidence reference,
+  // only reuse takes one, and a release never reuses.
+  guard !plans(Reuse, "schedule", "refs/heads/main", None) else {
+    fail("Planned reuse without evidence")
+  }
+  guard plans(Reuse, "schedule", "refs/heads/main", Some(evidence)) &&
+    plans(Reuse, "workflow_dispatch", "refs/heads/main", Some(evidence)) else {
+    fail("Refused reuse with evidence")
+  }
+  guard !plans(Reuse, "push", "refs/tags/v1.0.0", Some(evidence)) else {
+    fail("Planned reuse for a release")
+  }
+  guard !plans(Run, "schedule", "refs/heads/main", Some(evidence)) &&
+    !plans(Skip, "pull_request", "refs/pull/1/merge", Some(evidence)) else {
+    fail("Accepted evidence for a mode other than reuse")
+  }
+  guard EvidenceRef::parse(evidence.to_json()) == evidence &&
+    evidence_input(Some(evidence.to_json().stringify())) == Some(evidence) &&
+    evidence_input(None) is None &&
+    evidence_input(Some("")) is None else {
+    fail("Evidence reference does not round-trip")
+  }
+  fn changed(key : String, value : Json) -> Json {
+    guard evidence.to_json() is Object(fields) else { return Json::null() }
+    let fields = Map::from_iter(fields.iter())
+    fields.set(key, value)
+    Json::object(fields)
+  }
+
+  let bad_evidence : Array[Json] = [
+    Json::null(),
+    {},
+    changed("fingerprint", "0123"),
+    changed(
+      "fingerprint", "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+    ),
+    changed("sha", "abc"),
+    changed("run", "39549808921"),
+    changed("run", 1.5),
+    changed("artifact", 0),
+  ]
+  for json in bad_evidence {
+    let refused = try {
+      ignore(EvidenceRef::parse(json))
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else { fail("Accepted bad evidence \{json.stringify()}") }
+  }
+  let refused = try {
+    ignore(evidence_input(Some("not json")))
+    false
+  } catch {
+    _ => true
+  }
+  guard refused else { fail("Accepted evidence that is not JSON") }
+  // plan_rejects_unknown_mode: only skip, run and reuse are modes.
+  for text in ["", "always"] {
+    let refused = try {
+      ignore(MacosMode::parse(text))
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else { fail("Accepted macOS mode \{text.escape()}") }
+  }
+  for mode in [Skip, Run, Reuse] {
+    guard MacosMode::parse(mode.to_string()) == mode else {
+      fail("macOS mode \{mode.to_string()} does not round-trip")
+    }
+  }
+  // gate_skip_mode: skip and reuse need all five macOS jobs skipped.
+  let skipped = qualification_needs("skipped")
+  for mode in [Skip, Reuse] {
+    guard qualifies(Json::object(skipped), mode) else {
+      fail("Refused \{mode.to_string()} with all macOS jobs skipped")
+    }
+    for job in macos_jobs {
+      let ran = qualification_needs("skipped")
+      ran.set(job, { "result": "success" })
+      let missing = qualification_needs("skipped")
+      missing.remove(job)
+      guard !qualifies(Json::object(ran), mode) &&
+        !qualifies(Json::object(missing), mode) else {
+        fail("Accepted \{mode.to_string()} with \{job} run or missing")
+      }
+    }
+  }
+  // gate_run_mode: run needs all five macOS jobs successful.
+  guard qualifies(Json::object(qualification_needs("success")), Run) else {
+    fail("Refused run with all macOS jobs successful")
+  }
+  for job in macos_jobs {
+    for state in ["skipped", "cancelled", "failure"] {
+      let needs = qualification_needs("success")
+      needs.set(job, { "result": state })
+      guard !qualifies(Json::object(needs), Run) else {
+        fail("Accepted run with \{job} \{state}")
+      }
+    }
+    let missing = qualification_needs("success")
+    missing.remove(job)
+    guard !qualifies(Json::object(missing), Run) else {
+      fail("Accepted run with \{job} missing")
+    }
+  }
+  // gate_plan_required: a failed, skipped or missing plan fails every mode.
+  for case in [(Skip, "skipped"), (Reuse, "skipped"), (Run, "success")] {
+    let (mode, macos) = case
+    for state in ["failure", "skipped", "cancelled"] {
+      let needs = qualification_needs(macos)
+      needs.set("plan", { "result": state })
+      guard !qualifies(Json::object(needs), mode) else {
+        fail("Accepted \{mode.to_string()} with plan \{state}")
+      }
+    }
+    let missing = qualification_needs(macos)
+    missing.remove("plan")
+    guard !qualifies(Json::object(missing), mode) else {
+      fail("Accepted \{mode.to_string()} without plan")
+    }
+  }
+  // receipt_v2_fields: the v2 receipt records the mode, the evidence and the
+  // fixed job list.
+  let env = {
+    revision: "1111111111111111111111111111111111111111",
+    repository: "finos/morphir-moonbit",
+    run_id: "39549808921",
+    run_attempt: "1",
+  }
+  for
+    case in [
+      (Skip, None, "skipped"),
+      (Run, None, "success"),
+      (Reuse, Some(evidence), "skipped"),
+    ] {
+    let (mode, evidence, macos) = case
+    let needs = Json::object(qualification_needs(macos))
+    let expected : Json = {
+      "profile": "morphir-ci-qualification-v2",
+      "revision": "1111111111111111111111111111111111111111",
+      "repository": "finos/morphir-moonbit",
+      "runId": "39549808921",
+      "runAttempt": "1",
+      "macos": mode.to_string(),
+      "macosEvidence": match evidence {
+        Some(evidence) => evidence.to_json()
+        None => Json::null()
+      },
+      "requiredJobs": qualification_required(mode),
+      "results": needs,
+    }
+    guard qualification_receipt(needs, mode, evidence, env) == expected else {
+      fail("Wrong \{mode.to_string()} qualification receipt")
+    }
+  }
+  guard qualification_required(Run) == Json(base_jobs + macos_jobs) &&
+    qualification_required(Skip) == Json(base_jobs) &&
+    qualification_required(Reuse) == Json(base_jobs) else {
+    fail("Wrong fixed qualification job lists")
+  }
+  for
+    case in [
+      (Run, None, "skipped"),
+      (Skip, None, "success"),
+      (Reuse, None, "skipped"),
+    ] {
+    let (mode, evidence, macos) = case
+    let refused = try {
+      ignore(
+        qualification_receipt(
+          Json::object(qualification_needs(macos)),
+          mode,
+          evidence,
+          env,
+        ),
+      )
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else {
+      fail("Wrote a \{mode.to_string()} receipt for a failed gate")
+    }
+  }
+  let ion = @binary.read_binary_value(
+    qualification_ion(
+      qualification_receipt(Json::object(skipped), Skip, None, env),
+    ),
+  )
+  guard ion.annotations().map(token => token.text) ==
+    [Some("morphir_ci_qualification_v2")] else {
+    fail("Wrong qualification receipt annotation")
+  }
+  println(
+    "ci-gate: qualification plan, macOS modes, fixed job lists and v2 receipt pass",
+  )
+}
+
+///|
 fn cli_self_test() -> Unit raise {
   let command = gate_command()
   let cases : Array[(Array[String], String, String?)] = [
     ([], "check", None),
     (["--self-test"], "self-test", None),
     (["--qualification"], "qualification", None),
+    (["--qualification-plan"], "qualification-plan", None),
     (["--native"], "native", None),
     (["--installed"], "installed", None),
     (
@@ -373,6 +658,8 @@ fn cli_self_test() -> Unit raise {
       ["--native", "--installed"],
       ["--receipt"],
       ["--native", "--receipt", "x"],
+      ["--qualification-plan", "--qualification"],
+      ["--qualification-plan", "--receipt", "x"],
     ] {
     let refused = try {
       ignore(command.parse(argv~))
@@ -457,6 +744,218 @@ fn selected_jobs(mode : String, inputs : Json) -> Json raise {
     fail("Unknown workflow mode")
   }
   Json(jobs)
+}
+
+///|
+/// How a qualification run treats the macOS lanes: `skip` them, `run` them,
+/// or `reuse` recorded evidence of an earlier run instead of running them.
+priv enum MacosMode {
+  Skip
+  Run
+  Reuse
+} derive(Eq)
+
+///|
+fn MacosMode::parse(text : String) -> MacosMode raise {
+  match text {
+    "skip" => Skip
+    "run" => Run
+    "reuse" => Reuse
+    _ =>
+      fail("Unknown macOS mode \{text.escape()}; expected skip, run or reuse")
+  }
+}
+
+///|
+fn MacosMode::to_string(self : MacosMode) -> String {
+  match self {
+    Skip => "skip"
+    Run => "run"
+    Reuse => "reuse"
+  }
+}
+
+///|
+/// The evidence artifact of an earlier macOS run that a `reuse` run relies on.
+priv struct EvidenceRef {
+  run : Int64
+  artifact : Int64
+  fingerprint : String
+  sha : String
+} derive(Eq)
+
+///|
+fn is_lower_hex(text : String, length : Int32) -> Bool {
+  text.length() == length &&
+  text.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
+}
+
+///|
+fn EvidenceRef::parse(json : Json) -> EvidenceRef raise {
+  fn id(value : Json?, name : String) -> Int64 raise {
+    guard value is Some(Number(n, ..)) &&
+      n >= 1.0 &&
+      n <= 9007199254740991.0 &&
+      n == n.floor() else {
+      fail("Evidence \{name} must be a positive integer")
+    }
+    n.to_int64()
+  }
+
+  guard json is Object(fields) else {
+    fail("Evidence reference must be an object")
+  }
+  guard fields.get("fingerprint") is Some(String(fingerprint)) &&
+    is_lower_hex(fingerprint, 64) else {
+    fail("Evidence fingerprint must be 64 lowercase hex digits")
+  }
+  guard fields.get("sha") is Some(String(sha)) && is_lower_hex(sha, 40) else {
+    fail("Evidence sha must be 40 lowercase hex digits")
+  }
+  {
+    run: id(fields.get("run"), "run"),
+    artifact: id(fields.get("artifact"), "artifact"),
+    fingerprint,
+    sha,
+  }
+}
+
+///|
+fn EvidenceRef::to_json(self : EvidenceRef) -> Json {
+  {
+    "run": Json::number(self.run.to_double()),
+    "artifact": Json::number(self.artifact.to_double()),
+    "fingerprint": self.fingerprint,
+    "sha": self.sha,
+  }
+}
+
+///|
+/// `CI_MACOS_EVIDENCE`: empty or absent, or a JSON evidence reference.
+fn evidence_input(text : String?) -> EvidenceRef? raise {
+  match text {
+    None | Some("") => None
+    Some(text) => Some(EvidenceRef::parse(@json.parse(text)))
+  }
+}
+
+///|
+/// Only `reuse` takes an evidence reference, and it needs one.
+fn MacosMode::check_evidence(
+  self : MacosMode,
+  evidence : EvidenceRef?,
+) -> Unit raise {
+  match (self, evidence) {
+    (Reuse, None) => fail("macOS mode reuse needs CI_MACOS_EVIDENCE")
+    (Reuse, Some(_)) | (_, None) => ()
+    (_, Some(_)) =>
+      fail(
+        "CI_MACOS_EVIDENCE is only for macOS mode reuse, not \{self.to_string()}",
+      )
+  }
+}
+
+///|
+/// Jobs that every qualification run must pass.
+let base_jobs : Array[String] = [
+  "plan", "setup", "native", "installed", "packaged",
+]
+
+///|
+/// The macOS lanes: all `success` in mode `run`, all `skipped` otherwise.
+let macos_jobs : Array[String] = [
+  "macos-setup", "macos-native", "macos-installed", "macos-supervision", "macos-headless",
+]
+
+///|
+/// Check the macOS mode against the event before any macOS lane starts. Pull
+/// requests, the merge queue and branch pushes only skip. The schedule and a
+/// manual dispatch can run or reuse; a tag push, the release trigger, can run
+/// but never reuse. Any other event only skips.
+fn plan_qualification(
+  mode : MacosMode,
+  event : String,
+  ref_ : String,
+  evidence : EvidenceRef?,
+) -> Unit raise {
+  mode.check_evidence(evidence)
+  guard mode != Skip else { return }
+  let release = event == "push" && ref_.has_prefix("refs/tags/")
+  let nightly = event == "schedule" || event == "workflow_dispatch"
+  guard release || nightly else {
+    fail(
+      "macOS mode \{mode.to_string()} is not allowed for \{event} on \{ref_}",
+    )
+  }
+  guard !(release && mode == Reuse) else {
+    fail("A release must run macOS, not reuse evidence")
+  }
+}
+
+///|
+/// The jobs that must succeed in a qualification run of this mode.
+fn qualification_required(mode : MacosMode) -> Json {
+  match mode {
+    Run => Json(base_jobs + macos_jobs)
+    Skip | Reuse => Json(base_jobs)
+  }
+}
+
+///|
+/// Mode `run` needs every base and macOS job successful. Modes `skip` and
+/// `reuse` need every base job successful and every macOS job skipped.
+fn check_qualification(needs : Json, mode : MacosMode) -> Unit raise {
+  check(needs, qualification_required(mode))
+  guard mode != Run && needs is Object(jobs) else { return }
+  for job in macos_jobs {
+    guard jobs.get(job) is Some(Object(result)) &&
+      result.get("result") == Some(Json::string("skipped")) else {
+      fail("macOS job must be skipped in mode \{mode.to_string()}: \{job}")
+    }
+  }
+}
+
+///|
+/// Wire values of the qualification receipt read from the workflow environment.
+priv struct QualificationEnv {
+  revision : String
+  repository : String
+  run_id : String
+  run_attempt : String
+}
+
+///|
+/// The v2 qualification receipt, only for a run that passed its gate.
+fn qualification_receipt(
+  needs : Json,
+  mode : MacosMode,
+  evidence : EvidenceRef?,
+  env : QualificationEnv,
+) -> Json raise {
+  mode.check_evidence(evidence)
+  check_qualification(needs, mode)
+  {
+    "profile": "morphir-ci-qualification-v2",
+    "revision": env.revision,
+    "repository": env.repository,
+    "runId": env.run_id,
+    "runAttempt": env.run_attempt,
+    "macos": mode.to_string(),
+    "macosEvidence": match evidence {
+      Some(evidence) => evidence.to_json()
+      None => Json::null()
+    },
+    "requiredJobs": qualification_required(mode),
+    "results": needs,
+  }
+}
+
+///|
+fn qualification_ion(receipt : Json) -> Bytes raise {
+  @ion_json.to_ion(receipt).with_annotations([
+    @ion.SymbolToken::new("morphir_ci_qualification_v2"),
+  ])
+  |> @binary.write_binary_value
 }
 
 ///|
@@ -628,12 +1127,11 @@ async fn receipt_env() -> ReceiptEnv {
 
 ///|
 fn gate_command() -> @argparse.Command {
-  let modes = ["self-test", "qualification", "native", "installed"]
   fn mode_flag(name : String, about : String) -> @argparse.FlagArg {
     @argparse.FlagArg(
       name,
       about~,
-      conflicts_with=modes.filter(mode => mode != name) + ["receipt"],
+      conflicts_with=gate_modes.filter(mode => mode != name) + ["receipt"],
     )
   }
 
@@ -643,6 +1141,9 @@ fn gate_command() -> @argparse.Command {
     flags=[
       mode_flag("self-test", "Run the built-in tests"),
       mode_flag("qualification", "Write a qualification receipt"),
+      mode_flag(
+        "qualification-plan", "Check the macOS mode of a qualification run",
+      ),
       mode_flag("native", "Gate the reusable native workflow"),
       mode_flag("installed", "Gate the reusable installed workflow"),
     ],
@@ -656,8 +1157,13 @@ fn gate_command() -> @argparse.Command {
 }
 
 ///|
+let gate_modes : Array[String] = [
+  "self-test", "qualification", "qualification-plan", "native", "installed",
+]
+
+///|
 fn gate_mode(matches : @argparse.Matches) -> String {
-  for mode in ["self-test", "qualification", "native", "installed"] {
+  for mode in gate_modes {
     if matches.flags.get(mode).unwrap_or(false) {
       return mode
     }
@@ -674,6 +1180,25 @@ fn receipt_path(matches : @argparse.Matches) -> String? {
 }
 
 ///|
+/// `--qualification`: gate the run by its macOS mode, then write the v2
+/// receipt for the candidate commit.
+async fn qualify(needs : Json) -> Unit {
+  let mode = MacosMode::parse(environment("CI_MACOS_MODE"))
+  let evidence = evidence_input(optional_environment("CI_MACOS_EVIDENCE"))
+  let revision = environment("GITHUB_SHA")
+  let receipt = qualification_receipt(needs, mode, evidence, {
+    revision,
+    repository: environment("GITHUB_REPOSITORY"),
+    run_id: environment("GITHUB_RUN_ID"),
+    run_attempt: environment("GITHUB_RUN_ATTEMPT"),
+  })
+  verify_candidate(revision)
+  @fs.mkdir(".dev/qualification", recursive=true)
+  @fs.write_file(".dev/qualification/receipt.ionb", qualification_ion(receipt))
+  println(receipt.stringify())
+}
+
+///|
 async fn main {
   let matches = gate_command().parse()
   let mode = gate_mode(matches)
@@ -681,38 +1206,31 @@ async fn main {
     self_test()
     return
   }
-  let needs = @json.parse(environment("CI_NEEDS"))
-  let required = if mode == "native" || mode == "installed" {
-    selected_jobs("--" + mode, @json.parse(environment("CI_INPUTS")))
-  } else {
-    @json.parse(environment("CI_REQUIRED_JOBS"))
-  }
-  check(needs, required)
-  if mode == "qualification" {
-    let revision = environment("GITHUB_SHA")
-    verify_candidate(revision)
-    let receipt : Json = {
-      "profile": "morphir-ci-qualification-v1",
-      "revision": revision,
-      "repository": environment("GITHUB_REPOSITORY"),
-      "runId": environment("GITHUB_RUN_ID"),
-      "runAttempt": environment("GITHUB_RUN_ATTEMPT"),
-      "requiredJobs": required,
-      "results": needs,
-    }
-    @fs.mkdir(".dev/qualification", recursive=true)
-    let ion = @ion_json.to_ion(receipt).with_annotations([
-      @ion.SymbolToken::new("morphir_ci_qualification_v1"),
-    ])
-    @fs.write_file(
-      ".dev/qualification/receipt.ionb",
-      @binary.write_binary_value(ion),
+  if mode == "qualification-plan" {
+    let macos = MacosMode::parse(environment("CI_MACOS_MODE"))
+    plan_qualification(
+      macos,
+      environment("EVENT"),
+      environment("GITHUB_REF"),
+      evidence_input(optional_environment("CI_MACOS_EVIDENCE")),
     )
-    println(receipt.stringify())
+    println(Json::object({ "macos": macos.to_string() }).stringify())
+    return
   }
-  if receipt_path(matches) is Some(path) {
-    let selection = @json.parse(environment("CI_SELECTION"))
-    write_receipt(path, needs, required, selection, receipt_env())
+  let needs = @json.parse(environment("CI_NEEDS"))
+  if mode == "qualification" {
+    qualify(needs)
+  } else {
+    let required = if mode == "native" || mode == "installed" {
+      selected_jobs("--" + mode, @json.parse(environment("CI_INPUTS")))
+    } else {
+      @json.parse(environment("CI_REQUIRED_JOBS"))
+    }
+    check(needs, required)
+    if receipt_path(matches) is Some(path) {
+      let selection = @json.parse(environment("CI_SELECTION"))
+      write_receipt(path, needs, required, selection, receipt_env())
+    }
   }
   println("All selected checks passed; unselected checks may be skipped.")
 }

@@ -1,0 +1,998 @@
+///|
+/// Fail when a job that a merge-path event can reach can get a macOS runner, or
+/// when the guard cannot tell. Merge paths are pull_request,
+/// pull_request_target, merge_group and a push with branches or no filter; a
+/// tags-only push is a release trigger. Local `uses:` calls are followed with
+/// the caller's `with` values as the callee's inputs. Prints one line per
+/// violation, or with --json one JSON object; exits 1 when there are any.
+import {
+  "moonbit-community/yaml@0.0.8",
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/fs",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+let default_workflows : String = ".github/workflows"
+
+///|
+/// A workflow file name in the workflow directory, such as `ci.yml`.
+struct WorkflowFile(String) derive(Eq, Hash)
+
+///|
+/// A job key under `jobs:`.
+struct JobId(String) derive(Eq)
+
+///|
+enum ViolationReason {
+  MacosRunner
+  Unresolvable
+} derive(Eq)
+
+///|
+fn ViolationReason::name(self : ViolationReason) -> String {
+  match self {
+    MacosRunner => "MacosRunner"
+    Unresolvable => "Unresolvable"
+  }
+}
+
+///|
+/// `path` names the call chain from the merge-path entry workflow, then the
+/// field that holds `value`.
+struct Violation {
+  workflow : WorkflowFile
+  job : JobId
+  path : String
+  reason : ViolationReason
+  value : String
+}
+
+///|
+fn Violation::render(self : Violation) -> String {
+  let reason = match self.reason {
+    MacosRunner => "macOS runner \{self.value}"
+    Unresolvable => "cannot resolve \{self.value}"
+  }
+  "\{self.workflow.0}: \{self.job.0}: \{self.path}: \{reason}"
+}
+
+///|
+fn Violation::to_json(self : Violation) -> Json {
+  {
+    "workflow": self.workflow.0,
+    "job": self.job.0,
+    "path": self.path,
+    "reason": self.reason.name(),
+    "value": self.value,
+  }
+}
+
+///|
+fn report_json(violations : Array[Violation]) -> Json {
+  {
+    "violations": Json::array(violations.map(violation => violation.to_json())),
+  }
+}
+
+///|
+/// One workflow document with an `on` key. The YAML 1.2 parser keeps `on` a
+/// string key; YAML 1.1 would read it as `true`.
+fn parse_workflow(file : WorkflowFile, text : String) -> Json raise {
+  guard @yaml.Yaml::load_from_string(text).map(document => document.to_json())
+    is [Object(fields) as workflow] &&
+    fields.contains("on") else {
+    fail("\{file.0}: expected one workflow document with an `on` key")
+  }
+  workflow
+}
+
+///|
+async fn load_workflows(directory : String) -> Map[WorkflowFile, Json] {
+  let names = @fs.readdir(directory).filter(name => {
+    name.has_suffix(".yml") || name.has_suffix(".yaml")
+  })
+  names.sort()
+  let workflows : Map[WorkflowFile, Json] = Map([])
+  for name in names {
+    let file = WorkflowFile(name)
+    workflows.set(
+      file,
+      parse_workflow(file, @fs.read_file("\{directory}/\{name}").text()),
+    )
+  }
+  workflows
+}
+
+///|
+/// Whether `event` with its filter can run for a pull request, the merge queue
+/// or a branch push. A push filtered only by tags is a release trigger.
+fn merge_path_event(event : String, filter : Json) -> Bool {
+  match event {
+    "pull_request" | "pull_request_target" | "merge_group" => true
+    "push" =>
+      !(filter is Object(fields) &&
+      !fields.contains("branches") &&
+      !fields.contains("branches-ignore") &&
+      (fields.contains("tags") || fields.contains("tags-ignore")))
+    _ => false
+  }
+}
+
+///|
+/// `on` as an event name, a list of names or a map of events to filters.
+fn merge_path_triggered(on : Json) -> Bool {
+  match on {
+    String(event) => merge_path_event(event, Json::null())
+    Array(events) =>
+      events
+      .iter()
+      .any(event => {
+        event is String(event) && merge_path_event(event, Json::null())
+      })
+    Object(events) => {
+      for event, filter in events {
+        if merge_path_event(event, filter) {
+          return true
+        }
+      }
+      false
+    }
+    _ => false
+  }
+}
+
+///|
+/// The labels a value can take, or the text that the guard cannot resolve.
+priv enum Resolved {
+  Known(Array[String])
+  Unknown(String)
+}
+
+///|
+/// Known when every part is known: their labels together.
+fn Resolved::all(parts : Array[Resolved]) -> Resolved {
+  let labels = []
+  for part in parts {
+    match part {
+      Known(more) => labels.append(more)
+      Unknown(_) => return part
+    }
+  }
+  Known(labels)
+}
+
+///|
+/// The inner expression when `text` is exactly one `${{ ... }}`.
+fn whole_expression(text : String) -> String? {
+  guard text.trim().strip_prefix("${{") is Some(rest) &&
+    rest.strip_suffix("}}") is Some(inner) &&
+    !inner.contains("${{") &&
+    !inner.contains("}}") else {
+    return None
+  }
+  Some(inner.trim().to_owned())
+}
+
+///|
+/// `key` when `expression` is exactly `<context>.<key>`.
+fn context_key(expression : StringView, context : String) -> String? {
+  guard expression.strip_prefix(context + ".") is Some(key) &&
+    !key.is_empty() &&
+    key
+    .iter()
+    .all(c => {
+      (c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9') ||
+      c == '-' ||
+      c == '_'
+    }) else {
+    return None
+  }
+  Some(key.to_owned())
+}
+
+///|
+/// The text of a single-quoted expression literal, with `''` read as `'`.
+fn quoted_literal(text : StringView) -> String? {
+  guard text.strip_prefix("'") is Some(rest) &&
+    rest.strip_suffix("'") is Some(inner) else {
+    return None
+  }
+  Some(inner.to_owned().replace_all(old="''", new="'"))
+}
+
+///|
+/// The input name and default of `fromJSON(inputs.<name> || '<literal>')`.
+fn fromjson_default(expression : String) -> (String, String)? {
+  guard expression.strip_prefix("fromJSON(") is Some(rest) &&
+    rest.strip_suffix(")") is Some(body) &&
+    body.find("||") is Some(at) &&
+    context_key(body[:at].trim(), "inputs") is Some(name) &&
+    quoted_literal(body[at + 2:].trim()) is Some(literal) else {
+    return None
+  }
+  Some((name, literal))
+}
+
+///|
+/// The labels in JSON text that holds a string or an array of strings.
+fn json_labels(text : String) -> Resolved {
+  let parsed = @json.parse(text) catch { _ => return Unknown(text) }
+  match parsed {
+    String(label) => Known([label])
+    Array(items) =>
+      Resolved::all(
+        items.map(item => {
+          match item {
+            String(label) => Known([label])
+            _ => Unknown(text)
+          }
+        }),
+      )
+    _ => Unknown(text)
+  }
+}
+
+///|
+/// The `if:` that keeps a qualification.yml job off merge paths when every
+/// caller passes `macos: skip`.
+let macos_run_condition : String = "inputs.macos == 'run'"
+
+///|
+fn guarded_by_macos_mode(condition : String) -> Bool {
+  whole_expression(condition).unwrap_or(condition.trim().to_owned()) ==
+  macos_run_condition
+}
+
+///|
+/// One way to reach a workflow: the caller jobs from the merge-path entry
+/// workflow and the inputs that the last caller passes. A workflow that a
+/// merge-path event triggers directly has no callers and no inputs.
+priv struct Call {
+  callers : Array[(WorkflowFile, JobId)]
+  inputs : Map[String, Resolved]
+}
+
+///|
+fn Call::path(self : Call, field : String) -> String {
+  let parts = self.callers.map(caller => "\{caller.0.0}/\{caller.1.0}")
+  parts.push(field)
+  parts.join(" > ")
+}
+
+///|
+/// Accepted forms: literals, `matrix.<key>` over literal values,
+/// `inputs.<name>` that the caller passes, and
+/// `fromJSON(inputs.<name> || '<literal>')`.
+fn Call::resolve(self : Call, value : Json, matrix : Json?) -> Resolved {
+  match value {
+    String(text) =>
+      match whole_expression(text) {
+        Some(expression) => self.resolve_expression(expression, matrix)
+        None if text.contains("${{") => Unknown(text)
+        None => Known([text])
+      }
+    Array(items) => Resolved::all(items.map(item => self.resolve(item, matrix)))
+    // GitHub passes an empty value, such as `with: { runners: }`, as ''.
+    Null => Known([""])
+    Object(_) => Unknown(value.stringify())
+    _ => Known([value.stringify()])
+  }
+}
+
+///|
+fn Call::resolve_expression(
+  self : Call,
+  expression : String,
+  matrix : Json?,
+) -> Resolved {
+  let text = "${{ \{expression} }}"
+  if context_key(expression, "matrix") is Some(key) {
+    return self.resolve_matrix(key, matrix, text)
+  }
+  if context_key(expression, "inputs") is Some(name) {
+    return self.inputs.get(name).unwrap_or(Unknown(text))
+  }
+  guard fromjson_default(expression) is Some((name, default)) else {
+    return Unknown(text)
+  }
+  match self.inputs.get(name) {
+    None => json_labels(default)
+    Some(Unknown(_)) as unknown => unknown.unwrap()
+    Some(Known([])) => json_labels(default)
+    Some(Known(values)) =>
+      Resolved::all(
+        values.map(value => {
+          json_labels(if value.is_empty() { default } else { value })
+        }),
+      )
+  }
+}
+
+///|
+/// The values of `matrix.<key>`: the key's own values and those that
+/// `include` entries add. They come from the matrix definition, so resolving
+/// them does not read the matrix again.
+fn Call::resolve_matrix(
+  self : Call,
+  key : String,
+  matrix : Json?,
+  text : String,
+) -> Resolved {
+  guard matrix is Some(Object(fields)) else { return Unknown(text) }
+  let parts = []
+  if fields.get(key) is Some(values) {
+    parts.push(self.resolve(values, None))
+  }
+  match fields.get("include") {
+    None => ()
+    Some(Array(entries)) =>
+      for entry in entries {
+        match entry {
+          Object(entry) =>
+            if entry.get(key) is Some(value) {
+              parts.push(self.resolve(value, None))
+            }
+          _ => parts.push(Unknown(entry.stringify()))
+        }
+      }
+    Some(entries) => parts.push(Unknown(entries.stringify()))
+  }
+  if parts.is_empty() {
+    Unknown(text)
+  } else {
+    Resolved::all(parts)
+  }
+}
+
+///|
+/// Report each resolved label of `value` that matches macOS, or the value
+/// when it does not resolve.
+fn Call::check_labels(
+  self : Call,
+  value : Json,
+  path : String,
+  matrix : Json?,
+  report : (String, ViolationReason, String) -> Unit,
+) -> Unit {
+  let positions = match value {
+    Array(items) => items.mapi((index, item) => (item, "\{path}[\{index}]"))
+    _ => [(value, path)]
+  }
+  for position in positions {
+    let (item, at) = position
+    match self.resolve(item, matrix) {
+      Known(labels) =>
+        for label in labels {
+          if label.to_lower().contains("macos") {
+            report(at, MacosRunner, label)
+          }
+        }
+      Unknown(text) => report(at, Unresolvable, text)
+    }
+  }
+}
+
+///|
+/// Check the runner of one job, then follow its `uses:` call. A
+/// qualification.yml job guarded by `inputs.macos == 'run'` is off merge
+/// paths when the caller passes `macos: skip`; any other literal leaves it on
+/// them, and a value that does not resolve is a violation.
+fn Call::check_job(
+  self : Call,
+  file : WorkflowFile,
+  id : JobId,
+  job : Map[String, Json],
+  workflows : Map[WorkflowFile, Json],
+  violations : Array[Violation],
+) -> Unit {
+  fn report(field : String, reason : ViolationReason, value : String) {
+    violations.push({
+      workflow: file,
+      job: id,
+      path: self.path(field),
+      reason,
+      value,
+    })
+  }
+
+  if file.0 == "qualification.yml" &&
+    job.get("if") is Some(String(condition)) &&
+    guarded_by_macos_mode(condition) {
+    match self.inputs.get("macos") {
+      Some(Known(modes)) if !modes.is_empty() &&
+        modes.iter().all(mode => mode == "skip") => return
+      Some(Known(_)) => ()
+      Some(Unknown(text)) => {
+        report("if", Unresolvable, text)
+        return
+      }
+      None => {
+        report("if", Unresolvable, "inputs.macos (not passed)")
+        return
+      }
+    }
+  }
+  let matrix = match job.get("strategy") {
+    Some(Object(strategy)) => strategy.get("matrix")
+    _ => None
+  }
+  match job.get("runs-on") {
+    Some(Object(runs_on)) =>
+      for field in ["group", "labels"] {
+        if runs_on.get(field) is Some(value) {
+          self.check_labels(value, "runs-on.\{field}", matrix, report)
+        }
+      }
+    Some(runs_on) => self.check_labels(runs_on, "runs-on", matrix, report)
+    None => ()
+  }
+  guard job.get("uses") is Some(String(uses)) else { return }
+  guard uses.strip_prefix("./.github/workflows/") is Some(name) &&
+    workflows.get(WorkflowFile(name.to_owned())) is Some(workflow) else {
+    report("uses", Unresolvable, uses)
+    return
+  }
+  let callee = WorkflowFile(name.to_owned())
+  // GitHub refuses a call cycle; stop rather than loop.
+  guard callee != file && !self.callers.iter().any(caller => caller.0 == callee) else {
+    return
+  }
+  let inputs : Map[String, Resolved] = Map([])
+  if job.get("with") is Some(Object(arguments)) {
+    for input, value in arguments {
+      inputs.set(input, self.resolve(value, matrix))
+    }
+  }
+  let call : Call = { callers: [..self.callers, (file, id)], inputs, }
+  call.check_workflow(callee, workflow, workflows, violations)
+}
+
+///|
+fn Call::check_workflow(
+  self : Call,
+  file : WorkflowFile,
+  workflow : Json,
+  workflows : Map[WorkflowFile, Json],
+  violations : Array[Violation],
+) -> Unit {
+  guard workflow is Object(fields) && fields.get("jobs") is Some(Object(jobs)) else {
+    return
+  }
+  for id, job in jobs {
+    if job is Object(job) {
+      self.check_job(file, JobId(id), job, workflows, violations)
+    }
+  }
+}
+
+///|
+/// The violations of every job that a merge-path event can reach, through
+/// every chain of local `uses:` calls. `workflows` maps each workflow file to
+/// its parsed document.
+fn check_workflows(workflows : Map[WorkflowFile, Json]) -> Array[Violation] {
+  let violations = []
+  let entry : Call = { callers: [], inputs: Map([]), }
+  for file, workflow in workflows {
+    if workflow is Object(fields) &&
+      fields.get("on") is Some(on) &&
+      merge_path_triggered(on) {
+      entry.check_workflow(file, workflow, workflows, violations)
+    }
+  }
+  violations
+}
+
+///|
+priv struct GuardCase {
+  name : String
+  workflows : Array[(String, String)]
+  expected : Array[(String, String, String, ViolationReason)]
+}
+
+///|
+fn GuardCase::run(self : GuardCase) -> Unit raise {
+  let workflows : Map[WorkflowFile, Json] = Map([])
+  for fixture in self.workflows {
+    let file = WorkflowFile(fixture.0)
+    workflows.set(file, parse_workflow(file, fixture.1))
+  }
+  let violations = check_workflows(workflows)
+  let got = violations.map(violation => {
+    (violation.workflow.0, violation.job.0, violation.path, violation.reason)
+  })
+  guard got == self.expected else {
+    fail(
+      "\{self.name}: wrong violations:\n" +
+      violations.map(violation => violation.render()).join("\n"),
+    )
+  }
+}
+
+///|
+/// A reusable workflow that runs on the runner its caller names.
+let runner_callee : String =
+  #|on:
+  #|  workflow_call:
+  #|    inputs:
+  #|      runner:
+  #|        type: string
+  #|jobs:
+  #|  build:
+  #|    runs-on: ${{ inputs.runner }}
+  #|    steps:
+  #|      - run: echo build
+
+///|
+/// A qualification workflow whose macOS job runs only when the caller asks.
+let guarded_qualification : String =
+  #|on:
+  #|  workflow_call:
+  #|    inputs:
+  #|      macos:
+  #|        type: string
+  #|jobs:
+  #|  setup:
+  #|    runs-on: ubuntu-24.04
+  #|    steps:
+  #|      - run: echo setup
+  #|  macos-native:
+  #|    if: inputs.macos == 'run'
+  #|    uses: ./.github/workflows/x.yml
+  #|    with:
+  #|      runner: macos-15
+
+///|
+/// A pull-request workflow that calls qualification.yml with `macos`.
+fn qualification_caller(macos : String) -> String {
+  (
+    $|on:
+    $|  pull_request:
+    $|  workflow_call:
+    $|    inputs:
+    $|      x:
+    $|        type: string
+    $|jobs:
+    $|  full-qualification:
+    $|    uses: ./.github/workflows/qualification.yml
+    $|    with:
+    $|      macos: \{macos}
+  )
+}
+
+///|
+fn guard_cases() -> Array[GuardCase] {
+  [
+    {
+      name: "guard_matrix_value",
+      workflows: [
+        (
+          "ci.yml",
+          (
+            #|on: pull_request
+            #|jobs:
+            #|  test:
+            #|    runs-on: ${{ matrix.os }}
+            #|    strategy:
+            #|      matrix:
+            #|        os: [ubuntu-latest, macos-latest]
+            #|    steps:
+            #|      - run: echo test
+          ),
+        ),
+      ],
+      expected: [("ci.yml", "test", "runs-on", MacosRunner)],
+    },
+    {
+      name: "guard_matrix_include",
+      workflows: [
+        (
+          "ci.yml",
+          (
+            #|on:
+            #|  pull_request:
+            #|jobs:
+            #|  test:
+            #|    runs-on: ${{ matrix.os }}
+            #|    strategy:
+            #|      matrix:
+            #|        os: [ubuntu-24.04]
+            #|        include:
+            #|          - os: macos-15
+            #|            target: darwin
+            #|    steps:
+            #|      - run: echo test
+          ),
+        ),
+      ],
+      expected: [("ci.yml", "test", "runs-on", MacosRunner)],
+    },
+    {
+      name: "guard_runs_on_literal",
+      workflows: [
+        (
+          "ci.yml",
+          (
+            #|on:
+            #|  push:
+            #|    branches: [main]
+            #|jobs:
+            #|  test:
+            #|    runs-on: macos-15
+            #|    steps:
+            #|      - run: echo test
+          ),
+        ),
+      ],
+      expected: [("ci.yml", "test", "runs-on", MacosRunner)],
+    },
+    {
+      name: "guard_runs_on_group_labels",
+      workflows: [
+        (
+          "ci.yml",
+          (
+            #|on: [merge_group]
+            #|jobs:
+            #|  test:
+            #|    runs-on:
+            #|      group: large-runners
+            #|      labels: [macos-15]
+            #|    steps:
+            #|      - run: echo test
+          ),
+        ),
+      ],
+      expected: [("ci.yml", "test", "runs-on.labels[0]", MacosRunner)],
+    },
+    {
+      name: "guard_called_with_runner",
+      workflows: [
+        (
+          "ci.yml",
+          (
+            #|on:
+            #|  pull_request:
+            #|jobs:
+            #|  call:
+            #|    uses: ./.github/workflows/x.yml
+            #|    with:
+            #|      runner: macos-15
+          ),
+        ),
+        ("x.yml", runner_callee),
+      ],
+      expected: [("x.yml", "build", "ci.yml/call > runs-on", MacosRunner)],
+    },
+    {
+      name: "guard_forwarded_macos_input",
+      workflows: [
+        ("ci.yml", qualification_caller("${{ inputs.x }}")),
+        ("qualification.yml", guarded_qualification),
+        ("x.yml", runner_callee),
+      ],
+      expected: [
+        (
+          "qualification.yml",
+          "macos-native",
+          "ci.yml/full-qualification > if",
+          Unresolvable,
+        ),
+      ],
+    },
+    {
+      name: "guard_job_output_runner",
+      workflows: [
+        (
+          "ci.yml",
+          (
+            #|on:
+            #|  pull_request:
+            #|jobs:
+            #|  a:
+            #|    runs-on: ubuntu-latest
+            #|    outputs:
+            #|      b: ${{ steps.pick.outputs.runner }}
+            #|    steps:
+            #|      - id: pick
+            #|        run: echo runner=macos-15 >> "$GITHUB_OUTPUT"
+            #|  b:
+            #|    needs: a
+            #|    runs-on: ${{ fromJSON(needs.a.outputs.b) }}
+            #|    steps:
+            #|      - run: echo b
+          ),
+        ),
+      ],
+      expected: [("ci.yml", "b", "runs-on", Unresolvable)],
+    },
+    {
+      name: "guard_fromjson_default",
+      workflows: [
+        (
+          "headless-cli.yml",
+          (
+            #|on:
+            #|  pull_request:
+            #|  workflow_call:
+            #|    inputs:
+            #|      runners:
+            #|        type: string
+            #|jobs:
+            #|  headless:
+            #|    runs-on: ${{ matrix.os }}
+            #|    strategy:
+            #|      matrix:
+            #|        os: ${{ fromJSON(inputs.runners || '["ubuntu-24.04"]') }}
+            #|    steps:
+            #|      - run: echo headless
+          ),
+        ),
+      ],
+      expected: [],
+    },
+    {
+      name: "guard_null_with_uses_default",
+      workflows: [
+        (
+          "ci.yml",
+          (
+            #|on:
+            #|  pull_request:
+            #|jobs:
+            #|  call:
+            #|    uses: ./.github/workflows/headless-cli.yml
+            #|    with:
+            #|      runners:
+          ),
+        ),
+        (
+          "headless-cli.yml",
+          (
+            #|on:
+            #|  workflow_call:
+            #|    inputs:
+            #|      runners:
+            #|        type: string
+            #|jobs:
+            #|  headless:
+            #|    runs-on: ${{ matrix.os }}
+            #|    strategy:
+            #|      matrix:
+            #|        os: ${{ fromJSON(inputs.runners || '["macos-15"]') }}
+            #|    steps:
+            #|      - run: echo headless
+          ),
+        ),
+      ],
+      expected: [
+        ("headless-cli.yml", "headless", "ci.yml/call > runs-on", MacosRunner),
+      ],
+    },
+    {
+      name: "guard_tag_push_release",
+      workflows: [
+        (
+          "release.yml",
+          (
+            #|on:
+            #|  push:
+            #|    tags: ['v*']
+            #|jobs:
+            #|  release:
+            #|    runs-on: macos-15
+            #|    steps:
+            #|      - run: echo release
+          ),
+        ),
+      ],
+      expected: [],
+    },
+    {
+      name: "guard_unreachable_nightly",
+      workflows: [
+        (
+          "nightly-qualification.yml",
+          (
+            #|on:
+            #|  schedule:
+            #|    - cron: '23 3 * * *'
+            #|  workflow_dispatch:
+            #|jobs:
+            #|  macos:
+            #|    runs-on: macos-15
+            #|    steps:
+            #|      - run: echo nightly
+            #|  call:
+            #|    uses: ./.github/workflows/x.yml
+            #|    with:
+            #|      runner: macos-15
+          ),
+        ),
+        ("x.yml", runner_callee),
+      ],
+      expected: [],
+    },
+    {
+      name: "guard_allowed_guarded_job",
+      workflows: [
+        ("ci.yml", qualification_caller("skip")),
+        ("qualification.yml", guarded_qualification),
+        ("x.yml", runner_callee),
+      ],
+      expected: [],
+    },
+    {
+      name: "guard_guarded_job_bad_caller",
+      workflows: [
+        ("ci.yml", qualification_caller("run")),
+        ("qualification.yml", guarded_qualification),
+        ("x.yml", runner_callee),
+      ],
+      expected: [
+        (
+          "x.yml",
+          "build",
+          "ci.yml/full-qualification > qualification.yml/macos-native > runs-on",
+          MacosRunner,
+        ),
+      ],
+    },
+  ]
+}
+
+///|
+fn self_test() -> Unit raise {
+  let cases = guard_cases()
+  for case in cases {
+    case.run()
+  }
+  println("ci-platforms: \{cases.length()} guard cases pass")
+  // report_shape: the line and JSON forms of one violation.
+  let violation : Violation = {
+    workflow: WorkflowFile("x.yml"),
+    job: JobId("build"),
+    path: "ci.yml/call > runs-on",
+    reason: MacosRunner,
+    value: "macos-15",
+  }
+  guard violation.render() ==
+    "x.yml: build: ci.yml/call > runs-on: macOS runner macos-15" &&
+    report_json([violation]) ==
+    {
+      "violations": [
+        {
+          "workflow": "x.yml",
+          "job": "build",
+          "path": "ci.yml/call > runs-on",
+          "reason": "MacosRunner",
+          "value": "macos-15",
+        },
+      ],
+    } else {
+    fail("report_shape: wrong line or JSON form")
+  }
+  // parse_refuses_non_workflow: no `on` key, or more than one document.
+  for text in ["jobs: {}\n", "on: push\n---\non: push\n"] {
+    let refused = try {
+      ignore(parse_workflow(WorkflowFile("bad.yml"), text))
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else { fail("parse_refuses_non_workflow: accepted \{text}") }
+  }
+  println("ci-platforms: report forms and workflow parsing pass")
+  cli_self_test()
+}
+
+///|
+priv enum Mode {
+  SelfTest
+  Check(String)
+} derive(Eq)
+
+///|
+priv struct Invocation {
+  mode : Mode
+  json : Bool
+}
+
+///|
+fn platforms_command() -> @argparse.Command {
+  @argparse.Command(
+    "ci-platforms",
+    about="Fail when a merge-path job can get a macOS runner",
+    flags=[
+      @argparse.FlagArg("self-test", about="Run the built-in tests", conflicts_with=[
+        "json", "workflows",
+      ]),
+      @argparse.FlagArg("json", about="Print the violations as one JSON object"),
+    ],
+    options=[
+      @argparse.OptionArg(
+        "workflows",
+        about="Read the workflows in this directory (default \{default_workflows})",
+      ),
+    ],
+  )
+}
+
+///|
+fn invocation(matches : @argparse.Matches) -> Invocation {
+  let flag = (name : String) => matches.flags.get(name).unwrap_or(false)
+  let directory = match matches.values.get("workflows") {
+    Some([directory]) => directory
+    _ => default_workflows
+  }
+  {
+    mode: if flag("self-test") {
+      SelfTest
+    } else {
+      Check(directory)
+    },
+    json: flag("json"),
+  }
+}
+
+///|
+fn cli_self_test() -> Unit raise {
+  let command = platforms_command()
+  let cases : Array[(Array[String], Mode, Bool)] = [
+    ([], Check(default_workflows), false),
+    (["--json"], Check(default_workflows), true),
+    (["--workflows", "fixtures", "--json"], Check("fixtures"), true),
+    (["--self-test"], SelfTest, false),
+  ]
+  for case in cases {
+    let (argv, mode, json) = case
+    let got = command.parse(argv~) |> invocation
+    guard got.mode == mode && got.json == json else {
+      fail("cli_argparse_forms: wrong parse of \{argv.join(" ")}")
+    }
+  }
+  for
+    argv in [
+      ["--bogus"],
+      ["--workflows"],
+      ["--self-test", "--json"],
+      ["--self-test", "--workflows", "x"],
+    ] {
+    let refused = try {
+      ignore(command.parse(argv~))
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else {
+      fail("cli_argparse_forms: accepted \{argv.join(" ")}")
+    }
+  }
+  println("ci-platforms: argparse forms and refusals pass")
+}
+
+///|
+async fn main {
+  let invocation = platforms_command().parse() |> invocation
+  guard invocation.mode is Check(directory) else {
+    self_test()
+    return
+  }
+  let violations = load_workflows(directory) |> check_workflows
+  if invocation.json {
+    println(report_json(violations).stringify())
+  } else if violations.is_empty() {
+    println("ci-platforms: no merge-path job can get a macOS runner")
+  } else {
+    for violation in violations {
+      println(violation.render())
+    }
+  }
+  if !violations.is_empty() {
+    @sys.exit(1)
+  }
+}
