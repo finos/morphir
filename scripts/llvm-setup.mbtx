@@ -1,6 +1,7 @@
 ///|
 /// Acquire the audited LLVM compiler/core in a new isolated directory.
 import {
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -8,6 +9,59 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+// Selected only at the owned CLI boundary, never from a child or a path value.
+let json_mode : Ref[Bool] = Ref(false)
+
+///|
+fn succeeded(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "llvm.setup",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+priv suberror CommandAbort {
+  Message(String)
+}
+
+///|
+fn[T] refuse(message : String) -> T raise {
+  if json_mode.val {
+    raise CommandAbort::Message(message)
+  } else {
+    abort(message)
+  }
+}
+
+///|
+async fn failed(error : Error) -> Unit {
+  // New opt-in JSON refusals use explicit exit 1 on every host. Legacy
+  // default invocations still retain their original abort/signal behavior.
+  let message = match error {
+    CommandAbort::Message(message) => message
+    _ => error.to_string()
+  }
+  @stdio.stderr.write(message + "\n")
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "llvm.setup",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": "command_failed", "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(1)
 }
 
 ///|
@@ -19,21 +73,24 @@ async fn output(
   let (code, out, err) = @process.collect_output(program, args, cwd~)
   if code != 0 {
     @stdio.stderr.write(err)
+    if json_mode.val {
+      fail(program + ": " + err.text())
+    }
     @sys.exit(1)
   }
   out.text().trim().to_owned()
 }
 
 ///|
-fn text(json : Json, key : String) -> String {
+fn text(json : Json, key : String) -> String raise {
   guard json is Object(fields) && fields.get(key) is Some(String(value)) else {
-    abort("Missing identity field: " + key)
+    refuse("Missing identity field: " + key)
   }
   value
 }
 
 ///|
-async fn main {
+async fn execute() -> Json {
   // These development gates consume portable provider modules on a fresh checkout.
   let (runtime_status, _, runtime_error) = @process.collect_output("bun", [
     "run", "build:runtimes",
@@ -44,13 +101,13 @@ async fn main {
 
   guard output("node", ["-p", "process.platform+'-'+process.arch"]) ==
     "darwin-arm64" else {
-    abort("Required LLVM acceptance supports darwin/arm64")
+    refuse("Required LLVM acceptance supports darwin/arm64")
   }
   let directory = @env.get_env_var("MORPHIR_LLVM_HOME").unwrap_or(
     ".dev/llvm-toolchain",
   )
   guard !@fs.exists(directory) else {
-    abort("Acquire LLVM into a new isolated directory")
+    refuse("Acquire LLVM into a new isolated directory")
   }
   @fs.mkdir(directory, recursive=true)
   let home = @fs.realpath(directory)
@@ -75,14 +132,14 @@ async fn main {
       ]),
     )
     guard @fs.file_size(archive) < 128L * 1024L * 1024L else {
-      abort("Archive limit")
+      refuse("Archive limit")
     }
     let identity = output("node", [
       "-e", "process.stdout.write(require('crypto').createHash('sha256').update(require('fs').readFileSync(process.argv[1])).digest('hex'))",
       archive,
     ])
     guard identity == expected else {
-      abort("LLVM archive pin changed; do not substitute nightly")
+      refuse("LLVM archive pin changed; do not substitute nightly")
     }
     if !@fs.exists(destination) {
       @fs.mkdir(destination, recursive=true)
@@ -106,7 +163,7 @@ async fn main {
   )
   @env.unset_env_var("MOON_WORK")
   guard output(home + "/bin/moonc", ["-v"]).has_prefix("v" + version + " ") else {
-    abort("LLVM compiler version")
+    refuse("LLVM compiler version")
   }
   ignore(
     output(home + "/bin/moon", [
@@ -152,5 +209,47 @@ async fn main {
   }
   let path = @env.get_env_var("MORPHIR_LLVM_PIN").unwrap_or(home + "/pin.json")
   @fs.write_file(path, pin.stringify() + "\n")
-  println(pin.stringify())
+  if !json_mode.val {
+    println(pin.stringify())
+  }
+  pin
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "llvm-setup.mbtx",
+    about="Acquire the pinned isolated toolchain without changing its JSON pin schema",
+    disable_help_flag=true,
+    flags=[
+      @argparse.FlagArg("json", required=true),
+      @argparse.FlagArg("help", about="Render help without acquisition"),
+    ],
+  )
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:]
+  json_mode.val = match argv {
+    ["--json", ..] | ["--help", "--json", ..] => true
+    _ => false
+  }
+  // Legacy acquisition ignored argv, so keep that behavior outside JSON mode.
+  if !json_mode.val {
+    ignore(execute())
+    return
+  }
+  try {
+    let matches = json_command().parse(argv~, env=Map([]))
+    let value = if matches.flags.get("help").unwrap_or(false) {
+      succeeded({ "render_help": json_command().render_help() })
+    } else {
+      // The existing pin is already a public JSON success schema.
+      execute()
+    }
+    @stdio.stdout.write(value.stringify() + "\n")
+  } catch {
+    error => failed(error)
+  }
 }

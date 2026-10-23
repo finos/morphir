@@ -2,6 +2,7 @@
 /// Vendor pinned Morphir JSON examples and regenerate the portable codec tests.
 /// --morphir and --morphir-elm read the recorded commits, never checkout contents.
 import {
+  "moonbitlang/core/env",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -490,13 +491,27 @@ async fn generate() -> Unit {
     scalar_tests(scalars, names),
   )
   let count = cases.fold(init=0, (n, c) => n + c.fences.length())
-  println(
+  result_data.val = {
+    "jsonCaseCount": count,
+    "refreshedFixtures": Json::array(refreshed_files.map(Json::string)),
+    "sourceRevision": morphir_pin,
+    "elmSourceRevision": elm_pin,
+    "upstreamExamples": cases.length(),
+    "writtenFiles": Json::array(
+      [
+        "mck_test.mbt", "greeting_test.mbt", "rentals_v1_test.mbt", "rentals_v2_test.mbt",
+        "scalars_test.mbt",
+      ].map(path => Json::string(destination + "/" + path)),
+    ),
+    "formatted": true,
+  }
+  progress(
     "Generated \{count} JSON cases from \{cases.length()} upstream examples",
   )
 }
 
 ///|
-fn self_test() -> Unit raise {
+async fn self_test() -> Unit {
   let sample =
     #|# ignored title
     #|```json canonical
@@ -567,33 +582,56 @@ fn self_test() -> Unit raise {
     fences: [{ role: Rejected, options: "expect=retained", body: "{}", }],
   }
   assert_true(generate_mck([expected_case]).contains(".contains(\"retained\")"))
-  println(
+  progress(
     "refresh-ir-fixtures: parser, codec selection, roundtrip and generation tests passed",
   )
 }
 
 ///|
-async fn main {
+async fn command_main(argv : Array[String]) -> Unit {
   let matches = @argparse.Command(
     "refresh-ir-fixtures",
     about="Regenerate pinned IR fixture tests; optionally refresh from local upstream clones",
     options=[@argparse.OptionArg("morphir"), @argparse.OptionArg("morphir-elm")],
-    flags=[
-      @argparse.FlagArg("self-test", conflicts_with=["morphir", "morphir-elm"]),
-    ],
-  ).parse() catch {
+    disable_help_flag=presentation.val is Json,
+    disable_help_subcommand=presentation.val is Json,
+    flags=if presentation.val is Json {
+      [
+        @argparse.FlagArg("help", short='h', about="Show help without effects"),
+        @argparse.FlagArg("self-test", conflicts_with=["morphir", "morphir-elm"]),
+      ]
+    } else {
+      [
+        @argparse.FlagArg("self-test", conflicts_with=["morphir", "morphir-elm"]),
+      ]
+    },
+  ).parse(argv~) catch {
     error => {
       @stdio.stderr.write(error.to_string() + "\n")
-      @sys.exit(2)
+      finish(2, message=error.to_string())
       abort("unreachable after exit")
     }
   }
+  if presentation.val is Json && matches.flags.get("help").unwrap_or(false) {
+    result_data.val = { "help": presentation_help().render_help() }
+    operation.val = "refresh.ir.fixtures.help"
+    return
+  }
   if matches.flags.get("self-test").unwrap_or(false) {
-    self_test()
+    {
+      self_test()
+      result_data.val = { "selfTest": "passed" }
+      operation.val = "refresh.ir.fixtures.self-test"
+    }
     return
   }
   if matches.values.get("morphir") is Some([source]) {
     refresh(source)
+    refreshed_files.append(
+      [
+        "mck.json", "v3-greeting.json", "naming-conformance.json", "format-version-conformance.json",
+      ].map(file => destination + "/fixtures/" + file),
+    )
   }
   if matches.values.get("morphir-elm") is Some([source]) {
     for version in [1, 2] {
@@ -603,16 +641,187 @@ async fn main {
         "\{destination}/fixtures/v\{version}-rentals.json",
         upstream(source, elm_pin, path),
       )
+      refreshed_files.push(destination + "/fixtures/v\{version}-rentals.json")
     }
   }
   generate()
   let code = @process.run(
     "moon",
     ["fmt"],
-    stdout=@stdio.stdout,
+    stdout=if presentation.val is Json { @stdio.stderr } else { @stdio.stdout },
     stderr=@stdio.stderr,
   )
   if code != 0 {
-    @sys.exit(if code > 0 { code } else { 1 })
+    finish(if code > 0 { code } else { 1 })
   }
 }
+
+///|
+enum Presentation {
+  Text
+  Json
+}
+
+///|
+let presentation : Ref[Presentation] = Ref(Text)
+
+///|
+let result_data : Ref[Json] = Ref({})
+
+///|
+let operation : Ref[String] = Ref("refresh.ir.fixtures")
+
+///|
+/// Only this bounded root prefix is owned. Tail values are encoded for syntax
+/// validation only; the original array slice is returned without reconstruction.
+fn presentation_arguments(argv : Array[String]) -> Array[String] raise {
+  match argv {
+    ["--forward-argv", "--", .. raw] => {
+      ignore(
+        @argparse.Command(
+          "refresh.ir.fixtures",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("forward-argv", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--forward-argv", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    ["--json", .. raw] => {
+      presentation.val = Json
+      ignore(
+        @argparse.Command(
+          "refresh.ir.fixtures",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("json", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--json", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    _ => argv
+  }
+}
+
+///|
+fn presentation_help() -> @argparse.Command {
+  @argparse.Command(
+    "refresh.ir.fixtures",
+    about="Regenerate pinned IR fixtures; --morphir CHECKOUT and --morphir-elm CHECKOUT refresh local sources JSON results use profile morphir/command-result, contractVersion0.1.0, command, state, exitCode, diagnostics and result on success or error{code,message} on failure. Existing successful JSON schemas remain bare. Stdout is one compact JSON value plus LF; progress and child logs use stderr. Help has result.help and no command effects; supported self-tests report actual completion. Exit0 means success; explicit syntax/child statuses remain meaningful, new expected JSON refusals exit1; default abort behavior is unchanged.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    options=[@argparse.OptionArg("morphir"), @argparse.OptionArg("morphir-elm")],
+    flags=[
+      @argparse.FlagArg(
+        "json",
+        about="Emit one command result; select at the root before operation data",
+      ),
+      @argparse.FlagArg(
+        "forward-argv",
+        about="Only exact --forward-argv -- RAW selects literal forwarding; unwrap once. Other text-mode tails keep their legacy meaning",
+      ),
+      @argparse.FlagArg("help", short='h', about="Show help without effects"),
+      @argparse.FlagArg(
+        "self-test",
+        about="Run the existing isolated self-test",
+      ),
+    ],
+    positionals=[
+      @argparse.PositionArg("operation", num_args=@argparse.ValueRange(lower=0)),
+    ],
+  )
+}
+
+///|
+async fn progress(message : String) -> Unit {
+  if presentation.val is Json {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
+}
+
+///|
+async fn finish(code : Int32, message~ : String = "Command failed") -> Unit {
+  if presentation.val is Json {
+    let value : Json = if code == 0 {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result_data.val,
+        "diagnostics": [],
+      }
+    } else {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "failed",
+        "exitCode": code,
+        "error": {
+          "code": "command-failed",
+          "message": if message == "Command failed" {
+            "Command exited with status \{code}"
+          } else {
+            message
+          },
+        },
+        "diagnostics": [],
+      }
+    }
+    @stdio.stdout.write(value.stringify() + "\n")
+  }
+  if code != 0 {
+    @sys.exit(code)
+  }
+}
+
+///|
+async fn main {
+  let argv = presentation_arguments(@env.args()[1:].to_owned())
+  try {
+    command_main(argv)
+    finish(0)
+  } catch {
+    error =>
+      if presentation.val is Json {
+        @stdio.stderr.write(error.to_string() + "\n")
+        finish(1, message=error.to_string())
+      } else {
+        raise error
+      }
+  }
+}
+
+///|
+test "JSON prefix preserves literal tail and unwraps escape only once" {
+  let previous = presentation.val
+  defer {
+    presentation.val = previous
+  }
+  let raw = [
+    "--json", "--", "--forward-argv", "--", "", "λ '$;`", "--help", "--replace",
+  ]
+  let escaped = presentation_arguments(["--forward-argv", "--", ..raw])
+  assert_eq(escaped, raw)
+  assert_true(presentation.val is Text)
+  let selected = presentation_arguments(["--json", ..raw])
+  assert_eq(selected, raw)
+  assert_true(presentation.val is Json)
+}
+
+///|
+let refreshed_files : Array[String] = []

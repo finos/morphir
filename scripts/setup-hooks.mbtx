@@ -1,6 +1,9 @@
 ///|
 /// Install the managed Git pre-push dispatcher without replacing custom hooks.
 import {
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/json",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -110,6 +113,7 @@ let legacy_dispatcher =
 ///|
 async fn install(root : String, skip~ : Bool = false) -> Unit {
   if skip {
+    result_data.val = { "outcome": "skipped", "reason": "CI environment" }
     return
   }
   let (status, out, _) = @process.collect_output(
@@ -118,6 +122,11 @@ async fn install(root : String, skip~ : Bool = false) -> Unit {
     cwd=root,
   )
   if status != 0 {
+    result_data.val = {
+      "outcome": "skipped",
+      "reason": "Git hooks directory unavailable",
+      "gitExitCode": status,
+    }
     return
   }
   let directory = out.text().trim().to_owned()
@@ -128,11 +137,13 @@ async fn install(root : String, skip~ : Bool = false) -> Unit {
   let kind = @fs.kind(hook, follow_symlink=false) catch { _ => @fs.Unknown }
   if kind != @fs.Unknown {
     if kind != @fs.Regular {
-      println("setup:hooks: preserving custom hook at \{hook}")
+      result_data.val = { "hookPath": hook, "outcome": "custom-preserved" }
+      progress("setup:hooks: preserving custom hook at \{hook}")
       return
     }
     let old = @fs.read_file(hook).text()
     if old == dispatcher {
+      result_data.val = { "hookPath": hook, "outcome": "unchanged" }
       if @env.get_env_var("OS") != Some("Windows_NT") {
         @fs.chmod(hook, 0o755)
       }
@@ -141,23 +152,25 @@ async fn install(root : String, skip~ : Bool = false) -> Unit {
     let legacy = old.replace(old="\r\n", new="\n").trim_end() ==
       legacy_dispatcher.trim_end()
     if !legacy {
-      println("setup:hooks: preserving custom hook at \{hook}")
+      result_data.val = { "hookPath": hook, "outcome": "custom-preserved" }
+      progress("setup:hooks: preserving custom hook at \{hook}")
       return
     }
   }
-  println("🔧 Setting up git hooks...")
+  progress("🔧 Setting up git hooks...")
   @fs.write_file(hook, dispatcher)
   if @env.get_env_var("OS") != Some("Windows_NT") {
     @fs.chmod(hook, 0o755)
   }
-  println("✅ Git hooks installed successfully!")
-  println("")
-  println("Pre-push hook will now run the following checks before every push:")
-  println("  • Linting (mise run lint)")
-  println("  • Format checking (mise run lint:moonbit)")
-  println("  • Validation (mise run validate)")
-  println("")
-  println("To bypass the hook (not recommended), use: git push --no-verify")
+  result_data.val = { "hookPath": hook, "outcome": "installed" }
+  progress("✅ Git hooks installed successfully!")
+  progress("")
+  progress("Pre-push hook will now run the following checks before every push:")
+  progress("  • Linting (mise run lint)")
+  progress("  • Format checking (mise run lint:moonbit)")
+  progress("  • Validation (mise run validate)")
+  progress("")
+  progress("To bypass the hook (not recommended), use: git push --no-verify")
 }
 
 ///|
@@ -291,14 +304,18 @@ async fn self_test() -> Unit {
   guard @fs.read_file(custom + "/pre-push").text() == dispatcher else {
     fail("Legacy managed hook not upgraded")
   }
-  println("setup:hooks: Git/worktree/idempotence/custom-hook tests passed")
+  progress("setup:hooks: Git/worktree/idempotence/custom-hook tests passed")
 }
 
 ///|
-async fn main {
-  let args = setup_arguments(@env.args()[1:].to_owned())
+async fn command_main(argv : Array[String]) -> Unit {
+  let args = setup_arguments(argv)
   if args.flags.get("self-test").unwrap_or(false) {
-    self_test()
+    {
+      self_test()
+      result_data.val = { "selfTest": "passed" }
+      operation.val = "setup.hooks.self-test"
+    }
     return
   }
   install(
@@ -306,4 +323,190 @@ async fn main {
     skip=@env.get_env_var("CI") == Some("true") ||
       @env.get_env_var("GITHUB_ACTIONS") == Some("true"),
   )
+}
+
+///|
+enum Presentation {
+  Text
+  Json
+}
+
+///|
+let presentation : Ref[Presentation] = Ref(Text)
+
+///|
+let result_data : Ref[Json] = Ref({})
+
+///|
+let operation : Ref[String] = Ref("setup.hooks")
+
+///|
+/// Only this bounded root prefix is owned. Tail values are encoded for syntax
+/// validation only; the original array slice is returned without reconstruction.
+fn presentation_arguments(argv : Array[String]) -> Array[String] raise {
+  match argv {
+    ["--forward-argv", "--", .. raw] => {
+      ignore(
+        @argparse.Command(
+          "setup.hooks",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("forward-argv", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--forward-argv", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    ["--json", .. raw] => {
+      presentation.val = Json
+      ignore(
+        @argparse.Command(
+          "setup.hooks",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("json", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--json", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    _ => argv
+  }
+}
+
+///|
+fn presentation_help() -> @argparse.Command {
+  @argparse.Command(
+    "setup.hooks",
+    about="Install the managed Git pre-push hook while preserving custom hooks JSON results use profile morphir/command-result, contractVersion0.1.0, command, state, exitCode, diagnostics and result on success or error{code,message} on failure. Existing successful JSON schemas remain bare. Stdout is one compact JSON value plus LF; progress and child logs use stderr. Help has result.help and no command effects; supported self-tests report actual completion. Exit0 means success; explicit syntax/child statuses remain meaningful, new expected JSON refusals exit1; default abort behavior is unchanged.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg(
+        "json",
+        about="Emit one command result; select at the root before operation data",
+      ),
+      @argparse.FlagArg(
+        "forward-argv",
+        about="Only exact --forward-argv -- RAW selects literal forwarding; unwrap once. Other text-mode tails keep their legacy meaning",
+      ),
+      @argparse.FlagArg("help", short='h', about="Show help without effects"),
+      @argparse.FlagArg(
+        "self-test",
+        about="Run the existing isolated self-test",
+      ),
+    ],
+    positionals=[
+      @argparse.PositionArg("operation", num_args=@argparse.ValueRange(lower=0)),
+    ],
+  )
+}
+
+///|
+async fn progress(message : String) -> Unit {
+  if presentation.val is Json {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
+}
+
+///|
+async fn finish(code : Int32, message~ : String = "Command failed") -> Unit {
+  if presentation.val is Json {
+    let value : Json = if code == 0 {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result_data.val,
+        "diagnostics": [],
+      }
+    } else {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "failed",
+        "exitCode": code,
+        "error": {
+          "code": "command-failed",
+          "message": if message == "Command failed" {
+            "Command exited with status \{code}"
+          } else {
+            message
+          },
+        },
+        "diagnostics": [],
+      }
+    }
+    @stdio.stdout.write(value.stringify() + "\n")
+  }
+  if code != 0 {
+    @sys.exit(code)
+  }
+}
+
+///|
+async fn main {
+  let argv = presentation_arguments(@env.args()[1:].to_owned())
+  if presentation.val is Json {
+    // Built-in help exits inside argparse. JSON help is an ordinary declared
+    // flag in a separate grammar, with no acquisition or command effects.
+    let help = Some(
+      @argparse.Command(
+        "setup.hooks",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    ) catch {
+      _ => None
+    }
+    if help is Some(matches) && matches.flags.get("help") == Some(true) {
+      result_data.val = { "help": presentation_help().render_help() }
+      operation.val = "setup.hooks.help"
+      finish(0)
+      return
+    }
+  }
+  try {
+    command_main(argv)
+    finish(0)
+  } catch {
+    error =>
+      if presentation.val is Json {
+        @stdio.stderr.write(error.to_string() + "\n")
+        finish(1, message=error.to_string())
+      } else {
+        raise error
+      }
+  }
+}
+
+///|
+test "JSON prefix preserves literal tail and unwraps escape only once" {
+  let previous = presentation.val
+  defer {
+    presentation.val = previous
+  }
+  let raw = [
+    "--json", "--", "--forward-argv", "--", "", "λ '$;`", "--help", "--replace",
+  ]
+  let escaped = presentation_arguments(["--forward-argv", "--", ..raw])
+  assert_eq(escaped, raw)
+  assert_true(presentation.val is Text)
+  let selected = presentation_arguments(["--json", ..raw])
+  assert_eq(selected, raw)
+  assert_true(presentation.val is Json)
 }

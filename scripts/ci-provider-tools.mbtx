@@ -1,6 +1,9 @@
 ///|
 /// Prepare provider tools independently of the MoonBit native build.
 import {
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/core/json",
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
@@ -8,7 +11,24 @@ import {
 }
 
 ///|
-async fn main {
+async fn execute(argv : Array[String]) -> Unit {
+  if json_help(argv) {
+    @stdio.stdout.write(
+      command_result({
+        "help": @argparse.Command(
+          "ci-provider-tools.mbtx",
+          about="Build the pinned provider tools; legacy arguments are ignored",
+        ).render_help(),
+      }).stringify() +
+      "\n",
+    )
+    return
+  }
+  if output_mode.json && self_test_control(argv) {
+    self_test()
+    @stdio.stdout.write(command_result({ "passed": true }).stringify() + "\n")
+    return
+  }
   guard @env.get_env_var("MORPHIR_PROVIDER_RUST") is Some(rust) else {
     fail("Pinned Rust checkout required")
   }
@@ -17,8 +37,7 @@ async fn main {
     ["rev-parse", "HEAD"],
     cwd=rust,
   )
-  guard status == 0 &&
-    revision.text().trim() == "ce68e7d1861b35bf51b6ddcaf6d48d5f93824893" else {
+  guard accepted_revision(status, revision.text()) else {
     fail("Accepted Rust revision required: " + errors.text())
   }
   let started = @async.now()
@@ -44,11 +63,185 @@ async fn main {
   let directory = @env.get_env_var("MORPHIR_CI_PROVIDER_TOOLS").unwrap_or(
     ".dev/ci/provider-tools",
   )
-  let result = @process.run(
-    "moon",
-    ["run", "scripts/ci-artifact.mbtx", "pack", "provider-tools", directory],
-    stdout=@stdio.stdout,
-    stderr=@stdio.stderr,
-  )
-  guard result == 0 else { fail("Provider tools artifact failed") }
+  if output_mode.json {
+    let (status, out, err) = @process.collect_output("moon", [
+      "run", "scripts/ci-artifact.mbtx", "--json", "--", "pack", "provider-tools",
+      directory,
+    ])
+    @stdio.stderr.write(err.text())
+    guard status == 0 else { fail("Provider tools artifact failed") }
+    let receipt = @json.parse(out.text())
+    println(receipt.stringify())
+  } else {
+    let result = @process.run(
+      "moon",
+      ["run", "scripts/ci-artifact.mbtx", "pack", "provider-tools", directory],
+      stdout=@stdio.stdout,
+      stderr=@stdio.stderr,
+    )
+    guard result == 0 else { fail("Provider tools artifact failed") }
+  }
+}
+
+///|
+/// Output selection belongs to the command boundary, never to data operands.
+priv struct OutputMode {
+  mut json : Bool
+}
+
+///|
+let output_mode : OutputMode = { json: false, }
+
+///|
+fn command_result(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.provider.tools",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+fn command_error(error : Error, code~ : String = "command_failed") -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.provider.tools",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": code, "message": error.to_string() },
+    "diagnostics": [],
+  }
+}
+
+///|
+/// Reserve one explicit prefix and unwrap it once. A literal --json is still
+/// data in the legacy grammar, or after the reserved prefix's delimiter.
+fn presentation_arguments(argv : Array[String]) -> Array[String] {
+  match argv {
+    ["--json", "--", .. raw] => {
+      output_mode.json = true
+      return raw.to_owned()
+    }
+    _ => ()
+  }
+  // Legacy tails are ignored. Only the exact reserved prefix owns controls.
+  argv
+}
+
+///|
+fn json_help(argv : Array[String]) -> Bool {
+  if !output_mode.json {
+    return false
+  }
+  // A declared ordinary flag avoids core's print-and-exit built-in help.
+  try {
+    ignore(
+      @argparse.Command(
+        "ci.provider.tools",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    )
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+async fn main {
+  try {
+    let argv = presentation_arguments(command_arguments())
+    execute(argv)
+  } catch {
+    error => {
+      if !output_mode.json {
+        raise error
+      }
+      @stdio.stdout.write(command_error(error).stringify() + "\n")
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+#cfg(target="js")
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, _, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+fn accepted_revision(status : Int32, revision : String) -> Bool {
+  status == 0 && revision.trim() == "ce68e7d1861b35bf51b6ddcaf6d48d5f93824893"
+}
+
+///|
+fn self_test_control(argv : Array[String]) -> Bool {
+  try {
+    ignore(
+      @argparse.Command("ci.provider.tools", disable_help_flag=true, positionals=[
+        @argparse.PositionArg(
+          "control",
+          num_args=@argparse.ValueRange::single(),
+        ),
+      ]).parse(argv=["--", ..argv], env=Map([])),
+    )
+    ignore(
+      @argparse.Command("ci.provider.tools", disable_help_flag=true, flags=[
+        @argparse.FlagArg("self-test", required=true),
+      ]).parse(argv~, env=Map([])),
+    )
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+fn self_test() -> Unit raise {
+  let revision = "ce68e7d1861b35bf51b6ddcaf6d48d5f93824893"
+  assert_true(accepted_revision(0, revision + "\n"))
+  assert_true(!accepted_revision(7, revision))
+  assert_true(!accepted_revision(0, "changed"))
+  assert_true(self_test_control(["--self-test"]))
+  for
+    raw in [
+      ["--"],
+      ["--", "--self-test"],
+      ["--self-test", "--"],
+      ["--self-test", "--self-test"],
+      ["--help"],
+      [""],
+    ] {
+    assert_true(!self_test_control(raw))
+  }
+  let saved = output_mode.json
+  defer {
+    output_mode.json = saved
+  }
+  output_mode.json = false
+  let ignored = ["--help", "--self-test", "", "λ", "--", "--json"]
+  assert_eq(presentation_arguments(ignored), ignored)
+  assert_true(!output_mode.json)
+  assert_eq(presentation_arguments(["--json", "--", ..ignored]), ignored)
+  assert_true(output_mode.json)
+  eprintln("ci-provider-tools: pinned revision and exact owned controls pass")
 }

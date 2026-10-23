@@ -142,6 +142,10 @@ run = "moonx scripts/codec-adapter-mck.mbtx"
 [tasks."test:ci"]
 description = "Test focused CI selection and fail-closed aggregate gates"
 run = [
+  "bun tools/test-ci-json-presentation.ts",
+  "bun test tools/json-acquisition-results.test.ts",
+  "bun test tools/packaged-host-command-json.test.ts",
+  "bun apps/morphir/scripts/test-developer-json-presentation.ts",
   "actionlint",
   "moon run scripts/moonbit-core.mbtx --self-test",
   "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx scripts/ci-mise-impact.mbtx scripts/ci-reuse.mbtx scripts/ci-platforms.mbtx scripts/ci-breach.mbtx",

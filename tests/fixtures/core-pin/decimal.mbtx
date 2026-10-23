@@ -1,10 +1,14 @@
 ///|
 import {
   "moonbitlang/core/bigint",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/sys",
 }
 
 ///|
-fn main raise {
+fn verify() -> Json raise {
   for digits in [3149, 3150, 3151, 5983, 10000] {
     let text = "9".repeat(digits)
     let expected = @bigint.BigInt::from_int(10).pow(
@@ -16,5 +20,79 @@ fn main raise {
     assert_eq(actual.to_string(), text)
     assert_eq(@bigint.BigInt::from_string("-" + text), -expected)
   }
-  println("Pinned core decimal parsing is exact")
+  { "passed": true, "digitCounts": [3149, 3150, 3151, 5983, 10000] }
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "decimal.mbtx",
+    about="Verify pinned BigInt decimal parsing",
+    disable_help_flag=true,
+    flags=[@argparse.FlagArg("json", required=true), @argparse.FlagArg("help")],
+  )
+}
+
+///|
+#cfg(target="js")
+fn command_args() -> ArrayView[String] {
+  match @env.args() {
+    [_, _, .. args] => args
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_args() -> ArrayView[String] {
+  match @env.args() {
+    [_, .. args] => args
+    _ => []
+  }
+}
+
+///|
+fn main raise {
+  let argv = command_args()
+  let json_mode = match argv {
+    ["--json", ..] | ["--help", "--json", ..] => true
+    _ => false
+  }
+  if !json_mode {
+    ignore(verify())
+    println("Pinned core decimal parsing is exact")
+    return
+  }
+  try {
+    let matches = json_command().parse(argv~, env=Map([]))
+    let result : Json = if matches.flags.get("help").unwrap_or(false) {
+      { "render_help": json_command().render_help() }
+    } else {
+      verify()
+    }
+    let value : Json = {
+      "profile": "morphir/command-result",
+      "contractVersion": "0.1.0",
+      "command": "core.pin.decimal",
+      "state": "succeeded",
+      "exitCode": 0,
+      "result": result,
+      "diagnostics": [],
+    }
+    println(value.stringify())
+  } catch {
+    error => {
+      let value : Json = {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "core.pin.decimal",
+        "state": "failed",
+        "exitCode": 1,
+        "error": { "code": "command_failed", "message": error.to_string() },
+        "diagnostics": [],
+      }
+      println(value.stringify())
+      @sys.exit(1)
+    }
+  }
 }

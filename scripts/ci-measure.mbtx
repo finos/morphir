@@ -3,8 +3,11 @@
 /// .dev/. Queue seconds are job creation to start, not dependency waiting time.
 /// Execution seconds are unweighted runner occupancy, never billed minutes.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/stdio",
   "moonbitlang/async@0.22.1/process",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
@@ -28,10 +31,83 @@ fn number(value : Json) -> Double raise {
 }
 
 ///|
-async fn api(path : String, args : Array[String]) -> String {
-  let (status, out, err) = @process.collect_output("gh", ["api", path, ..args])
-  guard status == 0 else { fail("Actions measurement failed: " + err.text()) }
-  out.text()
+async fn gh(args : Array[String]) -> (Int32, String, String) {
+  let (status, out, err) = @process.collect_output("gh", args)
+  (status, out.text(), err.text())
+}
+
+///|
+async fn api(
+  path : String,
+  args : Array[String],
+  execute : async (Array[String]) -> (Int32, String, String),
+) -> String {
+  let (status, out, err) = execute(["api", path, ..args])
+  guard status == 0 else { fail("Actions measurement failed: " + err) }
+  out
+}
+
+///|
+enum Invocation {
+  Measure(String, Bool)
+  SelfTest
+} derive(Eq)
+
+///|
+fn singleton_flag(argv : Array[String], name : String) -> Unit raise {
+  // Protect every original token so the library counts literal tokens, including
+  // --. Intersect that singleton grammar with the required flag grammar below.
+  ignore(
+    @argparse.Command("ci-measure.mbtx", disable_help_flag=true, positionals=[
+      @argparse.PositionArg("control", num_args=@argparse.ValueRange::single()),
+    ]).parse(argv=["--", ..argv], env=Map([])),
+  )
+  ignore(
+    @argparse.Command("ci-measure.mbtx", disable_help_flag=true, flags=[
+      @argparse.FlagArg(name, required=true),
+    ]).parse(argv~, env=Map([])),
+  )
+}
+
+///|
+fn measure_command() -> @argparse.Command {
+  @argparse.Command(
+    "ci-measure.mbtx",
+    about="Measure a completed GitHub Actions run as JSON.",
+    disable_help_flag=true,
+    positionals=[
+      @argparse.PositionArg(
+        "run",
+        about="Numeric Actions run ID",
+        num_args=@argparse.ValueRange::single(),
+      ),
+      @argparse.PositionArg("logs", about="Optional trailing --logs control"),
+    ],
+  )
+}
+
+///|
+fn measure_syntax(argv : Array[String]) -> Invocation raise {
+  let self_test = try {
+    singleton_flag(argv, "self-test")
+    true
+  } catch {
+    _ => false
+  }
+  if self_test {
+    return SelfTest
+  }
+  // The optional second positional owns the control boundary. No raw token is
+  // matched, removed or reordered, and a delimiter cannot disappear in parsing.
+  let parsed = measure_command().parse(argv=["--", ..argv], env=Map([]))
+  let logs = if parsed.values.get("logs") is Some(control) {
+    singleton_flag(control, "logs")
+    true
+  } else {
+    false
+  }
+  let run = parsed.values.get("run").unwrap()[0]
+  Measure(run, logs)
 }
 
 ///|
@@ -149,7 +225,223 @@ fn summarize(jobs : Array[Json]) -> Json raise {
 }
 
 ///|
-fn self_test() -> Unit raise {
+async fn cli_self_test() -> Unit {
+  for argv in [["123"], ["000123"], ["0"], ["123456789012345678901234567890"]] {
+    guard invocation(argv) == Measure(argv[argv.length() - 1], false) else {
+      fail("Run positional changed")
+    }
+  }
+  for argv in [["123", "--logs"]] {
+    guard invocation(argv) == Measure("123", true) else {
+      fail("Log flag changed")
+    }
+  }
+  let unexpected_calls : Array[Array[String]] = []
+  let never_execute : async (Array[String]) -> (Int32, String, String) = args => {
+    unexpected_calls.push(args)
+    fail("Unexpected gh execution")
+  }
+  guard measurement(["--self-test"], never_execute) is None else {
+    fail("Self-test attempted measurement")
+  }
+  for
+    argv in [
+      [],
+      ["--logs"],
+      ["--", "123"],
+      ["123", "--"],
+      ["--logs", "123"],
+      ["--logs", "--", "123"],
+      ["123", "--logs", "--logs"],
+      ["--self-test", "--self-test"],
+      ["--self-test", "--"],
+      ["--", "--self-test"],
+      ["--help"],
+      ["-h"],
+      ["help"],
+      ["123", "--help"],
+      ["--help", "--unknown"],
+      ["--self-test", "--help"],
+      ["123", "456"],
+      ["123", "--unknown"],
+      ["-x"],
+      ["--self-test", "123"],
+      ["123", "--self-test"],
+      ["--self-test", "--logs"],
+      ["--logs=true", "123"],
+      ["--logs=false", "123"],
+      ["--self-test=true"],
+      ["--"],
+      ["--", "--self-test"],
+      ["123", "--", "--logs"],
+      [""],
+      [" "],
+      [" 123"],
+      ["123 "],
+      ["1 23"],
+      ["１２３"],
+      ["abc"],
+      ["-123"],
+    ] {
+    let rejected = try {
+      ignore(measurement(argv, never_execute))
+      false
+    } catch {
+      _ => true
+    }
+    guard rejected else {
+      fail("Invalid argv accepted: " + Json(argv).stringify())
+    }
+  }
+  guard unexpected_calls.is_empty() else {
+    fail("Invalid argv or self-test called gh")
+  }
+  let metadata : Json = {
+    "id": 123,
+    "run_attempt": 2,
+    "status": "completed",
+    "createdEpoch": 90,
+  }
+  let job : Json = {
+    "id": 7,
+    "name": "fixture",
+    "runner": "ubuntu-latest",
+    "queueSeconds": 2,
+    "executionSeconds": 10,
+    "completedEpoch": 102,
+  }
+  let endpoint = "repos/{owner}/{repo}/actions/runs/123"
+  let jobs_endpoint = endpoint + "/attempts/2/jobs?per_page=100"
+  let logs_endpoint = "repos/{owner}/{repo}/actions/jobs/7/logs"
+  // Include blank lines and multiple pages' worth of jobs to catch truncation.
+  let lines = Array::make(101, job.stringify()).join("\n") + "\n\n"
+  for logs in [false, true] {
+    for modern_gh in [false, true] {
+      for logs_available in [false, true] {
+        let calls : Array[Array[String]] = []
+        let execute : async (Array[String]) -> (Int32, String, String) = args => {
+          calls.push(args)
+          match args {
+            ["api", path, "--jq", _] if path == endpoint =>
+              (0, metadata.stringify(), "")
+            ["api", path, "--paginate", "--jq", _] if path == jobs_endpoint =>
+              (0, lines, "")
+            ["api", "--help"] =>
+              (
+                0,
+                if modern_gh {
+                  "--allow-escape-sequences"
+                } else {
+                  "Usage: gh api"
+                },
+                "",
+              )
+            ["api", path, .. flags] if path == logs_endpoint => {
+              guard flags.to_owned() ==
+                (if modern_gh { ["--allow-escape-sequences"] } else { [] }) else {
+                fail("Unsupported gh log flags")
+              }
+              if logs_available {
+                (
+                  0, "noise\nCache hit for: key\nCache not found for key\nCache restored from key: key\nUsing a cached version\n",
+                  "",
+                )
+              } else {
+                (23, "", "expired log")
+              }
+            }
+            _ => fail("Unexpected gh argv: " + Json(args).stringify())
+          }
+        }
+        let argv = if logs { ["123", "--logs"] } else { ["123"] }
+        let result = measurement(argv, execute).unwrap()
+        guard field(result, "run") == metadata &&
+          field(result, "elapsedSeconds") == Json::number(12) &&
+          field(field(result, "summary"), "executedJobs") == Json::number(101) &&
+          field(field(result, "summary"), "executionSecondsSum") ==
+          Json::number(1010) &&
+          field(field(result, "summary"), "queueSecondsSum") ==
+          Json::number(202) &&
+          field(result, "jobs") is Array(jobs) &&
+          jobs.length() == 101 else {
+          fail("Measurement JSON or attempt pagination changed")
+        }
+        guard calls.length() == (if logs { 104 } else { 2 }) else {
+          fail("Unexpected number of gh calls")
+        }
+        if logs {
+          guard field(jobs[0], "cacheLogAvailable") ==
+            Json::boolean(logs_available) &&
+            field(jobs[0], "cacheObservations") ==
+            (if logs_available {
+              Json([
+                "Cache hit for: key", "Cache not found for key", "Cache restored from key: key",
+                "Using a cached version",
+              ])
+            } else {
+              Json(([] : Array[String]))
+            }) &&
+            field(jobs[0], "cacheLogError") ==
+            (if logs_available {
+              Json::null()
+            } else {
+              Json::string("expired log")
+            }) else {
+            fail("Log observations or unavailable logs changed")
+          }
+        } else {
+          guard field(jobs[0], "cacheLogAvailable") == Json::null() else {
+            fail("Collected logs without --logs")
+          }
+        }
+      }
+    }
+  }
+  // Failures in required API calls stop immediately, while unavailable job logs
+  // above remain observations in a successful measurement.
+  for failing_call in [1, 2, 3] {
+    let calls : Array[Array[String]] = []
+    let execute : async (Array[String]) -> (Int32, String, String) = args => {
+      calls.push(args)
+      if calls.length() == failing_call {
+        (23, "", "gh fixture failure")
+      } else if calls.length() == 1 {
+        (0, metadata.stringify(), "")
+      } else {
+        (0, lines, "")
+      }
+    }
+    let error = try {
+      ignore(measurement(["123", "--logs"], execute))
+      ""
+    } catch {
+      error => error.to_string()
+    }
+    guard error.contains("Actions measurement failed: gh fixture failure") &&
+      calls.length() == failing_call else {
+      fail(
+        "Required gh failure was swallowed or collection continued: " + error,
+      )
+    }
+  }
+  let calls : Array[Array[String]] = []
+  let partial : async (Array[String]) -> (Int32, String, String) = args => {
+    calls.push(args)
+    (0, "{\"status\":\"in_progress\"}", "")
+  }
+  let refused = try {
+    ignore(measurement(["123"], partial))
+    false
+  } catch {
+    _ => true
+  }
+  guard refused && calls.length() == 1 else { fail("Partial run was measured") }
+}
+
+///|
+async fn self_test() -> Unit {
+  presentation_self_test()
+  cli_self_test()
   let jobs : Array[Json] = [
     {
       "name": "a",
@@ -214,29 +506,26 @@ fn self_test() -> Unit raise {
     ["--allow-escape-sequences"] else {
     fail("Log collection requires an unsupported gh flag")
   }
-  println(
+  test_note(
     "ci-measure: overlapping jobs, OS totals, unknown retained queues and retry accounting pass",
   )
 }
 
 ///|
-async fn main {
-  let args = @env.args()[1:].to_owned()
-  if args == ["--self-test"] {
-    self_test()
-    return
-  }
-  guard args is [run, ..] &&
-    run != "" &&
-    run.iter().all(c => c >= '0' && c <= '9') &&
-    (args.length() == 1 || args == [run, "--logs"]) else {
-    fail("Usage: ci-measure.mbtx RUN_ID [--logs] | --self-test")
-  }
+async fn measure(
+  run : String,
+  logs : Bool,
+  execute : async (Array[String]) -> (Int32, String, String),
+) -> Json {
   let endpoint = "repos/{owner}/{repo}/actions/runs/" + run
   let metadata = @json.parse(
-    api(endpoint, [
-      "--jq", ". | {id,html_url,head_sha,event,run_attempt,status,conclusion,created_at,createdEpoch:(.created_at|fromdateiso8601)}",
-    ]),
+    api(
+      endpoint,
+      [
+        "--jq", ". | {id,html_url,head_sha,event,run_attempt,status,conclusion,created_at,createdEpoch:(.created_at|fromdateiso8601)}",
+      ],
+      execute,
+    ),
   )
   guard field(metadata, "status") == Json::string("completed") else {
     fail("Measure completed runs, not partial runner occupancy")
@@ -244,23 +533,27 @@ async fn main {
   // One JSON value per line permits arbitrary pagination without truncation.
   // Pin the attempt so reruns never mix jobs from different attempts.
   let attempt = field(metadata, "run_attempt").stringify()
-  let lines = api(endpoint + "/attempts/" + attempt + "/jobs?per_page=100", [
-    "--paginate",
-    "--jq",
-    (
-      #|.jobs[] | select(.conclusion != "skipped" and .started_at != null and .completed_at != null) |
-      #|{id,name,conclusion,runner:((.labels|map(select(test("^(ubuntu|macos|windows)")))|first)//"unknown"),
-      #| queueSeconds:((.started_at|fromdateiso8601)-(.created_at|fromdateiso8601)),
-      #| executionSeconds:((.completed_at|fromdateiso8601)-(.started_at|fromdateiso8601)),
-      #| createdEpoch:(.created_at|fromdateiso8601),startedEpoch:(.started_at|fromdateiso8601),
-      #| completedEpoch:(.completed_at|fromdateiso8601),
-      #| steps:[.steps[] | select(.started_at != null and .completed_at != null) |
-      #| {name,conclusion,seconds:((.completed_at|fromdateiso8601)-(.started_at|fromdateiso8601))}]} | @json
-    ),
-  ])
+  let lines = api(
+    endpoint + "/attempts/" + attempt + "/jobs?per_page=100",
+    [
+      "--paginate",
+      "--jq",
+      (
+        #|.jobs[] | select(.conclusion != "skipped" and .started_at != null and .completed_at != null) |
+        #|{id,name,conclusion,runner:((.labels|map(select(test("^(ubuntu|macos|windows)")))|first)//"unknown"),
+        #| queueSeconds:((.started_at|fromdateiso8601)-(.created_at|fromdateiso8601)),
+        #| executionSeconds:((.completed_at|fromdateiso8601)-(.started_at|fromdateiso8601)),
+        #| createdEpoch:(.created_at|fromdateiso8601),startedEpoch:(.started_at|fromdateiso8601),
+        #| completedEpoch:(.completed_at|fromdateiso8601),
+        #| steps:[.steps[] | select(.started_at != null and .completed_at != null) |
+        #| {name,conclusion,seconds:((.completed_at|fromdateiso8601)-(.started_at|fromdateiso8601))}]} | @json
+      ),
+    ],
+    execute,
+  )
   let jobs : Array[Json] = []
-  let log_flags = if args.contains("--logs") {
-    log_options(api("--help", []))
+  let log_flags = if logs {
+    log_options(api("--help", [], execute))
   } else {
     []
   }
@@ -270,9 +563,8 @@ async fn main {
     }
     let job = normalize(@json.parse(line))
     guard job is Object(fields) else { fail("Expected job") }
-    if args.contains("--logs") {
-      let (status, out, err) = @process.collect_output(
-        "gh",
+    if logs {
+      let (status, out, err) = execute(
         [
           "api",
           "repos/{owner}/{repo}/actions/jobs/" +
@@ -284,11 +576,10 @@ async fn main {
       // Expired/unavailable logs are unknown, never counted as cache misses.
       fields.set("cacheLogAvailable", Json::boolean(status == 0))
       if status != 0 {
-        fields.set("cacheLogError", Json::string(err.text()))
+        fields.set("cacheLogError", Json::string(err))
       }
       let observations = if status == 0 {
         out
-        .text()
         .split("\n")
         .filter(line => {
           line.contains("Cache hit for:") ||
@@ -308,14 +599,237 @@ async fn main {
   let summary = summarize(jobs)
   let elapsed = number(field(summary, "lastCompletedEpoch")) -
     number(field(metadata, "createdEpoch"))
-  println(
-    (
-      {
-        "run": metadata,
-        "elapsedSeconds": elapsed,
-        "summary": summary,
-        "units": "Unweighted seconds, not billing. Effective fields include retained earlier results; other execution totals count only this attempt. Retained queue times are unknown. Save each attempt before retrying to account for cumulative cost. Queue sums overlap; elapsed includes dependency/retry delay; not a reconstructed DAG critical path.",
-        "jobs": jobs,
-      } : Json).stringify(),
-  )
+  {
+    "run": metadata,
+    "elapsedSeconds": elapsed,
+    "summary": summary,
+    "units": "Unweighted seconds, not billing. Effective fields include retained earlier results; other execution totals count only this attempt. Retained queue times are unknown. Save each attempt before retrying to account for cumulative cost. Queue sums overlap; elapsed includes dependency/retry delay; not a reconstructed DAG critical path.",
+    "jobs": jobs,
+  }
+}
+
+///|
+async fn measurement(
+  argv : Array[String],
+  execute : async (Array[String]) -> (Int32, String, String),
+) -> Json? {
+  match invocation(argv) {
+    SelfTest => None
+    Measure(run, logs) => Some(measure(run, logs, execute))
+  }
+}
+
+///|
+async fn execute(argv : Array[String]) -> Unit {
+  if json_help(argv) {
+    @stdio.stdout.write(
+      command_result({ "help": measure_command().render_help() }).stringify() +
+      "\n",
+    )
+    return
+  }
+  match measurement(argv, gh) {
+    None => {
+      self_test()
+      if output_mode.json {
+        @stdio.stdout.write(
+          command_result({ "passed": true }).stringify() + "\n",
+        )
+      }
+    }
+    Some(result) => println(result.stringify())
+  }
+}
+
+///|
+/// Output selection belongs to the command boundary, never to data operands.
+priv struct OutputMode {
+  mut json : Bool
+}
+
+///|
+let output_mode : OutputMode = { json: false, }
+
+///|
+fn command_result(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.measure",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+fn command_error(error : Error, code~ : String = "command_failed") -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.measure",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": code, "message": error.to_string() },
+    "diagnostics": [],
+  }
+}
+
+///|
+fn test_note(message : String) -> Unit {
+  if output_mode.json {
+    eprintln(message)
+  } else {
+    println(message)
+  }
+}
+
+///|
+/// Reserve one explicit prefix and unwrap it once. A literal --json is still
+/// data in the legacy grammar, or after the reserved prefix's delimiter.
+fn presentation_arguments(argv : Array[String]) -> Array[String] {
+  match argv {
+    ["--json", "--", .. raw] => {
+      output_mode.json = true
+      return raw.to_owned()
+    }
+    _ => ()
+  }
+  // Keep every complete legacy syntax, including flag-shaped fixed operands.
+  // JSON is additive at the two fixed control boundaries only.
+  if !legacy_syntax(argv) {
+    let flag = @argparse.Command(
+      "ci.measure",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[@argparse.FlagArg("json", required=true)],
+    )
+    if !argv.is_empty() {
+      try flag.parse(argv=argv[:1], env=Map([])) catch {
+        _ => ()
+      } noraise {
+        _ => {
+          output_mode.json = true
+          return argv[1:].to_owned()
+        }
+      }
+      let boundary = argv.length() - 1
+      if legacy_syntax(argv[:boundary].to_owned()) {
+        try flag.parse(argv=argv[boundary:], env=Map([])) catch {
+          _ => ()
+        } noraise {
+          _ => {
+            output_mode.json = true
+            return argv[:boundary].to_owned()
+          }
+        }
+      }
+    }
+  }
+  argv
+}
+
+///|
+fn legacy_syntax(argv : Array[String]) -> Bool {
+  try {
+    ignore(measure_syntax(argv))
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+fn json_help(argv : Array[String]) -> Bool {
+  if !output_mode.json {
+    return false
+  }
+  // A declared ordinary flag avoids core's print-and-exit built-in help.
+  try {
+    ignore(
+      @argparse.Command(
+        "ci.measure",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    )
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+async fn main {
+  try {
+    let argv = presentation_arguments(command_arguments())
+    execute(argv)
+  } catch {
+    error => {
+      if !output_mode.json {
+        raise error
+      }
+      @stdio.stdout.write(command_error(error).stringify() + "\n")
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+fn invocation(argv : Array[String]) -> Invocation raise {
+  let operation = measure_syntax(argv)
+  if operation is Measure(run, _) {
+    guard run != "" && run.iter().all(c => c >= '0' && c <= '9') else {
+      fail("RUN_ID must contain only decimal digits")
+    }
+  }
+  operation
+}
+
+///|
+fn presentation_self_test() -> Unit raise {
+  let saved = output_mode.json
+  defer {
+    output_mode.json = saved
+  }
+
+  for literal in ["", "λ 雪", "--", "--json", "--help", "--self-test"] {
+    let raw = [literal, "--", "--json", ""]
+    output_mode.json = false
+    assert_eq(presentation_arguments(["--json", "--", ..raw]), raw)
+    assert_true(output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["--json", "--", "--json", "--", "value"]), [
+    "--json", "--", "value",
+  ])
+
+  for raw in [["--json"], ["--json", "--logs"], ["--help"], [""], ["λ 雪"]] {
+    output_mode.json = false
+    assert_eq(presentation_arguments(raw), raw)
+    assert_true(!output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["42", "--logs", "--json"]), ["42", "--logs"])
+  assert_true(output_mode.json)
+}
+
+///|
+#cfg(target="js")
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, _, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, .. rest] => rest.to_owned()
+    _ => []
+  }
 }

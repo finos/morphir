@@ -2,7 +2,9 @@
 /// Reject failed/cancelled jobs and skipped/absent required jobs. Qualification
 /// receipts bind the exact candidate SHA and workflow run.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/stdio",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/core/argparse",
@@ -50,6 +52,7 @@ fn accepts(needs : Json, required : Json) -> Bool {
 
 ///|
 async fn self_test() -> Unit {
+  presentation_self_test()
   let required : Json = ["changes", "build"]
   let good : Json = {
     "changes": { "result": "success" },
@@ -147,11 +150,13 @@ async fn self_test() -> Unit {
   receipt_self_test()
   qualification_self_test()
   cli_self_test()
-  println(
+  test_note(
     "ci-gate: success, optional skip and selected baseline refusal cases pass",
   )
-  println("ci-gate: focused/full native and installed nested requirements pass")
-  println("ci-gate: exact candidate match and mismatch refusal pass")
+  test_note(
+    "ci-gate: focused/full native and installed nested requirements pass",
+  )
+  test_note("ci-gate: exact candidate match and mismatch refusal pass")
 }
 
 ///|
@@ -267,7 +272,7 @@ async fn receipt_self_test() -> Unit {
     fail("A failed gate must not write a receipt")
   }
   @fs.rmdir(directory)
-  println("ci-gate: receipt fields, null pr and failed-gate refusal pass")
+  test_note("ci-gate: receipt fields, null pr and failed-gate refusal pass")
 }
 
 ///|
@@ -343,7 +348,7 @@ async fn merge_parent_self_test() -> Unit {
     first_parent("tree t\nparent p1\nparent p2\n\nmessage\n") == Some("p1") else {
     fail("Wrong first parent of commit text")
   }
-  println("ci-gate: merge commit first parent is the recorded PR base")
+  test_note("ci-gate: merge commit first parent is the recorded PR base")
 }
 
 ///|
@@ -624,7 +629,7 @@ fn qualification_self_test() -> Unit raise {
     [Some("morphir_ci_qualification_v2")] else {
     fail("Wrong qualification receipt annotation")
   }
-  println(
+  test_note(
     "ci-gate: qualification plan, macOS modes, fixed job lists and v2 receipt pass",
   )
 }
@@ -669,7 +674,7 @@ fn cli_self_test() -> Unit raise {
     }
     guard refused else { fail("Accepted bad arguments \{argv.join(" ")}") }
   }
-  println("ci-gate: argparse forms and refusals pass")
+  test_note("ci-gate: argparse forms and refusals pass")
 }
 
 ///|
@@ -1126,7 +1131,7 @@ async fn receipt_env() -> ReceiptEnv {
 }
 
 ///|
-fn gate_command() -> @argparse.Command {
+fn gate_command(json~ : Bool = false) -> @argparse.Command {
   fn mode_flag(name : String, about : String) -> @argparse.FlagArg {
     @argparse.FlagArg(
       name,
@@ -1135,10 +1140,19 @@ fn gate_command() -> @argparse.Command {
     )
   }
 
+  let help = if json {
+    [@argparse.FlagArg("help", short='h', about="Show help information.")]
+  } else {
+    []
+  }
   @argparse.Command(
     "ci-gate",
     about="Reject failed, cancelled or skipped required CI jobs",
+    disable_help_flag=json,
+    disable_help_subcommand=json,
     flags=[
+      ..help,
+      @argparse.FlagArg("json"),
       mode_flag("self-test", "Run the built-in tests"),
       mode_flag("qualification", "Write a qualification receipt"),
       mode_flag(
@@ -1199,11 +1213,23 @@ async fn qualify(needs : Json) -> Unit {
 }
 
 ///|
-async fn main {
-  let matches = gate_command().parse()
+async fn execute(argv : Array[String]) -> Unit {
+  let matches = gate_command(json=output_mode.json).parse(argv~, env=Map([]))
+  if output_mode.json && matches.flags.get("help").unwrap_or(false) {
+    @stdio.stdout.write(
+      command_result({ "help": gate_command().render_help() }).stringify() +
+      "\n",
+    )
+    return
+  }
+  output_mode.json = output_mode.json ||
+    matches.flags.get("json").unwrap_or(false)
   let mode = gate_mode(matches)
   if mode == "self-test" {
     self_test()
+    if output_mode.json {
+      @stdio.stdout.write(command_result({ "passed": true }).stringify() + "\n")
+    }
     return
   }
   if mode == "qualification-plan" {
@@ -1230,7 +1256,217 @@ async fn main {
     if receipt_path(matches) is Some(path) {
       let selection = @json.parse(environment("CI_SELECTION"))
       write_receipt(path, needs, required, selection, receipt_env())
+      if output_mode.json {
+        println(@fs.read_file(path).json().stringify())
+      }
+    } else if output_mode.json {
+      @stdio.stdout.write(
+        command_result({
+          "mode": mode,
+          "requiredJobs": required,
+          "results": needs,
+          "passed": true,
+        }).stringify() +
+        "\n",
+      )
     }
   }
-  println("All selected checks passed; unselected checks may be skipped.")
+  if !output_mode.json {
+    println("All selected checks passed; unselected checks may be skipped.")
+  }
+}
+
+///|
+/// Output selection belongs to the command boundary, never to data operands.
+priv struct OutputMode {
+  mut json : Bool
+}
+
+///|
+let output_mode : OutputMode = { json: false, }
+
+///|
+fn command_result(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.gate",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+fn command_error(error : Error, code~ : String = "command_failed") -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.gate",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": code, "message": error.to_string() },
+    "diagnostics": [],
+  }
+}
+
+///|
+fn test_note(message : String) -> Unit {
+  if output_mode.json {
+    eprintln(message)
+  } else {
+    println(message)
+  }
+}
+
+///|
+/// Reserve one explicit prefix and unwrap it once. A literal --json is still
+/// data in the legacy grammar, or after the reserved prefix's delimiter.
+fn presentation_arguments(argv : Array[String]) -> Array[String] {
+  match argv {
+    ["--json", "--", .. raw] => {
+      output_mode.json = true
+      return raw.to_owned()
+    }
+    _ => ()
+  }
+  if !argv.is_empty() {
+    try
+      @argparse.Command(
+        "json-prefix",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("json", required=true)],
+      ).parse(argv=argv[:1], env=Map([]))
+    catch {
+      _ => ()
+    } noraise {
+      _ => output_mode.json = true
+    }
+  }
+  if presentation_probe(argv) is Some(matches) {
+    output_mode.json = output_mode.json ||
+      matches.flags.get("json").unwrap_or(false)
+    if matches.subcommand is Some((_, child)) {
+      output_mode.json = output_mode.json ||
+        child.flags.get("json").unwrap_or(false)
+    }
+  }
+  argv
+}
+
+///|
+async fn main {
+  try {
+    let argv = presentation_arguments(command_arguments())
+    execute(argv)
+  } catch {
+    error => {
+      if !output_mode.json {
+        raise error
+      }
+      @stdio.stdout.write(command_error(error).stringify() + "\n")
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+/// Presentation recognition uses the full declared vocabulary, with requirements
+/// relaxed so the real parser can report syntax errors inside the JSON boundary.
+/// The parsed data is never forwarded or used to execute the command.
+fn presentation_probe(argv : Array[String]) -> @argparse.Matches? {
+  Some(
+    @argparse.Command(
+      "ci.gate",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[
+        @argparse.FlagArg("json"),
+        @argparse.FlagArg("help", short='h'),
+        @argparse.FlagArg("self-test"),
+        @argparse.FlagArg("qualification"),
+        @argparse.FlagArg("qualification-plan"),
+        @argparse.FlagArg("native"),
+        @argparse.FlagArg("installed"),
+      ],
+      options=[@argparse.OptionArg("receipt")],
+      positionals=[
+        @argparse.PositionArg(
+          "arguments",
+          num_args=@argparse.ValueRange(lower=0),
+          allow_hyphen_values=true,
+        ),
+      ],
+    ).parse(argv~, env=Map([])),
+  ) catch {
+    _ => presentation_controls(argv)
+  }
+}
+
+///|
+fn presentation_self_test() -> Unit raise {
+  let saved = output_mode.json
+  defer {
+    output_mode.json = saved
+  }
+
+  for literal in ["", "λ 雪", "--", "--json", "--help", "--self-test"] {
+    let raw = [literal, "--", "--json", ""]
+    output_mode.json = false
+    assert_eq(presentation_arguments(["--json", "--", ..raw]), raw)
+    assert_true(output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["--json", "--", "--json", "--", "value"]), [
+    "--json", "--", "value",
+  ])
+
+  output_mode.json = false
+  let raw = ["--receipt=--json"]
+  assert_eq(presentation_arguments(raw), raw)
+  assert_true(!output_mode.json)
+}
+
+///|
+#cfg(target="js")
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, _, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+/// A missing option value can stop the full grammar before it reports JSON.
+/// This library grammar selects presentation only; the complete command grammar
+/// still diagnoses every operand and option. Its values never reach execution.
+fn presentation_controls(argv : Array[String]) -> @argparse.Matches? {
+  Some(
+    @argparse.Command(
+      "presentation",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[@argparse.FlagArg("json"), @argparse.FlagArg("help", short='h')],
+      positionals=[
+        @argparse.PositionArg(
+          "data",
+          num_args=@argparse.ValueRange(lower=0),
+          allow_hyphen_values=true,
+        ),
+      ],
+    ).parse(argv~, env=Map([])),
+  ) catch {
+    _ => None
+  }
 }

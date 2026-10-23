@@ -1,12 +1,69 @@
 ///|
 /// Build, bundle or qualify the native MoonBit MEP guest. Host acquisition is explicit.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.4",
   "moonbitlang/async@0.22.4/process",
   "moonbitlang/async@0.22.4/fs",
   "moonbitlang/async@0.22.4/stdio",
   "moonbitlang/core/env",
+  "moonbitlang/core/json",
   "moonbitlang/core/argparse",
+}
+
+///|
+let json_mode : Ref[Bool] = Ref(false)
+
+///|
+suberror ChildFailure {
+  ChildFailure(Int32, String)
+} derive(Debug)
+
+///|
+fn succeeded(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "moonbit.extension",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+async fn failed(error : Error) -> Unit {
+  let (status, code) = match error {
+    ChildFailure(status, _) =>
+      (if status < 0 { 128 - status } else { status }, "child_failed")
+    _ => (1, "command_failed")
+  }
+  let message = match error {
+    ChildFailure(_, message) => message
+    _ => error.to_string()
+  }
+  @stdio.stderr.write(message + "\n")
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "moonbit.extension",
+    "state": "failed",
+    "exitCode": status,
+    "error": { "code": code, "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(status)
+}
+
+///|
+async fn print_progress(message : String) -> Unit {
+  if json_mode.val {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
 }
 
 ///|
@@ -51,7 +108,12 @@ fn action(argv : Array[String]) -> Action raise {
 
 ///|
 async fn run(program : String, args : Array[String]) -> Int32 {
-  @process.run(program, args, stdout=@stdio.stdout, stderr=@stdio.stderr)
+  @process.run(
+    program,
+    args,
+    stdout=if json_mode.val { @stdio.stderr } else { @stdio.stdout },
+    stderr=@stdio.stderr,
+  )
 }
 
 ///|
@@ -61,7 +123,12 @@ async fn checked_child(
   invoke : async (String, Array[String]) -> Int32,
 ) -> Unit {
   let code = invoke(program, args)
-  guard code == 0 else { fail(program + " failed") }
+  guard code == 0 else {
+    if json_mode.val {
+      raise ChildFailure(code, program + " failed")
+    }
+    fail(program + " failed")
+  }
 }
 
 ///|
@@ -116,7 +183,124 @@ async fn execute(
 }
 
 ///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "moonbit-extension",
+    about="build|bundle|test --json; --self-test --json; --help --json",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg("json", required=true),
+      @argparse.FlagArg("help"),
+      @argparse.FlagArg("self-test"),
+    ],
+    positionals=[
+      @argparse.PositionArg("mode", num_args=@argparse.ValueRange(upper=1)),
+    ],
+    groups=[
+      @argparse.ArgGroup("operation", required=true, multiple=false, args=[
+        "help", "self-test", "mode",
+      ]),
+    ],
+  )
+}
+
+///|
+fn literal_arity(argv : ArrayView[String], count : Int32) -> Unit raise {
+  ignore(
+    @argparse.Command(
+      "moonbit-extension",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      positionals=[
+        @argparse.PositionArg(
+          "argument",
+          num_args=@argparse.ValueRange(lower=count, upper=count),
+        ),
+      ],
+    ).parse(argv=["--"] + argv.to_owned(), env=Map([])),
+  )
+}
+
+///|
+fn json_arguments(argv : ArrayView[String]) -> Array[String] {
+  // This is a fixed mode/control slot, not an external argument tail.
+  match argv {
+    ["--help", "--json"] => ["--json", "--help"]
+    ["--self-test", "--json"] => ["--json", "--self-test"]
+    [mode, "--json"] => ["--json", "--", mode]
+    ["--json", "--"] => ["--json", "--", "--"]
+    ["--json", "--", mode] => ["--json", "--", mode]
+    _ => argv.to_owned()
+  }
+}
+
+///|
 async fn main {
+  let argv = @env.args()[1:]
+  json_mode.val = match argv {
+    ["--json", ..] | [_, "--json", ..] => true
+    _ => false
+  }
+  if !json_mode.val {
+    legacy_main()
+    return
+  }
+  try {
+    literal_arity(
+      argv,
+      match argv {
+        ["--json", "--", _] => 3
+        ["--json"] => 1
+        _ => 2
+      },
+    )
+    let matches = json_command().parse(argv=json_arguments(argv), env=Map([]))
+    let result : Json = if matches.flags.get("help").unwrap_or(false) {
+      { "render_help": json_command().render_help() }
+    } else {
+      let selected = if matches.flags.get("self-test").unwrap_or(false) {
+        SelfTest
+      } else {
+        action(matches.values.get("mode").unwrap_or([]))
+      }
+      if selected == SelfTest {
+        self_test()
+        ({ "passed": true } : Json)
+      } else {
+        let guest = execute(
+          selected,
+          run,
+          path => @fs.realpath(path),
+          @env.get_env_var,
+        )
+        match selected {
+          Build => { "guestPath": guest.unwrap() }
+          Bundle =>
+            {
+              "bundlePath": @env.get_env_var("MORPHIR_MEP_BUNDLE").unwrap(),
+              "platform": @env.get_env_var("MORPHIR_MEP_PLATFORM").unwrap(),
+            }
+          Test =>
+            {
+              "passed": true,
+              "evidenceDirectory": @env.get_env_var("MORPHIR_MEP_EVIDENCE").unwrap_or(
+                ".dev/mep-process",
+              ),
+              "checks": ["mep", "frontend", "build", "acceptance"],
+            }
+          SelfTest => fail("Self-test already handled")
+        }
+      }
+    }
+    @stdio.stdout.write(succeeded(result).stringify() + "\n")
+  } catch {
+    error => failed(error)
+  }
+}
+
+///|
+async fn legacy_main() -> Unit {
   let selected = action(@env.args()[1:].to_owned())
   if selected == SelfTest {
     self_test()
@@ -124,7 +308,7 @@ async fn main {
   }
   if execute(selected, run, path => @fs.realpath(path), @env.get_env_var)
     is Some(guest) {
-    println(guest)
+    print_progress(guest)
   }
 }
 
@@ -306,5 +490,34 @@ async fn self_test() -> Unit {
     Some((acceptance, [guest, "/resolved/.", ".dev/mep-process"])) else {
     fail("Changed default evidence directory")
   }
-  println("moonbit-extension: parser, command boundaries and failures pass")
+  print_progress(
+    "moonbit-extension: parser, command boundaries and failures pass",
+  )
+}
+
+///|
+test "JSON mode uses complete grammar and literal mode boundaries" {
+  for mode in ["build", "bundle", "test", "--", "--json", "", "雪"] {
+    let matches = json_command().parse(
+      argv=json_arguments([mode, "--json"]),
+      env=Map([]),
+    )
+    assert_eq(matches.values["mode"], [mode])
+  }
+  for control in ["--help", "--self-test"] {
+    let matches = json_command().parse(
+      argv=json_arguments([control, "--json"]),
+      env=Map([]),
+    )
+    assert_true(matches.flags[control.strip_prefix("--").unwrap().to_owned()])
+  }
+  for argv in [["--json", "--help", "--"], ["--self-test", "--json", "extra"]] {
+    let refused = try {
+      literal_arity(argv, 2)
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused)
+  }
 }

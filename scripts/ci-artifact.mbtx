@@ -1,9 +1,12 @@
 ///|
 /// Same-run CI artifacts. Binary Ion is authoritative; stdout is a JSON view.
 import {
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/async@0.22.1/stdio",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonrockz/ion@0.5.0/binary",
@@ -13,6 +16,104 @@ import {
 
 ///|
 let profile = "morphir_ci_artifact_v1"
+
+///|
+enum Invocation {
+  Pack(String, String)
+  PackRelease(String, String)
+  Verify(String, String)
+  PackCross(String, String, String)
+  SelfTest
+  UnknownOperation(String)
+} derive(Eq)
+
+///|
+fn artifact_command() -> @argparse.Command {
+  fn operation(name : String, cross : Bool) -> @argparse.Command {
+    let positionals = [
+      @argparse.PositionArg("kind", num_args=@argparse.ValueRange::single()),
+      @argparse.PositionArg(
+        "directory",
+        num_args=@argparse.ValueRange::single(),
+      ),
+    ]
+    if cross {
+      positionals.push(
+        @argparse.PositionArg("target", num_args=@argparse.ValueRange::single()),
+      )
+    }
+    @argparse.Command(
+      name,
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      positionals~,
+    )
+  }
+  @argparse.Command(
+    "ci-artifact.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommands=[
+      operation("pack", false),
+      operation("pack-release", false),
+      operation("verify", false),
+      operation("pack-cross", true),
+    ],
+    // Baseline unknown operations with three operands still build runtimes and
+    // validate kind before refusing. Requires keeps this alternative complete.
+    positionals=[
+      @argparse.PositionArg("operation", allow_hyphen_values=true, requires=[
+        "kind", "directory",
+      ]),
+      @argparse.PositionArg("kind", requires=["operation", "directory"]),
+      @argparse.PositionArg("directory", requires=["operation", "kind"]),
+    ],
+  )
+}
+
+///|
+fn invocation(arguments : ArrayView[String]) -> Invocation raise {
+  // Insert one delimiter at the fixed command/data boundary without inspecting
+  // content. All original operands remain literal, including controls and `--`.
+  let boundary = arguments.length().min(1)
+  let normalized = arguments[:boundary].to_owned()
+  normalized.push("--")
+  normalized.append(arguments[boundary:].to_owned())
+  let control = @argparse.Command(
+    "ci-artifact.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("self-test", required=true)],
+  )
+  try control.parse(argv=normalized, env=Map([])) catch {
+    _ => ()
+  } noraise {
+    _ => return SelfTest
+  }
+  let command = artifact_command()
+  let matches = command.parse(argv=normalized, env=Map([])) catch {
+    error => fail(error.to_string())
+  }
+  match matches.subcommand {
+    Some((operation, child)) => {
+      let kind = child.values["kind"][0]
+      let directory = child.values["directory"][0]
+      match operation {
+        "pack" => Pack(kind, directory)
+        "pack-release" => PackRelease(kind, directory)
+        "verify" => Verify(kind, directory)
+        "pack-cross" => PackCross(kind, directory, child.values["target"][0])
+        _ => abort("Undeclared artifact operation")
+      }
+    }
+    None =>
+      if matches.values.contains("operation") {
+        UnknownOperation(matches.values["kind"][0])
+      } else {
+        fail(command.render_help())
+      }
+  }
+}
 
 ///|
 async fn output(
@@ -414,6 +515,67 @@ async fn pack(
 
 ///|
 async fn self_test() -> Unit {
+  presentation_self_test()
+  for kind in ["native-cli", "provider-tools", "--", "--help", "--self-test"] {
+    for
+      directory in [
+        "relative", "space 雪 $d;`literal`'\"", "", "-directory", "--unknown", "--help",
+        "--self-test", "--",
+      ] {
+      assert_true(
+        invocation(["pack", kind, directory]) == Pack(kind, directory),
+      )
+      assert_true(
+        invocation(["pack-release", kind, directory]) ==
+        PackRelease(kind, directory),
+      )
+      assert_true(
+        invocation(["verify", kind, directory]) == Verify(kind, directory),
+      )
+      for
+        target in [
+          "linux-x64", "darwin-arm64", "--", "--help", "--self-test", "",
+        ] {
+        assert_true(
+          invocation(["pack-cross", kind, directory, target]) ==
+          PackCross(kind, directory, target),
+        )
+      }
+    }
+  }
+  assert_true(invocation(["--self-test"]) == SelfTest)
+  for operation in ["unknown", "help", "--help", "--self-test", "--", "-x", ""] {
+    assert_true(
+      invocation([operation, "native-cli", "directory"]) ==
+      UnknownOperation("native-cli"),
+    )
+  }
+  for
+    arguments in [
+      [],
+      ["--"],
+      ["--help"],
+      ["-h"],
+      ["--self-test", "--self-test"],
+      ["--self-test", "--"],
+      ["--self-test=true"],
+      ["pack"],
+      ["pack", "native-cli"],
+      ["unknown", "native-cli"],
+      ["unknown", "native-cli", "dir", "extra"],
+      ["pack", "native-cli", "dir", "extra"],
+      ["pack-release", "native-cli", "dir", "extra"],
+      ["verify", "native-cli", "dir", "--"],
+      ["pack", "--", "native-cli", "dir"],
+      ["pack-cross", "native-cli", "dir"],
+      ["pack-cross", "native-cli", "dir", "linux-x64", "extra"],
+    ] {
+    try ignore(invocation(arguments)) catch {
+      _ => ()
+    } noraise {
+      _ => fail("Expected artifact CLI syntax rejection")
+    }
+  }
   let root = @fs.tmpdir(prefix="morphir-ci-artifact-test-")
   defer @fs.rmdir(root, recursive=true)
   let kind = "native-cli"
@@ -619,39 +781,249 @@ async fn self_test() -> Unit {
   } noraise {
     _ => fail("Expected same-platform compiler identity rejection")
   }
-  println(
+  test_note(
     "CI artifact admission: native/released/cross reuse, source/run/core/target mismatch, wrong kind, symlink, tampering, missing catalog, release proof and binary format checks passed",
   )
 }
 
 ///|
-async fn main {
-  let args = @env.args()
-  if args.length() == 2 && args[1] == "--self-test" {
-    self_test()
+async fn execute(argv : Array[String]) -> Unit {
+  if json_help(argv) {
+    @stdio.stdout.write(
+      command_result({ "help": artifact_command().render_help() }).stringify() +
+      "\n",
+    )
     return
   }
-  guard (args.length() == 4 && args[1] != "pack-cross") ||
-    (args.length() == 5 && args[1] == "pack-cross") else {
-    fail(
-      "Usage: ci-artifact.mbtx pack|pack-release|verify KIND DIRECTORY | pack-cross native-cli DIRECTORY TARGET",
-    )
+  let operation = invocation(argv)
+  if operation == SelfTest {
+    self_test()
+    if output_mode.json {
+      @stdio.stdout.write(command_result({ "passed": true }).stringify() + "\n")
+    }
+    return
   }
 
   // These development gates consume portable provider modules on a fresh checkout.
-  let (runtime_status, _, runtime_error) = @process.collect_output("bun", [
-    "run", "build:runtimes",
-  ])
+  let (runtime_status, runtime_output, runtime_error) = @process.collect_output(
+    "bun",
+    ["run", "build:runtimes"],
+  )
+  if output_mode.json {
+    @stdio.stderr.write(runtime_output.text())
+    @stdio.stderr.write(runtime_error.text())
+  }
   guard runtime_status == 0 else {
     fail("Runtime JavaScript build failed: " + runtime_error.text())
   }
-  ignore(names(args[2]))
-  let result = match args[1] {
-    "pack-cross" => pack(args[2], args[3], cross_target=Some(args[4]))
-    "pack" => pack(args[2], args[3])
-    "pack-release" => pack(args[2], args[3], released=true)
-    "verify" => admit(args[2], @fs.realpath(args[3]), context(args[2]))
-    _ => fail("Unknown artifact operation")
+  let kind = match operation {
+    Pack(kind, _)
+    | PackRelease(kind, _)
+    | Verify(kind, _)
+    | PackCross(kind, _, _)
+    | UnknownOperation(kind) => kind
+    SelfTest => abort("Self-test already dispatched")
+  }
+  ignore(names(kind))
+  let result = match operation {
+    PackCross(kind, directory, target) =>
+      pack(kind, directory, cross_target=Some(target))
+    Pack(kind, directory) => pack(kind, directory)
+    PackRelease(kind, directory) => pack(kind, directory, released=true)
+    Verify(kind, directory) =>
+      admit(kind, @fs.realpath(directory), context(kind))
+    SelfTest => abort("Self-test already dispatched")
+    UnknownOperation(_) => fail("Unknown artifact operation")
   }
   println(result.stringify())
+}
+
+///|
+/// Output selection belongs to the command boundary, never to data operands.
+priv struct OutputMode {
+  mut json : Bool
+}
+
+///|
+let output_mode : OutputMode = { json: false, }
+
+///|
+fn command_result(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.artifact",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+fn command_error(error : Error, code~ : String = "command_failed") -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.artifact",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": code, "message": error.to_string() },
+    "diagnostics": [],
+  }
+}
+
+///|
+fn test_note(message : String) -> Unit {
+  if output_mode.json {
+    eprintln(message)
+  } else {
+    println(message)
+  }
+}
+
+///|
+/// Reserve one explicit prefix and unwrap it once. A literal --json is still
+/// data in the legacy grammar, or after the reserved prefix's delimiter.
+fn presentation_arguments(argv : Array[String]) -> Array[String] {
+  match argv {
+    ["--json", "--", .. raw] => {
+      output_mode.json = true
+      return raw.to_owned()
+    }
+    _ => ()
+  }
+  // Keep every complete legacy syntax, including flag-shaped fixed operands.
+  // JSON is additive at the two fixed control boundaries only.
+  if !legacy_syntax(argv) {
+    let flag = @argparse.Command(
+      "ci.artifact",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[@argparse.FlagArg("json", required=true)],
+    )
+    if !argv.is_empty() {
+      try flag.parse(argv=argv[:1], env=Map([])) catch {
+        _ => ()
+      } noraise {
+        _ => {
+          output_mode.json = true
+          return argv[1:].to_owned()
+        }
+      }
+      let boundary = argv.length() - 1
+      if legacy_syntax(argv[:boundary].to_owned()) {
+        try flag.parse(argv=argv[boundary:], env=Map([])) catch {
+          _ => ()
+        } noraise {
+          _ => {
+            output_mode.json = true
+            return argv[:boundary].to_owned()
+          }
+        }
+      }
+    }
+  }
+  argv
+}
+
+///|
+fn legacy_syntax(argv : Array[String]) -> Bool {
+  try {
+    ignore(invocation(argv))
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+fn json_help(argv : Array[String]) -> Bool {
+  if !output_mode.json {
+    return false
+  }
+  // A declared ordinary flag avoids core's print-and-exit built-in help.
+  try {
+    ignore(
+      @argparse.Command(
+        "ci.artifact",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    )
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+async fn main {
+  try {
+    let argv = presentation_arguments(command_arguments())
+    execute(argv)
+  } catch {
+    error => {
+      if !output_mode.json {
+        raise error
+      }
+      @stdio.stdout.write(command_error(error).stringify() + "\n")
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+fn presentation_self_test() -> Unit raise {
+  let saved = output_mode.json
+  defer {
+    output_mode.json = saved
+  }
+
+  for literal in ["", "λ 雪", "--", "--json", "--help", "--self-test"] {
+    let raw = [literal, "--", "--json", ""]
+    output_mode.json = false
+    assert_eq(presentation_arguments(["--json", "--", ..raw]), raw)
+    assert_true(output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["--json", "--", "--json", "--", "value"]), [
+    "--json", "--", "value",
+  ])
+
+  for literal in ["", "λ 雪", "--", "--json", "--help", "--self-test"] {
+    let raw = ["pack", "native-cli", literal]
+    output_mode.json = false
+    assert_eq(presentation_arguments(raw), raw)
+    assert_true(!output_mode.json)
+    assert_true(invocation(raw) == Pack("native-cli", literal))
+    let cross = ["pack-cross", "native-cli", "directory", literal]
+    assert_eq(presentation_arguments(cross), cross)
+    assert_true(!output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(
+    presentation_arguments(["pack", "native-cli", "--json", "--json"]),
+    ["pack", "native-cli", "--json"],
+  )
+  assert_true(output_mode.json)
+}
+
+///|
+#cfg(target="js")
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, _, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, .. rest] => rest.to_owned()
+    _ => []
+  }
 }

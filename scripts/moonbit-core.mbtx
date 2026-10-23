@@ -1,6 +1,8 @@
 ///|
 /// Verify that the selected MoonBit toolchain carries the pinned stock core.
 import {
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/async@0.22.1/stdio",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -15,6 +17,59 @@ import {
 }
 
 ///|
+// Selected only at the owned CLI boundary, never from a child or a path value.
+let json_mode : Ref[Bool] = Ref(false)
+
+///|
+fn succeeded(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "moonbit.core",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+priv suberror CommandAbort {
+  Message(String)
+}
+
+///|
+fn[T] refuse(message : String) -> T raise {
+  if json_mode.val {
+    raise CommandAbort::Message(message)
+  } else {
+    abort(message)
+  }
+}
+
+///|
+async fn failed(error : Error) -> Unit {
+  // New opt-in JSON refusals use explicit exit 1 on every host. Legacy
+  // default invocations still retain their original abort/signal behavior.
+  let message = match error {
+    CommandAbort::Message(message) => message
+    _ => error.to_string()
+  }
+  @stdio.stderr.write(message + "\n")
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "moonbit.core",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": "command_failed", "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(1)
+}
+
+///|
 enum CoreMode {
   Setup
   Check
@@ -22,12 +77,20 @@ enum CoreMode {
 } derive(Eq, @debug.Debug)
 
 ///|
-fn core_command() -> @argparse.Command {
+fn core_command(json~ : Bool = false) -> @argparse.Command {
   @argparse.Command(
     "moonbit-core.mbtx",
     about="Verify the pinned stock core without changing the toolchain",
     disable_help_flag=true,
-    flags=[@argparse.FlagArg("self-test", about="Test core identity guards")],
+    flags=if json {
+      [
+        @argparse.FlagArg("json", required=true),
+        @argparse.FlagArg("help"),
+        @argparse.FlagArg("self-test", about="Test core identity guards"),
+      ]
+    } else {
+      [@argparse.FlagArg("self-test", about="Test core identity guards")]
+    },
     positionals=[
       @argparse.PositionArg(
         "mode",
@@ -36,9 +99,18 @@ fn core_command() -> @argparse.Command {
       ),
     ],
     groups=[
-      @argparse.ArgGroup("operation", required=true, multiple=false, args=[
-        "mode", "self-test",
-      ]),
+      @argparse.ArgGroup(
+        "operation",
+        required=true,
+        multiple=false,
+        args=[
+          ..if json {
+            ["mode", "self-test", "help"]
+          } else {
+            ["mode", "self-test"]
+          },
+        ],
+      ),
     ],
   )
 }
@@ -122,15 +194,18 @@ fn join(root : String, relative : String) -> String {
 }
 
 ///|
-fn field(value : Json, key : String) -> Json {
-  guard value is Object(fields) else { abort("Expected core pin object") }
+fn field(value : Json, key : String) -> Json raise {
+  guard value is Object(fields) else { refuse("Expected core pin object") }
+  if json_mode.val && fields.get(key) is None {
+    fail("Missing core pin field: " + key)
+  }
   fields[key]
 }
 
 ///|
-fn text(value : Json, key : String) -> String {
+fn text(value : Json, key : String) -> String raise {
   guard field(value, key) is String(text) else {
-    abort("Missing core pin field: " + key)
+    refuse("Missing core pin field: " + key)
   }
   text
 }
@@ -300,9 +375,11 @@ async fn self_test() -> Unit {
       }
   }
   if !linked {
-    println(
-      "Pinned core source tampering and added files reject; link cases skipped: this host cannot create links",
-    )
+    if !json_mode.val {
+      println(
+        "Pinned core source tampering and added files reject; link cases skipped: this host cannot create links",
+      )
+    }
     return
   }
   assert_eq(source_identity(root), (copied, copied_count))
@@ -317,17 +394,18 @@ async fn self_test() -> Unit {
     _ => true
   }
   assert_true(rejected)
-  println("Pinned core source tampering, added files and escaping links reject")
+  if !json_mode.val {
+    println(
+      "Pinned core source tampering, added files and escaping links reject",
+    )
+  }
 }
 
 ///|
-async fn main {
-  let mode = core_mode(@env.args()[1:]) catch {
-    error => fail(error.to_string())
-  }
+async fn execute(mode : CoreMode) -> Json {
   if mode == SelfTest {
     self_test()
-    return
+    return { "passed": true }
   }
   let repository = @fs.realpath(".")
   let pin = @json.parse(
@@ -361,5 +439,42 @@ async fn main {
   // `setup` and `check` agree: the installer already placed and bundled the
   // core, so both recompute every source byte against the tracked digest.
   verify(core, pin)
-  println(core)
+  if !json_mode.val {
+    println(core)
+  }
+  { "corePath": core }
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:]
+  json_mode.val = match argv {
+    ["--json", ..] | [_, "--json", ..] => true
+    _ => false
+  }
+  if !json_mode.val {
+    let mode = core_mode(argv) catch { error => fail(error.to_string()) }
+    ignore(execute(mode))
+    return
+  }
+  try {
+    let matches = core_command(json=true).parse(argv~, env=Map([]))
+    let result : Json = if matches.flags.get("help").unwrap_or(false) {
+      { "render_help": core_command(json=true).render_help() }
+    } else {
+      let mode = if matches.flags.get("self-test").unwrap_or(false) {
+        SelfTest
+      } else {
+        match matches.values.get("mode") {
+          Some(["setup"]) => Setup
+          Some(["check"]) => Check
+          _ => fail("Usage: moonbit-core.mbtx setup|check|--self-test")
+        }
+      }
+      execute(mode)
+    }
+    @stdio.stdout.write(succeeded(result).stringify() + "\n")
+  } catch {
+    error => failed(error)
+  }
 }

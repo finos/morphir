@@ -290,7 +290,7 @@ fn replacement_allowed(
 ///|
 async fn fail(message : String) -> Unit {
   @stdio.stderr.write("beads:companion: \{message}\n")
-  @sys.exit(1)
+  finish(1, message~)
 }
 
 ///|
@@ -349,7 +349,12 @@ async fn export_design(value : Issue, path : String, mode : WriteMode) -> Unit {
   }
   // No extra newline, reformatting, template replacement or HTML evaluation.
   @fs.write_file(path, value.design)
-  println(path)
+  progress(path)
+  result_data.val = {
+    "id": value.id,
+    "path": path,
+    "designFormat": extension(value.design),
+  }
 }
 
 ///|
@@ -415,7 +420,7 @@ async fn shared_lock_path(id : String) -> String {
 ///|
 /// Offline subprocess fixture: the same critical section with file-backed data,
 /// so CI can exercise actual competing processes without opening a tracker.
-async fn self_test_write(directory : String, incoming : String) -> Unit {
+async fn self_test_write(directory : String, incoming : String) -> StoreOutcome {
   let state = directory + "/state"
   let result = store_locked(
     directory + "/writer.lock",
@@ -431,6 +436,7 @@ async fn self_test_write(directory : String, incoming : String) -> Unit {
   if result is Conflict {
     fail("Another writer stored a different design.")
   }
+  result
 }
 
 ///|
@@ -450,7 +456,8 @@ async fn run(command : Command) -> Unit {
         },
         "embeddedSvgCount": value.design.split("<svg").count() - 1,
       }
-      println(summary.stringify())
+      @stdio.stdout.write(summary.stringify() + "\n")
+      bare_result.val = true
     }
     Export(id, output, mode) => {
       let value = issue(id)
@@ -473,14 +480,25 @@ async fn run(command : Command) -> Unit {
           ignore(bd_output(["update", id, "--design-file", source]))
         },
       )
+      result_data.val = {
+        "id": id,
+        "outcome": if result is Unchanged {
+          "unchanged"
+        } else {
+          "written"
+        },
+      }
       match result {
         Conflict =>
           fail(
             "\{id} already has a different design. Export and merge it, then use --replace.",
           )
-        Unchanged => println("\{id}: design already matches; no update needed.")
+        Unchanged =>
+          progress("\{id}: design already matches; no update needed.")
         Written =>
-          println("\{id}: design stored and checked. Run bd dolt push to sync.")
+          progress(
+            "\{id}: design stored and checked. Run bd dolt push to sync.",
+          )
       }
     }
     Note(id, path) => {
@@ -488,7 +506,8 @@ async fn run(command : Command) -> Unit {
       ignore(nonempty_file(path))
       let source = @fs.realpath(path)
       ignore(bd_output(["note", id, "--file", source]))
-      println("\{id}: note appended. Run bd dolt push to sync.")
+      result_data.val = { "id": id, "appended": true }
+      progress("\{id}: note appended. Run bd dolt push to sync.")
     }
     Remember(key, path) => {
       if key.is_empty() || key.has_prefix("-") {
@@ -497,7 +516,8 @@ async fn run(command : Command) -> Unit {
       let content = nonempty_file(path)
       // The separator keeps leading dashes in memory text from becoming bd flags.
       ignore(bd_output(["remember", "--key", key, "--", content]))
-      println("\{key}: memory saved. Run bd dolt push to sync.")
+      result_data.val = { "key": key, "saved": true }
+      progress("\{key}: memory saved. Run bd dolt push to sync.")
     }
     Help | SelfTest | SelfTestWrite(_, _) => ()
   }
@@ -753,12 +773,12 @@ async fn self_test() -> Unit {
   defer lock.close()
   assert_true(lock.try_lock(Exclusive))
   lock.unlock()
-  println("beads:companion: self-test passed; no beads database was opened.")
+  progress("beads:companion: self-test passed; no beads database was opened.")
 }
 
 ///|
-async fn main {
-  let command = match parse_command(@env.args()[1:].to_owned()) {
+async fn command_main(argv : Array[String]) -> Unit {
+  let command = match parse_command(argv) {
     Ok(command) => command
     Err(message) => {
       fail(message)
@@ -767,7 +787,7 @@ async fn main {
   }
   match command {
     Help =>
-      println(
+      progress(
         (
           #|moonx scripts/beads-companion.mbtx COMMAND
           #|  design inspect ID
@@ -783,8 +803,24 @@ async fn main {
           #|Writes remain local until bd dolt push; no command merges or releases.
         ),
       )
-    SelfTest => self_test()
-    SelfTestWrite(directory, content) => self_test_write(directory, content)
+    SelfTest => {
+      self_test()
+      result_data.val = { "selfTest": "passed" }
+      operation.val = "beads.companion.self-test"
+    }
+    SelfTestWrite(directory, content) => {
+      let outcome = self_test_write(directory, content)
+      result_data.val = {
+        "path": directory + "/state",
+        "written": outcome is Written,
+        "outcome": if outcome is Written {
+          "written"
+        } else {
+          "unchanged"
+        },
+      }
+      operation.val = "beads.companion.self-test-write"
+    }
     _ => {
       // Check for an existing bootstrapped DB before any bd command can create one.
       let status = @process.run(
@@ -798,9 +834,210 @@ async fn main {
           "Shared database check failed. Follow beads:check's repair guidance.",
         )
       }
+      operation.val = "beads.companion." +
+        (match command {
+          Inspect(_) => "design.inspect"
+          Export(_, _, _) => "design.export"
+          Store(_, _, _) => "design.store"
+          Note(_, _) => "note"
+          Remember(_, _) => "remember"
+          _ => "control"
+        })
       run(command) catch {
         error => fail(error.to_string())
       }
     }
   }
+}
+
+///|
+enum Presentation {
+  Text
+  Json
+}
+
+///|
+let presentation : Ref[Presentation] = Ref(Text)
+
+///|
+let result_data : Ref[Json] = Ref({})
+
+///|
+let operation : Ref[String] = Ref("beads.companion")
+
+///|
+/// Only this bounded root prefix is owned. Tail values are encoded for syntax
+/// validation only; the original array slice is returned without reconstruction.
+fn presentation_arguments(argv : Array[String]) -> Array[String] raise {
+  match argv {
+    ["--forward-argv", "--", .. raw] => {
+      ignore(
+        @argparse.Command(
+          "beads.companion",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("forward-argv", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--forward-argv", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    ["--json", .. raw] => {
+      presentation.val = Json
+      ignore(
+        @argparse.Command(
+          "beads.companion",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("json", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--json", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    _ => argv
+  }
+}
+
+///|
+fn presentation_help() -> @argparse.Command {
+  @argparse.Command(
+    "beads.companion",
+    about="design inspect ID | design export ID [PATH] [--replace] | design store ID FILE [--replace] | note ID FILE | remember KEY FILE | --self-test-write DIRECTORY CONTENT JSON results use profile morphir/command-result, contractVersion0.1.0, command, state, exitCode, diagnostics and result on success or error{code,message} on failure. Existing successful JSON schemas remain bare. Stdout is one compact JSON value plus LF; progress and child logs use stderr. Help has result.help and no command effects; supported self-tests report actual completion. Exit0 means success; explicit syntax/child statuses remain meaningful, new expected JSON refusals exit1; default abort behavior is unchanged.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg(
+        "json",
+        about="Emit one command result; select at the root before operation data",
+      ),
+      @argparse.FlagArg(
+        "forward-argv",
+        about="Only exact --forward-argv -- RAW selects literal forwarding; unwrap once. Other text-mode tails keep their legacy meaning",
+      ),
+      @argparse.FlagArg("help", short='h', about="Show help without effects"),
+      @argparse.FlagArg(
+        "self-test",
+        about="Run the existing isolated self-test",
+      ),
+    ],
+    positionals=[
+      @argparse.PositionArg("operation", num_args=@argparse.ValueRange(lower=0)),
+    ],
+  )
+}
+
+///|
+async fn progress(message : String) -> Unit {
+  if presentation.val is Json {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
+}
+
+///|
+async fn finish(code : Int32, message~ : String = "Command failed") -> Unit {
+  if presentation.val is Json {
+    let value : Json = if code == 0 {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result_data.val,
+        "diagnostics": [],
+      }
+    } else {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "failed",
+        "exitCode": code,
+        "error": {
+          "code": "command-failed",
+          "message": if message == "Command failed" {
+            "Command exited with status \{code}"
+          } else {
+            message
+          },
+        },
+        "diagnostics": [],
+      }
+    }
+    @stdio.stdout.write(value.stringify() + "\n")
+  }
+  if code != 0 {
+    @sys.exit(code)
+  }
+}
+
+///|
+async fn main {
+  let argv = presentation_arguments(@env.args()[1:].to_owned())
+  if presentation.val is Json {
+    // Built-in help exits inside argparse. JSON help is an ordinary declared
+    // flag in a separate grammar, with no acquisition or command effects.
+    let help = Some(
+      @argparse.Command(
+        "beads.companion",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv=if argv.is_empty() { ["--help"] } else { argv }, env=Map([])),
+    ) catch {
+      _ => None
+    }
+    if help is Some(matches) &&
+      (matches.flags.get("help") == Some(true) || argv.is_empty()) {
+      result_data.val = { "help": presentation_help().render_help() }
+      operation.val = "beads.companion.help"
+      finish(0)
+      return
+    }
+  }
+  try {
+    command_main(argv)
+    if !bare_result.val {
+      finish(0)
+    }
+  } catch {
+    error =>
+      if presentation.val is Json {
+        @stdio.stderr.write(error.to_string() + "\n")
+        finish(1, message=error.to_string())
+      } else {
+        raise error
+      }
+  }
+}
+
+///|
+let bare_result : Ref[Bool] = Ref(false)
+
+///|
+test "JSON prefix preserves literal tail and unwraps escape only once" {
+  let previous = presentation.val
+  defer {
+    presentation.val = previous
+  }
+  let raw = [
+    "--json", "--", "--forward-argv", "--", "", "λ '$;`", "--help", "--replace",
+  ]
+  let escaped = presentation_arguments(["--forward-argv", "--", ..raw])
+  assert_eq(escaped, raw)
+  assert_true(presentation.val is Text)
+  let selected = presentation_arguments(["--json", ..raw])
+  assert_eq(selected, raw)
+  assert_true(presentation.val is Json)
 }

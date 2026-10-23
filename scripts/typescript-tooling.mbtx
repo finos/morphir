@@ -1,6 +1,7 @@
 ///|
 /// Portable Bun setup, checked builds and Node compatibility gates.
 import {
+  "moonbitlang/core/json",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
@@ -102,7 +103,18 @@ fn encoded_tail(token : String) -> String {
 
 ///|
 async fn run(command : String, args : Array[String]) -> Int32 {
-  @process.run(command, args, stdout=@stdio.stdout, stderr=@stdio.stderr)
+  let status = @process.run(
+    command,
+    args,
+    stdout=if presentation.val is Json { @stdio.stderr } else { @stdio.stdout },
+    stderr=@stdio.stderr,
+  )
+  child_steps.push({
+    "program": command,
+    "args": Json::array(args.map(Json::string)),
+    "exitCode": status,
+  })
+  status
 }
 
 ///|
@@ -252,26 +264,39 @@ async fn execute(
 }
 
 ///|
-async fn main {
-  let selected = invocation(@env.args()[1:].to_owned()) catch {
+async fn command_main(argv : Array[String]) -> Unit {
+  let selected = invocation(argv) catch {
     MissingTask => {
-      @sys.exit(2)
+      finish(2)
       return
     }
     InvalidTask(mode) => {
-      println("Unknown TypeScript task: \{mode}")
-      @sys.exit(2)
+      progress("Unknown TypeScript task: \{mode}")
+      finish(2)
       return
     }
     error => raise error
   }
   try {
     match selected {
-      SelfTest => self_test()
-      Task(mode, ci) => execute(mode, ci, run, ensure_moon_home)
+      SelfTest => {
+        self_test()
+        result_data.val = { "selfTest": "passed" }
+        operation.val = "typescript.tooling.self-test"
+      }
+      Task(mode, ci) => {
+        operation.val = "typescript.tooling." + mode
+        execute(mode, ci, run, ensure_moon_home)
+        result_data.val = {
+          "task": mode,
+          "ci": ci,
+          "steps": Json::array(child_steps),
+          "passed": true,
+        }
+      }
     }
   } catch {
-    Failed(code) => @sys.exit(code)
+    Failed(code) => finish(code)
     error => raise error
   }
 }
@@ -673,5 +698,194 @@ async fn self_test() -> Unit {
     _ => false
   }
   guard spawn_error_preserved else { abort("executor error was reclassified") }
-  println("TypeScript tooling self-tests passed.")
+  progress("TypeScript tooling self-tests passed.")
+}
+
+///|
+enum Presentation {
+  Text
+  Json
+}
+
+///|
+let presentation : Ref[Presentation] = Ref(Text)
+
+///|
+let result_data : Ref[Json] = Ref({})
+
+///|
+let operation : Ref[String] = Ref("typescript.tooling")
+
+///|
+/// Only this bounded root prefix is owned. Tail values are encoded for syntax
+/// validation only; the original array slice is returned without reconstruction.
+fn presentation_arguments(argv : Array[String]) -> Array[String] raise {
+  match argv {
+    ["--forward-argv", "--", .. raw] => {
+      ignore(
+        @argparse.Command(
+          "typescript.tooling",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("forward-argv", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--forward-argv", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    ["--json", .. raw] => {
+      presentation.val = Json
+      ignore(
+        @argparse.Command(
+          "typescript.tooling",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("json", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--json", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    _ => argv
+  }
+}
+
+///|
+fn presentation_help() -> @argparse.Command {
+  @argparse.Command(
+    "typescript.tooling",
+    about="setup-workbench | setup-site | build-workbench | test-workbench | test-workbench-artifacts | test-embedding | test-compiler | test-supervision | test-cli | check; exact --ci anywhere in tail JSON results use profile morphir/command-result, contractVersion0.1.0, command, state, exitCode, diagnostics and result on success or error{code,message} on failure. Existing successful JSON schemas remain bare. Stdout is one compact JSON value plus LF; progress and child logs use stderr. Help has result.help and no command effects; supported self-tests report actual completion. Exit0 means success; explicit syntax/child statuses remain meaningful, new expected JSON refusals exit1; default abort behavior is unchanged.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg(
+        "json",
+        about="Emit one command result; select at the root before operation data",
+      ),
+      @argparse.FlagArg(
+        "forward-argv",
+        about="Only exact --forward-argv -- RAW selects literal forwarding; unwrap once. Other text-mode tails keep their legacy meaning",
+      ),
+      @argparse.FlagArg("help", short='h', about="Show help without effects"),
+      @argparse.FlagArg(
+        "self-test",
+        about="Run the existing isolated self-test",
+      ),
+    ],
+    positionals=[
+      @argparse.PositionArg("operation", num_args=@argparse.ValueRange(lower=0)),
+    ],
+  )
+}
+
+///|
+async fn progress(message : String) -> Unit {
+  if presentation.val is Json {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
+}
+
+///|
+async fn finish(code : Int32, message~ : String = "Command failed") -> Unit {
+  if presentation.val is Json {
+    let value : Json = if code == 0 {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result_data.val,
+        "diagnostics": [],
+      }
+    } else {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "failed",
+        "exitCode": code,
+        "error": {
+          "code": "command-failed",
+          "message": if message == "Command failed" {
+            "Command exited with status \{code}"
+          } else {
+            message
+          },
+        },
+        "diagnostics": [],
+      }
+    }
+    @stdio.stdout.write(value.stringify() + "\n")
+  }
+  if code != 0 {
+    @sys.exit(code)
+  }
+}
+
+///|
+async fn main {
+  let argv = presentation_arguments(@env.args()[1:].to_owned())
+  if presentation.val is Json {
+    // Built-in help exits inside argparse. JSON help is an ordinary declared
+    // flag in a separate grammar, with no acquisition or command effects.
+    let help = Some(
+      @argparse.Command(
+        "typescript.tooling",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    ) catch {
+      _ => None
+    }
+    if help is Some(matches) && matches.flags.get("help") == Some(true) {
+      result_data.val = { "help": presentation_help().render_help() }
+      operation.val = "typescript.tooling.help"
+      finish(0)
+      return
+    }
+  }
+  try {
+    command_main(argv)
+    finish(0)
+  } catch {
+    error =>
+      if presentation.val is Json {
+        @stdio.stderr.write(error.to_string() + "\n")
+        finish(1, message=error.to_string())
+      } else {
+        raise error
+      }
+  }
+}
+
+///|
+let child_steps : Array[Json] = []
+
+///|
+test "JSON prefix preserves literal tail and unwraps escape only once" {
+  let previous = presentation.val
+  defer {
+    presentation.val = previous
+  }
+  let raw = [
+    "--json", "--", "--forward-argv", "--", "", "λ '$;`", "--help", "--replace",
+  ]
+  let escaped = presentation_arguments(["--forward-argv", "--", ..raw])
+  assert_eq(escaped, raw)
+  assert_true(presentation.val is Text)
+  let selected = presentation_arguments(["--json", ..raw])
+  assert_eq(selected, raw)
+  assert_true(presentation.val is Json)
 }

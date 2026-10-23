@@ -2,6 +2,7 @@
 /// Build the pinned actual authenticated host and installed artifact producer.
 /// Cargo owns compilation; its structured artifact messages identify the fixture.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -9,6 +10,59 @@ import {
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
+}
+
+///|
+// Selected only at the owned CLI boundary, never from a child or a path value.
+let json_mode : Ref[Bool] = Ref(false)
+
+///|
+fn succeeded(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "headless.host",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+priv suberror CommandAbort {
+  Message(String)
+}
+
+///|
+fn[T] refuse(message : String) -> T raise {
+  if json_mode.val {
+    raise CommandAbort::Message(message)
+  } else {
+    abort(message)
+  }
+}
+
+///|
+async fn failed(error : Error) -> Unit {
+  // New opt-in JSON refusals use explicit exit 1 on every host. Legacy
+  // default invocations still retain their original abort/signal behavior.
+  let message = match error {
+    CommandAbort::Message(message) => message
+    _ => error.to_string()
+  }
+  @stdio.stderr.write(message + "\n")
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "headless.host",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": "command_failed", "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(1)
 }
 
 ///|
@@ -68,7 +122,7 @@ fn cli_self_test() -> Unit raise {
   for
     path in [
       "checkout", "源 checkout", "", "a;$`b", "-checkout", "--unknown", "-x", "--path=value",
-      "--", "--help", "-h", "--version", "help", "mode:--self-test", "--self-test=true",
+      "--", "--json", "--help", "-h", "--version", "help", "mode:--self-test", "--self-test=true",
       "./--self-test",
     ] {
     assert_eq(invocation([path]), Build(path))
@@ -325,10 +379,7 @@ async fn source_self_test() -> Unit {
 }
 
 ///|
-async fn main {
-  let command = invocation(@env.args()[1:]) catch {
-    error => fail(error.to_string())
-  }
+async fn execute(command : Invocation) -> Json {
   if command is SelfTest {
     cli_self_test()
     let fixture = "{\"reason\":\"compiler-artifact\",\"target\":{\"name\":\"ui_artifact_process\"},\"executable\":\"/tmp/fixture\"}"
@@ -338,12 +389,14 @@ async fn main {
       fail("Cargo artifact selection must be exact and unambiguous")
     }
     source_self_test()
-    @stdio.stdout.write(
-      "headless-host: exact Cargo selection and source/submodule guards passed without Rust builds\n",
-    )
-    return
+    if !json_mode.val {
+      @stdio.stdout.write(
+        "headless-host: exact Cargo selection and source/submodule guards passed without Rust builds\n",
+      )
+    }
+    return { "passed": true }
   }
-  guard command is Build(source) else { abort("Expected parsed build mode") }
+  guard command is Build(source) else { refuse("Expected parsed build mode") }
   let source = @fs.realpath(source)
   let messages = verified_build(source, revision, async fn() {
     ignore(output("cargo", ["build", "--locked", "-p", "morphir"], source))
@@ -368,6 +421,11 @@ async fn main {
       fail("Regular host executable with a single-line path required")
     }
   }
+  publish_bindings(host, fixture)
+}
+
+///|
+async fn publish_bindings(host : String, fixture : String) -> Json {
   let values = "MORPHIR_WORKBENCH_LIVE_HOST=" +
     host +
     "\nMORPHIR_MODEL_ORIGINALS_HOST=" +
@@ -377,8 +435,140 @@ async fn main {
     "\nMORPHIR_WORKBENCH_ARTIFACT_HOST=" +
     fixture +
     "\n"
-  @stdio.stdout.write(values)
+  if !json_mode.val {
+    @stdio.stdout.write(values)
+  }
   if @env.get_env_var("GITHUB_ENV") is Some(path) {
     @fs.write_file(path, @fs.read_file(path).text() + values)
+  }
+  {
+    "bindings": {
+      "MORPHIR_WORKBENCH_LIVE_HOST": host,
+      "MORPHIR_MODEL_ORIGINALS_HOST": host,
+      "MORPHIR_MCK_BIN": host,
+      "MORPHIR_WORKBENCH_ARTIFACT_HOST": fixture,
+    },
+  }
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "headless-host.mbtx",
+    about="Build the pinned host, or run source guards without Rust builds",
+    disable_help_flag=true,
+    flags=[
+      @argparse.FlagArg("json", required=true),
+      @argparse.FlagArg("help"),
+      @argparse.FlagArg("self-test"),
+    ],
+    positionals=[
+      @argparse.PositionArg(
+        "UPSTREAM_CHECKOUT",
+        num_args=@argparse.ValueRange(upper=1),
+      ),
+    ],
+    groups=[
+      @argparse.ArgGroup("operation", required=true, multiple=false, args=[
+        "help", "self-test", "UPSTREAM_CHECKOUT",
+      ]),
+    ],
+  )
+}
+
+///|
+fn literal_arity(argv : ArrayView[String], count : Int32) -> Unit raise {
+  // Preserve every fixed operand, including an embedded delimiter. The library
+  // owns arity, rather than allowing its normal delimiter consumption to hide
+  // an extra token in a JSON control invocation.
+  ignore(
+    @argparse.Command("headless-host.mbtx", disable_help_flag=true, positionals=[
+      @argparse.PositionArg(
+        "argument",
+        num_args=@argparse.ValueRange(lower=count, upper=count),
+      ),
+    ]).parse(argv=["--"] + argv.to_owned(), env=Map([])),
+  )
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:]
+  json_mode.val = match argv {
+    [_, "--json", ..] | ["--json", "--", ..] => true
+    _ => false
+  }
+  if !json_mode.val {
+    let command = invocation(argv) catch { error => fail(error.to_string()) }
+    ignore(execute(command))
+    return
+  }
+  try {
+    literal_arity(argv, if argv is ["--json", "--", ..] { 3 } else { 2 })
+    let args = match argv {
+      ["--self-test", "--json"] => ["--json", "--self-test"]
+      [checkout, "--json"] => ["--json", "--", checkout]
+      ["--json", "--", control] => ["--json", control]
+      _ => argv.to_owned()
+    }
+    let matches = json_command().parse(argv=args, env=Map([]))
+    let result : Json = if matches.flags.get("help").unwrap_or(false) {
+      { "render_help": json_command().render_help() }
+    } else if matches.flags.get("self-test").unwrap_or(false) {
+      execute(SelfTest)
+    } else {
+      execute(Build(matches.values["UPSTREAM_CHECKOUT"][0]))
+    }
+    @stdio.stdout.write(succeeded(result).stringify() + "\n")
+  } catch {
+    error => failed(error)
+  }
+}
+
+///|
+async test "JSON bindings append exactly once and reject append failure" {
+  let directory = @fs.tmpdir(prefix="morphir-host-bindings-")
+  defer @fs.rmdir(directory, recursive=true)
+  let previous = @env.get_env_var("GITHUB_ENV")
+  defer (match previous {
+    Some(value) => @env.set_env_var("GITHUB_ENV", value)
+    None => @env.unset_env_var("GITHUB_ENV")
+  })
+  json_mode.val = true
+  defer {
+    json_mode.val = false
+  }
+  let path = directory + "/environment"
+  @fs.write_file(path, "prior=雪\n")
+  @env.set_env_var("GITHUB_ENV", path)
+  let host = directory + "/雪 host"
+  let fixture = directory + "/--json"
+  let result = publish_bindings(host, fixture)
+  let expected : Json = {
+    "bindings": {
+      "MORPHIR_WORKBENCH_LIVE_HOST": host,
+      "MORPHIR_MODEL_ORIGINALS_HOST": host,
+      "MORPHIR_MCK_BIN": host,
+      "MORPHIR_WORKBENCH_ARTIFACT_HOST": fixture,
+    },
+  }
+  assert_eq(result, expected)
+  assert_eq(
+    @fs.read_file(path).text(),
+    "prior=雪\nMORPHIR_WORKBENCH_LIVE_HOST=" +
+    host +
+    "\nMORPHIR_MODEL_ORIGINALS_HOST=" +
+    host +
+    "\nMORPHIR_MCK_BIN=" +
+    host +
+    "\nMORPHIR_WORKBENCH_ARTIFACT_HOST=" +
+    fixture +
+    "\n",
+  )
+  @env.set_env_var("GITHUB_ENV", directory + "/absent/environment")
+  try ignore(publish_bindings(host, fixture)) catch {
+    _ => ()
+  } noraise {
+    _ => fail("Append failure returned a JSON success result")
   }
 }

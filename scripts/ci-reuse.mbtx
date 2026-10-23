@@ -4,6 +4,7 @@
 /// every failure is an untrusted verdict with the reason. The exit status is
 /// non-zero only for usage errors.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -790,58 +791,97 @@ priv struct Invocation {
 }
 
 ///|
-fn reuse_command() -> @argparse.Command {
-  let json = @argparse.FlagArg(
-    "json",
-    about="Print the verdict as one JSON line",
-  )
-  let repo = @argparse.OptionArg(
-    "repo",
-    about="owner/name of the repository; defaults to GITHUB_REPOSITORY",
-  )
+fn reuse_command(json~ : Bool = false) -> @argparse.Command {
+  let help = if json {
+    [@argparse.FlagArg("help", short='h', about="Show help information.")]
+  } else {
+    []
+  }
   @argparse.Command(
     "ci-reuse",
     about="Find and verify the CI receipt that covers a queue or push run",
-    flags=[@argparse.FlagArg("self-test", about="Run the built-in tests")],
+    disable_help_flag=json,
+    disable_help_subcommand=json,
+    flags=[
+      ..help,
+      @argparse.FlagArg("self-test", about="Run the built-in tests"),
+      @argparse.FlagArg("json"),
+    ],
     subcommands=[
-      @argparse.Command(
-        "queue",
-        about="Verdict for a merge-queue run",
-        flags=[json],
-        options=[
-          @argparse.OptionArg(
-            "ref",
-            about="Merge-group head ref",
-            required=true,
-          ),
-          @argparse.OptionArg(
-            "base",
-            about="Merge-group base SHA",
-            required=true,
-          ),
-          @argparse.OptionArg(
-            "head",
-            about="Merge-group head SHA",
-            required=true,
-          ),
-          repo,
-        ],
+      reuse_child_command("queue", json~),
+      reuse_child_command("push", json~),
+    ],
+  )
+}
+
+///|
+/// JSON help is an ordinary flag. Required option presence may be satisfied by
+/// help, but parsing still checks every option value and rejects unknown syntax.
+fn reuse_child_command(
+  name : String,
+  json~ : Bool = false,
+  help_path~ : Bool = false,
+) -> @argparse.Command {
+  let help = if json {
+    [@argparse.FlagArg("help", short='h', about="Show help information.")]
+  } else {
+    []
+  }
+  let required = if name == "queue" {
+    ["ref", "base", "head"]
+  } else {
+    ["sha", "before"]
+  }
+  let groups = if json {
+    required.map(option => {
+      @argparse.ArgGroup("help-or-" + option, required=true, multiple=true, args=[
+        "help", option,
+      ])
+    })
+  } else {
+    []
+  }
+  let options = if name == "queue" {
+    [
+      @argparse.OptionArg("ref", about="Merge-group head ref", required=!json),
+      @argparse.OptionArg("base", about="Merge-group base SHA", required=!json),
+      @argparse.OptionArg("head", about="Merge-group head SHA", required=!json),
+    ]
+  } else {
+    [
+      @argparse.OptionArg("sha", about="Pushed commit", required=!json),
+      @argparse.OptionArg(
+        "before",
+        about="Commit before the push",
+        required=!json,
       ),
-      @argparse.Command(
-        "push",
-        about="Verdict for a push run on main",
-        flags=[json],
-        options=[
-          @argparse.OptionArg("sha", about="Pushed commit", required=true),
-          @argparse.OptionArg(
-            "before",
-            about="Commit before the push",
-            required=true,
-          ),
-          repo,
-        ],
+    ]
+  }
+  @argparse.Command(
+    if help_path {
+      "ci-reuse " + name
+    } else {
+      name
+    },
+    about=if name == "queue" {
+      "Verdict for a merge-queue run"
+    } else {
+      "Verdict for a push run on main"
+    },
+    disable_help_flag=json,
+    disable_help_subcommand=json,
+    flags=[
+      ..help,
+      @argparse.FlagArg("json", about="Print the verdict as one JSON line"),
+    ],
+    options=[
+      ..options,
+      @argparse.OptionArg(
+        "repo",
+        about="owner/name of the repository; defaults to GITHUB_REPOSITORY",
       ),
     ],
+    groups~,
   )
 }
 
@@ -1186,6 +1226,7 @@ fn untrusted_with(verdict : Verdict, phrase : String) -> Bool {
 
 ///|
 async fn self_test() -> Unit {
+  presentation_self_test()
   let root = @fs.tmpdir(prefix="morphir-ci-reuse-")
   defer @fs.rmdir(root, recursive=true)
   ignore(fixture_git(root, ["init", "-q"]))
@@ -1653,13 +1694,13 @@ async fn self_test() -> Unit {
   guard failures.is_empty() else {
     fail("ci-reuse: \{failures.length()} failed:\n\{failures.join("\n")}")
   }
-  println(
+  test_note(
     "ci-reuse: queue trust, fork, moved head, run, artifact and receipt cases pass",
   )
-  println(
+  test_note(
     "ci-reuse: CI-policy, multi-commit, re-run, push exact and bypass cases pass",
   )
-  println("ci-reuse: API errors, argparse forms and verdict JSON pass")
+  test_note("ci-reuse: API errors, argparse forms and verdict JSON pass")
 }
 
 ///|
@@ -1753,10 +1794,30 @@ async fn cli_json_shape() -> Array[String] {
 }
 
 ///|
-async fn main {
-  let invocation = invocation(reuse_command().parse())
+async fn execute(argv : Array[String]) -> Unit {
+  let matches = reuse_command(json=output_mode.json).parse(argv~, env=Map([]))
+  if output_mode.json {
+    let help = if matches.flags.get("help").unwrap_or(false) {
+      Some(reuse_command().render_help())
+    } else {
+      match matches.subcommand {
+        Some((name, child)) if child.flags.get("help").unwrap_or(false) =>
+          Some(reuse_child_command(name, help_path=true).render_help())
+        _ => None
+      }
+    }
+    if help is Some(text) {
+      @stdio.stdout.write(command_result({ "help": text }).stringify() + "\n")
+      return
+    }
+  }
+  let invocation = invocation(matches)
+  output_mode.json = output_mode.json || invocation.json
   if invocation.request is SelfTest {
     self_test()
+    if output_mode.json {
+      @stdio.stdout.write(command_result({ "passed": true }).stringify() + "\n")
+    }
     return
   }
   let (verdict, notes) = invocation.request.verdict(invocation.repository, ".")
@@ -1764,10 +1825,249 @@ async fn main {
     @stdio.stderr.write("ci-reuse: \{note}\n")
   }
   println(
-    if invocation.json {
+    if output_mode.json {
       verdict.to_json().stringify()
     } else {
       verdict.summary()
     },
   )
+}
+
+///|
+/// Output selection belongs to the command boundary, never to data operands.
+priv struct OutputMode {
+  mut json : Bool
+}
+
+///|
+let output_mode : OutputMode = { json: false, }
+
+///|
+fn command_result(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.reuse",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+fn command_error(error : Error, code~ : String = "command_failed") -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.reuse",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": code, "message": error.to_string() },
+    "diagnostics": [],
+  }
+}
+
+///|
+fn test_note(message : String) -> Unit {
+  if output_mode.json {
+    eprintln(message)
+  } else {
+    println(message)
+  }
+}
+
+///|
+/// Reserve one explicit prefix and unwrap it once. A literal --json is still
+/// data in the legacy grammar, or after the reserved prefix's delimiter.
+fn presentation_arguments(argv : Array[String]) -> Array[String] {
+  match argv {
+    ["--json", "--", .. raw] => {
+      output_mode.json = true
+      return raw.to_owned()
+    }
+    _ => ()
+  }
+  if !argv.is_empty() {
+    try
+      @argparse.Command(
+        "json-prefix",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("json", required=true)],
+      ).parse(argv=argv[:1], env=Map([]))
+    catch {
+      _ => ()
+    } noraise {
+      _ => output_mode.json = true
+    }
+  }
+  if presentation_probe(argv) is Some(matches) {
+    output_mode.json = output_mode.json ||
+      matches.flags.get("json").unwrap_or(false)
+    if matches.subcommand is Some((_, child)) {
+      output_mode.json = output_mode.json ||
+        child.flags.get("json").unwrap_or(false)
+    }
+  }
+  argv
+}
+
+///|
+async fn main {
+  try {
+    let argv = presentation_arguments(command_arguments())
+    execute(argv)
+  } catch {
+    error => {
+      if !output_mode.json {
+        raise error
+      }
+      @stdio.stdout.write(command_error(error).stringify() + "\n")
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+/// Presentation recognition uses the full declared vocabulary, with requirements
+/// relaxed so the real parser can report syntax errors inside the JSON boundary.
+/// The parsed data is never forwarded or used to execute the command.
+fn presentation_probe(argv : Array[String]) -> @argparse.Matches? {
+  Some(
+    @argparse.Command(
+      "ci.reuse",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[
+        @argparse.FlagArg("json"),
+        @argparse.FlagArg("help", short='h'),
+        @argparse.FlagArg("self-test"),
+      ],
+      options=[],
+      positionals=[
+        @argparse.PositionArg(
+          "arguments",
+          num_args=@argparse.ValueRange(lower=0),
+          allow_hyphen_values=true,
+        ),
+      ],
+      subcommands=[
+        @argparse.Command(
+          "queue",
+          disable_help_flag=true,
+          disable_help_subcommand=true,
+          flags=[
+            @argparse.FlagArg("json"),
+            @argparse.FlagArg("help", short='h'),
+          ],
+          options=[
+            @argparse.OptionArg("ref"),
+            @argparse.OptionArg("base"),
+            @argparse.OptionArg("head"),
+            @argparse.OptionArg("repo"),
+          ],
+          positionals=[
+            @argparse.PositionArg(
+              "arguments",
+              num_args=@argparse.ValueRange(lower=0),
+              allow_hyphen_values=true,
+            ),
+          ],
+        ),
+        @argparse.Command(
+          "push",
+          disable_help_flag=true,
+          disable_help_subcommand=true,
+          flags=[
+            @argparse.FlagArg("json"),
+            @argparse.FlagArg("help", short='h'),
+          ],
+          options=[
+            @argparse.OptionArg("sha"),
+            @argparse.OptionArg("before"),
+            @argparse.OptionArg("repo"),
+          ],
+          positionals=[
+            @argparse.PositionArg(
+              "arguments",
+              num_args=@argparse.ValueRange(lower=0),
+              allow_hyphen_values=true,
+            ),
+          ],
+        ),
+      ],
+    ).parse(argv~, env=Map([])),
+  ) catch {
+    _ => presentation_controls(argv)
+  }
+}
+
+///|
+fn presentation_self_test() -> Unit raise {
+  let saved = output_mode.json
+  defer {
+    output_mode.json = saved
+  }
+
+  for literal in ["", "λ 雪", "--", "--json", "--help", "--self-test"] {
+    let raw = [literal, "--", "--json", ""]
+    output_mode.json = false
+    assert_eq(presentation_arguments(["--json", "--", ..raw]), raw)
+    assert_true(output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["--json", "--", "--json", "--", "value"]), [
+    "--json", "--", "value",
+  ])
+
+  output_mode.json = false
+  let raw = [
+    "push", "--sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "--before=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "--repo=--json",
+  ]
+  assert_eq(presentation_arguments(raw), raw)
+  assert_true(!output_mode.json)
+}
+
+///|
+#cfg(target="js")
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, _, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+/// A missing option value can stop the full grammar before it reports JSON.
+/// This library grammar selects presentation only; the complete command grammar
+/// still diagnoses every operand and option. Its values never reach execution.
+fn presentation_controls(argv : Array[String]) -> @argparse.Matches? {
+  Some(
+    @argparse.Command(
+      "presentation",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[@argparse.FlagArg("json"), @argparse.FlagArg("help", short='h')],
+      positionals=[
+        @argparse.PositionArg(
+          "data",
+          num_args=@argparse.ValueRange(lower=0),
+          allow_hyphen_values=true,
+        ),
+      ],
+    ).parse(argv~, env=Map([])),
+  ) catch {
+    _ => None
+  }
 }

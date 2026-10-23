@@ -13,7 +13,7 @@
   },
   "nav": [
     { "group": "Get started", "items": ["QUICK_START.md", "ARCHITECTURE.md", "PROVIDER_OPERATIONS.md"] },
-    { "group": "Build and run", "items": ["wasm-library-assembly.html"] },
+    { "group": "Build and run", "items": ["wasm-library-assembly.html", "AUTOMATION_JSON.md"] },
     { "group": "Packages", "items": ["packages/"] },
     { "group": "Design and decisions", "items": ["adr/", "design/", "specs/"] },
     { "group": "Contribute", "items": ["MISE_TASKS.md", "WRITING_FOR_THE_SITE.md"] }

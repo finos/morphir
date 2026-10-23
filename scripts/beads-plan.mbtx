@@ -2,6 +2,7 @@
 /// Fetch the canonical pinned finos/morphir bd-plan tool, then delegate to Bun.
 /// This wrapper owns acquisition only; the upstream tracker tool remains unchanged.
 import {
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -23,7 +24,7 @@ fn nonempty(value : String?) -> String? {
 }
 
 ///|
-fn cache_directory(environment : Map[String, String]) -> String {
+fn cache_directory(environment : Map[String, String]) -> String raise {
   let xdg = nonempty(environment.get("XDG_CACHE_HOME"))
   let base = if environment.get("OS") == Some("Windows_NT") {
     match xdg {
@@ -32,7 +33,7 @@ fn cache_directory(environment : Map[String, String]) -> String {
         match nonempty(environment.get("LOCALAPPDATA")) {
           Some(path) => path + "/morphir"
           None =>
-            abort("beads:plan: LOCALAPPDATA or XDG_CACHE_HOME must be set")
+            refuse("beads:plan: LOCALAPPDATA or XDG_CACHE_HOME must be set")
         }
     }
   } else {
@@ -41,7 +42,7 @@ fn cache_directory(environment : Map[String, String]) -> String {
       None =>
         match nonempty(environment.get("HOME")) {
           Some(path) => path + "/.cache/morphir"
-          None => abort("beads:plan: HOME or XDG_CACHE_HOME must be set")
+          None => refuse("beads:plan: HOME or XDG_CACHE_HOME must be set")
         }
     }
   }
@@ -148,18 +149,22 @@ async fn self_test() -> Unit {
       wrapper_error.text(),
     )
   }
-  println(
+  progress(
     "beads:plan: platform-cache/acquisition/failure/Bun-argv tests passed",
   )
 }
 
 ///|
-async fn main {
-  // This exact standalone test switch is the wrapper's only owned syntax.
-  // Every other array, including help, unknown flags and delimiters, belongs
-  // to the pinned bd-plan tool and must reach Bun without local parsing.
-  if @env.args() is [_, "--self-test"] {
-    self_test()
+async fn command_main(argv : Array[String]) -> Unit {
+  // After root presentation selection, only the exact standalone test switch
+  // is local. Opaque prefixes never reinterpret raw --self-test; every other
+  // array reaches the pinned bd-plan tool without local option parsing.
+  if !opaque_forward.val && argv == ["--self-test"] {
+    {
+      self_test()
+      result_data.val = { "selfTest": "passed" }
+      operation.val = "beads.plan.self-test"
+    }
     return
   }
   let script = cached_script(cache_directory(@env.get_env_vars()), () => {
@@ -176,19 +181,242 @@ async fn main {
     ])
     guard status == 0 else {
       @stdio.stderr.write(error)
-      @sys.exit(if status > 0 { status } else { 1 })
+      finish(if status > 0 { status } else { 1 })
       return ""
     }
     body.text()
   })
+  result_data.val = {
+    "revision": revision,
+    "script": script,
+    "argv": Json::array(argv.map(Json::string)),
+    "stdout": { "delivery": "stderr", "captured": false },
+  }
   let status = @process.run(
     "bun",
-    ["run", script, ..@env.args()[1:]],
+    ["run", script, ..argv],
     stdin=@stdio.stdin,
-    stdout=@stdio.stdout,
+    stdout=if presentation.val is Json { @stdio.stderr } else { @stdio.stdout },
     stderr=@stdio.stderr,
   )
   if status != 0 {
-    @sys.exit(if status > 0 { status } else { 1 })
+    finish(if status > 0 { status } else { 1 })
   }
+}
+
+///|
+enum Presentation {
+  Text
+  Json
+}
+
+///|
+let presentation : Ref[Presentation] = Ref(Text)
+
+///|
+let result_data : Ref[Json] = Ref({})
+
+///|
+let operation : Ref[String] = Ref("beads.plan")
+
+///|
+/// Only this bounded root prefix is owned. Tail values are encoded for syntax
+/// validation only; the original array slice is returned without reconstruction.
+fn presentation_arguments(argv : Array[String]) -> Array[String] raise {
+  match argv {
+    ["--forward-argv", "--", .. raw] => {
+      opaque_forward.val = true
+      ignore(
+        @argparse.Command(
+          "beads.plan",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("forward-argv", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--forward-argv", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    ["--json", "--", .. raw] => {
+      opaque_forward.val = true
+      presentation.val = Json
+      ignore(
+        @argparse.Command(
+          "beads.plan",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("json", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--json", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    ["--json", "--self-test"] | ["--json", "--help"] | ["--json", "-h"] => {
+      let parsed = @argparse.Command("beads.plan", disable_help_flag=true, flags=[
+        @argparse.FlagArg("json", required=true),
+        @argparse.FlagArg("self-test", conflicts_with=["help"]),
+        @argparse.FlagArg("help", short='h'),
+      ]).parse(argv~, env=Map([]))
+      guard parsed.flags.get("self-test") == Some(true) ||
+        parsed.flags.get("help") == Some(true) else {
+        fail("Expected --json -- RAW")
+      }
+      presentation.val = Json
+      [argv[1]]
+    }
+    _ => argv
+  }
+}
+
+///|
+fn presentation_help() -> @argparse.Command {
+  @argparse.Command(
+    "beads.plan",
+    about="Opaque forwarding: --json -- RAW or --forward-argv -- RAW; --json --self-test and --json --help are local controls JSON results use profile morphir/command-result, contractVersion0.1.0, command, state, exitCode, diagnostics and result on success or error{code,message} on failure. Existing successful JSON schemas remain bare. Stdout is one compact JSON value plus LF; progress and child logs use stderr. Help has result.help and no command effects; supported self-tests report actual completion. Exit0 means success; explicit syntax/child statuses remain meaningful, new expected JSON refusals exit1; default abort behavior is unchanged.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg(
+        "json",
+        about="Emit one command result; select at the root before operation data",
+      ),
+      @argparse.FlagArg(
+        "forward-argv",
+        about="Only exact --forward-argv -- RAW selects literal forwarding; unwrap once. Other text-mode tails keep their legacy meaning",
+      ),
+      @argparse.FlagArg("help", short='h', about="Show help without effects"),
+      @argparse.FlagArg(
+        "self-test",
+        about="Run the existing isolated self-test",
+      ),
+    ],
+    positionals=[
+      @argparse.PositionArg("operation", num_args=@argparse.ValueRange(lower=0)),
+    ],
+  )
+}
+
+///|
+async fn progress(message : String) -> Unit {
+  if presentation.val is Json {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
+}
+
+///|
+async fn finish(code : Int32, message~ : String = "Command failed") -> Unit {
+  if presentation.val is Json {
+    let value : Json = if code == 0 {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result_data.val,
+        "diagnostics": [],
+      }
+    } else {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "failed",
+        "exitCode": code,
+        "error": {
+          "code": "command-failed",
+          "message": if message == "Command failed" {
+            "Command exited with status \{code}"
+          } else {
+            message
+          },
+        },
+        "diagnostics": [],
+      }
+    }
+    @stdio.stdout.write(value.stringify() + "\n")
+  }
+  if code != 0 {
+    @sys.exit(code)
+  }
+}
+
+///|
+async fn main {
+  let argv = presentation_arguments(@env.args()[1:].to_owned())
+  if presentation.val is Json && !opaque_forward.val {
+    // Built-in help exits inside argparse. JSON help is an ordinary declared
+    // flag in a separate grammar, with no acquisition or command effects.
+    let help = Some(
+      @argparse.Command(
+        "beads.plan",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    ) catch {
+      _ => None
+    }
+    if help is Some(matches) && matches.flags.get("help") == Some(true) {
+      result_data.val = { "help": presentation_help().render_help() }
+      operation.val = "beads.plan.help"
+      finish(0)
+      return
+    }
+  }
+  try {
+    command_main(argv)
+    finish(0)
+  } catch {
+    error =>
+      if presentation.val is Json {
+        @stdio.stderr.write(error.to_string() + "\n")
+        finish(1, message=error.to_string())
+      } else {
+        raise error
+      }
+  }
+}
+
+///|
+let opaque_forward : Ref[Bool] = Ref(false)
+
+///|
+fn refuse(message : String) -> String raise {
+  if presentation.val is Json {
+    fail(message)
+  } else {
+    abort(message)
+  }
+}
+
+///|
+test "JSON prefix preserves literal tail and unwraps escape only once" {
+  let previous_opaque = opaque_forward.val
+  defer {
+    opaque_forward.val = previous_opaque
+  }
+  let previous = presentation.val
+  defer {
+    presentation.val = previous
+  }
+  let raw = [
+    "--json", "--", "--forward-argv", "--", "", "λ '$;`", "--help", "--replace",
+  ]
+  let escaped = presentation_arguments(["--forward-argv", "--", ..raw])
+  assert_eq(escaped, raw)
+  assert_true(presentation.val is Text)
+  let selected = presentation_arguments(["--json", "--", ..raw])
+  assert_eq(selected, raw)
+  assert_true(presentation.val is Json)
 }

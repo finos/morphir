@@ -34,11 +34,13 @@
 /// historical commits; CI never passes it.
 /// Use --self-test to check the rules.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "bobzhang/toml@0.4.3",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
 }
@@ -1810,6 +1812,7 @@ let no_impact : Impact = { full: false, checks: [], reasons: [], }
 
 ///|
 async fn self_test() -> Unit {
+  presentation_self_test()
   // Presentation-only changes select nothing.
   let none_cases : Array[(String, String, String)] = [
     (
@@ -1976,7 +1979,7 @@ async fn self_test() -> Unit {
   if wire != expected {
     fail("impact_wire: wrong JSON \{wire}")
   }
-  println("ci-mise-impact: settings cases pass")
+  test_note("ci-mise-impact: settings cases pass")
 }
 
 ///|
@@ -2451,7 +2454,7 @@ fn task_self_test() -> Unit raise {
   if !raised {
     fail("tasks_invalid_json: expected an error")
   }
-  println("ci-mise-impact: task cases pass")
+  test_note("ci-mise-impact: task cases pass")
 }
 
 ///|
@@ -2719,7 +2722,7 @@ async fn workflow_self_test() -> Unit {
   if !from_forced.full || from_forced.reasons.length() != 1 {
     fail("forced_merge: Impact::merge of forced is not full")
   }
-  println("ci-mise-impact: workflow table and drift pass")
+  test_note("ci-mise-impact: workflow table and drift pass")
 }
 
 ///|
@@ -3033,12 +3036,13 @@ async fn revision_self_test() -> Unit {
     fields.get("checks") is Some(Array([String("elm-scheme")])) else {
     fail("cli_json_shape: wrong JSON \{text}")
   }
-  let (status, _, err) = @process.collect_output(
+  let (status, out, err) = @process.collect_output(
     "moonx",
     [script, base, drift],
     cwd=root,
   )
   guard status == 1 &&
+    !out.text().has_prefix("{") &&
     err.text().contains("calls mise task build:unmapped, which has no entry") else {
     fail("cli_drift_exit: status \{status}, stderr \{err.text()}")
   }
@@ -3055,7 +3059,69 @@ async fn revision_self_test() -> Unit {
       "cli_lenient_no_drift: status \{status}, output \{out.text()}\{err.text()}",
     )
   }
-  println("ci-mise-impact: revision fixtures pass")
+  // Invalid syntax retains the original refusal and does not report drift.
+  for
+    argv in [
+      [],
+      [base],
+      ["--lenient"],
+      ["--help"],
+      ["-h"],
+      ["--"],
+      ["--self-test", base, windows],
+      [base, "--lenient", windows],
+      ["--", base, windows],
+      ["--lenient", base, windows, "EXTRA"],
+    ] {
+    let (status, out, err) = @process.collect_output(
+      "moonx",
+      // The first separator belongs to moonx; every argv token reaches the script.
+      [script, "--", ..argv],
+      cwd=root,
+    )
+    guard status == 1 &&
+      out
+      .text()
+      .contains(
+        "Usage: ci-mise-impact.mbtx [--lenient] BASE HEAD | --self-test",
+      ) &&
+      !out.text().has_prefix("{") &&
+      err.text() == "" else {
+      fail(
+        "cli_syntax_error: status \{status}, output \{out.text()}\{err.text()}",
+      )
+    }
+  }
+  // Control-looking values and delimiters remain literal revisions, including
+  // in the exact lenient form. Domain validation still returns full JSON.
+  for
+    argv in [
+      ["--help", "HEAD"],
+      ["--", "--"],
+      ["--lenient", "HEAD"],
+      ["--self-test", "--lenient"],
+      ["BASE", "--unknown"],
+      ["--lenient", "--", "--help"],
+      ["--lenient", "", "space λ"],
+    ] {
+    let (status, out, err) = @process.collect_output(
+      "moonx",
+      [script, "--", ..argv],
+      cwd=root,
+    )
+    guard status == 0 &&
+      err.text() == "" &&
+      @json.parse(out.text()) is Object(fields) &&
+      fields.get("full") is Some(True) &&
+      out.text().contains("not a full, nonzero commit SHA") &&
+      out.text().has_suffix("\n") &&
+      !out.text().trim().contains("\n") else {
+      fail(
+        "cli_literal_revision: status \{status}, output \{out.text()}\{err.text()}",
+      )
+    }
+  }
+  test_note("ci-mise-impact: revision fixtures pass")
 }
 
 ///|
@@ -3142,7 +3208,7 @@ async fn mutation_test(root : String) -> Unit {
   if count == 0 {
     fail("mutation_test: no CI-reached task to mutate")
   }
-  println("ci-mise-impact: \{count} task mutations keep their checks")
+  test_note("ci-mise-impact: \{count} task mutations keep their checks")
   opt_in_test(revision, table)
 }
 
@@ -3199,32 +3265,370 @@ fn opt_in_test(
   if count == 0 {
     fail("opt_in_real_config: the config has no opt-in task")
   }
-  println(
+  test_note(
     "ci-mise-impact: \{count} opt-in task edits and one add select nothing",
   )
 }
 
 ///|
-async fn main {
-  let args = @env.args()[1:].to_owned()
-  match args {
-    ["--self-test"] => {
+enum Invocation {
+  SelfTest
+  Compare(String, String, Bool)
+} derive(Eq, Debug)
+
+///|
+fn impact_pair_command() -> @argparse.Command {
+  @argparse.Command("ci-mise-impact.mbtx", disable_help_flag=true, positionals=[
+    @argparse.PositionArg("base", num_args=@argparse.ValueRange::single()),
+    @argparse.PositionArg("head", num_args=@argparse.ValueRange::single()),
+  ])
+}
+
+///|
+fn impact_control_command(pair~ : Bool = false) -> @argparse.Command {
+  let operands = if pair {
+    [@argparse.PositionArg("head", num_args=@argparse.ValueRange::single())]
+  } else {
+    [
+      @argparse.PositionArg("base", num_args=@argparse.ValueRange::single()),
+      @argparse.PositionArg("head", num_args=@argparse.ValueRange::single()),
+    ]
+  }
+  @argparse.Command(
+    "ci-mise-impact.mbtx",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommand_required=true,
+    subcommands=[
+      @argparse.Command(
+        "control:--lenient",
+        disable_help_flag=true,
+        positionals=operands,
+      ),
+      ..if pair {
+        []
+      } else {
+        [@argparse.Command("control:--self-test", disable_help_flag=true)]
+      },
+    ],
+  )
+}
+
+///|
+fn invocation(argv : ArrayView[String]) -> Invocation raise {
+  // Both revisions are literal data. A synthetic delimiter protects every
+  // original token, including original delimiters, while argparse owns arity.
+  let pair = Some(impact_pair_command().parse(argv=["--", ..argv])) catch {
+    _ => None
+  }
+  // Fix the command/data boundary without inspecting token contents. Prefixing
+  // the first token lets argparse select even dash-leading command names.
+  let control_argv : Array[String] = match argv {
+    [first, .. rest] => ["control:" + first, "--", ..rest]
+    [] => []
+  }
+  if pair is Some(matches) {
+    // The old two-token form also enables lenience when BASE is --lenient.
+    // This separate exact grammar selects that case without matching raw flags.
+    let lenient = try {
+      ignore(impact_control_command(pair=true).parse(argv=control_argv))
+      true
+    } catch {
+      _ => false
+    }
+    return Compare(
+      matches.values["base"][0],
+      matches.values["head"][0],
+      lenient,
+    )
+  }
+  let controls = impact_control_command().parse(argv=control_argv) catch {
+    _ => fail("Usage: ci-mise-impact.mbtx [--lenient] BASE HEAD | --self-test")
+  }
+  match controls.subcommand {
+    Some(("control:--self-test", _)) => SelfTest
+    Some(("control:--lenient", matches)) =>
+      Compare(matches.values["base"][0], matches.values["head"][0], true)
+    _ => abort("argparse did not select a required subcommand")
+  }
+}
+
+///|
+fn invocation_self_test() -> Unit raise {
+  // Every pair is literal, even when tokens look like controls or delimiters.
+  for
+    base in [
+      "BASE", "", "--", "--help", "--lenient", "--self-test", "--unknown", "-h",
+      "space λ \"quote\" $ ` ;",
+    ] {
+    for head in ["HEAD", "", "--", "--help", "--lenient", "--self-test"] {
+      assert_eq(
+        invocation([base, head]),
+        Compare(base, head, base == "--lenient"),
+      )
+      assert_eq(
+        invocation(["--lenient", base, head]),
+        Compare(base, head, true),
+      )
+    }
+  }
+  assert_eq(invocation(["--self-test"]), SelfTest)
+  for
+    argv in [
+      [],
+      ["BASE"],
+      ["--lenient"],
+      ["--help"],
+      ["-h"],
+      ["--"],
+      ["BASE", "HEAD", "EXTRA"],
+      ["--self-test", "BASE", "HEAD"],
+      ["BASE", "--lenient", "HEAD"],
+      ["BASE", "HEAD", "--lenient"],
+      ["--lenient=true", "BASE", "HEAD"],
+      ["--", "BASE", "HEAD"],
+      ["--lenient", "BASE", "HEAD", "EXTRA"],
+      ["--lenient", "--lenient", "BASE", "HEAD"],
+    ] {
+    let rejected = try {
+      ignore(invocation(argv))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(rejected, msg="invocation accepted: " + argv.join(" "))
+  }
+}
+
+///|
+async fn execute(argv : Array[String]) -> Unit {
+  if json_help(argv) {
+    @stdio.stdout.write(
+      command_result({
+        "help": impact_control_command().render_help() +
+        "\n" +
+        impact_pair_command().render_help(),
+      }).stringify() +
+      "\n",
+    )
+    return
+  }
+  match invocation(argv) {
+    SelfTest => {
+      invocation_self_test()
       self_test()
       task_self_test()
       workflow_self_test()
       revision_self_test()
       mutation_test(".")
+      if output_mode.json {
+        @stdio.stdout.write(
+          command_result({ "passed": true }).stringify() + "\n",
+        )
+      }
     }
-    [base, head] | ["--lenient", base, head] => {
-      let lenient = args[0] == "--lenient"
+    Compare(base, head, lenient) => {
       let result = impact(base, head, lenient~) catch {
         err => {
           @stdio.stderr.write(err.message() + "\n")
+          if output_mode.json {
+            @stdio.stdout.write(
+              command_error(err, code="table_drift").stringify() + "\n",
+            )
+            @sys.exit(1)
+          }
           fail("table drift")
         }
       }
       println(result.to_json(mise_version=mise_version()).stringify())
     }
-    _ => fail("Usage: ci-mise-impact.mbtx [--lenient] BASE HEAD | --self-test")
+  }
+}
+
+///|
+/// Output selection belongs to the command boundary, never to data operands.
+priv struct OutputMode {
+  mut json : Bool
+}
+
+///|
+let output_mode : OutputMode = { json: false, }
+
+///|
+fn command_result(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.mise.impact",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+fn command_error(error : Error, code~ : String = "command_failed") -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.mise.impact",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": code, "message": error.to_string() },
+    "diagnostics": [],
+  }
+}
+
+///|
+fn test_note(message : String) -> Unit {
+  if output_mode.json {
+    eprintln(message)
+  } else {
+    println(message)
+  }
+}
+
+///|
+/// Reserve one explicit prefix and unwrap it once. A literal --json is still
+/// data in the legacy grammar, or after the reserved prefix's delimiter.
+fn presentation_arguments(argv : Array[String]) -> Array[String] {
+  match argv {
+    ["--json", "--", .. raw] => {
+      output_mode.json = true
+      return raw.to_owned()
+    }
+    _ => ()
+  }
+  // Keep every complete legacy syntax, including flag-shaped fixed operands.
+  // JSON is additive at the two fixed control boundaries only.
+  if !legacy_syntax(argv) {
+    let flag = @argparse.Command(
+      "ci.mise.impact",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[@argparse.FlagArg("json", required=true)],
+    )
+    if !argv.is_empty() {
+      try flag.parse(argv=argv[:1], env=Map([])) catch {
+        _ => ()
+      } noraise {
+        _ => {
+          output_mode.json = true
+          return argv[1:].to_owned()
+        }
+      }
+      let boundary = argv.length() - 1
+      if legacy_syntax(argv[:boundary].to_owned()) {
+        try flag.parse(argv=argv[boundary:], env=Map([])) catch {
+          _ => ()
+        } noraise {
+          _ => {
+            output_mode.json = true
+            return argv[:boundary].to_owned()
+          }
+        }
+      }
+    }
+  }
+  argv
+}
+
+///|
+fn legacy_syntax(argv : Array[String]) -> Bool {
+  try {
+    ignore(invocation(argv))
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+fn json_help(argv : Array[String]) -> Bool {
+  if !output_mode.json {
+    return false
+  }
+  // A declared ordinary flag avoids core's print-and-exit built-in help.
+  try {
+    ignore(
+      @argparse.Command(
+        "ci.mise.impact",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    )
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+async fn main {
+  try {
+    let argv = presentation_arguments(command_arguments())
+    execute(argv)
+  } catch {
+    error => {
+      if !output_mode.json {
+        raise error
+      }
+      @stdio.stdout.write(command_error(error).stringify() + "\n")
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+fn presentation_self_test() -> Unit raise {
+  let saved = output_mode.json
+  defer {
+    output_mode.json = saved
+  }
+
+  for literal in ["", "λ 雪", "--", "--json", "--help", "--self-test"] {
+    let raw = [literal, "--", "--json", ""]
+    output_mode.json = false
+    assert_eq(presentation_arguments(["--json", "--", ..raw]), raw)
+    assert_true(output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["--json", "--", "--json", "--", "value"]), [
+    "--json", "--", "value",
+  ])
+
+  for
+    raw in [
+      ["--self-test", "--json"],
+      ["--json", "--help"],
+      ["λ", "--json"],
+      ["", "--json"],
+    ] {
+    output_mode.json = false
+    assert_eq(presentation_arguments(raw), raw)
+    assert_true(!output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["BASE", "HEAD", "--json"]), ["BASE", "HEAD"])
+  assert_true(output_mode.json)
+}
+
+///|
+#cfg(target="js")
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, _, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, .. rest] => rest.to_owned()
+    _ => []
   }
 }

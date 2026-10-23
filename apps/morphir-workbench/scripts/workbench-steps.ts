@@ -37,8 +37,9 @@ export async function replaceSourceDocument(page: Page, text: string, path?: str
   await page.keyboard.insertText(text);
 }
 
-/** Edit through CodeMirror's selection and wait for the host to receive the argument document. */
-export async function replaceEvaluationArguments(page: Page, text: string): Promise<void> {
+/** Edit the requested argument document through its focused view, then await its host echo. */
+export async function replaceEvaluationArguments(page: Page, text: string,
+  expected: {format: 'json' | 'ion'; document: string}): Promise<void> {
   // Observe the real event path without changing selection, text or host updates.
   // Keep this bounded and emit it only when the existing assertion fails.
   const trace = await page.evaluateHandle(() => {
@@ -67,19 +68,40 @@ export async function replaceEvaluationArguments(page: Page, text: string): Prom
     return {events, close() {for (const type of types) document.removeEventListener(type, capture, true);}};
   });
   try {
-    await page.waitForFunction(() => {
-      const editor = document.querySelector<CodeEditor>('#evaluation-input');
-      return editor?.isConnected && !editor.queued && !editor.readOnly &&
-        editor.dataset.document?.startsWith('evaluation-') &&
-        editor.text.key === editor.dataset.document &&
-        editor.view?.state.doc.toString() === editor.text.current;
-    });
-    await page.getByRole('textbox', {name: 'Function arguments', exact: true}).press('ControlOrMeta+a');
-    await page.keyboard.insertText(text);
     await page.waitForFunction(expected => {
       const editor = document.querySelector<CodeEditor>('#evaluation-input');
-      return editor?.value === expected && editor.text.rendered === expected && !editor.queued;
-    }, text);
+      return editor?.isConnected && !editor.queued && !editor.readOnly &&
+        editor.dataset.language === expected.format && editor.dataset.document === expected.document &&
+        editor.text.key === expected.document &&
+        editor.view?.state.doc.toString() === editor.text.current;
+    }, expected);
+    const input = page.getByRole('textbox', {name: 'Function arguments', exact: true});
+    await input.focus();
+    await page.waitForFunction(expected => {
+      const editor = document.querySelector<CodeEditor>('#evaluation-input');
+      return editor?.isConnected && !editor.queued && !editor.readOnly &&
+        editor.dataset.language === expected.format && editor.dataset.document === expected.document &&
+        editor.text.key === expected.document && editor.view?.hasFocus &&
+        editor.shadowRoot.activeElement === editor.view.contentDOM &&
+        editor.view.state.doc.toString() === editor.text.current;
+    }, expected);
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.waitForFunction(expected => {
+      const editor = document.querySelector<CodeEditor>('#evaluation-input');
+      const view = editor?.view;
+      return editor?.isConnected && !editor.queued && !editor.readOnly &&
+        editor.dataset.language === expected.format && editor.dataset.document === expected.document &&
+        editor.text.key === expected.document && view?.hasFocus &&
+        editor.shadowRoot.activeElement === view.contentDOM &&
+        view.state.doc.toString() === editor.text.current &&
+        view.state.selection.main.from === 0 && view.state.selection.main.to === view.state.doc.length;
+    }, expected);
+    await page.keyboard.insertText(text);
+    await page.waitForFunction(({expected, text}) => {
+      const editor = document.querySelector<CodeEditor>('#evaluation-input');
+      return editor?.dataset.document === expected.document && editor.text.key === expected.document &&
+        editor.dataset.language === expected.format && editor.value === text && editor.text.rendered === text && !editor.queued;
+    }, {expected, text});
   } catch (error) {
     try {
       const actual = await page.evaluate(() => {
@@ -88,7 +110,7 @@ export async function replaceEvaluationArguments(page: Page, text: string): Prom
           current: editor.text.current.slice(0, 1024), rendered: editor.text.rendered.slice(0, 1024),
           value: editor.value.slice(0, 1024)} : null;
       });
-      console.error(JSON.stringify({evaluationInputTimeout: {expected: text.slice(0, 1024), actual,
+      console.error(JSON.stringify({evaluationInputTimeout: {expected: text.slice(0, 1024), expectedDocument: expected, actual,
         trace: await trace.evaluate(state => state.events)}}));
     } catch {} // Diagnostics never replace the original input failure.
     throw error;

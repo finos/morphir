@@ -51,7 +51,7 @@ jobs:
       - name: Set up cached MoonBit
         uses: ./.github/actions/setup-moonbit
         with:
-          tools: http:moonbit actionlint
+          tools: http:moonbit actionlint bun
 
       - name: Update Mooncakes registry
         run: moon update

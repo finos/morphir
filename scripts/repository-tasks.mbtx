@@ -1,6 +1,7 @@
 ///|
 /// Portable build, test and repository housekeeping tasks.
 import {
+  "moonbitlang/core/json",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -139,13 +140,37 @@ fn messages(task : String) -> (String, String) {
 
 ///|
 async fn run(program : String, args : Array[String]) -> Int32 {
-  @process.run(
-    program,
-    args,
-    stdin=@stdio.stdin,
-    stdout=@stdio.stdout,
-    stderr=@stdio.stderr,
-  )
+  let status = if presentation.val is Json &&
+    program == "mise" &&
+    args == ["tasks"] {
+    let (status, out, err) = @process.collect_output(
+      program,
+      args,
+      stdin=@stdio.stdin,
+    )
+    listing.val = out.text()
+    @stdio.stderr.write(out)
+    @stdio.stderr.write(err)
+    status
+  } else {
+    @process.run(
+      program,
+      args,
+      stdin=@stdio.stdin,
+      stdout=if presentation.val is Json {
+        @stdio.stderr
+      } else {
+        @stdio.stdout
+      },
+      stderr=@stdio.stderr,
+    )
+  }
+  child_steps.push({
+    "program": program,
+    "args": Json::array(args.map(Json::string)),
+    "exitCode": status,
+  })
+  status
 }
 
 ///|
@@ -156,11 +181,11 @@ async fn execute(
   let steps = commands(task)
   let (before, after) = messages(task)
   if before != "" {
-    println(before)
+    progress(before)
   }
   for (program, args) in steps {
     if task == "validate" {
-      println(
+      progress(
         if args == ["run", "lint:yaml"] {
           "\n=== Validating YAML files ==="
         } else {
@@ -171,13 +196,13 @@ async fn execute(
     let code = invoke(program, args)
     if code != 0 {
       if task == "lint:moonbit" {
-        println("❌ Formatting issues found. Run 'moon fmt' to fix.")
+        progress("❌ Formatting issues found. Run 'moon fmt' to fix.")
       }
       raise Failed(if task == "lint:moonbit" || code < 0 { 1 } else { code })
     }
   }
   if after != "" {
-    println(after)
+    progress(after)
   }
 }
 
@@ -205,9 +230,10 @@ async fn lint_yaml(
   root : String,
   invoke : async (String, Array[String]) -> Int32,
 ) -> Unit {
-  println("🔍 Linting YAML files...")
+  progress("🔍 Linting YAML files...")
   let paths : Array[String] = []
   yaml_files(root, paths)
+  yaml_paths.append(paths)
   paths.sort_by((a, b) => a.lexical_compare(b))
   // One argument per path preserves whitespace on Windows and Unix. Batches
   // bound command size while avoiding one process per YAML document.
@@ -222,7 +248,7 @@ async fn lint_yaml(
       raise Failed(if status > 0 { status } else { 1 })
     }
   }
-  println("✅ YAML linting complete")
+  progress("✅ YAML linting complete")
 }
 
 ///|
@@ -246,6 +272,9 @@ async fn clean(
     Directory => @fs.rmdir(path, recursive=true)
     Unknown => ()
     _ => @fs.remove(path)
+  }
+  if before != @fs.Unknown {
+    removed_paths.push(path)
   }
   0
 }
@@ -541,27 +570,250 @@ async fn self_test() -> Unit {
     }
   }
   entrypoint_test()
-  println("Repository task self-tests passed.")
+  progress("Repository task self-tests passed.")
+}
+
+///|
+async fn command_main(argv : Array[String]) -> Unit {
+  let selected = invocation(argv) catch {
+    error => {
+      @stdio.stderr.write("\{error}\n")
+      finish(1, message=error.to_string())
+      return
+    }
+  }
+  if selected is Task(task) {
+    operation.val = "repository.tasks." + task
+  }
+  try {
+    match selected {
+      SelfTest => {
+        self_test()
+        result_data.val = { "selfTest": "passed" }
+        operation.val = "repository.tasks.self-test"
+      }
+      Task("lint:yaml") => lint_yaml(".", run)
+      Task("clean") => {
+        progress("🧹 Cleaning build artifacts...")
+        ignore(clean(".", run))
+        progress("✅ Clean complete")
+      }
+      Task(task) => execute(task, run)
+    }
+    if selected is Task(task) {
+      operation.val = "repository.tasks." + task
+      result_data.val = {
+        "task": task,
+        "steps": Json::array(child_steps),
+        "passed": true,
+        "yamlFiles": Json::array(yaml_paths.map(Json::string)),
+        "removedPaths": Json::array(removed_paths.map(Json::string)),
+        "listing": listing.val,
+      }
+    }
+  } catch {
+    Failed(code) => finish(code)
+    error => {
+      @stdio.stderr.write("\{error}\n")
+      finish(1)
+    }
+  }
+}
+
+///|
+enum Presentation {
+  Text
+  Json
+}
+
+///|
+let presentation : Ref[Presentation] = Ref(Text)
+
+///|
+let result_data : Ref[Json] = Ref({})
+
+///|
+let operation : Ref[String] = Ref("repository.tasks")
+
+///|
+/// Only this bounded root prefix is owned. Tail values are encoded for syntax
+/// validation only; the original array slice is returned without reconstruction.
+fn presentation_arguments(argv : Array[String]) -> Array[String] raise {
+  match argv {
+    ["--forward-argv", "--", .. raw] => {
+      ignore(
+        @argparse.Command(
+          "repository.tasks",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("forward-argv", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--forward-argv", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    ["--json", .. raw] => {
+      presentation.val = Json
+      ignore(
+        @argparse.Command(
+          "repository.tasks",
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("json", required=true)],
+          positionals=[
+            @argparse.PositionArg("raw", num_args=@argparse.ValueRange(lower=0)),
+          ],
+        ).parse(
+          argv=["--json", ..raw.map(value => "literal:" + value)],
+          env=Map([]),
+        ),
+      )
+      raw.to_owned()
+    }
+    _ => argv
+  }
+}
+
+///|
+fn presentation_help() -> @argparse.Command {
+  @argparse.Command(
+    "repository.tasks",
+    about="build | build:wasi | build:browser | build:js | build:native | test | format | lint:moonbit | lint | lint:yaml | validate | clean | list-tasks; tail ignored JSON results use profile morphir/command-result, contractVersion0.1.0, command, state, exitCode, diagnostics and result on success or error{code,message} on failure. Existing successful JSON schemas remain bare. Stdout is one compact JSON value plus LF; progress and child logs use stderr. Help has result.help and no command effects; supported self-tests report actual completion. Exit0 means success; explicit syntax/child statuses remain meaningful, new expected JSON refusals exit1; default abort behavior is unchanged.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg(
+        "json",
+        about="Emit one command result; select at the root before operation data",
+      ),
+      @argparse.FlagArg(
+        "forward-argv",
+        about="Only exact --forward-argv -- RAW selects literal forwarding; unwrap once. Other text-mode tails keep their legacy meaning",
+      ),
+      @argparse.FlagArg("help", short='h', about="Show help without effects"),
+      @argparse.FlagArg(
+        "self-test",
+        about="Run the existing isolated self-test",
+      ),
+    ],
+    positionals=[
+      @argparse.PositionArg("operation", num_args=@argparse.ValueRange(lower=0)),
+    ],
+  )
+}
+
+///|
+async fn progress(message : String) -> Unit {
+  if presentation.val is Json {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
+}
+
+///|
+async fn finish(code : Int32, message~ : String = "Command failed") -> Unit {
+  if presentation.val is Json {
+    let value : Json = if code == 0 {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "succeeded",
+        "exitCode": 0,
+        "result": result_data.val,
+        "diagnostics": [],
+      }
+    } else {
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "failed",
+        "exitCode": code,
+        "error": {
+          "code": "command-failed",
+          "message": if message == "Command failed" {
+            "Command exited with status \{code}"
+          } else {
+            message
+          },
+        },
+        "diagnostics": [],
+      }
+    }
+    @stdio.stdout.write(value.stringify() + "\n")
+  }
+  if code != 0 {
+    @sys.exit(code)
+  }
 }
 
 ///|
 async fn main {
-  try {
-    match invocation(@env.args()[1:].to_owned()) {
-      SelfTest => self_test()
-      Task("lint:yaml") => lint_yaml(".", run)
-      Task("clean") => {
-        println("🧹 Cleaning build artifacts...")
-        ignore(clean(".", run))
-        println("✅ Clean complete")
-      }
-      Task(task) => execute(task, run)
+  let argv = presentation_arguments(@env.args()[1:].to_owned())
+  if presentation.val is Json {
+    // Built-in help exits inside argparse. JSON help is an ordinary declared
+    // flag in a separate grammar, with no acquisition or command effects.
+    let help = Some(
+      @argparse.Command(
+        "repository.tasks",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    ) catch {
+      _ => None
     }
-  } catch {
-    Failed(code) => @sys.exit(code)
-    error => {
-      @stdio.stderr.write("\{error}\n")
-      @sys.exit(1)
+    if help is Some(matches) && matches.flags.get("help") == Some(true) {
+      result_data.val = { "help": presentation_help().render_help() }
+      operation.val = "repository.tasks.help"
+      finish(0)
+      return
     }
   }
+  try {
+    command_main(argv)
+    finish(0)
+  } catch {
+    error =>
+      if presentation.val is Json {
+        @stdio.stderr.write(error.to_string() + "\n")
+        finish(1, message=error.to_string())
+      } else {
+        raise error
+      }
+  }
 }
+
+///|
+let child_steps : Array[Json] = []
+
+///|
+let yaml_paths : Array[String] = []
+
+///|
+test "JSON prefix preserves literal tail and unwraps escape only once" {
+  let previous = presentation.val
+  defer {
+    presentation.val = previous
+  }
+  let raw = [
+    "--json", "--", "--forward-argv", "--", "", "λ '$;`", "--help", "--replace",
+  ]
+  let escaped = presentation_arguments(["--forward-argv", "--", ..raw])
+  assert_eq(escaped, raw)
+  assert_true(presentation.val is Text)
+  let selected = presentation_arguments(["--json", ..raw])
+  assert_eq(selected, raw)
+  assert_true(presentation.val is Json)
+}
+
+///|
+let listing : Ref[String] = Ref("")
+
+///|
+let removed_paths : Array[String] = []

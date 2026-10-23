@@ -2,14 +2,71 @@
 /// Narrow tar-compatible adapter for Proton's pinned Windows CEF setup.
 /// CMake's archive engine avoids the runner's external MSYS bzip2 pipe.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.4",
   "moonbitlang/async@0.22.4/fs",
   "moonbitlang/async@0.22.4/process",
   "moonbitlang/async@0.22.4/stdio",
   "moonbitlang/core/env",
+  "moonbitlang/core/json",
   "moonbitlang/core/argparse",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+let json_mode : Ref[Bool] = Ref(false)
+
+///|
+suberror ChildFailure {
+  ChildFailure(Int32, String)
+} derive(Debug)
+
+///|
+fn succeeded(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.cef.extract",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+async fn failed(error : Error) -> Unit {
+  let (status, code) = match error {
+    ChildFailure(status, _) =>
+      (if status < 0 { 128 - status } else { status }, "child_failed")
+    _ => (1, "command_failed")
+  }
+  let message = match error {
+    ChildFailure(_, message) => message
+    _ => error.to_string()
+  }
+  @stdio.stderr.write(message + "\n")
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.cef.extract",
+    "state": "failed",
+    "exitCode": status,
+    "error": { "code": code, "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(status)
+}
+
+///|
+async fn print_progress(message : String) -> Unit {
+  if json_mode.val {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
 }
 
 ///|
@@ -127,7 +184,7 @@ async fn extract(
   request : Extraction,
   cmake : String,
   expected : String,
-) -> Unit {
+) -> Json {
   let destination = @fs.realpath(request.destination)
   let archive = @fs.realpath(request.archive)
   // Proton creates the compressed archive in its own extraction directory.
@@ -159,18 +216,27 @@ async fn extract(
     }
     environment.set("Path", system_root + "\\System32")
   }
-  println("Extracting pinned CEF archive with CMake's archive engine")
+  print_progress("Extracting pinned CEF archive with CMake's archive engine")
   let status = @process.run(
     cmake,
     ["-E", "tar", "xjf", archive],
     cwd=destination,
     extra_env=environment,
     inherit_env=false,
-    stdout=@stdio.stdout,
+    stdout=if json_mode.val { @stdio.stderr } else { @stdio.stdout },
     stderr=@stdio.stderr,
   )
   guard status == 0 else {
-    abort("CMake CEF extraction failed: " + status.to_string())
+    if json_mode.val {
+      raise ChildFailure(status, "CMake CEF extraction failed")
+    }
+    refuse("CMake CEF extraction failed: " + status.to_string())
+  }
+  {
+    "archive": archive,
+    "destination": destination,
+    "sha256": expected,
+    "extracted": true,
   }
 }
 
@@ -185,15 +251,18 @@ async fn roundtrip(cmake : String) -> Unit {
   let bytes = @utf8.encode("CEF native archive probe\n\u{0000}exact bytes\r\n")
   @fs.write_file(original + "/probe.bin", bytes)
   let archive = root + "/probe.tar.bz2"
-  guard @process.run(
-      cmake,
-      ["-E", "tar", "cjf", archive, "probe.bin"],
-      cwd=original,
-      stdout=@stdio.stdout,
-      stderr=@stdio.stderr,
-    ) ==
-    0 else {
-    abort("Archive probe creation failed")
+  let creation_status = @process.run(
+    cmake,
+    ["-E", "tar", "cjf", archive, "probe.bin"],
+    cwd=original,
+    stdout=if json_mode.val { @stdio.stderr } else { @stdio.stdout },
+    stderr=@stdio.stderr,
+  )
+  guard creation_status == 0 else {
+    if json_mode.val {
+      raise ChildFailure(creation_status, "Archive probe creation failed")
+    }
+    refuse("Archive probe creation failed")
   }
   // Use the exact same-parent shape that Proton passes to its tar helper.
   @fs.write_file(extracted + "/probe.tar.bz2", @fs.read_file(archive).binary())
@@ -202,8 +271,9 @@ async fn roundtrip(cmake : String) -> Unit {
     cmake,
     archive_digest(archive),
   )
+  |> ignore
   guard @fs.read_file(extracted + "/probe.bin").binary() == bytes else {
-    abort("Archive probe bytes changed")
+    refuse("Archive probe bytes changed")
   }
   @fs.remove(extracted + "/probe.bin")
   try
@@ -212,26 +282,26 @@ async fn roundtrip(cmake : String) -> Unit {
       cmake,
       String::make(64, '0'),
     )
+    |> ignore
   catch {
     _ => ()
   } noraise {
-    _ => abort("A mismatched archive digest was accepted")
+    _ => refuse("A mismatched archive digest was accepted")
   }
   guard !@fs.exists(extracted + "/probe.bin") else {
-    abort("A mismatched archive created output")
+    refuse("A mismatched archive created output")
   }
-  println(
+  print_progress(
     "CMake archive roundtrip and checksum refusal passed; no actual host package qualified",
   )
 }
 
 ///|
-async fn main {
-  let args = @env.args()[1:]
+async fn execute(args : ArrayView[String]) -> Json {
   let selected = control(args)
   if selected is Some(SelfTest) {
     guard parse(["-xjf", "input.tar.bz2", "-C", "output"]) is Some(_) else {
-      abort("Valid extraction refused")
+      refuse("Valid extraction refused")
     }
     for
       invalid in [
@@ -249,7 +319,7 @@ async fn main {
         ["--help"],
       ] {
       guard parse(invalid) is None else {
-        abort("Unsupported archive command accepted")
+        refuse("Unsupported archive command accepted")
       }
     }
     for
@@ -265,7 +335,7 @@ async fn main {
         guard parse(["-xjf", archive, "-C", destination]) is Some(actual) &&
           actual.archive == archive &&
           actual.destination == destination else {
-          abort("Literal archive operands changed")
+          refuse("Literal archive operands changed")
         }
       }
     }
@@ -286,25 +356,150 @@ async fn main {
         ["--roundtrip", "--help"],
         ["help", "--self-test"],
       ] {
-      guard control(args) is None else { abort("Invalid control accepted") }
+      guard control(args) is None else { refuse("Invalid control accepted") }
     }
     guard control(["--self-test"]) is Some(SelfTest) &&
       control(["--roundtrip"]) is Some(Roundtrip) else {
-      abort("Exact control refused")
+      refuse("Exact control refused")
     }
-    println("Narrow CEF archive command refusal checks passed")
-    return
+    print_progress("Narrow CEF archive command refusal checks passed")
+    return { "passed": true }
   }
   guard @env.get_env_var("MORPHIR_CEF_CMAKE") is Some(cmake) else {
-    abort("Missing configured CMake executable")
+    refuse("Missing configured CMake executable")
   }
   if selected is Some(Roundtrip) {
     roundtrip(cmake)
-    return
+    return { "roundtrip": true, "extractor": cmake }
   }
   guard parse(args) is Some(request) &&
     @env.get_env_var("MORPHIR_CEF_ARCHIVE_SHA256") is Some(expected) else {
-    abort("Only Proton's configured CEF extraction is supported")
+    refuse("Only Proton's configured CEF extraction is supported")
   }
   extract(request, cmake, expected)
+}
+
+///|
+fn[T] refuse(message : String) -> T raise {
+  if json_mode.val {
+    fail(message)
+  } else {
+    abort(message)
+  }
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "workbench-cef-extract.mbtx",
+    about="Extract only the exact configured CEF archive; JSON extraction: -xjf ARCHIVE -C DESTINATION --json",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg("json", required=true),
+      @argparse.FlagArg("help"),
+      @argparse.FlagArg("self-test"),
+      @argparse.FlagArg("roundtrip"),
+    ],
+    options=[
+      @argparse.OptionArg("archive", requires=["destination"]),
+      @argparse.OptionArg("destination", requires=["archive"]),
+    ],
+    groups=[
+      @argparse.ArgGroup("operation", required=true, multiple=false, args=[
+        "help", "self-test", "roundtrip", "archive",
+      ]),
+    ],
+  )
+}
+
+///|
+fn literal_arity(argv : ArrayView[String], count : Int32) -> Unit raise {
+  ignore(
+    @argparse.Command(
+      "workbench-cef-extract",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      positionals=[
+        @argparse.PositionArg(
+          "argument",
+          num_args=@argparse.ValueRange(lower=count, upper=count),
+        ),
+      ],
+    ).parse(argv=["--"] + argv.to_owned(), env=Map([])),
+  )
+}
+
+///|
+fn json_arguments(argv : ArrayView[String]) -> Array[String] {
+  // The tar adapter has exactly four legacy slots. Data slots are never flags.
+  match argv {
+    ["-xjf", archive, "-C", destination, "--json"] =>
+      ["--json", "--archive=" + archive, "--destination=" + destination]
+    ["--help", "--json"] => ["--json", "--help"]
+    ["--self-test", "--json"] => ["--json", "--self-test"]
+    ["--roundtrip", "--json"] => ["--json", "--roundtrip"]
+    _ => argv.to_owned()
+  }
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:]
+  json_mode.val = match argv {
+    ["--json", ..] | [_, "--json", ..] | [_, _, _, _, "--json", ..] => true
+    _ => false
+  }
+  // A four-token extraction is always the legacy grammar, even if a path is --json.
+  if argv is ["-xjf", _, "-C", _] {
+    json_mode.val = false
+  }
+  if !json_mode.val {
+    ignore(execute(argv))
+    return
+  }
+  try {
+    literal_arity(argv, if argv is ["-xjf", ..] { 5 } else { 2 })
+    let matches = json_command().parse(argv=json_arguments(argv), env=Map([]))
+    let result : Json = if matches.flags.get("help").unwrap_or(false) {
+      { "render_help": json_command().render_help() }
+    } else if matches.flags.get("self-test").unwrap_or(false) {
+      execute(["--self-test"])
+    } else if matches.flags.get("roundtrip").unwrap_or(false) {
+      execute(["--roundtrip"])
+    } else {
+      let archive = matches.values["archive"][0]
+      let destination = matches.values["destination"][0]
+      execute(["-xjf", archive, "-C", destination])
+    }
+    @stdio.stdout.write(succeeded(result).stringify() + "\n")
+  } catch {
+    error => failed(error)
+  }
+}
+
+///|
+test "JSON extraction preserves all four literal tar slots" {
+  for archive in ["--", "--json", "--help", "", "資料/archive λ.tar.bz2"] {
+    for destination in ["--", "--json", "--self-test", "", "資料/output λ"] {
+      let argv = ["-xjf", archive, "-C", destination, "--json"]
+      literal_arity(argv, 5)
+      let matches = json_command().parse(argv=json_arguments(argv), env=Map([]))
+      assert_eq(matches.values["archive"], [archive])
+      assert_eq(matches.values["destination"], [destination])
+    }
+  }
+  for
+    argv in [
+      ["--json", "--help", "--"],
+      ["-xjf", "a", "-C", "b", "--json", "--"],
+    ] {
+    let refused = try {
+      literal_arity(argv, if argv[0] == "-xjf" { 5 } else { 2 })
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused)
+  }
 }

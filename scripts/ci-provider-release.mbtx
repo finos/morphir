@@ -1,10 +1,12 @@
 ///|
 /// Acquire immutable provider service/test-fixture assets. No source-build fallback.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonrockz/ion@0.5.0/binary",
@@ -18,6 +20,80 @@ let repository = "finos/morphir-rust"
 
 ///|
 let workflow = "finos/morphir-rust/.github/workflows/release-provider-snapshot.yml"
+
+///|
+enum ReleaseInvocation {
+  Acquire
+  SelfTest
+} derive(Eq)
+
+///|
+fn release_invocation(argv : ArrayView[String]) -> ReleaseInvocation raise {
+  // Acquisition has no data operands. Treat every original token literally,
+  // including --, so a raw delimiter cannot turn a refusal into acquisition.
+  let literal_argv = ["--"] + argv.to_owned()
+  let acquire = @argparse.Command(
+    "ci-provider-release.mbtx",
+    about="Acquire the pinned provider service and test fixture",
+    disable_help_flag=true,
+  )
+  ignore(acquire.parse(argv=literal_argv)) catch {
+    _ => {
+      // Flags are repeatable and consume -- in this pinned parser. Compose a
+      // literal singleton grammar with the control grammar to retain exactly
+      // one control token. Only parsing is inside this fallback boundary.
+      ignore(
+        @argparse.Command("ci-provider-release.mbtx", disable_help_flag=true, positionals=[
+          @argparse.PositionArg(
+            "SELF_TEST",
+            num_args=@argparse.ValueRange::single(),
+          ),
+        ]).parse(argv=literal_argv),
+      )
+      ignore(
+        @argparse.Command("ci-provider-release.mbtx", disable_help_flag=true, flags=[
+          @argparse.FlagArg("self-test", required=true),
+        ]).parse(argv~),
+      )
+      return SelfTest
+    }
+  }
+  Acquire
+}
+
+///|
+fn cli_self_test() -> Unit raise {
+  guard release_invocation([]) == Acquire else {
+    fail("Default invocation must acquire provider tools")
+  }
+  guard release_invocation(["--self-test"]) == SelfTest else {
+    fail("Self-test invocation must not acquire provider tools")
+  }
+  for
+    argv in [
+      ["extra"],
+      ["--unknown"],
+      ["-x"],
+      ["--self-test", "extra"],
+      ["--self-test=true"],
+      ["--"],
+      ["--", "--self-test"],
+      ["--self-test", "--"],
+      ["--self-test", "--self-test"],
+      ["--self-test", "--self-test", "--self-test"],
+      ["--help"],
+      ["-h"],
+      ["help"],
+      ["--version"],
+      [""],
+      ["--self-test", "--help"],
+    ] {
+    ignore(release_invocation(argv)) catch {
+      _ => continue
+    }
+    fail("Invalid provider invocation accepted: " + argv.join(" "))
+  }
+}
 
 ///|
 fn field(value : Json, key : String) -> Json {
@@ -310,6 +386,8 @@ fn fixture(
 
 ///|
 async fn self_test() -> Unit {
+  presentation_self_test()
+  cli_self_test()
   let target = "x86_64-unknown-linux-gnu"
   let (pin, descriptor) = fixture(target, "linux", "x86_64", "ubuntu-24.04")
   ignore(validate_descriptor(pin, descriptor, target))
@@ -414,20 +492,32 @@ async fn self_test() -> Unit {
   } noraise {
     _ => fail("Expected extra archive entries rejection")
   }
-  println(
+  test_note(
     "Provider release admission: both targets accepted; stale source, protocol, variants, inventory, role, mode, paths, hashes and host mismatch rejected; real executable corruption, symlink and archive inventory checks passed",
   )
 }
 
 ///|
-async fn main {
-  let args = @env.args()
-  if args.length() == 2 && args[1] == "--self-test" {
-    self_test()
+async fn execute(argv : Array[String]) -> Unit {
+  if json_help(argv) {
+    @stdio.stdout.write(
+      command_result({
+        "help": @argparse.Command(
+          "ci-provider-release.mbtx",
+          about="Acquire the pinned provider service and test fixture",
+          flags=[@argparse.FlagArg("self-test")],
+        ).render_help(),
+      }).stringify() +
+      "\n",
+    )
     return
   }
-  guard args.length() == 1 else {
-    fail("ci-provider-release.mbtx takes no arguments")
+  if release_invocation(argv) is SelfTest {
+    self_test()
+    if output_mode.json {
+      @stdio.stdout.write(command_result({ "passed": true }).stringify() + "\n")
+    }
+    return
   }
   let directory = @env.get_env_var("MORPHIR_CI_PROVIDER_TOOLS").unwrap_or(
     ".dev/ci/provider-tools",
@@ -534,4 +624,180 @@ async fn main {
     (@async.now() - started).to_string() +
     "\n",
   )
+  if output_mode.json {
+    println(receipt.stringify())
+  }
+}
+
+///|
+/// Output selection belongs to the command boundary, never to data operands.
+priv struct OutputMode {
+  mut json : Bool
+}
+
+///|
+let output_mode : OutputMode = { json: false, }
+
+///|
+fn command_result(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.provider.release",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+fn command_error(error : Error, code~ : String = "command_failed") -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.provider.release",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": code, "message": error.to_string() },
+    "diagnostics": [],
+  }
+}
+
+///|
+fn test_note(message : String) -> Unit {
+  if output_mode.json {
+    eprintln(message)
+  } else {
+    println(message)
+  }
+}
+
+///|
+/// Reserve one explicit prefix and unwrap it once. A literal --json is still
+/// data in the legacy grammar, or after the reserved prefix's delimiter.
+fn presentation_arguments(argv : Array[String]) -> Array[String] {
+  match argv {
+    ["--json", "--", .. raw] => {
+      output_mode.json = true
+      return raw.to_owned()
+    }
+    _ => ()
+  }
+  // Keep every complete legacy syntax, including flag-shaped fixed operands.
+  // JSON is additive at the two fixed control boundaries only.
+  if !legacy_syntax(argv) {
+    let flag = @argparse.Command(
+      "ci.provider.release",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[@argparse.FlagArg("json", required=true)],
+    )
+    if !argv.is_empty() {
+      try flag.parse(argv=argv[:1], env=Map([])) catch {
+        _ => ()
+      } noraise {
+        _ => {
+          output_mode.json = true
+          return argv[1:].to_owned()
+        }
+      }
+      let boundary = argv.length() - 1
+      if legacy_syntax(argv[:boundary].to_owned()) {
+        try flag.parse(argv=argv[boundary:], env=Map([])) catch {
+          _ => ()
+        } noraise {
+          _ => {
+            output_mode.json = true
+            return argv[:boundary].to_owned()
+          }
+        }
+      }
+    }
+  }
+  argv
+}
+
+///|
+fn legacy_syntax(argv : Array[String]) -> Bool {
+  try {
+    ignore(release_invocation(argv))
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+fn json_help(argv : Array[String]) -> Bool {
+  if !output_mode.json {
+    return false
+  }
+  // A declared ordinary flag avoids core's print-and-exit built-in help.
+  try {
+    ignore(
+      @argparse.Command(
+        "ci.provider.release",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("help", short='h', required=true)],
+      ).parse(argv~, env=Map([])),
+    )
+    true
+  } catch {
+    _ => false
+  }
+}
+
+///|
+async fn main {
+  try {
+    let argv = presentation_arguments(command_arguments())
+    execute(argv)
+  } catch {
+    error => {
+      if !output_mode.json {
+        raise error
+      }
+      @stdio.stdout.write(command_error(error).stringify() + "\n")
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+fn presentation_self_test() -> Unit raise {
+  let saved = output_mode.json
+  defer {
+    output_mode.json = saved
+  }
+
+  for literal in ["", "λ 雪", "--", "--json", "--help", "--self-test"] {
+    let raw = [literal, "--", "--json", ""]
+    output_mode.json = false
+    assert_eq(presentation_arguments(["--json", "--", ..raw]), raw)
+    assert_true(output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["--json", "--", "--json", "--", "value"]), [
+    "--json", "--", "value",
+  ])
+}
+
+///|
+#cfg(target="js")
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, _, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, .. rest] => rest.to_owned()
+    _ => []
+  }
 }

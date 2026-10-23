@@ -40,3 +40,22 @@ jobs:
         run: mise exec -- moonx scripts/pre-push.mbtx --self-test
       - name: Check pinned beads helper caching and arguments
         run: mise exec -- moonx scripts/beads-plan.mbtx --self-test
+      - name: Check native developer JSON host boundaries
+        env:
+          DEVELOPER_JSON_HOST_BOUNDARIES: '1'
+          DEVELOPER_JSON_TARGET: native
+          DEVELOPER_JSON_RECEIPTS: ${{ runner.temp }}/developer-json-native.json
+        run: mise exec -- bun apps/morphir/scripts/test-developer-json-presentation.ts
+      - name: Check Wasm developer JSON host boundaries
+        env:
+          DEVELOPER_JSON_HOST_BOUNDARIES: '1'
+          DEVELOPER_JSON_TARGET: wasm
+          DEVELOPER_JSON_RECEIPTS: ${{ runner.temp }}/developer-json-wasm.json
+        run: mise exec -- bun apps/morphir/scripts/test-developer-json-presentation.ts
+      - name: Retain developer JSON host boundary receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: developer-json-host-${{ inputs.runner }}-${{ github.sha }}
+          path: ${{ runner.temp }}/developer-json-*.json
+          if-no-files-found: error

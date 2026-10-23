@@ -3,6 +3,7 @@
 /// Use --event in Actions, BASE HEAD locally, or --self-test to check the rules;
 /// --json prints the selection as one JSON object.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
@@ -425,6 +426,7 @@ fn legacy_automation(path : String) -> Bool {
 
 ///|
 async fn self_test() -> Unit {
+  presentation_self_test()
   let backend = [
     "compiler", "frontend", "conformance", "provider", "lifecycle", "workbench",
   ]
@@ -538,7 +540,7 @@ async fn self_test() -> Unit {
     valid_revision("06ac6045d0f06e884323974c9c1ce52597b92fec") else {
     fail("Revision validation failed")
   }
-  println("ci-changes: \{cases.length()} dependency cases pass")
+  test_note("ci-changes: \{cases.length()} dependency cases pass")
   for
     (paths, expected) in [
       (["apps/morphir-workbench/browser/main.ts"], ["typescript"]),
@@ -611,7 +613,7 @@ async fn self_test() -> Unit {
       }
     }
   }
-  println(
+  test_note(
     "ci-changes: isolated, shared, unknown and combined baseline dependencies pass",
   )
   mise_test()
@@ -712,7 +714,7 @@ fn reuse_test() -> Unit raise {
   guard jobs.contains("build") && !jobs.contains("installed-qualification") else {
     fail("reuse_required_jobs: \{jobs.join(",")}")
   }
-  println("ci-changes: reuse decision passes")
+  test_note("ci-changes: reuse decision passes")
 }
 
 ///|
@@ -740,7 +742,7 @@ async fn timeout_test() -> Unit {
   guard got.full && got.reasons == ["child timed out after 1 s"] else {
     fail("child_timeout_is_full: \{got.describe()}")
   }
-  println("ci-changes: child crash, drift marker and child timeout pass")
+  test_note("ci-changes: child crash, drift marker and child timeout pass")
 }
 
 ///|
@@ -892,7 +894,7 @@ fn mise_test() -> Unit raise {
   guard unreadable.full else {
     fail("child_unreadable_output_is_full: \{unreadable.describe()}")
   }
-  println("ci-changes: semantic mise selection and shadow decisions pass")
+  test_note("ci-changes: semantic mise selection and shadow decisions pass")
 }
 
 ///|
@@ -1001,7 +1003,7 @@ async fn diff_test() -> Unit {
       fail("Wrong event selection or GITHUB_OUTPUT overwrite: " + event)
     }
   }
-  println(
+  test_note(
     "ci-changes: real Git rename, divergent push, four events and output append pass",
   )
   @fs.mkdir(root + "/.config/mise/tasks", recursive=true)
@@ -1043,7 +1045,7 @@ async fn diff_test() -> Unit {
     !legacy_automation("apps/morphir/scripts/test.ts") else {
     fail("Wrong automation policy scope")
   }
-  println(
+  test_note(
     "ci-changes: legacy automation additions/pushes refuse and removals pass",
   )
   event_shadow_test(script, root)
@@ -1144,8 +1146,8 @@ async fn event_shadow_test(script : String, root : String) -> Unit {
     !run.2.contains("ci-changes: mise: ") else {
     fail(run_failure("landed_mise_log_labelled", run))
   }
-  println("ci-changes: pull request shadow mise impact logs pass")
-  println("ci-changes: landed mise impact logs under the reuse prefix")
+  test_note("ci-changes: pull request shadow mise impact logs pass")
+  test_note("ci-changes: landed mise impact logs under the reuse prefix")
 }
 
 ///|
@@ -1707,13 +1709,21 @@ priv struct Invocation {
 }
 
 ///|
-fn changes_command() -> @argparse.Command {
+fn changes_command(json~ : Bool = false) -> @argparse.Command {
+  let help = if json {
+    [@argparse.FlagArg("help", short='h', about="Show help information.")]
+  } else {
+    []
+  }
   @argparse.Command(
     "ci-changes",
     about="Select focused CI checks",
+    disable_help_flag=json,
+    disable_help_subcommand=json,
     flags=[
+      ..help,
       @argparse.FlagArg("self-test", about="Run the built-in tests", conflicts_with=[
-        "event", "json", "base", "head",
+        "event", "base", "head",
       ]),
       @argparse.FlagArg(
         "event",
@@ -1749,26 +1759,39 @@ fn invocation(matches : @argparse.Matches) -> Invocation raise {
 }
 
 ///|
-async fn main {
-  let invocation = invocation(changes_command().parse())
+async fn execute(argv : Array[String]) -> Unit {
+  let matches = changes_command(json=output_mode.json).parse(argv~, env=Map([]))
+  if output_mode.json && matches.flags.get("help").unwrap_or(false) {
+    @stdio.stdout.write(
+      command_result({ "help": changes_command().render_help() }).stringify() +
+      "\n",
+    )
+    return
+  }
+  let invocation = invocation(matches)
+  output_mode.json = output_mode.json || invocation.json
   let selection = match invocation.mode {
     SelfTest => {
       self_test()
+      if output_mode.json {
+        @stdio.stdout.write(
+          command_result({ "passed": true }).stringify() + "\n",
+        )
+      }
       return
     }
     Event => event_selection()
     Range(base, head) => changed(base, head) |> select_changes(base, head)
   }
   let text = render(selection)
-  @stdio.stdout.write(
-    if invocation.json {
-      selection_json(selection).stringify() + "\n"
-    } else {
-      text
-    },
-  )
+  if !output_mode.json {
+    @stdio.stdout.write(text)
+  }
   if @env.get_env_var("GITHUB_OUTPUT") is Some(path) {
     @fs.write_file(path, @fs.read_file(path).text() + text)
+  }
+  if output_mode.json {
+    println(selection_json(selection).stringify())
   }
 }
 
@@ -2093,7 +2116,7 @@ async fn reuse_wiring_test(script : String) -> Unit {
   }
   failures.append(cli_argparse_forms())
   guard failures.is_empty() else { fail(failures.join("\n---\n")) }
-  println(
+  test_note(
     "ci-changes: queue and bypass shadow, exact push skip, child failures and CLI pass",
   )
 }
@@ -2187,6 +2210,7 @@ fn cli_argparse_forms() -> Array[String] {
   let head = "b".repeat(40)
   let cases : Array[(Array[String], Mode, Bool)] = [
     (["--self-test"], SelfTest, false),
+    (["--self-test", "--json"], SelfTest, true),
     (["--event"], Event, false),
     (["--event", "--json"], Event, true),
     ([base, head], Range(base, head), false),
@@ -2211,7 +2235,6 @@ fn cli_argparse_forms() -> Array[String] {
       ["--json"],
       ["--event", base, head],
       ["--self-test", "--event"],
-      ["--self-test", "--json"],
       [base],
       [base, head, "c"],
       ["--bogus"],
@@ -2227,4 +2250,196 @@ fn cli_argparse_forms() -> Array[String] {
     }
   }
   failures
+}
+
+///|
+/// Output selection belongs to the command boundary, never to data operands.
+priv struct OutputMode {
+  mut json : Bool
+}
+
+///|
+let output_mode : OutputMode = { json: false, }
+
+///|
+fn command_result(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.changes",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+fn command_error(error : Error, code~ : String = "command_failed") -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "ci.changes",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": code, "message": error.to_string() },
+    "diagnostics": [],
+  }
+}
+
+///|
+fn test_note(message : String) -> Unit {
+  if output_mode.json {
+    eprintln(message)
+  } else {
+    println(message)
+  }
+}
+
+///|
+/// Reserve one explicit prefix and unwrap it once. A literal --json is still
+/// data in the legacy grammar, or after the reserved prefix's delimiter.
+fn presentation_arguments(argv : Array[String]) -> Array[String] {
+  match argv {
+    ["--json", "--", .. raw] => {
+      output_mode.json = true
+      return raw.to_owned()
+    }
+    _ => ()
+  }
+  if !argv.is_empty() {
+    try
+      @argparse.Command(
+        "json-prefix",
+        disable_help_flag=true,
+        disable_help_subcommand=true,
+        flags=[@argparse.FlagArg("json", required=true)],
+      ).parse(argv=argv[:1], env=Map([]))
+    catch {
+      _ => ()
+    } noraise {
+      _ => output_mode.json = true
+    }
+  }
+  if presentation_probe(argv) is Some(matches) {
+    output_mode.json = output_mode.json ||
+      matches.flags.get("json").unwrap_or(false)
+    if matches.subcommand is Some((_, child)) {
+      output_mode.json = output_mode.json ||
+        child.flags.get("json").unwrap_or(false)
+    }
+  }
+  argv
+}
+
+///|
+async fn main {
+  try {
+    let argv = presentation_arguments(command_arguments())
+    execute(argv)
+  } catch {
+    error => {
+      if !output_mode.json {
+        raise error
+      }
+      @stdio.stdout.write(command_error(error).stringify() + "\n")
+      @sys.exit(1)
+    }
+  }
+}
+
+///|
+/// Presentation recognition uses the full declared vocabulary, with requirements
+/// relaxed so the real parser can report syntax errors inside the JSON boundary.
+/// The parsed data is never forwarded or used to execute the command.
+fn presentation_probe(argv : Array[String]) -> @argparse.Matches? {
+  Some(
+    @argparse.Command(
+      "ci.changes",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[
+        @argparse.FlagArg("json"),
+        @argparse.FlagArg("help", short='h'),
+        @argparse.FlagArg("self-test"),
+        @argparse.FlagArg("event"),
+      ],
+      options=[],
+      positionals=[
+        @argparse.PositionArg(
+          "arguments",
+          num_args=@argparse.ValueRange(lower=0),
+          allow_hyphen_values=true,
+        ),
+      ],
+    ).parse(argv~, env=Map([])),
+  ) catch {
+    _ => presentation_controls(argv)
+  }
+}
+
+///|
+fn presentation_self_test() -> Unit raise {
+  let saved = output_mode.json
+  defer {
+    output_mode.json = saved
+  }
+
+  for literal in ["", "λ 雪", "--", "--json", "--help", "--self-test"] {
+    let raw = [literal, "--", "--json", ""]
+    output_mode.json = false
+    assert_eq(presentation_arguments(["--json", "--", ..raw]), raw)
+    assert_true(output_mode.json)
+  }
+  output_mode.json = false
+  assert_eq(presentation_arguments(["--json", "--", "--json", "--", "value"]), [
+    "--json", "--", "value",
+  ])
+
+  output_mode.json = false
+  let raw = ["--", "--json", "HEAD"]
+  assert_eq(presentation_arguments(raw), raw)
+  assert_true(!output_mode.json)
+}
+
+///|
+#cfg(target="js")
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, _, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+#cfg(not(target="js"))
+fn command_arguments() -> Array[String] {
+  match @env.args() {
+    [_, .. rest] => rest.to_owned()
+    _ => []
+  }
+}
+
+///|
+/// A missing option value can stop the full grammar before it reports JSON.
+/// This library grammar selects presentation only; the complete command grammar
+/// still diagnoses every operand and option. Its values never reach execution.
+fn presentation_controls(argv : Array[String]) -> @argparse.Matches? {
+  Some(
+    @argparse.Command(
+      "presentation",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      flags=[@argparse.FlagArg("json"), @argparse.FlagArg("help", short='h')],
+      positionals=[
+        @argparse.PositionArg(
+          "data",
+          num_args=@argparse.ValueRange(lower=0),
+          allow_hyphen_values=true,
+        ),
+      ],
+    ).parse(argv~, env=Map([])),
+  ) catch {
+    _ => None
+  }
 }

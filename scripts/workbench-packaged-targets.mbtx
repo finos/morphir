@@ -1,6 +1,7 @@
 ///|
 /// Build the actual host package. A build receipt is not GUI qualification.
 import {
+  "moonbitlang/x@0.5.5/sys",
   "moonbitlang/async@0.22.4",
   "moonbitlang/async@0.22.4/fs",
   "moonbitlang/async@0.22.4/process",
@@ -10,6 +11,61 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+let json_mode : Ref[Bool] = Ref(false)
+
+///|
+suberror ChildFailure {
+  ChildFailure(Int32, String)
+} derive(Debug)
+
+///|
+fn succeeded(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.packaged.targets",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+async fn failed(error : Error) -> Unit {
+  let (status, code) = match error {
+    ChildFailure(status, _) =>
+      (if status < 0 { 128 - status } else { status }, "child_failed")
+    _ => (1, "command_failed")
+  }
+  let message = match error {
+    ChildFailure(_, message) => message
+    _ => error.to_string()
+  }
+  @stdio.stderr.write(message + "\n")
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.packaged.targets",
+    "state": "failed",
+    "exitCode": status,
+    "error": { "code": code, "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(status)
+}
+
+///|
+async fn print_progress(message : String) -> Unit {
+  if json_mode.val {
+    @stdio.stderr.write(message + "\n")
+  } else {
+    println(message)
+  }
 }
 
 ///|
@@ -215,6 +271,13 @@ async fn output(
 ) -> String {
   let (status, out, err) = @process.collect_output(program, args, cwd~)
   guard status == 0 else {
+    if json_mode.val {
+      @stdio.stderr.write(err.text() + out.text())
+      raise ChildFailure(
+        status,
+        program + " failed with status " + status.to_string(),
+      )
+    }
     fail(program + " failed: " + err.text() + out.text())
   }
   out.text().trim().to_owned()
@@ -233,10 +296,16 @@ async fn checked(
     cwd~,
     extra_env=environment.unwrap_or(Map([])),
     inherit_env=environment is None,
-    stdout=@stdio.stdout,
+    stdout=if json_mode.val { @stdio.stderr } else { @stdio.stdout },
     stderr=@stdio.stderr,
   )
   guard status == 0 else {
+    if json_mode.val {
+      raise ChildFailure(
+        status,
+        program + " failed with status " + status.to_string(),
+      )
+    }
     fail(program + " failed with status " + status.to_string())
   }
 }
@@ -311,10 +380,16 @@ async fn probe_archive(
         args,
         extra_env=environment,
         inherit_env=false,
-        stdout=@stdio.stdout,
+        stdout=if json_mode.val { @stdio.stderr } else { @stdio.stdout },
         stderr=@stdio.stderr,
       )
       guard status == 0 else {
+        if json_mode.val {
+          raise ChildFailure(
+            status,
+            "Small archive probe failed during " + phase,
+          )
+        }
         fail("Small archive probe failed during " + phase)
       }
     }
@@ -330,7 +405,9 @@ async fn probe_archive(
     "qualification": "none",
   }
   @fs.write_file(evidence + "/archive-probe.json", result.stringify())
-  println("Small archive round-trip passed; actual CEF setup is still required")
+  print_progress(
+    "Small archive round-trip passed; actual CEF setup is still required",
+  )
 }
 
 ///|
@@ -390,7 +467,9 @@ async fn cef_progress(
   let log = evidence + "/cef-process-progress.log"
   let prior = if @fs.exists(log) { @fs.read_file(log).text() } else { "" }
   @fs.write_file(log, prior + line)
-  println("CEF process progress sample " + sample.to_string() + " recorded")
+  print_progress(
+    "CEF process progress sample " + sample.to_string() + " recorded",
+  )
 }
 
 ///|
@@ -448,7 +527,7 @@ async fn setup_windows_cef(
     link_error.text() +
     "\n"
   @fs.write_file(evidence + "/archive-tools.log", diagnostic)
-  println(diagnostic)
+  print_progress(diagnostic)
   guard link_status == 0 &&
     link_search.text().split("\n").to_array()[0].trim() == original_link else {
     fail("Scoped archive selection must preserve the native linker selection")
@@ -479,10 +558,15 @@ async fn setup_windows_cef(
       ["--roundtrip"],
       extra_env=scoped_env,
       inherit_env=false,
-      stdout=@stdio.stdout,
+      stdout=if json_mode.val { @stdio.stderr } else { @stdio.stdout },
       stderr=@stdio.stderr,
     )
-    guard status == 0 else { fail("Native CEF extraction roundtrip failed") }
+    guard status == 0 else {
+      if json_mode.val {
+        raise ChildFailure(status, "Native CEF extraction roundtrip failed")
+      }
+      fail("Native CEF extraction roundtrip failed")
+    }
   })
   let extractor : Json = {
     "revision": output("git", ["rev-parse", "HEAD"]),
@@ -517,7 +601,7 @@ async fn setup_windows_cef(
         cwd=desktop,
         extra_env=scoped_env,
         inherit_env=false,
-        stdout=@stdio.stdout,
+        stdout=if json_mode.val { @stdio.stderr } else { @stdio.stdout },
         stderr=@stdio.stderr,
       )
       group.spawn_bg(() => {
@@ -527,7 +611,7 @@ async fn setup_windows_cef(
             cef_progress(child.pid, temporary, archive, evidence, sample)
           }) catch {
             error if @async.is_being_cancelled() => raise error
-            _ => println("CEF diagnostics unavailable for this sample")
+            _ => print_progress("CEF diagnostics unavailable for this sample")
           }
           sample += 1
           @async.sleep(30000)
@@ -539,6 +623,12 @@ async fn setup_windows_cef(
     })
   })
   guard status == 0 else {
+    if json_mode.val {
+      raise ChildFailure(
+        status,
+        "CEF setup failed with status " + status.to_string(),
+      )
+    }
     fail("CEF setup failed with status " + status.to_string())
   }
   @fs.rmdir(temporary, recursive=true)
@@ -800,13 +890,13 @@ async fn aggregate(
     "targets": receipts,
   }
   @fs.write_file(".dev/packaged-targets/matrix.json", result.stringify() + "\n")
-  println(
+  print_progress(
     "Both actual target receipts pass on the same candidate; native operation enablement remains separate",
   )
 }
 
 ///|
-fn self_test(pins : Json) -> Unit raise {
+async fn self_test(pins : Json) -> Unit {
   for target in [LinuxX64, WindowsX64] {
     guard package_invocation(["build", target.name()]) == Build(target) &&
       package_invocation(["accept", target.name()]) == Accept(target) else {
@@ -1095,35 +1185,40 @@ fn self_test(pins : Json) -> Unit raise {
       fail("Temporary retention must preserve only named nonprofile entries")
     }
   }
-  println(
+  print_progress(
     "Package pin, runtime mismatch and checksum checks passed; no host package built",
   )
 }
 
 ///|
-async fn main {
+async fn execute(selected : PackageCommand?) -> Json {
   let pins_path = "tools/packaged-targets-pin.json"
   let pins_source = @fs.read_file(pins_path).text()
   let pins = @json.parse(pins_source)
-  let command = package_invocation(@env.args()[1:])
+  let command = match selected {
+    Some(command) => command
+    None => package_invocation(@env.args()[1:])
+  }
   if command == SelfTest {
     self_test(pins)
     checked("moonx", ["scripts/workbench-cef-extract.mbtx", "--self-test"])
-    return
+    return { "passed": true }
   }
   if command == ProbeArchive {
     let evidence = @fs.realpath(".") + "/.dev/packaged-targets/archive-probe"
     @fs.mkdir(evidence, recursive=true, allow_exist=true)
     probe_archive("tar", @env.get_env_vars(), evidence)
-    return
+    return @fs.read_file(evidence + "/archive-probe.json").json()
   }
   if command is Accept(target) {
     accept(target, pins, pins_source)
-    return
+    return @fs.read_file(
+      ".dev/packaged-targets/" + target.name() + "/acceptance.json",
+    ).json()
   }
   if command is Aggregate(directory) {
     aggregate(directory, pins, pins_source)
-    return
+    return @fs.read_file(".dev/packaged-targets/matrix.json").json()
   }
   guard command is Build(target) else {
     abort("Package command already handled")
@@ -1201,7 +1296,7 @@ async fn main {
       version +
       "\n"
     @fs.write_file(evidence + "/archive-tools.log", archive_tools)
-    println(archive_tools)
+    print_progress(archive_tools)
   }
   // A stalled archive extractor must leave evidence and fail before the outer
   // job deadline, so the always-run artifact step can retain the diagnostics.
@@ -1278,5 +1373,150 @@ async fn main {
     "outputDirectory": evidence + "/package",
   }
   @fs.write_file(evidence + "/build.json", receipt.stringify() + "\n")
-  println("Package built; actual CEF fallback acceptance is still required")
+  print_progress(
+    "Package built; actual CEF fallback acceptance is still required",
+  )
+  receipt
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  fn operation(name : String) -> @argparse.Command {
+    @argparse.Command(
+      name,
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      options=[@argparse.OptionArg("operand", required=true)],
+    )
+  }
+  @argparse.Command(
+    "workbench-packaged-targets.mbtx",
+    about="JSON: build TARGET --json | accept TARGET --json | aggregate DIRECTORY --json | --probe-archive --json | --self-test --json | --help --json",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg("json", required=true, global=true),
+      @argparse.FlagArg("help"),
+      @argparse.FlagArg("self-test"),
+      @argparse.FlagArg("probe-archive"),
+    ],
+    groups=[
+      @argparse.ArgGroup("control", multiple=false, args=[
+        "help", "self-test", "probe-archive",
+      ]),
+    ],
+    subcommands=[
+      operation("build"),
+      operation("accept"),
+      operation("aggregate"),
+    ],
+  )
+}
+
+///|
+fn literal_arity(argv : ArrayView[String], count : Int32) -> Unit raise {
+  ignore(
+    @argparse.Command(
+      "workbench-packaged-targets",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      positionals=[
+        @argparse.PositionArg(
+          "argument",
+          num_args=@argparse.ValueRange(lower=count, upper=count),
+        ),
+      ],
+    ).parse(argv=["--"] + argv.to_owned(), env=Map([])),
+  )
+}
+
+///|
+fn json_arguments(argv : ArrayView[String]) -> Array[String] {
+  // Protect the one owned operand, including empty, -- and --json path values.
+  match argv {
+    [operation, operand, "--json"] =>
+      ["--json", operation, "--operand=" + operand]
+    ["--json", operation, "--", operand] =>
+      ["--json", operation, "--operand=" + operand]
+    ["--help", "--json"] => ["--json", "--help"]
+    ["--self-test", "--json"] => ["--json", "--self-test"]
+    ["--probe-archive", "--json"] => ["--json", "--probe-archive"]
+    _ => argv.to_owned()
+  }
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:]
+  json_mode.val = match argv {
+    ["--json", ..]
+    | [_, _, "--json", ..]
+    | ["--help" | "--self-test" | "--probe-archive", "--json", ..] => true
+    _ => false
+  }
+  if !json_mode.val {
+    ignore(execute(None))
+    return
+  }
+  try {
+    literal_arity(
+      argv,
+      match argv {
+        ["--json", _, "--", _] => 4
+        [_, _, "--json", ..] => 3
+        _ => 2
+      },
+    )
+    let matches = json_command().parse(argv=json_arguments(argv), env=Map([]))
+    let result : Json = if matches.flags.get("help").unwrap_or(false) {
+      guard matches.subcommand is None else {
+        fail("Help cannot execute a package operation")
+      }
+      { "render_help": json_command().render_help() }
+    } else {
+      let selected = match matches.subcommand {
+        Some((name, child)) => {
+          guard !matches.flags.get("self-test").unwrap_or(false) &&
+            !matches.flags.get("probe-archive").unwrap_or(false) else {
+            fail("Package controls conflict with operations")
+          }
+          let operand = child.values["operand"][0]
+          match name {
+            "build" => Build(PackageTarget::parse(operand))
+            "accept" => Accept(PackageTarget::parse(operand))
+            "aggregate" => Aggregate(operand)
+            _ => fail("Unknown package operation")
+          }
+        }
+        None =>
+          if matches.flags.get("self-test").unwrap_or(false) {
+            SelfTest
+          } else if matches.flags.get("probe-archive").unwrap_or(false) {
+            ProbeArchive
+          } else {
+            fail("A package operation is required")
+          }
+      }
+      execute(Some(selected))
+    }
+    @stdio.stdout.write(succeeded(result).stringify() + "\n")
+  } catch {
+    error => failed(error)
+  }
+}
+
+///|
+test "JSON aggregate keeps its literal directory and additive flag" {
+  for
+    directory in [
+      "", "--", "--json", "--help", "--self-test", "資料/receipts λ",
+    ] {
+    assert_true(
+      package_invocation(["aggregate", directory]) == Aggregate(directory),
+    )
+    let argv = ["aggregate", directory, "--json"]
+    literal_arity(argv, 3)
+    let matches = json_command().parse(argv=json_arguments(argv), env=Map([]))
+    assert_eq(matches.subcommand.unwrap().1.values["operand"], [directory])
+  }
 }

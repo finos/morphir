@@ -14,6 +14,59 @@ import {
 }
 
 ///|
+// Selected only at the owned CLI boundary, never from a child or a path value.
+let json_mode : Ref[Bool] = Ref(false)
+
+///|
+fn succeeded(result : Json) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "artifact.client.source",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+}
+
+///|
+priv suberror CommandAbort {
+  Message(String)
+}
+
+///|
+fn[T] refuse(message : String) -> T raise {
+  if json_mode.val {
+    raise CommandAbort::Message(message)
+  } else {
+    abort(message)
+  }
+}
+
+///|
+async fn failed(error : Error) -> Unit {
+  // New opt-in JSON refusals use explicit exit 1 on every host. Legacy
+  // default invocations still retain their original abort/signal behavior.
+  let message = match error {
+    CommandAbort::Message(message) => message
+    _ => error.to_string()
+  }
+  @stdio.stderr.write(message + "\n")
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "artifact.client.source",
+    "state": "failed",
+    "exitCode": 1,
+    "error": { "code": "command_failed", "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(1)
+}
+
+///|
 priv enum Invocation {
   Check
   Sync(String)
@@ -21,11 +74,20 @@ priv enum Invocation {
 } derive(Eq, Debug)
 
 ///|
-fn source_command() -> @argparse.Command {
-  fn upstream(name : String, about : String) -> @argparse.Command {
-    @argparse.Command(name, about~, disable_help_flag=true, positionals=[
-      @argparse.PositionArg("CHECKOUT", num_args=@argparse.ValueRange::single()),
-    ])
+fn source_command(json~ : Bool = false) -> @argparse.Command {
+  fn upstream(name : String, about : String, json : Bool) -> @argparse.Command {
+    @argparse.Command(
+      name,
+      about~,
+      disable_help_flag=true,
+      flags=if json { [@argparse.FlagArg("json", required=true)] } else { [] },
+      positionals=[
+        @argparse.PositionArg(
+          "CHECKOUT",
+          num_args=@argparse.ValueRange::single(),
+        ),
+      ],
+    )
   }
   @argparse.Command(
     "artifact-client-source.mbtx",
@@ -38,10 +100,14 @@ fn source_command() -> @argparse.Command {
         "check",
         about="Verify the tracked source digests",
         disable_help_flag=true,
+        flags=if json { [@argparse.FlagArg("json", required=true)] } else { [] },
       ),
-      upstream("sync", "Restore tracked files from the pinned upstream commit"),
+      upstream(
+        "sync", "Restore tracked files from the pinned upstream commit", json,
+      ),
       upstream(
         "verify-upstream", "Compare tracked files with the pinned upstream commit",
+        json,
       ),
     ],
   )
@@ -61,7 +127,7 @@ fn invocation(argv : ArrayView[String]) -> Invocation raise {
     Some(("sync", child)) => Sync(child.values["CHECKOUT"][0])
     Some(("verify-upstream", child)) =>
       VerifyUpstream(child.values["CHECKOUT"][0])
-    _ => abort("Expected a declared source command")
+    _ => refuse("Expected a declared source command")
   }
 }
 
@@ -71,7 +137,8 @@ test "source command syntax" {
   for
     path in [
       "checkout", "源 checkout", "", "a;$`b", "-checkout", "--unknown", "-x", "--path=value",
-      "--", "--help", "-h", "--self-test", "--version", "help", "check", "sync",
+      "--", "--json", "--help", "-h", "--self-test", "--version", "help", "check",
+      "sync",
     ] {
     assert_eq(invocation(["sync", path]), Sync(path))
     assert_eq(invocation(["verify-upstream", path]), VerifyUpstream(path))
@@ -106,12 +173,26 @@ test "source command syntax" {
 }
 
 ///|
+test "pinned variadic parser consumes the delimiter" {
+  let parsed = @argparse.Command("probe", disable_help_flag=true, positionals=[
+    @argparse.PositionArg(
+      "tail",
+      num_args=@argparse.ValueRange(lower=0),
+      allow_hyphen_values=true,
+    ),
+  ]).parse(argv=["before", "--", "after"], env=Map([]))
+  assert_eq(parsed.values["tail"], ["before", "after"])
+  // The fixed-operand grammar protects the full original data slice instead.
+  literal_arity(["before", "--", "after"], 3)
+}
+
+///|
 let destination = "pkgs/morphir-host/artifact-client/artifact-client"
 
 ///|
-fn string(value : Json, key : String) -> String {
+fn string(value : Json, key : String) -> String raise {
   guard value is Object(fields) && fields.get(key) is Some(String(text)) else {
-    abort("Missing artifact source field: " + key)
+    refuse("Missing artifact source field: " + key)
   }
   text
 }
@@ -133,22 +214,21 @@ async fn git(checkout : String, args : Array[String]) -> Bytes {
     "git",
     ["-C", checkout] + args,
   )
-  guard code == 0 else { abort("Upstream source read failed: " + error.text()) }
+  guard code == 0 else {
+    refuse("Upstream source read failed: " + error.text())
+  }
   output.binary()
 }
 
 ///|
-async fn main {
-  let command = invocation(@env.args()[1:]) catch {
-    error => abort(error.to_string())
-  }
+async fn execute(command : Invocation) -> Json {
   let pin = @json.parse(@fs.read_file(destination + "/SOURCE.json").text())
   guard string(pin, "repository") == "https://github.com/finos/morphir-ui" else {
-    abort("Unexpected artifact client source repository")
+    refuse("Unexpected artifact client source repository")
   }
   let revision = string(pin, "revision")
   guard hexadecimal(revision, 40) else {
-    abort("Expected exact upstream source revision")
+    refuse("Expected exact upstream source revision")
   }
   let expected = [
     ("LICENSE", "LICENSE"),
@@ -169,18 +249,18 @@ async fn main {
   guard pin is Object(fields) &&
     fields.get("files") is Some(Array(files)) &&
     files.length() == expected.length() else {
-    abort("Unexpected artifact source inventory")
+    refuse("Unexpected artifact source inventory")
   }
   if command is (Sync(checkout) | VerifyUpstream(checkout)) {
     let origin = git(checkout, ["remote", "get-url", "origin"])
     let origin = @utf8.decode(origin).trim()
     guard origin == "https://github.com/finos/morphir-ui.git" ||
       origin == "git@github.com:finos/morphir-ui.git" else {
-      abort("Expected the official upstream checkout")
+      refuse("Expected the official upstream checkout")
     }
     guard @utf8.decode(git(checkout, ["cat-file", "-t", revision])).trim() ==
       "commit" else {
-      abort("Pinned artifact revision is not a commit")
+      refuse("Pinned artifact revision is not a commit")
     }
   }
   // Validate the whole inventory and all upstream bytes before writing a file.
@@ -191,7 +271,7 @@ async fn main {
     guard string(record, "source") == source &&
       string(record, "file") == file &&
       hexadecimal(sha, 64) else {
-      abort("Invalid artifact source inventory entry")
+      refuse("Invalid artifact source inventory entry")
     }
     let bytes = match command {
       Check => @fs.read_file(destination + "/" + file).binary()
@@ -200,6 +280,9 @@ async fn main {
     }
     guard digest(bytes) == sha else {
       @stdio.stderr.write("Artifact source hash differs: " + file + "\n")
+      if json_mode.val {
+        fail("Artifact source hash differs: " + file)
+      }
       @sys.exit(1)
     }
     sources.push(bytes)
@@ -209,8 +292,101 @@ async fn main {
       @fs.write_file(destination + "/" + file, sources[index])
     }
     guard @fs.read_file(destination + "/" + file).binary() == sources[index] else {
-      abort("Tracked artifact source differs: " + file)
+      refuse("Tracked artifact source differs: " + file)
     }
   }
-  println("Artifact client source verified: " + revision)
+  if !json_mode.val {
+    println("Artifact client source verified: " + revision)
+  }
+  {
+    "operation": match command {
+      Check => "check"
+      Sync(_) => "sync"
+      VerifyUpstream(_) => "verify-upstream"
+    },
+    "revision": revision,
+    "verifiedFiles": expected.length(),
+    "destination": destination,
+  }
+}
+
+///|
+fn json_invocation(argv : ArrayView[String]) -> Invocation raise {
+  // Only the additive owned suffix is moved before the literal operand.
+  // The old two-token `sync --json` still names a checkout.
+  let args = match argv {
+    [operation, "--json"] => [operation, "--json"]
+    [operation, checkout, "--json"] => [operation, "--json", "--", checkout]
+    _ => argv.to_owned()
+  }
+  let matches = source_command(json=true).parse(argv=args, env=Map([]))
+  match matches.subcommand {
+    Some(("check", _)) => Check
+    Some(("sync", child)) => Sync(child.values["CHECKOUT"][0])
+    Some(("verify-upstream", child)) =>
+      VerifyUpstream(child.values["CHECKOUT"][0])
+    _ => fail("Expected a declared source command")
+  }
+}
+
+///|
+fn json_help_command() -> @argparse.Command {
+  @argparse.Command("artifact-client-source.mbtx", disable_help_flag=true, flags=[
+    @argparse.FlagArg("json", required=true),
+    @argparse.FlagArg("help", required=true),
+  ])
+}
+
+///|
+fn literal_arity(argv : ArrayView[String], count : Int32) -> Unit raise {
+  // Preserve every fixed operand, including an embedded delimiter. The library
+  // owns arity, rather than allowing its normal delimiter consumption to hide
+  // an extra token in a JSON control invocation.
+  ignore(
+    @argparse.Command("artifact-client-source.mbtx", disable_help_flag=true, positionals=[
+      @argparse.PositionArg(
+        "argument",
+        num_args=@argparse.ValueRange(lower=count, upper=count),
+      ),
+    ]).parse(argv=["--"] + argv.to_owned(), env=Map([])),
+  )
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:]
+  json_mode.val = match argv {
+    ["check", "--json", ..] | [_, _, "--json", ..] | ["--json", "--help", ..] =>
+      true
+    _ => false
+  }
+  if !json_mode.val {
+    let command = invocation(argv) catch { error => refuse(error.to_string()) }
+    ignore(execute(command))
+    return
+  }
+  try {
+    literal_arity(
+      argv,
+      if argv is ["check", ..] || argv is ["--json", "--help", ..] {
+        2
+      } else {
+        3
+      },
+    ) catch {
+      error => refuse(error.to_string())
+    }
+    let result : Json = if argv is ["--json", "--help", ..] {
+      ignore(json_help_command().parse(argv~, env=Map([])))
+      { "render_help": source_command(json=true).render_help() }
+    } else {
+      let command = json_invocation(argv) catch {
+        error => refuse(error.to_string())
+      }
+      execute(command)
+    }
+    @stdio.stdout.write(succeeded(result).stringify() + "\n")
+  } catch {
+    error => failed(error)
+  }
 }

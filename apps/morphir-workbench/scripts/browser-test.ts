@@ -98,7 +98,7 @@ async function liveHostWorkflow(binary: string) {
       });
       assert.deepEqual(nativeAccess, [], 'An explicit connected launch registers no native commands');
     } else {
-      browser = await chromium.launch({headless:true});
+      browser = await chromium.launch({headless:true, args: ['--password-store=basic', '--use-mock-keychain']});
       context = await browser.newContext({viewport:{width:1440,height:1000}});
       page = await context.newPage();
     }
@@ -204,7 +204,7 @@ let browser: Browser | undefined;
 try {
   const [output] = await once(server.stdout, 'data');
   const url = String(output).match(/http:\/\/127\.0\.0\.1:\d+/)![0];
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, args: ['--password-store=basic', '--use-mock-keychain'] });
   await modelDocumentWorkflow(browser, url);
   await workspaceWorkflow(browser, url);
   await settingsWorkflow(browser, url);

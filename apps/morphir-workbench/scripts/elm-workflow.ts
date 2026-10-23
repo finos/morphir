@@ -591,6 +591,20 @@ async function downloadArtifact(page: Page, button: string, name: string, native
   }
 
 export async function stringWorkflow(page: Page) {
+  // Capture the current model revision for the explicitly selected declaration.
+  // A still-mounted Ion editor identifies the same entry, but JSON is the edit target.
+  async function jsonArgumentsDocument(entry: Locator) {
+    const id = await entry.getAttribute('title');
+    assert.ok(id, 'The selected declaration identifies the evaluation entry');
+    const ready = await page.waitForFunction(id => {
+      const key = document.querySelector<CodeEditor>('#evaluation-input')?.dataset.document;
+      return key?.startsWith('evaluation-') &&
+        (key.endsWith('-value|' + id + '-true-ion') || key.endsWith('-value|' + id + '-true-json'))
+        ? key.replace(/-(ion|json)$/, '-json') : false;
+    }, id);
+    try { return {format: 'json' as const, document: await ready.jsonValue() as string}; }
+    finally { await ready.dispose(); }
+  }
   await showCompile(page);
   await openSample(page, 'MoonBit String library');
   assert.equal(await currentSourceProfile(page),'moonbit-model-stable-v1');
@@ -602,8 +616,9 @@ export async function stringWorkflow(page: Page) {
   await tree.filter({hasText:'welcome'}).click();
   await page.getByRole('button',{name:'Typed invocation',exact:true}).click();
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
+  const welcomeDocument = await jsonArgumentsDocument(tree.filter({hasText:'welcome'}));
   for(const [enabled,expected] of [[true,'Hello, 😀'],[false,'']] as const) {
-    await replaceEvaluationArguments(page,JSON.stringify([{type:'text',units:[55357,56832]},{type:'bool',value:enabled}]));
+    await replaceEvaluationArguments(page,JSON.stringify([{type:'text',units:[55357,56832]},{type:'bool',value:enabled}]),welcomeDocument);
     await page.getByRole('button',{name:'Evaluate',exact:true}).click();
     await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
     await page.getByRole('button',{name:'Result JSON',exact:true}).click();
@@ -625,15 +640,17 @@ export async function stringWorkflow(page: Page) {
   }
   await tree.filter({hasText:'is_morphir'}).click();
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
-  await replaceEvaluationArguments(page,'[{"type":"text","units":[77,111,114,112,104,105,114]}]');
+  await replaceEvaluationArguments(page,'[{"type":"text","units":[77,111,114,112,104,105,114]}]',
+    await jsonArgumentsDocument(tree.filter({hasText:'is_morphir'})));
   await page.getByRole('button',{name:'Evaluate',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
   await page.getByRole('button',{name:'Result JSON',exact:true}).click();
   await page.waitForFunction(()=>JSON.parse(document.querySelector<CodeEditor>('#evaluation-output')?.value ?? '{}').value===true);
   await tree.filter({hasText:'mentions_morphir'}).click();
   await page.getByRole('button',{name:'JSON inputs',exact:true}).click();
+  const mentionsDocument = await jsonArgumentsDocument(tree.filter({hasText:'mentions_morphir'}));
   for(const [text,expected] of [['Hello, Morphir',true],['',false],['Hello, 😀',false]] as const) {
-    await replaceEvaluationArguments(page,JSON.stringify([{type:'text',units:Array.from({length:text.length},(_,i)=>text.charCodeAt(i))}]));
+    await replaceEvaluationArguments(page,JSON.stringify([{type:'text',units:Array.from({length:text.length},(_,i)=>text.charCodeAt(i))}]),mentionsDocument);
     await page.getByRole('button',{name:'Evaluate',exact:true}).click();
     await page.getByRole('status').filter({hasText:'Function evaluated'}).waitFor();
     await page.getByRole('button',{name:'Result JSON',exact:true}).click();
