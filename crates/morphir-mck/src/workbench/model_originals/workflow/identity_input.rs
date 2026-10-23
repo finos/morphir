@@ -1,7 +1,7 @@
 //! One source-borrowing plan, issued once per paired case. This is not an
 //! observation, a UI invocation, source provenance, or runtime authority.
 use super::FixtureAlias;
-use super::input::{ClientAction, IdentitySubject, Run, Scenario};
+use super::input::{ClientAction, IdentitySubject, Run};
 use super::pairing::PairedWorkflow;
 use super::work::{ClosureError, ClosureOwner, Resource};
 
@@ -248,7 +248,7 @@ impl<'source> ControllerInput<'source> {
 
 #[derive(Debug)]
 pub(super) struct IdentityInputPlan<'source> {
-    scenario: &'source Scenario,
+    scenario: super::historical::ScenarioRef<'source>,
     bindings: Vec<IdentityBinding<'source>>,
     controllers: Vec<ControllerInput<'source>>,
 }
@@ -261,7 +261,7 @@ impl<'source> IdentityInputPlan<'source> {
         let scenario = paired.scenario();
         let mut bindings: Vec<IdentityBinding<'source>> = Vec::new();
         let mut controllers = Vec::new();
-        for (run, input) in scenario.runs.0.iter().enumerate() {
+        for (run, input) in scenario.runs().iter().enumerate() {
             owner
                 .charge(Resource::StructuralVisits, 1)
                 .map_err(IdentityInputError::Work)?;
@@ -341,7 +341,7 @@ impl<'source> IdentityInputPlan<'source> {
     pub(super) fn bindings(&self) -> &[IdentityBinding<'source>] {
         &self.bindings
     }
-    pub(super) fn scenario(&self) -> &'source Scenario {
+    pub(super) fn scenario(&self) -> super::historical::ScenarioRef<'source> {
         self.scenario
     }
 }

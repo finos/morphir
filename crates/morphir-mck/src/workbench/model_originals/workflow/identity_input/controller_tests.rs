@@ -79,7 +79,7 @@ fn controller_schedule_borrows_real_input_once_with_exact_initialization_order()
             controller.calls[0].reply,
             &controller.fixture.providers.0[0].inspections.0[0].reply
         ));
-        assert!(std::ptr::eq(plan.scenario(), paired.scenario()));
+        assert!(plan.scenario().same_owner(paired.scenario()));
         assert!(work.usage().allocation_attempts > 0);
     }
 }

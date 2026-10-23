@@ -158,6 +158,10 @@ pub(super) enum Sources<'source> {
         input: &'source input::Scenario,
         expected: &'source domain::ExpectedWorkflow,
     },
+    Historical {
+        input: &'source super::historical::HistoricalClientScenario,
+        expected: &'source super::historical::HistoricalClientExpected,
+    },
     NativeDeclaration {
         input: &'source super::native_original::OriginalScenario,
         expected: &'source super::native_original::NativeDeclarationExpectation,
@@ -235,9 +239,15 @@ fn native_pending<W: ScopeWork>(
 
 impl<'source> Sources<'source> {
     pub(super) fn from_paired(paired: &super::pairing::PairedWorkflow<'source>) -> Self {
-        Self::Current {
-            input: paired.scenario(),
-            expected: paired.expected(),
+        match paired.operands() {
+            super::pairing::WorkflowOperands::Current {
+                scenario: input,
+                expected,
+            } => Self::Current { input, expected },
+            super::pairing::WorkflowOperands::Historical {
+                scenario: input,
+                expected,
+            } => Self::Historical { input, expected },
         }
     }
     pub(super) fn from_native(
@@ -259,6 +269,7 @@ impl<'source> Sources<'source> {
         use super::walk::WalkAliases;
         match self {
             Self::Current { input, .. } => input.walk(trail, sink),
+            Self::Historical { input, .. } => input.walk(trail, sink),
             Self::NativeDeclaration { input, .. } => input.walk(trail, sink),
         }
     }
@@ -270,23 +281,39 @@ impl<'source> Sources<'source> {
         use super::walk::WalkAliases;
         match self {
             Self::Current { expected, .. } => expected.walk(trail, sink),
+            Self::Historical { expected, .. } => expected.walk(trail, sink),
             Self::NativeDeclaration { expected, .. } => expected.walk(trail, sink),
         }
     }
     fn current_expected(self) -> Option<&'source domain::ExpectedWorkflow> {
         match self {
             Self::Current { expected, .. } => Some(expected),
-            Self::NativeDeclaration { .. } => None,
+            Self::NativeDeclaration { .. } | Self::Historical { .. } => None,
+        }
+    }
+    fn client_checks(self) -> Option<&'source [domain::ExpectedClientCheck]> {
+        match self {
+            Self::Current {
+                expected: domain::ExpectedWorkflow::ModelOriginalsClient { checks, .. },
+                ..
+            } => Some(&checks.0),
+            Self::Historical { expected, .. } => Some(&expected.checks.0),
+            _ => None,
         }
     }
     fn run_count(self) -> usize {
         match self {
             Self::Current { input, .. } => input.runs.0.len(),
+            Self::Historical { input, .. } => input.runs.0.len(),
             Self::NativeDeclaration { input, .. } => input.runs.0.len(),
         }
     }
     fn server_actions(self, run: RunKey) -> Option<&'source [input::HostAction]> {
         match self {
+            Self::Historical { input, .. } => match &input.runs.0[run.index()] {
+                input::Run::ModelOriginalsServer { actions, .. } => Some(&actions.0),
+                input::Run::ModelOriginalsClient { .. } => None,
+            },
             Self::Current { input, .. } => match &input.runs.0[run.index()] {
                 input::Run::ModelOriginalsServer { actions, .. } => Some(&actions.0),
                 input::Run::ModelOriginalsClient { .. } => None,
@@ -300,6 +327,15 @@ impl<'source> Sources<'source> {
     }
     fn provider_alias(self, run: RunKey, index: usize) -> Option<&'source FixtureAlias> {
         match self {
+            Self::Historical { input, .. } => match &input.runs.0[run.index()] {
+                input::Run::ModelOriginalsClient { .. } => None,
+                input::Run::ModelOriginalsServer { fixture, .. } => {
+                    fixture.providers.0.get(index).map(|p| match p {
+                        input::Provider::Native { alias, .. }
+                        | input::Provider::Installed { alias, .. } => alias,
+                    })
+                }
+            },
             Self::Current { input, .. } => match &input.runs.0[run.index()] {
                 input::Run::ModelOriginalsServer { fixture, .. } => fixture
                     .providers
@@ -337,6 +373,8 @@ impl<'source> Sources<'source> {
                 work.visit().map_err(ScopeError::Work)?;
                 match *self {
                     Self::NativeDeclaration { selected_run, .. } => selected_run.get(),
+                    Self::Historical { expected, .. } => usize::try_from(expected.run_index.0)
+                        .map_err(|_| ScopeError::RunOutOfRange)?,
                     Self::Current { expected, .. } => match expected {
                         domain::ExpectedWorkflow::ModelOriginalsServer { run_index, .. }
                         | domain::ExpectedWorkflow::ModelOriginalsClient { run_index, .. } => {
@@ -398,12 +436,15 @@ impl<'source> Sources<'source> {
                 let index = field_index(trail, "ExpectedWorkflow", "bindings", work)?
                     .ok_or(ScopeError::Missing(RequiredScope::Provider))?;
                 work.visit().map_err(ScopeError::Work)?;
-                let Some(expected) = self.current_expected() else {
-                    return Err(ScopeError::Missing(RequiredScope::Provider));
-                };
-                let bindings = match expected {
-                    domain::ExpectedWorkflow::ModelOriginalsServer { bindings, .. }
-                    | domain::ExpectedWorkflow::ModelOriginalsClient { bindings, .. } => bindings,
+                let bindings = match *self {
+                    Self::Current {
+                        expected:
+                            domain::ExpectedWorkflow::ModelOriginalsServer { bindings, .. }
+                            | domain::ExpectedWorkflow::ModelOriginalsClient { bindings, .. },
+                        ..
+                    } => bindings,
+                    Self::Historical { expected, .. } => &expected.bindings,
+                    _ => return Err(ScopeError::Missing(RequiredScope::Provider)),
                 };
                 if let Some(domain::ExpectedBinding::DiscoveredServerSelection {
                     provider, ..
@@ -426,6 +467,20 @@ impl<'source> Sources<'source> {
     ) -> Result<(ScopeKey<'source>, RuntimeBindingObligation<'source>), ScopeError<W::Error>> {
         let index = self.check_index(trail, work)?;
         work.visit().map_err(ScopeError::Work)?;
+        if required == ObservationScope::OpeningAttempt {
+            if let Some(domain::ExpectedClientCheck::CaptureCleanup {
+                cleanup:
+                    domain::ExpectedCleanup::ReleaseConfirmed { attempt, .. }
+                    | domain::ExpectedCleanup::OwnConnectionClosed { attempt, .. },
+                ..
+            }) = self.client_checks().and_then(|checks| checks.get(index))
+            {
+                return Ok((
+                    ScopeKey::OpeningAttempt { run, attempt },
+                    RuntimeBindingObligation::Capture { alias, attempt },
+                ));
+            }
+        }
         match (required, self.current_expected()) {
             (
                 ObservationScope::OpeningAttempt,

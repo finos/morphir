@@ -43,7 +43,7 @@ fn whole_scenario_reserves_every_static_recipe_before_materialization() {
         12
     );
     assert_eq!(measured.usage().amount(ExpansionResource::Entries), 2);
-    assert!(std::ptr::eq(measured.scenario(), &value));
+    assert!(measured.scenario().same_owner((&value).into()));
 }
 
 #[test]

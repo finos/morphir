@@ -53,6 +53,12 @@ fn pairing_error(error: IngressError) -> SourceError {
     match error {
         IngressError::Decode(error) => SourceError::Decode(error),
         IngressError::Pair(error) => SourceError::Pair(error),
+        IngressError::Historical(super::historical::HistoricalError::Decode(e)) => {
+            SourceError::Decode(e)
+        }
+        IngressError::Historical(super::historical::HistoricalError::Pair(e)) => {
+            SourceError::Pair(e)
+        }
         error => SourceError::Ingress(error),
     }
 }
@@ -456,6 +462,10 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
         // Caller/replacement bytes never supply an expected digest.
         let (paired_sha, manifest_sha) = match sources.source_set() {
             SourceSet::Legacy => (PAIRED_SHA, MANIFEST_SHA),
+            SourceSet::HistoricalFirst => (
+                "a548857891babac9c4d5d0e2a825ce39073a4e4e8f5fe067ffde4cd58a2ba914",
+                "12b43d319530e21fe68706e8bd6ddc5f5efc84accbecc4fd1a2988404067965b",
+            ),
             SourceSet::IdentityController => (
                 "ff6a905d4c25c590190353d119fd34ca774e2b7cbb258448df902f6f1bb3815c",
                 "79056ac33aac8aec8191790250e7d60bc9934bff97ed09b11e06ce7b2368c602",
@@ -609,7 +619,7 @@ impl<'owner, 'sources, 'supplied> SourceVerifier<'owner, 'sources, 'supplied> {
     ) -> Result<MatchedSourceCase<'case, 'sources, 'raw, 'supplied>, SourceError> {
         self.owner.ready()?;
         let paired = case.paired_with_work(self.owner).map_err(pairing_error)?;
-        let origin = &paired.scenario().origin;
+        let origin = paired.scenario().origin();
         let row = self.bind_tokens(
             case,
             origin,

@@ -7,10 +7,71 @@ mod identity_data;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum SourceSet {
     Legacy,
+    HistoricalFirst,
     IdentityController,
     NativeFirst,
     InstalledClientFirst,
 }
+
+const HISTORICAL_FILES: &[(&str, &[u8])] = &[
+    (
+        "local-historical-first-v1/source-manifest.json",
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/local-historical-first-v1/source-manifest.json"
+        )),
+    ),
+    (
+        "local-historical-first-v1/bundle-receipt.json",
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/local-historical-first-v1/bundle-receipt.json"
+        )),
+    ),
+    (
+        "local-historical-first-v1/cases/inspection-and-search-use-current-local-reference/input.json",
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/local-historical-first-v1/cases/inspection-and-search-use-current-local-reference/input.json"
+        )),
+    ),
+    (
+        "local-historical-first-v1/cases/inspection-and-search-use-current-local-reference/expected.json",
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/local-historical-first-v1/cases/inspection-and-search-use-current-local-reference/expected.json"
+        )),
+    ),
+    (
+        "local-historical-first-v1/cases/browser-import-v4-bom-crlf.json/input.json",
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/local-historical-first-v1/cases/browser-import-v4-bom-crlf.json/input.json"
+        )),
+    ),
+    (
+        "local-historical-first-v1/cases/browser-import-v4-bom-crlf.json/expected.json",
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/local-historical-first-v1/cases/browser-import-v4-bom-crlf.json/expected.json"
+        )),
+    ),
+    (
+        "local-historical-first-v1/cases/native-import-v4-bom-crlf.json/input.json",
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/local-historical-first-v1/cases/native-import-v4-bom-crlf.json/input.json"
+        )),
+    ),
+    (
+        "local-historical-first-v1/cases/native-import-v4-bom-crlf.json/expected.json",
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/local-historical-first-v1/cases/native-import-v4-bom-crlf.json/expected.json"
+        )),
+    ),
+];
+
 const INSTALLED_MANIFEST: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../spec/workbench/model-originals/0.1.0-draft.1/reviewed-sources/installed-client-first-v1/source-manifest.json"
@@ -126,6 +187,12 @@ impl<'source> ReviewedSources<'source> {
             replacements: Vec::new(),
         }
     }
+    pub(super) fn historical_selected() -> Self {
+        Self {
+            set: SourceSet::HistoricalFirst,
+            replacements: Vec::new(),
+        }
+    }
     pub(super) fn native_selected() -> Self {
         Self {
             set: SourceSet::NativeFirst,
@@ -168,6 +235,9 @@ impl<'source> ReviewedSources<'source> {
     pub(super) fn paired_receipt(&self) -> &[u8] {
         match self.set {
             SourceSet::Legacy => self.supplied("paired-source-corpus-v1/receipt.json", PAIRED),
+            SourceSet::HistoricalFirst => {
+                self.supplied(HISTORICAL_FILES[1].0, HISTORICAL_FILES[1].1)
+            }
             SourceSet::IdentityController => self.supplied(
                 "identity-controller-source-pairs-v3/reviewed-addition-receipt.json",
                 IDENTITY_PAIRED,
@@ -186,6 +256,9 @@ impl<'source> ReviewedSources<'source> {
         match self.set {
             SourceSet::Legacy => {
                 self.supplied("paired-source-corpus-v1/source-manifest.json", MANIFEST)
+            }
+            SourceSet::HistoricalFirst => {
+                self.supplied(HISTORICAL_FILES[0].0, HISTORICAL_FILES[0].1)
             }
             SourceSet::IdentityController => self.supplied(
                 "identity-controller-source-pairs-v3/source-manifest.json",
@@ -207,6 +280,7 @@ impl<'source> ReviewedSources<'source> {
             .chain(data::AUTHORED_FILES)
             .chain(match self.set {
                 SourceSet::Legacy => &[][..],
+                SourceSet::HistoricalFirst => HISTORICAL_FILES,
                 SourceSet::IdentityController => identity_data::IDENTITY_FILES,
                 SourceSet::NativeFirst | SourceSet::InstalledClientFirst => NATIVE_FILES,
             })

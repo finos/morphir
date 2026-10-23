@@ -207,7 +207,7 @@ impl<'a> ExecutionRef<'a> {
         }
     }
     pub(super) fn from_pair(pair: &'a PairedWorkflow<'a>) -> Self {
-        let origin = &pair.scenario().origin;
+        let origin = &pair.scenario().origin();
         Self {
             origin: OriginRef {
                 packet: origin.packet.key(),
@@ -274,7 +274,7 @@ impl ExecutionKey {
         owner: &mut Decoder,
     ) -> Result<bool, DecodeError> {
         owner.ready()?;
-        let actual = &pair.scenario().origin;
+        let actual = &pair.scenario().origin();
         owner.bytes(
             self.origin
                 .packet

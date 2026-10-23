@@ -73,14 +73,18 @@ fn canonical_complete24_preparation_lends_one_real_borrowed_client_invocation_on
                 core.source().case(),
                 inventory.cases()[0].case()
             ));
-            assert!(std::ptr::eq(
-                core.source().paired().scenario(),
-                core.expansion().scenario()
-            ));
-            assert!(std::ptr::eq(
-                core.source().paired().scenario(),
-                core.identity_input().scenario()
-            ));
+            assert!(
+                core.source()
+                    .paired()
+                    .scenario()
+                    .same_owner(core.expansion().scenario())
+            );
+            assert!(
+                core.source()
+                    .paired()
+                    .scenario()
+                    .same_owner(core.identity_input().scenario())
+            );
             assert!(!core.aliases().definitions().is_empty());
             assert!(owners.closure.usage().definitions > 0);
             assert!(owners.closure.usage().references > 0);
@@ -131,7 +135,7 @@ fn original_leaf_values_come_from_the_bound_original_packet_with_exact_pointer_r
         assert!(matches!(leaves[5].value(), OriginalClientLeafValue::Included(false)));
         // The whole unchanged expected operand remains blocked. No UI
         // semantic owner, archive, Close, checker verdict or live grant.
-        let expected = run.compiled_source().source().paired().expected();
+        let expected = run.compiled_source().source().paired().expected().unwrap();
         assert!(matches!(expected,
             super::super::domain::ExpectedWorkflow::ModelOriginalsClient {
                 qualification: super::super::domain::ExpectedWorkflowModelOriginalsClientQualification::Blocked { .. }, ..

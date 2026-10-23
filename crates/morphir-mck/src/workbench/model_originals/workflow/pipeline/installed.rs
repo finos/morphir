@@ -48,12 +48,12 @@ impl<'case, 'sources, 'raw, 'supplied> InstalledClientRun<'_, 'case, 'sources, '
             .source()
             .paired()
             .scenario()
-            .origin
+            .origin()
             .packet
             .key()
     }
     pub(super) fn original_id(&self) -> &str {
-        &self.selected.source().paired().scenario().origin.id.0
+        &self.selected.source().paired().scenario().origin().id.0
     }
     pub(super) fn run_index(&self) -> usize {
         self.selected.source().paired().run_index()

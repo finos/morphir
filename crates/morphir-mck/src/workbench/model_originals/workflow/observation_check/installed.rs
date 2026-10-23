@@ -850,10 +850,10 @@ pub(in crate::workbench::model_originals::workflow) fn check(
     }
     if matches!(
         paired.expected(),
-        domain::ExpectedWorkflow::ModelOriginalsClient {
+        Some(domain::ExpectedWorkflow::ModelOriginalsClient {
             qualification: domain::ExpectedWorkflowModelOriginalsClientQualification::Blocked { .. },
             ..
-        }
+        })
     ) {
         owner.refuse(ObservationError::ExpectedBlocked)
     } else {

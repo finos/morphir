@@ -56,6 +56,7 @@ mod macros;
 mod compile;
 mod domain;
 mod expansion;
+mod historical;
 mod identity_input;
 mod input;
 mod installed_client;

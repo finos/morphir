@@ -154,6 +154,7 @@ impl<'compiled, 'case, 'sources, 'raw, 'supplied>
         for (case_index, execution) in self.compiled.iter().enumerate() {
             loans.visits(1).map_err(ClientVisitFault::Input)?;
             if let CompiledExecution::Current(core) = execution
+                && core.source().paired().scenario().current().is_some()
                 && matches!(core.source().paired().run(), PairedRun::Client { .. })
             {
                 visit(BrowserClientInput { core, case_index }, loans)
@@ -180,7 +181,9 @@ impl<'compiled, 'case, 'sources, 'raw, 'supplied>
         loans: &mut BrowserOwnerLoans<'_>,
     ) -> Result<Self, BrowserInputFault> {
         loans.ready()?;
-        if !matches!(core.source().paired().run(), PairedRun::Client { .. }) {
+        if core.source().paired().scenario().current().is_none()
+            || !matches!(core.source().paired().run(), PairedRun::Client { .. })
+        {
             return loans.refuse_selection(ClosureError::Semantic);
         }
         Ok(Self { core })

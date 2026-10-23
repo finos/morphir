@@ -346,3 +346,5 @@ mod tests;
 
 #[cfg(test)]
 mod shared_byte_context_tests;
+
+mod historical;

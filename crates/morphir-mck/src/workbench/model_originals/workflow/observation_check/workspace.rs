@@ -100,7 +100,7 @@ fn controller<'plan, 'source>(
     owner: &mut CompareOwner,
 ) -> Result<&'plan ControllerInput<'source>, ObservationError> {
     owner.ready()?;
-    if !std::ptr::eq(plan.scenario(), paired.scenario()) {
+    if !plan.scenario().same_owner(paired.scenario()) {
         return identity_fault(owner, 0, IdentityFault::Plan);
     }
     for controller in plan.controllers() {
@@ -339,7 +339,11 @@ pub(super) fn check<'source, 'actual>(
             outcome,
             ..
         },
-    ) = (paired.run(), paired.expected(), actual)
+    ) = (
+        paired.run(),
+        paired.expected().ok_or(ObservationError::Role)?,
+        actual,
+    )
     else {
         return owner.refuse(ObservationError::Role);
     };
@@ -453,8 +457,8 @@ pub(super) fn check<'source, 'actual>(
     // constants, not fabricated product release or worker-exit evidence.
     owner.visit()?;
     Ok(ComparedPredicates {
-        scenario: paired.scenario(),
-        expected: paired.expected(),
+        scenario: paired.scenario().current().ok_or(ObservationError::Role)?,
+        expected: paired.expected().ok_or(ObservationError::Role)?,
         actual,
         checked,
     })

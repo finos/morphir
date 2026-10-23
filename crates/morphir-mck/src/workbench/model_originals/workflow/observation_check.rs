@@ -531,7 +531,7 @@ fn correlate_identity(
             _ => return identity_fault(owner, 0, IdentityFault::Unexpected),
         }
     };
-    if !std::ptr::eq(plan.scenario(), paired.scenario()) {
+    if !plan.scenario().same_owner(paired.scenario()) {
         return identity_fault(owner, 0, IdentityFault::Plan);
     }
     let mut count = 0usize;
@@ -790,9 +790,21 @@ fn check_core<'source, 'actual>(
     owner: &mut CompareOwner,
 ) -> Result<ComparedPredicates<'source, 'actual>, ObservationError> {
     owner.ready()?;
+    if let super::pairing::ExpectedSource::Historical(e) = paired.expected_source() {
+        return owner.refuse(
+            if matches!(
+                e.qualification,
+                domain::ExpectedWorkflowModelOriginalsClientQualification::Blocked { .. }
+            ) {
+                ObservationError::ExpectedBlocked
+            } else {
+                ObservationError::Role
+            },
+        );
+    }
     owner.visit()?;
     if let Some(plan) = identity_plan
-        && !std::ptr::eq(plan.scenario(), paired.scenario())
+        && !plan.scenario().same_owner(paired.scenario())
     {
         return identity_fault(owner, 0, IdentityFault::Plan);
     }
@@ -818,7 +830,11 @@ fn check_core<'source, 'actual>(
             teardown,
             identity_results,
         },
-    ) = (paired.run(), paired.expected(), actual)
+    ) = (
+        paired.run(),
+        paired.expected().ok_or(ObservationError::Role)?,
+        actual,
+    )
     else {
         return owner.refuse(match (paired.run(), actual) {
             (PairedRun::Server { .. }, observed::Observation::ModelOriginalsServer { .. }) => {
@@ -929,8 +945,8 @@ fn check_core<'source, 'actual>(
         _ => return owner.refuse(ObservationError::Teardown),
     }
     Ok(ComparedPredicates {
-        scenario: paired.scenario(),
-        expected: paired.expected(),
+        scenario: paired.scenario().current().ok_or(ObservationError::Role)?,
+        expected: paired.expected().ok_or(ObservationError::Role)?,
         actual,
         checked,
     })

@@ -22,7 +22,7 @@ use crate::workbench::model_originals::{
 use std::{borrow::Cow, mem::size_of};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum LifecycleFault {
+pub(in crate::workbench::model_originals::workflow) enum LifecycleFault {
     Role,
     Source,
     Phase,
@@ -38,6 +38,7 @@ pub(super) enum LifecycleFault {
     Work,
     Counts,
     Limits,
+    MissingLedgerAllowances,
     Allocation,
     Decode,
     DecodeWork(super::super::OperandResource),
@@ -465,6 +466,11 @@ fn check_inner<'source, 'actual>(
     decoding(owner, decoder.ready())?;
     expansion(owner, expanded.ready())?;
     let paired = compiled.source().paired();
+    let super::super::historical::LedgerAllowancesRef::Present(limits) =
+        paired.scenario().ledger_allowances()
+    else {
+        return fail(owner, 0, LifecycleFault::MissingLedgerAllowances);
+    };
     let PairedRun::Client { actions, fixture } = paired.run() else {
         return fail(owner, 0, LifecycleFault::Role);
     };
@@ -479,7 +485,6 @@ fn check_inner<'source, 'actual>(
         return fail(owner, 0, LifecycleFault::Role);
     };
     super::correlate_checkpoints(actions, &checkpoints.0, owner)?;
-    let limits = &paired.scenario().limits;
     let convert = |n: u64| usize::try_from(n).map_err(|_| ObservationError::SizeOverflow);
     let bounds = EffectLedgerLimits::new(
         convert(limits.ledger_effect_history_entries.0)?,
@@ -788,7 +793,7 @@ fn check_inner<'source, 'actual>(
     }
     let observer_bytes = ledger.observer_bytes();
     Ok(CheckedClientLifecycle {
-        expected: paired.expected(),
+        expected: paired.expected().ok_or(ObservationError::Role)?,
         actual,
         _expanded: raw,
         observer_bytes,

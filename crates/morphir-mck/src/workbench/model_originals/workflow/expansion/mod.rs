@@ -568,17 +568,18 @@ pub(super) fn measure_native(
 /// Static recipes in every run passed this owner's explicit limits. No runtime
 /// handle, trusted provenance, path confinement or effect authority is implied.
 pub(super) struct ScenarioExpansion<'a> {
-    scenario: &'a input::Scenario,
+    scenario: super::historical::ScenarioRef<'a>,
     usage: ExpansionUsage,
 }
 impl<'a> ScenarioExpansion<'a> {
     pub(super) fn measure(
-        scenario: &'a input::Scenario,
+        scenario: impl Into<super::historical::ScenarioRef<'a>>,
         owner: &mut ExpansionOwner,
     ) -> Result<Self, ExpansionError> {
         owner.ready()?;
         let before = owner.usage();
-        for run in &scenario.runs.0 {
+        let scenario = scenario.into();
+        for run in scenario.runs() {
             owner.visit()?;
             match run {
                 input::Run::ModelOriginalsServer { fixture, actions } => {
@@ -597,7 +598,7 @@ impl<'a> ScenarioExpansion<'a> {
     pub(super) fn usage(&self) -> ExpansionUsage {
         self.usage
     }
-    pub(super) fn scenario(&self) -> &'a input::Scenario {
+    pub(super) fn scenario(&self) -> super::historical::ScenarioRef<'a> {
         self.scenario
     }
 }

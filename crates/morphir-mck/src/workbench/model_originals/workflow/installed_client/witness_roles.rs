@@ -491,7 +491,11 @@ fn compile_roles(
     if !matches!(captured.primary().kind, protocol::RootKind::File) {
         return bad(owner, ClosureError::Semantic);
     }
-    let domain::ExpectedWorkflow::ModelOriginalsClient { byte_sources, .. } = paired.expected()
+    let domain::ExpectedWorkflow::ModelOriginalsClient { byte_sources, .. } = paired
+        .expected()
+        .ok_or(super::source_compile::CompilationError::Source(
+            super::source_proof::SourceError::ManifestRole,
+        ))?
     else {
         return bad(owner, ClosureError::Semantic);
     };

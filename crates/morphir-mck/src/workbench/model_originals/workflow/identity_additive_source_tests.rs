@@ -53,10 +53,12 @@ fn fixed_identity_source_view_issues_actual_static_compilation_for_all_three_ori
         assert!(std::ptr::eq(compiled.source().case(), &bound.cases()[0]));
         assert_eq!(compiled.source().lineage(), LineageStatus::Unproven);
         assert_eq!(compiled.identity_input().bindings().len(), count);
-        assert!(std::ptr::eq(
-            compiled.identity_input().scenario(),
-            compiled.source().paired().scenario()
-        ));
+        assert!(
+            compiled
+                .identity_input()
+                .scenario()
+                .same_owner(compiled.source().paired().scenario())
+        );
     }
 }
 #[test]

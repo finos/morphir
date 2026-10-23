@@ -343,10 +343,10 @@ impl InstalledClientSource<'_> {
         self.0.source().case().id()
     }
     pub fn original_packet(&self) -> &str {
-        self.0.source().paired().scenario().origin.packet.key()
+        self.0.source().paired().scenario().origin().packet.key()
     }
     pub fn original_id(&self) -> &str {
-        self.0.source().paired().scenario().origin.id.0.as_str()
+        self.0.source().paired().scenario().origin().id.0.as_str()
     }
     pub fn run_index(&self) -> usize {
         self.0.source().paired().run_index()

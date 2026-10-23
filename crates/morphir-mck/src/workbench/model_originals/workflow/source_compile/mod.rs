@@ -72,7 +72,7 @@ impl<'case, 'raw> CompiledExecution<'case, '_, 'raw, '_> {
     }
     pub(super) fn origin(&self) -> &super::input::PacketRef {
         match self {
-            Self::Current(value) => &value.source.paired().scenario().origin,
+            Self::Current(value) => value.source.paired().scenario().origin(),
             Self::Native(value) => &value.source.input().origin,
         }
     }
@@ -334,3 +334,6 @@ impl<'owner, 'policies, 'sources, 'supplied> CaseCompiler<'owner, 'policies, 'so
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+pub(in crate::workbench::model_originals::workflow) mod historical_tests;

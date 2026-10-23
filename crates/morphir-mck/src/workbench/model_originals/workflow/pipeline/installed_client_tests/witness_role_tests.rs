@@ -37,7 +37,7 @@ fn exercise(mutate: impl FnOnce(&mut Value, &mut Value), expected: ClosureError)
         let fixture = Fixture::decode(&fixture, &mut owners.decode).unwrap();
         let input = owners.decode.literal_with_raw(&input.to_string()).unwrap().0;
         let scenario = crate::workbench::model_originals::workflow::input::Scenario::decode(&input, &mut owners.decode).unwrap();
-        let paired = PairedWorkflow::new(&scenario, original.expected()).unwrap();
+        let paired = PairedWorkflow::new(&scenario, original.expected().unwrap()).unwrap();
         let result = installed_client::compile_fixture_witness_roles(&fixture, &paired, &mut owners.closure, &mut owners.expansion, &mut owners.decode).map(|_| ());
         assert!(matches!(result, Err(CompilationError::Closure(CompileError::Owner(actual))) if actual == expected));
         Ok(())

@@ -250,7 +250,11 @@ impl<'a> InstalledClientPlan<'a> {
             expansion,
             decode,
         )?;
-        let domain::ExpectedWorkflow::ModelOriginalsClient { byte_sources, .. } = paired.expected()
+        let domain::ExpectedWorkflow::ModelOriginalsClient { byte_sources, .. } = paired
+            .expected()
+            .ok_or(super::source_compile::CompilationError::Source(
+                super::source_proof::SourceError::ManifestRole,
+            ))?
         else {
             return Err(CompilationError::Source(SourceError::ManifestRole));
         };

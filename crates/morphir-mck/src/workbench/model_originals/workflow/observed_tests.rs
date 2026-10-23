@@ -174,7 +174,7 @@ fn independently_typed_observed_client_decodes_and_all_four_real_predicates_comp
     let actual = decode.decode::<observed::Observation>(GOOD).unwrap();
     let result = observation_check::check_paired(&pair, &actual, &mut owner(100_000)).unwrap();
     assert_eq!(result.checked_predicates(), 4);
-    assert!(std::ptr::eq(result.scenario(), pair.scenario()));
+    assert!(super::historical::ScenarioRef::from(result.scenario()).same_owner(pair.scenario()));
     // No Qualified/Ready/producer-authority/semantic-lineage assertion.
 }
 

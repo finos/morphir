@@ -62,10 +62,12 @@ fn all23_bound_cases_compose_existing_static_algorithms_without_lineage_or_runti
         let plan = compiler.compile(case).unwrap();
         assert!(std::ptr::eq(plan.source().case(), case));
         assert_eq!(plan.source().lineage(), LineageStatus::Unproven);
-        assert!(std::ptr::eq(
-            plan.source().paired().scenario(),
-            plan.expansion().scenario()
-        ));
+        assert!(
+            plan.source()
+                .paired()
+                .scenario()
+                .same_owner(plan.expansion().scenario())
+        );
         assert!(!plan.aliases().definitions().is_empty());
         assert!(!plan.aliases().associations().is_empty());
     }

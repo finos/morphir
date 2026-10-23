@@ -1,0 +1,79 @@
+{
+  "kind": "exact-original-historical-operands-preservation",
+  "runtimeRuns": 0,
+  "sourceSetRegistered": false,
+  "files": [
+    {
+      "source": ".dev/model-originals-mck-authorship/local-explorer-wave-v1/cases/inspection-and-search-use-current-local-reference/input.json",
+      "path": "cases/inspection-and-search-use-current-local-reference/input.json",
+      "bytes": 204376,
+      "sha256": "6fb4ad561e2630be8e3a0926fe546054acaa58d2a39ed1fcbfe413931ae27c1b"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/local-explorer-wave-v1/cases/inspection-and-search-use-current-local-reference/expected.json",
+      "path": "cases/inspection-and-search-use-current-local-reference/expected.json",
+      "bytes": 4885,
+      "sha256": "28e34b4889958fdf12a0b966810f37267652b7602eed86a4bd0239936253b8d5"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/local-import-expected-migration-v1/cases/browser-import-v4-bom-crlf.json/input.json",
+      "path": "cases/browser-import-v4-bom-crlf.json/input.json",
+      "bytes": 2251,
+      "sha256": "2a5288dcd230cf2423e5fc263aae9a108846953cadd365c17ef70e3746ffb648"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/local-import-expected-migration-v1/cases/browser-import-v4-bom-crlf.json/expected.json",
+      "path": "cases/browser-import-v4-bom-crlf.json/expected.json",
+      "bytes": 9024,
+      "sha256": "260698a9e957c8c17eb49379060a108f0b11d5dc7045f7e8463f5356fa61a225"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/local-import-expected-migration-v1/cases/native-import-v4-bom-crlf.json/input.json",
+      "path": "cases/native-import-v4-bom-crlf.json/input.json",
+      "bytes": 2233,
+      "sha256": "82273aa86d800d214290531e0ff97bf6daab97efceb7badc928d97cd3e860968"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/local-import-expected-migration-v1/cases/native-import-v4-bom-crlf.json/expected.json",
+      "path": "cases/native-import-v4-bom-crlf.json/expected.json",
+      "bytes": 8988,
+      "sha256": "7637337bf070dc1b1444351398499ca9abec0b56e9df0c40c311a3bed5c37d24"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/expected-vocabulary-v10/expected.schema.json",
+      "path": "provenance/expected-v10/expected.schema.json",
+      "bytes": 124354,
+      "sha256": "041ee483c5d45c8ffb2c170c37ebe932dd54a3eed5c3734f0b34227dbcd791ff"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/expected-vocabulary-v10/receipt.json",
+      "path": "provenance/expected-v10/receipt.json",
+      "bytes": 1420,
+      "sha256": "b4f61a4ffbf26f5d3bf07e417d535f7139d64efb5b39aa4bcb5e974694172c4e"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/expected-vocabulary-v11/expected.schema.json",
+      "path": "provenance/expected-v11/expected.schema.json",
+      "bytes": 125496,
+      "sha256": "06834f2b4e0613d4db02d845d2dbbb9ae0886b8c8055498a99c3942675f76670"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/expected-vocabulary-v11/receipt.json",
+      "path": "provenance/expected-v11/receipt.json",
+      "bytes": 3079,
+      "sha256": "f78bf47fe59f9fc8b672c01ac8e242042c1503f4f668e15b14ea343d41458734"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/local-explorer-wave-v1/receipt.json",
+      "path": "provenance/local-explorer-wave-v1/receipt.json",
+      "bytes": 2551,
+      "sha256": "72b39c36c9915b79b6d187bc1cc2325f8fa01100fbeebab1b069b2d7bbf9cf0e"
+    },
+    {
+      "source": ".dev/model-originals-mck-authorship/local-import-expected-migration-v1/receipt.json",
+      "path": "provenance/local-import-expected-migration-v1/receipt.json",
+      "bytes": 9791,
+      "sha256": "fc8e11d8e7ad94daa2fa18fb51974ec5cb99689a6c7e6ee70a02da8018e72b0e"
+    }
+  ]
+}

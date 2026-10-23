@@ -81,7 +81,7 @@ fn shared_lifecycle_01_original_port_count_and_blocked_case_are_distinct() {
             "complete actual/source manifest operands are charged once"
         );
         let domain::ExpectedWorkflow::ModelOriginalsClient { checks, .. } =
-            context.paired().expected()
+            context.paired().expected().unwrap()
         else {
             panic!()
         };
@@ -249,7 +249,7 @@ fn shared_lifecycle_07_original_count_refuses_missing_registration() {
             .check_client_lifecycle(&actual, decoder, expansion, &mut owner())
             .unwrap();
         let domain::ExpectedWorkflow::ModelOriginalsClient { checks, .. } =
-            context.paired().expected()
+            context.paired().expected().unwrap()
         else {
             panic!()
         };

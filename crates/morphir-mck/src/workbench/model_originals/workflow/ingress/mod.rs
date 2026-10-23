@@ -15,6 +15,7 @@ pub(super) enum IngressError {
     DuplicateCase,
     CaseId,
     Pair(PairError),
+    Historical(super::historical::HistoricalError),
 }
 impl From<DecodeError> for IngressError {
     fn from(error: DecodeError) -> Self {
@@ -30,9 +31,9 @@ pub(super) struct BoundCase<'source> {
     id: CorpusCaseId,
     input_token: &'source RawValue,
     expected_token: &'source RawValue,
-    operands: BoundOperands,
+    operands: BoundOperands<'source>,
 }
-enum BoundOperands {
+enum BoundOperands<'source> {
     Current {
         input: input::Scenario,
         expected: domain::ExpectedWorkflow,
@@ -41,6 +42,13 @@ enum BoundOperands {
         input: super::native_original::OriginalScenario,
         expected: super::native_original::NativeDeclarationExpectation,
     },
+    HistoricalClient(super::historical::HistoricalClientOperands<'source>),
+}
+#[derive(Clone, Copy)]
+enum CorpusDialect {
+    Current,
+    SelectedCurrent,
+    HistoricalClient,
 }
 fn original_expected(document: &Document, owner: &mut Decoder) -> Result<bool, DecodeError> {
     let Document::Object(fields) = document else {
@@ -113,19 +121,26 @@ impl<'source> BoundCorpus<'source> {
     /// Only parent-selected bytes are bound. Equal origin claims remain
     /// metadata; neither the caller nor this method can issue packet trust.
     pub(super) fn decode(raw: &'source str, owner: &mut Decoder) -> Result<Self, IngressError> {
-        Self::decode_header(raw, owner, false)
+        Self::decode_header(raw, owner, CorpusDialect::Current)
     }
     pub(super) fn decode_selected(
         raw: &'source str,
         owner: &mut Decoder,
     ) -> Result<Self, IngressError> {
-        Self::decode_header(raw, owner, true)
+        Self::decode_header(raw, owner, CorpusDialect::SelectedCurrent)
+    }
+    pub(super) fn decode_historical(
+        raw: &'source str,
+        owner: &mut Decoder,
+    ) -> Result<Self, IngressError> {
+        Self::decode_header(raw, owner, CorpusDialect::HistoricalClient)
     }
     fn decode_header(
         raw: &'source str,
         owner: &mut Decoder,
-        selected: bool,
+        dialect: CorpusDialect,
     ) -> Result<Self, IngressError> {
+        let selected = matches!(dialect, CorpusDialect::SelectedCurrent);
         let (document, raw_root) = owner.literal_with_raw(raw)?;
         let root_fields = Fields::new(
             &document,
@@ -167,7 +182,27 @@ impl<'source> BoundCorpus<'source> {
                     return Err(IngressError::DuplicateCase);
                 }
             }
-            let operands = if original_expected(fields.document("expected", owner)?, owner)? {
+            // Preserve current decoding/pairing work order. Only the explicit
+            // historical path needs the source tokens before its own decoder.
+            let historical_tokens = if matches!(dialect, CorpusDialect::HistoricalClient) {
+                let members = owner.raw_members(raw_item)?;
+                Some((
+                    raw_field(&members, "input", owner)?,
+                    raw_field(&members, "expected", owner)?,
+                ))
+            } else {
+                None
+            };
+            let operands = if let Some((input_token, expected_token)) = historical_tokens {
+                BoundOperands::HistoricalClient(
+                    super::historical::HistoricalClientOperands::decode(
+                        input_token.get(),
+                        expected_token.get(),
+                        owner,
+                    )
+                    .map_err(IngressError::Historical)?,
+                )
+            } else if original_expected(fields.document("expected", owner)?, owner)? {
                 BoundOperands::OriginalDeclaration {
                     input: fields.field("input", owner)?,
                     expected: fields.field("expected", owner)?,
@@ -182,9 +217,16 @@ impl<'source> BoundCorpus<'source> {
             if let BoundOperands::Current { input, expected } = &operands {
                 pair_with_work(input, expected, owner)?;
             }
-            let members = owner.raw_members(raw_item)?;
-            let input_token = raw_field(&members, "input", owner)?;
-            let expected_token = raw_field(&members, "expected", owner)?;
+            let (input_token, expected_token) = match historical_tokens {
+                Some(tokens) => tokens,
+                None => {
+                    let members = owner.raw_members(raw_item)?;
+                    (
+                        raw_field(&members, "input", owner)?,
+                        raw_field(&members, "expected", owner)?,
+                    )
+                }
+            };
             // The only string retained beyond the decoder's Document is the
             // actual case ID. Operand bytes remain borrowed, with no copy.
             cases.push(BoundCase {
@@ -226,6 +268,9 @@ impl<'source> BoundCase<'source> {
         match &self.operands {
             BoundOperands::Current { input, expected } => PairedWorkflow::new(input, expected),
             BoundOperands::OriginalDeclaration { .. } => Err(PairError::Role),
+            BoundOperands::HistoricalClient(h) => {
+                PairedWorkflow::historical_claims(&h.scenario, &h.expected)
+            }
         }
     }
 
@@ -236,6 +281,10 @@ impl<'source> BoundCase<'source> {
         match &self.operands {
             BoundOperands::Current { input, expected } => pair_with_work(input, expected, owner),
             BoundOperands::OriginalDeclaration { .. } => Err(IngressError::Pair(PairError::Role)),
+            BoundOperands::HistoricalClient(h) => {
+                PairedWorkflow::historical(&h.scenario, &h.expected, owner)
+                    .map_err(IngressError::Historical)
+            }
         }
     }
     pub(super) fn native_operands(
@@ -246,7 +295,7 @@ impl<'source> BoundCase<'source> {
     )> {
         match &self.operands {
             BoundOperands::OriginalDeclaration { input, expected } => Some((input, expected)),
-            BoundOperands::Current { .. } => None,
+            BoundOperands::Current { .. } | BoundOperands::HistoricalClient(_) => None,
         }
     }
 }

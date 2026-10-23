@@ -43,6 +43,64 @@ const REORDERED: &str = include_str!(concat!(
     "/src/workbench/model_originals/workflow/pipeline_controls/reordered-cases.json"
 ));
 
+#[test]
+fn browser_inputs_historical_compilation_does_not_issue_runtime_inputs() {
+    use crate::workbench::model_originals::workflow::{
+        ingress::BoundCorpus,
+        reviewed_sources::ReviewedSources,
+        source_compile::{CaseCompiler, historical_tests},
+        source_proof::SourceVerifier,
+    };
+    let source = source(CORPUS);
+    prepared_browser_originals::<_, BrowserInputFault>(
+        &source,
+        &configuration(),
+        |current, loans| {
+            let current_client = current
+                .compiled
+                .iter()
+                .filter_map(|row| row.current())
+                .find(|core| matches!(core.source().paired().run(), PairedRun::Client { .. }))
+                .unwrap();
+            assert!(BrowserExecutionInput::from_compiled_client(current_client, loans).is_ok());
+            let raw = historical_tests::corpus();
+            let sources = ReviewedSources::historical_selected();
+            let bound = BoundCorpus::decode_historical(&raw, &mut loans.owners.decode).unwrap();
+            let verifier = SourceVerifier::new(&sources, &mut loans.owners.decode).unwrap();
+            let mut compiler = CaseCompiler::new(
+                verifier,
+                &mut loans.owners.closure,
+                &mut loans.owners.expansion,
+            );
+            let mut rows = Vec::new();
+            for case in bound.cases() {
+                rows.push(CompiledExecution::Current(compiler.compile(case).unwrap()));
+            }
+            drop(compiler);
+            let originals = BorrowedOriginalClients::new(&rows);
+            let mut calls = 0;
+            originals
+                .visit_clients(loans, |_, _| {
+                    calls += 1;
+                    Ok(())
+                })
+                .unwrap();
+            let runtime =
+                BrowserExecutionInput::from_compiled_client(rows[0].current().unwrap(), loans);
+            assert!(matches!(
+                runtime,
+                Err(BrowserInputFault::Closure(ClosureError::Semantic))
+            ));
+            assert_eq!(
+                calls, 0,
+                "compile-only historical contexts must not be enumerated as issued current clients"
+            );
+            Ok(())
+        },
+    )
+    .unwrap();
+}
+
 fn configuration_with(checker: serde_json::Value, retained: u64) -> RunConfiguration {
     // Test-only caller configuration construction, never production parsing.
     RunConfiguration::from_json(
@@ -82,7 +140,7 @@ fn browser_inputs_01_full_preparation_then_same_borrowed_inputs_and_alias_filter
             clients += 1;
             let core = inventory.compiled[client.case_index()].current().unwrap();
             assert!(std::ptr::eq(client.core, core));
-            assert!(std::ptr::eq(core.expansion().scenario(), core.source().paired().scenario()));
+            assert!(core.expansion().scenario().same_owner(core.source().paired().scenario()));
             assert_eq!(client.run_index(), core.source().paired().run_index());
             let PairedRun::Client { actions, fixture } = core.source().paired().run() else {
                 panic!("only the existing compiled client role is lent")
