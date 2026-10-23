@@ -6,5 +6,5 @@
     "elm": "0.19.1-6",
     "morphir-elm": "2.100.0"
   },
-  "packageManager": "bun@1.4.3"
+  "packageManager": "bun@1.4.4"
 }

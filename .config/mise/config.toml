@@ -3,7 +3,7 @@
 
 [tools]
 # Bun for TypeScript checks and application builds
-bun = "1.4.3"
+bun = "1.4.4"
 
 # Node.js and npm for the CLI package and target smoke tests
 node = "24.22.0"

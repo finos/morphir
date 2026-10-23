@@ -2,7 +2,7 @@
   "name": "morphir-moonbit-tooling",
   "private": true,
   "type": "module",
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.4",
   "scripts": {
     "typecheck": "bun check",
     "build:runtimes": "bun --check tools/build-runtimes.ts",
@@ -11,7 +11,7 @@
   "devDependencies": {
     "@resvg/resvg-js": "2.6.2",
     "@std/semver": "npm:@jsr/std__semver@1.0.8",
-    "@types/bun": "1.4.3",
+    "@types/bun": "1.4.4",
     "@types/node": "24.19.2",
     "@types/ws": "8.18.2",
     "typescript": "7.0.2",

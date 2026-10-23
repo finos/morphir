@@ -44,6 +44,6 @@
     "url": "https://github.com/finos/morphir-moonbit.git",
     "directory": "pkgs/morphir-host/embedding"
   },
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.4",
   "types": "./dist/types/index.d.mts"
 }
