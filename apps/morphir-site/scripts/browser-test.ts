@@ -82,6 +82,56 @@ try {
   }
   await wide.close();
 
+  // Semantic HTML sections must not inherit the reading-width limit that keeps
+  // prose comfortable. Diagrams need the remaining space between the two rails.
+  const guideContext = await browser.newContext({ javaScriptEnabled: false });
+  const guide = await guideContext.newPage();
+  for (const width of [1440, 1920, 2560, 1024, 390]) {
+    await guide.setViewportSize({ width, height: 900 });
+    await guide.goto(`${origin}docs/wasm-library-assembly/`);
+    const sizes = await guide.evaluate(() => {
+      const bounds = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+      const article = bounds('.docs-article');
+      const sidebar = bounds('.docs-sidebar');
+      const rail = bounds('.docs-rail');
+      const figure = bounds('#load figure');
+      const image = document.querySelector<HTMLImageElement>('#load img')!;
+      const region = document.querySelector<HTMLElement>('#load [role="region"]')!;
+      return {
+        article: article.width, figure: figure.width, image: image.getBoundingClientRect().width,
+        paragraph: bounds('#load p').width,
+        leftGap: article.left - sidebar.right, rightGap: rail.left - article.right,
+        regionWidth: region.clientWidth, regionScrollWidth: region.scrollWidth,
+        loaded: image.complete && image.naturalWidth > 0,
+        rootOverflow: document.documentElement.scrollWidth > innerWidth,
+      };
+    });
+    check(sizes.loaded, `the guide's static sequence loads without JavaScript at ${width} px`);
+    check(!sizes.rootOverflow, `the guide has no root horizontal scroll at ${width} px`);
+    check(Math.abs(sizes.figure - sizes.article) < 2,
+      `the nested sequence uses the article width at ${width} px (${sizes.figure} vs ${sizes.article})`);
+    if (width >= 1440) {
+      check(sizes.leftGap >= 0 && sizes.leftGap <= 64 && sizes.rightGap >= 0 && sizes.rightGap <= 64,
+        `the article fills the space between rails at ${width} px (${sizes.leftGap}, ${sizes.rightGap})`);
+    }
+    if (width >= 1920) {
+      check(Math.abs(sizes.image - sizes.figure) < 2 && sizes.regionScrollWidth <= sizes.regionWidth + 1,
+        `the sequence scales to fit the wide column at ${width} px (${sizes.image} vs ${sizes.figure})`);
+      check(sizes.paragraph < sizes.article - 50 && sizes.paragraph <= 800,
+        `prose keeps a readable line length at ${width} px (${sizes.paragraph} vs ${sizes.article})`);
+    }
+    if (width === 390) {
+      const region = guide.getByRole('region', { name: /Saved library invocation sequence/ });
+      check(sizes.regionScrollWidth > sizes.regionWidth, 'the mobile sequence keeps readable size in a local scroll region');
+      await region.focus();
+      await guide.keyboard.press('ArrowRight');
+      await guide.waitForFunction(() => document.querySelector<HTMLElement>('#load [role="region"]')!.scrollLeft > 0,
+        null, { timeout: 2000, polling: 50 }).catch(() => {});
+      check(await region.evaluate((element) => element.scrollLeft > 0), 'the mobile sequence scrolls from the keyboard without JavaScript');
+    }
+  }
+  await guideContext.close();
+
   const copyContext = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] });
   const copyPage = await copyContext.newPage();
   await copyPage.goto(origin);

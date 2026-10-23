@@ -80,10 +80,11 @@ main:has(> .docs-layout) { max-width: none; padding-inline: 1.5rem; }
 .code-window .copy-button { border-color: #2a3340; background: #171e27; color: #9aa4b2; }
 figure.diagram { margin: 1.5rem 0; overflow-x: auto; } figure.diagram svg { max-width: 100%; height: auto; }
 .docs-layout { display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 2.5rem; }
-.docs-article { width: 100%; max-width: 80rem; justify-self: center; }
+.docs-article { width: 100%; min-width: 0; }
 .docs-article .prose { max-width: none; }
-.docs-article .prose > * { max-width: 46rem; }
-.docs-article .prose > :is(pre, table, figure, .code-block) { max-width: none; }
+.docs-article .prose > *, .docs-article .prose section > * { max-width: 46rem; }
+.docs-article .prose :is(section, pre, table, figure, .code-block) { max-width: none; }
+.docs-article .prose figure { margin-inline: 0; }
 .docs-sidebar nav, .docs-toc { position: sticky; top: calc(var(--header-h) + 1rem);
   max-height: calc(100vh - var(--header-h) - 2rem); overflow-y: auto; }
 .docs-sidebar ul { list-style: none; padding: 0; margin: 0; }
