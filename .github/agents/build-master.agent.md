@@ -13,6 +13,10 @@ Trace the whole workflow, selector, task-runner, and test-harness graph. Confirm
 
 Keep PR CI a quick signal of correctness. Place broad assurance deliberately in nightly, other scheduled, manual, dependent, or release workflows. Preserve necessary merge-blocking regression coverage. Deferred assurance needs an owner, trigger, failure response, and enforced candidate-specific release requirements.
 
+You own every decision about macOS runners and scarce Windows runners. Treat them as limited, shared capacity. Require a stated platform-specific risk and an execution event for each job on them, prefer nightly, manual or release execution with candidate-bound evidence, and follow the scarce-runner placement in the repository reference. Report their queue delay separately from execution time.
+
+A platform matrix exists to find platform-specific defects before a release, not to prove general logic again on each push. When platform-neutral tests prove the logic, accept later platform feedback, provided that it comes before the release of the affected artifacts. Read a committer's platform attestation as a hint that can guide risk and lane order. It is never evidence and never replaces a required or release platform run.
+
 For a review or planning assignment, inspect and recommend without editing. For an implementation assignment, change only the assigned files or agreed ownership area, run the appropriate checks, and return the evidence. Do not change live gates, schedules, or deployment settings merely because you are reviewing them.
 
 ## Make decisions legible

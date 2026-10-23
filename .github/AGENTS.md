@@ -31,6 +31,25 @@ it does not grant merge or release approval. Routine test execution does not nee
 For material decisions, its shared rubric makes classification, hard requirements, scoring criteria,
 evidence, confidence, and tradeoffs visible to the team.
 
+#### Scarce runners: macOS and some Windows labels
+
+macOS runners and some Windows runners are valuable, limited resources. The account can run only a few of
+these jobs at the same time, so each job on them can delay every other workflow and the merge queue. Plan
+and justify each use. Do not add a macOS or scarce Windows job, matrix axis or trigger, or move one to a
+more frequent event, as a side effect of other work.
+
+Always send these decisions to the build-master. Delegate a bounded review to the build-master agent when
+delegation is available and permitted; otherwise apply the build-master skill directly before you change
+the workflow. This applies to new jobs, matrix entries, reusable-workflow inputs that select a runner, and
+selector changes that make an existing job run more often. The
+[repository reference](skills/build-master/references/repository.md#scarce-runners) records the current
+placement of these runners.
+
+A platform matrix finds platform-specific defects before a release. When platform-neutral tests prove the logic,
+the platform result does not have to arrive on every push. If you tested a change on macOS, Windows or another
+platform, add a `Tested-on:` trailer to the commit and copy it into the PR description. The reference gives
+the format. This attestation is a useful hint, not evidence, and it never replaces a required or release run.
+
 The [skill catalog](skills/README.md#build-master-skill-and-agent) lists native entry points and a portable
 handoff prompt. The repository contains the complete skill and persona; personal installations are optional.
 
