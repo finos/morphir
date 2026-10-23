@@ -1,16 +1,72 @@
 ///|
-fn usage() -> Unit {
-  println("usage: sdkgen bootstrap <bindings.json> <out.scm>")
-  println("       sdkgen generate | check")
+enum SdkCommand {
+  Bootstrap(String, String)
+  Generate
+  Check
+} derive(Eq)
+
+///|
+fn sdk_command() -> @argparse.Command {
+  @argparse.Command(
+    "sdkgen",
+    about="Generate and check SDK bindings",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommand_required=true,
+    subcommands=[
+      @argparse.Command("bootstrap", disable_help_flag=true, positionals=[
+        @argparse.PositionArg(
+          "bindings",
+          num_args=@argparse.ValueRange::single(),
+          allow_hyphen_values=true,
+        ),
+        @argparse.PositionArg(
+          "out",
+          num_args=@argparse.ValueRange::single(),
+          allow_hyphen_values=true,
+        ),
+      ]),
+      @argparse.Command("generate", disable_help_flag=true),
+      @argparse.Command("check", disable_help_flag=true),
+    ],
+  )
+}
+
+///|
+/// Keep the command boundary fixed and every following token literal. The
+/// synthetic delimiter belongs to the adapter; user-supplied delimiters are data.
+fn parse_sdk_arguments(argv : ArrayView[String]) -> @argparse.Matches raise {
+  let normalized = match argv {
+    [command, .. data] => [command, "--", ..data]
+    [] => []
+  }
+  sdk_command().parse(argv=normalized, env=Map([]))
+}
+
+///|
+fn sdk_invocation(matches : @argparse.Matches) -> SdkCommand {
+  match matches.subcommand {
+    Some(("bootstrap", args)) =>
+      Bootstrap(args.values["bindings"][0], args.values["out"][0])
+    Some(("generate", _)) => Generate
+    Some(("check", _)) => Check
+    _ => abort("sdkgen command selection invariant")
+  }
 }
 
 ///|
 fn main {
-  let args = @env.args()
-  // The first two entries are the program path and the executable name on native.
-  let rest = args[1:].to_owned()
-  match rest {
-    ["bootstrap", bindings, out] =>
+  // This native filesystem tool owns the program-path prefix, as before.
+  let matches = parse_sdk_arguments(@env.args()[1:]) catch {
+    _ => {
+      println("usage: sdkgen bootstrap <bindings.json> <out.scm>")
+      println("       sdkgen generate | check")
+      @sys.exit(2)
+      return
+    }
+  }
+  match sdk_invocation(matches) {
+    Bootstrap(bindings, out) =>
       try {
         let message = bootstrap(bindings, out)
         println(message)
@@ -28,7 +84,7 @@ fn main {
           @sys.exit(1)
         }
       }
-    ["generate"] =>
+    Generate =>
       println(generate()) catch {
         ToolError(message) => {
           println("sdkgen: \{message}")
@@ -39,7 +95,7 @@ fn main {
           @sys.exit(1)
         }
       }
-    ["check"] =>
+    Check =>
       try {
         let (problems, count) = check()
         if problems.is_empty() {
@@ -61,9 +117,5 @@ fn main {
           @sys.exit(1)
         }
       }
-    _ => {
-      usage()
-      @sys.exit(2)
-    }
   }
 }

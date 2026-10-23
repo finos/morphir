@@ -7,6 +7,7 @@ import {
   "finos/morphir-ir/wire",
   "finos/morphir-scheme/spec",
   "finos/morphir-typing-tools/vspec",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/string" @parse,
