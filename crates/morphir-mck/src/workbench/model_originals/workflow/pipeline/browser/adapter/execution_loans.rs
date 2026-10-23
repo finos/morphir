@@ -8,6 +8,7 @@ use crate::workbench::model_originals::workflow::{
     pipeline::installed::observation::{InstalledObservationFault, InstalledObservationResource},
     source_compile::CompiledSourceCase,
 };
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use actions::SourceResultPlan;
 use std::mem::size_of;
 
 pub(super) enum LoanRelation<'a> {
@@ -490,6 +491,35 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Br
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) decode_slots: usize,
 }
 impl BrowserLoans<'_, '_> {
+    /// Transfer only these four existing cumulative permissions. Literal JSON
+    /// ReadWork, receiving records/reads and comparison remain separate owners.
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn reserve_result_escrow(
+        &mut self,
+        lifetime: &SourceControllerLifetime,
+        resources: super::super::controller::SourceResultResources,
+    ) -> Result<(), BrowserInputError> {
+        lifetime.validate(self)?;
+        let (decode, receiving, _) = self.inner.physical_owners()?;
+        decode
+            .slots(resources.decode_slots)
+            .map_err(inputs::BrowserInputFault::Decode)?;
+        receiving
+            .reserve_span(
+                InstalledObservationResource::RetainedBytes,
+                resources.retained_bytes,
+            )
+            .map_err(inputs::BrowserInputFault::Receiving)?;
+        decode
+            .bytes(resources.decode_visits)
+            .map_err(inputs::BrowserInputFault::Decode)?;
+        receiving
+            .reserve_span(
+                InstalledObservationResource::ByteVisits,
+                resources.receiving_visits,
+            )
+            .map_err(inputs::BrowserInputFault::Receiving)?;
+        Ok(())
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn remaining_cleanup_resources(
         &mut self,
         lifetime: &SourceControllerLifetime,

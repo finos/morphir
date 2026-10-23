@@ -211,6 +211,93 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct Cl
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) unlink: CleanupUnlink,
 }
 impl CleanupPlan {
+    /// Opt-in result observation protects the authenticated runtime's exact
+    /// conservative minimum. The ordinary residual constructor below is intact.
+    pub(super) fn prepare_minimum(
+        dimensions: RuntimePackageDimensions,
+        lifetime: &SourceControllerLifetime,
+        loans: &mut BrowserLoans<'_, '_>,
+    ) -> Result<Self, ControllerAcquisitionFault> {
+        lifetime
+            .validate(loans)
+            .map_err(ControllerAcquisitionFault::Input)?;
+        let capacity = checked_add(
+            checked_add(dimensions.component_count(), dimensions.file_count())?,
+            1,
+        )?;
+        let fixed_bytes = checked_add(size_of::<Self>(), SCRATCH_BYTES)?;
+        let fixed_work = checked_add(
+            checked_add(fixed_bytes, 2 * SCRATCH_BYTES)?,
+            file_guard_work()?
+                .checked_mul(4)
+                .ok_or(ControllerAcquisitionFault::Overflow)?,
+        )?;
+        let per_work = checked_add(
+            size_of::<Descendant>(),
+            checked_add(
+                2 * SCRATCH_BYTES,
+                checked_add(3 * size_of::<fs::Metadata>(), NAME_BYTES)?,
+            )?,
+        )?;
+        let bytes = checked_add(
+            fixed_bytes,
+            capacity
+                .checked_mul(size_of::<Descendant>())
+                .ok_or(ControllerAcquisitionFault::Overflow)?,
+        )?;
+        let work = checked_add(
+            fixed_work,
+            capacity
+                .checked_mul(per_work)
+                .ok_or(ControllerAcquisitionFault::Overflow)?,
+        )?;
+        loans
+            .reserve_controlled_host_storage(bytes, checked_add(capacity, 1)?, work)
+            .map_err(ControllerAcquisitionFault::Input)?;
+        let records = active(lifetime, || {
+            let mut records = Vec::new();
+            records
+                .try_reserve_exact(capacity)
+                .map_err(|_| ControllerAcquisitionFault::Allocation)?;
+            Ok(records)
+        })?;
+        let mut scratch = active(lifetime, || {
+            let mut scratch = Vec::new();
+            scratch
+                .try_reserve_exact(SCRATCH_BYTES)
+                .map_err(|_| ControllerAcquisitionFault::Allocation)?;
+            Ok(scratch)
+        })?;
+        let extra = checked_add(
+            records
+                .capacity()
+                .checked_sub(capacity)
+                .ok_or(ControllerAcquisitionFault::Overflow)?
+                .checked_mul(size_of::<Descendant>())
+                .ok_or(ControllerAcquisitionFault::Overflow)?,
+            scratch
+                .capacity()
+                .checked_sub(SCRATCH_BYTES)
+                .ok_or(ControllerAcquisitionFault::Overflow)?,
+        )?;
+        // Both allocations are still local. Adopt neither into a cleanup owner
+        // until their actual excess capacities have been funded by SAME owners.
+        loans
+            .reserve_controlled_host_storage(extra, 0, 0)
+            .map_err(ControllerAcquisitionFault::Input)?;
+        active(lifetime, || {
+            scratch.resize(SCRATCH_BYTES, 0);
+            Ok(())
+        })?;
+        Ok(Self {
+            records,
+            scratch,
+            capacity,
+            state: CleanupState::Ready,
+            root_checks: [CleanupIdentity::NotChecked; 2],
+            calls: 0,
+        })
+    }
     pub(super) fn require_runtime_capacity(
         &self,
         dimensions: RuntimePackageDimensions,

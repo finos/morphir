@@ -28,6 +28,12 @@ mod observed_launch;
 mod source_operation;
 pub(super) use observed_launch::ObservedLaunch;
 mod acquisition;
+#[cfg(test)]
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use acquisition::TestNativeEndBoundary;
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use acquisition::{
+    SourceResultError, SourceResultPreparation, SourceResultRefusal, SourceResultResource,
+    SourceResultResources, SourceResultUnsupported,
+};
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) mod source_business;
 mod source_facade;
 mod source_inputs;

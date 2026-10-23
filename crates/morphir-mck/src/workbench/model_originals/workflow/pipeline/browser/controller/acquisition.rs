@@ -18,6 +18,14 @@ mod cleanup;
 use super::source_operation::SourceOperationPrepayment;
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use cleanup::CleanupFault;
 use cleanup::CleanupPlan;
+#[path = "acquisition/result_escrow.rs"]
+mod result_escrow;
+#[cfg(test)]
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use result_escrow::TestNativeEndBoundary;
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use result_escrow::{
+    SourceResultError, SourceResultPreparation, SourceResultRefusal, SourceResultResource,
+    SourceResultResources, SourceResultUnsupported,
+};
 #[path = "acquisition/runtime_sink.rs"]
 mod runtime_sink;
 use super::source_inputs::{

@@ -8,6 +8,19 @@ pub(in crate::workbench::model_originals::workflow::pipeline::browser) struct So
     host: BrowserSourceHostAssociation,
 }
 impl SourceBusinessOrigin {
+    pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn validate_lifetime(
+        &self,
+        lifetime: &SourceControllerLifetime,
+        loans: &BrowserLoans<'_, '_>,
+    ) -> Result<(), BrowserActionIssueError> {
+        lifetime.validate(loans)?;
+        if !self.journal.same_identity(lifetime.journal_identity()) {
+            return Err(BrowserActionIssueError::Cursor(
+                BrowserActionCursorFault::ForeignAction,
+            ));
+        }
+        self.validate_host_association(lifetime.association())
+    }
     pub(in crate::workbench::model_originals::workflow::pipeline::browser) fn original_end(
         &self,
     ) -> std::time::Instant {

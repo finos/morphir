@@ -99,6 +99,9 @@ pub(super) struct SourceOperationIdentity {
     state: Weak<Mutex<BrowserConnectedOperationsSnapshot>>,
 }
 impl SourceOperationIdentity {
+    pub(super) fn same_identity(&self, other: &Self) -> bool {
+        self.state.ptr_eq(&other.state)
+    }
     pub(super) fn duplicate_after_funding(&self) -> Self {
         Self {
             state: self.state.clone(),

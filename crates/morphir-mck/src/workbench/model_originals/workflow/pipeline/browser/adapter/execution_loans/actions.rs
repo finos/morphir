@@ -13,6 +13,12 @@ mod inspection;
 mod operations;
 #[path = "actions/preparation_failure.rs"]
 mod preparation_failure;
+#[path = "actions/result_plan.rs"]
+mod result_plan;
+pub(in crate::workbench::model_originals::workflow::pipeline::browser) use result_plan::SourceResultPlan;
+#[cfg(all(test, target_os = "macos"))]
+#[path = "actions/result_escrow_tests.rs"]
+mod result_escrow_tests;
 pub(in crate::workbench::model_originals::workflow::pipeline::browser) use borrowed::business_gate_headers;
 pub use borrowed::{
     BrowserConnectedOpening, BrowserControllerDispatch, BrowserControllerStepDispatcher,
