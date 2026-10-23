@@ -222,6 +222,25 @@ impl ExpansionOwner {
     ) -> Result<(), ExpansionError> {
         self.bytes(recipe)
     }
+    /// Materialization in the existing post-receive checker uses this SAME
+    /// cumulative destination owner. This issues no runtime receiving authority.
+    pub(super) fn measure_materialization_frame(
+        &mut self,
+        frame: &input::Frame,
+    ) -> Result<(), ExpansionError> {
+        self.frame(frame)
+    }
+    pub(super) fn measure_metadata(
+        &mut self,
+        bytes: usize,
+        entries: usize,
+    ) -> Result<(), ExpansionError> {
+        self.charge(ExpansionResource::LiteralStorageBytes, bytes as u64)?;
+        self.charge(ExpansionResource::Entries, entries as u64)
+    }
+    pub(super) fn measure_metadata_work(&mut self, visits: usize) -> Result<(), ExpansionError> {
+        self.charge(ExpansionResource::Visits, visits as u64)
+    }
     fn bytes(&mut self, recipe: &input::Bytes) -> Result<(), ExpansionError> {
         self.visit()?;
         match recipe {

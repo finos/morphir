@@ -427,6 +427,7 @@ pub(super) fn check<'source, 'actual>(
             &identity_results.0,
             &[],
             Some(&actual_checkpoints.0),
+            None,
             owner,
         )?;
         let Some(next) = checked.checked_add(1) else {

@@ -144,6 +144,26 @@ impl<'case, 'raw> WorkflowReportContext<'_, 'case, '_, 'raw, '_> {
             owner,
         )
     }
+    /// Factual lifecycle comparison issued from this SAME compiled source.
+    /// It cannot discharge the original case's independent blocked obligations.
+    pub(super) fn check_client_lifecycle<'actual>(
+        &self,
+        actual: &'actual super::observed::Observation,
+        decoder: &mut super::Decoder,
+        expansion: &mut super::expansion::ExpansionOwner,
+        comparison: &mut CompareOwner,
+    ) -> Result<
+        super::observation_check::lifecycle::CheckedClientLifecycle<'case, 'actual>,
+        ObservationError,
+    > {
+        super::observation_check::lifecycle::check(
+            self.compiled,
+            actual,
+            decoder,
+            expansion,
+            comparison,
+        )
+    }
 }
 
 /// No Clone, reset, free source constructor or implicit per-case policy.

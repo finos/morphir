@@ -8,6 +8,12 @@ use super::work::{ClosureLimits, ClosureOwner};
 use super::{DecodeLimits, Decoder};
 
 pub(super) fn with_v3(test: impl FnOnce(&WorkflowReportContext<'_, '_, '_, '_, '_>, &mut Decoder)) {
+    with_v3_work(|context, decoder, _| test(context, decoder));
+}
+
+pub(super) fn with_v3_work(
+    test: impl FnOnce(&WorkflowReportContext<'_, '_, '_, '_, '_>, &mut Decoder, &mut ExpansionOwner),
+) {
     let sources = ReviewedSources::selected();
     let mut decode = Decoder::new(
         DecodeLimits::new(
@@ -52,5 +58,5 @@ pub(super) fn with_v3(test: impl FnOnce(&WorkflowReportContext<'_, '_, '_, '_, '
     );
     assert_eq!(context.lineage(), LineageStatus::Unproven);
     drop(compiler);
-    test(&context, &mut decode);
+    test(&context, &mut decode, &mut expanded);
 }

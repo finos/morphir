@@ -19,6 +19,110 @@ fn promise(ledger: &mut EffectLedger<'_>, effect: &EffectRef) {
 }
 
 #[test]
+fn ordered_storage_preserves_gapfree_names_and_independent_work_ownership() {
+    let work = FixtureAlias::new("actual-work").unwrap();
+    let mut actual = EffectLedger::new(EffectLedgerLimits::new(8, 32, 64, 64, 64).unwrap());
+    let z = reference("Z", Kind::Inspection, 0);
+    let a = reference("A", Kind::Inspection, 0);
+    let a1 = reference("A", Kind::Inspection, 1);
+    let gap = reference("A", Kind::Inspection, 3);
+    promise(&mut actual, &z);
+    promise(&mut actual, &a);
+    assert_eq!(
+        actual.record(&gap, Event::Pending(EffectPort::Promise)),
+        Err(EffectLedgerError::Ordinal)
+    );
+    promise(&mut actual, &a1);
+    let pending: Vec<_> = actual.pending_effects().cloned().collect();
+    assert_eq!(pending, vec![a.clone(), a1.clone(), z.clone()]);
+    actual
+        .record(
+            &z,
+            Event::WorkStarted {
+                work: &work,
+                owner: WorkOwner::Inline,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        actual.record(
+            &a,
+            Event::WorkStarted {
+                work: &work,
+                owner: WorkOwner::Inline
+            }
+        ),
+        Err(EffectLedgerError::Work)
+    );
+    assert_eq!(actual.recorded_work(&a).unwrap(), None);
+    assert_eq!(
+        actual.recorded_work(&z).unwrap().unwrap().invocation(),
+        &work
+    );
+    actual
+        .record(&z, Event::WorkExited { work: &work })
+        .unwrap();
+    for effect in [&a, &a1, &z] {
+        actual.record(effect, Event::PromiseRejected).unwrap();
+    }
+    assert_eq!(actual.port_count(), 3);
+    assert_eq!(actual.pending_effects().count(), 0);
+    actual.finish().unwrap();
+}
+
+#[test]
+fn non_core_settlement_does_not_substitute_for_produced_work_or_reopen_a_terminal_port() {
+    let effect = reference("actual-attempt", Kind::Inspection, 0);
+    let work = FixtureAlias::new("actual-work").unwrap();
+    for phase in 0..4 {
+        let mut actual =
+            EffectLedger::new(EffectLedgerLimits::new(64, 512, 4096, 8192, 16384).unwrap());
+        promise(&mut actual, &effect);
+        if phase < 3 {
+            actual
+                .record(
+                    &effect,
+                    Event::WorkStarted {
+                        work: &work,
+                        owner: WorkOwner::Inline,
+                    },
+                )
+                .unwrap();
+            if phase > 0 {
+                actual
+                    .record(
+                        &effect,
+                        Event::ResultPrepared {
+                            work: &work,
+                            raw_reply: "complete actual reply",
+                        },
+                    )
+                    .unwrap();
+            }
+            if phase == 2 {
+                actual
+                    .record(
+                        &effect,
+                        Event::ResultRetired(ResultRetirement::DiscardedOnTeardown),
+                    )
+                    .unwrap();
+            }
+        } else {
+            actual
+                .record(&effect, Event::PromiseResolvedWithoutCoreResult)
+                .unwrap();
+        }
+        assert!(
+            actual
+                .record(&effect, Event::PromiseResolvedWithoutCoreResult)
+                .is_err()
+        );
+        assert_eq!(actual.pending_effects().count(), usize::from(phase < 3));
+        assert_eq!(actual.prepared_effects().count(), usize::from(phase == 1));
+    }
+}
+
+#[test]
 fn workflow_effect_vocabulary_manifest_and_workspace_ports_keep_independent_ordinals_and_settlement()
  {
     let manifest0 = reference("actual-attempt", Kind::ManifestFetch, 0);

@@ -7,6 +7,7 @@ use super::pairing::{PairedRun, PairedWorkflow};
 use super::{FixtureAlias, Nullable, Presence};
 pub(super) mod archive;
 pub(super) mod installed;
+pub(super) mod lifecycle;
 pub(super) mod server;
 mod workspace;
 
@@ -72,6 +73,10 @@ pub(super) enum ObservationError {
     },
     UnsupportedOutcome,
     UnqualifiedEvidence,
+    Lifecycle {
+        event: usize,
+        kind: lifecycle::LifecycleFault,
+    },
     IdentityInputActionMissing,
     Controller {
         index: usize,
@@ -622,6 +627,7 @@ fn predicate(
     identity_results: &[observed::IdentityResult],
     checkpoints: &[ClientCheckpoint],
     workspace_checkpoints: Option<&[observed::WorkspaceCheckpoint]>,
+    lifecycle: Option<&lifecycle::CheckedClientLifecycle<'_, '_>>,
     owner: &mut CompareOwner,
 ) -> Result<(), ObservationError> {
     owner.charge(CompareResource::Checks, 1)?;
@@ -739,8 +745,13 @@ fn predicate(
                 PredicateFault::Controller,
             )
         }
+        ExpectedClientCheck::PortCounts { .. } => {
+            let Some(lifecycle) = lifecycle else {
+                return owner.refuse(ObservationError::UnsupportedClientCheck { index });
+            };
+            return lifecycle.compare_port_counts(check, owner);
+        }
         ExpectedClientCheck::PortTrace { .. }
-        | ExpectedClientCheck::PortCounts { .. }
         | ExpectedClientCheck::VerifiedOwner { .. }
         | ExpectedClientCheck::CoreResult { .. }
         | ExpectedClientCheck::Download { .. }
@@ -882,7 +893,7 @@ fn check_core<'source, 'actual>(
             Presence::Absent => &[][..],
             Presence::Present(items) => &items.0,
         };
-        predicate(index, check, results, &checkpoints.0, None, owner)?;
+        predicate(index, check, results, &checkpoints.0, None, None, owner)?;
         let Some(next) = checked.checked_add(1) else {
             return owner.refuse(ObservationError::SizeOverflow);
         };

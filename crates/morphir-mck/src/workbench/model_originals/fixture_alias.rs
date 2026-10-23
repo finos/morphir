@@ -13,6 +13,11 @@ impl std::error::Error for InvalidFixtureAlias {}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FixtureAlias(String);
+#[derive(Debug)]
+pub(super) enum FixtureAliasCloneError {
+    Allocation(std::collections::TryReserveError),
+    ExcessCapacity,
+}
 impl serde::Serialize for FixtureAlias {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         s.serialize_str(self.as_str())
@@ -33,5 +38,17 @@ impl FixtureAlias {
     }
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+    /// Copy an already validated nominal alias after its caller has funded the
+    /// exact requested string payload. Allocation failure retains the source.
+    pub(super) fn try_clone(&self) -> Result<Self, FixtureAliasCloneError> {
+        let mut text = String::new();
+        text.try_reserve_exact(self.0.len())
+            .map_err(FixtureAliasCloneError::Allocation)?;
+        if text.capacity() != self.0.len() {
+            return Err(FixtureAliasCloneError::ExcessCapacity);
+        }
+        text.push_str(&self.0);
+        Ok(Self(text))
     }
 }
