@@ -6,9 +6,112 @@ import {
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+enum ReleaseInvocation {
+  Acquire(String, String)
+  SelfTest
+} derive(Eq)
+
+///|
+fn release_invocation(argv : ArrayView[String]) -> ReleaseInvocation raise {
+  // Both acquisition operands are literal paths, including -- and control
+  // spellings. A synthetic delimiter leaves every original token as data.
+  let literal_argv = ["--"] + argv.to_owned()
+  let acquire = @argparse.Command(
+    "mck-release.mbtx",
+    about="Acquire the pinned released MCK backend and canonical fixtures",
+    disable_help_flag=true,
+    positionals=[
+      @argparse.PositionArg("MANIFEST", num_args=@argparse.ValueRange::single()),
+      @argparse.PositionArg(
+        "NEW_DESTINATION",
+        num_args=@argparse.ValueRange::single(),
+      ),
+    ],
+  )
+  let matches = acquire.parse(argv=literal_argv) catch {
+    _ => {
+      // The pinned flag parser accepts repetition and consumes --. Intersect
+      // its control grammar with a literal singleton grammar so self-test is
+      // exactly one token. Acquisition/domain effects are outside this catch.
+      ignore(
+        @argparse.Command("mck-release.mbtx", disable_help_flag=true, positionals=[
+          @argparse.PositionArg(
+            "SELF_TEST",
+            num_args=@argparse.ValueRange::single(),
+          ),
+        ]).parse(argv=literal_argv),
+      )
+      ignore(
+        @argparse.Command("mck-release.mbtx", disable_help_flag=true, flags=[
+          @argparse.FlagArg("self-test", required=true),
+        ]).parse(argv~),
+      )
+      return SelfTest
+    }
+  }
+  Acquire(matches.values["MANIFEST"][0], matches.values["NEW_DESTINATION"][0])
+}
+
+///|
+fn cli_self_test() -> Unit raise {
+  for
+    argv in [
+      ["manifest.json", "new destination"],
+      ["manifest 'quotes' $`;.json", "destination 日本語"],
+      ["-manifest", "--destination"],
+      ["", ""],
+    ] {
+    guard release_invocation(argv) == Acquire(argv[0], argv[1]) else {
+      fail("Release paths changed during parsing")
+    }
+  }
+  let paths = [
+    "--", "--self-test", "--help", "-h", "help", "--version", "--self-test=true",
+    "--help=literal", "--unknown", "", "a b ' 雪 $` ;",
+  ]
+  for manifest in paths {
+    for destination in paths {
+      guard release_invocation([manifest, destination]) ==
+        Acquire(manifest, destination) else {
+        fail("Flag-named release paths changed during parsing")
+      }
+    }
+  }
+  guard release_invocation(["--self-test"]) == SelfTest else {
+    fail("Self-test invocation must not acquire MCK")
+  }
+  for
+    argv in [
+      [],
+      ["manifest.json"],
+      ["manifest", "destination", "extra"],
+      ["--unknown"],
+      ["-x"],
+      ["--self-test", "manifest", "destination"],
+      ["--self-test=true"],
+      ["--"],
+      ["--help"],
+      ["-h"],
+      ["help"],
+      ["--version"],
+      [""],
+      ["--", "manifest", "destination"],
+      ["--", "--self-test", "destination"],
+      ["--self-test", "--self-test", "--self-test"],
+      ["--self-test", "--", "--self-test"],
+    ] {
+    ignore(release_invocation(argv)) catch {
+      _ => continue
+    }
+    fail("Invalid MCK invocation accepted: " + argv.join(" "))
+  }
 }
 
 ///|
@@ -91,6 +194,7 @@ fn archive_inventory(
 
 ///|
 fn self_test() -> Unit raise {
+  cli_self_test()
   let asset : Json = {
     "filename": "morphir-0.4.0-beta.10-aarch64-apple-darwin.tgz",
     "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
@@ -141,13 +245,12 @@ fn self_test() -> Unit raise {
 
 ///|
 async fn main {
-  let args = @env.args()[1:].to_owned()
-  if args == ["--self-test"] {
-    self_test()
-    return
-  }
-  guard args is [manifest, destination] else {
-    fail("Usage: mck-release.mbtx MANIFEST NEW_DESTINATION | --self-test")
+  let (manifest, destination) = match release_invocation(@env.args()[1:]) {
+    SelfTest => {
+      self_test()
+      return
+    }
+    Acquire(manifest, destination) => (manifest, destination)
   }
   let pin = @json.parse(@fs.read_file(manifest).text())
   let host = @json.parse(
