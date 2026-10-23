@@ -152,6 +152,7 @@ run = [
   "moonx scripts/ci-measure.mbtx --self-test",
   "moonx scripts/beads-companion.mbtx --self-test",
   "moonx scripts/headless-host.mbtx --self-test",
+  "moon test scripts/artifact-client-source.mbtx",
   "moonx scripts/mck-release.mbtx --self-test",
   "moon fmt --check scripts/repository-tasks.mbtx scripts/refresh-ir-fixtures.mbtx scripts/setup-hooks.mbtx scripts/pre-push.mbtx scripts/beads-plan.mbtx",
   "moonx scripts/repository-tasks.mbtx --self-test",

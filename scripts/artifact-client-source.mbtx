@@ -5,11 +5,104 @@ import {
   "moonbitlang/async@0.22.1/fs",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
   "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+priv enum Invocation {
+  Check
+  Sync(String)
+  VerifyUpstream(String)
+} derive(Eq, Debug)
+
+///|
+fn source_command() -> @argparse.Command {
+  fn upstream(name : String, about : String) -> @argparse.Command {
+    @argparse.Command(name, about~, disable_help_flag=true, positionals=[
+      @argparse.PositionArg("CHECKOUT", num_args=@argparse.ValueRange::single()),
+    ])
+  }
+  @argparse.Command(
+    "artifact-client-source.mbtx",
+    about="Check or reproduce the exact audited artifact client source",
+    subcommand_required=true,
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommands=[
+      @argparse.Command(
+        "check",
+        about="Verify the tracked source digests",
+        disable_help_flag=true,
+      ),
+      upstream("sync", "Restore tracked files from the pinned upstream commit"),
+      upstream(
+        "verify-upstream", "Compare tracked files with the pinned upstream commit",
+      ),
+    ],
+  )
+}
+
+///|
+fn invocation(argv : ArrayView[String]) -> Invocation raise {
+  // The first token selects a command. Every later token is literal data,
+  // including a checkout named "--". The library still owns command and arity.
+  let literal = match argv {
+    [] => []
+    [command, .. data] => [command, "--"] + data.to_owned()
+  }
+  let matches = source_command().parse(argv=literal)
+  match matches.subcommand {
+    Some(("check", _)) => Check
+    Some(("sync", child)) => Sync(child.values["CHECKOUT"][0])
+    Some(("verify-upstream", child)) =>
+      VerifyUpstream(child.values["CHECKOUT"][0])
+    _ => abort("Expected a declared source command")
+  }
+}
+
+///|
+test "source command syntax" {
+  assert_eq(invocation(["check"]), Check)
+  for
+    path in [
+      "checkout", "源 checkout", "", "a;$`b", "-checkout", "--unknown", "-x", "--path=value",
+      "--", "--help", "-h", "--self-test", "--version", "help", "check", "sync",
+    ] {
+    assert_eq(invocation(["sync", path]), Sync(path))
+    assert_eq(invocation(["verify-upstream", path]), VerifyUpstream(path))
+  }
+  for
+    argv in [
+      [],
+      ["unknown"],
+      ["--help"],
+      ["-h"],
+      ["--self-test"],
+      ["help", "sync"],
+      ["--", "check"],
+      ["check", "--"],
+      ["check", "extra"],
+      ["check", "--unknown"],
+      ["sync"],
+      ["verify-upstream"],
+      ["sync", "a", "b"],
+      ["verify-upstream", "a", "b"],
+      ["sync", "checkout", "--unknown"],
+      ["verify-upstream", "checkout", "--unknown"],
+      ["sync", "--", "checkout"],
+      ["verify-upstream", "--", "checkout"],
+    ] {
+    try ignore(invocation(argv)) catch {
+      _ => continue
+    } noraise {
+      _ => fail("Invalid source invocation accepted")
+    }
+  }
 }
 
 ///|
@@ -46,12 +139,8 @@ async fn git(checkout : String, args : Array[String]) -> Bytes {
 
 ///|
 async fn main {
-  let args = @env.args()[1:]
-  guard (args.length() == 1 && args[0] == "check") ||
-    (args.length() == 2 && (args[0] == "sync" || args[0] == "verify-upstream")) else {
-    abort(
-      "Usage: artifact-client-source.mbtx check | sync <upstream-checkout> | verify-upstream <upstream-checkout>",
-    )
+  let command = invocation(@env.args()[1:]) catch {
+    error => abort(error.to_string())
   }
   let pin = @json.parse(@fs.read_file(destination + "/SOURCE.json").text())
   guard string(pin, "repository") == "https://github.com/finos/morphir-ui" else {
@@ -82,14 +171,14 @@ async fn main {
     files.length() == expected.length() else {
     abort("Unexpected artifact source inventory")
   }
-  if args[0] != "check" {
-    let origin = git(args[1], ["remote", "get-url", "origin"])
+  if command is (Sync(checkout) | VerifyUpstream(checkout)) {
+    let origin = git(checkout, ["remote", "get-url", "origin"])
     let origin = @utf8.decode(origin).trim()
     guard origin == "https://github.com/finos/morphir-ui.git" ||
       origin == "git@github.com:finos/morphir-ui.git" else {
       abort("Expected the official upstream checkout")
     }
-    guard @utf8.decode(git(args[1], ["cat-file", "-t", revision])).trim() ==
+    guard @utf8.decode(git(checkout, ["cat-file", "-t", revision])).trim() ==
       "commit" else {
       abort("Pinned artifact revision is not a commit")
     }
@@ -104,10 +193,10 @@ async fn main {
       hexadecimal(sha, 64) else {
       abort("Invalid artifact source inventory entry")
     }
-    let bytes = if args[0] == "check" {
-      @fs.read_file(destination + "/" + file).binary()
-    } else {
-      git(args[1], ["show", revision + ":" + source])
+    let bytes = match command {
+      Check => @fs.read_file(destination + "/" + file).binary()
+      Sync(checkout) | VerifyUpstream(checkout) =>
+        git(checkout, ["show", revision + ":" + source])
     }
     guard digest(bytes) == sha else {
       @stdio.stderr.write("Artifact source hash differs: " + file + "\n")
@@ -116,7 +205,7 @@ async fn main {
     sources.push(bytes)
   }
   for index, (_, file) in expected {
-    if args[0] == "sync" {
+    if command is Sync(_) {
       @fs.write_file(destination + "/" + file, sources[index])
     }
     guard @fs.read_file(destination + "/" + file).binary() == sources[index] else {
