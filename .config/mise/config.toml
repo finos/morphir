@@ -384,7 +384,7 @@ run = "bun --check apps/morphir-site/scripts/serve.ts --watch"
 [tasks."test:site"]
 description = "Site unit tests, highlight tests and the browser smoke test against _site/"
 run = [
-  "moon test --target native -p finos/morphir-site/model finos/morphir-site/content finos/morphir-site/views finos/morphir-site/site finos/morphir-site/generate",
+  "moon test --target native -p finos/morphir-site/model finos/morphir-site/content finos/morphir-site/views finos/morphir-site/site finos/morphir-site/generate finos/morphir-site/check",
   "moon test --target js -p finos/morphir-site/model",
   "bun run --cwd apps/morphir-site test",
   "bun run --cwd apps/morphir-site test:browser",

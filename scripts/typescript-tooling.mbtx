@@ -4,45 +4,159 @@ import {
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/process",
   "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x@0.5.5/crypto",
   "moonbitlang/x@0.5.5/sys",
 }
 
 ///|
-async fn run(command : String, args : Array[String]) -> Unit {
-  let status = @process.run(
-    command,
-    args,
-    stdout=@stdio.stdout,
-    stderr=@stdio.stderr,
+suberror ToolingError {
+  Failed(Int32)
+  MissingTask
+  InvalidTask(String)
+} derive(Debug)
+
+///|
+enum Invocation {
+  SelfTest
+  Task(String, Bool)
+}
+
+///|
+fn invocation(argv : Array[String]) -> Invocation raise {
+  let control = @argparse.Command(
+    "typescript-tooling",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommand_required=true,
+    subcommands=[
+      @argparse.Command("control:--self-test", disable_help_flag=true),
+    ],
   )
-  if status != 0 {
-    @sys.exit(if status > 0 { status } else { 1 })
+  let self_test = try {
+    ignore(control.parse(argv=argv.map(token => "control:" + token)))
+    true
+  } catch {
+    _ => false
+  }
+  if self_test {
+    return SelfTest
+  }
+  let command = @argparse.Command(
+    "typescript-tooling",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    subcommand_required=true,
+    subcommands=[
+      for
+        task in [
+          "setup-workbench", "setup-site", "build-workbench", "test-workbench", "test-workbench-artifacts",
+          "test-embedding", "test-compiler", "test-supervision", "test-cli", "check",
+        ] => {
+        @argparse.Command(
+          task[:],
+          disable_help_flag=true,
+          flags=[@argparse.FlagArg("ci", long=encoded_tail("--ci")[2:])],
+          positionals=[
+            @argparse.PositionArg(
+              "ignored",
+              num_args=@argparse.ValueRange(lower=0),
+              allow_hyphen_values=true,
+              hidden=true,
+            ),
+          ],
+        )
+      }
+    ],
+  )
+  // Command selection is always the first token. Encode every ignored tail
+  // token identically so raw delimiters and equals signs have no parser meaning.
+  // The library recognizes only the encoding of exact --ci, anywhere in the tail.
+  let normalized = if argv.is_empty() {
+    []
+  } else {
+    [argv[0], ..argv[1:].map(encoded_tail)]
+  }
+  let parsed = command.parse(argv=normalized) catch {
+    _ =>
+      if argv.get(0) is Some(mode) {
+        raise InvalidTask(mode)
+      } else {
+        raise MissingTask
+      }
+  }
+  match parsed.subcommand {
+    Some((task, child)) => Task(task, child.flags.get("ci").unwrap_or(false))
+    None => raise MissingTask
   }
 }
 
 ///|
-async fn install(path : String) -> Unit {
-  run("bun", ["install", "--frozen-lockfile", "--cwd", path])
+/// Injective UTF-8 hex encoding keeps ignored tokens distinct from flag syntax.
+/// No decoded values or reconstructed tail ever reach a child process.
+fn encoded_tail(token : String) -> String {
+  "--ignored-" + @crypto.bytes_to_hex_string(@utf8.encode(token))
 }
 
 ///|
-async fn browser(path : String, ci : Bool) -> Unit {
-  let args = ["run", "--cwd", path, "playwright", "install"]
-  if ci {
-    args.push("--with-deps")
+async fn run(command : String, args : Array[String]) -> Int32 {
+  @process.run(command, args, stdout=@stdio.stdout, stderr=@stdio.stderr)
+}
+
+///|
+async fn compiler_home(
+  current : String?,
+  locate : async () -> (Int32, String),
+  set : (String) -> Unit,
+) -> Unit {
+  if current is None {
+    let (status, out) = locate()
+    if status != 0 {
+      raise Failed(1)
+    }
+    set(out.trim().to_owned())
   }
-  args.push("chromium")
-  run("bun", args)
 }
 
 ///|
-async fn main {
-  let args = @env.args()[1:].to_owned()
-  let ci = args.contains("--ci")
-  guard args is [mode, ..] else {
-    @sys.exit(2)
-    return
+async fn ensure_moon_home() -> Unit {
+  compiler_home(
+    @env.get_env_var("MOON_HOME"),
+    async fn() {
+      let (status, out, _) = @process.collect_output("mise", [
+        "where", "http:moonbit",
+      ])
+      (status, out.text())
+    },
+    fn(home) { @env.set_env_var("MOON_HOME", home) },
+  )
+}
+
+///|
+async fn execute(
+  mode : String,
+  ci : Bool,
+  invoke : async (String, Array[String]) -> Int32,
+  ensure_home : async () -> Unit,
+) -> Unit {
+  let run = async fn(command, args) {
+    let status = invoke(command, args)
+    if status != 0 {
+      raise Failed(if status > 0 { status } else { 1 })
+    }
+  }
+  let install = async fn(path) {
+    run("bun", ["install", "--frozen-lockfile", "--cwd", path])
+  }
+  let browser = async fn(path, ci) {
+    let args = ["run", "--cwd", path, "playwright", "install"]
+    if ci {
+      args.push("--with-deps")
+    }
+    args.push("chromium")
+    run("bun", args)
   }
   match mode {
     "setup-workbench" => {
@@ -95,15 +209,7 @@ async fn main {
       run("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "test:browser"])
     }
     "test-compiler" => {
-      if @env.get_env_var("MOON_HOME") is None {
-        let (status, out, _) = @process.collect_output("mise", [
-          "where", "http:moonbit",
-        ])
-        if status != 0 {
-          @sys.exit(1)
-        }
-        @env.set_env_var("MOON_HOME", out.text().trim().to_owned())
-      }
+      ensure_home()
       run("bun", ["run", "build:runtimes"])
       for
         script in [
@@ -141,9 +247,431 @@ async fn main {
       run("bun", ["run", "test:types"])
       run("bun", ["run", "build:runtimes"])
     }
-    _ => {
+    _ => raise InvalidTask(mode)
+  }
+}
+
+///|
+async fn main {
+  let selected = invocation(@env.args()[1:].to_owned()) catch {
+    MissingTask => {
+      @sys.exit(2)
+      return
+    }
+    InvalidTask(mode) => {
       println("Unknown TypeScript task: \{mode}")
       @sys.exit(2)
+      return
+    }
+    error => raise error
+  }
+  try {
+    match selected {
+      SelfTest => self_test()
+      Task(mode, ci) => execute(mode, ci, run, ensure_moon_home)
+    }
+  } catch {
+    Failed(code) => @sys.exit(code)
+    error => raise error
+  }
+}
+
+///|
+async fn self_test() -> Unit {
+  // Fixed baseline child arrays, captured using independent executable stubs.
+  let fixtures : Array[(String, Bool, Array[(String, Array[String])])] = [
+    (
+      "setup-workbench",
+      false,
+      [
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "."]),
+        (
+          "bun",
+          ["install", "--frozen-lockfile", "--cwd", "apps/morphir-workbench"],
+        ),
+        (
+          "bun",
+          [
+            "run", "--cwd", "apps/morphir-workbench", "playwright", "install", "chromium",
+          ],
+        ),
+      ],
+    ),
+    (
+      "setup-workbench",
+      true,
+      [
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "."]),
+        (
+          "bun",
+          ["install", "--frozen-lockfile", "--cwd", "apps/morphir-workbench"],
+        ),
+        (
+          "bun",
+          [
+            "run", "--cwd", "apps/morphir-workbench", "playwright", "install", "--with-deps",
+            "chromium",
+          ],
+        ),
+      ],
+    ),
+    (
+      "setup-site",
+      false,
+      [
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "."]),
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "apps/morphir-site"]),
+        (
+          "bun",
+          ["install", "--frozen-lockfile", "--cwd", "apps/morphir-workbench"],
+        ),
+        (
+          "bun",
+          [
+            "run", "--cwd", "apps/morphir-site", "playwright", "install", "chromium",
+          ],
+        ),
+      ],
+    ),
+    (
+      "setup-site",
+      true,
+      [
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "."]),
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "apps/morphir-site"]),
+        (
+          "bun",
+          ["install", "--frozen-lockfile", "--cwd", "apps/morphir-workbench"],
+        ),
+        (
+          "bun",
+          [
+            "run", "--cwd", "apps/morphir-site", "playwright", "install", "--with-deps",
+            "chromium",
+          ],
+        ),
+      ],
+    ),
+    (
+      "build-workbench",
+      false,
+      [
+        ("moonx", ["scripts/artifact-client-source.mbtx", "check"]),
+        ("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"]),
+      ],
+    ),
+    (
+      "test-workbench",
+      false,
+      [
+        ("moonx", ["scripts/artifact-client-source.mbtx", "check"]),
+        (
+          "moon",
+          [
+            "test", "--target", "js", "-p", "finos/morphir-workbench", "finos/morphir-workbench/arguments",
+          ],
+        ),
+        ("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"]),
+        (
+          "moon",
+          [
+            "build", "pkgs/morphir-workbench-native/files-acceptance", "--target",
+            "native",
+          ],
+        ),
+        (
+          "bun",
+          ["run", "--cwd", "apps/morphir-workbench", "test:workspace-files"],
+        ),
+        (
+          "bun",
+          ["run", "--cwd", "apps/morphir-workbench", "test:originals-opening"],
+        ),
+        ("bun", ["run", "--cwd", "apps/morphir-workbench", "test"]),
+        ("bun", ["run", "--cwd", "apps/morphir-workbench", "test:browser"]),
+        ("bun", ["run", "--cwd", "apps/morphir-workbench", "test:worksheet"]),
+      ],
+    ),
+    (
+      "test-workbench-artifacts",
+      false,
+      [
+        ("moonx", ["scripts/artifact-client-source.mbtx", "check"]),
+        ("bun", ["--check", "apps/morphir-workbench/scripts/build.ts"]),
+        ("bun", ["run", "--cwd", "apps/morphir-workbench", "test:artifacts"]),
+      ],
+    ),
+    (
+      "test-embedding",
+      false,
+      [
+        ("moon", ["update"]),
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "."]),
+        (
+          "bun",
+          [
+            "install", "--frozen-lockfile", "--cwd", "pkgs/morphir-host/embedding",
+          ],
+        ),
+        ("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"]),
+        ("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "test"]),
+        (
+          "bun",
+          [
+            "run", "--cwd", "pkgs/morphir-host/embedding", "playwright", "install",
+            "chromium",
+          ],
+        ),
+        ("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "test:browser"]),
+      ],
+    ),
+    (
+      "test-embedding",
+      true,
+      [
+        ("moon", ["update"]),
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "."]),
+        (
+          "bun",
+          [
+            "install", "--frozen-lockfile", "--cwd", "pkgs/morphir-host/embedding",
+          ],
+        ),
+        ("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "build"]),
+        ("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "test"]),
+        (
+          "bun",
+          [
+            "run", "--cwd", "pkgs/morphir-host/embedding", "playwright", "install",
+            "--with-deps", "chromium",
+          ],
+        ),
+        ("bun", ["run", "--cwd", "pkgs/morphir-host/embedding", "test:browser"]),
+      ],
+    ),
+    (
+      "test-compiler",
+      false,
+      [
+        ("bun", ["run", "build:runtimes"]),
+        ("node", ["apps/morphir/build-provider/test-capability-pins.mts"]),
+        ("node", ["apps/morphir/build-provider/test-core-pin.mts"]),
+        ("node", ["apps/morphir/build-provider/test-checked-decimal.mts"]),
+        ("node", ["apps/morphir/build-provider/test-supervision.mts"]),
+        (
+          "node",
+          ["pkgs/morphir-moonbit/scripts/test-compiler.mts", "pkgs/morphir-sdk"],
+        ),
+        ("node", ["apps/morphir/scripts/test-library-provider.ts"]),
+        ("node", ["apps/morphir/scripts/test-execution.ts"]),
+        ("node", ["apps/morphir/scripts/test-execution-faults.ts"]),
+        ("node", ["apps/morphir/scripts/test-rich-execution.ts"]),
+      ],
+    ),
+    (
+      "test-supervision",
+      false,
+      [
+        ("bun", ["run", "build:runtimes"]),
+        ("node", ["apps/morphir/build-provider/test-supervision.mts"]),
+      ],
+    ),
+    (
+      "test-cli",
+      false,
+      [
+        (
+          "bun",
+          ["install", "--frozen-lockfile", "--cwd", "pkgs/morphir-elm/scripts"],
+        ),
+        ("bun", ["run", "build:runtimes"]),
+        ("bun", ["run", "--cwd", "apps/morphir", "test"]),
+      ],
+    ),
+    (
+      "check",
+      false,
+      [
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "."]),
+        (
+          "bun",
+          ["install", "--frozen-lockfile", "--cwd", "apps/morphir-workbench"],
+        ),
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "apps/morphir-site"]),
+        (
+          "bun",
+          [
+            "install", "--frozen-lockfile", "--cwd", "pkgs/morphir-host/embedding",
+          ],
+        ),
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "tests/wasm-host"]),
+        (
+          "bun",
+          ["install", "--frozen-lockfile", "--cwd", "pkgs/morphir-elm/scripts"],
+        ),
+        ("bun", ["check", "--all"]),
+        ("bun", ["run", "test:types"]),
+        ("bun", ["run", "build:runtimes"]),
+      ],
+    ),
+  ]
+  for (task, ci, expected) in fixtures {
+    let calls : Array[(String, Array[String])] = []
+    let homes = Ref(0)
+    execute(
+      task,
+      ci,
+      fn(program, args) {
+        calls.push((program, args))
+        0
+      },
+      fn() { homes.val += 1 },
+    )
+    guard calls == expected &&
+      homes.val == (if task == "test-compiler" { 1 } else { 0 }) else {
+      abort(
+        "child argv/order or compiler environment boundary changed: " + task,
+      )
+    }
+    let argv = [task, "ignored", "--unknown", "-path", ""]
+    if ci {
+      argv.push("--ci")
+      argv.push("--ci")
+    }
+    guard invocation(argv) is Task(actual, actual_ci) &&
+      actual == task &&
+      actual_ci == ci else {
+      abort("task, CI flag or ignored-tail parsing changed")
+    }
+    for child_status in [23, -15, -1] {
+      let count = Ref(0)
+      let status = try {
+        execute(
+          task,
+          ci,
+          fn(_, _) {
+            count.val += 1
+            child_status
+          },
+          fn() { () },
+        )
+        0
+      } catch {
+        Failed(code) => code
+        _ => -1
+      }
+      guard status == (if child_status < 0 { 1 } else { child_status }) &&
+        count.val == 1 else {
+        abort("child status or failure short circuit changed")
+      }
     }
   }
+  for
+    argv in [
+      [],
+      ["unknown"],
+      ["--unknown"],
+      ["--ci", "setup-site"],
+      ["--help"],
+      ["-h"],
+      ["help", "setup-site"],
+      ["--", "setup-site"],
+      ["--self-test", "check"],
+      ["--self-test", "--self-test"],
+      ["--self-test", "--"],
+      ["--self-test", "--help"],
+      ["--self-test=true"],
+    ] {
+    let rejected = try {
+      ignore(invocation(argv))
+      false
+    } catch {
+      _ => true
+    }
+    guard rejected else { abort("invalid tooling task accepted") }
+  }
+  guard invocation(["--self-test"]) is SelfTest else {
+    abort("self-test parsing changed")
+  }
+  for
+    task in [
+      "setup-workbench", "setup-site", "build-workbench", "test-workbench", "test-workbench-artifacts",
+      "test-embedding", "test-compiler", "test-supervision", "test-cli", "check",
+    ] {
+    for
+      (tail, ci) in [
+        (["--", "--ci"], true),
+        (["--", "junk", "--ci"], true),
+        (["--ci", "--", "--ci"], true),
+        (["--ci=false", "--ci=true", "--ci="], false),
+        (["--help", "-h", "help", "--help=x", "--self-test"], false),
+        (["", "雨 ü", "$(false); `false`", "--", "--"], false),
+        (["--ignored-2d2d6369", "ci", "--CI", "--no-ci"], false),
+      ] {
+      guard invocation([task, ..tail]) is Task(actual, actual_ci) &&
+        actual == task &&
+        actual_ci == ci else {
+        abort("exact CI or ignored-tail semantics changed")
+      }
+    }
+  }
+  let set_values : Array[String] = []
+  compiler_home(None, fn() { (0, "  /fixture/moon home\n") }, fn(home) {
+    set_values.push(home)
+  })
+  guard set_values == ["/fixture/moon home"] else {
+    abort("MOON_HOME fallback changed")
+  }
+  for home in ["/inherited moon home", ""] {
+    compiler_home(
+      Some(home),
+      fn() { abort("set MOON_HOME should not resolve mise") },
+      fn(_) { abort("set MOON_HOME should not change") },
+    )
+  }
+  for child_status in [23, -15] {
+    let status = try {
+      compiler_home(None, fn() { (child_status, "ignored") }, fn(_) {
+        abort("failed lookup set MOON_HOME")
+      })
+      0
+    } catch {
+      Failed(code) => code
+      _ => -1
+    }
+    guard status == 1 else { abort("compiler lookup failure status changed") }
+  }
+  let calls = Ref(0)
+  let status = try {
+    execute(
+      "test-compiler",
+      false,
+      fn(_, _) {
+        calls.val += 1
+        0
+      },
+      fn() raise { raise Failed(1) },
+    )
+    0
+  } catch {
+    Failed(code) => code
+    _ => -1
+  }
+  guard status == 1 && calls.val == 0 else {
+    abort("compiler environment failure did not short circuit")
+  }
+  let spawn_error_preserved = try {
+    execute(
+      "setup-site",
+      false,
+      fn(_, _) raise { raise InvalidTask("spawn fixture") },
+      fn() { () },
+    )
+    false
+  } catch {
+    InvalidTask("spawn fixture") => true
+    _ => false
+  }
+  guard spawn_error_preserved else { abort("executor error was reclassified") }
+  println("TypeScript tooling self-tests passed.")
 }

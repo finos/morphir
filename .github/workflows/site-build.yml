@@ -55,7 +55,7 @@ jobs:
         run: |
           (cd apps/morphir-site && moon test --target native \
             -p finos/morphir-site/model finos/morphir-site/content finos/morphir-site/views \
-            finos/morphir-site/site finos/morphir-site/generate)
+            finos/morphir-site/site finos/morphir-site/generate finos/morphir-site/check)
           (cd apps/morphir-site && moon test --target js -p finos/morphir-site/model)
           bun run --cwd apps/morphir-site test
           bun run --cwd apps/morphir-site test:browser

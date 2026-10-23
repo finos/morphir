@@ -30,20 +30,68 @@ async fn list_files(root : String, prefix~ : String = "") -> Array[String] {
 }
 
 ///|
-fn option(args : Array[String], name : String, default : String) -> String {
-  for i in 0..<(args.length() - 1) {
-    if args[i] == name {
-      return args[i + 1]
-    }
+/// Encode every token identically so only exact option names have CLI meaning.
+/// In particular, raw `--`, equals forms and help remain literal data.
+fn encoded_argument(token : String) -> String {
+  "--token-" + @hex.encode(@utf8.encode(token))
+}
+
+///|
+fn ignored_arguments() -> @argparse.PositionArg {
+  @argparse.PositionArg(
+    "ignored",
+    num_args=@argparse.ValueRange(lower=0),
+    allow_hyphen_values=true,
+  )
+}
+
+///|
+/// Each old option lookup was independent: another option can be both a value
+/// here and a recognized name in its own parser. Append retains the first value.
+fn first_option(argv : Array[String], name : String) -> String? raise {
+  let command = @argparse.Command(
+    "morphir-site check",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    options=[
+      @argparse.OptionArg(
+        "value",
+        long=encoded_argument(name)[2:],
+        action=Append,
+        allow_hyphen_values=true,
+      ),
+    ],
+    positionals=[ignored_arguments()],
+  )
+  // No original token encodes to this sentinel. Appending it gives a terminal
+  // option a value without scanning argv or losing an earlier duplicate value.
+  let normalized = [..argv.map(encoded_argument), "missing-value"]
+  let parsed = command.parse(argv=normalized)
+  match parsed.values.get("value") {
+    Some([value, ..]) if value != "missing-value" =>
+      Some(@utf8.decode(@hex.decode(value[8:])))
+    _ => None
   }
-  default
+}
+
+///|
+fn check_options(argv : Array[String]) -> (String, String, String?) raise {
+  (
+    first_option(argv, "--dir").unwrap_or("../../_site"),
+    first_option(argv, "--config").unwrap_or("../../site/site.json"),
+    first_option(argv, "--base"),
+  )
 }
 
 ///|
 async fn main {
-  let args = @env.args()
-  let dir = option(args, "--dir", "../../_site")
-  let config_path = option(args, "--config", "../../site/site.json")
+  let (dir, config_path, base_override) = check_options(@env.args()) catch {
+    error => {
+      println("error: \{error}")
+      @sys.exit(1)
+      return
+    }
+  }
   let config = @model.SiteConfig::parse(
     "site/site.json",
     @fs.read_file(config_path).text(),
@@ -62,7 +110,7 @@ async fn main {
     }
   }
   // `--base` overrides the base path from `site/site.json`.
-  let base = option(args, "--base", config.base_path)
+  let base = base_override.unwrap_or(config.base_path)
   let all = list_files(dir)
   // The workbench at try/ is checked by its own tests and the browser smoke test.
   let files = all.filter(f => !f.has_prefix("try/"))

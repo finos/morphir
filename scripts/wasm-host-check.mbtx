@@ -6,6 +6,7 @@ import {
   "moonbitlang/async@0.22.4/process",
   "moonbitlang/async@0.22.4/stdio",
   "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/json",
 }
 
@@ -183,20 +184,71 @@ async fn native_probe(checkout : String) -> Json {
 }
 
 ///|
+enum Action {
+  Qualify
+  Setup
+  SelfTest
+} derive(Eq, Debug)
+
+///|
+fn command() -> @argparse.Command {
+  @argparse.Command(
+    "wasm-host-check",
+    about="Qualify component hosts by default, or setup browser dependencies explicitly.",
+    disable_help_flag=true,
+    positionals=[
+      @argparse.PositionArg(
+        "mode",
+        num_args=@argparse.ValueRange(lower=0, upper=1),
+        about="setup",
+      ),
+    ],
+  )
+}
+
+///|
+fn action(argv : Array[String]) -> Action raise {
+  // Modes are literal operands. A fixed delimiter preserves every original
+  // token, so a raw -- cannot become the no-argument qualification action.
+  let matches = command().parse(argv=["--"] + argv) catch {
+    _ => fail("Usage: moonx scripts/wasm-host-check.mbtx [setup]")
+  }
+  match matches.values.get("mode") {
+    None => Qualify
+    Some(["setup"]) => Setup
+    Some(["--self-test"]) => SelfTest
+    _ => fail("Usage: moonx scripts/wasm-host-check.mbtx [setup]")
+  }
+}
+
+///|
+async fn execute(
+  selected : Action,
+  invoke : async (String, Array[String]) -> String,
+  qualify : async () -> Unit,
+) -> Unit {
+  match selected {
+    Setup => {
+      invoke("bun", ["install", "--frozen-lockfile", "--cwd", "tests/wasm-host"])
+      |> ignore
+      invoke("bun", [
+        "run", "--cwd", "tests/wasm-host", "playwright", "install", "chromium",
+      ])
+      |> ignore
+    }
+    Qualify => qualify()
+    SelfTest => self_test()
+  }
+}
+
+///|
 async fn main {
-  let args = @env.args()[1:].to_owned()
-  if args == ["setup"] {
-    checked("bun", ["install", "--frozen-lockfile", "--cwd", "tests/wasm-host"])
-    |> ignore
-    checked("bun", [
-      "run", "--cwd", "tests/wasm-host", "playwright", "install", "chromium",
-    ])
-    |> ignore
-    return
-  }
-  guard args.is_empty() else {
-    fail("Usage: moonx scripts/wasm-host-check.mbtx [setup]")
-  }
+  let selected = action(@env.args()[1:].to_owned())
+  execute(selected, checked, qualify)
+}
+
+///|
+async fn qualify() -> Unit {
   @fs.mkdir(build, recursive=true, allow_exist=true)
   // Remove the completion record first so a failed rerun cannot look successful.
   if @fs.exists(build + "/run.ion") {
@@ -348,4 +400,113 @@ async fn main {
     build +
     "/run.ion",
   )
+}
+
+///|
+async fn self_test() -> Unit {
+  for
+    (argv, expected) in [
+      ([], Qualify),
+      (["setup"], Setup),
+      (["--self-test"], SelfTest),
+    ] {
+    guard action(argv) == expected else { fail("Wrong Wasm-host action") }
+  }
+  for
+    argv in [
+      ["unknown"],
+      ["--"],
+      ["--", "setup"],
+      ["setup", "--"],
+      ["--", "--"],
+      ["--help"],
+      ["-h"],
+      ["help"],
+      ["--help", "unknown"],
+      ["setup", "--help"],
+      [""],
+      ["setup", "extra"],
+      ["--unknown"],
+      ["setup", "--unknown"],
+      ["--self-test", "setup"],
+      ["--self-test", "--self-test"],
+      ["--self-test", "--"],
+      ["--", "--self-test"],
+      ["--self-test", "--help"],
+      ["--self-test=true"],
+      ["--", "--help"],
+    ] {
+    let calls = []
+    let refused = try {
+      execute(
+        action(argv),
+        (program, args) => {
+          calls.push((program, args.copy()))
+          "stub output"
+        },
+        () => calls.push(("qualify", [])),
+      )
+      false
+    } catch {
+      _ => true
+    }
+    guard refused && calls.is_empty() else {
+      fail("Invalid Wasm-host argv was accepted or reached effects")
+    }
+  }
+  let expected = [
+    ("bun", ["install", "--frozen-lockfile", "--cwd", "tests/wasm-host"]),
+    (
+      "bun",
+      ["run", "--cwd", "tests/wasm-host", "playwright", "install", "chromium"],
+    ),
+  ]
+  let calls = []
+  let invoke : async (String, Array[String]) -> String = fn(program, args) {
+    calls.push((program, args.copy()))
+    "stub output"
+  }
+  let qualify : async () -> Unit = fn() { calls.push(("qualify", [])) }
+  execute(action(["setup"]), invoke, qualify)
+  guard calls == expected else { fail("Changed setup command boundaries") }
+  for argv in [[]] {
+    calls.clear()
+    execute(action(argv), invoke, qualify)
+    guard calls == [("qualify", [])] else {
+      fail("Default invocation must select qualification exactly once")
+    }
+  }
+  for stop in 0..<expected.length() {
+    calls.clear()
+    let failed = try {
+      execute(
+        Setup,
+        (program, args) => {
+          calls.push((program, args.copy()))
+          if calls.length() == stop + 1 {
+            fail("Injected checked child failure")
+          }
+          "stub output"
+        },
+        qualify,
+      )
+      false
+    } catch {
+      _ => true
+    }
+    guard failed && calls == expected[:stop + 1].to_owned() else {
+      fail("Setup child failure did not stop execution")
+    }
+  }
+  calls.clear()
+  let failed = try {
+    execute(Qualify, invoke, () => fail("Injected qualification failure"))
+    false
+  } catch {
+    _ => true
+  }
+  guard failed && calls.is_empty() else {
+    fail("Qualification failure was swallowed or ran setup commands")
+  }
+  println("wasm-host-check: parser, default dispatch, setup and failures pass")
 }
