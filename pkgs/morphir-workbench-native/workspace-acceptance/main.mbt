@@ -1,4 +1,49 @@
 ///|
+enum Invocation {
+  Checks
+  Fixture(String)
+  Race(String)
+} derive(Eq)
+
+///|
+fn invocation(arguments : ArrayView[String]) -> Invocation {
+  let command = @argparse.Command(
+    "workspace-acceptance",
+    disable_help_flag=true,
+    disable_version_flag=true,
+    disable_help_subcommand=true,
+    subcommands=["fixture", "race"].map(name => {
+      @argparse.Command(
+        name,
+        disable_help_flag=true,
+        disable_version_flag=true,
+        disable_help_subcommand=true,
+        positionals=[
+          @argparse.PositionArg("path", num_args=@argparse.ValueRange::single()),
+        ],
+      )
+    }),
+  )
+  // Only the first token is command syntax. Preserve all following tokens as
+  // literal path data, including --, without inspecting their contents.
+  let literal : Array[String] = []
+  if !arguments.is_empty() {
+    literal.push(arguments[0])
+    literal.push("--")
+    literal.append(arguments[1:])
+  }
+  let matches = command.parse(argv=literal, env=Map([])) catch {
+    // Every unrecognized invocation has historically run the default checks.
+    _ => return Checks
+  }
+  match matches.subcommand {
+    Some(("fixture", values)) => Fixture(values.values["path"][0])
+    Some(("race", values)) => Race(values.values["path"][0])
+    _ => Checks
+  }
+}
+
+///|
 fn denied(body : () -> Bytes raise) -> Unit raise {
   let rejected = try {
     ignore(body())
@@ -46,8 +91,8 @@ async fn main {
     return
   }
   let args = @env.args()
-  if args.length() == 3 && args[1] == "fixture" {
-    let path = args[2]
+  let selected = invocation(args[1:])
+  if selected is Fixture(path) {
     @fs.mkdir(path, allow_exist=true)
     for child in ["legacy", "rich"] {
       @fs.mkdir(path + "/" + child, allow_exist=true)
@@ -91,8 +136,7 @@ async fn main {
     println("Native UI fixture written")
     return
   }
-  if args.length() == 3 && args[1] == "race" {
-    let base = args[2]
+  if selected is Race(base) {
     for _ in 0..<150 {
       @fs.rename(base + "/root/active", base + "/root/saved")
       @fs.symlink(target=base + "/outside", base + "/root/active")

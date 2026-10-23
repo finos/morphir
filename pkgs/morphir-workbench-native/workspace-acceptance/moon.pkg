@@ -12,4 +12,5 @@ import {
   "moonbitlang/async/process",
   "moonbitlang/core/env",
   "moonbitlang/core/encoding/base64",
+  "moonbitlang/core/argparse",
 }
