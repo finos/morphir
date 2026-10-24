@@ -25,7 +25,9 @@ on:
 jobs:
   native-cli:
     name: Native CLI artifact (${{ inputs.runner }})
-    runs-on: ubuntu-24.04
+    # Cross-build on the current build host; inputs.runner names the qualified
+    # execution target, whose consumers validate the artifact compatibility.
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     steps:
       - name: Checkout code

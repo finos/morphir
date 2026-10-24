@@ -1,0 +1,6 @@
+# GitHub-hosted Ubuntu 26.04 is GA, but actionlint 1.7.12 predates the label.
+# https://github.com/actions/runner-images/issues/14747
+# Extend the exact label list until actionlint recognizes it upstream.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
