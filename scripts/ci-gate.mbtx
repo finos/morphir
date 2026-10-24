@@ -102,34 +102,56 @@ async fn self_test() -> Unit {
       }
     }
   }
-  let focused : Json = {
-    "runner": "ubuntu-24.04",
-    "full": false,
-    "provider": false,
-    "acceptance-lanes": "[]",
+  for runner in ["ubuntu-24.04", "ubuntu-26.04"] {
+    let focused : Json = {
+      "runner": runner,
+      "full": false,
+      "provider": false,
+      "acceptance-lanes": "[]",
+    }
+    guard selected_jobs(Native, focused) ==
+      Json(["native-cli", "mep-process", "native-cli-acceptance"]) else {
+      fail("Wrong focused native requirements for \{runner}")
+    }
+    let full : Json = {
+      "runner": runner,
+      "full": true,
+      "provider": true,
+      "acceptance-lanes": "[\"frontend\"]",
+    }
+    let full_jobs = selected_jobs(Native, full)
+    guard full_jobs is Array(jobs) && jobs.length() == 7 else {
+      fail(
+        "Full native requirements omitted a producer or consumer for \{runner}",
+      )
+    }
+    for selected in jobs {
+      for state in ["success", "failure", "cancelled", "skipped", "missing"] {
+        let statuses : Map[String, Json] = Map([])
+        for job in jobs {
+          guard job is String(name) else { fail("Invalid job name") }
+          if job != selected {
+            statuses.set(name, { "result": "success" })
+          } else if state != "missing" {
+            statuses.set(name, { "result": state })
+          }
+        }
+        guard accepts(Json::object(statuses), full_jobs) == (state == "success") else {
+          fail(
+            "Wrong gate result for \{runner} \{selected.stringify()} \{state}",
+          )
+        }
+      }
+    }
   }
-  guard selected_jobs(Native, focused) ==
-    Json(["native-cli", "mep-process", "native-cli-acceptance"]) else {
-    fail("Wrong focused native requirements")
-  }
-  let full : Json = {
-    "runner": "ubuntu-24.04",
-    "full": true,
-    "provider": true,
-    "acceptance-lanes": "[\"frontend\"]",
-  }
-  let full_jobs = selected_jobs(Native, full)
-  guard full_jobs is Array(jobs) && jobs.length() == 7 else {
-    fail("Full native requirements omitted a producer or consumer")
-  }
-  let statuses : Map[String, Json] = Map([])
-  for job in jobs {
-    guard job is String(name) else { fail("Invalid job name") }
-    statuses.set(name, { "result": "success" })
-  }
-  statuses.set("installed-provider", { "result": "skipped" })
-  guard !accepts(Json::object(statuses), full_jobs) else {
-    fail("A skipped selected provider consumer passed the reusable workflow")
+  for runner in ["ubuntu-latest", "ubuntu-28.04", "windows-latest", ""] {
+    let refused = try {
+      ignore(selected_jobs(Native, { "runner": runner }))
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else { fail("Accepted unqualified native runner \{runner}") }
   }
   guard selected_jobs(Installed, { "workbench": true }) == Json(["workbench"]) else {
     fail("Wrong focused installed requirements")
@@ -724,11 +746,11 @@ fn selected_jobs(mode : GateMode, inputs : Json) -> Json raise {
   let jobs : Array[String] = []
   if mode is Native {
     guard fields.get("runner") is Some(String(runner)) &&
-      ["ubuntu-24.04", "macos-15"].contains(runner) else {
+      ["ubuntu-24.04", "ubuntu-26.04", "macos-15"].contains(runner) else {
       fail("Unqualified native runner")
     }
     jobs.append(["native-cli", "mep-process"])
-    if fields.get("runner") == Some(Json::string("ubuntu-24.04")) {
+    if ["ubuntu-24.04", "ubuntu-26.04"].contains(runner) {
       jobs.push("native-cli-acceptance")
       if fields.get("full") == Some(Json::boolean(true)) {
         jobs.push("native-workspace")

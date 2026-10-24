@@ -52,10 +52,10 @@ jobs:
       runner: ${{ matrix.os }}
 
   native:
-    name: Full native (ubuntu-24.04)
+    name: Full native (ubuntu-26.04)
     uses: ./.github/workflows/ci-native.yml
     with:
-      runner: ubuntu-24.04
+      runner: ubuntu-26.04
       acceptance-lanes: '["compiler","frontend","conformance"]'
       provider: true
       full: true

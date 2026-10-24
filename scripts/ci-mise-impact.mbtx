@@ -910,7 +910,7 @@ enum UnmappedPolicy {
 /// compiler lane runs `moonx scripts/typescript-tooling.mbtx`, not a task),
 /// and every native job needs the `code` check. A step-level `if:` counts as
 /// well: a check is only right when the step that calls the task runs on the
-/// runner of the focused job (`ubuntu-24.04`). `setup:llvm` runs only
+/// runner of the focused job (`ubuntu-26.04`). `setup:llvm` runs only
 /// `if: runner.os == 'macOS'`, and only full qualification uses macOS, so it
 /// is Full.
 let task_table : Array[(String, Effect)] = [

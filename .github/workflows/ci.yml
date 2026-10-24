@@ -252,7 +252,7 @@ jobs:
     if: needs.changes.outputs.code == 'true' && needs.changes.outputs.full != 'true'
     uses: ./.github/workflows/ci-native.yml
     with:
-      runner: ubuntu-24.04
+      runner: ubuntu-26.04
       acceptance-lanes: ${{ needs.changes.outputs.acceptance-lanes }}
       provider: ${{ needs.changes.outputs.provider == 'true' }}
 

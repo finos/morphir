@@ -275,16 +275,25 @@ in `mise run test:ci` and the existing qualification setup matrix. Git's
 pre-push entry point is a thin dispatcher to `scripts/pre-push.mbtx`; hook installation
 also works in linked worktrees and preserves unrelated custom hooks.
 
-Ubuntu 24.04 producers use pinned Zig 0.17.0 for native CLI release artifacts. Focused PR
+Ubuntu 26.04 producers use pinned Zig 0.17.0 for native CLI release artifacts. Focused PR
 checks produce Linux x64; the macOS jobs of full qualification also cross-build macOS arm64
 and execute those exact bytes on macOS 15 in the nightly and release runs.
 Default-C-compiler native workspace release builds remain in full qualification. Workbench
 workers and workspace grants have separate parallel jobs, rather than extending every
 installed CLI lifecycle job.
 
+The focused and full native categories execute on Ubuntu 26.04. Their reusable workflow
+also accepts Ubuntu 24.04, and every Linux consumer uses the requested runner and its
+matching artifact name. The native gate requires the same selected producers and consumers
+on either Linux version. Installed, packaged, headless and toolchain setup checks retain
+their Ubuntu 24.04 coverage. macOS execution remains in nightly and release runs.
+
 Released provider-tool acquisition runs in parallel with native compilation. CI downloads
 the separately packaged service and test-fixture exporter instead of installing Rust or
 compiling Cargo targets.
+The provider release's pinned Ubuntu 24.04 label records its upstream qualification;
+it is not the consumer's runner label. Its authenticated release identity stays unchanged
+when the native category executes those Linux x64 binaries on Ubuntu 26.04.
 
 Each executable artifact has a binary Ion catalog. Consumers verify the repository,
 commit, workflow run, target platform, architecture and executable SHA-256. Cross-built
