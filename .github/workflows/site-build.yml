@@ -23,7 +23,7 @@ jobs:
       SITE_MAIN: '1'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up cached MoonBit
         uses: ./.github/actions/setup-moonbit

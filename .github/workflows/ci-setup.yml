@@ -16,7 +16,7 @@ jobs:
     name: Toolchain setup (${{ inputs.runner }})
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Exercise a fresh local-style install without the CI cache repair step.
       - uses: jdx/mise-action@v5
         with:

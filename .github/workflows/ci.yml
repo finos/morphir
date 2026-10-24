@@ -44,7 +44,7 @@ jobs:
       elm-scheme: ${{ steps.detect.outputs.elm-scheme }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -92,7 +92,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up cached MoonBit for packaged planner construction
         uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for package construction
@@ -140,7 +140,7 @@ jobs:
     if: needs.changes.outputs.typescript == 'true'
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-typescript
         with:
           build-runtimes: 'false'
@@ -162,7 +162,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up cached MoonBit and YAML lint
         uses: ./.github/actions/setup-moonbit
@@ -178,7 +178,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up cached MoonBit
         uses: ./.github/actions/setup-moonbit
@@ -197,7 +197,7 @@ jobs:
         target: [wasm, wasm-gc, js]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up cached MoonBit
         uses: ./.github/actions/setup-moonbit
@@ -293,7 +293,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up cached MoonBit
         uses: ./.github/actions/setup-moonbit
@@ -365,7 +365,7 @@ jobs:
         target: [wasm, wasm-gc, js, native]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up cached MoonBit
         uses: ./.github/actions/setup-moonbit
@@ -406,7 +406,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up cached MoonBit
         uses: ./.github/actions/setup-moonbit
@@ -447,7 +447,7 @@ jobs:
       - full-qualification
       - test
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for pinned gate dependencies
         run: moon update

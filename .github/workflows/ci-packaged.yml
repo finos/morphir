@@ -24,7 +24,7 @@ jobs:
       ANGLE_DEFAULT_PLATFORM: swiftshader
       _CL_: /utf-8
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare the Windows native compiler
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - name: Update pinned script dependencies
         run: moon update

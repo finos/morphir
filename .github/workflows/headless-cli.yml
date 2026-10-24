@@ -59,7 +59,7 @@ jobs:
       MORPHIR_HEADLESS_ONLY: '1'
       MORPHIR_MCK_REQUIRED: '1'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - uses: actions/setup-node@v7
         with:
@@ -162,7 +162,7 @@ jobs:
         run: moonx scripts/mck-release.mbtx apps/morphir/fixtures/mck/release.json .dev/mck-release
       - name: Checkout exact authenticated host and installed producer sources
         if: runner.os != 'Windows'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: finos/morphir
           # Explicit integration candidate from finos/morphir#1089.

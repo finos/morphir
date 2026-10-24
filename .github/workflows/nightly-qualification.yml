@@ -49,7 +49,7 @@ jobs:
       evidence: ${{ steps.mode.outputs.evidence }}
       fingerprint: ${{ steps.mode.outputs.fingerprint }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for the evidence script
         run: moon update
@@ -90,7 +90,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for the evidence script
         run: moon update
@@ -150,7 +150,7 @@ jobs:
       # The attempt makes a re-run link to its own jobs, not to the latest attempt.
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for the report script
         run: moon update

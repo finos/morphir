@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -71,7 +71,7 @@ jobs:
     if: inputs.full && inputs.runner == 'ubuntu-24.04'
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - run: moon update
       # Preserve the full workspace/default-compiler release check off the artifact path.
@@ -82,7 +82,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - run: moon update
       - name: Qualify the native MoonBit MEP backend process
@@ -105,7 +105,7 @@ jobs:
       MORPHIR_CI_NATIVE: ${{ github.workspace }}/.dev/ci/native
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -142,7 +142,7 @@ jobs:
         lane: ${{ fromJSON(inputs.acceptance-lanes) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -199,7 +199,7 @@ jobs:
       MORPHIR_CI_PROVIDER_TOOLS: .dev/ci/provider-tools
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -241,7 +241,7 @@ jobs:
       MORPHIR_PROVIDER_RECEIPTS: .dev/installed-provider-ci
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -280,7 +280,7 @@ jobs:
     needs: [native-cli, native-workspace, mep-process, native-cli-acceptance, native-acceptance, provider-tools, installed-provider]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for pinned gate dependencies
         run: moon update

@@ -34,7 +34,7 @@ jobs:
       MORPHIR_INSTALLED_SCOPE: ${{ matrix.scope }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -85,7 +85,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
@@ -135,7 +135,7 @@ jobs:
       matrix:
         kind: [workers, workspaces]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '24.22.0'
@@ -180,7 +180,7 @@ jobs:
     needs: [lifecycle, telemetry, workbench]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for pinned gate dependencies
         run: moon update
