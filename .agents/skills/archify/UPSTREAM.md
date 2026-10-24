@@ -6,7 +6,9 @@ Vendored from [tt-a1i/archify](https://github.com/tt-a1i/archify/tree/25cf37080f
 - Revision: `25cf37080fc8b1dbe758a4efc3935b55f3327083`
 - Path: `archify`
 - Package version: `3.2.0`
-- All 203 upstream package files are unmodified. This provenance file is the only local addition.
+- The 203 upstream package files form the vendored baseline. Local dependency refreshes
+  update the package manifest, lockfile and generated brand marks; this provenance file
+  records that distinction.
 - License: MIT, retained in `LICENSE`. Bundled asset notices and licenses are retained in
   `THIRD_PARTY_NOTICES.md` and their original package locations.
 
