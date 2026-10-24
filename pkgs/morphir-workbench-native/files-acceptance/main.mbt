@@ -22,12 +22,20 @@ fn fixture_folder(arguments : ArrayView[String]) -> String raise {
 ///|
 /// Test host only: the process owner supplies the fixed picker result. Renderer
 /// requests still contain only protocol frames, never a native pathname.
-async fn main {
-  let folder = fixture_folder(@env.args()[1:]) catch {
-    _ => abort("Usage: files-acceptance <fixture-folder>")
+async fn run(arguments : ArrayView[String], structured : Bool) -> Unit {
+  let folder = fixture_folder(arguments) catch {
+    error =>
+      if structured {
+        raise error
+      } else {
+        abort("Usage: files-acceptance <fixture-folder>")
+      }
   }
   let owner = @bridge.FileOwner::new(enabled=true)
   defer owner.close()
+  if structured {
+    event("ready", 1)
+  }
   let pending : Array[Byte] = []
   while @stdio.stdin.read_some(max_len=65536) is Some(chunk) {
     for byte in chunk {
@@ -45,12 +53,39 @@ async fn main {
       } else {
         pending.push(byte)
         if pending.length() > 1048576 {
-          abort("File frame exceeds 1 MiB")
+          if structured {
+            raise PresentationError("File frame exceeds 1 MiB")
+          } else {
+            abort("File frame exceeds 1 MiB")
+          }
         }
       }
     }
   }
   if !pending.is_empty() {
-    abort("Incomplete file frame")
+    if structured {
+      raise PresentationError("Incomplete file frame")
+    } else {
+      abort("Incomplete file frame")
+    }
+  }
+}
+
+///|
+async fn main {
+  match presentation(@env.args()[1:]) {
+    JsonHelp => json_help()
+    Legacy(raw) => run(raw, false)
+    Structured(raw) => {
+      event("startup", 0)
+      run(raw, true) catch {
+        error => {
+          event("diagnostic", 2, error=Some(error), exit_code=1)
+          event("terminal", 3, exit_code=1)
+          @sys.exit(1)
+        }
+      }
+      event("terminal", 2)
+    }
   }
 }

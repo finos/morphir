@@ -3,6 +3,9 @@
 /// Playwright test owns temporary workspace/home fixtures and host cleanup.
 /// Run: moonx scripts/workbench-live-host.mbtx --host-bin /path/to/morphir
 import {
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
   "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.1",
   "moonbitlang/async@0.22.1/process",
@@ -10,29 +13,197 @@ import {
 }
 
 ///|
-async fn main {
+async fn execute() -> Unit {
   let command = @argparse.Command(
     "workbench-live-host",
     about="Test the Workbench browser against an existing Rust Morphir UI binary",
+    disable_help_flag=json_output.val,
+    disable_help_subcommand=json_output.val,
     options=[
       @argparse.OptionArg("host-bin", required=true),
       @argparse.OptionArg("desktop-bin"),
     ],
     flags=[@argparse.FlagArg("executions")],
   )
-  let matches = command.parse()
-  guard matches.values.get("host-bin") is Some([binary]) else { @sys.exit(2) }
+  let matches = if json_output.val {
+    command.parse(argv=arguments()[1:])
+  } else {
+    command.parse()
+  }
+  guard matches.values.get("host-bin") is Some([binary]) else {
+    command_exit(2)
+  }
   let environment = { "MORPHIR_WORKBENCH_LIVE_HOST_BIN": binary }
+  if json_output.val {
+    details["hostBin"] = Json(binary)
+    details["desktopBin"] = match matches.values.get("desktop-bin") {
+      Some([desktop]) => Json(desktop)
+      _ => Json::null()
+    }
+    details["executions"] = Json(
+      matches.flags.get("executions").unwrap_or(false),
+    )
+  }
   if matches.flags.get("executions").unwrap_or(false) {
     environment["MORPHIR_WORKBENCH_LIVE_EXECUTIONS"] = "1"
   }
   if matches.values.get("desktop-bin") is Some([desktop]) {
     environment["MORPHIR_WORKBENCH_DESKTOP_BIN"] = desktop
   }
-  let status = @process.run(
+  let status = run_child(
     "node",
     ["apps/morphir-workbench/scripts/browser-test.ts"],
     extra_env=environment,
   )
-  @sys.exit(if status < 0 { 1 } else { status })
+  command_exit(if status < 0 { 1 } else { status })
+}
+
+///|
+// JSON presentation is selected only at the owned root. Default parsing keeps
+// its built-in help and value syntax.
+let json_output : Ref[Bool] = Ref(false)
+
+///|
+let checks : Array[Json] = []
+
+///|
+let reports : Array[Json] = []
+
+///|
+let details : Map[String, Json] = Map([])
+
+///|
+suberror CommandExit {
+  CommandExit(Int32)
+}
+
+///|
+fn command_exit(code : Int32) -> Unit raise {
+  if json_output.val {
+    raise CommandExit(code)
+  }
+  @sys.exit(code)
+}
+
+///|
+async fn run_child(
+  program : String,
+  args : Array[String],
+  extra_env~ : Map[String, String] = {},
+  cwd? : StringView,
+) -> Int32 {
+  let code = if json_output.val {
+    @process.run(
+      program,
+      args,
+      extra_env~,
+      cwd?,
+      stdout=@stdio.stderr,
+      stderr=@stdio.stderr,
+    )
+  } else {
+    @process.run(program, args, extra_env~, cwd?)
+  }
+  if json_output.val {
+    checks.push({ "program": program, "args": Json(args), "exitCode": code })
+  }
+  code
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "workbench-live-host --json",
+    about="Opt-in morphir/command-result 0.1.0: one compact JSON value plus LF on stdout; live child output and progress on stderr. Success result contains completed checks and report metadata. Failures contain error.code/message and the mapped exitCode, without result. Expected refusals exit 1; Positive child exit codes propagate; negative child status maps to 1. Default abort presentation remains unchanged. --help has no effects. Host and desktop options retain their declared value syntax; equals forms represent flag-shaped values. No self-test operation is defined.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[
+      @argparse.FlagArg("help", short='h'),
+      @argparse.FlagArg("executions"),
+    ],
+    options=[
+      @argparse.OptionArg("host-bin"),
+      @argparse.OptionArg("desktop-bin"),
+    ],
+  )
+}
+
+///|
+async fn emit_success(result : Json) -> Unit {
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.live.host",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+}
+
+///|
+async fn emit_failure(code : Int32, kind : String, message : String) -> Unit {
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.live.host",
+    "state": "failed",
+    "exitCode": code,
+    "error": { "code": kind, "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(code)
+}
+
+///|
+#cfg(target="js")
+fn arguments() -> Array[String] {
+  @env.args()[2:].to_owned()
+}
+
+///|
+#cfg(not(target="js"))
+fn arguments() -> Array[String] {
+  @env.args()[1:].to_owned()
+}
+
+///|
+async fn main {
+  let argv = arguments()
+  guard argv is ["--json", .. rest] else {
+    execute()
+    return
+  }
+  json_output.val = true
+  let command = json_command()
+  let controls = rest.to_owned()
+  let matches = command.parse(argv=controls) catch {
+    error => {
+      emit_failure(1, "syntax", error.to_string())
+      return
+    }
+  }
+  if matches.flags.get("help").unwrap_or(false) {
+    emit_success({ "help": command.render_help() })
+    return
+  }
+  execute() catch {
+    CommandExit(0) => ()
+    CommandExit(code) => {
+      let last = checks.last().unwrap_or(Json::null())
+      let message = "Qualification stopped with mapped exit code \{code}. Last completed check: " +
+        last.stringify()
+      emit_failure(code, "qualification-failed", message)
+      return
+    }
+    error => {
+      emit_failure(1, "command-error", error.to_string())
+      return
+    }
+  }
+  details["checks"] = Json(checks)
+  details["reports"] = Json(reports)
+  emit_success(Json(details))
 }

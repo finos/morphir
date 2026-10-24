@@ -1,5 +1,5 @@
 ///|
-async fn main {
+async fn serve(events : Bool) -> Unit {
   let pending : Array[Byte] = []
   // Bound input before parsing. The MCK transport also bounds its output/input.
   while @stdio.stdin.read_some(max_len=65536) is Some(chunk) {
@@ -12,12 +12,68 @@ async fn main {
       } else {
         pending.push(byte)
         if pending.length() > 8389632 {
-          abort("workbench: NDJSON line exceeds the MCK framing budget")
+          if events {
+            raise PresentationFailure::Message(
+              "workbench: NDJSON line exceeds the MCK framing budget",
+            )
+          } else {
+            abort("workbench: NDJSON line exceeds the MCK framing budget")
+          }
         }
       }
     }
   }
   if !pending.is_empty() {
-    abort("workbench: incomplete NDJSON line")
+    if events {
+      raise PresentationFailure::Message("workbench: incomplete NDJSON line")
+    } else {
+      abort("workbench: incomplete NDJSON line")
+    }
+  }
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  let mode = presentation_mode(args[1:]) catch {
+    error => {
+      presentation_write(
+        presentation_event(1, "failure", {
+          "error": {
+            "code": "argument_error",
+            "message": Json(error.to_string()),
+          },
+          "exitCode": 2,
+        }),
+      )
+      @sys.exit(2)
+      return
+    }
+  }
+  match mode {
+    Human => serve(false)
+    Help(text) => presentation_write(presentation_help(text))
+    Events => {
+      presentation_write(presentation_event(1, "startup", {}))
+      presentation_write(presentation_event(2, "ready", {}))
+      try {
+        serve(true)
+        presentation_write(presentation_event(3, "exit", { "exitCode": 0 }))
+      } catch {
+        error => {
+          presentation_write(
+            presentation_event(3, "failure", {
+              "error": {
+                "code": "transport_error",
+                "message": Json(presentation_failure_message(error)),
+              },
+              "exitCode": 1,
+            }),
+          )
+          presentation_write(presentation_event(4, "exit", { "exitCode": 1 }))
+          @sys.exit(1)
+        }
+      }
+    }
   }
 }

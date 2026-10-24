@@ -46,7 +46,7 @@ test "generation preserves dependent defaults, global main and ignored tokens" {
 ///|
 test "generation matches the original helper over adversarial four-token products" {
   let tokens = [
-    "--root", "--out", "--main", "--", "--help", "-h", "", "λ😀", "--out=x",
+    "--root", "--out", "--main", "--", "--help", "-h", "--json", "", "λ😀", "--out=x",
   ]
   for a in tokens {
     assert_old_options([a])

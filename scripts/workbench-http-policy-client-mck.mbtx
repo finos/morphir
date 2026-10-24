@@ -1,6 +1,8 @@
 ///|
 /// Explicit parent-owned HTTP checking-policy client scenarios through the one shared Rust MCK.
 import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.4",
   "moonbitlang/async@0.22.4/process",
   "moonbitlang/async@0.22.4/fs",
@@ -15,15 +17,9 @@ async fn checked(
   args : Array[String],
   environment~ : Map[String, String] = {},
 ) -> Unit {
-  let code = @process.run(
-    program,
-    args,
-    extra_env=environment,
-    stdout=@stdio.stdout,
-    stderr=@stdio.stderr,
-  )
+  let code = run_child(program, args, extra_env=environment)
   if code != 0 {
-    @sys.exit(1)
+    command_exit(1)
   }
 }
 
@@ -36,19 +32,26 @@ fn field(value : Json, name : String) -> Json {
 }
 
 ///|
-async fn main {
+async fn execute() -> Unit {
   guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) &&
     @env.get_env_var("MORPHIR_WORKBENCH_KIT") is Some(kit) else {
     @stdio.stderr.write(
       "Set MORPHIR_MCK_BIN and MORPHIR_WORKBENCH_KIT to the explicit parent runner and draft.24 kit.\n",
     )
-    @sys.exit(1)
+    command_exit(1)
   }
   let corpus = @fs.read_file(kit + "/cases.json").json()
+  if json_output.val {
+    details["kit"] = Json(kit)
+    details["formatVersion"] = field(corpus, "formatVersion")
+    if field(corpus, "cases") is Array(rows) {
+      details["caseCount"] = Json(rows.length())
+    }
+  }
   guard field(corpus, "formatVersion") == Json::string("0.1.0-draft.24") &&
     field(corpus, "cases") is Array(cases) &&
     !cases.is_empty() else {
-    @sys.exit(1)
+    command_exit(1)
   }
   let evidence = @env.get_env_var("MORPHIR_WORKBENCH_EVIDENCE").unwrap_or(
     ".dev/http-policy-client-mck/reports",
@@ -107,15 +110,188 @@ async fn main {
       checked(runner, [
         "--no-banner", "mck", "workbench", "check", "--kit", kit, "--report", report,
       ])
-      let result = @fs.read_file(report).json()
+      let result = read_report(report)
       guard field(result, "qualified") == Json::boolean(true) &&
         field(result, "records") is Array(records) &&
         records.length() == cases.length() else {
-        @sys.exit(1)
+        command_exit(1)
       }
     }
   }
-  @stdio.stdout.write(
+  progress().write(
     "HTTP client scenarios pass Node and Chromium with debug/release cores; all reports independently checked.\n",
   )
+}
+
+///|
+// Presentation is selected only at the owned root. Legacy ignored tails are
+// never scanned or rebuilt from argparse's variadic matches.
+let json_output : Ref[Bool] = Ref(false)
+
+///|
+let checks : Array[Json] = []
+
+///|
+let reports : Array[Json] = []
+
+///|
+let details : Map[String, Json] = Map([])
+
+///|
+suberror CommandExit {
+  CommandExit(Int32)
+}
+
+///|
+fn command_exit(code : Int32) -> Unit raise {
+  if json_output.val {
+    raise CommandExit(code)
+  }
+  @sys.exit(code)
+}
+
+///|
+fn progress() -> @stdio.Output {
+  if json_output.val {
+    @stdio.stderr
+  } else {
+    @stdio.stdout
+  }
+}
+
+///|
+async fn run_child(
+  program : String,
+  args : Array[String],
+  extra_env~ : Map[String, String] = {},
+  cwd? : StringView,
+) -> Int32 {
+  let code = if json_output.val {
+    @process.run(
+      program,
+      args,
+      extra_env~,
+      cwd?,
+      stdout=@stdio.stderr,
+      stderr=@stdio.stderr,
+    )
+  } else {
+    @process.run(program, args, extra_env~, cwd?)
+  }
+  if json_output.val {
+    checks.push({ "program": program, "args": Json(args), "exitCode": code })
+  }
+  code
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "workbench-http-policy-client-mck --json",
+    about="Opt-in morphir/command-result 0.1.0: one compact JSON value plus LF on stdout; live child output and progress on stderr. Success result contains completed checks and report metadata. Failures contain error.code/message and the mapped exitCode, without result. Expected refusals exit 1; Every checked child failure maps to 1. Default abort presentation remains unchanged. --help has no effects. Use --json -- RAW to ignore an exact legacy tail, or --forward-argv -- RAW for one-level legacy presentation. No self-test operation is defined.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("help", short='h')],
+  )
+}
+
+///|
+async fn emit_success(result : Json) -> Unit {
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.http.policy.client.mck",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+}
+
+///|
+async fn emit_failure(code : Int32, kind : String, message : String) -> Unit {
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.http.policy.client.mck",
+    "state": "failed",
+    "exitCode": code,
+    "error": { "code": kind, "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(code)
+}
+
+///|
+#cfg(target="js")
+fn arguments() -> Array[String] {
+  @env.args()[2:].to_owned()
+}
+
+///|
+#cfg(not(target="js"))
+fn arguments() -> Array[String] {
+  @env.args()[1:].to_owned()
+}
+
+///|
+async fn main {
+  let argv = arguments()
+  if argv is ["--forward-argv", "--", ..] {
+    execute()
+    return
+  }
+  guard argv is ["--json", .. rest] else {
+    execute()
+    return
+  }
+  json_output.val = true
+  let command = json_command()
+  // The exact delimiter begins an ignored legacy segment. Do not inspect it.
+  let controls = if rest is ["--", ..] { [] } else { rest.to_owned() }
+  let matches = command.parse(argv=controls) catch {
+    error => {
+      emit_failure(1, "syntax", error.to_string())
+      return
+    }
+  }
+  if matches.flags.get("help").unwrap_or(false) {
+    emit_success({ "help": command.render_help() })
+    return
+  }
+  execute() catch {
+    CommandExit(0) => ()
+    CommandExit(code) => {
+      let last = checks.last().unwrap_or(Json::null())
+      let message = "Qualification stopped with mapped exit code \{code}. Last completed check: " +
+        last.stringify()
+      emit_failure(code, "qualification-failed", message)
+      return
+    }
+    error => {
+      emit_failure(1, "command-error", error.to_string())
+      return
+    }
+  }
+  details["checks"] = Json(checks)
+  details["reports"] = Json(reports)
+  emit_success(Json(details))
+}
+
+///|
+async fn read_report(path : String) -> Json {
+  let value = @fs.read_file(path).json()
+  if json_output.val {
+    reports.push({
+      "path": path,
+      "qualified": field(value, "qualified"),
+      "recordCount": match field(value, "records") {
+        Array(rows) => Json(rows.length())
+        _ => Json::null()
+      },
+    })
+  }
+  value
 }

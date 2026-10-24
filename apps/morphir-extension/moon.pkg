@@ -1,6 +1,7 @@
 pkgtype(kind: "executable")
 
 import {
+  "moonbitlang/core/argparse",
   "moonbitlang/async",
   "finos/morphir-moonbit/mep",
   "finos/morphir-extension/frontend",

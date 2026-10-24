@@ -48,7 +48,10 @@ fn string_field(
 }
 
 ///|
-fn bootstrap(bindings : String, out : String) -> String raise Error {
+fn bootstrap(
+  bindings : String,
+  out : String,
+) -> (String, Int32, Int32) raise Error {
   let text = @fs.read_file_to_string(bindings)
   let root = @json.parse(text)
   guard root is Object(fields) && fields.get("values") is Some(Array(values)) else {
@@ -121,5 +124,9 @@ fn bootstrap(bindings : String, out : String) -> String raise Error {
   // The result must read back.
   ignore(@spec.read_package(printed))
   @fs.write_string_to_file(out, printed + "\n")
-  "wrote \{count} values in \{modules.length()} modules to \{out}"
+  (
+    "wrote \{count} values in \{modules.length()} modules to \{out}",
+    count,
+    modules.length(),
+  )
 }

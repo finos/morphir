@@ -85,13 +85,13 @@ fn accepted(value : Json) -> Json raise {
 }
 
 ///|
-async fn main {
+async fn run(arguments : ArrayView[String], structured : Bool) -> Unit {
   if !@workspace.supported() {
     println("{\"nativeWorkspace\":false,\"unsupportedPlatform\":true}")
     return
   }
   let args = @env.args()
-  let selected = invocation(args[1:])
+  let selected = invocation(arguments)
   if selected is Fixture(path) {
     @fs.mkdir(path, allow_exist=true)
     for child in ["legacy", "rich"] {
@@ -133,7 +133,18 @@ async fn main {
     }
     @fs.write_file(path + "/rich/morphir-ir.ionb", bytes)
     @fs.write_file(path + "/rich/morphir-ir.10n", bytes)
-    println("Native UI fixture written")
+    if structured {
+      println(
+        completed({
+          "operation": "fixture",
+          "path": path,
+          "projects": ["legacy", "rich"],
+          "filesWritten": 7,
+        }).stringify(),
+      )
+    } else {
+      println("Native UI fixture written")
+    }
     return
   }
   if selected is Race(base) {
@@ -144,6 +155,11 @@ async fn main {
       @fs.remove(base + "/root/active")
       @fs.rename(base + "/root/saved", base + "/root/active")
       @async.sleep(1)
+    }
+    if structured {
+      println(
+        completed({ "operation": "race", "path": base, "iterations": 150 }).stringify(),
+      )
     }
     return
   }
@@ -171,12 +187,23 @@ async fn main {
   denied(fn() raise { root.read("link") })
   @fs.remove(base + "/root/link")
   assert_eq(
-    @process.run("ln", [base + "/outside/value", base + "/root/hardlink"]),
+    @process.run(
+      "ln",
+      [base + "/outside/value", base + "/root/hardlink"],
+      stdout=if structured { @stdio.stderr } else { @stdio.stdout },
+    ),
     0,
   )
   denied(fn() raise { root.read("hardlink") })
   @fs.remove(base + "/root/hardlink")
-  assert_eq(@process.run("mkfifo", [base + "/root/pipe"]), 0)
+  assert_eq(
+    @process.run(
+      "mkfifo",
+      [base + "/root/pipe"],
+      stdout=if structured { @stdio.stderr } else { @stdio.stdout },
+    ),
+    0,
+  )
   denied(fn() raise { root.read("pipe") })
   @fs.remove(base + "/root/pipe")
   denied(fn() raise { root.read("active/value", limit=3) })
@@ -463,7 +490,13 @@ async fn main {
     let mut done : Int32? = None
     let mut writer_uncertain = false
     group.spawn_bg(async fn() {
-      done = Some(@process.run(args[0], ["race", base]))
+      done = Some(
+        @process.run(
+          args[0],
+          ["race", base],
+          stdout=if structured { @stdio.stderr } else { @stdio.stdout },
+        ),
+      )
     })
     for _ in 0..<350 {
       if !writer_uncertain {
@@ -502,4 +535,19 @@ async fn main {
   println(
     "{\"nativeWorkspace\":true,\"containment\":true,\"concurrentReplacement\":true,\"concurrentWritesConfined\":true,\"originalBytes\":true,\"revocation\":true,\"pickerCancellation\":true}",
   )
+}
+
+///|
+async fn main {
+  match presentation(@env.args()[1:]) {
+    JsonHelp => json_help()
+    Legacy(raw) => run(raw, false)
+    Structured(raw) =>
+      run(raw, true) catch {
+        error => {
+          @stdio.stdout.write(failed(error).stringify() + "\n")
+          @sys.exit(1)
+        }
+      }
+  }
 }

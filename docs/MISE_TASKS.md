@@ -241,6 +241,26 @@ Shared inputs and combinations union their dependencies. Renames count both the 
 
 CI policy, shared setup, workspace and mise toolchain changes still exercise full qualification. The known site workflows exercise the site build without native qualification. Further workflow narrowing requires a tested mapping. Uncached Linux x64/ARM64 and macOS toolchain installs, installed OS matrices and exact-candidate release qualification remain in `qualification.yml`, which has no trigger of its own. Pull request, merge-queue and main runs call it with the macOS jobs skipped. The scheduled macOS runs are in `nightly-qualification.yml`. It skips the macOS jobs when trusted evidence from a passing nightly run on main in the last 7 days has the same input fingerprint (`moonx scripts/ci-evidence.mbtx fingerprint`); `CONTRIBUTING_DEV.md` has the trust rules.
 
+### Evidence command output
+
+Use `--json` with `scripts/ci-evidence.mbtx` when a program needs its result.
+The existing `fingerprint`, `lookup` and `mode` JSON objects keep their schemas
+and platform framing. JSON help performs no lookup or file write:
+
+```shell
+moonx scripts/ci-evidence.mbtx record --help --json
+```
+
+JSON `record`, help and self-test results use `morphir/command-result`, version
+`0.1.0`, with `command`, `state`, `exitCode`, `diagnostics` and either `result`
+or `error`. A successful record result names `output`, `artifact` and the exact
+`evidence` object written to disk. Success is emitted after the write finishes.
+These new results are compact UTF-8 JSON followed by one LF on stdout. Notices
+and self-test notes use stderr. Expected JSON refusals exit normally with status
+1; default text invocations retain their existing runtime failure behavior.
+The JSON flag controls presentation and does not suppress the operation's writes
+or GitHub reads. Use help to inspect the command before running it.
+
 ### CI measurements and rollback
 
 Run `mise run ci:measure -- RUN_ID --logs > .dev/ci-measurement.json` on a completed run. It uses authenticated `gh`, paginates all jobs in the exact run attempt, and records per-job queue seconds, execution seconds, per-OS runner occupancy, individual step costs and cache log observations. Missing logs mean unknown cache state. GitHub retains successful jobs on retries and resets their creation timestamps. The command marks those results as retained, leaves their original queue delay unknown, and excludes them from the current attempt's execution totals. Effective totals include retained results for workload comparisons. Save each attempt before retrying and sum current-attempt execution totals to measure cumulative runner cost. These seconds are unweighted and are not billed minutes. Queue sums overlap, and run elapsed time includes dependency waits. The API does not expose a complete dependency DAG; use the final jobs and workflow dependencies to inspect the critical path.

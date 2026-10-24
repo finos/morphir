@@ -101,6 +101,54 @@ jobs:
           path: .dev/guidance-native-json/
           include-hidden-files: true
           if-no-files-found: warn
+      - name: Build Windows native protocol fault owner
+        if: runner.os == 'Windows'
+        run: moon build --target native --release pkgs/morphir-host/acceptance/protocol-fault
+      - name: Build Windows JavaScript protocol fault owner
+        if: runner.os == 'Windows'
+        run: moon build --frozen --target js pkgs/morphir-host/acceptance/protocol-fault
+      - name: Check Windows native protocol fault JSON presentation
+        if: runner.os == 'Windows'
+        env:
+          NATIVE_OWNER_JSON_RECEIPT: .dev/guidance-native-json/J.json
+        run: node apps/morphir/scripts/test-native-owner-json-presentation.ts --protocol-fault-only
+      - name: Retain Windows native protocol fault JSON receipt
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-protocol-fault-json-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .dev/guidance-native-json/J.json
+          include-hidden-files: true
+          if-no-files-found: warn
+      - name: Build Windows JavaScript protocol JSON hosts
+        if: runner.os == 'Windows'
+        run: >-
+          moon build --target js
+          apps/morphir-workbench/mck/js
+          apps/morphir-workbench/mck/capabilities/js
+          apps/morphir-workbench/mck/capability-executions/js
+          apps/morphir-workbench/mck/selected/js
+          apps/morphir-workbench/mck/workspace-files/js
+      - name: Check Windows protocol JSON presentation
+        if: runner.os == 'Windows'
+        env:
+          PROTOCOL_JSON_NATIVE: '0'
+          PROTOCOL_JSON_BUILD_DIR: _build
+        run: node apps/morphir/scripts/test-protocol-json-presentation.ts
+      - name: Qualify Windows typing native JSON
+        if: runner.os == 'Windows'
+        run: node --test pkgs/morphir-typing-tools/scripts/json-cli.test.mts
+        env:
+          TYPING_JSON_NATIVE_ARTIFACT_DIR: ''
+          TYPING_JSON_RECEIPT: .dev/guidance-native-json/H.json
+      - name: Retain Windows typing native JSON receipt
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: typing-native-json-H-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .dev/guidance-native-json/H.json
+          include-hidden-files: true
+          if-no-files-found: warn
       - name: Qualify native log snapshots and rotation
         run: moon test pkgs/morphir-host/platform/flush_test.mbt --target native --target-dir .dev/headless-native-flush
       - name: Install pinned generation compilers

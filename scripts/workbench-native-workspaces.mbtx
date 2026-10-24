@@ -1,6 +1,9 @@
 ///|
 /// Qualify native file grants against actual files and adversarial mutation.
 import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/env",
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.4",
   "moonbitlang/async@0.22.4/fs",
   "moonbitlang/async@0.22.4/process",
@@ -9,30 +12,20 @@ import {
 }
 
 ///|
-async fn main {
-  let tested = @process.run(
-    "moon",
-    [
-      "test", "--target", "native", "-p", "finos/morphir-workbench-native/workspace",
-      "finos/morphir-workbench-native/bridge",
-    ],
-    stdout=@stdio.stdout,
-    stderr=@stdio.stderr,
-  )
+async fn execute() -> Unit {
+  let tested = run_child("moon", [
+    "test", "--target", "native", "-p", "finos/morphir-workbench-native/workspace",
+    "finos/morphir-workbench-native/bridge",
+  ])
   if tested != 0 {
-    @sys.exit(if tested < 0 { 1 } else { tested })
+    command_exit(if tested < 0 { 1 } else { tested })
   }
-  let built = @process.run(
-    "moon",
-    [
-      "build", "pkgs/morphir-workbench-native/workspace-acceptance", "--target",
-      "native", "--release",
-    ],
-    stdout=@stdio.stdout,
-    stderr=@stdio.stderr,
-  )
+  let built = run_child("moon", [
+    "build", "pkgs/morphir-workbench-native/workspace-acceptance", "--target", "native",
+    "--release",
+  ])
   if built != 0 {
-    @sys.exit(if built < 0 { 1 } else { built })
+    command_exit(if built < 0 { 1 } else { built })
   }
   let binary = @fs.realpath(
     "_build/native/release/build/finos/morphir-workbench-native/workspace-acceptance/workspace-acceptance.exe",
@@ -42,13 +35,155 @@ async fn main {
   let code = {
     let root = @fs.tmpdir(prefix="morphir-native-workspace-check-")
     defer @fs.rmdir(root, recursive=true)
+    run_child(binary, [], cwd=root)
+  }
+  command_exit(if code < 0 { 1 } else { code })
+}
+
+///|
+// Presentation is selected only at the owned root. Legacy ignored tails are
+// never scanned or rebuilt from argparse's variadic matches.
+let json_output : Ref[Bool] = Ref(false)
+
+///|
+let checks : Array[Json] = []
+
+///|
+let reports : Array[Json] = []
+
+///|
+let details : Map[String, Json] = Map([])
+
+///|
+suberror CommandExit {
+  CommandExit(Int32)
+}
+
+///|
+fn command_exit(code : Int32) -> Unit raise {
+  if json_output.val {
+    raise CommandExit(code)
+  }
+  @sys.exit(code)
+}
+
+///|
+async fn run_child(
+  program : String,
+  args : Array[String],
+  extra_env~ : Map[String, String] = {},
+  cwd? : StringView,
+) -> Int32 {
+  let code = if json_output.val {
     @process.run(
-      binary,
-      [],
-      cwd=root,
-      stdout=@stdio.stdout,
+      program,
+      args,
+      extra_env~,
+      cwd?,
+      stdout=@stdio.stderr,
       stderr=@stdio.stderr,
     )
+  } else {
+    @process.run(program, args, extra_env~, cwd?)
   }
-  @sys.exit(if code < 0 { 1 } else { code })
+  if json_output.val {
+    checks.push({ "program": program, "args": Json(args), "exitCode": code })
+  }
+  code
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "workbench-native-workspaces --json",
+    about="Opt-in morphir/command-result 0.1.0: one compact JSON value plus LF on stdout; live child output and progress on stderr. Success result contains completed checks and report metadata. Failures contain error.code/message and the mapped exitCode, without result. Expected refusals exit 1; Positive child exit codes propagate; negative child status maps to 1. Default abort presentation remains unchanged. --help has no effects. Use --json -- RAW to ignore an exact legacy tail, or --forward-argv -- RAW for one-level legacy presentation. No self-test operation is defined.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("help", short='h')],
+  )
+}
+
+///|
+async fn emit_success(result : Json) -> Unit {
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.native.workspaces",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+}
+
+///|
+async fn emit_failure(code : Int32, kind : String, message : String) -> Unit {
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "workbench.native.workspaces",
+    "state": "failed",
+    "exitCode": code,
+    "error": { "code": kind, "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(code)
+}
+
+///|
+#cfg(target="js")
+fn arguments() -> Array[String] {
+  @env.args()[2:].to_owned()
+}
+
+///|
+#cfg(not(target="js"))
+fn arguments() -> Array[String] {
+  @env.args()[1:].to_owned()
+}
+
+///|
+async fn main {
+  let argv = arguments()
+  if argv is ["--forward-argv", "--", ..] {
+    execute()
+    return
+  }
+  guard argv is ["--json", .. rest] else {
+    execute()
+    return
+  }
+  json_output.val = true
+  let command = json_command()
+  // The exact delimiter begins an ignored legacy segment. Do not inspect it.
+  let controls = if rest is ["--", ..] { [] } else { rest.to_owned() }
+  let matches = command.parse(argv=controls) catch {
+    error => {
+      emit_failure(1, "syntax", error.to_string())
+      return
+    }
+  }
+  if matches.flags.get("help").unwrap_or(false) {
+    emit_success({ "help": command.render_help() })
+    return
+  }
+  execute() catch {
+    CommandExit(0) => ()
+    CommandExit(code) => {
+      let last = checks.last().unwrap_or(Json::null())
+      let message = "Qualification stopped with mapped exit code \{code}. Last completed check: " +
+        last.stringify()
+      emit_failure(code, "qualification-failed", message)
+      return
+    }
+    error => {
+      emit_failure(1, "command-error", error.to_string())
+      return
+    }
+  }
+  details["checks"] = Json(checks)
+  details["reports"] = Json(reports)
+  emit_success(Json(details))
 }

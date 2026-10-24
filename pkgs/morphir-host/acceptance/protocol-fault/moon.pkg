@@ -1,9 +1,11 @@
 pkgtype(kind: "executable")
 
 import {
+  "moonbitlang/x/sys",
   "finos/morphir-execution" @protocol,
   "moonrockz/ion/ion",
   "moonrockz/ion/binary",
+  "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x/fs",
 }

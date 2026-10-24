@@ -42,7 +42,8 @@ test "check preserves independent lookups, ignored tokens and missing last value
 ///|
 test "check matches the original helper over adversarial four-token products" {
   let tokens = [
-    "--dir", "--config", "--base", "--", "--help", "-h", "", "λ😀", "--dir=x",
+    "--dir", "--config", "--base", "--", "--help", "-h", "--json", "", "λ😀",
+    "--dir=x",
   ]
   for a in tokens {
     assert_old_options([a])

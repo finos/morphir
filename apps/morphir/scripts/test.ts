@@ -1,5 +1,6 @@
 import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
+import { exerciseJsonCommandCoverage } from './json-command-coverage.ts';
 import { exerciseMck, exerciseMckCancellation, exerciseMckTransport } from './mck-acceptance.ts';
 import type { PipelineReport, Warning, FrontendInventory } from '../../../tests/cli-contracts.ts';
 import type { Json } from '../../../types/data.ts';
@@ -30,6 +31,26 @@ async function headlessAcceptance(target: string, binary: string, launcher?: str
   const mckSupported = target === 'js' || (target === 'native' && process.platform !== 'win32');
   const helper = join(installedRoot ?? appDirectory, 'build-provider/mck.mjs');
   const invocation = target === 'js' ? { command: process.execPath, prefix: [launcher ?? binary] } : { command: binary, prefix: [] };
+  if (headlessOnly) {
+    const jsonInvocation = target === 'wasm' || target === 'wasm-gc'
+      ? { command: process.execPath, prefix: [runner, binary] } : invocation;
+    const directory = mkdtempSync(join(tmpdir(), 'morphir-json-commands-'));
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('MORPHIR_')));
+    env.HOME = join(directory, 'home');
+    env.USERPROFILE = env.HOME;
+    env.XDG_CONFIG_HOME = join(directory, 'config');
+    delete env.APPDATA;
+    try {
+      exerciseJsonCommandCoverage((args, expected = 0) => {
+        const result = spawnSync(jsonInvocation.command, [...jsonInvocation.prefix, ...args], {
+          cwd: directory, env, encoding: 'utf8', timeout: 15000,
+        });
+        assert.equal(result.status, expected, `${target} ${JSON.stringify(args)}:\n${result.stdout}\n${result.stderr}`);
+        return result;
+      });
+      assert.deepEqual(readdirSync(directory), [], 'JSON help and parser errors do not write files');
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  }
   let evidence: string | undefined;
   if (mckSupported) {
     const root = resolve(workspaceDirectory, process.env.MORPHIR_MODEL_MCK_EVIDENCE ?? '.dev/headless-model-mck-evidence');
@@ -126,6 +147,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("packages/core/src/nested/Other.scm", '41');
   put("packages/tools/lib/Main.scm", '"hello λ😀"');
   checkHelp(run([]).stdout);
+  exerciseJsonCommandCoverage(run);
   assert.deepEqual(JSON.parse(run(["--help", "--json"]).stdout).commands, ["run", "execute", "verify", "conform", "eval", "worksheet", "generate", "model inspect", "model export-original", "connected connect", "connected run", "connected artifacts", "connected originals", "workspace", "workspace init", "project list", "project add", "project remove", "toolchain info", "toolchain setup", "toolchain build", "toolchain run", "toolchain exec", "mck", "extension describe", "extension compile", "extension generate"]);
   assert.match(run(['mck', '--help']).stdout, /explicitly pinned canonical MCK runner/);
   assert.match(JSON.parse(run(['mck', '--help', '--json']).stdout).usage, /report check\/render\/compare/);

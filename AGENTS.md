@@ -20,6 +20,46 @@ required API, target platforms and maintenance needs, reuse existing dependencie
 where suitable, and follow the applicable version-pinning policy. Prefer an
 existing library to a new implementation of the same utility.
 
+## Command output for automation
+
+Every repository-owned MoonBit command and subcommand must support an opt-in
+`--json` flag. Use the command-line parsing library to declare the flag and its
+ownership; keep the default output and existing JSON schemas compatible.
+Commands that already emit JSON must accept the flag without changing their
+successful result schema.
+
+- New finite results use `profile: "morphir/command-result"`,
+  `contractVersion: "0.1.0"`, a stable `command` name, `state`, `exitCode` and
+  `diagnostics`. Success has `state: "succeeded"` and a meaningful `result`.
+  Failure has `state: "failed"` and `error: {code, message}` instead of `result`.
+  Preserve existing JSON success objects as they are, without this envelope.
+- For a finite operation, JSON mode writes a machine-readable result to stdout.
+  Keep progress, diagnostics and child-process logs on stderr so they cannot
+  corrupt that result. Report failures in the documented JSON form and retain
+  the operation's exit status. Emit success only after required writes finish.
+  For a newly introduced JSON mode, turn an expected validation refusal that
+  formerly aborted into a structured failure with normal exit status 1. Keep
+  default abort behavior unchanged and document this distinction. Preserve
+  existing explicit syntax and child-process status mappings.
+- Document result and error schemas, output channels, and JSON behavior for help
+  and self-tests. An explicitly streaming operation may use documented NDJSON
+  events instead of one final document. An ignored flag does not provide JSON
+  support. New lifecycle events use `profile: "morphir/command-event"`,
+  `contractVersion: "0.1.0"`, `command`, `event` and `sequence`.
+- Preserve existing wire protocols. If a host owns a binary or framed stdout
+  channel, its JSON flag controls documented startup or diagnostic reporting on
+  a separate channel. Do not insert JSON envelopes into MEP, native-worker or
+  other protocol payloads. Browser and Wasm byte APIs receive this option through
+  their owning command-line host, not through a new wire field.
+- Keep external-tool and framework arguments under their original ownership.
+  Declare a local control prefix and a literal-forwarding escape when needed;
+  document any newly reserved syntax. Forward opaque child argument arrays
+  unchanged, including delimiters and empty values.
+- Verify explicit argument arrays, parseable output, success and failure status,
+  output-channel separation, and relevant consumers. Include JSON-mode tests in
+  the command's existing qualification path and retain its actual target and
+  host obligations.
+
 ## Project-management skill
 
 For initiative reports, progress, priorities, ready work, blockers, or organizing tracked work, read

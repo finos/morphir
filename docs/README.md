@@ -12,6 +12,7 @@ for Elm and MoonBit, and the Morphir Workbench.
   saved Ion manifests and execution in a fresh compatible host.
 - [Mise tasks](MISE_TASKS.md): every build, test and check task.
 - [Automation JSON results](AUTOMATION_JSON.md): CI, acquisition and host result contracts and argument boundaries.
+- [Generator JSON commands](COMMAND_JSON.md): result/error schemas, channels, statuses and literal arguments.
 - [Architecture decision records](adr/README.md): decisions and their reasons.
 - [Designs](design/README.md) and [specifications](specs/README.md): durable system designs.
 - [Writing for the site](WRITING_FOR_THE_SITE.md): how to add docs and blog posts.

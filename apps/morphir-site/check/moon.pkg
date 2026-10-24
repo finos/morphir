@@ -3,6 +3,7 @@ import {
   "finos/morphir-site/site",
   "moonbitlang/async",
   "moonbitlang/async/fs",
+  "moonbitlang/async/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/encoding/hex",
   "moonbitlang/core/encoding/utf8",

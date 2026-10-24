@@ -31,12 +31,21 @@
 ///       `evidence` reads the breach issue and looks up evidence. --requested
 ///       defaults to CI_MACOS_REQUESTED. --github-output appends fingerprint=,
 ///       macos= and evidence= lines to the file named by GITHUB_OUTPUT
-///   ci-evidence.mbtx record --fingerprint HEX --sha SHA --run ID --out FILE
+///   ci-evidence.mbtx record --fingerprint HEX --sha SHA --run ID --out FILE [--json]
 ///       fail unless HEAD has the fingerprint, then write the evidence file
 ///   ci-evidence.mbtx --self-test            run the built-in tests
 ///
-/// The exit status is non-zero when an argument is wrong, or `git` or `gh`
-/// fails.
+/// JSON may also be selected at the root before any command or invalid data.
+/// Root/subcommand --help, -h and help [COMMAND] report result.help without
+/// command effects; --self-test --json runs the same tests with notes on stderr.
+/// New results use profile morphir/command-result, contractVersion 0.1.0,
+/// command ci.evidence[.COMMAND], state, exitCode and diagnostics. Success adds
+/// result; failure adds error {code,message}, with invalid-arguments for syntax
+/// or domain validation and command-failed for execution/write failures. Record's
+/// result names output, artifact and the exact evidence object written to disk.
+/// Stdout is one UTF-8 JSON value plus LF; notices and test notes use stderr.
+/// Existing fingerprint/lookup/mode success objects remain bare. Expected JSON
+/// refusals exit 1; text-mode abort behavior and lookup fallback stay unchanged.
 import {
   "moonbit-community/yaml@0.0.8",
   "moonbitlang/async@0.22.1",
@@ -49,6 +58,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/string",
   "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/x@0.5.5/sys",
 }
 
 ///|
@@ -447,7 +457,7 @@ fn evidence_self_test() -> Unit raise {
     }
     guard refused else { fail("fingerprint_parse: accepted \{text}") }
   }
-  println("ci-evidence: fingerprint cases pass")
+  test_note("ci-evidence: fingerprint cases pass")
 }
 
 ///|
@@ -483,7 +493,7 @@ async fn inputs_self_test() -> Unit {
   guard macos_workflows(parse_workflow(fixture)) == ["ci-native.yml"] else {
     fail("macos_workflows_shape: wrong workflows")
   }
-  println(
+  test_note(
     "ci-evidence: \{needed.length()} workflow inputs cover the macOS jobs",
   )
 }
@@ -1303,7 +1313,7 @@ fn lookup_self_test() -> Unit raise {
     !accepts(() => ignore(RunId::parse("x"))) else {
     fail("record_json: wrong evidence file")
   }
-  println("ci-evidence: lookup and record cases pass")
+  test_note("ci-evidence: lookup and record cases pass")
 }
 
 ///|
@@ -1316,50 +1326,77 @@ priv enum Request {
 } derive(Eq)
 
 ///|
-fn evidence_command() -> @argparse.Command {
+fn evidence_subcommands(
+  presentation~ : Bool = false,
+  probe~ : Bool = false,
+) -> Array[@argparse.Command] {
   let fingerprint_option = @argparse.OptionArg(
     "fingerprint",
     about="Input fingerprint from the fingerprint command (64 lowercase hex)",
-    required=true,
+    required=!probe,
   )
-  @argparse.Command(
-    "ci-evidence",
-    about="Fingerprint, find and record evidence of the macOS qualification lanes",
-    flags=[@argparse.FlagArg("self-test", about="Run the built-in tests")],
-    subcommands=[
-      @argparse.Command(
-        "fingerprint",
-        about="Print the input fingerprint of HEAD",
-        flags=[
+  let controls = if presentation {
+    [@argparse.FlagArg("help", short='h')]
+  } else {
+    []
+  }
+  let extra = if probe {
+    [
+      @argparse.PositionArg(
+        "data",
+        num_args=@argparse.ValueRange(lower=0),
+        allow_hyphen_values=true,
+      ),
+    ]
+  } else {
+    []
+  }
+  [
+    @argparse.Command(
+      "fingerprint",
+      disable_help_flag=presentation,
+      disable_help_subcommand=presentation,
+      positionals=extra,
+      about="Print the input fingerprint of HEAD",
+      flags=controls +
+        [
           @argparse.FlagArg(
             "json",
             about="Print the lane set, fingerprint and artifact name as JSON",
           ),
         ],
-      ),
-      @argparse.Command(
-        "lookup",
-        about="Find trusted evidence for a fingerprint and print the macOS mode",
-        flags=[
+    ),
+    @argparse.Command(
+      "lookup",
+      disable_help_flag=presentation,
+      disable_help_subcommand=presentation,
+      positionals=extra,
+      about="Find trusted evidence for a fingerprint and print the macOS mode",
+      flags=controls +
+        [
           @argparse.FlagArg(
             "json",
             about="Print {\"macos\", \"evidence\"} as one JSON line",
           ),
         ],
-        options=[
-          fingerprint_option,
-          @argparse.OptionArg(
-            "repo",
-            about="Repository as owner/name (default: GITHUB_REPOSITORY)",
-            env="GITHUB_REPOSITORY",
-            required=true,
-          ),
-        ],
-      ),
-      @argparse.Command(
-        "mode",
-        about="Fingerprint HEAD and choose the macOS mode of the nightly run",
-        flags=[
+      options=[
+        fingerprint_option,
+        @argparse.OptionArg(
+          "repo",
+          about="Repository as owner/name (default: GITHUB_REPOSITORY)",
+          env="GITHUB_REPOSITORY",
+          required=!probe,
+        ),
+      ],
+    ),
+    @argparse.Command(
+      "mode",
+      disable_help_flag=presentation,
+      disable_help_subcommand=presentation,
+      positionals=extra,
+      about="Fingerprint HEAD and choose the macOS mode of the nightly run",
+      flags=controls +
+        [
           @argparse.FlagArg(
             "json",
             about="Print {\"fingerprint\", \"macos\", \"evidence\"} as one JSON line",
@@ -1369,43 +1406,102 @@ fn evidence_command() -> @argparse.Command {
             about="Append fingerprint=, macos= and evidence= lines to the file named by GITHUB_OUTPUT",
           ),
         ],
-        options=[
-          @argparse.OptionArg(
-            "requested",
-            about="The dispatch input: evidence or run",
-            env="CI_MACOS_REQUESTED",
-            required=true,
+      options=[
+        @argparse.OptionArg(
+          "requested",
+          about="The dispatch input: evidence or run",
+          env="CI_MACOS_REQUESTED",
+          required=!probe,
+        ),
+        @argparse.OptionArg(
+          "repo",
+          about="Repository as owner/name, needed for evidence (default: GITHUB_REPOSITORY)",
+          env="GITHUB_REPOSITORY",
+        ),
+      ],
+    ),
+    @argparse.Command(
+      "record",
+      disable_help_flag=presentation,
+      disable_help_subcommand=presentation,
+      positionals=extra,
+      about="Check the fingerprint of HEAD and write the evidence file",
+      flags=if presentation {
+        controls + [@argparse.FlagArg("json")]
+      } else {
+        []
+      },
+      options=[
+        fingerprint_option,
+        @argparse.OptionArg(
+          "sha",
+          about="Commit that the run qualified",
+          required=!probe,
+        ),
+        @argparse.OptionArg(
+          "run",
+          about="Id of this workflow run",
+          required=!probe,
+        ),
+        @argparse.OptionArg(
+          "out",
+          about="Path of the evidence file to write",
+          required=!probe,
+        ),
+      ],
+    ),
+  ]
+}
+
+///|
+fn evidence_command(
+  presentation~ : Bool = false,
+  probe~ : Bool = false,
+) -> @argparse.Command {
+  @argparse.Command(
+    "ci-evidence",
+    about="Fingerprint, find and record evidence of the macOS qualification lanes",
+    disable_help_flag=presentation,
+    disable_help_subcommand=presentation,
+    flags=[@argparse.FlagArg("self-test", about="Run the built-in tests")] +
+      (if presentation {
+        [@argparse.FlagArg("json"), @argparse.FlagArg("help", short='h')]
+      } else {
+        []
+      }),
+    positionals=if probe {
+      [
+        @argparse.PositionArg(
+          "data",
+          num_args=@argparse.ValueRange(lower=0),
+          allow_hyphen_values=true,
+        ),
+      ]
+    } else {
+      []
+    },
+    subcommands=evidence_subcommands(presentation~, probe~) +
+      (if presentation {
+        [
+          @argparse.Command(
+            "help",
+            disable_help_flag=true,
+            disable_help_subcommand=true,
+            flags=[
+              @argparse.FlagArg("json"),
+              @argparse.FlagArg("help", short='h'),
+            ],
+            positionals=[
+              @argparse.PositionArg(
+                "command",
+                num_args=@argparse.ValueRange(lower=0, upper=1),
+              ),
+            ],
           ),
-          @argparse.OptionArg(
-            "repo",
-            about="Repository as owner/name, needed for evidence (default: GITHUB_REPOSITORY)",
-            env="GITHUB_REPOSITORY",
-          ),
-        ],
-      ),
-      @argparse.Command(
-        "record",
-        about="Check the fingerprint of HEAD and write the evidence file",
-        options=[
-          fingerprint_option,
-          @argparse.OptionArg(
-            "sha",
-            about="Commit that the run qualified",
-            required=true,
-          ),
-          @argparse.OptionArg(
-            "run",
-            about="Id of this workflow run",
-            required=true,
-          ),
-          @argparse.OptionArg(
-            "out",
-            about="Path of the evidence file to write",
-            required=true,
-          ),
-        ],
-      ),
-    ],
+        ]
+      } else {
+        []
+      }),
   )
 }
 
@@ -1529,7 +1625,7 @@ fn cli_self_test() -> Unit raise {
       fail("cli_argparse_forms: accepted \{argv.join(" ")}")
     }
   }
-  println("ci-evidence: argparse forms and refusals pass")
+  test_note("ci-evidence: argparse forms and refusals pass")
 }
 
 ///|
@@ -1868,7 +1964,15 @@ async fn record(
     )
   }
   @fs.write_file(out, evidence_record(print, sha, run).stringify() + "\n")
-  println("ci-evidence: wrote \{out} for \{print.artifact_name()}")
+  if output_json.val {
+    emit_result({
+      "output": out,
+      "artifact": print.artifact_name(),
+      "evidence": evidence_record(print, sha, run),
+    })
+  } else {
+    println("ci-evidence: wrote \{out} for \{print.artifact_name()}")
+  }
 }
 
 ///|
@@ -1895,13 +1999,25 @@ async fn announce(decision : ModeDecision) -> EvidenceRef? {
 }
 
 ///|
-async fn main {
-  match request(evidence_command().parse(env=@env.get_env_vars())) {
-    SelfTest => self_test()
+async fn execute(argv : Array[String]) -> Unit {
+  let matches = evidence_command(presentation=output_json.val).parse(
+    argv~,
+    env=@env.get_env_vars(),
+  )
+  let invocation = request(matches)
+  failure_code.val = "command-failed"
+  match invocation {
+    SelfTest => {
+      operation.val = "ci.evidence.self-test"
+      self_test()
+      if output_json.val {
+        emit_result({ "passed": true })
+      }
+    }
     Fingerprint(json~) => {
       let entries = head_entries()
       let print = fingerprint(macos_lanes, entries)
-      if json {
+      if json || output_json.val {
         println(
           Json::object({
             "lanes": macos_lanes.name,
@@ -1916,7 +2032,7 @@ async fn main {
     }
     Lookup(print, repo~, json~) => {
       let evidence = lookup_decision(print, repo~) |> announce
-      if json {
+      if json || output_json.val {
         println(lookup_json(evidence).stringify())
       } else {
         match evidence {
@@ -1950,12 +2066,151 @@ async fn main {
           append=true,
         )
       }
-      if json {
+      if json || output_json.val {
         println(mode_json(print, evidence).stringify())
       } else {
         println("macos=\{macos_mode(evidence)} for \{print.artifact_name()}")
       }
     }
     Record(print, sha~, run~, out~) => record(print, sha~, run~, out~)
+  }
+}
+
+///|
+let output_json : Ref[Bool] = Ref(false)
+
+///|
+let operation : Ref[String] = Ref("ci.evidence")
+
+///|
+let failure_code : Ref[String] = Ref("invalid-arguments")
+
+///|
+async fn emit_result(result : Json) -> Unit {
+  let result : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": operation.val,
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(result.stringify() + "\n")
+}
+
+///|
+fn test_note(message : String) -> Unit {
+  if output_json.val {
+    eprintln(message)
+  } else {
+    println(message)
+  }
+}
+
+///|
+/// Probe values never execute an operation. The library owns option arity and
+/// delimiters; inline values such as --out=--json remain values. The fallback
+/// only selects presentation after malformed syntax; the full parser rejects it.
+fn presentation_probe(argv : Array[String]) -> @argparse.Matches? {
+  Some(
+    evidence_command(presentation=true, probe=true).parse(argv~, env=Map([])),
+  ) catch {
+    _ =>
+      Some(
+        @argparse.Command(
+          "ci-evidence",
+          disable_help_flag=true,
+          disable_help_subcommand=true,
+          flags=[@argparse.FlagArg("json")],
+          positionals=[
+            @argparse.PositionArg(
+              "data",
+              num_args=@argparse.ValueRange(lower=0),
+              allow_hyphen_values=true,
+            ),
+          ],
+        ).parse(argv~, env=Map([])),
+      ) catch {
+        _ => None
+      }
+  }
+}
+
+///|
+fn select_presentation(argv : Array[String]) -> Unit {
+  if presentation_probe(argv) is Some(matches) {
+    output_json.val = matches.flags.get("json").unwrap_or(false)
+    if matches.subcommand is Some((name, sub)) {
+      operation.val = "ci.evidence." + name
+      output_json.val = output_json.val ||
+        sub.flags.get("json").unwrap_or(false)
+    }
+  }
+}
+
+///|
+/// Ordinary help flags avoid argparse's print-and-exit action in JSON mode.
+/// The relaxed command only discovers help; the original command renders it.
+async fn present_help(argv : Array[String]) -> Bool {
+  guard output_json.val else { return false }
+  let matches = evidence_command(presentation=true, probe=true).parse(
+    argv~,
+    env=Map([]),
+  )
+  let target = match matches.subcommand {
+    Some(("help", sub)) =>
+      match sub.values.get("command") {
+        Some([name]) => Some(name)
+        _ => None
+      }
+    Some((name, sub)) if sub.flags.get("help").unwrap_or(false) => Some(name)
+    _ if matches.flags.get("help").unwrap_or(false) => None
+    _ => return false
+  }
+  let help = match target {
+    None => evidence_command().render_help()
+    Some(name) => {
+      let names = ["fingerprint", "lookup", "mode", "record"]
+      guard names.search(name) is Some(index) else {
+        fail("Unknown help command \{name}")
+      }
+      evidence_subcommands()[index].render_help()
+    }
+  }
+  operation.val = "ci.evidence.help"
+  emit_result({
+    "help": help,
+    "target": target,
+    "json": "Select --json at the root or in the subcommand before --. New help, self-test and record results use morphir/command-result contractVersion 0.1.0 with command, state, exitCode, diagnostics and result; failures replace result with error {code,message}. invalid-arguments covers syntax/domain validation; command-failed covers execution or writes. Expected JSON refusals exit 1; text abort behavior is unchanged. Stdout is one UTF-8 JSON value plus LF, test notes and notices use stderr. Record result contains output, artifact and evidence. fingerprint, lookup and mode retain their bare success schemas. Help has no operation effects; self-test runs the built-in fixtures.",
+  })
+  true
+}
+
+///|
+async fn main {
+  let argv = @env.args()[1:].to_owned()
+  select_presentation(argv)
+  try {
+    if !present_help(argv) {
+      execute(argv)
+    }
+  } catch {
+    error => {
+      if !output_json.val {
+        raise error
+      }
+      let result : Json = {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": operation.val,
+        "state": "failed",
+        "exitCode": 1,
+        "error": { "code": failure_code.val, "message": error_reason(error) },
+        "diagnostics": [],
+      }
+      @stdio.stdout.write(result.stringify() + "\n")
+      @sys.exit(1)
+    }
   }
 }

@@ -52,10 +52,17 @@ jobs:
           DEVELOPER_JSON_TARGET: wasm
           DEVELOPER_JSON_RECEIPTS: ${{ runner.temp }}/developer-json-wasm.json
         run: mise exec -- bun apps/morphir/scripts/test-developer-json-presentation.ts
+      - name: Check evidence command JSON host boundaries
+        env:
+          CI_EVIDENCE_JSON_TARGET: all
+          CI_EVIDENCE_JSON_RECEIPTS: ${{ runner.temp }}/ci-evidence-json
+        run: mise exec -- bun apps/morphir/scripts/test-ci-evidence-json-presentation.ts
       - name: Retain developer JSON host boundary receipts
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: developer-json-host-${{ inputs.runner }}-${{ github.sha }}
-          path: ${{ runner.temp }}/developer-json-*.json
+          path: |
+            ${{ runner.temp }}/developer-json-*.json
+            ${{ runner.temp }}/ci-evidence-json/**
           if-no-files-found: error

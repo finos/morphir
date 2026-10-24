@@ -2,6 +2,8 @@
 /// Checker infrastructure controls only. The maintained parent Rust MCK owns
 /// every verdict; this script never executes or qualifies a production adapter.
 import {
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/core/argparse",
   "moonbitlang/async@0.22.4",
   "moonbitlang/async@0.22.4/fs",
   "moonbitlang/async@0.22.4/process",
@@ -46,10 +48,17 @@ async fn check(
   guard (status == 0) == accepted else {
     fail("Unexpected parent checker verdict: " + path + "\n" + stderr.text())
   }
+  if json_output.val {
+    checks.push({
+      "report": path,
+      "expectedAccepted": accepted,
+      "checkerExitCode": status,
+    })
+  }
 }
 
 ///|
-async fn main {
+async fn execute() -> Unit {
   guard @env.get_env_var("MORPHIR_MCK_BIN") is Some(runner) else {
     fail(
       "Set MORPHIR_MCK_BIN to the maintained Rust runner with exact draft.29 support",
@@ -171,7 +180,186 @@ async fn main {
   guard digest(@fs.read_file(runner).binary()) == runner_hash else {
     fail("Runner changed during checks")
   }
-  @stdio.stdout.write(
+  if json_output.val {
+    details["caseCount"] = Json(total)
+    details["kitCount"] = Json(kits.length())
+    details["runnerSha256"] = Json(runner_hash)
+    details["scope"] = "checker-infrastructure-only"
+  }
+  progress().write(
     "Parent checker accepted \{total} fixed positive controls across \{kits.length()} exact kits and rejected nine report attacks per kit. This is checker infrastructure evidence; actual CLI/Workbench qualification remains Task 7.\n",
   )
+}
+
+///|
+// Presentation is selected only at the owned root. Legacy ignored tails are
+// never scanned or rebuilt from argparse's variadic matches.
+let json_output : Ref[Bool] = Ref(false)
+
+///|
+let checks : Array[Json] = []
+
+///|
+let reports : Array[Json] = []
+
+///|
+let details : Map[String, Json] = Map([])
+
+///|
+suberror CommandExit {
+  CommandExit(Int32)
+}
+
+///|
+fn command_exit(code : Int32) -> Unit raise {
+  if json_output.val {
+    raise CommandExit(code)
+  }
+  @sys.exit(code)
+}
+
+///|
+fn progress() -> @stdio.Output {
+  if json_output.val {
+    @stdio.stderr
+  } else {
+    @stdio.stdout
+  }
+}
+
+///|
+async fn run_child(
+  program : String,
+  args : Array[String],
+  extra_env~ : Map[String, String] = {},
+  cwd? : StringView,
+) -> Int32 {
+  let code = if json_output.val {
+    @process.run(
+      program,
+      args,
+      extra_env~,
+      cwd?,
+      stdout=@stdio.stderr,
+      stderr=@stdio.stderr,
+    )
+  } else {
+    @process.run(program, args, extra_env~, cwd?)
+  }
+  if json_output.val {
+    checks.push({ "program": program, "args": Json(args), "exitCode": code })
+  }
+  code
+}
+
+///|
+fn json_command() -> @argparse.Command {
+  @argparse.Command(
+    "headless-parity-controls --json",
+    about="Opt-in morphir/command-result 0.1.0: one compact JSON value plus LF on stdout; live child output and progress on stderr. Success result contains completed checks and report metadata. Failures contain error.code/message and the mapped exitCode, without result. Expected refusals exit 1; Checker status 0 accepts a positive control; any nonzero status rejects a negative control. A mismatched verdict exits 1. Default abort presentation remains unchanged. --help has no effects. Use --json -- RAW to ignore an exact legacy tail, or --forward-argv -- RAW for one-level legacy presentation. No self-test operation is defined.",
+    disable_help_flag=true,
+    disable_help_subcommand=true,
+    flags=[@argparse.FlagArg("help", short='h')],
+  )
+}
+
+///|
+async fn emit_success(result : Json) -> Unit {
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "headless.parity.controls",
+    "state": "succeeded",
+    "exitCode": 0,
+    "result": result,
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+}
+
+///|
+async fn emit_failure(code : Int32, kind : String, message : String) -> Unit {
+  let value : Json = {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "headless.parity.controls",
+    "state": "failed",
+    "exitCode": code,
+    "error": { "code": kind, "message": message },
+    "diagnostics": [],
+  }
+  @stdio.stdout.write(value.stringify() + "\n")
+  @sys.exit(code)
+}
+
+///|
+#cfg(target="js")
+fn arguments() -> Array[String] {
+  @env.args()[2:].to_owned()
+}
+
+///|
+#cfg(not(target="js"))
+fn arguments() -> Array[String] {
+  @env.args()[1:].to_owned()
+}
+
+///|
+async fn main {
+  let argv = arguments()
+  if argv is ["--forward-argv", "--", ..] {
+    execute()
+    return
+  }
+  guard argv is ["--json", .. rest] else {
+    execute()
+    return
+  }
+  json_output.val = true
+  let command = json_command()
+  // The exact delimiter begins an ignored legacy segment. Do not inspect it.
+  let controls = if rest is ["--", ..] { [] } else { rest.to_owned() }
+  let matches = command.parse(argv=controls) catch {
+    error => {
+      emit_failure(1, "syntax", error.to_string())
+      return
+    }
+  }
+  if matches.flags.get("help").unwrap_or(false) {
+    emit_success({ "help": command.render_help() })
+    return
+  }
+  execute() catch {
+    CommandExit(0) => ()
+    CommandExit(code) => {
+      let last = checks.last().unwrap_or(Json::null())
+      let message = "Qualification stopped with mapped exit code \{code}. Last completed check: " +
+        last.stringify()
+      emit_failure(code, "qualification-failed", message)
+      return
+    }
+    error => {
+      emit_failure(1, "command-error", error.to_string())
+      return
+    }
+  }
+  details["checks"] = Json(checks)
+  details["reports"] = Json(reports)
+  emit_success(Json(details))
+}
+
+///|
+async fn read_report(path : String) -> Json {
+  let value = @fs.read_file(path).json()
+  if json_output.val {
+    reports.push({
+      "path": path,
+      "qualified": field(value, "qualified"),
+      "recordCount": match field(value, "records") {
+        Array(rows) => Json(rows.length())
+        _ => Json::null()
+      },
+    })
+  }
+  value
 }

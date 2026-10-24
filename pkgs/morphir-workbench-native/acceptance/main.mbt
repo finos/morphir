@@ -65,7 +65,11 @@ fn request(identity : Json) -> String {
 }
 
 ///|
-async fn terminal(service : @native.Service, id : Json) -> Json {
+async fn terminal(
+  service : @native.Service,
+  id : Json,
+  structured~ : Bool = false,
+) -> Json {
   for _ in 0..<1000 {
     let receipt = value(service.request("query", Some(request(id))))
     if @wire.field(receipt, "state") == Json::string("terminal") {
@@ -73,7 +77,13 @@ async fn terminal(service : @native.Service, id : Json) -> Json {
     }
     @async.sleep(10)
   }
-  abort("Native worker failed to terminate within acceptance deadline")
+  if structured {
+    raise PresentationError(
+      "Native worker failed to terminate within acceptance deadline",
+    )
+  } else {
+    abort("Native worker failed to terminate within acceptance deadline")
+  }
 }
 
 ///|
@@ -85,9 +95,8 @@ fn outcome(receipt : Json) -> Json raise {
 }
 
 ///|
-async fn main {
-  let args = @env.args()
-  let executable = fixture_executable(args[0], args[1:])
+async fn run(arguments : ArrayView[String], structured : Bool) -> Unit {
+  let executable = fixture_executable(@env.args()[0], arguments)
   let directory = @env.current_dir().unwrap() +
     "/.dev/native-workers-" +
     @env.now().to_string()
@@ -129,7 +138,7 @@ async fn main {
           assert_eq(@wire.field(service.stats(), "captured"), Json::number(1))
           ignore(value(service.request("cancel", Some(request(id)))))
         }
-        let receipt = terminal(service, id)
+        let receipt = terminal(service, id, structured~)
         assert_eq(@wire.field(service.stats(), "active"), Json::number(0))
         for child in @wire.array(@wire.field(service.stats(), "children")) {
           assert_eq(@wire.field(child, "exited"), Json::boolean(true))
@@ -221,7 +230,7 @@ async fn main {
         service.request("submit", Some(payload.stringify())),
       )
       let id = @wire.field(submitted, "identity")
-      assert_eq(outcome(terminal(service, id)), expected)
+      assert_eq(outcome(terminal(service, id, structured~)), expected)
       ignore(value(service.request("release", Some(request(id)))))
       count += 1
     }
@@ -244,7 +253,7 @@ async fn main {
         value(service.request("submit", Some(payload.stringify()))),
         "identity",
       )
-      assert_eq(outcome(terminal(service, id)), {
+      assert_eq(outcome(terminal(service, id, structured~)), {
         "status": "returned",
         "value": { "type": "decimal", "coefficient": "375", "exponent": -1 },
       })
@@ -276,7 +285,7 @@ async fn main {
     )
     ignore(value(service.request("cancel", Some(request(ids[2])))))
     assert_eq(
-      @wire.field(outcome(terminal(service, ids[2])), "status"),
+      @wire.field(outcome(terminal(service, ids[2], structured~)), "status"),
       Json::string("cancelled"),
     )
     assert_eq(@wire.field(service.stats(), "queued"), Json::number(5))
@@ -289,7 +298,7 @@ async fn main {
       Json::boolean(true),
     )
     assert_eq(@wire.field(acknowledgement, "state"), Json::string("running"))
-    let stopped = terminal(service, ids[0])
+    let stopped = terminal(service, ids[0], structured~)
     assert_eq(
       @wire.field(outcome(stopped), "status"),
       Json::string("cancelled"),
@@ -303,7 +312,7 @@ async fn main {
     }
     count += 1
   })
-  count += policy_acceptance(executable)
+  count += policy_acceptance(executable, structured)
   println(
     (
       {
@@ -337,7 +346,7 @@ fn selected_body(source : String, policy : String?, format : String) -> Json {
 }
 
 ///|
-async fn policy_acceptance(executable : String) -> Int32 {
+async fn policy_acceptance(executable : String, structured : Bool) -> Int32 {
   let model = @fs.read_file(
     "apps/morphir-workbench/fixtures/capability-execution.json",
   ).text()
@@ -400,7 +409,7 @@ async fn policy_acceptance(executable : String) -> Int32 {
           "policy": "strict",
         }
         fields["model"] = Json::string("{}")
-        let result = outcome(terminal(service, id))
+        let result = outcome(terminal(service, id, structured~))
         if taken {
           assert_eq(@wire.field(result, "status"), Json::string("failed"))
           assert_eq(
@@ -426,4 +435,19 @@ async fn policy_acceptance(executable : String) -> Int32 {
     assert_eq(@wire.field(service.stats(), "retained"), Json::number(0))
   })
   count
+}
+
+///|
+async fn main {
+  match presentation(@env.args()[1:]) {
+    JsonHelp => json_help()
+    Legacy(raw) => run(raw, false)
+    Structured(raw) =>
+      run(raw, true) catch {
+        error => {
+          @stdio.stdout.write(failed(error).stringify() + "\n")
+          @sys.exit(1)
+        }
+      }
+  }
 }

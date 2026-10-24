@@ -8,7 +8,10 @@ fn native_caller(context : @proton.CommandContext) -> @session.Caller raise {
 }
 
 ///|
-fn with_native_session(app : @proton.App) -> @proton.App {
+fn with_native_session(
+  app : @proton.App,
+  presentation : DesktopPresentation,
+) -> @proton.App {
   let mut owner : @bridge.Owner? = None
   let files = @bridge.FileOwner::new(
     enabled=@native.desktop_supported() && @workspace.supported(),
@@ -95,10 +98,14 @@ fn with_native_session(app : @proton.App) -> @proton.App {
       @proton.ApplicationQuitDecision::Allow
     } catch {
       _ => {
-        @stdio.stderr.write(
-          "Morphir: quit prevented because native worker exit could not be confirmed.\n",
-        ) catch {
-          _ => ()
+        if presentation.enabled {
+          presentation.report(QuitPrevented)
+        } else {
+          @stdio.stderr.write(
+            "Morphir: quit prevented because native worker exit could not be confirmed.\n",
+          ) catch {
+            _ => ()
+          }
         }
         @proton.ApplicationQuitDecision::Prevent
       }

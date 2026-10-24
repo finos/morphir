@@ -6,7 +6,7 @@
   "scripts": {
     "build": "bun --check scripts/build.ts",
     "dev": "bun --check scripts/serve.ts --watch",
-    "test": "node --test scripts/highlight.test.ts scripts/try-page.test.ts scripts/link-escape.test.ts",
+    "test": "node --test scripts/highlight.test.ts scripts/try-page.test.ts scripts/link-escape.test.ts scripts/json-cli.test.ts",
     "test:browser": "node scripts/browser-test.ts"
   },
   "devDependencies": {

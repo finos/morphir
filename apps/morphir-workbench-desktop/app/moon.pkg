@@ -3,6 +3,7 @@ pkgtype(kind: "executable")
 supported_targets = "native"
 
 import {
+  "moonbitlang/core/argparse",
   "finos/morphir-workbench-native-session/request",
   "moonbitlang/async",
   "moonbitlang/async/stdio",
@@ -16,3 +17,7 @@ import {
   "finos/morphir-workbench-native/workspace",
   "moonbitlang/core/env",
 }
+
+import {
+  "moonbitlang/core/json",
+} for "wbtest"

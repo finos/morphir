@@ -113,10 +113,14 @@ fn affected(path : String) -> Array[String] {
     return []
   }
   if starts_with_any(path, [
-      "apps/morphir-extension/", "pkgs/morphir-moonbit/mep/", "pkgs/morphir-host/embedding/",
-    ]) ||
+      "apps/morphir-extension/", "pkgs/morphir-moonbit/mep/",
+    ]) {
+    // The protocol JSON fixture owns extension process behavior too. Keep the
+    // embedding baseline and add its installed Workbench consumer.
+    return ["workbench"]
+  }
+  if path.has_prefix("pkgs/morphir-host/embedding/") ||
     path == "scripts/moonbit-extension.mbtx" {
-    // Native MEP, unit and embedding checks stay in the code PR baseline.
     return []
   }
   if starts_with_any(path, [
@@ -444,11 +448,62 @@ async fn self_test() -> Unit {
     (["pkgs/morphir-metadata/metadata.mbt"], true, true, suites),
     (["pkgs/morphir-host/host.mbt"], true, true, suites),
     (["apps/morphir/main.mbt"], true, false, suites),
-    (["apps/morphir-extension/main.mbt"], true, false, []),
-    (["pkgs/morphir-moonbit/mep/session.mbt"], true, false, []),
+    (["apps/morphir-extension/main.mbt"], true, false, ["workbench"]),
+    (["pkgs/morphir-moonbit/mep/session.mbt"], true, false, ["workbench"]),
     (["scripts/moonbit-extension.mbtx"], true, false, []),
     (["pkgs/morphir-host/embedding/index.mts"], true, false, []),
     (["apps/morphir-workbench/browser/main.ts"], true, true, ["workbench"]),
+    // Desktop remains conservative shared-code selection, including Workbench.
+    (
+      ["apps/morphir-workbench-desktop/app/json_presentation.mbt"],
+      true,
+      false,
+      suites,
+    ),
+    (
+      ["apps/morphir-workbench-desktop/app/json_presentation_io.mbt"],
+      true,
+      false,
+      suites,
+    ),
+    (
+      ["apps/morphir/scripts/test-native-owner-json-presentation.ts"],
+      true,
+      false,
+      suites,
+    ),
+    (
+      ["apps/morphir/scripts/test-protocol-json-presentation.ts"],
+      true,
+      false,
+      suites,
+    ),
+    (["tools/workbench-command-json.test.ts"], true, true, suites),
+    (["scripts/headless-parity-controls.mbtx"], true, false, suites),
+    (
+      ["pkgs/morphir-host/acceptance/protocol-fault/presentation.mbt"],
+      true,
+      true,
+      suites,
+    ),
+    (
+      ["pkgs/morphir-workbench-native/fixture/presentation.mbt"],
+      true,
+      true,
+      ["workbench"],
+    ),
+    (
+      ["apps/morphir-workbench/mck/capabilities/js/json_presentation.mbt"],
+      true,
+      true,
+      ["workbench"],
+    ),
+    (
+      ["apps/morphir-workbench/mck/native/json_presentation.mbt"],
+      true,
+      true,
+      ["workbench"],
+    ),
     (
       ["pkgs/morphir-workbench-native/workspace/service.mbt"],
       true,

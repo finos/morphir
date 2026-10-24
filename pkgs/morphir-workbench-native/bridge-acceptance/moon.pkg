@@ -3,6 +3,9 @@ pkgtype(kind: "executable")
 supported_targets = "native"
 
 import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/x/sys",
+  "moonbitlang/async/stdio",
   "finos/morphir-workbench-native" @native,
   "finos/morphir-workbench-native/bridge",
   "finos/morphir-workbench-native-session" @session,

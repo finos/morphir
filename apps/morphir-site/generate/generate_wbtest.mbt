@@ -6,9 +6,11 @@ async test "generate the fixture site" {
   if @fs.exists(out) {
     @fs.rmdir(out, recursive=true)
   }
-  let warnings = generate("fixtures/content", out, true)
+  let (warnings, written) = generate_report("fixtures/content", out, true)
   assert_eq(warnings, [])
   let files = list_files(out)
+  written.sort_by(compare_units)
+  assert_eq(written, files)
   assert_eq(files, [
     "assets/morphir-mark.svg", "assets/site.css", "blog/atom.xml", "blog/first/index.html",
     "blog/index.html", "docs/diagram/index.html", "docs/guide/index.html", "docs/index.html",

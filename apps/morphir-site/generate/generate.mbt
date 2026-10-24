@@ -75,12 +75,12 @@ async fn copy_file(from : String, to : String) -> Unit {
 let assets_dir : String = "assets"
 
 ///|
-/// Build the site of the repository at `root` into `out`. Returns the warnings.
-async fn generate(
+/// Build the site at `root` into `out`, returning warnings and paths after their writes.
+async fn generate_report(
   root : String,
   out : String,
   main_build : Bool,
-) -> Array[@model.Problem] {
+) -> (Array[@model.Problem], Array[String]) {
   let config_path = "\{root}/site/site.json"
   let config = @model.SiteConfig::parse(
     "site/site.json",
@@ -96,14 +96,33 @@ async fn generate(
     sources.push(@site.SourceFile::{ path, text, })
   }
   let built = @site.build(config, sources, main_build~)
+  let written = []
   for output in built.outputs {
     match output {
-      Text(path, text) => write_text("\{out}/\{path}", text)
-      Copy(path, from) => copy_file("\{root}/\{from}", "\{out}/\{path}")
+      Text(path, text) => {
+        write_text("\{out}/\{path}", text)
+        written.push(path)
+      }
+      Copy(path, from) => {
+        copy_file("\{root}/\{from}", "\{out}/\{path}")
+        written.push(path)
+      }
     }
   }
   for name in list_files(assets_dir) {
     copy_file("\{assets_dir}/\{name}", "\{out}/assets/\{name}")
+    written.push("assets/\{name}")
   }
-  built.warnings
+  (built.warnings, written)
+}
+
+///|
+/// Keep the established text-mode API; JSON also receives the actual written paths.
+async fn generate(
+  root : String,
+  out : String,
+  main_build : Bool,
+) -> Array[@model.Problem] {
+  let (warnings, _) = generate_report(root, out, main_build)
+  warnings
 }
