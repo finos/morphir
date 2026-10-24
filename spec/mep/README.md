@@ -40,6 +40,7 @@ spec/mep/
     json-schema/            later: finos/morphir-rust#242
     wit/morphir-mep/        later: finos/morphir-rust#243
   mck/                      reference cases and bounded executable guest suite
+  smithy/                   the same contract as a Smithy model, with transcripts
 ```
 
 ## Wire mapping
@@ -107,6 +108,14 @@ Gleam has one integer type, `Int`, with no unsigned or fixed-width forms, so the
 | `ProgressParams.percentage` | 0 through 100 | none yet; from the protocol draft |
 | `ModelTransportLimits` fields | positive, at most 2147483647 | generated bindings use `u32` with that bound |
 | `ModelPayload.decodedByteLength` | 0 through 2147483647 | generated bindings use `u32` with that bound |
+
+## Smithy model
+
+[`smithy/`](smithy/README.md) holds the same contract as a Smithy IDL 2.0
+model, for code generation and JSON-RPC message validation with
+moonrockz/smithy. The Gleam contract stays the source of truth. When you
+change `contract/src/mep.gleam`, change the Smithy model too, and run
+`mise run spec:mep-smithy-check`.
 
 ## Regenerate
 
