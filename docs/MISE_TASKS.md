@@ -278,6 +278,28 @@ Pull requests to `main` merge through a merge queue. Click **Merge when ready** 
 (the `merge_group` trigger). The PR merges only when `ci-ok` passes on that combination. When you add a job to
 `ci.yml`, add it to the `needs` list of `ci-ok`.
 
+### Branch sync
+
+`.github/workflows/branch-sync.yml` keeps `main` here and `moonshots` in finos/morphir on one commit. The two
+branches hold the same tree, so the workflow runs in both repositories. Each run fast-forwards the other
+repository's branch to its own branch, but only when its own branch is ahead and `ci-ok` passed on its tip. Only
+that run can push in its direction, so it reads a pending `ci-ok` again every 30 seconds for up to 30 minutes
+(`--wait-minutes 30`). A schedule here repeats the run every 30 minutes in case a push event was missed. CI also runs
+on pushes to `moonshots`, so that commits landed there get the `ci-ok` the sync needs.
+
+The job never merges, rebases or force-pushes. When the branches have diverged, it pushes nothing, fails, and opens
+an issue labelled `branch-sync`; the next run that finds them together closes the issue. To resolve a divergence,
+merge one branch into the other through a PR with a merge commit. Land migrations from finos/morphir `main` on
+`moonshots` the same way, as merge commits, never squashed.
+
+Each repository has a `branch-sync` environment that only its paired branch can use. Its secret
+`BRANCH_SYNC_SSH_KEY` is the private half of a write deploy key on the other repository, and both rulesets let
+deploy keys bypass the merge queue.
+
+Run `mise run branch:sync -- --repository finos/morphir-moonbit --dry-run` to see the decision without pushing.
+With `--json`, stdout is one `morphir/command-result` document (command `branch.sync`) and progress goes to
+stderr. The command exits 1 when the branches have diverged or `ci-ok` failed or is missing on the tip to push.
+
 ## Adding New Tasks
 
 To add a new task:

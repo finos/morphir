@@ -1,0 +1,87 @@
+name: Branch Sync
+
+# Keep finos/morphir-moonbit main and finos/morphir moonshots on one commit.
+# This file is in both repositories, because the two branches hold the same
+# tree. Each run fast-forwards the other repository's branch to its own one,
+# and only when its own branch is ahead and ci-ok passed on it. It never
+# merges, rebases or force-pushes; on divergence it fails and opens an issue.
+# See scripts/branch-sync.mbtx.
+on:
+  push:
+    branches: [main, moonshots]
+  # A safety net for a missed push. Schedules run only on the default branch,
+  # so only finos/morphir-moonbit runs this one.
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Fetch and decide, but push nothing and change no issue
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  checks: read
+  issues: write
+
+# One sync at a time; a queued run starts from the latest tips.
+concurrency:
+  group: branch-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Fast-forward the paired branch
+    # Only the paired branch of each repository syncs. Forks and other
+    # branches skip.
+    if: >-
+      (github.repository == 'finos/morphir-moonbit' && github.ref_name == 'main') ||
+      (github.repository == 'finos/morphir' && github.ref_name == 'moonshots')
+    runs-on: ubuntu-latest
+    # Up to 30 minutes of ci-ok waiting, plus setup and fetches.
+    timeout-minutes: 50
+    # The environment holds the push key for the other repository, and only
+    # the paired branch may use it.
+    environment: branch-sync
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          # Ancestry checks need the full history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up cached MoonBit
+        uses: ./.github/actions/setup-moonbit
+
+      - name: Update Mooncakes registry for the sync script
+        run: moon update
+
+      # The deploy key of the other repository, and GitHub's published SSH
+      # host key, so that the push trusts nothing else.
+      - name: Load the push key
+        env:
+          BRANCH_SYNC_SSH_KEY: ${{ secrets.BRANCH_SYNC_SSH_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$BRANCH_SYNC_SSH_KEY" > "$RUNNER_TEMP/branch-sync-key"
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' \
+            > "$RUNNER_TEMP/branch-sync-known-hosts"
+
+      # Only this run can push this direction, so it reads a pending ci-ok
+      # again for up to 30 minutes instead of leaving it to a later push.
+      - name: Sync
+        if: inputs.dry-run != true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GIT_SSH_COMMAND: >-
+            ssh -i ${{ runner.temp }}/branch-sync-key -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${{ runner.temp }}/branch-sync-known-hosts
+        run: moonx scripts/branch-sync.mbtx --repository "$GITHUB_REPOSITORY" --wait-minutes 30
+
+      - name: Dry run
+        if: inputs.dry-run == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: moonx scripts/branch-sync.mbtx --repository "$GITHUB_REPOSITORY" --dry-run

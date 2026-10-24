@@ -163,6 +163,8 @@ run = [
   "moonx scripts/beads-companion.mbtx --self-test",
   "moonx scripts/headless-host.mbtx --self-test",
   "moon test scripts/artifact-client-source.mbtx",
+  "moon fmt --check scripts/branch-sync.mbtx",
+  "moon test scripts/branch-sync.mbtx",
   "moonx scripts/mck-release.mbtx --self-test",
   "moon fmt --check scripts/repository-tasks.mbtx scripts/refresh-ir-fixtures.mbtx scripts/setup-hooks.mbtx scripts/pre-push.mbtx scripts/beads-plan.mbtx",
   "moonx scripts/repository-tasks.mbtx --self-test",
@@ -177,6 +179,10 @@ run = [
 [tasks."ci:measure"]
 description = "Measure completed Actions run queue, execution, runner and step costs"
 run = "moonx scripts/ci-measure.mbtx"
+
+[tasks."branch:sync"]
+description = "Fast-forward finos/morphir moonshots or morphir-moonbit main to the paired branch"
+run = "moonx scripts/branch-sync.mbtx"
 
 [tasks."ci:changes"]
 description = "Select focused CI jobs from the GitHub event and exact commits"

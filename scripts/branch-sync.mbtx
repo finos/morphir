@@ -1,0 +1,1348 @@
+///|
+/// Keep finos/morphir-moonbit `main` and finos/morphir `moonshots` on one
+/// commit. The run in each repository fast-forwards the other repository's
+/// branch to its own branch, and only when its own branch is ahead and its
+/// `ci-ok` check passed. It never merges, rebases or force-pushes. When the
+/// branches have diverged it pushes nothing and exits 1.
+import {
+  "moonbitlang/async@0.22.1",
+  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+struct RepoSlug(String) derive(Eq, Debug)
+
+///|
+struct BranchName(String) derive(Eq, Debug)
+
+///|
+/// A branch in a repository.
+struct Endpoint {
+  repo : RepoSlug
+  branch : BranchName
+} derive(Eq, Debug)
+
+///|
+/// The branch that this run owns, and the branch in the other repository that
+/// it may fast-forward.
+struct Pairing {
+  own : Endpoint
+  other : Endpoint
+} derive(Eq, Debug)
+
+///|
+let moonbit_main : Endpoint = {
+  repo: RepoSlug("finos/morphir-moonbit"),
+  branch: BranchName("main"),
+}
+
+///|
+let morphir_moonshots : Endpoint = {
+  repo: RepoSlug("finos/morphir"),
+  branch: BranchName("moonshots"),
+}
+
+///|
+/// The pairing is a closed table: no other repository or branch can be named.
+fn Pairing::for_repository(repository : String) -> Pairing raise {
+  if repository == moonbit_main.repo.0 {
+    { own: moonbit_main, other: morphir_moonshots, }
+  } else if repository == morphir_moonshots.repo.0 {
+    { own: morphir_moonshots, other: moonbit_main, }
+  } else {
+    fail(
+      "--repository: expected \{moonbit_main.repo.0} or \{morphir_moonshots.repo.0}, got \{repository}",
+    )
+  }
+}
+
+///|
+struct Sha(String) derive(Eq, Debug)
+
+///|
+fn Sha::parse(text : String) -> Sha raise {
+  guard text.length() == 40 &&
+    text.iter().all(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) else {
+    fail("expected a 40-digit lowercase commit id, got \{text}")
+  }
+  Sha(text)
+}
+
+///|
+/// How the own tip relates to the other tip.
+enum Relation {
+  Same
+  OwnAhead
+  OtherAhead
+  Diverged
+} derive(Eq, Debug)
+
+///|
+fn Relation::of(
+  same~ : Bool,
+  other_in_own~ : Bool,
+  own_in_other~ : Bool,
+) -> Relation {
+  if same {
+    Same
+  } else if other_in_own {
+    OwnAhead
+  } else if own_in_other {
+    OtherAhead
+  } else {
+    Diverged
+  }
+}
+
+///|
+/// The `ci-ok` check on the own tip, in the repository where it landed.
+enum Gate {
+  Passed
+  Pending
+  Failed
+  Missing
+} derive(Eq, Debug)
+
+///|
+/// Reads `GET /repos/{repo}/commits/{sha}/check-runs?check_name=ci-ok`. Any
+/// pass wins; otherwise a run that is still going means wait.
+fn Gate::from_check_runs(json : Json) -> Gate raise {
+  guard json is { "check_runs": Array(runs), .. } else {
+    fail("check runs: expected an object with check_runs")
+  }
+  let mut going = false
+  for item in runs {
+    guard item is { "status": String(status), .. } else {
+      fail("check runs: item without a status")
+    }
+    if status != "completed" {
+      going = true
+    } else if item is { "conclusion": String("success"), .. } {
+      return Passed
+    }
+  }
+  if going {
+    Pending
+  } else if runs.is_empty() {
+    Missing
+  } else {
+    Failed
+  }
+}
+
+///|
+/// What this run does.
+enum Action {
+  InSync
+  Push(Sha)
+  WaitForChecks(Sha)
+  Blocked(Sha, Gate)
+  LeftToOtherSide
+  Diverged
+} derive(Eq, Debug)
+
+///|
+fn plan(relation : Relation, own_tip : Sha, gate : Gate) -> Action {
+  match relation {
+    Same => InSync
+    OtherAhead => LeftToOtherSide
+    Diverged => Diverged
+    OwnAhead =>
+      match gate {
+        Passed => Push(own_tip)
+        Pending => WaitForChecks(own_tip)
+        Failed | Missing => Blocked(own_tip, gate)
+      }
+  }
+}
+
+///|
+/// Divergence keeps one open issue labelled `branch-sync`. A run that finds
+/// the branches together again closes it.
+enum IssueChange {
+  Open
+  Comment(Int32)
+  Close(Int32)
+  Unchanged
+} derive(Eq, Debug)
+
+///|
+fn issue_change(action : Action, open_issue : Int32?) -> IssueChange {
+  match (action, open_issue) {
+    (Diverged, None) => Open
+    (Diverged, Some(number)) => Comment(number)
+    (InSync | Push(_) | LeftToOtherSide, Some(number)) => Close(number)
+    _ => Unchanged
+  }
+}
+
+///|
+fn exit_code(action : Action) -> Int32 {
+  match action {
+    Diverged | Blocked(_, _) => 1
+    InSync | Push(_) | WaitForChecks(_) | LeftToOtherSide => 0
+  }
+}
+
+///|
+fn Relation::name(self : Relation) -> String {
+  match self {
+    Same => "same"
+    OwnAhead => "own-ahead"
+    OtherAhead => "other-ahead"
+    Diverged => "diverged"
+  }
+}
+
+///|
+fn Gate::name(self : Gate) -> String {
+  match self {
+    Passed => "passed"
+    Pending => "pending"
+    Failed => "failed"
+    Missing => "missing"
+  }
+}
+
+///|
+fn Action::name(self : Action) -> String {
+  match self {
+    InSync => "in-sync"
+    Push(_) => "push"
+    WaitForChecks(_) => "wait-for-checks"
+    Blocked(_, _) => "blocked"
+    LeftToOtherSide => "left-to-other-side"
+    Diverged => "diverged"
+  }
+}
+
+///|
+fn IssueChange::name(self : IssueChange) -> String {
+  match self {
+    Open => "open"
+    Comment(_) => "comment"
+    Close(_) => "close"
+    Unchanged => "unchanged"
+  }
+}
+
+///|
+fn Endpoint::label(self : Endpoint) -> String {
+  "\{self.repo.0} \{self.branch.0}"
+}
+
+///|
+/// Everything a run found and decided.
+struct Outcome {
+  pairing : Pairing
+  own_tip : Sha
+  other_tip : Sha
+  relation : Relation
+  gate : Gate?
+  action : Action
+  issue : IssueChange
+  dry_run : Bool
+}
+
+///|
+fn Outcome::error(self : Outcome) -> (String, String)? {
+  let own = self.pairing.own.label()
+  let other = self.pairing.other.label()
+  match self.action {
+    Diverged =>
+      Some(
+        (
+          "diverged",
+          "\{own} (\{self.own_tip.0}) and \{other} (\{self.other_tip.0}) have diverged. Merge one into the other with a merge commit; the next run then fast-forwards.",
+        ),
+      )
+    Blocked(tip, gate) =>
+      Some(
+        (
+          "blocked",
+          "ci-ok on \{tip.0} in \{self.pairing.own.repo.0} is \{gate.name()}; nothing was pushed to \{other}.",
+        ),
+      )
+    _ => None
+  }
+}
+
+///|
+fn Outcome::summary(self : Outcome) -> String {
+  let prefix = if self.dry_run {
+    "branch-sync (dry run): "
+  } else {
+    "branch-sync: "
+  }
+  let detail = match self.action {
+    InSync =>
+      "\{self.pairing.own.label()} and \{self.pairing.other.label()} are both at \{self.own_tip.0}"
+    Push(tip) =>
+      "fast-forward \{self.pairing.other.label()} from \{self.other_tip.0} to \{tip.0}"
+    WaitForChecks(tip) =>
+      "ci-ok on \{tip.0} is still running; the next run tries again"
+    LeftToOtherSide =>
+      "\{self.pairing.other.label()} is ahead; its own run fast-forwards \{self.pairing.own.label()}"
+    Blocked(_, _) | Diverged => self.error().map(e => e.1).unwrap_or("")
+  }
+  "\{prefix}\{self.action.name()}: \{detail} (issue: \{self.issue.name()})"
+}
+
+///|
+fn Outcome::to_json(self : Outcome) -> Json {
+  let endpoint = (endpoint : Endpoint, tip : Sha) => {
+    let value : Json = {
+      "repository": endpoint.repo.0,
+      "branch": endpoint.branch.0,
+      "tip": tip.0,
+    }
+    value
+  }
+  let code = exit_code(self.action)
+  match self.error() {
+    None =>
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "branch.sync",
+        "state": "succeeded",
+        "exitCode": code,
+        "diagnostics": [],
+        "result": {
+          "action": self.action.name(),
+          "own": endpoint(self.pairing.own, self.own_tip),
+          "other": endpoint(self.pairing.other, self.other_tip),
+          "relation": self.relation.name(),
+          "gate": match self.gate {
+            Some(gate) => Json::string(gate.name())
+            None => Json::null()
+          },
+          "issue": self.issue.name(),
+          "dryRun": self.dry_run,
+        },
+      }
+    Some((code_name, message)) =>
+      {
+        "profile": "morphir/command-result",
+        "contractVersion": "0.1.0",
+        "command": "branch.sync",
+        "state": "failed",
+        "exitCode": code,
+        "diagnostics": [],
+        "error": { "code": code_name, "message": message },
+      }
+  }
+}
+
+///|
+fn sync_command() -> @argparse.Command {
+  @argparse.Command(
+    "branch-sync",
+    about="Fast-forward the paired branch in the other repository to this repository's branch. Pairs: finos/morphir-moonbit main and finos/morphir moonshots. With --json, stdout is one morphir/command-result document (command branch.sync); progress goes to stderr. Exit 1 when the branches diverged or ci-ok failed or is missing.",
+    flags=[
+      @argparse.FlagArg(
+        "dry-run",
+        about="Fetch and decide, but push nothing and change no issue",
+      ),
+      @argparse.FlagArg("json", about="Print one JSON result on stdout"),
+    ],
+    options=[
+      @argparse.OptionArg(
+        "repository",
+        about="The repository this run belongs to (GITHUB_REPOSITORY)",
+        required=true,
+      ),
+      @argparse.OptionArg(
+        "wait-minutes",
+        about="Read a pending ci-ok again every 30 s for up to this many minutes, 0 to 60 (default 0)",
+      ),
+    ],
+  )
+}
+
+///|
+struct Invocation {
+  pairing : Pairing
+  dry_run : Bool
+  json : Bool
+  /// How long a pending ci-ok may be read again before the run gives up.
+  wait_minutes : Int32
+}
+
+///|
+let gate_poll_ms : Int32 = 30000
+
+///|
+let max_wait_minutes : Int32 = 60
+
+///|
+/// Read before domain validation, so that a refused value still reports JSON.
+fn wants_json(matches : @argparse.Matches) -> Bool {
+  matches.flags.get("json").unwrap_or(false)
+}
+
+///|
+fn Invocation::from_matches(matches : @argparse.Matches) -> Invocation raise {
+  let flag = (name : String) => matches.flags.get(name).unwrap_or(false)
+  guard matches.values.get("repository") is Some([repository]) else {
+    fail("Missing --repository")
+  }
+  let wait_minutes = match matches.values.get("wait-minutes") {
+    None => 0
+    Some([text]) => {
+      let minutes = @string.parse_int(text) catch {
+        _ => fail("--wait-minutes: expected a whole number, got \{text}")
+      }
+      guard minutes >= 0 && minutes <= max_wait_minutes else {
+        fail("--wait-minutes: expected 0 to \{max_wait_minutes}, got \{text}")
+      }
+      minutes
+    }
+    Some(_) => fail("--wait-minutes: expected one value")
+  }
+  {
+    pairing: Pairing::for_repository(repository),
+    dry_run: flag("dry-run"),
+    json: wants_json(matches),
+    wait_minutes,
+  }
+}
+
+///|
+/// The reader needs the cause, not the source location that `fail` puts first.
+fn error_message(error : Error) -> String {
+  match error {
+    Failure(message) =>
+      match message.find("FAILED: ") {
+        Some(at) => message.view(start_offset=at + 8).to_owned()
+        None => message
+      }
+    _ => error.to_string()
+  }
+}
+
+///|
+fn failure_json(message : String) -> Json {
+  {
+    "profile": "morphir/command-result",
+    "contractVersion": "0.1.0",
+    "command": "branch.sync",
+    "state": "failed",
+    "exitCode": 1,
+    "diagnostics": [],
+    "error": { "code": "command-failed", "message": message },
+  }
+}
+
+///|
+/// The effects a run needs. `github_effects` uses Git and `gh`; tests record
+/// fakes.
+struct Effects {
+  fetch_tip : async (Endpoint) -> Sha
+  /// `is_ancestor(a, b)` is true when `a` is an ancestor of `b`.
+  is_ancestor : async (Sha, Sha) -> Bool
+  read_gate : async (RepoSlug, Sha) -> Gate
+  sleep : async (Int32) -> Unit
+  push : async (Endpoint, Sha) -> Unit
+  find_open_issue : async (RepoSlug) -> Int32?
+  change_issue : async (RepoSlug, IssueChange, String) -> Unit
+  progress : async (String) -> Unit
+}
+
+///|
+/// Fetch both tips, decide, then push and update the issue unless this is a
+/// dry run. The gate is read only when this run's branch is ahead.
+async fn run_sync(invocation : Invocation, effects : Effects) -> Outcome {
+  let pairing = invocation.pairing
+  let own_tip = (effects.fetch_tip)(pairing.own)
+  let other_tip = (effects.fetch_tip)(pairing.other)
+  let same = own_tip == other_tip
+  let relation = Relation::of(
+    same~,
+    other_in_own=!same && (effects.is_ancestor)(other_tip, own_tip),
+    own_in_other=!same && (effects.is_ancestor)(own_tip, other_tip),
+  )
+  let gate = if relation is OwnAhead {
+    let budget_ms = invocation.wait_minutes * 60000
+    let mut waited_ms = 0
+    let mut reading = (effects.read_gate)(pairing.own.repo, own_tip)
+    // Only this run can push this direction, so a pending check is read again
+    // for up to --wait-minutes instead of being left to a later push.
+    while reading is Pending && waited_ms + gate_poll_ms <= budget_ms {
+      (effects.progress)(
+        "ci-ok on \{own_tip.0} is still running; read again in 30 s",
+      )
+      (effects.sleep)(gate_poll_ms)
+      waited_ms += gate_poll_ms
+      reading = (effects.read_gate)(pairing.own.repo, own_tip)
+    }
+    Some(reading)
+  } else {
+    None
+  }
+  let action = plan(relation, own_tip, gate.unwrap_or(Missing))
+  if action is Push(tip) && !invocation.dry_run {
+    (effects.progress)("push \{tip.0} to \{pairing.other.label()}")
+    (effects.push)(pairing.other, tip)
+  }
+  let issue = issue_change(action, (effects.find_open_issue)(pairing.own.repo))
+  let outcome : Outcome = {
+    pairing,
+    own_tip,
+    other_tip,
+    relation,
+    gate,
+    action,
+    issue,
+    dry_run: invocation.dry_run,
+  }
+  if !invocation.dry_run && !(issue is Unchanged) {
+    let body = match outcome.error() {
+      Some((_, message)) => message
+      None =>
+        "\{pairing.own.label()} and \{pairing.other.label()} are together again (\{outcome.summary()})."
+    }
+    (effects.change_issue)(pairing.own.repo, issue, body)
+  }
+  outcome
+}
+
+///|
+test "each repository syncs its own branch to the other repository" {
+  let moonbit = Pairing::for_repository("finos/morphir-moonbit")
+  assert_eq(moonbit.own.repo.0, "finos/morphir-moonbit")
+  assert_eq(moonbit.own.branch.0, "main")
+  assert_eq(moonbit.other.repo.0, "finos/morphir")
+  assert_eq(moonbit.other.branch.0, "moonshots")
+  let morphir = Pairing::for_repository("finos/morphir")
+  assert_eq(morphir.own.branch.0, "moonshots")
+  assert_eq(morphir.other.repo.0, "finos/morphir-moonbit")
+  assert_eq(morphir.other.branch.0, "main")
+}
+
+///|
+test "an unknown repository is refused" {
+  for repository in ["", "finos/morphir-rust", "someone/morphir-moonbit"] {
+    let refused = try {
+      ignore(Pairing::for_repository(repository))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused, msg="accepted \{repository}")
+  }
+}
+
+///|
+test "ancestry facts give one relation" {
+  assert_true(
+    Relation::of(same=true, other_in_own=true, own_in_other=true) is Same,
+  )
+  assert_true(
+    Relation::of(same=false, other_in_own=true, own_in_other=false) is OwnAhead,
+  )
+  assert_true(
+    Relation::of(same=false, other_in_own=false, own_in_other=true)
+    is OtherAhead,
+  )
+  assert_true(
+    Relation::of(same=false, other_in_own=false, own_in_other=false) is Diverged,
+  )
+}
+
+///|
+test "only an own branch ahead with a passed gate is pushed" {
+  let tip = Sha::parse("0123456789abcdef0123456789abcdef01234567")
+  assert_true(plan(Same, tip, Passed) is InSync)
+  assert_true(plan(OwnAhead, tip, Passed) is Push(_))
+  assert_true(plan(OwnAhead, tip, Pending) is WaitForChecks(_))
+  assert_true(plan(OwnAhead, tip, Missing) is Blocked(_, Missing))
+  assert_true(plan(OwnAhead, tip, Failed) is Blocked(_, Failed))
+  assert_true(plan(OtherAhead, tip, Passed) is LeftToOtherSide)
+  assert_true(plan(Diverged, tip, Passed) is Diverged)
+}
+
+///|
+test "a commit id must be 40 lowercase hex digits" {
+  assert_eq(
+    Sha::parse("0123456789abcdef0123456789abcdef01234567").0,
+    "0123456789abcdef0123456789abcdef01234567",
+  )
+  for
+    text in [
+      "", "0123", "0123456789ABCDEF0123456789abcdef01234567", "g123456789abcdef0123456789abcdef01234567",
+    ] {
+    let refused = try {
+      ignore(Sha::parse(text))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused, msg="accepted \{text}")
+  }
+}
+
+///|
+test "the ci-ok gate reads GitHub check runs" {
+  let run = (status : String, conclusion : Json) => {
+    let value : Json = { "status": status, "conclusion": conclusion }
+    value
+  }
+  let runs = (items : Array[Json]) => {
+    let value : Json = { "total_count": items.length(), "check_runs": items }
+    value
+  }
+  assert_true(Gate::from_check_runs(runs([])) is Missing)
+  assert_true(
+    Gate::from_check_runs(runs([run("completed", "success")])) is Passed,
+  )
+  assert_true(
+    Gate::from_check_runs(runs([run("in_progress", Json::null())])) is Pending,
+  )
+  assert_true(
+    Gate::from_check_runs(runs([run("completed", "failure")])) is Failed,
+  )
+  // A later run that is still going does not hide an earlier pass.
+  assert_true(
+    Gate::from_check_runs(
+      runs([run("in_progress", Json::null()), run("completed", "success")]),
+    )
+    is Passed,
+  )
+  // A run that is still going can still pass after a failed one.
+  assert_true(
+    Gate::from_check_runs(
+      runs([run("completed", "failure"), run("queued", Json::null())]),
+    )
+    is Pending,
+  )
+}
+
+///|
+test "divergence opens one issue and a later sync closes it" {
+  let tip = Sha::parse("0123456789abcdef0123456789abcdef01234567")
+  assert_true(issue_change(Diverged, None) is Open)
+  assert_true(issue_change(Diverged, Some(7)) is Comment(7))
+  for action in [InSync, Push(tip), LeftToOtherSide] {
+    assert_true(issue_change(action, Some(7)) is Close(7))
+    assert_true(issue_change(action, None) is Unchanged)
+  }
+  // Still waiting or blocked: the branches have not met yet.
+  assert_true(issue_change(WaitForChecks(tip), Some(7)) is Unchanged)
+  assert_true(issue_change(Blocked(tip, Failed), Some(7)) is Unchanged)
+}
+
+///|
+test "divergence and a blocked gate fail the run" {
+  let tip = Sha::parse("0123456789abcdef0123456789abcdef01234567")
+  assert_eq(exit_code(Diverged), 1)
+  assert_eq(exit_code(Blocked(tip, Missing)), 1)
+  for action in [InSync, Push(tip), WaitForChecks(tip), LeftToOtherSide] {
+    assert_eq(exit_code(action), 0)
+  }
+}
+
+///|
+test "command line forms" {
+  let parse = (argv : Array[String]) => {
+    sync_command().parse(argv~, env=Map([])) |> Invocation::from_matches
+  }
+  let full = parse(["--repository", "finos/morphir", "--dry-run", "--json"])
+  assert_eq(full.pairing.own, morphir_moonshots)
+  assert_true(full.dry_run)
+  assert_true(full.json)
+  let plain = parse(["--repository", "finos/morphir-moonbit"])
+  assert_eq(plain.pairing.own, moonbit_main)
+  assert_false(plain.dry_run)
+  assert_false(plain.json)
+  for
+    argv in [
+      [],
+      ["--dry-run"],
+      ["--repository"],
+      ["--repository", "finos/morphir-rust"],
+      ["--repository", "finos/morphir", "--force"],
+      ["--repository", "finos/morphir", "extra"],
+    ] {
+    let refused = try {
+      ignore(parse(argv))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused, msg="accepted \{argv.join(" ")}")
+  }
+}
+
+///|
+test "JSON result uses the command-result envelope" {
+  let own = Sha::parse("1111111111111111111111111111111111111111")
+  let other = Sha::parse("2222222222222222222222222222222222222222")
+  let pairing = Pairing::for_repository("finos/morphir-moonbit")
+  let pushed : Outcome = {
+    pairing,
+    own_tip: own,
+    other_tip: other,
+    relation: OwnAhead,
+    gate: Some(Passed),
+    action: Push(own),
+    issue: Unchanged,
+    dry_run: false,
+  }
+  let json = pushed.to_json()
+  guard json
+    is {
+      "profile": String("morphir/command-result"),
+      "contractVersion": String("0.1.0"),
+      "command": String("branch.sync"),
+      "state": String("succeeded"),
+      "exitCode": Number(0, ..),
+      "diagnostics": Array([]),
+      "result": {
+        "action": String("push"),
+        "own": {
+          "repository": String("finos/morphir-moonbit"),
+          "branch": String("main"),
+          "tip": String(own_text),
+          ..
+        },
+        "other": {
+          "repository": String("finos/morphir"),
+          "branch": String("moonshots"),
+          "tip": String(other_text),
+          ..
+        },
+        "relation": String("own-ahead"),
+        "gate": String("passed"),
+        "issue": String("unchanged"),
+        "dryRun": False,
+        ..
+      },
+      ..
+    } else {
+    fail("unexpected success JSON: \{json.stringify()}")
+  }
+  guard !(json is { "error": _, .. }) else {
+    fail("a successful result must not carry error")
+  }
+  assert_eq(own_text, own.0)
+  assert_eq(other_text, other.0)
+  let diverged : Outcome = {
+    ..pushed,
+    relation: Diverged,
+    gate: None,
+    action: Diverged,
+    issue: Open,
+  }
+  guard diverged.to_json()
+    is {
+      "state": String("failed"),
+      "exitCode": Number(1, ..),
+      "error": { "code": String("diverged"), "message": String(_), .. },
+      ..
+    } else {
+    fail("unexpected failure JSON: \{diverged.to_json().stringify()}")
+  }
+  guard !(diverged.to_json() is { "result": _, .. }) else {
+    fail("a failed result must not carry result")
+  }
+}
+
+///|
+/// A recorded run against fake tips, ancestry, gate readings and open issue.
+/// Each gate read takes the next reading; the last one repeats.
+async fn fake_run(
+  own_tip~ : String,
+  other_tip~ : String,
+  ancestry~ : Array[(String, String)],
+  gate~ : Gate,
+  later_gates~ : Array[Gate] = [],
+  wait_minutes~ : Int32 = 0,
+  open_issue~ : Int32?,
+  dry_run~ : Bool,
+) -> (Outcome, Array[String]) {
+  let calls : Array[String] = []
+  let readings = [gate, ..later_gates]
+  let reads = Ref(0)
+  let effects : Effects = {
+    fetch_tip: endpoint => {
+      calls.push("fetch \{endpoint.label()}")
+      Sha::parse(if endpoint == moonbit_main { own_tip } else { other_tip })
+    },
+    is_ancestor: (ancestor, descendant) => {
+      ancestry.contains((ancestor.0, descendant.0))
+    },
+    read_gate: (repo, tip) => {
+      calls.push("gate \{repo.0} \{tip.0}")
+      let reading = readings[if reads.val < readings.length() {
+          reads.val
+        } else {
+          readings.length() - 1
+        }]
+      reads.val += 1
+      reading
+    },
+    sleep: ms => calls.push("sleep \{ms}"),
+    push: (endpoint, tip) => calls.push("push \{endpoint.label()} \{tip.0}"),
+    find_open_issue: repo => {
+      calls.push("issues \{repo.0}")
+      open_issue
+    },
+    change_issue: (repo, change, _) => {
+      calls.push("issue \{repo.0} \{change.name()}")
+    },
+    progress: _ => (),
+  }
+  let invocation : Invocation = {
+    pairing: Pairing::for_repository("finos/morphir-moonbit"),
+    dry_run,
+    json: false,
+    wait_minutes,
+  }
+  (run_sync(invocation, effects), calls)
+}
+
+///|
+async test "a pending gate is read again until it passes within the wait" {
+  let (outcome, calls) = fake_run(
+    own_tip=tip_a,
+    other_tip=tip_b,
+    ancestry=[(tip_b, tip_a)],
+    gate=Pending,
+    later_gates=[Pending, Passed],
+    wait_minutes=5,
+    open_issue=None,
+    dry_run=false,
+  )
+  assert_true(outcome.action is Push(_))
+  assert_true(outcome.gate is Some(Passed))
+  assert_eq(calls.filter(call => call.has_prefix("sleep ")), [
+    "sleep 30000", "sleep 30000",
+  ])
+  assert_eq(calls.filter(call => call.has_prefix("push ")).length(), 1)
+}
+
+///|
+async test "without a wait a pending gate is read once" {
+  let (outcome, calls) = fake_run(
+    own_tip=tip_a,
+    other_tip=tip_b,
+    ancestry=[(tip_b, tip_a)],
+    gate=Pending,
+    later_gates=[Passed],
+    open_issue=None,
+    dry_run=false,
+  )
+  assert_true(outcome.action is WaitForChecks(_))
+  assert_false(
+    calls
+    .iter()
+    .any(call => call.has_prefix("sleep ") || call.has_prefix("push ")),
+  )
+}
+
+///|
+async test "the wait is bounded" {
+  let (outcome, calls) = fake_run(
+    own_tip=tip_a,
+    other_tip=tip_b,
+    ancestry=[(tip_b, tip_a)],
+    gate=Pending,
+    wait_minutes=1,
+    open_issue=None,
+    dry_run=false,
+  )
+  assert_true(outcome.action is WaitForChecks(_))
+  // One minute at 30-second intervals: two more reads, then stop.
+  assert_eq(calls.filter(call => call.has_prefix("sleep ")).length(), 2)
+  assert_eq(calls.filter(call => call.has_prefix("gate ")).length(), 3)
+}
+
+///|
+test "wait minutes are a bounded whole number" {
+  let parse = (argv : Array[String]) => {
+    sync_command().parse(argv~, env=Map([])) |> Invocation::from_matches
+  }
+  assert_eq(parse(["--repository", "finos/morphir"]).wait_minutes, 0)
+  assert_eq(
+    parse(["--repository", "finos/morphir", "--wait-minutes", "30"]).wait_minutes,
+    30,
+  )
+  for value in ["-1", "x", "", "61"] {
+    let refused = try {
+      ignore(parse(["--repository", "finos/morphir", "--wait-minutes", value]))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused, msg="accepted --wait-minutes \{value}")
+  }
+}
+
+///|
+test "a refused repository still reports JSON" {
+  let matches = sync_command().parse(
+    argv=["--repository", "someone/morphir-moonbit", "--json"],
+    env=Map([]),
+  )
+  assert_true(wants_json(matches))
+  let message = try {
+    ignore(Invocation::from_matches(matches))
+    ""
+  } catch {
+    error => error_message(error)
+  }
+  assert_eq(
+    message, "--repository: expected finos/morphir-moonbit or finos/morphir, got someone/morphir-moonbit",
+  )
+  guard failure_json(message)
+    is {
+      "profile": String("morphir/command-result"),
+      "command": String("branch.sync"),
+      "state": String("failed"),
+      "exitCode": Number(1, ..),
+      "error": { "code": String("command-failed"), "message": String(text), .. },
+      ..
+    } else {
+    fail("unexpected failure JSON")
+  }
+  assert_eq(text, message)
+  assert_false(
+    wants_json(
+      sync_command().parse(argv=["--repository", "finos/morphir"], env=Map([])),
+    ),
+  )
+}
+
+///|
+let tip_a : String = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+///|
+let tip_b : String = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+///|
+async test "own branch ahead with a passed gate is pushed once" {
+  let (outcome, calls) = fake_run(
+    own_tip=tip_a,
+    other_tip=tip_b,
+    ancestry=[(tip_b, tip_a)],
+    gate=Passed,
+    open_issue=None,
+    dry_run=false,
+  )
+  assert_true(outcome.action is Push(_))
+  assert_eq(calls, [
+    "fetch finos/morphir-moonbit main",
+    "fetch finos/morphir moonshots",
+    "gate finos/morphir-moonbit \{tip_a}",
+    "push finos/morphir moonshots \{tip_a}",
+    "issues finos/morphir-moonbit",
+  ])
+}
+
+///|
+async test "a dry run pushes nothing and changes no issue" {
+  let (outcome, calls) = fake_run(
+    own_tip=tip_a,
+    other_tip=tip_b,
+    ancestry=[(tip_b, tip_a)],
+    gate=Passed,
+    open_issue=Some(3),
+    dry_run=true,
+  )
+  assert_true(outcome.action is Push(_))
+  assert_true(outcome.issue is Close(3))
+  assert_false(
+    calls
+    .iter()
+    .any(call => call.has_prefix("push ") || call.has_prefix("issue ")),
+  )
+}
+
+///|
+async test "equal tips read no gate and push nothing" {
+  let (outcome, calls) = fake_run(
+    own_tip=tip_a,
+    other_tip=tip_a,
+    ancestry=[],
+    gate=Failed,
+    open_issue=None,
+    dry_run=false,
+  )
+  assert_true(outcome.action is InSync)
+  assert_true(outcome.gate is None)
+  assert_false(
+    calls
+    .iter()
+    .any(call => call.has_prefix("gate ") || call.has_prefix("push ")),
+  )
+}
+
+///|
+async test "divergence opens the issue and pushes nothing" {
+  let (outcome, calls) = fake_run(
+    own_tip=tip_a,
+    other_tip=tip_b,
+    ancestry=[],
+    gate=Passed,
+    open_issue=None,
+    dry_run=false,
+  )
+  assert_true(outcome.action is Diverged)
+  assert_true(calls.contains("issue finos/morphir-moonbit open"))
+  assert_false(
+    calls
+    .iter()
+    .any(call => call.has_prefix("gate ") || call.has_prefix("push ")),
+  )
+}
+
+///|
+async test "the other side ahead closes an open divergence issue" {
+  let (outcome, calls) = fake_run(
+    own_tip=tip_a,
+    other_tip=tip_b,
+    ancestry=[(tip_a, tip_b)],
+    gate=Passed,
+    open_issue=Some(9),
+    dry_run=false,
+  )
+  assert_true(outcome.action is LeftToOtherSide)
+  assert_true(calls.contains("issue finos/morphir-moonbit close"))
+  assert_false(calls.iter().any(call => call.has_prefix("push ")))
+}
+
+///|
+let tool_timeout_ms : Int32 = 300000
+
+///|
+let sync_label : String = "branch-sync"
+
+///|
+let sync_issue_title : String = "Branch sync: main and moonshots diverged"
+
+///|
+/// Run a tool and return its stdout. A non-zero status or a timeout raises.
+async fn tool(name : String, args : Array[String]) -> String {
+  let (status, out, err) = tool_status(name, args)
+  guard status == 0 else {
+    fail(
+      "\{name} \{args.iter().take(2).collect().join(" ")} exited \{status}: \{err.trim().to_owned()}",
+    )
+  }
+  out
+}
+
+///|
+async fn tool_status(
+  name : String,
+  args : Array[String],
+) -> (Int32, String, String) {
+  let label = ([name] + args.iter().take(2).collect()).join(" ")
+  let run = @async.with_timeout_opt(tool_timeout_ms, () => {
+    let (status, out, err) = @process.collect_output(name, args)
+    (status, out.text(), err.text())
+  }) catch {
+    error => fail("\{label}: \{error}")
+  }
+  guard run is Some(result) else {
+    fail("\{label}: timeout after \{tool_timeout_ms} ms")
+  }
+  result
+}
+
+///|
+/// Git runs in `workdir`. Fetches land under `refs/branch-sync/`, so they never
+/// move a branch of the checkout.
+fn github_effects(
+  workdir~ : String,
+  fetch_url~ : (RepoSlug) -> String,
+  push_url~ : (RepoSlug) -> String,
+  json~ : Bool,
+) -> Effects {
+  let git = async fn(args : Array[String]) -> String {
+    tool("git", ["-C", workdir, ..args])
+  }
+  let progress = async fn(message : String) {
+    if json {
+      @stdio.stderr.write("branch-sync: \{message}\n")
+    } else {
+      println("branch-sync: \{message}")
+    }
+  }
+  let gh_json = async fn(args : Array[String]) -> Json {
+    let out = tool("gh", args)
+    @json.parse(out) catch {
+      _ =>
+        fail("gh \{args.iter().take(2).collect().join(" ")} returned no JSON")
+    }
+  }
+  {
+    fetch_tip: endpoint => {
+      let fetched = "refs/branch-sync/\{endpoint.repo.0}/\{endpoint.branch.0}"
+      progress("fetch \{endpoint.label()}")
+      ignore(
+        git([
+          "fetch",
+          "--no-tags",
+          "--quiet",
+          fetch_url(endpoint.repo),
+          "+refs/heads/\{endpoint.branch.0}:\{fetched}",
+        ]),
+      )
+      Sha::parse(
+        git(["rev-parse", "--verify", "\{fetched}^{commit}"]).trim().to_owned(),
+      )
+    },
+    is_ancestor: (ancestor, descendant) => {
+      let (status, _, err) = tool_status("git", [
+        "-C",
+        workdir,
+        "merge-base",
+        "--is-ancestor",
+        ancestor.0,
+        descendant.0,
+      ])
+      match status {
+        0 => true
+        1 => false
+        _ => fail("git merge-base exited \{status}: \{err.trim().to_owned()}")
+      }
+    },
+    read_gate: (repo, tip) => {
+      progress("read ci-ok on \{tip.0} in \{repo.0}")
+      Gate::from_check_runs(
+        gh_json([
+          "api",
+          "repos/\{repo.0}/commits/\{tip.0}/check-runs?check_name=ci-ok&per_page=100",
+        ]),
+      )
+    },
+    // A plain push: Git and the branch rules refuse anything but a
+    // fast-forward.
+    push: (endpoint, tip) => {
+      ignore(
+        git([
+          "push",
+          "--quiet",
+          push_url(endpoint.repo),
+          "\{tip.0}:refs/heads/\{endpoint.branch.0}",
+        ]),
+      )
+    },
+    find_open_issue: repo => {
+      let listed = gh_json([
+        "issue",
+        "list",
+        "--repo",
+        repo.0,
+        "--label",
+        sync_label,
+        "--state",
+        "open",
+        "--json",
+        "number",
+        "--limit",
+        "100",
+      ])
+      guard listed is Array(items) else {
+        fail("gh issue list: expected a JSON array")
+      }
+      let mut lowest : Int32? = None
+      for item in items {
+        guard item is { "number": Number(number, ..), .. } else {
+          fail("gh issue list: item without a number")
+        }
+        let number = number.to_int()
+        if !(lowest is Some(known) && known <= number) {
+          lowest = Some(number)
+        }
+      }
+      lowest
+    },
+    change_issue: (repo, change, body) => {
+      match change {
+        Open => {
+          let labels = gh_json([
+            "label",
+            "list",
+            "--repo",
+            repo.0,
+            "--search",
+            sync_label,
+            "--json",
+            "name",
+          ])
+          let exists = labels is Array(items) &&
+            items
+            .iter()
+            .any(item => {
+              item is { "name": String(name), .. } && name == sync_label
+            })
+          if !exists {
+            ignore(
+              tool("gh", [
+                "label",
+                "create",
+                sync_label,
+                "--repo",
+                repo.0,
+                "--description",
+                "main and moonshots diverged",
+              ]),
+            )
+          }
+          ignore(
+            tool("gh", [
+              "issue",
+              "create",
+              "--repo",
+              repo.0,
+              "--title",
+              sync_issue_title,
+              "--label",
+              sync_label,
+              "--body",
+              body,
+            ]),
+          )
+        }
+        Comment(number) =>
+          ignore(
+            tool("gh", [
+              "issue",
+              "comment",
+              number.to_string(),
+              "--repo",
+              repo.0,
+              "--body",
+              body,
+            ]),
+          )
+        Close(number) =>
+          ignore(
+            tool("gh", [
+              "issue",
+              "close",
+              number.to_string(),
+              "--repo",
+              repo.0,
+              "--comment",
+              body,
+            ]),
+          )
+        Unchanged => ()
+      }
+    },
+    sleep: ms => @async.sleep(ms),
+    progress,
+  }
+}
+
+///|
+async fn main {
+  // Syntax errors stay with argparse. Everything after it, including domain
+  // validation, reports in JSON when --json was given.
+  let matches = sync_command().parse()
+  let json = wants_json(matches)
+  let outcome = try {
+    let invocation = Invocation::from_matches(matches)
+    let effects = github_effects(
+      workdir=".",
+      fetch_url=repo => "https://github.com/\{repo.0}.git",
+      push_url=repo => "git@github.com:\{repo.0}.git",
+      json~,
+    )
+    run_sync(invocation, effects)
+  } catch {
+    error => {
+      if !json {
+        raise error
+      }
+      @stdio.stderr.write(error_message(error) + "\n")
+      @stdio.stdout.write(failure_json(error_message(error)).stringify() + "\n")
+      @sys.exit(1)
+      return
+    }
+  }
+  if json {
+    @stdio.stdout.write(outcome.to_json().stringify() + "\n")
+  } else {
+    println(outcome.summary())
+  }
+  let code = exit_code(outcome.action)
+  if code != 0 {
+    @sys.exit(code)
+  }
+}
+
+///|
+async test "Git adapters fetch real tips, compare them and only fast-forward" {
+  let root = tool("mktemp", ["-d"]).trim().to_owned()
+  let git = async fn(args : Array[String]) { ignore(tool("git", args)) }
+  let work = root + "/work"
+  let commit = async fn(message : String) {
+    git([
+      "-C", work, "-c", "user.name=test", "-c", "user.email=test@example.com", "commit",
+      "-q", "--allow-empty", "-m", message,
+    ])
+  }
+  let url = (repo : RepoSlug) => "\{root}/\{repo.0}.git"
+  git(["init", "-q", "--bare", url(moonbit_main.repo)])
+  git(["init", "-q", "--bare", url(morphir_moonshots.repo)])
+  git(["init", "-q", work])
+  commit("one")
+  git(["-C", work, "push", "-q", url(moonbit_main.repo), "HEAD:refs/heads/main"])
+  git([
+    "-C",
+    work,
+    "push",
+    "-q",
+    url(morphir_moonshots.repo),
+    "HEAD:refs/heads/moonshots",
+  ])
+  commit("two")
+  git(["-C", work, "push", "-q", url(moonbit_main.repo), "HEAD:refs/heads/main"])
+  git(["init", "-q", root + "/checkout"])
+  let effects = github_effects(
+    workdir=root + "/checkout",
+    fetch_url=url,
+    push_url=url,
+    json=false,
+  )
+  let own = (effects.fetch_tip)(moonbit_main)
+  let other = (effects.fetch_tip)(morphir_moonshots)
+  assert_true((effects.is_ancestor)(other, own))
+  assert_false((effects.is_ancestor)(own, other))
+  (effects.push)(morphir_moonshots, own)
+  assert_eq((effects.fetch_tip)(morphir_moonshots), own)
+  // Replace main with an unrelated commit: pushing it would not be a
+  // fast-forward, so Git must refuse it.
+  git(["-C", work, "checkout", "-q", "--orphan", "unrelated"])
+  commit("unrelated")
+  git([
+    "-C",
+    work,
+    "push",
+    "-q",
+    "--force",
+    url(moonbit_main.repo),
+    "HEAD:refs/heads/main",
+  ])
+  let unrelated = (effects.fetch_tip)(moonbit_main)
+  assert_false((effects.is_ancestor)(own, unrelated))
+  let refused = try {
+    (effects.push)(morphir_moonshots, unrelated)
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(refused, msg="a non-fast-forward push was accepted")
+  assert_eq((effects.fetch_tip)(morphir_moonshots), own)
+  ignore(tool("rm", ["-rf", root]))
+}
