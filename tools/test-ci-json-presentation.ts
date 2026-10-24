@@ -355,10 +355,11 @@ try {
     ...env, ...modeEnv('skip'), CI_NEEDS: JSON.stringify(qualificationNeeds('skip')),
   });
   assert.equal(qualifiedHuman.status, 0); assert.equal(qualifiedHuman.err, '');
-  const [humanReceipt, humanMessage, trailing] = qualifiedHuman.out.split('\n');
-  assert.equal(humanReceipt + '\n', qualifiedSkip.out);
-  assert.equal(humanMessage, 'All selected checks passed; unselected checks may be skipped.');
-  assert.equal(trailing, ''); assert(existsSync(qualificationPath));
+  // qualification_stdout_is_json: stdout is the receipt and nothing else.
+  assert.equal(qualifiedHuman.out, qualifiedSkip.out);
+  assert.equal(qualifiedHuman.out.split('\n').length, 2);
+  assert.equal(JSON.stringify(JSON.parse(qualifiedHuman.out)) + '\n', qualifiedHuman.out);
+  assert(existsSync(qualificationPath));
   const gateSelfTest = await run('gate', ['--json', '--self-test'], { ...env, ...modeEnv('skip') });
   assert.equal(success(gateSelfTest).passed, true);
   assert(gateSelfTest.err.includes('qualification plan, macOS modes, fixed job lists and v2 receipt pass'));

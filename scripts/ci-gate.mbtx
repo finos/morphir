@@ -108,7 +108,7 @@ async fn self_test() -> Unit {
     "provider": false,
     "acceptance-lanes": "[]",
   }
-  guard selected_jobs("--native", focused) ==
+  guard selected_jobs(Native, focused) ==
     Json(["native-cli", "mep-process", "native-cli-acceptance"]) else {
     fail("Wrong focused native requirements")
   }
@@ -118,7 +118,7 @@ async fn self_test() -> Unit {
     "provider": true,
     "acceptance-lanes": "[\"frontend\"]",
   }
-  let full_jobs = selected_jobs("--native", full)
+  let full_jobs = selected_jobs(Native, full)
   guard full_jobs is Array(jobs) && jobs.length() == 7 else {
     fail("Full native requirements omitted a producer or consumer")
   }
@@ -131,8 +131,7 @@ async fn self_test() -> Unit {
   guard !accepts(Json::object(statuses), full_jobs) else {
     fail("A skipped selected provider consumer passed the reusable workflow")
   }
-  guard selected_jobs("--installed", { "workbench": true }) ==
-    Json(["workbench"]) else {
+  guard selected_jobs(Installed, { "workbench": true }) == Json(["workbench"]) else {
     fail("Wrong focused installed requirements")
   }
   let (status, out, _) = @process.collect_output("git", ["rev-parse", "HEAD"])
@@ -356,8 +355,10 @@ fn evidence_fixture() -> EvidenceRef {
   {
     run: 39549808921L,
     artifact: 4012345678L,
-    fingerprint: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    sha: "1111111111111111111111111111111111111111",
+    fingerprint: Fingerprint(
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    ),
+    sha: CommitSha("1111111111111111111111111111111111111111"),
   }
 }
 
@@ -560,10 +561,10 @@ fn qualification_self_test() -> Unit raise {
   // receipt_v2_fields: the v2 receipt records the mode, the evidence and the
   // fixed job list.
   let env = {
-    revision: "1111111111111111111111111111111111111111",
-    repository: "finos/morphir-moonbit",
-    run_id: "39549808921",
-    run_attempt: "1",
+    revision: CommitSha("1111111111111111111111111111111111111111"),
+    repository: RepositoryName("finos/morphir-moonbit"),
+    run_id: RunId("39549808921"),
+    run_attempt: RunAttempt("1"),
   }
   for
     case in [
@@ -635,6 +636,16 @@ fn qualification_self_test() -> Unit raise {
     [Some("morphir_ci_qualification_v2")] else {
     fail("Wrong qualification receipt annotation")
   }
+  // qualification_stdout_is_json: stdout is exactly one JSON value, and the
+  // status line is not printed for this mode.
+  let receipt = qualification_receipt(Json::object(skipped), Skip, None, env)
+  guard @json.parse(qualification_stdout(receipt)) == receipt &&
+    qualification_stdout(receipt) == receipt.stringify() + "\n" &&
+    completion_line(Qualification) is None &&
+    completion_line(Check) is Some(_) &&
+    completion_line(Native) is Some(_) else {
+    fail("qualification stdout is not exactly the receipt JSON")
+  }
   test_note(
     "ci-gate: qualification plan, macOS modes, fixed job lists and v2 receipt pass",
   )
@@ -643,19 +654,15 @@ fn qualification_self_test() -> Unit raise {
 ///|
 fn cli_self_test() -> Unit raise {
   let command = gate_command()
-  let cases : Array[(Array[String], String, String?)] = [
-    ([], "check", None),
-    (["--self-test"], "self-test", None),
-    (["--qualification"], "qualification", None),
-    (["--qualification-plan"], "qualification-plan", None),
-    (["--qualification-jobs"], "qualification-jobs", None),
-    (["--native"], "native", None),
-    (["--installed"], "installed", None),
-    (
-      ["--receipt", ".dev/ci/receipt.json"],
-      "check",
-      Some(".dev/ci/receipt.json"),
-    ),
+  let cases : Array[(Array[String], GateMode, String?)] = [
+    ([], Check, None),
+    (["--self-test"], SelfTest, None),
+    (["--qualification"], Qualification, None),
+    (["--qualification-plan"], QualificationPlan, None),
+    (["--qualification-jobs"], QualificationJobs, None),
+    (["--native"], Native, None),
+    (["--installed"], Installed, None),
+    (["--receipt", ".dev/ci/receipt.json"], Check, Some(".dev/ci/receipt.json")),
   ]
   for case in cases {
     let (argv, mode, path) = case
@@ -710,12 +717,12 @@ fn environment(name : String) -> String raise {
 }
 
 ///|
-fn selected_jobs(mode : String, inputs : Json) -> Json raise {
+fn selected_jobs(mode : GateMode, inputs : Json) -> Json raise {
   guard inputs is Object(fields) else {
     fail("Expected reusable workflow inputs")
   }
   let jobs : Array[String] = []
-  if mode == "--native" {
+  if mode is Native {
     guard fields.get("runner") is Some(String(runner)) &&
       ["ubuntu-24.04", "macos-15"].contains(runner) else {
       fail("Unqualified native runner")
@@ -748,7 +755,7 @@ fn selected_jobs(mode : String, inputs : Json) -> Json raise {
     if fields.get("provider") == Some(Json::boolean(true)) {
       jobs.append(["provider-tools", "installed-provider"])
     }
-  } else if mode == "--installed" {
+  } else if mode is Installed {
     for job in ["lifecycle", "telemetry", "workbench"] {
       if fields.get(job) == Some(Json::boolean(true)) {
         jobs.push(job)
@@ -794,9 +801,44 @@ fn MacosMode::to_string(self : MacosMode) -> String {
 priv struct EvidenceRef {
   run : Int64
   artifact : Int64
-  fingerprint : String
-  sha : String
+  fingerprint : Fingerprint
+  sha : CommitSha
 } derive(Eq)
+
+///|
+/// A SHA-256 of the evidence inputs: 64 lowercase hex digits.
+priv struct Fingerprint(String) derive(Eq)
+
+///|
+/// The fingerprint of an evidence reference, from its JSON field.
+fn Fingerprint::from_json(value : Json?) -> Fingerprint raise {
+  guard value is Some(String(text)) && is_lower_hex(text, 64) else {
+    fail("Evidence fingerprint must be 64 lowercase hex digits")
+  }
+  Fingerprint(text)
+}
+
+///|
+/// A full commit id in lowercase hex.
+priv struct CommitSha(String) derive(Eq)
+
+///|
+/// The commit of an evidence reference, from its JSON field: 40 digits.
+fn CommitSha::from_json(value : Json?) -> CommitSha raise {
+  guard value is Some(String(text)) && is_lower_hex(text, 40) else {
+    fail("Evidence sha must be 40 lowercase hex digits")
+  }
+  CommitSha(text)
+}
+
+///|
+/// `GITHUB_SHA`: 40 or 64 lowercase hex digits.
+fn CommitSha::from_env(text : String) -> CommitSha raise {
+  guard is_lower_hex(text, 40) || is_lower_hex(text, 64) else {
+    fail("GITHUB_SHA: expected 40 or 64 lowercase hex digits, got \{text}")
+  }
+  CommitSha(text)
+}
 
 ///|
 fn is_lower_hex(text : String, length : Int32) -> Bool {
@@ -819,13 +861,8 @@ fn EvidenceRef::parse(json : Json) -> EvidenceRef raise {
   guard json is Object(fields) else {
     fail("Evidence reference must be an object")
   }
-  guard fields.get("fingerprint") is Some(String(fingerprint)) &&
-    is_lower_hex(fingerprint, 64) else {
-    fail("Evidence fingerprint must be 64 lowercase hex digits")
-  }
-  guard fields.get("sha") is Some(String(sha)) && is_lower_hex(sha, 40) else {
-    fail("Evidence sha must be 40 lowercase hex digits")
-  }
+  let fingerprint = Fingerprint::from_json(fields.get("fingerprint"))
+  let sha = CommitSha::from_json(fields.get("sha"))
   {
     run: id(fields.get("run"), "run"),
     artifact: id(fields.get("artifact"), "artifact"),
@@ -839,8 +876,8 @@ fn EvidenceRef::to_json(self : EvidenceRef) -> Json {
   {
     "run": Json::number(self.run.to_double()),
     "artifact": Json::number(self.artifact.to_double()),
-    "fingerprint": self.fingerprint,
-    "sha": self.sha,
+    "fingerprint": self.fingerprint.0,
+    "sha": self.sha.0,
   }
 }
 
@@ -940,10 +977,54 @@ fn check_qualification(needs : Json, mode : MacosMode) -> Unit raise {
 ///|
 /// Wire values of the qualification receipt read from the workflow environment.
 priv struct QualificationEnv {
-  revision : String
-  repository : String
-  run_id : String
-  run_attempt : String
+  revision : CommitSha
+  repository : RepositoryName
+  run_id : RunId
+  run_attempt : RunAttempt
+}
+
+///|
+/// A repository as `owner/name`, as in `GITHUB_REPOSITORY`.
+priv struct RepositoryName(String)
+
+///|
+fn RepositoryName::from_env(text : String) -> RepositoryName raise {
+  guard text.split("/").collect() is [owner, name] &&
+    !owner.is_empty() &&
+    !name.is_empty() else {
+    fail("GITHUB_REPOSITORY: expected owner/name, got \{text}")
+  }
+  RepositoryName(text)
+}
+
+///|
+/// A workflow run id as GitHub writes it, in decimal digits. The receipt keeps
+/// it as a string.
+priv struct RunId(String)
+
+///|
+fn RunId::from_env(text : String) -> RunId raise {
+  guard is_decimal(text) else {
+    fail("GITHUB_RUN_ID: expected decimal digits, got \{text}")
+  }
+  RunId(text)
+}
+
+///|
+/// The attempt number of a workflow run, in decimal digits.
+priv struct RunAttempt(String)
+
+///|
+fn RunAttempt::from_env(text : String) -> RunAttempt raise {
+  guard is_decimal(text) else {
+    fail("GITHUB_RUN_ATTEMPT: expected decimal digits, got \{text}")
+  }
+  RunAttempt(text)
+}
+
+///|
+fn is_decimal(text : String) -> Bool {
+  !text.is_empty() && text.iter().all(c => c >= '0' && c <= '9')
 }
 
 ///|
@@ -958,10 +1039,10 @@ fn qualification_receipt(
   check_qualification(needs, mode)
   {
     "profile": "morphir-ci-qualification-v2",
-    "revision": env.revision,
-    "repository": env.repository,
-    "runId": env.run_id,
-    "runAttempt": env.run_attempt,
+    "revision": env.revision.0,
+    "repository": env.repository.0,
+    "runId": env.run_id.0,
+    "runAttempt": env.run_attempt.0,
     "macos": mode.to_string(),
     "macosEvidence": match evidence {
       Some(evidence) => evidence.to_json()
@@ -1153,7 +1234,10 @@ fn gate_command(json~ : Bool = false) -> @argparse.Command {
     @argparse.FlagArg(
       name,
       about~,
-      conflicts_with=gate_modes.filter(mode => mode != name) + ["receipt"],
+      conflicts_with=gate_modes
+        .map(mode => mode.flag())
+        .filter(flag => flag != name) +
+        ["receipt"],
     )
   }
 
@@ -1191,19 +1275,51 @@ fn gate_command(json~ : Bool = false) -> @argparse.Command {
 }
 
 ///|
-let gate_modes : Array[String] = [
-  "self-test", "qualification", "qualification-plan", "qualification-jobs", "native",
-  "installed",
+/// What the gate does. Each mode but `Check` is selected by a flag of its own;
+/// `Check` is the default, which gates the jobs of `CI_REQUIRED_JOBS`.
+priv enum GateMode {
+  SelfTest
+  Qualification
+  QualificationPlan
+  QualificationJobs
+  Native
+  Installed
+  Check
+} derive(Eq)
+
+///|
+/// The name of the mode's flag, which is also the mode in the JSON results.
+fn GateMode::flag(self : GateMode) -> String {
+  match self {
+    SelfTest => "self-test"
+    Qualification => "qualification"
+    QualificationPlan => "qualification-plan"
+    QualificationJobs => "qualification-jobs"
+    Native => "native"
+    Installed => "installed"
+    Check => "check"
+  }
+}
+
+///|
+/// The modes that have a flag, in the order that the help lists them.
+let gate_modes : Array[GateMode] = [
+  SelfTest,
+  Qualification,
+  QualificationPlan,
+  QualificationJobs,
+  Native,
+  Installed,
 ]
 
 ///|
-fn gate_mode(matches : @argparse.Matches) -> String {
+fn gate_mode(matches : @argparse.Matches) -> GateMode {
   for mode in gate_modes {
-    if matches.flags.get(mode).unwrap_or(false) {
+    if matches.flags.get(mode.flag()).unwrap_or(false) {
       return mode
     }
   }
-  "check"
+  Check
 }
 
 ///|
@@ -1220,17 +1336,34 @@ fn receipt_path(matches : @argparse.Matches) -> String? {
 async fn qualify(needs : Json) -> Unit {
   let mode = MacosMode::parse(environment("CI_MACOS_MODE"))
   let evidence = evidence_input(optional_environment("CI_MACOS_EVIDENCE"))
-  let revision = environment("GITHUB_SHA")
+  let revision = CommitSha::from_env(environment("GITHUB_SHA"))
   let receipt = qualification_receipt(needs, mode, evidence, {
     revision,
-    repository: environment("GITHUB_REPOSITORY"),
-    run_id: environment("GITHUB_RUN_ID"),
-    run_attempt: environment("GITHUB_RUN_ATTEMPT"),
+    repository: RepositoryName::from_env(environment("GITHUB_REPOSITORY")),
+    run_id: RunId::from_env(environment("GITHUB_RUN_ID")),
+    run_attempt: RunAttempt::from_env(environment("GITHUB_RUN_ATTEMPT")),
   })
-  verify_candidate(revision)
+  verify_candidate(revision.0)
   @fs.mkdir(".dev/qualification", recursive=true)
   @fs.write_file(".dev/qualification/receipt.ionb", qualification_ion(receipt))
-  println(receipt.stringify())
+  @stdio.stdout.write(qualification_stdout(receipt))
+}
+
+///|
+/// What `--qualification` writes to stdout: the receipt as one JSON value and
+/// a newline, so a script or an Action can parse stdout as it is.
+fn qualification_stdout(receipt : Json) -> String {
+  receipt.stringify() + "\n"
+}
+
+///|
+/// The status line a mode prints after its checks pass. `--qualification`
+/// prints none, because its stdout carries only the receipt.
+fn completion_line(mode : GateMode) -> String? {
+  match mode {
+    Qualification => None
+    _ => Some("All selected checks passed; unselected checks may be skipped.")
+  }
 }
 
 ///|
@@ -1246,14 +1379,14 @@ async fn execute(argv : Array[String]) -> Unit {
   output_mode.json = output_mode.json ||
     matches.flags.get("json").unwrap_or(false)
   let mode = gate_mode(matches)
-  if mode == "self-test" {
+  if mode is SelfTest {
     self_test()
     if output_mode.json {
       @stdio.stdout.write(command_result({ "passed": true }).stringify() + "\n")
     }
     return
   }
-  if mode == "qualification-plan" {
+  if mode is QualificationPlan {
     let macos = MacosMode::parse(environment("CI_MACOS_MODE"))
     plan_qualification(
       macos,
@@ -1264,16 +1397,16 @@ async fn execute(argv : Array[String]) -> Unit {
     println(Json::object({ "macos": macos.to_string() }).stringify())
     return
   }
-  if mode == "qualification-jobs" {
+  if mode is QualificationJobs {
     println(qualification_jobs().stringify())
     return
   }
   let needs = @json.parse(environment("CI_NEEDS"))
-  if mode == "qualification" {
+  if mode is Qualification {
     qualify(needs)
   } else {
-    let required = if mode == "native" || mode == "installed" {
-      selected_jobs("--" + mode, @json.parse(environment("CI_INPUTS")))
+    let required = if mode is (Native | Installed) {
+      selected_jobs(mode, @json.parse(environment("CI_INPUTS")))
     } else {
       @json.parse(environment("CI_REQUIRED_JOBS"))
     }
@@ -1287,7 +1420,7 @@ async fn execute(argv : Array[String]) -> Unit {
     } else if output_mode.json {
       @stdio.stdout.write(
         command_result({
-          "mode": mode,
+          "mode": mode.flag(),
           "requiredJobs": required,
           "results": needs,
           "passed": true,
@@ -1296,8 +1429,8 @@ async fn execute(argv : Array[String]) -> Unit {
       )
     }
   }
-  if !output_mode.json {
-    println("All selected checks passed; unselected checks may be skipped.")
+  if !output_mode.json && completion_line(mode) is Some(line) {
+    println(line)
   }
 }
 

@@ -100,16 +100,33 @@ fn RunUrl::parse(text : String) -> RunUrl raise {
 }
 
 ///|
-/// The macOS mode of the run, `run` or `reuse`. It is empty when the evidence
-/// job failed before it could choose, which is itself reported as a breach.
-struct Mode(String) derive(Eq)
+/// The macOS mode of the run. It is empty when the evidence job failed before
+/// it could choose, which is itself reported as a breach. A word that is no mode
+/// is kept as `Other`: the report must still go out, and it names the word.
+enum Mode {
+  Run
+  Reuse
+  Unknown
+  Other(String)
+} derive(Eq, Debug)
+
+///|
+fn Mode::parse(text : String) -> Mode {
+  match text {
+    "run" => Run
+    "reuse" => Reuse
+    "" => Unknown
+    other => Other(other)
+  }
+}
 
 ///|
 fn Mode::label(self : Mode) -> String {
-  if self.0.is_empty() {
-    "unknown"
-  } else {
-    self.0
+  match self {
+    Run => "run"
+    Reuse => "reuse"
+    Unknown => "unknown"
+    Other(text) => text
   }
 }
 
@@ -218,6 +235,44 @@ fn failed_jobs(json : Json) -> Array[FailedJob] raise {
     failed.push({ name, conclusion, url, })
   }
   failed
+}
+
+///|
+/// What to do about the breach label before an issue opens.
+enum LabelAction {
+  CreateLabel
+  KeepLabel
+} derive(Eq, Debug)
+
+///|
+/// Create the label only when it is missing. Creating it again with `--force`
+/// would reset the colour and description that a maintainer set.
+fn label_action(existing : Bool) -> LabelAction {
+  if existing {
+    KeepLabel
+  } else {
+    CreateLabel
+  }
+}
+
+///|
+/// Whether the JSON that `gh label list --json name` prints has a label of
+/// exactly this name. The `--search` filter is a substring match, so the name is
+/// compared again here.
+fn label_listed(json : Json, name : String) -> Bool raise {
+  guard json is Array(items) else {
+    fail("gh label list: expected a JSON array")
+  }
+  let mut found = false
+  for item in items {
+    guard item is { "name": String(label), .. } else {
+      fail("gh label list: item without a name")
+    }
+    if label == name {
+      found = true
+    }
+  }
+  found
 }
 
 ///|
@@ -337,6 +392,17 @@ async fn find_open_issue() -> Int32? {
 }
 
 ///|
+async fn breach_label_exists() -> Bool {
+  let out = gh([
+    "label", "list", "--search", breach_label, "--json", "name", "--limit", "100",
+  ])
+  let json = @json.parse(out) catch {
+    _ => fail("gh label list returned no JSON")
+  }
+  label_listed(json, breach_label)
+}
+
+///|
 /// The failed jobs of the run. A failed read becomes `Unread`: the breach is
 /// still reported, and the body says that the list is missing.
 async fn read_failed_jobs(run_id : RunId?) -> JobList {
@@ -361,12 +427,15 @@ async fn read_failed_jobs(run_id : RunId?) -> JobList {
 async fn apply(action : BreachAction, report : Report, jobs : JobList) -> Unit {
   match action {
     Open => {
-      // The label may not exist yet; `--force` makes this safe to repeat.
-      ignore(
-        gh([
-          "label", "create", breach_label, "--description", breach_label_about, "--force",
-        ]),
-      )
+      // The label may not exist yet. Create it only then: an existing label
+      // keeps the colour and description that a maintainer gave it.
+      if label_action(breach_label_exists()) is CreateLabel {
+        ignore(
+          gh([
+            "label", "create", breach_label, "--description", breach_label_about,
+          ]),
+        )
+      }
       ignore(
         gh([
           "issue",
@@ -444,7 +513,7 @@ fn Outcome::summary(self : Outcome) -> String {
 }
 
 ///|
-priv enum Mode_ {
+priv enum Invocation {
   SelfTest
   Report(
     Report,
@@ -500,7 +569,7 @@ fn value(matches : @argparse.Matches, name : String) -> String raise {
 }
 
 ///|
-fn invocation(matches : @argparse.Matches) -> Mode_ raise {
+fn invocation(matches : @argparse.Matches) -> Invocation raise {
   let flag = (name : String) => matches.flags.get(name).unwrap_or(false)
   if flag("self-test") {
     return SelfTest
@@ -509,7 +578,9 @@ fn invocation(matches : @argparse.Matches) -> Mode_ raise {
     result: CallResult::parse(value(matches, "result")),
     run_url: RunUrl::parse(value(matches, "run-url")),
     sha: Sha::parse(value(matches, "sha")),
-    mode: Mode(matches.values.get("mode").map(v => v.join("")).unwrap_or("")),
+    mode: Mode::parse(
+      matches.values.get("mode").map(v => v.join("")).unwrap_or(""),
+    ),
   }
   let open_issue = match matches.values.get("open-issue") {
     Some([text]) =>
@@ -539,7 +610,7 @@ fn self_test() -> Unit raise {
     result: Failure,
     run_url: RunUrl("https://github.com/finos/morphir-moonbit/actions/runs/42"),
     sha: Sha("0123456789abcdef0123456789abcdef01234567"),
-    mode: Mode("run"),
+    mode: Run,
   }
   let cases : Array[(String, CallResult, Int32?, BreachAction)] = [
     ("breach_first_failure_opens", Failure, None, Open),
@@ -567,6 +638,7 @@ fn self_test() -> Unit raise {
     fail("breach_body: a job list that was not asked for")
   }
   println("ci-breach: \{cases.length() + 1} breach cases pass")
+  label_self_test(report)
   jobs_self_test(report)
   // lookup_lowest_open: no issue, one issue, and several (the lowest wins).
   guard open_issue_from([]) is None &&
@@ -677,6 +749,47 @@ fn jobs_self_test(report : Report) -> Unit raise {
     guard refused else { fail("failed_jobs_malformed: accepted \{text}") }
   }
   println("ci-breach: failed-job list cases pass")
+}
+
+///|
+fn label_self_test(report : Report) -> Unit raise {
+  // label_created_when_missing: a label that is not listed is created.
+  guard label_action(false) == CreateLabel else {
+    fail("label_created_when_missing: wrong action")
+  }
+  // label_kept_when_present: a listed label is left alone, so a custom colour
+  // or description survives.
+  guard label_action(true) == KeepLabel else {
+    fail("label_kept_when_present: wrong action")
+  }
+  // label_listed: only an exact name counts, not a name that merely contains it.
+  guard !label_listed(@json.parse("[]"), "macos-breach") &&
+    label_listed(@json.parse("[{\"name\":\"macos-breach\"}]"), "macos-breach") &&
+    !label_listed(
+      @json.parse("[{\"name\":\"macos-breach-old\"},{\"name\":\"bug\"}]"),
+      "macos-breach",
+    ) else {
+    fail("label_listed: wrong answer")
+  }
+  for text in ["{}", "[1]", "[{}]"] {
+    let refused = try {
+      ignore(label_listed(@json.parse(text), "macos-breach"))
+      false
+    } catch {
+      _ => true
+    }
+    guard refused else { fail("label_listed: accepted \{text}") }
+  }
+  // run_url_names_attempt: the attempts form is a valid run URL, and the breach
+  // and close texts show it, so a re-run links to its own attempt.
+  let url = "https://github.com/finos/morphir-moonbit/actions/runs/42/attempts/2"
+  let attempt : Report = { ..report, run_url: RunUrl::parse(url), }
+  for text in [breach_body(attempt, NotAsked), close_body(attempt)] {
+    guard text.contains("- Run: \{url}") else {
+      fail("run_url_names_attempt: missing the attempt link")
+    }
+  }
+  println("ci-breach: label and run link cases pass")
 }
 
 ///|

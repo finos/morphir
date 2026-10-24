@@ -117,6 +117,19 @@ jobs:
     # Fires on every outcome of the jobs above, so that a failure cannot stay
     # silent. Only runs on main: a dispatch on another ref must not touch the issue.
     if: always() && github.ref == 'refs/heads/main'
+    # Housekeeping must not turn a passing night red, so a failure of this job
+    # (checkout, setup-moonbit, moon update, the close step) is non-fatal when the
+    # night passed. The expression is true only when the night passed: it is the
+    # negation of (the breach test in RESULT below, or a qualification that did
+    # not succeed). A failing night gets `false`: the failed jobs keep the run
+    # red, and a report job that fails there fails the run too, so a breach
+    # cannot go unreported without a red run.
+    # (env is not available here, so RESULT cannot be reused.)
+    continue-on-error: >-
+      ${{ !(needs.evidence.result != 'success' ||
+      needs.record.result == 'failure' ||
+      needs.record.result == 'cancelled' ||
+      needs.qualification.result != 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # actions: read lists the failed jobs of this run in the issue.
@@ -134,14 +147,15 @@ jobs:
         needs.record.result == 'cancelled') && 'failure' ||
         needs.qualification.result }}
       MODE: ${{ needs.evidence.outputs.macos }}
-      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # The attempt makes a re-run link to its own jobs, not to the latest attempt.
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-moonbit
       - name: Update Mooncakes registry for the report script
         run: moon update
-      # Open the issue or comment on it, with the failed jobs of this run. A
-      # failure here fails the run.
+      # Open the issue or comment on it, with the failed jobs of this run. It
+      # only runs on a night that did not pass, so a failure here fails the run.
       - name: Report the breach
         if: env.RESULT != 'success'
         env:

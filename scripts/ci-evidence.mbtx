@@ -146,10 +146,10 @@ fn parse_tree(listing : String) -> Array[TreeEntry] raise {
 /// One allowlisted input of a lane set.
 enum InputPath {
   /// One file, such as `moon.mod`.
-  File(String)
-  /// Every file under a folder (the name ends in `/`), except the listed
+  File(RepoPath)
+  /// Every file under a folder (the path ends in `/`), except the listed
   /// sub-folders.
-  Folder(String, except~ : Array[String])
+  Folder(RepoPath, except~ : Array[RepoPath])
   /// A top-level file whose name has this prefix and this suffix.
   Named(prefix~ : String, suffix~ : String)
 }
@@ -158,9 +158,9 @@ enum InputPath {
 fn InputPath::covers(self : InputPath, path : RepoPath) -> Bool {
   let path = path.0
   match self {
-    File(name) => path == name
-    Folder(folder, except~) =>
-      path.has_prefix(folder) && !except.any(skip => path.has_prefix(skip))
+    File(RepoPath(name)) => path == name
+    Folder(RepoPath(folder), except~) =>
+      path.has_prefix(folder) && !except.any(skip => path.has_prefix(skip.0))
     Named(prefix~, suffix~) =>
       !path.contains("/") && path.has_prefix(prefix) && path.has_suffix(suffix)
   }
@@ -181,8 +181,18 @@ fn LaneSet::covers(self : LaneSet, path : RepoPath) -> Bool {
 }
 
 ///|
-fn workflow_input(name : String) -> InputPath {
-  File(".github/workflows/" + name)
+/// A workflow file of `.github/workflows/`, by its file name, such as
+/// `ci-native.yml`.
+struct WorkflowFile(String) derive(Eq, Debug)
+
+///|
+fn WorkflowFile::repo_path(self : WorkflowFile) -> RepoPath {
+  RepoPath(".github/workflows/" + self.0)
+}
+
+///|
+fn workflow_input(workflow : WorkflowFile) -> InputPath {
+  File(workflow.repo_path())
 }
 
 ///|
@@ -193,28 +203,28 @@ fn workflow_input(name : String) -> InputPath {
 let macos_lanes : LaneSet = {
   name: "macos",
   inputs: [
-    Folder("apps/", except=[]),
-    Folder("pkgs/", except=[]),
-    Folder("types/", except=[]),
-    Folder("tools/", except=[]),
-    Folder("tests/", except=[]),
-    Folder("scripts/", except=[]),
-    Folder("third_party/", except=[]),
-    Folder(".github/actions/", except=[]),
-    Folder(".config/mise/", except=[]),
-    workflow_input("qualification.yml"),
-    workflow_input("nightly-qualification.yml"),
-    workflow_input("ci-setup.yml"),
-    workflow_input("ci-native.yml"),
-    workflow_input("ci-installed.yml"),
-    workflow_input("ci-supervision.yml"),
-    workflow_input("headless-cli.yml"),
-    File("moon.mod"),
-    File("moon.work"),
-    File("package.json"),
-    File("bun.lock"),
-    File(".npmrc"),
-    File(".gitattributes"),
+    Folder(RepoPath("apps/"), except=[]),
+    Folder(RepoPath("pkgs/"), except=[]),
+    Folder(RepoPath("types/"), except=[]),
+    Folder(RepoPath("tools/"), except=[]),
+    Folder(RepoPath("tests/"), except=[]),
+    Folder(RepoPath("scripts/"), except=[]),
+    Folder(RepoPath("third_party/"), except=[]),
+    Folder(RepoPath(".github/actions/"), except=[]),
+    Folder(RepoPath(".config/mise/"), except=[]),
+    workflow_input(WorkflowFile("qualification.yml")),
+    workflow_input(WorkflowFile("nightly-qualification.yml")),
+    workflow_input(WorkflowFile("ci-setup.yml")),
+    workflow_input(WorkflowFile("ci-native.yml")),
+    workflow_input(WorkflowFile("ci-installed.yml")),
+    workflow_input(WorkflowFile("ci-supervision.yml")),
+    workflow_input(WorkflowFile("headless-cli.yml")),
+    File(RepoPath("moon.mod")),
+    File(RepoPath("moon.work")),
+    File(RepoPath("package.json")),
+    File(RepoPath("bun.lock")),
+    File(RepoPath(".npmrc")),
+    File(RepoPath(".gitattributes")),
     Named(prefix="tsconfig", suffix=".json"),
   ],
 }
@@ -277,7 +287,7 @@ fn fingerprint(
 ///|
 /// The workflow files that the `macos-*` jobs of a qualification.yml document
 /// call with a local `uses:`, such as `ci-native.yml`.
-fn macos_workflows(workflow : Json) -> Array[String] {
+fn macos_workflows(workflow : Json) -> Array[WorkflowFile] {
   let names = []
   guard workflow is Object(fields) && fields.get("jobs") is Some(Object(jobs)) else {
     return names
@@ -287,7 +297,7 @@ fn macos_workflows(workflow : Json) -> Array[String] {
       job is Object(job) &&
       job.get("uses") is Some(String(uses)) &&
       uses.strip_prefix("./.github/workflows/") is Some(name) {
-      names.push(name.to_owned())
+      names.push(WorkflowFile(name.to_owned()))
     }
   }
   names
@@ -468,13 +478,17 @@ async fn inputs_self_test() -> Unit {
   let used = macos_workflows(workflow)
   guard used.length() >= 5 else {
     fail(
-      "inputs_cover_macos_workflows: expected the macOS jobs to call workflows, got [\{used.join(", ")}]",
+      "inputs_cover_macos_workflows: expected the macOS jobs to call workflows, got [\{used.map(workflow => workflow.0).join(", ")}]",
     )
   }
-  let needed = [..used, "qualification.yml", "nightly-qualification.yml"]
-  for name in needed {
-    guard macos_lanes.covers(RepoPath(".github/workflows/" + name)) else {
-      fail("inputs_cover_macos_workflows: \{name} is not an input")
+  let needed = [
+    ..used,
+    WorkflowFile("qualification.yml"),
+    WorkflowFile("nightly-qualification.yml"),
+  ]
+  for workflow in needed {
+    guard macos_lanes.covers(workflow.repo_path()) else {
+      fail("inputs_cover_macos_workflows: \{workflow.0} is not an input")
     }
   }
   // macos_workflows_shape: only `macos-*` jobs with a local `uses:` count.
@@ -490,7 +504,8 @@ async fn inputs_self_test() -> Unit {
     #|    uses: acme/x/.github/workflows/y.yml@v1
     #|  macos-steps:
     #|    runs-on: macos-15
-  guard macos_workflows(parse_workflow(fixture)) == ["ci-native.yml"] else {
+  guard macos_workflows(parse_workflow(fixture)) ==
+    [WorkflowFile("ci-native.yml")] else {
     fail("macos_workflows_shape: wrong workflows")
   }
   test_note(
@@ -1276,6 +1291,53 @@ fn lookup_self_test() -> Unit raise {
     Answered(None).warning() is None else {
     fail("lookup_falls_back_on_api_error: wrong fallback")
   }
+  // warning_escapes_newline: a reason with a newline stays one annotation line;
+  // a percent sign is escaped first, so the escapes are not escaped again.
+  let multiline = Unanswered("HTTP 502\nsecond line\r\nthird")
+  guard multiline.warning()
+    is Some(
+      "::warning title=macOS evidence lookup failed::The macOS lanes run because the lookup failed: HTTP 502%0Asecond line%0D%0Athird"
+    ) &&
+    workflow_command_escape("100% done\n") == "100%25 done%0A" &&
+    workflow_command_escape("%0A") == "%250A" &&
+    workflow_command_escape("plain text") == "plain text" &&
+    workflow_command_escape("") == "" &&
+    workflow_notice("t", "a\nb%") == "::notice title=t::a%0Ab%25" &&
+    decide_mode(BreachUnread("x\ny"), Answered(None)).message
+    is Some(
+      "::warning title=macOS breach issue not read::The macOS lanes run because the open macos-breach issue could not be read: x%0Ay"
+    ) else {
+    fail("warning_escapes_newline: wrong workflow command text")
+  }
+  for
+    message in [
+      multiline.warning(),
+      decide_mode(BreachUnread("a\nb"), Answered(None)).message,
+    ] {
+    guard message is Some(text) && !text.contains("\n") && !text.contains("\r") else {
+      fail("warning_escapes_newline: the annotation has more than one line")
+    }
+  }
+  // ancestry_read_failure_warns: a failed compare read refuses the candidate and
+  // names the run; a good read has no warning.
+  guard ancestry_outcome(501L, Ok({ "status": "ahead" })) == (OnMain, None) &&
+    ancestry_outcome(501L, Ok({ "status": "behind" })) == (NotOnMain, None) &&
+    ancestry_outcome(501L, Ok({ "message": "Not Found" })) == (Unknown, None) &&
+    ancestry_outcome(501L, Err("gh api exited 1: HTTP 502"))
+    is (
+      Unknown,
+      Some(
+        "::warning title=macOS evidence candidate refused::Run 501 is refused as evidence because its commit could not be compared with main: gh api exited 1: HTTP 502"
+      ),
+    ) &&
+    ancestry_outcome(7L, Err("a\nb")).1 is Some(_) else {
+    fail("ancestry_read_failure_warns: wrong outcome")
+  }
+  guard !candidate(artifact_json(), run_json())
+    .with_main(Unknown)
+    .accept_evidence(now, repo~) else {
+    fail("ancestry_read_failure_warns: accepted an unknown ancestry")
+  }
   // lookup_refuses_bad_responses: malformed API answers are errors.
   for
     text in [
@@ -1694,13 +1756,47 @@ fn LookupAnswer::evidence(self : LookupAnswer) -> EvidenceRef? {
 }
 
 ///|
+/// Escape the message of a GitHub workflow command, as the runner reads it:
+/// `%` is `%25`, CR is `%0D` and LF is `%0A`. Without it, a reason with a
+/// newline ends the annotation early and the rest is read as another line.
+fn workflow_command_escape(text : String) -> String {
+  let escaped = StringBuilder()
+  for c in text {
+    match c {
+      '%' => escaped.write_string("%25")
+      '\r' => escaped.write_string("%0D")
+      '\n' => escaped.write_string("%0A")
+      c => escaped.write_char(c)
+    }
+  }
+  escaped.to_string()
+}
+
+///|
+/// A `::warning` workflow command. The title is fixed text; the message is
+/// escaped.
+fn workflow_warning(title : String, message : String) -> String {
+  "::warning title=\{title}::\{workflow_command_escape(message)}"
+}
+
+///|
+/// A `::notice` workflow command. The title is fixed text; the message is
+/// escaped.
+fn workflow_notice(title : String, message : String) -> String {
+  "::notice title=\{title}::\{workflow_command_escape(message)}"
+}
+
+///|
 /// The GitHub Actions warning for a lookup that could not read the API.
 fn LookupAnswer::warning(self : LookupAnswer) -> String? {
   match self {
     Answered(_) => None
     Unanswered(reason) =>
       Some(
-        "::warning title=macOS evidence lookup failed::The macOS lanes run because the lookup failed: \{reason}",
+        workflow_warning(
+          "macOS evidence lookup failed",
+          "The macOS lanes run because the lookup failed: \{reason}",
+        ),
       )
   }
 }
@@ -1767,14 +1863,20 @@ fn decide_mode(breach : BreachState, answer : LookupAnswer) -> ModeDecision {
       {
         evidence: None,
         message: Some(
-          "::notice title=macOS lanes run::The \{breach_label} issue #\{number} is open, so the nightly does not reuse evidence",
+          workflow_notice(
+            "macOS lanes run",
+            "The \{breach_label} issue #\{number} is open, so the nightly does not reuse evidence",
+          ),
         ),
       }
     BreachUnread(reason) =>
       {
         evidence: None,
         message: Some(
-          "::warning title=macOS breach issue not read::The macOS lanes run because the open \{breach_label} issue could not be read: \{reason}",
+          workflow_warning(
+            "macOS breach issue not read",
+            "The macOS lanes run because the open \{breach_label} issue could not be read: \{reason}",
+          ),
         ),
       }
   }
@@ -1892,18 +1994,52 @@ async fn read_breach(repo : RepoName) -> BreachState {
 ///|
 /// Whether a commit is in the history of `refs/heads/main`. The full ref keeps a
 /// tag named `main` out. A failed read is `Unknown`, so that one odd candidate
-/// is refused without failing the whole lookup.
-async fn read_main_ancestry(repo : RepoName, sha : String) -> MainAncestry {
+/// is refused without failing the whole lookup; a `::warning::` on stderr names
+/// its run.
+async fn read_main_ancestry(
+  repo : RepoName,
+  candidate : ArtifactRun,
+) -> MainAncestry {
+  let sha = candidate.head_sha
   guard is_lower_hex(sha, 40) else { return Unknown }
-  let compare = gh_json([
-    "api",
-    "repos/\{repo.0}/compare/\{sha}...refs/heads/main?per_page=1",
-    "--jq",
-    "{status}",
-  ]) catch {
-    _ => return Unknown
+  let read : Result[Json, String] = Ok(
+    gh_json([
+      "api",
+      "repos/\{repo.0}/compare/\{sha}...refs/heads/main?per_page=1",
+      "--jq",
+      "{status}",
+    ]),
+  ) catch {
+    error => Err(error_reason(error))
   }
-  main_ancestry(compare)
+  let (main, warning) = ancestry_outcome(candidate.run, read)
+  if warning is Some(warning) {
+    @stdio.stderr.write(warning + "\n")
+  }
+  main
+}
+
+///|
+/// What a main-ancestry read gives for the run of a candidate: the ancestry and
+/// the warning that names the run. A failed read is `Unknown`, so the candidate
+/// is refused, and it is no longer silent.
+fn ancestry_outcome(
+  run : Int64,
+  read : Result[Json, String],
+) -> (MainAncestry, String?) {
+  match read {
+    Ok(compare) => (main_ancestry(compare), None)
+    Err(reason) =>
+      (
+        Unknown,
+        Some(
+          workflow_warning(
+            "macOS evidence candidate refused",
+            "Run \{run} is refused as evidence because its commit could not be compared with main: \{reason}",
+          ),
+        ),
+      )
+  }
 }
 
 ///|
@@ -1928,9 +2064,7 @@ async fn lookup(
     guard artifact.name == name && !artifact.expired else { continue }
     let run = gh_json(["api", "repos/\{repo.0}/actions/runs/\{artifact.run}"])
     let candidate = ArtifactRun::from(artifact, run)
-    candidates.push(
-      candidate.with_main(read_main_ancestry(repo, candidate.head_sha)),
-    )
+    candidates.push(candidate.with_main(read_main_ancestry(repo, candidate)))
   }
   choose_evidence(candidates, print, now, repo~)
 }
@@ -1993,6 +2127,8 @@ async fn lookup_decision(print : Fingerprint, repo~ : RepoName) -> ModeDecision 
 /// one JSON line; the runner reads workflow commands from both streams.
 async fn announce(decision : ModeDecision) -> EvidenceRef? {
   if decision.message is Some(message) {
+    // Every message is built by `workflow_warning` or `workflow_notice`, which
+    // escape the text, so it is one line.
     @stdio.stderr.write(message + "\n")
   }
   decision.evidence
