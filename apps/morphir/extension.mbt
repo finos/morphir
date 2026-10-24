@@ -9,6 +9,7 @@ enum ExtensionBinding {
 /// Runtimes qualified for the binding. A new runtime needs new route evidence.
 enum ExtensionRuntime {
   Node24_22_0
+  Node24_22_1
 }
 
 ///|
@@ -209,6 +210,7 @@ fn extension_pin(value : Json) -> ExtensionPin raise {
   }
   let runtime_version = match version {
     "v24.22.0" => Node24_22_0
+    "v24.22.1" => Node24_22_1
     _ => raise @config.Invalid("extension.unsupported_runtime")
   }
   guard host.length() == 2 && host.get("modules") is Some(Object(modules)) else {
@@ -260,6 +262,7 @@ fn ExtensionPin::to_json(self : ExtensionPin) -> Json {
       "name": "node",
       "version": match self.runtime {
         Node24_22_0 => "v24.22.0"
+        Node24_22_1 => "v24.22.1"
       },
       "executable": self.runtime_executable,
       "sha256": self.runtime_sha256,

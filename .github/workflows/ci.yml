@@ -100,7 +100,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.22.0'
+          node-version: '24.22.1'
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
       - name: Test Node, npm and browser embedding
@@ -214,7 +214,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.22.0'
+          node-version: '24.22.1'
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
 
@@ -307,7 +307,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.22.0'
+          node-version: '24.22.1'
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
 
@@ -384,7 +384,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '24.22.0'
+          node-version: '24.22.1'
       - name: Set up Bun and portable runtime JavaScript
         uses: ./.github/actions/setup-typescript
 

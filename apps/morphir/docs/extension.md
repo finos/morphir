@@ -32,8 +32,8 @@ mise exec -- bun run --cwd apps/morphir build
   },
   "runtime": {
     "name": "node",
-    "version": "v24.22.0",
-    "executable": "/tools/node-24.22.0/bin/node",
+    "version": "v24.22.1",
+    "executable": "/tools/node-24.22.1/bin/node",
     "sha256": "<SHA-256 of that executable>"
   },
   "host": {
@@ -85,7 +85,7 @@ The CLI builds the whole session before it starts a process: `describe`,
 reads the runtime, every host module and both artifact files through no-follow
 descriptors. It hashes each one and copies the bytes it hashed into a private
 temporary directory. It checks the SHA-256 against the pin, confirms the copied
-runtime reports `v24.22.0`, and starts the guest from those copies. Replacing a
+runtime reports `v24.22.1`, and starts the guest from those copies. Replacing a
 pinned file after verification cannot change what runs. The guest gets an empty
 environment and an empty working directory. The copies are removed after its
 process group has exited.

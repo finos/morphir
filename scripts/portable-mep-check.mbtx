@@ -74,7 +74,7 @@ async fn execute() -> Json {
   )
   let node = checked("node", ["-p", "process.execPath"]).trim().to_owned()
   let version = checked(node, ["--version"]).trim().to_owned()
-  guard version == "v24.22.0" else { fail("Node 24.22.0 is required") }
+  guard version == "v24.22.1" else { fail("Node 24.22.1 is required") }
   let guest_args = Json([
     root + "/pkgs/morphir-host/embedding/node-mep-cli.mjs",
     artifacts,

@@ -63,6 +63,13 @@ test "extension pins admit only the qualified binding, runtime and profile" {
   assert_true(pin.binding is CoreWasmProcess)
   assert_true(pin.runtime is Node24_22_0)
   assert_eq(pin.to_json(), extension_test_pin())
+  let patched = extension_changed(
+    ["runtime", "version"],
+    Json::string("v24.22.1"),
+  )
+  let patched_pin = extension_pin(patched)
+  assert_true(patched_pin.runtime is Node24_22_1)
+  assert_eq(patched_pin.to_json(), patched)
   assert_eq(
     extension_refused(
       extension_changed(["binding"], Json::string("component-model")),
@@ -71,7 +78,7 @@ test "extension pins admit only the qualified binding, runtime and profile" {
   )
   assert_eq(
     extension_refused(
-      extension_changed(["runtime", "version"], Json::string("v24.22.1")),
+      extension_changed(["runtime", "version"], Json::string("v24.22.2")),
     ),
     "extension.unsupported_runtime",
   )

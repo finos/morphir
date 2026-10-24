@@ -164,7 +164,7 @@ async fn write_pin(
     },
     "runtime": {
       "name": "node",
-      "version": "v24.22.0",
+      "version": "v24.22.1",
       "executable": node,
       "sha256": digest(node),
     },
@@ -484,8 +484,8 @@ async fn execute() -> Json {
   let node = @fs.realpath(
     checked("node", ["-p", "process.execPath"]).trim().to_owned(),
   )
-  guard checked(node, ["--version"]).trim() == "v24.22.0" else {
-    fail("Node 24.22.0 is required")
+  guard checked(node, ["--version"]).trim() == "v24.22.1" else {
+    fail("Node 24.22.1 is required")
   }
   // Build every host byte first; the pin is taken over the final outputs.
   ignore(

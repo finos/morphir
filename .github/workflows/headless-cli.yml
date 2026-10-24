@@ -63,7 +63,7 @@ jobs:
       - uses: ./.github/actions/setup-moonbit
       - uses: actions/setup-node@v7
         with:
-          node-version: '24.22.0'
+          node-version: '24.22.1'
       - uses: ./.github/actions/setup-typescript
       - name: Resolve pinned MoonBit packages
         run: moon update

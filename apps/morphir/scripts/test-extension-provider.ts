@@ -14,7 +14,7 @@ const sha256 = (path: string) => createHash('sha256').update(readFileSync(path))
 
 /** A pinned stand-in runtime: `--version` answers like Node 24.22.0, and the
  * guest entry module is the per-test behaviour, pinned like every other byte. */
-function fixture(guest: string, version = 'v24.22.0') {
+function fixture(guest: string, version = 'v24.22.0', pinnedVersion = 'v24.22.0') {
   const root = mkdtempSync(join(tmpdir(), 'morphir-extension-provider-'));
   const runtime = join(root, 'runtime');
   writeFileSync(runtime, `#!${process.execPath}\nif(process.argv[2]==='--version'){console.log('${version}');process.exit(0);}\nimport(require('node:url').pathToFileURL(process.argv[2]).href);\n`, { mode: 0o700 });
@@ -30,7 +30,7 @@ function fixture(guest: string, version = 'v24.22.0') {
     pin: {
       contractVersion: '0.1.0-draft.1', binding: 'core-wasm-process',
       executionProfile: { id: 'morphir/mep-bytes-v1/v1-draft', sha256: '6ed5e96fa9c7f7dcaa179efc88e517307463cfeddc5e2eeae854f0395e7a4ec6' },
-      runtime: { name: 'node', version: 'v24.22.0', executable: runtime, sha256: sha256(runtime) },
+      runtime: { name: 'node', version: pinnedVersion, executable: runtime, sha256: sha256(runtime) },
       host: { root: host, modules: Object.fromEntries(modules.map(name => [name, sha256(join(host, name))])) },
       artifact: { directory: artifact, wasmSha256: sha256(join(artifact, 'model.wasm')), manifestSha256: sha256(join(artifact, 'manifest.ion')) },
       origin: 'controlled process fixture',
@@ -59,6 +59,21 @@ test('extension pins every runtime, host and guest byte before launching the gue
     const result = await extensionCommand(old.config);
     assert.equal(result.state, 'refused'); assert.equal(result.error, 'extension.runtime_version_mismatch');
   } finally { old.dispose(); }
+});
+
+test('extension accepts the Node security patch and enforces its exact pin', { skip: !supported }, async () => {
+  const patched = fixture('process.stdin.pipe(process.stdout);', 'v24.22.1', 'v24.22.1');
+  try {
+    const result = await extensionCommand(patched.config);
+    assert.equal(result.state, 'exited', result.error);
+    assert.deepEqual(readFileSync(patched.config.responseFile), readFileSync(patched.config.requestFile));
+  } finally { patched.dispose(); }
+  const mismatch = fixture('', 'v24.22.0', 'v24.22.1');
+  try {
+    const result = await extensionCommand(mismatch.config);
+    assert.equal(result.state, 'refused');
+    assert.equal(result.error, 'extension.runtime_version_mismatch');
+  } finally { mismatch.dispose(); }
 });
 
 test('extension returns the guest bytes, exit status and diagnostics separately', { skip: !supported }, async () => {
@@ -136,7 +151,7 @@ test('extension bounds guest diagnostics and refuses malformed controls', { skip
   try {
     assert.equal((await extensionCommand({ ...f.config, extra: true })).error, 'extension.invalid_request');
     assert.equal((await extensionCommand({ ...f.config, timeout: 594001 })).error, 'extension.invalid_request');
-    assert.equal((await extensionCommand({ ...f.config, pin: { ...f.config.pin, runtime: { ...f.config.pin.runtime, version: 'v24.22.1' } } })).error,
+    assert.equal((await extensionCommand({ ...f.config, pin: { ...f.config.pin, runtime: { ...f.config.pin.runtime, version: 'v24.22.2' } } })).error,
       'extension.unsupported_runtime');
     writeFileSync(join(f.work, 'stale'), '');
     assert.equal((await extensionCommand(f.config)).error, 'extension.invalid_request');

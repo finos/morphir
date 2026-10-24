@@ -206,8 +206,8 @@ async fn execute() -> Json {
     ]),
   )
   let node = checked("node", ["-p", "process.execPath"]).trim().to_owned()
-  guard checked(node, ["--version"]).trim() == "v24.22.0" else {
-    fail("Node24.22.0 is required")
+  guard checked(node, ["--version"]).trim() == "v24.22.1" else {
+    fail("Node24.22.1 is required")
   }
   let host_files = [artifacts + "/model.wasm", artifacts + "/manifest.ion"]
   for

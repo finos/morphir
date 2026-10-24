@@ -15,7 +15,7 @@ const executionProfile = { id: 'morphir/mep-bytes-v1/v1-draft', sha256: '6ed5e96
 interface ExtensionPin {
   contractVersion: typeof contractVersion; binding: 'core-wasm-process';
   executionProfile: typeof executionProfile;
-  runtime: { name: 'node'; version: 'v24.22.0'; executable: string; sha256: string };
+  runtime: { name: 'node'; version: 'v24.22.0' | 'v24.22.1'; executable: string; sha256: string };
   host: { root: string; modules: Record<string, string> };
   artifact: { directory: string; wasmSha256: string; manifestSha256: string };
   origin: string;
@@ -54,7 +54,7 @@ function request(value: unknown): ExtensionRequest {
   const { runtime, host, artifact } = pin;
   check(record(runtime) && exact(runtime, ['name','version','executable','sha256']) && runtime.name === 'node' &&
     path(runtime.executable) && digest(runtime.sha256), 'extension.invalid_pin');
-  check(runtime.version === 'v24.22.0', 'extension.unsupported_runtime');
+  check(runtime.version === 'v24.22.0' || runtime.version === 'v24.22.1', 'extension.unsupported_runtime');
   check(record(host) && exact(host, ['root','modules']) && path(host.root) && record(host.modules) &&
     exact(host.modules, hostModules) && hostModules.every(name => digest((host.modules as Record<string, unknown>)[name])),
   'extension.incomplete_host_modules');

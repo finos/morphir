@@ -114,7 +114,7 @@ async fn main {
   } else if program == "acceptance" { @stdio.stdout.write("fixture local acceptance\n") }
   else if program == "node" && args[0] == "-p" {
     @stdio.stdout.write(if args[1] == "process.execPath" { self + "\n" } else { "{\"fixtureRuntime\":true}\n" })
-  } else if program == "node" && args[0] == "--version" { @stdio.stdout.write("v24.22.0\n") }
+  } else if program == "node" && args[0] == "--version" { @stdio.stdout.write("v24.22.1\n") }
   else if program == "morphir" || (program == "node" && args.contains("extension")) {
     let operation = at(args, "extension")
     let source = args[args.search("extension").unwrap() + 2]
