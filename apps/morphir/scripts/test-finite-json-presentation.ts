@@ -180,7 +180,7 @@ process.stdout.write(JSON.stringify({status: child.status, signal: child.signal,
 `, JSON.stringify(command), JSON.stringify(argv)], {
     cwd: scratch, env, encoding: 'utf8', timeout: 15000, maxBuffer: 2 * 1024 * 1024,
   });
-  assert.equal(collector.error, undefined, collector.error?.message);
+  assert.equal(collector.error, undefined, collector.error?.message ?? "Child process failed");
   assert.equal(collector.status, 0, collector.stderr);
   assert.equal(collector.stderr, '');
   const invocation: {status: number | null; signal: string | null; stdout: string; stderr: string} =

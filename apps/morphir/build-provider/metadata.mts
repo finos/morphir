@@ -1,4 +1,4 @@
-import type { BinaryLike } from 'node:crypto';
+import type { Hash } from 'node:crypto';
 import { workbenchError } from '../../../types/data.ts';
 interface MetadataRequest { profile: string; invocation: string; projectScope: string; service: string; serviceSha256: string; input: string; inputSha256: string; output: string; receipt: string; budgetMs: number; cancelFile: string; }
 // Host-owned control-plane adapter. Model frames remain raw binary files and
@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {resolve,dirname,isAbsolute,join} from 'node:path';
 import {supervisedBytes} from './supervision.mjs';
 
-const hash=(bytes: BinaryLike)=>createHash('sha256').update(bytes).digest('hex');
+const hash=(bytes: Parameters<Hash['update']>[0])=>createHash('sha256').update(bytes).digest('hex');
 const control=resolve(process.argv[2]||''),root=dirname(control);
 let request: MetadataRequest | null=null,quiescent=true;
 function refuse(code: string){throw Error(code);}

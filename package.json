@@ -14,7 +14,7 @@
     "@resvg/resvg-js": "2.6.2",
     "@std/semver": "npm:@jsr/std__semver@1.0.8",
     "@types/bun": "1.4.4",
-    "@types/node": "24.19.2",
+    "@types/node": "26.6.5",
     "@types/ws": "8.18.2",
     "typescript": "7.0.2",
     "ws": "8.22.0"

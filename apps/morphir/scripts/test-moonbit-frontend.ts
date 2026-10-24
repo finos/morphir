@@ -111,7 +111,7 @@ try {
       if (mode === 'release') args.push('--release');
       const result = spawnSync(moon, args, {cwd: workspace, encoding: 'utf8', env, timeout: 300000, maxBuffer: 16777216});
       writeFileSync(join(receipts, `${target}-${mode}.log`), result.stdout + '\n' + result.stderr);
-      assert.ok(!result.error, result.error?.message);
+      assert.ok(!result.error, result.error?.message ?? "Child process failed");
       assert.equal(result.status, 0, `${target}/${mode}: ${result.stdout}\n${result.stderr}`);
       assert.match(result.stdout, /Total tests: 24, passed: 24, failed: 0/);
       lanes.push({target, mode, tests: 24, truthTableRows: 86, seed: {models: 11, rows: 44}, library: {models: 6, entries: 13, rows: 42}});
@@ -125,7 +125,7 @@ try {
     const result = spawnSync(moon, ['check', '--frozen', '--target', 'js', './consumer'], {
       cwd: workspace, encoding: 'utf8', env, timeout: 300000, maxBuffer: 16777216,
     });
-    assert.ok(!result.error, result.error?.message);
+    assert.ok(!result.error, result.error?.message ?? "Child process failed");
     writeFileSync(join(receipts, `private-${index}.log`), result.stdout + '\n' + result.stderr);
     assert.notEqual(result.status, 0, `${probe.kind} private value escaped: ${probe.model}`);
     assert.ok((result.stdout + result.stderr).includes(probe.name), `Compiler rejection must identify the attempted private value: ${result.stdout}\n${result.stderr}`);
@@ -135,7 +135,7 @@ try {
   const restored = spawnSync(moon, ['check', '--frozen', '--target', 'js', './consumer'], {
     cwd: workspace, encoding: 'utf8', env, timeout: 300000, maxBuffer: 16777216,
   });
-  assert.ok(!restored.error, restored.error?.message);
+  assert.ok(!restored.error, restored.error?.message ?? "Child process failed");
   assert.equal(restored.status, 0, restored.stdout + restored.stderr);
   const invalid = mkdtempSync(join(tmpdir(), 'morphir-invalid-visibility-'));
   const originalRejections = [];
@@ -151,7 +151,7 @@ try {
     ] as const) {
       writeFileSync(join(invalid, 'invalid.mbt'), source!);
       const result = spawnSync(moon, ['check', '--target', 'js'], {cwd: invalid, encoding: 'utf8', env, timeout: 300000});
-      assert.ok(!result.error, result.error?.message);
+      assert.ok(!result.error, result.error?.message ?? "Child process failed");
       assert.notEqual(result.status, 0, `Original compiler must reject ${id}`);
       assert.match(result.stdout + result.stderr, diagnostic!);
       writeFileSync(join(receipts, `invalid-${id}.log`), result.stdout + '\n' + result.stderr);
@@ -160,7 +160,7 @@ try {
     // Recursion is valid MoonBit syntax and typing, but excluded from this profile.
     writeFileSync(join(invalid, 'invalid.mbt'), 'pub fn f() -> Bool { f() }\n');
     const recursive = spawnSync(moon, ['check', '--target', 'js'], {cwd: invalid, encoding: 'utf8', env, timeout: 300000});
-    assert.ok(!recursive.error, recursive.error?.message);
+    assert.ok(!recursive.error, recursive.error?.message ?? "Child process failed");
     assert.equal(recursive.status, 0, recursive.stdout + recursive.stderr);
     writeFileSync(join(receipts, 'excluded-recursion.log'), recursive.stdout + '\n' + recursive.stderr);
   } finally { rmSync(invalid, {recursive: true, force: true}); }

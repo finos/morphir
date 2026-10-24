@@ -56,13 +56,13 @@ export async function routingFixture(makeHash: () => Hasher, hostPath = fileURLT
         received = event;
       }});
     await opening.whenSettled();
-    assert.equal(opening.view(), 'sources', failure?.message);
+    assert.equal(opening.view(), 'sources', failure?.message ?? "Originals routing failed");
     assert.equal(opening.chooseSource(1), 'started');
     await opening.whenSettled();
-    assert.equal(opening.view(), 'projects', failure?.message);
+    assert.equal(opening.view(), 'projects', failure?.message ?? "Originals routing failed");
     assert.equal(opening.chooseProject(1), 'started');
     await opening.whenSettled();
-    assert.equal(opening.view(), 'queued', failure?.message);
+    assert.equal(opening.view(), 'queued', failure?.message ?? "Originals routing failed");
     assert(received, 'Actual strict release and receiver completion must precede the routing fixture');
     const owner = opening;
     const actualDispose = owner.dispose.bind(owner);

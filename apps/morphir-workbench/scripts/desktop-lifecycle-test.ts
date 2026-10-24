@@ -253,11 +253,11 @@ try {
       'Native worker exit is already confirmed when the lifecycle boundary returns');
     phases.push({ lifecycle, worker: retained.worker, identity: retained.accepted.identity, running: retained.running,
       workerRemoved: true, confirmedAt: lifecycle === 'reload' ? 'replacement-session-reply' : 'session-close-reply' });
-    const denied = await native(page, 'session.check', old.sessionId);
+    const denied: NativeReply<unknown> = await native(page, 'session.check', old.sessionId);
     assert.ok(!denied.ok && denied.error.code === 'unauthorized', 'Old session authority is revoked');
     if (lifecycle === 'session.close') await reload();
     descriptor = replacement ?? await open(); assert.notEqual(descriptor.sessionId, old.sessionId);
-    const oldQuery = await native(page, 'execution.query', descriptor.sessionId, identityBody(retained.accepted.identity));
+    const oldQuery: NativeReply<unknown> = await native(page, 'execution.query', descriptor.sessionId, identityBody(retained.accepted.identity));
     assert.ok(!oldQuery.ok, 'A replacement session cannot observe an execution retained by the old owner');
     await answer(descriptor);
   }

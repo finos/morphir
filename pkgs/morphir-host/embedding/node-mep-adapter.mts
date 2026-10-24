@@ -22,7 +22,7 @@ export async function loadNodeMepAdapter(saved:SavedArtifact,timeoutMs:number=me
     try{await terminate();}catch(cleanup){cause=new AggregateError([cause,cleanup],'MEP termination failed');}
     p?.reject(cause);
   };
-  worker.on('error',cause=>{void fail(cause);});
+  worker.on('error',cause=>{void fail(cause instanceof Error ? cause : new Error(String(cause)));});
   worker.on('exit',code=>{if(state!=='closed'&&state!=='disposed'&&state!=='failed')void fail(new Error(`MEP worker exited: ${code}`));});
   worker.on('message',(reply:Reply)=>{
     if(reply.kind==='failed'){void fail(new Error(reply.message));return;}

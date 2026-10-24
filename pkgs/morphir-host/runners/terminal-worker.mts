@@ -90,7 +90,7 @@ export function terminalWorker(entry: URL, args: string[]): boolean {
   const interrupt = () => { Atomics.store(interrupted, 0, 1); Atomics.notify(state, 0); };
   process.on('SIGINT', interrupt);
   worker.on('message', inputRequest);
-  worker.once('error', error => { workerFailed = true; console.error(error.message); });
+  worker.once('error', error => { workerFailed = true; console.error(error instanceof Error ? error.message : String(error)); });
   worker.once('exit', code => {
     process.off('SIGINT', interrupt);
     if (inputActive) {

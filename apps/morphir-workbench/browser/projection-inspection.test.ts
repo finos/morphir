@@ -88,11 +88,11 @@ test('actual compiled worker inspects a released projection and preserves typed 
   try {
     const source = '{"formatVersion":4,"distribution":{"Library":{"packageName":"example","dependencies":{},"def":{"modules":{}}}}}';
     const result = await adapter.inspectProjection(await verified(source));
-    assert.equal(result.success, true, result.message);
+    assert.equal(result.success, true, result.message ?? "Projection inspection failed");
     assert(result.ir);
     assert.equal(result.modelSource?.kind, 'semantic-projection');
     const large = await adapter.inspectProjection(await verified(' '.repeat(16 * 1024 * 1024 + 1) + source));
-    assert.equal(large.success, true, large.message);
+    assert.equal(large.success, true, large.message ?? "Projection inspection failed");
     assert.deepEqual(large.ir, result.ir);
     const unsupported = await adapter.inspectProjection(await verified('{"formatVersion":99,"distribution":null}'));
     assert.equal(unsupported.success, false);

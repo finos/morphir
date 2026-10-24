@@ -92,7 +92,7 @@ function run(name: Owner, argv: string[], options: { input?: Buffer | string; cw
     stdoutTailHex: result.stdout?.subarray(-32).toString('hex'),
     stdout: result.stdout?.length <= 4096 ? result.stdout.toString("base64") : undefined,
     stderr: result.stderr?.length <= 16384 ? result.stderr.toString() : undefined, error: result.error?.message });
-  if (!options.timeout) assert.equal(result.error, undefined, result.error?.message);
+  if (!options.timeout) assert.equal(result.error, undefined, result.error?.message ?? "Child process failed");
   return { ...result, nativeProtocolFault: name === 'protocol-fault' && options.program === undefined };
 }
 function success(result: ReturnType<typeof run>) {

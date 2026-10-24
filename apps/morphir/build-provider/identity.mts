@@ -1,11 +1,11 @@
-import type { BinaryLike } from 'node:crypto';
+import type { Hash } from 'node:crypto';
 import type { TreeOptions } from './contracts.mjs';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {closeSync,constants,fstatSync,lstatSync,openSync,readFileSync,readSync,readdirSync,readlinkSync,realpathSync,writeSync} from 'node:fs';
 import {join} from 'node:path';
 import {isWithin} from './paths.mjs';
-export const hash=(value: BinaryLike)=>createHash('sha256').update(value).digest('hex');
+export const hash=(value: Parameters<Hash['update']>[0])=>createHash('sha256').update(value).digest('hex');
 export const fileIdentity=(path: string)=>hash(readFileSync(path));
 export const excluded=new Set(['.git','node_modules','.mooncakes','_build']);
 export function treeIdentity(root: string,{core=false,includeBuild=core,check=()=>{}}: TreeOptions = {}) {

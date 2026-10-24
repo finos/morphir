@@ -1,4 +1,4 @@
-import type { BinaryLike } from 'node:crypto';
+import type { Hash } from 'node:crypto';
 import type { BuildEvidence, BuildRequest, Capability, Dependency, SourceMember, TreeOptions } from './contracts.mjs';
 import { workbenchError } from '../../../types/data.ts';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ const excluded=new Set(['.git','node_modules','.mooncakes','_build']);
 const deadline=Date.now()+request.timeout;
 const check=()=>{assert.ok(!request.cancelFile||!existsSync(request.cancelFile),'build.cancelled');assert.ok(Date.now()<deadline,'build.deadline');};
 const selectedCore=checkedCore(realpathSync(request.compilerHome),compilerVersion,request.toolchainPin?.targets.includes('llvm')?'llvm-nightly':'stable',check);
-const hash=(value: BinaryLike)=>createHash('sha256').update(value).digest('hex');
+const hash=(value: Parameters<Hash['update']>[0])=>createHash('sha256').update(value).digest('hex');
 const tree=(root: string,options: TreeOptions={})=>treeIdentity(root,{...options,check});
 async function execute(program: string,args: string[],cwd: string,home: string) {
   check();const env: NodeJS.ProcessEnv={...process.env,MOON_HOME:home,MOONBIT_NEW_NATIVE:"0"};

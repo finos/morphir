@@ -11,7 +11,7 @@ import {checkedCore} from './core.mjs';
 export const stableVersion='0.10.16+b1a0e846e';
 export function run(program: string,args: string[],timeout=10000) {
   const result=spawnSync(program,args,{encoding:'utf8',timeout,maxBuffer:1048576,env:{...process.env,MOONBIT_NEW_NATIVE:'0'}});
-  assert.ok(!result.error,result.error?.message);assert.equal(result.status,0,result.stderr);return result.stdout+result.stderr;
+  assert.ok(!result.error,result.error?.message ?? "Child process failed");assert.equal(result.status,0,result.stderr);return result.stdout+result.stderr;
 }
 export function command(name: string) {
   const names=process.platform==='win32'?[name,name+'.exe']:[name];

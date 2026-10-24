@@ -8,7 +8,7 @@ import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {isQuiescent} from './test-process-quiescence.mts';
 const helper=fileURLToPath(new URL('./metadata.mjs',import.meta.url));
-const hash=(bytes: import('node:crypto').BinaryLike)=>createHash('sha256').update(bytes).digest('hex');
+const hash=(bytes: Parameters<import('node:crypto').Hash['update']>[0])=>createHash('sha256').update(bytes).digest('hex');
 const root=mkdtempSync(join(tmpdir(),'morphir-metadata-exchange-'));
 const budget=process.platform==='win32'?30000:10000;
 try {

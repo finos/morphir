@@ -147,7 +147,7 @@ test('current MoonBit String and Int32 libraries retain policy through real Sche
   ];
   const provider = await createExecutionProvider(); t.after(() => provider.close());
   for (const policy of ['strict', 'permissive']) for (const example of cases) {
-    const entry = compiled.nodes.find(node => node.label === example.name)?.id.replace(/^value\|/, '');
+    const entry: string | undefined = compiled.nodes.find(node => node.label === example.name)?.id.replace(/^value\|/, '');
     assert.ok(entry, example.name);
     const accepted: SchemeSubmission = await provider.schemeCommand('submit-scheme', JSON.stringify({
       contractVersion: version, model: compiled.irSource, entry, runtime: 'scheme', providerId: 'moonbit-scheme',

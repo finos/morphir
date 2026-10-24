@@ -64,7 +64,7 @@ const response={profile:'morphir-rust-evaluator-result-v1',requestIdentity:hash(
         const scratch=failure.cleanup.split('pending: ')[1];
         assert.ok(scratch.startsWith(join(tmpdir(),'morphir-toolchain-')));
         assert.ok(existsSync(scratch));rmSync(scratch,{recursive:true,force:true});
-      } else {assert.ok(rust!.reason!.includes(reason),rust!.reason);}
+      } else {assert.ok(rust!.reason!.includes(reason),rust!.reason ?? "Evaluator codec failed");}
     }
   }
   console.log('Evaluator codec: version, cardinality, call identity, status, type, receipt identity, runtime error and injected live disagreement rejected; mock transport only.');
