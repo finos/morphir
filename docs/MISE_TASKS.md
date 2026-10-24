@@ -278,14 +278,26 @@ Pull requests to `main` merge through a merge queue. Click **Merge when ready** 
 (the `merge_group` trigger). The PR merges only when `ci-ok` passes on that combination. When you add a job to
 `ci.yml`, add it to the `needs` list of `ci-ok`.
 
+A queue run does not repeat work that the PR's own green run proved. `scripts/ci-reuse.mbtx` verifies the PR run's
+receipt through the GitHub API, and `scripts/ci-changes.mbtx` then selects only the checks that the commits landed on
+`main` since the receipt's base affect. A PR that changes CI policy (workflows, actions, `scripts/ci-*`, mise
+configuration or the toolchain pin) is trusted only when its queue commit has the tree that its PR run tested: the
+same base, and Git's merge of that base and the PR head. Anything that cannot be proven selects the full set as
+before. The Detect code changes job logs each decision with the prefix `ci-changes: reuse:`. To return to logging
+only, set `reuse_enforced` to `false` in `scripts/ci-changes.mbtx`.
+
 ### Branch sync
 
 `.github/workflows/branch-sync.yml` keeps `main` here and `moonshots` in finos/morphir on one commit. The two
 branches hold the same tree, so the workflow runs in both repositories. Each run fast-forwards the other
 repository's branch to its own branch, but only when its own branch is ahead and `ci-ok` passed on its tip. Only
 that run can push in its direction, so it reads a pending `ci-ok` again every 30 seconds for up to 30 minutes
-(`--wait-minutes 30`). A schedule here repeats the run every 30 minutes in case a push event was missed. CI also runs
-on pushes to `moonshots`, so that commits landed there get the `ci-ok` the sync needs.
+(`--wait-minutes 30`). A schedule here repeats the run every 30 minutes in case a push event was missed.
+
+A commit that lands on `moonshots` through its merge queue has `ci-ok` from the `merge_group` run, and a
+migration pushed as an admin has `ci-ok` from its PR run on the same commit. CI does not run on pushes to
+`moonshots`, because a commit forwarded from `main` here already passed. A commit pushed to `moonshots` without a
+PR stops the sync with `blocked`; run `gh workflow run ci.yml -R finos/morphir --ref moonshots` to give it `ci-ok`.
 
 The job never merges, rebases or force-pushes. When the branches have diverged, it pushes nothing, fails, and opens
 an issue labelled `branch-sync`; the next run that finds them together closes the issue. To resolve a divergence,

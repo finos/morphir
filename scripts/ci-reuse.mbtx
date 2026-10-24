@@ -376,9 +376,7 @@ async fn Trust::pr_trust(
   to : Sha,
 ) -> Verdict {
   let head = self.pr_head(number)
-  if ci_policy_path(self.changed_paths(from, to)) is Some(path) {
-    distrust("PR #\{number.0} changes CI policy: \{path}")
-  }
+  let policy = ci_policy_path(self.changed_paths(from, to))
   guard self.latest_ci_run(head, "pull_request") is Some(run) else {
     distrust("no pull_request run of ci.yml for head \{head.short()}")
   }
@@ -414,7 +412,36 @@ async fn Trust::pr_trust(
   self.note_tree(receipt)
   let rerun_jobs = self.rerun_jobs(run, receipt)
   let reason = "PR #\{number.0} head \{head.short()} run \{run.id.0} attempt \{run.attempt}"
-  Trusted(receipt~, exact=false, reason~, rerun_jobs~)
+  guard policy is Some(path) else {
+    return Trusted(receipt~, exact=false, reason~, rerun_jobs~)
+  }
+  // A PR that changes CI policy ran its own workflows, tasks and toolchain,
+  // and the queue would run the same ones. Its run proves the queue run only
+  // when both test one tree: the same base, and Git's merge of that base and
+  // the PR head is the queue commit's tree. Git computes both trees; the
+  // receipt's own tree is not trusted for this.
+  let refused = "PR #\{number.0} changes CI policy: \{path}"
+  guard receipt_base == from else {
+    distrust(
+      "\{refused}; receipt base \{receipt_base.short()} is not this run's base \{from.short()}",
+    )
+  }
+  let tested = self.git(["merge-tree", "--write-tree", from.0, head.0]).trim()
+  let queued = self.git(["rev-parse", "--verify", "\{to.0}^{tree}"]).trim()
+  guard tested == queued else {
+    distrust(
+      "\{refused}; queue tree \{queued} is not the tested tree \{tested}",
+    )
+  }
+  self.notes.push(
+    "CI policy change; tree \{queued} is the tested tree on base \{from.short()}",
+  )
+  Trusted(
+    receipt~,
+    exact=false,
+    reason=reason + " (CI policy, same tree on the tested base)",
+    rerun_jobs~,
+  )
 }
 
 ///|
@@ -1026,8 +1053,8 @@ fn fixture_receipt(run : String, tested : String, pr : Json) -> Json {
 }
 
 ///|
-fn fixture_pr_receipt(base : String) -> Json {
-  let pr : Json = { "number": 194, "head": fixture_head, "base": base }
+fn fixture_pr_receipt(base : String, head~ : String = fixture_head) -> Json {
+  let pr : Json = { "number": 194, "head": head, "base": base }
   fixture_receipt(fixture_run, fixture_tested, pr)
 }
 
@@ -1050,38 +1077,31 @@ fn fixture_jobs(reran : Array[String]) -> Json {
 ///|
 /// PR #194 with a green ci.yml run of its head, one receipt and a first
 /// attempt. An older failed run and a newer run of another workflow are noise.
-fn pr_world(base : String) -> Map[String, Json] {
+fn pr_world(base : String, head~ : String = fixture_head) -> Map[String, Json] {
   Map::from_array([
     (
       fixture_path("pulls/194"),
       {
         "number": 194,
-        "head": {
-          "sha": fixture_head,
-          "repo": { "full_name": fixture_repository },
-        },
+        "head": { "sha": head, "repo": { "full_name": fixture_repository } },
       },
     ),
     (
       fixture_path(
-        "actions/runs?head_sha=\{fixture_head}&event=pull_request&per_page=100",
+        "actions/runs?head_sha=\{head}&event=pull_request&per_page=100",
       ),
       {
         "workflow_runs": [
           fixture_run_json(
             "39549900000",
             13,
-            fixture_head,
+            head,
             "pull_request",
             "failure",
             path=".github/workflows/site.yml",
           ),
-          fixture_run_json(
-            fixture_run, 12, fixture_head, "pull_request", "success",
-          ),
-          fixture_run_json(
-            "39549800000", 11, fixture_head, "pull_request", "failure",
-          ),
+          fixture_run_json(fixture_run, 12, head, "pull_request", "success"),
+          fixture_run_json("39549800000", 11, head, "pull_request", "failure"),
         ],
       },
     ),
@@ -1096,7 +1116,7 @@ fn pr_world(base : String) -> Map[String, Json] {
     ),
     (
       "download/\{fixture_run}/ci-receipt-\{fixture_tested}",
-      fixture_pr_receipt(base),
+      fixture_pr_receipt(base, head~),
     ),
     (
       fixture_path(
@@ -1573,6 +1593,49 @@ async fn self_test() -> Unit {
   check(
     "trust_ci_policy_mise",
     untrusted_with(verdict, "changes CI policy: .config/mise/config.toml"),
+    verdict,
+  )
+  // trust_ci_policy_exact_tree: the PR (head c3, one workflow change on c2)
+  // was tested on c2, and the queue squashes it onto the same c2. The queue
+  // tree is the tested tree, so the queue would repeat the PR run.
+  let squash = async fn(tree_of : Sha, parent : Sha) -> Sha {
+    Sha::parse(
+      fixture_git(root, [
+        "commit-tree",
+        "\{tree_of.0}^{tree}",
+        "-p",
+        parent.0,
+        "-m",
+        "squash",
+      ])
+      .trim()
+      .to_owned(),
+    )
+  }
+  let queued = squash(c3, c2)
+  let verdict = queue(pr_world(c2.0, head=c3.0), c2, queued)
+  check(
+    "trust_ci_policy_exact_tree",
+    verdict is Trusted(exact=false, reason~, ..) &&
+    reason ==
+    "PR #194 head \{c3.short()} run 39549808921 attempt 1 (CI policy, same tree on the tested base)",
+    verdict,
+  )
+  // trust_ci_policy_base_moved: tested on c1, queued on c2. Something landed
+  // between, so the queue tree was never tested.
+  let verdict = queue(pr_world(c1.0, head=c3.0), c2, queued)
+  check(
+    "trust_ci_policy_base_moved",
+    untrusted_with(
+      verdict, "changes CI policy: .github/workflows/ci.yml; receipt base",
+    ),
+    verdict,
+  )
+  // trust_ci_policy_tree_differs: the queue commit holds more than the PR.
+  let verdict = queue(pr_world(c2.0, head=c3.0), c2, squash(c4, c2))
+  check(
+    "trust_ci_policy_tree_differs",
+    untrusted_with(verdict, "is not the tested tree"),
     verdict,
   )
   // trust_ci_policy_toolchain: mise task directories, the tool versions and

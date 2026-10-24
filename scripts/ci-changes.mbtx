@@ -1358,11 +1358,12 @@ fn environment(name : String) -> String {
 }
 
 ///|
-/// `reuse_enforced` is false while queue and bypass reuse run in shadow mode:
-/// the reuse decision is only logged on stderr, and the run selects as today.
-/// Task 7 of morphir-ukvn.5.90.1.1 sets it to true. The push skip for a commit
-/// that a merge-queue run proved is always enforced.
-let reuse_enforced : Bool = false
+/// Queue and bypass reuse are enforced (morphir-ukvn.5.90.9): a trusted
+/// receipt leaves out the checks it proved and that nothing landed since its
+/// base selects. Set this to false to return to shadow mode, where the
+/// decision is only logged on stderr and the run selects as today. The push
+/// skip for a commit that a merge-queue run proved is always enforced.
+let reuse_enforced : Bool = true
 
 ///|
 /// A full commit SHA, as `valid_revision` accepts it.
@@ -2048,9 +2049,18 @@ async fn reuse_wiring_test(script : String) -> Unit {
     run.3 == "existing=true\n" + today &&
     run.4 == args
   }
-  // event_queue_shadow_unchanged
+  let only = (keys : Array[String]) => {
+    let selection = nothing_selected()
+    for key in keys {
+      selection.set(key, true)
+    }
+    render(selection)
+  }
+  // event_queue_enforced: the receipt proved the IR change, and only the
+  // docs that landed since its base select checks again.
   let run = run_event(script, root, queue_env, trusted)
-  if !(unchanged(run, queue_today, queue_args) &&
+  if !(unchanged(run, only(["site", "typescript"]), queue_args) &&
+    only(["site", "typescript"]) != queue_today &&
     run.2.contains(
       "\{log}trusted: PR #194 head 4046644 run 39549808921 attempt 2 (tested 7c1e5a0, tree 9ab3c4d)\n",
     ) &&
@@ -2062,21 +2072,39 @@ async fn reuse_wiring_test(script : String) -> Unit {
       "\{log}trusted after re-run attempt: Elm and Scheme end to end\n",
     ) &&
     run.2.contains(
-      "\{log}shadow, not enforced; would select full=false checks=[\"site\",\"typescript\"]\n",
+      "\{log}enforced; selects full=false checks=[\"site\",\"typescript\"]\n",
     ) &&
     run.2.contains("\{log}ci-reuse: fixture note\n")) {
-    failures.push(run_failure("event_queue_shadow_unchanged", run))
+    failures.push(run_failure("event_queue_enforced", run))
   }
-  // event_queue_exact_not_skipped: only a push skips on an exact verdict; a
-  // queue run selects as today, with or without a PR base.
-  for base in [Some(receipt_base), None] {
+  // event_queue_enforced_nothing_landed: the receipt's base is the queue
+  // base, so the receipt proves everything and every key is false.
+  let run = run_event(
+    script,
+    root,
+    queue_env,
+    fixture_verdict(receipt, base=Some(main_head)),
+  )
+  if !(unchanged(run, only([]), queue_args) &&
+    run.2.contains("\{log}enforced; selects full=false checks=[]\n")) {
+    failures.push(run_failure("event_queue_enforced_nothing_landed", run))
+  }
+  // event_queue_exact_not_skipped: only a push skips on an exact verdict. A
+  // queue run treats it as any trusted verdict, and without a PR base it
+  // selects as today.
+  for
+    case in [
+      (Some(receipt_base), only(["site", "typescript"])),
+      (None, queue_today),
+    ] {
+    let (base, expected) = case
     let run = run_event(
       script,
       root,
       queue_env,
       fixture_verdict(receipt, base~, exact=true),
     )
-    if !(unchanged(run, queue_today, queue_args) &&
+    if !(unchanged(run, expected, queue_args) &&
       !run.2.contains("\{log}exact push") &&
       !run.2.contains("\{log}trusted (exact)")) {
       failures.push(run_failure("event_queue_exact_not_skipped", run))
@@ -2098,16 +2126,17 @@ async fn reuse_wiring_test(script : String) -> Unit {
     run.2.contains("\{log}exact push, enforced;")) {
     failures.push(run_failure("event_push_exact_skips", run))
   }
-  // event_push_bypass_shadow
+  // event_push_bypass_enforced: an admin-bypass push reuses its PR's
+  // receipt the same way; the site workflow owns main deployment.
   let run = run_event(script, root, push_env, trusted)
-  if !(unchanged(run, push_today, push_args) &&
-    push_today != skip &&
+  if !(unchanged(run, only(["typescript"]), push_args) &&
+    push_today != only(["typescript"]) &&
     run.2.contains(
-      "\{log}shadow, not enforced; would select full=false checks=[\"typescript\"]\n",
+      "\{log}enforced; selects full=false checks=[\"typescript\"]\n",
     )) {
-    failures.push(run_failure("event_push_bypass_shadow", run))
+    failures.push(run_failure("event_push_bypass_enforced", run))
   }
-  // reuse_child_failure_shadow
+  // reuse_child_failure_own: anything unproven selects as today.
   for
     case in [
       ("crash\n", "\{log}ci-reuse exited "),
@@ -2127,7 +2156,7 @@ async fn reuse_wiring_test(script : String) -> Unit {
     if !(unchanged(run, queue_today, queue_args) &&
       run.2.contains(phrase) &&
       run.2.contains("selects as today")) {
-      failures.push(run_failure("reuse_child_failure_shadow \{phrase}", run))
+      failures.push(run_failure("reuse_child_failure_own \{phrase}", run))
     }
   }
   failures.append(verdict_test(pr_head))
@@ -2172,7 +2201,7 @@ async fn reuse_wiring_test(script : String) -> Unit {
   failures.append(cli_argparse_forms())
   guard failures.is_empty() else { fail(failures.join("\n---\n")) }
   test_note(
-    "ci-changes: queue and bypass shadow, exact push skip, child failures and CLI pass",
+    "ci-changes: enforced queue and bypass reuse, exact push skip, child failures and CLI pass",
   )
 }
 

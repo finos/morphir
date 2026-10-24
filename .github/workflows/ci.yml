@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    # moonshots is the paired branch in finos/morphir. Its pushes need ci-ok
-    # too, because branch-sync.yml syncs a commit only after ci-ok passed.
-    branches: [main, moonshots]
+    # Not moonshots in finos/morphir: branch-sync.yml forwards commits there
+    # that already passed here. Commits that land on moonshots get ci-ok from
+    # merge_group or from their PR run; see "Branch sync" in docs/MISE_TASKS.md.
+    branches: [main]
   # No branch filter: stacked children target their parent's branch.
   pull_request:
   # The merge queue tests each queued PR on top of main and the PRs ahead of it.
