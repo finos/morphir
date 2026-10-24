@@ -33,6 +33,6 @@
     "simple-icons": "16.28.0"
   },
   "overrides": {
-    "fast-uri": "^3.1.7"
+    "fast-uri": "^4.0.0"
   }
 }
