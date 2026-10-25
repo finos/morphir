@@ -1384,9 +1384,36 @@ fn Sha::short(self : Sha) -> String {
 }
 
 ///|
-/// The first seven digits of a SHA, or `text` when it is not one.
-fn abbreviated(text : String) -> String {
-  Sha::parse(text).map(Sha::short).unwrap_or(text)
+/// The commit whose tree the receipt's run actually tested.
+struct TestedCommit(Sha) derive(Eq)
+
+///|
+fn TestedCommit::parse(text : String) -> TestedCommit? {
+  Sha::parse(text).map(sha => TestedCommit(sha))
+}
+
+///|
+/// A Git tree identity, distinct from a tested commit even with the same hash.
+struct TreeSha(Sha) derive(Eq)
+
+///|
+fn TreeSha::parse(text : String) -> TreeSha? {
+  Sha::parse(text).map(sha => TreeSha(sha))
+}
+
+///|
+/// A positive decimal Actions run identity, kept as text without integer limits.
+struct RunId(String) derive(Eq)
+
+///|
+fn RunId::parse(text : String) -> RunId? {
+  if !text.is_empty() &&
+    text.iter().all(c => c >= '0' && c <= '9') &&
+    text.iter().any(c => c != '0') {
+    Some(RunId(text))
+  } else {
+    None
+  }
 }
 
 ///|
@@ -1394,10 +1421,10 @@ fn abbreviated(text : String) -> String {
 /// run, `None` for a merge-queue receipt. `selection` keeps the outputs of the
 /// receipt's `changes` job whose value is "true" or "false".
 struct Receipt {
-  run : String
+  run : RunId
   attempt : String
-  tested : String
-  tree : String
+  tested : TestedCommit
+  tree : TreeSha
   base : Sha?
   selection : Map[String, Bool]
 }
@@ -1487,12 +1514,17 @@ fn Verdict::parse(text : String) -> Verdict raise {
         }
         name
       })
+      guard RunId::parse(text_field(receipt, "runId")) is Some(run) &&
+        TestedCommit::parse(text_field(receipt, "testedCommit")) is Some(tested) &&
+        TreeSha::parse(text_field(receipt, "testedTree")) is Some(tree) else {
+        fail("trusted verdict has invalid run, tested commit or tree identity")
+      }
       Trusted(
         receipt={
-          run: text_field(receipt, "runId"),
+          run,
           attempt: text_field(receipt, "runAttempt"),
-          tested: text_field(receipt, "testedCommit"),
-          tree: text_field(receipt, "testedTree"),
+          tested,
+          tree,
           base,
           selection,
         },
@@ -1540,6 +1572,7 @@ async fn reuse_verdict(
   args : Array[String],
   cwd~ : String = ".",
   timeout~ : Int32 = 60,
+  log~ : async (String) -> Unit = reuse_log,
 ) -> Verdict? {
   let run = try {
     let script = @fs.realpath(cwd + "/scripts/ci-reuse.mbtx")
@@ -1548,7 +1581,7 @@ async fn reuse_verdict(
     })
   } catch {
     err => {
-      reuse_log("ci-reuse did not run: \{err}; selects as today")
+      log("ci-reuse did not run: \{err}; selects as today")
       return None
     }
   }
@@ -1559,7 +1592,7 @@ async fn reuse_verdict(
       if status == 0 {
         for line in err.split("\n") {
           if !line.trim().is_empty() {
-            reuse_log(line.to_owned())
+            log(line.to_owned())
           }
         }
       }
@@ -1569,7 +1602,7 @@ async fn reuse_verdict(
   match outcome {
     Ok(verdict) => Some(verdict)
     Err(reason) => {
-      reuse_log("\{reason}; selects as today")
+      log("\{reason}; selects as today")
       None
     }
   }
@@ -1653,15 +1686,15 @@ async fn reuse_or_own(
       return own
     }
     Some(Trusted(receipt~, reason~, rerun_jobs~, ..)) => {
-      let tested = abbreviated(receipt.tested)
-      let tree = abbreviated(receipt.tree)
+      let tested = receipt.tested.0.short()
+      let tree = receipt.tree.0.short()
       reuse_log("trusted: \{reason} (tested \{tested}, tree \{tree})")
       (receipt, rerun_jobs)
     }
   }
   guard receipt.base is Some(base) else {
     reuse_log(
-      "receipt has no PR base (run \{receipt.run} attempt \{receipt.attempt}); selects as today",
+      "receipt has no PR base (run \{receipt.run.0} attempt \{receipt.attempt}); selects as today",
     )
     return own
   }
@@ -1750,15 +1783,16 @@ async fn event_selection() -> Map[String, Bool] {
       } else {
         None
       }
+      let verdict = reuse_verdict(["push", "--sha", after, "--before", before])
+      if verdict is Some(Trusted(exact=true, reason~, ..)) {
+        return exact_skip(reason)
+      }
       let selected = match paths {
         Some(paths) => paths |> select_changes(before, after, merge_base=false)
         None => select([])
       }
       selected.set("site", false) // Site workflow owns main deployment.
-      match reuse_verdict(["push", "--sha", after, "--before", before]) {
-        Some(Trusted(exact=true, reason~, ..)) => exact_skip(reason)
-        verdict => reuse_or_own(selected, verdict, before)
-      }
+      reuse_or_own(selected, verdict, before)
     }
     _ => select([])
   }
@@ -2240,6 +2274,7 @@ async fn reuse_wiring_test(script : String) -> Unit {
     )
   }
   failures.append(cli_argparse_forms())
+  failures.append(push_verdict_order_test(script))
   guard failures.is_empty() else { fail(failures.join("\n---\n")) }
   test_note(
     "ci-changes: enforced queue and bypass reuse, exact push skip, child failures and CLI pass",
@@ -2285,7 +2320,9 @@ fn verdict_test(base : String) -> Array[String] {
       is Ok(Trusted(receipt=r, exact=false, rerun_jobs=jobs, ..)) &&
       r.base == Some(Sha(base)) &&
       r.selection == receipt &&
-      r.run == "39549808921" &&
+      r.run == RunId("39549808921") &&
+      r.tested == TestedCommit(Sha("7c1e5a0b9d8c7f6e5d4c3b2a1908f7e6d5c4b3a2")) &&
+      r.tree == TreeSha(Sha("9ab3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5")) &&
       r.attempt == "2" &&
       jobs == ["Elm and Scheme end to end"],
     ),
@@ -2294,6 +2331,114 @@ fn verdict_test(base : String) -> Array[String] {
     if !check.1 {
       failures.push("reuse_child_failure_shadow verdict: \{check.0}")
     }
+  }
+  for field in ["runId", "testedCommit", "testedTree"] {
+    let missing = trusted.replace_all(old="\"\{field}\"", new="\"missing\"")
+    if Verdict::from_child(0, missing, "") is Ok(_) {
+      failures.push("trusted verdict accepted missing \{field}")
+    }
+  }
+  for text in ["", "0", "000", "-1", "1.5", " 42", "４２", "unknown"] {
+    let invalid = trusted.replace_all(old="39549808921", new=text)
+    if Verdict::from_child(0, invalid, "") is Ok(_) {
+      failures.push("trusted verdict accepted invalid run ID \{text}")
+    }
+  }
+  for
+    field in [
+      "7c1e5a0b9d8c7f6e5d4c3b2a1908f7e6d5c4b3a2", "9ab3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5",
+    ] {
+    for text in ["", "unknown", "a".repeat(39), "0".repeat(40), "A".repeat(40)] {
+      let invalid = trusted.replace_all(old=field, new=text)
+      if Verdict::from_child(0, invalid, "") is Ok(_) {
+        failures.push("trusted verdict accepted invalid Git identity \{text}")
+      }
+    }
+    let sha256 = trusted.replace_all(old=field, new="a".repeat(64))
+    if Verdict::from_child(0, sha256, "") is Err(_) {
+      failures.push("trusted verdict refused a full SHA-256 identity")
+    }
+  }
+  let large_run = trusted.replace_all(old="39549808921", new="9".repeat(40))
+  if Verdict::from_child(0, large_run, "") is Err(_) {
+    failures.push("trusted verdict narrowed the run ID to a machine integer")
+  }
+  failures
+}
+
+///|
+/// Exact push reuse avoids the mise child, while fallback selection and legacy
+/// automation validation still execute their original obligations.
+async fn push_verdict_order_test(script : String) -> Array[String] {
+  let root = @fs.tmpdir(prefix="morphir-ci-push-order-")
+  defer @fs.rmdir(root, recursive=true)
+  ignore(fixture_git(root, ["init", "-q"]))
+  @fs.mkdir(root + "/.config/mise", recursive=true)
+  @fs.write_file(root + "/" + mise_config_path, fixture_config)
+  ignore(fixture_git(root, ["add", "."]))
+  ignore(fixture_git(root, ["commit", "-qm", "fixture config base"]))
+  let base = fixture_git(root, ["rev-parse", "HEAD"])
+  @fs.write_file(
+    root + "/" + mise_config_path,
+    fixture_config + "\n# changed\n",
+  )
+  ignore(fixture_git(root, ["commit", "-qam", "fixture config change"]))
+  let head = fixture_git(root, ["rev-parse", "HEAD"])
+  @fs.mkdir(root + "/scripts")
+  @fs.write_file(root + "/scripts/ci-reuse.mbtx", fake_reuse_script)
+  @fs.write_file(
+    root + "/scripts/ci-mise-impact.mbtx",
+    (
+      #|import {
+      #|  "moonbitlang/async@0.22.1",
+      #|  "moonbitlang/async@0.22.1/fs",
+      #|}
+      #|async fn main {
+      #|  @fs.write_file("mise-invoked", "called\n")
+      #|  println("unreadable fixture impact")
+      #|}
+    ),
+  )
+  let env = { "EVENT": "push", "PUSH_BASE": base, "GITHUB_SHA": head }
+  let receipt = select([])
+  let failures = []
+  let run = run_event(
+    script,
+    root,
+    env,
+    fixture_verdict(receipt, base=None, exact=true),
+  )
+  if run.0 != 0 ||
+    run.1 != render(nothing_selected()) ||
+    @fs.exists(root + "/mise-invoked") {
+    failures.push(run_failure("exact push must avoid own mise selection", run))
+  }
+  for
+    verdict in [
+      "{\"trusted\":false,\"reason\":\"fixture untrusted\"}",
+      fixture_verdict(receipt, base=Some(base)),
+    ] {
+    let run = run_event(script, root, env, verdict)
+    if run.0 != 0 || !@fs.exists(root + "/mise-invoked") {
+      failures.push(run_failure("non-exact push must build own selection", run))
+    }
+    if @fs.exists(root + "/mise-invoked") {
+      @fs.remove(root + "/mise-invoked")
+    }
+  }
+  @fs.write_file(root + "/scripts/forbidden.sh", "fixture\n")
+  ignore(fixture_git(root, ["add", "scripts/forbidden.sh"]))
+  ignore(fixture_git(root, ["commit", "-qm", "fixture legacy addition"]))
+  let head = fixture_git(root, ["rev-parse", "HEAD"])
+  env.set("GITHUB_SHA", head)
+  let run = run_event(
+    script,
+    root,
+    env,
+    fixture_verdict(receipt, base=None, exact=true),
+  )
+  if run.0 == 0 || run.4 != "" {
+    failures.push(run_failure("exact push must retain legacy refusal", run))
   }
   failures
 }
@@ -2318,8 +2463,12 @@ async fn reuse_timeout_test() -> Array[String] {
       #|}
     ),
   )
-  let verdict = reuse_verdict(["push"], cwd=root, timeout=1)
-  if verdict is None {
+  let logs : Array[String] = []
+  let verdict = reuse_verdict(["push"], cwd=root, timeout=1, log=entry => {
+    logs.push(entry)
+  })
+  if verdict is None &&
+    logs == ["ci-reuse timed out after 1 s; selects as today"] {
     []
   } else {
     ["reuse_child_failure_shadow: a child that times out gave a verdict"]
