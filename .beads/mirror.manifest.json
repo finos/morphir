@@ -2,12 +2,12 @@
   "format_version": "0.1.0-draft.1",
   "issue_count": 1635,
   "export": {
-    "bytes": 176707592,
-    "sha256": "23bdc3fce019bbd44e1b2518e3ed7e590247afb391a48137f5656875846a30f1"
+    "bytes": 185625587,
+    "sha256": "f64ad4642a2ea6707470a7be5613785bd56e5b71ec8142b78bc8bbf6f4bdd5b1"
   },
   "gzip": {
-    "bytes": 59457966,
-    "sha256": "7cd951b510f89a878ba1b3b69084b53447bfc1dbaf98b5d66de181bfe63cfc22"
+    "bytes": 58951406,
+    "sha256": "a9ce8c354e6aa63dbed5ba83ca57c56c28dcadbfd42cd30b1bf82d5ebddba261"
   },
   "index": {
     "bytes": 202196,
