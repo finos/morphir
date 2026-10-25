@@ -268,7 +268,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
   } else {
     discovery_overlay
   }
-  let logs = @host.TelemetrySession::local(
+  let logs = @host.TelemetrySession::for_project(
     location.root,
     if dry_run || project_list {
       None

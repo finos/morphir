@@ -171,13 +171,13 @@ test "forwarded admission notifications cannot acquire or revive a host session"
 test "default binary Ion and explicit formats retain audit records without semantic payloads" {
   let root = @platform.temporary()
   defer telemetry_remove(root)
-  let disabled = TelemetrySession::local(root, None)
+  let disabled = TelemetrySession::for_project(root, None)
   assert_true(
     (disabled.metadata_audit_sink().try_record)(an_audit_record()) is Filtered,
   )
   disabled.flush()
   assert_eq(@platform.kind(root + "/.morphir"), 0)
-  let session = TelemetrySession::local(
+  let session = TelemetrySession::for_project(
     root,
     None,
     enabled=true,
@@ -214,7 +214,7 @@ test "default binary Ion and explicit formats retain audit records without seman
       ("text", "outside.log"),
     ] {
     let path = root + "/" + file
-    let explicit = TelemetrySession::local(
+    let explicit = TelemetrySession::for_project(
       root + "/other",
       Some(path),
       enabled=true,

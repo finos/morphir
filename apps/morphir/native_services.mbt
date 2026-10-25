@@ -54,7 +54,7 @@ fn native_services_cleanup(
   logs
   .observer()
   .scope()
-  .observe(@observe.Cleanup, fn(_) {
+  .observe(@observe.Cleanup, _ => {
     extension_cleanup(root)
     if @platform.kind(root) != 0 {
       raise @config.Invalid("native.scratch_cleanup_failed")
@@ -67,7 +67,7 @@ fn native_services_cleanup(
 
 ///|
 fn native_services_logs(cli : Cli) -> @host.TelemetrySession raise {
-  @host.TelemetrySession::local(
+  @host.TelemetrySession::for_project(
     @platform.cwd(),
     values(cli, "log-file").get(0),
     enabled=true,
@@ -274,6 +274,20 @@ fn catalog_execute(cli : Cli, mode : OutputMode) -> Int32 raise {
 }
 
 ///|
+fn native_extension_params(plan : ExtensionPlan) -> (Json, Json) {
+  fn params(id : Int32) -> Json {
+    for message in plan.messages {
+      if message is Object(fields) && fields.get("id") == Some(Json(id)) {
+        return fields.get("params").unwrap_or(Json::null())
+      }
+    }
+    Json::null()
+  }
+
+  (params(2), params(3))
+}
+
+///|
 fn native_extension_command(
   cli : Cli,
   mode : OutputMode,
@@ -300,22 +314,7 @@ fn native_extension_command(
   ignore(extension_text(artifact, "extensionId"))
   ignore(extension_text(artifact, "version"))
   let plan = extension_plan(cli, operation)
-  let initialize = if plan.messages.length() > 2 {
-    match plan.messages[1] {
-      Object(f) => f.get("params").unwrap_or(Json::null())
-      _ => Json::null()
-    }
-  } else {
-    Json::null()
-  }
-  let params = if plan.messages.length() > 2 {
-    match plan.messages[2] {
-      Object(f) => f.get("params").unwrap_or(Json::null())
-      _ => Json::null()
-    }
-  } else {
-    Json::null()
-  }
+  let (initialize, params) = native_extension_params(plan)
   let timeout = build_timeout(value(cli, "timeout", fallback="60000"))
   if timeout > 594000 {
     raise @config.Invalid("native.timeout_limit")

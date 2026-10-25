@@ -1,5 +1,5 @@
 ///|
-fn model_command(cli : Cli, mode : OutputMode) -> Int32 raise {
+fn model_command(cli : Cli, mode : OutputMode) -> Int32 {
   model_command_run(cli, mode) catch {
     error => {
       let message = @host.error_message(error)

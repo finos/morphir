@@ -500,8 +500,7 @@ pub fn read_literal(value : Json) -> @model.Literal raise {
 ///|
 pub fn write_literal(literal : @model.Literal) -> Json raise {
   match literal {
-    BoolLiteral(value) =>
-      Json::array([@wire.text("BoolLiteral"), value.to_json()])
+    BoolLiteral(value) => Json::array([@wire.text("BoolLiteral"), Json(value)])
     CharLiteral(value) =>
       Json::array([@wire.text("CharLiteral"), @wire.text(value.to_string())])
     StringLiteral(value) =>

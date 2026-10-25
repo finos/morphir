@@ -420,7 +420,7 @@ pub fn read_data(value : Json) -> @common.Data {
 pub fn write_data(value : @common.Data) -> Json raise {
   match value {
     Null => Json::null()
-    Boolean(value) => value.to_json()
+    Boolean(value) => Json(value)
     Text(text) => Json::string(text)
     Number(text) => number(text)
     Array(items) => Json::array(items.map(write_data))
@@ -469,7 +469,7 @@ pub fn write_float(value : Double) -> Json raise CodecError {
   let result = if value.reinterpret_as_uint64() == 9223372036854775808UL {
     Json::number(value, repr="-0.0")
   } else {
-    value.to_json()
+    Json(value)
   }
   ignore(float(result))
   result

@@ -5,6 +5,8 @@ priv struct OriginalsControl {
 }
 
 ///|
+/// The native adapter constructs this value. Pure targets keep the shared type.
+#warnings("-struct_never_constructed")
 priv struct OriginalsObservation {
   commit : (String, Bool) -> Unit
   cleanup : (String, Bool) -> Unit
@@ -216,7 +218,7 @@ fn originals_read(
   limit : Int32,
   control : OriginalsControl,
 ) -> Bytes raise {
-  let buffer = @buffer.new()
+  let buffer = Buffer()
   @platform.file_chunks(path, limit, fn(bytes) raise {
     originals_check(control)
     if bytes.length() > limit - buffer.length() {
@@ -273,6 +275,8 @@ fn originals_cleanup(scratch : String) -> Unit raise {
 }
 
 ///|
+/// Native and JS dispatchers use this shared completion path.
+#warnings("-unused_value")
 fn originals_finish(
   source : String,
   code : Int32,

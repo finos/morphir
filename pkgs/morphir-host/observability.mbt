@@ -52,7 +52,8 @@ pub fn TelemetrySession::new(
 /// Choose a default beneath .morphir/logs only when logging is enabled.
 /// An explicit path keeps the existing sink contract, including @stderr.
 /// Directory creation for defaults happens only in the bounded flush worker.
-pub fn TelemetrySession::local(
+#alias(local)
+pub fn TelemetrySession::for_project(
   root : String,
   path : String?,
   enabled~ : Bool = false,

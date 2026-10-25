@@ -37,8 +37,8 @@ pub(all) struct Assertion {
   subject : String
   predicate : String
   property : String
-  ordinal : Int
-  object_ordinal : Int
+  ordinal : Int32
+  object_ordinal : Int32
 }
 
 pub(all) struct Capabilities {
@@ -83,6 +83,9 @@ pub(all) enum ProviderSignal {
   Refused(String)
   Cancelled
 } derive(Eq, @debug.Debug)
+pub fn ProviderSignal::equal(Self, Self) -> Bool
+pub fn ProviderSignal::not_equal(Self, Self) -> Bool
+pub fn ProviderSignal::to_repr(Self) -> @debug.Repr
 
 pub(all) struct RestoredLibrary {
   core : @v4.IRFile

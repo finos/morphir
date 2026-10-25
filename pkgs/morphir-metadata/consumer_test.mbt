@@ -305,8 +305,10 @@ test "context references require exact bytes and reject duplicate imports and co
   let reference = "morphir://context/sha256/" + digest
   let loader = {
     ..@fixtures.capabilities(),
-    load_context: Some(fn(resource, _) raise {
-      { url: resource, bytes, sha256: digest, }
+    load_context: Some((resource, _) => {
+      url: resource,
+      bytes,
+      sha256: digest,
     }),
   }
   let data = @fixtures.adapter(
@@ -316,8 +318,10 @@ test "context references require exact bytes and reject duplicate imports and co
   assert_eq(consume(data, capabilities=loader).facts.length(), 1)
   let corrupt = {
     ..loader,
-    load_context: Some(fn(resource, _) raise {
-      { url: resource, bytes: @utf8.encode(context + " "), sha256: digest, }
+    load_context: Some((resource, _) => {
+      url: resource,
+      bytes: @utf8.encode(context + " "),
+      sha256: digest,
     }),
   }
   reject("metadata.context_digest_mismatch", fn() raise {
@@ -347,7 +351,7 @@ test "context references require exact bytes and reject duplicate imports and co
   let other_ref = "morphir://context/sha256/" + other_digest
   let two = {
     ..loader,
-    load_context: Some(fn(resource, _) raise {
+    load_context: Some((resource, _) => {
       if resource == reference {
         { url: resource, bytes, sha256: digest, }
       } else {
@@ -379,8 +383,10 @@ test "context references require exact bytes and reject duplicate imports and co
   )
   let relative_loader = {
     ..loader,
-    load_context: Some(fn(resource, _) raise {
-      { url: resource, bytes: relative_bytes, sha256: relative_digest, }
+    load_context: Some((resource, _) => {
+      url: resource,
+      bytes: relative_bytes,
+      sha256: relative_digest,
     }),
   }
   reject("metadata.relative_import_without_base", fn() raise {

@@ -10,6 +10,12 @@ pub(all) enum MetadataAuditPhase {
 } derive(Eq, Debug)
 
 ///|
+pub extend MetadataAuditPhase with Eq::{equal, not_equal}
+
+///|
+pub extend MetadataAuditPhase with @debug.Debug::{to_repr}
+
+///|
 pub fn MetadataAuditPhase::name(self : MetadataAuditPhase) -> String {
   match self {
     Acquire => "acquire"
@@ -162,6 +168,8 @@ fn TelemetrySession::metadata_audit_sink_with_clocks(
 }
 
 ///|
+/// Process hosts construct this context. Pure targets keep the audit signatures.
+#warnings("-struct_never_constructed")
 priv struct MetadataAuditContext {
   sink : MetadataAuditSink
   operation : String
@@ -200,14 +208,10 @@ fn MetadataAuditContext::emit(
 
 ///|
 fn MetadataAuditContext::clock(self : MetadataAuditContext) -> Double {
-  try {
-    if (self.sink.enabled)() {
-      (self.sink.monotonic)()
-    } else {
-      0.0
-    }
-  } catch {
-    _ => 0.0
+  if (self.sink.enabled)() {
+    (self.sink.monotonic)()
+  } else {
+    0.0
   }
 }
 
@@ -257,8 +261,10 @@ fn[T] MetadataAuditContext::observe(
 ) -> T raise {
   let start = self.clock()
   self.emit(phase, @observe.Started, "", 0.0)
-  let result = run() catch {
-    error => {
+  let attempt = Ok(run()) catch { error => Err(error) }
+  let result = match attempt {
+    Ok(value) => value
+    Err(error) => {
       let message = error_message(error)
       let signal = if message.contains("Cancelled") {
         @observe.Cancelled

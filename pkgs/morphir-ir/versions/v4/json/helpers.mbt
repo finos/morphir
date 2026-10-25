@@ -51,10 +51,10 @@ fn read_source(json : Json) -> @model.SourceLocation raise {
 ///|
 fn write_source(source : @model.SourceLocation) -> Json raise {
   let json = @wire.obj([
-    ("startLine", source.start_line.to_json()),
-    ("startColumn", source.start_column.to_json()),
-    ("endLine", source.end_line.to_json()),
-    ("endColumn", source.end_column.to_json()),
+    ("startLine", Json(source.start_line)),
+    ("startColumn", Json(source.start_column)),
+    ("endLine", Json(source.end_line)),
+    ("endColumn", Json(source.end_column)),
   ])
   ignore(read_source(json))
   json

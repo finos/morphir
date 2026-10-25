@@ -88,7 +88,7 @@ pub fn sha256(bytes : Bytes) -> String {
   let mut output = ""
   for word in state {
     for i = 7; i >= 0; i = i - 1 {
-      output += digits[((word >> (i * 4)) & 15U).to_int()].to_string()
+      output += digits[((word >> (i * 4)) & 15U).reinterpret_as_int()].to_string()
     }
   }
   output

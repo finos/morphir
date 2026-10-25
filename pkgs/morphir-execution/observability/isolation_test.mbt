@@ -15,7 +15,7 @@ test "throwing sink cannot replace a successful result or original failure" {
   assert_eq(scope.observe(@observability.Build, fn(_) { 42 }), 42)
   let original = try {
     ignore(
-      scope.observe(@observability.Invoke, fn(_) raise {
+      scope.observe(@observability.Invoke, fn(_) -> Unit raise {
         raise @execution.Invalid("driver failed")
       }),
     )
@@ -39,7 +39,7 @@ test "recursive logging is bounded and every rejected delivery is counted" {
   let observer : Ref[@observability.Observer?] = Ref(None)
   let base : @observability.Observer = {
     enabled: fn() { true },
-    try_record: fn(record) {
+    try_record: record => {
       assert_true(observer.val.unwrap().record(record) is Dropped)
       @observability.Accepted
     },

@@ -180,6 +180,8 @@ fn transfer_cleanup(scratch : String) -> Unit raise {
 }
 
 ///|
+/// Native and JS dispatchers use this shared completion path.
+#warnings("-unused_value")
 fn transfer_finish(
   source : String,
   code : Int32,

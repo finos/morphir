@@ -81,7 +81,7 @@ fn generation_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     emit_plan(plan.sources(), plan.destinations(), plan.boundaries(), mode)
     return 0
   }
-  let logs = @host.TelemetrySession::local(
+  let logs = @host.TelemetrySession::for_project(
     @platform.cwd(),
     values(cli, "log-file").get(0),
     enabled=true,

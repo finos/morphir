@@ -142,7 +142,7 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
       format=options.get("--log-format").unwrap_or("ion-binary"),
     )
   } else {
-    @host.TelemetrySession::local(
+    @host.TelemetrySession::for_project(
       @platform.cwd(),
       if dry_run || adapter == "none" {
         None

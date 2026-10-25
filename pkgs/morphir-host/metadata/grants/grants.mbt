@@ -142,9 +142,8 @@ fn resolve(path : String, base : String, flavor : Flavor) -> String raise {
   match flavor {
     Posix => {
       let p = @posix.Path(path)
-      (if p.is_absolute() { p } else { @posix.Path(base).join(p) })
-      .normalize()
-      .to_string()
+      (if p.is_absolute() { p } else { @posix.Path(base).join(p) }).normalize()
+      |> Show::to_string
     }
     Windows => {
       let p = @win32.Path(path)
@@ -153,9 +152,8 @@ fn resolve(path : String, base : String, flavor : Flavor) -> String raise {
         (path.contains(":") || path.has_prefix("/") || path.has_prefix("\\")) {
         invalid("invalid_path")
       }
-      let result = (if p.is_absolute() { p } else { @win32.Path(base).join(p) })
-        .normalize()
-        .to_string()
+      let result = (if p.is_absolute() { p } else { @win32.Path(base).join(p) }).normalize()
+        |> Show::to_string
       result.split("\\").map(StringView::to_owned).collect().join("/")
     }
   }
@@ -164,8 +162,8 @@ fn resolve(path : String, base : String, flavor : Flavor) -> String raise {
 ///|
 fn parent(path : String, flavor : Flavor) -> String {
   match flavor {
-    Posix => @posix.Path(path).dirname().to_string()
-    Windows => @win32.Path(path).dirname().to_string()
+    Posix => Show::to_string(@posix.Path(path).dirname())
+    Windows => Show::to_string(@win32.Path(path).dirname())
   }
 }
 

@@ -317,6 +317,7 @@ fn extension_messages(
         },
       }),
     )
+    messages.push({ "jsonrpc": "2.0", "method": "morphir.initialized" })
     messages.push(extension_request(3, rpc_name, params))
     messages.push(extension_request(4, "morphir.shutdown", {}))
   }

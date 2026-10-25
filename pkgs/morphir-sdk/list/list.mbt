@@ -11,7 +11,7 @@ pub extend List with @debug.Debug::{to_repr}
 
 ///|
 pub fn[A] empty() -> List[A] {
-  { items: @corelist.List::new(), }
+  { items: @corelist.List([]), }
 }
 
 ///|

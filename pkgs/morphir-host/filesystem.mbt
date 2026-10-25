@@ -207,8 +207,14 @@ fn filesystem_content_publisher(
           if existing == 2 {
             rename(confined(root, destination), confined(root, saved))
           }
-          rename(confined(root, staged), confined(root, destination)) catch {
-            cause => {
+          let publication = Ok(
+            rename(confined(root, staged), confined(root, destination)),
+          ) catch {
+            error => Err(error)
+          }
+          match publication {
+            Ok(_) => ()
+            Err(cause) => {
               if existing == 2 {
                 rename(confined(root, saved), confined(root, destination)) catch {
                   rollback => {

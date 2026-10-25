@@ -32,11 +32,11 @@ pub fn metadata_helper_bundle_sha256(String) -> String raise
 
 pub fn native_telemetry_endpoint(String) -> Bool
 
-pub fn process_execution(String, String, String, Map[String, String], timeout? : Int, toolchain_pin? : Json?, build_mode? : String, cancel_file? : String, payload_capture? : @observability.PayloadCapture, observer? : @observability.Observer) -> @execution.Provider raise
+pub fn process_execution(String, String, String, Map[String, String], timeout? : Int32, toolchain_pin? : Json?, build_mode? : String, cancel_file? : String, payload_capture? : @observability.PayloadCapture, observer? : @observability.Observer) -> @execution.Provider raise
 
 pub fn rust_classic_ir(@data.IRUnit) -> @v3.IRFile raise
 
-pub fn rust_evaluator_lane(String, String, Json?, node? : String, required? : Bool, timeout? : Int, cancel_file? : String) -> @conformance.EvaluatorLane raise
+pub fn rust_evaluator_lane(String, String, Json?, node? : String, required? : Bool, timeout? : Int32, cancel_file? : String) -> @conformance.EvaluatorLane raise
 
 pub fn verify_and_publish(Array[@execution.Plan], @execution.Provider, @execution.Evaluator, ContentPublisher, String, cancelled? : () -> Bool, observer? : @observability.Observer) -> VerificationResult raise
 
@@ -96,7 +96,7 @@ pub(all) struct Host {
 }
 pub fn Host::dispose_metadata_sessions(Self) -> Unit raise
 pub fn Host::new(Mount, publisher? : Publisher?, toolchain? : @toolchain.Provider?, library_build? : LibraryBuildProvider?, environment? : Map[String, String], system? : @config.Document, global? : @config.Document, cancelled? : () -> Bool, event? : (Event) -> Unit, limits? : Limits) -> Self
-pub fn Host::register_process_metadata_provider(Self, @morphir-engine.Engine, @grants.Grants?, String, String, timeout? : Int, cancel_file? : String, observer? : @observability.Observer, audit_sink? : MetadataAuditSink) -> Unit raise
+pub fn Host::register_process_metadata_provider(Self, @morphir-engine.Engine, @grants.Grants?, String, String, timeout? : Int32, cancel_file? : String, observer? : @observability.Observer, audit_sink? : MetadataAuditSink) -> Unit raise
 pub fn Host::register_project_metadata_provider(Self, @morphir-engine.Engine, (@morphir-engine.ProjectMetadataScope) -> MetadataSession raise) -> Unit raise
 pub fn Host::run(Self, @morphir-engine.Engine, @morphir-engine.Plan) -> Result raise
 pub fn Host::run_content(Self, @morphir-engine.Engine, @morphir-engine.Plan, ContentPublisher, read_bytes? : ((String) -> Bytes raise)?) -> ContentResult raise
@@ -113,7 +113,7 @@ pub(all) struct LibraryBuildProvider {
   contracts : Array[String]
   acquire : () -> LibraryBuildLease raise
 }
-pub fn LibraryBuildProvider::process(String, String, String, Map[String, String], timeout? : Int) -> Self raise
+pub fn LibraryBuildProvider::process(String, String, String, Map[String, String], timeout? : Int32) -> Self raise
 
 pub(all) struct LibraryBuildRequest {
   project : @morphir-engine.LibraryProject
@@ -123,9 +123,9 @@ pub(all) struct LibraryBuildRequest {
 }
 
 pub(all) struct Limits {
-  max_files : Int
-  max_bytes : Int
-  max_depth : Int
+  max_files : Int32
+  max_bytes : Int32
+  max_depth : Int32
 }
 pub fn Limits::default() -> Self
 
@@ -156,7 +156,10 @@ pub(all) enum MetadataAuditPhase {
   Admission
   Cleanup
 } derive(Eq, @debug.Debug)
+pub fn MetadataAuditPhase::equal(Self, Self) -> Bool
 pub fn MetadataAuditPhase::name(Self) -> String
+pub fn MetadataAuditPhase::not_equal(Self, Self) -> Bool
+pub fn MetadataAuditPhase::to_repr(Self) -> @debug.Repr
 
 pub(all) struct MetadataAuditRecord {
   run_id : String
@@ -191,7 +194,7 @@ pub struct MetadataSessions {
 }
 
 pub(all) struct Mount {
-  kind : (String) -> Int raise
+  kind : (String) -> Int32 raise
   read : (String) -> String raise
   list : (String) -> Array[String] raise
 }
@@ -202,7 +205,7 @@ pub fn Mount::memory(Map[String, String]) -> Self raise
 pub struct NativeTelemetry {
   // private fields
 }
-pub fn NativeTelemetry::new(String, String, String, String, Json, timeout? : Int) -> Self raise
+pub fn NativeTelemetry::new(String, String, String, String, Json, timeout? : Int32) -> Self raise
 
 pub(all) struct Publication {
   stage : (@morphir-engine.Artifact) -> Unit raise
@@ -243,8 +246,9 @@ pub struct TelemetrySession {
 pub fn TelemetrySession::event(Self, Event) -> Unit
 pub fn TelemetrySession::flush(Self) -> Unit
 pub fn TelemetrySession::flush_native(Self, NativeTelemetry, String) -> Unit
-pub fn TelemetrySession::flush_to_process(Self, String, String, String, Array[String], timeout? : Int, cancel_file? : String, program_identity? : String?, clear_otel_environment? : Bool) -> Unit
-pub fn TelemetrySession::local(String, String?, enabled? : Bool, kind? : String, format? : String) -> Self raise
+pub fn TelemetrySession::flush_to_process(Self, String, String, String, Array[String], timeout? : Int32, cancel_file? : String, program_identity? : String?, clear_otel_environment? : Bool) -> Unit
+#alias(local)
+pub fn TelemetrySession::for_project(String, String?, enabled? : Bool, kind? : String, format? : String) -> Self raise
 pub fn TelemetrySession::metadata_audit_sink(Self) -> MetadataAuditSink
 pub fn TelemetrySession::metrics(Self) -> Json
 pub fn TelemetrySession::new(String?, format? : String, record_traces? : Bool) -> Self raise

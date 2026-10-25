@@ -126,31 +126,63 @@ test "extension pins admit only the qualified binding, runtime and profile" {
 ///|
 test "extension sessions offer exactly the selected tuple and end with exit" {
   let describe = extension_messages(Describe, None, {})
-  assert_eq(describe.length(), 2)
-  assert_eq(describe[1], { "jsonrpc": "2.0", "method": "morphir.exit" })
-  let compile = extension_messages(Compile, Some(JsonIr), { "x": 1 })
-  assert_eq(
-    compile.map(m => {
-      guard m is Object(fields) && fields.get("method") is Some(String(name)) else {
-        return ""
-      }
-      name
+  @expect.expect(describe, label="describe messages").to_equal([
+    extension_request(1, "morphir.extension.describe", {
+      "protocolVersions": [mep_protocol],
     }),
-    [
-      "morphir.extension.describe", "morphir.initialize", "morphir.frontend.compileModel",
-      "morphir.shutdown", "morphir.exit",
-    ],
-  )
+    { "jsonrpc": "2.0", "method": "morphir.exit" },
+  ])
+  for
+    (operation, name) in [
+      (Compile, "morphir.frontend.compileModel"),
+      (Generate, "morphir.backend.generateModel"),
+    ] {
+    for tuple in [JsonIr, IonModel] {
+      let messages = extension_messages(operation, Some(tuple), { "x": 1 })
+      @expect.expect_all(s => {
+        s
+        .expect(
+          messages.map(m => {
+            guard m is Object(fields) &&
+              fields.get("method") is Some(String(name)) else {
+              return ""
+            }
+            name
+          }),
+          label="message order",
+        )
+        .to_equal([
+          "morphir.extension.describe", "morphir.initialize", "morphir.initialized",
+          name, "morphir.shutdown", "morphir.exit",
+        ])
+        s
+        .expect(messages.get(2), label="initialized notification")
+        .to_equal(Some({ "jsonrpc": "2.0", "method": "morphir.initialized" }))
+        s
+        .expect(messages.get(3), label="operation request")
+        .to_equal(Some(extension_request(3, name, { "x": 1 })))
+        s
+        .expect(messages.get(4), label="shutdown request")
+        .to_equal(Some(extension_request(4, "morphir.shutdown", {})))
+      })
+    }
+  }
+  let compile = extension_messages(Compile, Some(JsonIr), { "x": 1 })
   guard compile[1] is Object(fields) &&
     fields.get("params") is Some(Object(params)) &&
     params.get("modelTransport") is Some(Object(transport)) else {
     abort("initialize")
   }
-  assert_eq(
-    transport.get("tuples"),
-    Some(Json::array([JsonIr.tuple("morphir.frontend.compileModel")])),
-  )
-  assert_eq(transport.get("limits"), Some(extension_limits))
+  @expect.expect_all(s => {
+    s
+    .expect(transport.get("tuples"), label="offered tuples")
+    .to_equal(
+      Some(Json::array([JsonIr.tuple("morphir.frontend.compileModel")])),
+    )
+    s
+    .expect(transport.get("limits"), label="offered limits")
+    .to_equal(Some(extension_limits))
+  })
 }
 
 ///|
@@ -253,6 +285,65 @@ fn extension_test_responses(result : Json) -> Array[Json] {
 }
 
 ///|
+test "extension notifications do not change reply matching" {
+  @expect.for_all(
+    (value : (String, Array[Int32], Bool)) => {
+      let (text, numbers, flag) = value
+      let result : Json = {
+        "success": true,
+        "text": text,
+        "numbers": Json(numbers),
+        "flag": flag,
+      }
+      let plan = extension_test_plan(Compile)
+      let responses = extension_test_responses(result)
+      let outcome = extension_outcome(
+        plan,
+        extension_test_process("exited", Some(0)),
+        extension_test_frames(responses),
+      )
+      @expect.expect_all(s => {
+        s.expect(plan.messages, label="host messages").to_have_length(6)
+        s.expect(responses, label="guest replies").to_have_length(4)
+        s.expect(outcome.state, label="state").to_equal("completed")
+        s.expect(outcome.exit_code, label="exit code").to_equal(0)
+        s.expect(outcome.result, label="operation result").to_equal(result)
+        s.expect(outcome.shutdown, label="shutdown").to_equal("acknowledged")
+      })
+    },
+    count=25,
+    seed=1,
+  )
+}
+
+///|
+test "native extension parameters skip notifications" {
+  for operation in [Compile, Generate] {
+    let params : Json = { "target": "moonbit", "value": ["", "--", "x"] }
+    let plan : ExtensionPlan = {
+      operation,
+      tuple: Some(IonModel),
+      messages: extension_messages(operation, Some(IonModel), params),
+      output: "",
+    }
+    let (initialize, actual) = native_extension_params(plan)
+    @expect.expect_all(s => {
+      s.expect(actual, label="operation parameters").to_equal(params)
+      s
+      .expect(initialize, label="initialize parameters")
+      .to_satisfy(
+        p => p is Object(fields) && fields.contains("modelTransport"),
+        description="the host model transport offer",
+      )
+    })
+  }
+  @expect.expect(
+    native_extension_params(extension_test_plan(Describe)),
+    label="describe parameters",
+  ).to_equal((Json::null(), Json::null()))
+}
+
+///|
 test "extension outcomes require a complete, ordered and acknowledged session" {
   let plan = extension_test_plan(Compile)
   let exited = extension_test_process("exited", Some(0))
@@ -296,7 +387,7 @@ test "extension outcomes require a complete, ordered and acknowledged session" {
     extension_outcome(
       plan,
       exited,
-      truncated[:truncated.length() - 1].to_bytes(),
+      truncated[:truncated.length() - 1].to_owned(),
     ).error,
     "extension.invalid_frame",
   )

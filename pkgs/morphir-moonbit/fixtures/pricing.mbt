@@ -75,7 +75,7 @@ pub fn pricing() -> @ir.IRFile raise {
       (@ir.Name::parse("quantity"), int),
     ]),
   )
-  let alias = scalar("pricing:quotes#quote")
+  let quote_reference = scalar("pricing:quotes#quote")
   let status = scalar("pricing:quotes#status")
   let type_defs : Map[
     @ir.Name,
@@ -116,7 +116,7 @@ pub fn pricing() -> @ir.IRFile raise {
     arrow(int, arrow(int, int)),
   )
   let quote = @ir.Value::Record(
-    va(alias),
+    va(quote_reference),
     Map::from_array([
       (@ir.Name::parse("quantity"), lit_int("3")),
       (@ir.Name::parse("price"), lit_dec("12.50")),
@@ -133,13 +133,16 @@ pub fn pricing() -> @ir.IRFile raise {
     ),
   )
   let values = Map::from_array([
-    (@ir.Name::parse("total"), function([("quote", alias)], dec, total_body)),
-    (@ir.Name::parse("sample"), definition(alias, quote)),
+    (
+      @ir.Name::parse("total"),
+      function([("quote", quote_reference)], dec, total_body),
+    ),
+    (@ir.Name::parse("sample"), definition(quote_reference, quote)),
     (
       @ir.Name::parse("reprice"),
       function(
-        [("quote", alias), ("price", dec)],
-        alias,
+        [("quote", quote_reference), ("price", dec)],
+        quote_reference,
         @ir.Value::UpdateRecord(
           attrs(),
           variable("quote"),
@@ -220,11 +223,11 @@ pub fn pricing() -> @ir.IRFile raise {
     access: @ir.Access::Public,
     value: { types: type_defs, values, doc: None, },
   }
-  let total = ref_value("pricing:quotes#total", arrow(alias, dec))
-  let sample = ref_value("pricing:quotes#sample", alias)
+  let total = ref_value("pricing:quotes#total", arrow(quote_reference, dec))
+  let sample = ref_value("pricing:quotes#sample", quote_reference)
   let reprice = ref_value(
     "pricing:quotes#reprice",
-    arrow(alias, arrow(dec, alias)),
+    arrow(quote_reference, arrow(dec, quote_reference)),
   )
   let int_fn = arrow(int, int)
   let capture = ref_value("pricing:quotes#captured", arrow(int, int_fn))

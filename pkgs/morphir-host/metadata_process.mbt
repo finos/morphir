@@ -88,6 +88,8 @@ pub fn Host::register_process_metadata_provider(
 }
 
 ///|
+/// Native and JS adapters call this helper. Pure targets keep the shared code.
+#warnings("-unused_value")
 fn metadata_process_session(
   host : Host,
   scope : @engine.ProjectMetadataScope,

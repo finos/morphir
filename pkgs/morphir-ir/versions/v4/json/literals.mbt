@@ -41,7 +41,7 @@ pub fn read_literal(json : Json) -> @model.Literal raise {
 ///|
 pub fn write_literal(value : @model.Literal) -> Json raise {
   match value {
-    BoolLiteral(value) => @wire.tag("BoolLiteral", value.to_json())
+    BoolLiteral(value) => @wire.tag("BoolLiteral", Json(value))
     CharLiteral(value) =>
       @wire.tag("CharLiteral", @wire.text(value.to_string()))
     StringLiteral(value) => @wire.tag("StringLiteral", @wire.text(value))

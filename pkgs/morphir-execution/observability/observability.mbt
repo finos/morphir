@@ -183,8 +183,10 @@ pub fn[T] Scope::observe(
   emit(Started, 0.0)
   let mut terminal = Signal::Failed
   errdefer emit(terminal, (o.monotonic)() - start)
-  let result = body(child) catch {
-    error => {
+  let attempt = Ok(body(child)) catch { error => Err(error) }
+  let result = match attempt {
+    Ok(value) => value
+    Err(error) => {
       if is_cancelled(error) {
         terminal = Cancelled
       }

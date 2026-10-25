@@ -22,7 +22,7 @@ fn value_json(value : @scheme.Value, depth : Int32) -> Json raise {
   }
   match value {
     Unit => Json::null()
-    Boolean(b) => b.to_json()
+    Boolean(b) => Json(b)
     Text(s) => Json::string(s)
     Number(Integer(n)) => @wire.number(n.to_string())
     Number(Real(n)) => @wire.write_float(n)

@@ -154,11 +154,11 @@ test "process exporter preserves queued Ion timestamps and IDs with idempotent s
 test "default local logs create directories only at flush and explicit paths take precedence" {
   let root = @platform.temporary()
   defer telemetry_remove(root)
-  let disabled = TelemetrySession::local(root, None)
+  let disabled = TelemetrySession::for_project(root, None)
   assert_true(disabled.path is None)
   disabled.flush()
   assert_eq(@platform.kind(root + "/.morphir"), 0)
-  let session = TelemetrySession::local(
+  let session = TelemetrySession::for_project(
     root,
     None,
     enabled=true,
@@ -172,7 +172,7 @@ test "default local logs create directories only at flush and explicit paths tak
   assert_true(saved.length() > 4)
   assert_eq(saved[:4].to_owned(), b"\xe0\x01\x00\xea")
   let explicit = root + "/explicit.jsonl"
-  let overridden = TelemetrySession::local(
+  let overridden = TelemetrySession::for_project(
     root,
     Some(explicit),
     enabled=true,
@@ -192,7 +192,7 @@ test "failed default log directory does not change results" {
   let root = @platform.temporary()
   defer telemetry_remove(root)
   @platform.write(root + "/.morphir", "existing file")
-  let session = TelemetrySession::local(root, None, enabled=true)
+  let session = TelemetrySession::for_project(root, None, enabled=true)
   let result = session.observer().scope().observe(@observe.Build, fn(_) { 42 })
   session.flush()
   assert_eq(result, 42)

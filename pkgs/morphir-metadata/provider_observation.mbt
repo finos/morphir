@@ -8,6 +8,12 @@ pub(all) enum ProviderSignal {
 } derive(Eq, Debug)
 
 ///|
+pub extend ProviderSignal with Eq::{equal, not_equal}
+
+///|
+pub extend ProviderSignal with @debug.Debug::{to_repr}
+
+///|
 /// Notification failures are contained. Observations cannot change admission.
 pub(all) struct ProviderObserver {
   notify : (ProviderSignal) -> Unit raise
@@ -36,8 +42,12 @@ fn observed_provider(
 ) -> String raise {
   let observer = capabilities.provider_observer
   observer.emit(Started)
-  let result = validate_provider(predicate, restored, capabilities) catch {
-    error => {
+  let attempt = Ok(validate_provider(predicate, restored, capabilities)) catch {
+    error => Err(error)
+  }
+  let result = match attempt {
+    Ok(value) => value
+    Err(error) => {
       let code = match error {
         Invalid(code, _, _) => code
         _ => "metadata.admission_failed"

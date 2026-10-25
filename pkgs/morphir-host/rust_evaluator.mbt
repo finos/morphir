@@ -251,7 +251,7 @@ pub fn rust_evaluator_lane(
           arguments.push({
             "type": @classic_json.write_type(definition.input_types[i].2, fn(
               value,
-            ) raise {
+            ) {
               @wire.write_unit(value)
             }),
             "value": rust_wire_value(argument),
