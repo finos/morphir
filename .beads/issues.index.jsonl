@@ -1500,7 +1500,7 @@
 {"id":"morphir-ukvn.7.13.5","title":"Map Smithy AI traits and prompt template dialects","status":"open","priority":1}
 {"id":"morphir-ukvn.7.13.6","title":"Author Smithy service, condition, protocol and prompt records","status":"open","priority":1}
 {"id":"morphir-ukvn.7.13.7","title":"Qualify full Smithy condition evaluation for the selected profile","status":"open","priority":2}
-{"id":"morphir-ukvn.7.13.8","title":"Model MEP in Smithy as the interim protocol contract","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.7.13.8","title":"Model MEP in Smithy as the interim protocol contract","status":"open","priority":2}
 {"id":"morphir-ukvn.7.14","title":"Generated specifications and early CLI delivery","status":"open","priority":1}
 {"id":"morphir-ukvn.7.14.1","title":"Generate structured EARS and typed contract cases","status":"open","priority":1}
 {"id":"morphir-ukvn.7.14.2","title":"Generate Gherkin for the existing shared runner","status":"open","priority":1}
