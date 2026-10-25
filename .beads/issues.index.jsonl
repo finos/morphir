@@ -78,7 +78,7 @@
 {"id":"morphir-3l0d","title":"Audit IR ingestion parity through Insight and XRay","status":"open","priority":2}
 {"id":"morphir-3l0d.1","title":"Audit morphir-ui IR normalization and Insight/XRay parity","status":"open","priority":2}
 {"id":"morphir-3l0d.2","title":"Audit morphir live workspace and IR delivery contracts","status":"open","priority":2}
-{"id":"morphir-3nvb","title":"Sync morphir-moonbit main and finos/morphir moonshots by fast-forward","status":"in_progress","priority":2}
+{"id":"morphir-3nvb","title":"Sync morphir-moonbit main and finos/morphir moonshots by fast-forward","status":"closed","priority":2}
 {"id":"morphir-3q5","title":"Implement toolchain auto-enable predicate","status":"closed","priority":2}
 {"id":"morphir-3sk","title":"Phase 5: Polish & Ecosystem","status":"open","priority":3}
 {"id":"morphir-3y1d","title":"Make Kyo JSON encoding stack-safe for deeply nested IR","status":"open","priority":2}
@@ -117,6 +117,7 @@
 {"id":"morphir-5xzg","title":"Document required submodule initialization","status":"closed","priority":2}
 {"id":"morphir-648","title":"Fix version embedding in binary - morphir --version shows 'dev' instead of release version","status":"closed","priority":1}
 {"id":"morphir-6cq2","title":"Standalone single-file compile ignores the env layer for frontend prelude and extension (GH #887)","status":"open","priority":3}
+{"id":"morphir-6f1o","title":"Finish CI reuse follow-ups from PR #199 review","status":"closed","priority":3}
 {"id":"morphir-6nn5","title":"Netlify deploy preview fails consistently on PR #791 (renovate/mise-tools)","status":"open","priority":3}
 {"id":"morphir-6npp","title":"Use the upstream Gleam compiler parser in the extension","status":"closed","priority":2}
 {"id":"morphir-6oi","title":"Port Module IR to Go","status":"closed","priority":1}
@@ -359,6 +360,7 @@
 {"id":"morphir-g74l","title":"Fix website ajv security update resolution","status":"closed","priority":1}
 {"id":"morphir-gdf","title":"Add VPath helper methods","status":"closed","priority":3}
 {"id":"morphir-ght","title":"Update example morphir.toml with workspace members","status":"closed","priority":3}
+{"id":"morphir-ghuy","title":"Prove acceptance lanes from a CI receipt's acceptance-lanes list","status":"closed","priority":2}
 {"id":"morphir-gjha","title":"Fix morphir-devkit secret file read test on Windows","status":"open","priority":2}
 {"id":"morphir-go-0ij","title":"Implement type/value/pattern BDD features","status":"closed","priority":2}
 {"id":"morphir-go-0w4","title":"Implement distribution BDD features","status":"closed","priority":1}
@@ -1423,8 +1425,8 @@
 {"id":"morphir-ukvn.5.90.6","title":"Skip checks whose inputs are already proven (input-hash keyed results)","status":"open","priority":2}
 {"id":"morphir-ukvn.5.90.7","title":"Define CI pipelines in Dagger and run Linux workflows locally in Docker","status":"open","priority":3}
 {"id":"morphir-ukvn.5.90.8","title":"Review grouping of integration, acceptance and black-box test suites","status":"open","priority":3}
-{"id":"morphir-ukvn.5.90.9","title":"Enforce reuse of proven CI results in the merge queue and on admin-bypass pushes","status":"in_progress","priority":2}
-{"id":"morphir-ukvn.5.90.9.1","title":"Reuse a CI-policy PR's receipt in the merge queue when the queue tree is the tested tree","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.90.9","title":"Enforce reuse of proven CI results in the merge queue and on admin-bypass pushes","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.90.9.1","title":"Reuse a CI-policy PR's receipt in the merge queue when the queue tree is the tested tree","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.91","title":"Create workspaces and projects from templates (like dotnet new)","status":"open","priority":3}
 {"id":"morphir-ukvn.5.92","title":"Let projects in a workspace depend on each other","status":"open","priority":3}
 {"id":"morphir-ukvn.5.93","title":"Move to stock MoonBit 0.10.16 and retire the corrected-core override","status":"closed","priority":2}
