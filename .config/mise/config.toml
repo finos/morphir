@@ -270,6 +270,10 @@ run = "moon run scripts/typed-source-check.mbtx"
 description = "Qualify MEP stdio; add explicit host/digest/target pins for installed acceptance"
 run = "moon run scripts/moonbit-extension.mbtx test"
 
+[tasks."test:mep-smithy"]
+description = "Record native MEP sessions and check the pinned Smithy model"
+run = "moonx scripts/mep-smithy-check.mbtx"
+
 [tasks."package:mep-extension"]
 description = "Package the portable MoonBit MEP extension as saved Wasm and Ion"
 run = "moonx scripts/package-mep-extension.mbtx"

@@ -32,6 +32,9 @@ import {
 
 import {
   "moonrockz/expect",
+  "moonbitlang/async",
+  "moonbitlang/async/fs" @record_fs,
+  "moonbitlang/async/process" @record_process,
 } for "wbtest"
 
 // The JS adapters use connected_core. Other targets use their own adapters.

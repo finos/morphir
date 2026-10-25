@@ -11,6 +11,7 @@ license = "Apache-2.0"
 readme = "README.md"
 
 import {
+  "moonbitlang/async@0.22.4",
   "moonbitlang/x@0.5.5",
   "moonrockz/expect@0.6.1",
   "finos/morphir-execution@0.1.0",

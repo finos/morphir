@@ -1,0 +1,356 @@
+///|
+/// The Smithy validator owns protocol findings. The shared MCK is unchanged.
+import {
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x@0.5.5/crypto",
+  "moonbitlang/x@0.5.5/sys",
+}
+
+///|
+suberror GateError {
+  ChildFailed(Int32, String)
+  ArgumentsInvalid(String)
+}
+
+///|
+fn command() -> @argparse.Command {
+  @argparse.Command(
+    "mep-smithy-check",
+    about="Record the production MoonBit host protocol core and native guest, then check both sessions with Smithy CLI 0.6.0. --json writes one morphir/command-result 0.1.0 document to stdout; child logs go to stderr. Success result has modelRevision, validator, evidence, sessions and gapFindings. Failure has error {code,message}; validation refusals exit 1, argument errors exit 2, child status is retained. --help --json returns result.render_help without effects. --self-test checks help, argument errors and pin-failure output. --check-source fetches the pinned source and compares its bytes with the fixture. Normal runs need no model download.",
+    disable_help_flag=true,
+    flags=[
+      @argparse.FlagArg("json"),
+      @argparse.FlagArg("help", short='h'),
+      @argparse.FlagArg("self-test"),
+      @argparse.FlagArg("check-source"),
+    ],
+    options=[
+      @argparse.OptionArg("fixtures", default_values=[
+        "tests/fixtures/mep-smithy",
+      ]),
+      @argparse.OptionArg("evidence", default_values=[".dev/mep-process/smithy"]),
+    ],
+  )
+}
+
+///|
+fn field(value : Json, name : String) -> Json {
+  match value {
+    Object(fields) => fields.get(name).unwrap_or(Json::null())
+    _ => Json::null()
+  }
+}
+
+///|
+async fn checked(program : String, args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output(program, args)
+  @stdio.stderr.write(err.text())
+  guard code == 0 else {
+    @stdio.stderr.write(out.text())
+    raise ChildFailed(if code > 0 { code } else { 1 }, program + " failed")
+  }
+  out.text()
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn model(
+  fixtures : String,
+  check_source : Bool,
+) -> (String, Array[String]) {
+  let pin = @fs.read_file(fixtures + "/source.json").json()
+  guard field(pin, "repository") == Json("https://github.com/finos/morphir.git") &&
+    field(pin, "path") == Json("spec/mep/smithy") &&
+    field(pin, "revision") is String(revision) &&
+    revision.length() == 40 &&
+    revision.iter().all(c => "0123456789abcdef".contains(c.to_string())) &&
+    field(pin, "files") is Object(files) else {
+    fail("Invalid model source pin")
+  }
+  let names = [
+    "model/compile.smithy", "model/generate.smithy", "model/handshake.smithy", "model/mep.smithy",
+    "model/model-transport.smithy", "upstream-README.md",
+  ]
+  guard files.length() == names.length() else {
+    fail("Incomplete model file pin")
+  }
+  if check_source {
+    let cache = ".dev/mep-smithy-source"
+    if !@fs.exists(cache) {
+      @fs.mkdir(cache, recursive=true)
+    }
+    ignore(checked("git", ["init", cache]))
+    ignore(
+      checked("git", [
+        "-C", cache, "fetch", "--depth=1", "https://github.com/finos/morphir.git",
+        revision,
+      ]),
+    )
+    for name in names {
+      let upstream = if name == "upstream-README.md" {
+        "README.md"
+      } else {
+        name
+      }
+      let bytes = checked("git", [
+        "-C",
+        cache,
+        "show",
+        revision + ":spec/mep/smithy/" + upstream,
+      ])
+      guard bytes == @fs.read_file(fixtures + "/" + name).text() else {
+        fail("Pinned upstream file differs: " + name)
+      }
+    }
+  }
+  for name in names {
+    guard files.get(name) == Some(Json::string(digest(fixtures + "/" + name))) else {
+      fail("Model SHA256 differs from source.json: " + name)
+    }
+  }
+  (
+    revision,
+    names.filter(n => n.has_suffix(".smithy")).map(n => fixtures + "/" + n),
+  )
+}
+
+///|
+fn result_document(state : String, code : Int32, value : Json) -> Json {
+  let fields : Map[String, Json] = {
+    "profile": Json("morphir/command-result"),
+    "contractVersion": Json("0.1.0"),
+    "command": Json("mep.smithy.check"),
+    "state": Json(state),
+    "exitCode": Json(code),
+    "diagnostics": Json::array([]),
+  }
+  fields[if code == 0 { "result" } else { "error" }] = value
+  Json::object(fields)
+}
+
+///|
+async fn self_test() -> Json {
+  let script = "scripts/mep-smithy-check.mbtx"
+  for
+    (args, status, state) in [
+      (["--json", "--help"], 0, "succeeded"),
+      (["--json", "--unknown"], 2, "failed"),
+      (["--json", "--fixtures", ".dev/mep-smithy-missing-fixture"], 1, "failed"),
+    ] {
+    let (code, out, _) = @process.collect_output("moonx", [script] + args)
+    assert_eq(code, status)
+    let report = out.json()
+    assert_eq(field(report, "state"), Json(state))
+    assert_eq(field(report, "exitCode"), Json(status))
+    assert_eq(field(report, "profile"), Json("morphir/command-result"))
+    if status != 0 {
+      assert_eq(field(report, "result"), Json::null())
+      assert_true(field(field(report, "error"), "message") is String(_))
+    }
+  }
+  // Use owned copies. Pin damage must fail before a build. Fixture damage
+  // must fail after a fresh recording, with all child logs off stdout.
+  let fixtures = "tests/fixtures/mep-smithy"
+  let scratch = ".dev/mep smithy self-test"
+  if !@fs.exists(scratch + "/model") {
+    @fs.mkdir(scratch + "/model", recursive=true)
+  }
+  for
+    name in [
+      "source.json", "upstream-README.md", "model/compile.smithy", "model/generate.smithy",
+      "model/handshake.smithy", "model/mep.smithy", "model/model-transport.smithy",
+      "missing-initialized.md", "compile-ion.md", "missing-initialized.expect.json",
+      "compile-ion.expect.json",
+    ] {
+    @fs.write_file(
+      scratch + "/" + name,
+      @fs.read_file(fixtures + "/" + name).binary(),
+    )
+  }
+  for
+    (name, message) in [
+      ("model/compile.smithy", "Model SHA256 differs"),
+      ("compile-ion.md", "Recorded session differs from fixture"),
+    ] {
+    let original = @fs.read_file(scratch + "/" + name).text()
+    @fs.write_file(scratch + "/" + name, original + "\nDeliberate test fault\n")
+    let (code, out, _) = @process.collect_output("moonx", [
+      script,
+      "--json",
+      "--fixtures",
+      scratch,
+      "--evidence",
+      scratch + "/evidence",
+    ])
+    @fs.write_file(scratch + "/" + name, original)
+    assert_eq(code, 1)
+    let report = out.json()
+    assert_eq(field(report, "state"), Json("failed"))
+    guard field(field(report, "error"), "message") is String(observed) else {
+      fail("Missing JSON failure message")
+    }
+    assert_true(observed.contains(message))
+    assert_eq(field(report, "result"), Json::null())
+  }
+  { "checks": 5 }
+}
+
+///|
+async fn execute(matches : @argparse.Matches) -> Json {
+  let fixtures = matches.values.get("fixtures").unwrap()[0]
+  let (revision, models) = model(
+    fixtures,
+    matches.flags.get_or_default("check-source", false),
+  )
+  if matches.flags.get_or_default("check-source", false) {
+    return { "modelRevision": revision, "sourceChecked": true }
+  }
+  let evidence = matches.values.get("evidence").unwrap()[0]
+  if !@fs.exists(evidence) {
+    @fs.mkdir(evidence, recursive=true)
+  }
+  let evidence = @fs.realpath(evidence)
+  @stdio.stderr.write(
+    checked("moon", [
+      "build", "apps/morphir-extension", "--target", "native", "--release",
+    ]),
+  )
+  let guest = @fs.realpath(
+    "_build/native/release/build/finos/morphir-extension/morphir-extension.exe",
+  )
+  // Remove old transcript outputs so a test that does not run cannot pass.
+  for name in ["missing-initialized", "compile-ion"] {
+    let path = evidence + "/" + name + ".md"
+    if @fs.exists(path) {
+      @fs.remove(path)
+    }
+  }
+  let (code, out, err) = @process.collect_output(
+    "moon",
+    [
+      "test", "apps/morphir", "--target", "native", "--deny-warn", "--filter", "record native MEP host and guest sessions",
+    ],
+    extra_env={
+      "MORPHIR_MEP_RECORDINGS": evidence,
+      "MORPHIR_MEP_RECORD_GUEST": guest,
+    },
+  )
+  @stdio.stderr.write(out.text() + err.text())
+  guard code == 0 else {
+    raise ChildFailed(if code > 0 { code } else { 1 }, "Recording test failed")
+  }
+  let base = [
+      "moonrockz/smithy-cli@0.6.0", "validate", "rpc", "transcript", "--protocol",
+      "morphir.mep#MepSession", "--version", "2.0", "--complete", "--diagnostics",
+      "json",
+    ] +
+    models
+  // RED: without expectations, the real faulty session must fail for its state.
+  let (status, raw, diagnostics) = @process.collect_output(
+    "moonx",
+    base + [evidence + "/missing-initialized.md"],
+  )
+  @stdio.stderr.write(diagnostics.text())
+  @fs.write_file(
+    evidence + "/missing-initialized.raw-findings.json",
+    raw.binary(),
+  )
+  let findings = raw.json()
+  guard status == 1 &&
+    field(findings, "findings") is Array(items) &&
+    items.any(item => {
+      field(item, "code") == Json("StateViolation") &&
+      field(item, "entry") == Json(4)
+    }) else {
+    fail("Faulty session did not fail with StateViolation at entry 4")
+  }
+  let sessions : Array[Json] = []
+  for name in ["missing-initialized", "compile-ion"] {
+    let expected = @fs.read_file(fixtures + "/" + name + ".expect.json").text()
+    let transcript = @fs.read_file(evidence + "/" + name + ".md").text() +
+      "Known model gap: smithy-2qe.34.18 permits extra capability members.\n\n```jsonrpc-expect\n" +
+      expected +
+      "```\n"
+    @fs.write_file(evidence + "/" + name + ".md", transcript)
+    guard transcript == @fs.read_file(fixtures + "/" + name + ".md").text() else {
+      fail(
+        "Recorded session differs from fixture: " +
+        name +
+        "; review the wire change and refresh the fixture",
+      )
+    }
+    let report = checked("moonx", base + [evidence + "/" + name + ".md"])
+    @fs.write_file(evidence + "/" + name + ".findings.json", report)
+    sessions.push({
+      "name": name,
+      "transcriptSha256": digest(evidence + "/" + name + ".md"),
+      "validator": @json.parse(report),
+    })
+  }
+  let result : Json = {
+    "modelRevision": revision,
+    "validator": "moonrockz/smithy-cli@0.6.0",
+    "evidence": evidence,
+    "sessions": sessions,
+    "gapFindings": ["smithy-2qe.34.18"],
+  }
+  @fs.write_file(evidence + "/result.json", result.stringify() + "\n")
+  result
+}
+
+///|
+async fn main {
+  // The library owns option parsing, including unknown options and help.
+  let argv = @env.args()[1:]
+  let json_mode = argv.contains("--json")
+  let result : Json = try {
+    let matches = command().parse(argv~) catch {
+      error => raise ArgumentsInvalid(error.to_string())
+    }
+    if matches.flags.get_or_default("help", false) {
+      { "render_help": command().render_help() }
+    } else if matches.flags.get_or_default("self-test", false) {
+      self_test()
+    } else {
+      execute(matches)
+    }
+  } catch {
+    error => {
+      let (code, kind) = match error {
+        ChildFailed(code, _) => (code, "child.failed")
+        ArgumentsInvalid(_) => (2, "arguments.invalid")
+        _ => (1, "gate.failed")
+      }
+      if json_mode {
+        @stdio.stdout.write(
+          result_document("failed", code, {
+            "code": kind,
+            "message": error.to_string(),
+          }).stringify() +
+          "\n",
+        )
+      } else {
+        @stdio.stderr.write(error.to_string() + "\n")
+      }
+      @sys.exit(code)
+      return
+    }
+  }
+  if json_mode {
+    @stdio.stdout.write(
+      result_document("succeeded", 0, result).stringify() + "\n",
+    )
+  } else {
+    @stdio.stdout.write(result.stringify() + "\n")
+  }
+}

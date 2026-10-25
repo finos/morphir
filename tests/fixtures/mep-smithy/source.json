@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/finos/morphir.git",
+  "revision": "efa360608cf977d807695be33d60571e4f9c3e05",
+  "path": "spec/mep/smithy",
+  "files": {
+    "model/compile.smithy": "d4c449889a2835edafb5348f86f300fe493ef57a1e51efed960e9d25f824533a",
+    "model/generate.smithy": "6df262b7b3a8e0ba442116847ebf70d63e6878ec1c38083791853486801f1634",
+    "model/handshake.smithy": "9bf34ab1eccbd69eb3af5ea1ad820df3f0c51081a2a4aa9b614089ecf87cf454",
+    "model/mep.smithy": "045eb76cc5f771205c5b3c5ff42e4138022880c76c6bc927266cba4f7baab074",
+    "model/model-transport.smithy": "95e26ee687c902f71d504524822ff18392945d9fd7ca58e0a71479151c746192",
+    "upstream-README.md": "9efda005d3facd4c3534b4e3e6472964533c8fb5a7ec7748c82184c12cf6acc8"
+  }
+}

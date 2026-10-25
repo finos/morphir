@@ -30,6 +30,9 @@ fn starts_with_any(path : String, prefixes : Array[String]) -> Bool {
 
 ///|
 fn is_docs_like(path : String) -> Bool {
+  if path.has_prefix("tests/fixtures/mep-smithy/") {
+    return false
+  }
   !path.has_suffix(".mbt.md") &&
   (
     starts_with_any(path, ["docs/", "site/", "apps/morphir-site/"]) ||
@@ -41,6 +44,9 @@ fn is_docs_like(path : String) -> Bool {
 
 ///|
 fn is_site_input(path : String) -> Bool {
+  if path.has_prefix("tests/fixtures/mep-smithy/") {
+    return false
+  }
   // These directories are not imported by the site or its /try/ workbench.
   if starts_with_any(path, [
       "pkgs/morphir-host/embedding/", "pkgs/morphir-moonbit/mep/",
@@ -120,7 +126,9 @@ fn affected(path : String) -> Array[String] {
     return ["workbench"]
   }
   if path.has_prefix("pkgs/morphir-host/embedding/") ||
-    path == "scripts/moonbit-extension.mbtx" {
+    path == "scripts/moonbit-extension.mbtx" ||
+    path == "scripts/mep-smithy-check.mbtx" ||
+    path.has_prefix("tests/fixtures/mep-smithy/") {
     return []
   }
   if starts_with_any(path, [
@@ -451,6 +459,10 @@ async fn self_test() -> Unit {
     (["apps/morphir-extension/main.mbt"], true, false, ["workbench"]),
     (["pkgs/morphir-moonbit/mep/session.mbt"], true, false, ["workbench"]),
     (["scripts/moonbit-extension.mbtx"], true, false, []),
+    (["scripts/mep-smithy-check.mbtx"], true, false, []),
+    (["tests/fixtures/mep-smithy/compile-ion.md"], true, false, []),
+    (["tests/fixtures/mep-smithy/missing-initialized.md"], true, false, []),
+    (["tests/fixtures/mep-smithy/source.json"], true, false, []),
     (["pkgs/morphir-host/embedding/index.mts"], true, false, []),
     (["apps/morphir-workbench/browser/main.ts"], true, true, ["workbench"]),
     // Desktop remains conservative shared-code selection, including Workbench.
