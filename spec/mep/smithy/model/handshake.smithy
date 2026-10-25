@@ -36,10 +36,8 @@ structure DescribeParams {
 
 /// Parameters of `morphir.initialize`. The model-operation draft uses full
 /// SemVer protocol versions; the legacy `0.1` spelling is the one exception.
-// The protocol draft example also sends `workspace`, `capabilities` and
-// `permissions`. The Gleam contract does not have them, so receivers ignore
-// them as unknown members.
-// GAP smithy-2qe.34.17: the validator refuses those unknown members.
+// GAP smithy-2qe.34.17: receivers ignore unknown members, such as a future
+// `workspace` or `permissions`, but the validator refuses them.
 structure InitializeParams {
     @required
     protocolVersions: StringList
@@ -94,8 +92,6 @@ structure ExtensionInfo {
 
     description: String
 
-    // The Gleam contract makes `types` required. The initialize result
-    // example in the protocol draft leaves it out.
     @required
     types: ExtensionTypeList
 

@@ -49,8 +49,6 @@ list ArtifactList {
 // -- Diagnostics ------------------------------------------------------------
 
 /// A diagnostic message.
-// The protocol draft also lists an optional `data` member. The Gleam
-// contract does not have it.
 structure Diagnostic {
     @required
     severity: DiagnosticSeverity
@@ -66,6 +64,9 @@ structure Diagnostic {
 
     /// Left out when empty.
     related: RelatedInformationList = []
+
+    /// Structured data that the extension owns. Left out when absent.
+    data: Json
 }
 
 list DiagnosticList {

@@ -20,25 +20,12 @@ Verbatim from protocol.md line 138, the initialize request:
       "kind": "cli",
       "name": "morphir-cli",
       "version": "0.1.0"
-    },
-    "workspace": {
-      "rootUri": "file:///work/acme-orders"
-    },
-    "capabilities": {
-      "cancellation": true,
-      "progress": true
-    },
-    "permissions": {
-      "workspaceRead": false,
-      "workspaceWrite": false,
-      "network": false,
-      "environment": []
     }
   }
 }
 ```
 
-Verbatim from protocol.md line 174, the initialize result:
+Verbatim from protocol.md line 167, the initialize result:
 
 ```jsonrpc extension -> host
 {
@@ -49,7 +36,8 @@ Verbatim from protocol.md line 174, the initialize result:
     "extension": {
       "id": "org.finos.morphir.frontend.elm",
       "name": "Morphir Elm frontend",
-      "version": "2.100.0"
+      "version": "2.100.0",
+      "types": ["frontend"]
     },
     "capabilities": {
       "frontend": {
@@ -107,25 +95,3 @@ Constructed, exit:
 {"jsonrpc": "2.0", "method": "morphir.exit"}
 ```
 
-
-## Expected findings
-
-The initialize request example sends `workspace`, `capabilities` and
-`permissions`. The Gleam contract does not have them. MEP receivers ignore
-unknown members, but the validator refuses them (smithy-2qe.34.17). Because
-the request is not valid, the checker also expects the reply to be -32602
-(`InvalidContext`).
-
-The initialize result example has no `extension.types`. The Gleam contract
-requires it (`RequiredMember`). This is drift between protocol.md and the
-contract, not a validator gap.
-
-```jsonrpc-expect
-[
-  {"code": "UnknownMember", "entry": 0},
-  {"code": "UnknownMember", "entry": 0},
-  {"code": "UnknownMember", "entry": 0},
-  {"code": "RequiredMember", "entry": 1},
-  {"code": "InvalidContext", "entry": 1}
-]
-```

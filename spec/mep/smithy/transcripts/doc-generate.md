@@ -25,7 +25,7 @@ Constructed, the initialized notification:
 {"jsonrpc": "2.0", "method": "morphir.initialized"}
 ```
 
-Verbatim from protocol.md line 716, the generate request:
+Verbatim from protocol.md line 710, the generate request:
 
 ```jsonrpc host -> extension
 {
@@ -40,7 +40,7 @@ Verbatim from protocol.md line 716, the generate request:
 }
 ```
 
-Verbatim from protocol.md line 729, the generate result:
+Verbatim from protocol.md line 723, the generate result:
 
 ```jsonrpc extension -> host
 {

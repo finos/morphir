@@ -20,25 +20,12 @@ Verbatim from protocol.md line 138, the initialize request:
       "kind": "cli",
       "name": "morphir-cli",
       "version": "0.1.0"
-    },
-    "workspace": {
-      "rootUri": "file:///work/acme-orders"
-    },
-    "capabilities": {
-      "cancellation": true,
-      "progress": true
-    },
-    "permissions": {
-      "workspaceRead": false,
-      "workspaceWrite": false,
-      "network": false,
-      "environment": []
     }
   }
 }
 ```
 
-Verbatim from protocol.md line 825, the protocol version mismatch error:
+Verbatim from protocol.md line 819, the protocol version mismatch error:
 
 ```jsonrpc extension -> host
 {
@@ -61,20 +48,3 @@ Constructed, exit:
 {"jsonrpc": "2.0", "method": "morphir.exit"}
 ```
 
-
-## Expected findings
-
-The initialize request example sends `workspace`, `capabilities` and
-`permissions`. The Gleam contract does not have them. MEP receivers ignore
-unknown members, but the validator refuses them (smithy-2qe.34.17). Because
-the request is not valid, the checker also expects the reply to be -32602
-(`InvalidContext`).
-
-```jsonrpc-expect
-[
-  {"code": "UnknownMember", "entry": 0},
-  {"code": "UnknownMember", "entry": 0},
-  {"code": "UnknownMember", "entry": 0},
-  {"code": "InvalidContext", "entry": 1}
-]
-```

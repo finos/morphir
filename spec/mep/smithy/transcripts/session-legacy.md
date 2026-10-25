@@ -7,7 +7,7 @@ complete: true
 A complete, conformant session. Every message is constructed. The host reads
 the claim set before initialization, opens a session, compiles two documents
 and generates from the IR, then stops the extension. The describe result is
-the capability claim set example from protocol.md, line 277.
+the capability claim set example from protocol.md, line 271.
 
 ```jsonrpc host -> extension
 {"jsonrpc": "2.0", "id": 1, "method": "morphir.extension.describe", "params": {"protocolVersions": ["0.1"]}}

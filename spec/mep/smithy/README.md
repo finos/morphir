@@ -109,8 +109,8 @@ match that list.
 
 | Transcript | Content | Result |
 | --- | --- | --- |
-| `doc-initialize.md` | protocol.md initialize request and result, framing ping | Expected findings, see below |
-| `doc-version-mismatch.md` | protocol.md initialize request and -32011 error | Expected findings, see below |
+| `doc-initialize.md` | protocol.md initialize request and result, framing ping | Valid |
+| `doc-version-mismatch.md` | protocol.md initialize request and -32011 error | Valid |
 | `doc-compile.md` | protocol.md compile request, progress, success result | Valid |
 | `doc-compile-failure.md` | protocol.md compile request, failure result | Valid |
 | `doc-cancel.md` | protocol.md compile request, cancel, then -32800 | Valid |
@@ -119,17 +119,6 @@ match that list.
 | `session-model-transport.md` | a `0.2.0-draft.1` session with MCK cases model-0028 and model-0001 | Valid |
 | `lifecycle-violations.md` | requests in the wrong state, capabilities not advertised | 7 expected findings |
 | `protocol-errors.md` | unknown method, bad params, wrong reply id, unsolicited reply | 6 expected findings |
-
-The protocol.md examples fail in two places:
-
-- The initialize request sends `workspace`, `capabilities` and
-  `permissions`. The Gleam contract does not have them. MEP receivers ignore
-  unknown members, but the validator refuses them (smithy-2qe.34.17).
-- The initialize result has no `extension.types`. The Gleam contract
-  requires it. This is drift between protocol.md and the contract.
-
-The protocol draft also lists an optional `data` member for a diagnostic,
-which the contract does not have. No example uses it.
 
 ## MCK cases
 

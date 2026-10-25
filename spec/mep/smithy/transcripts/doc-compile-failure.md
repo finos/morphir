@@ -25,7 +25,7 @@ Constructed, the initialized notification:
 {"jsonrpc": "2.0", "method": "morphir.initialized"}
 ```
 
-Verbatim from protocol.md line 466, the compile request:
+Verbatim from protocol.md line 460, the compile request:
 
 ```jsonrpc host -> extension
 {
@@ -70,7 +70,7 @@ Verbatim from protocol.md line 466, the compile request:
 }
 ```
 
-Verbatim from protocol.md line 636, the compilation failure result:
+Verbatim from protocol.md line 630, the compilation failure result:
 
 ```jsonrpc extension -> host
 {
