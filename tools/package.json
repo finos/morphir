@@ -9,6 +9,9 @@
 		"vendor:morphir-web": "bun run vendor-morphir-web.ts",
 		"typecheck": "tsc"
 	},
+	"dependencies": {
+		"@std/semver": "npm:@jsr/std__semver@1.0.8"
+	},
 	"devDependencies": {
 		"@types/bun": "^1.4.0",
 		"typescript": "~7.0.0"

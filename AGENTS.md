@@ -282,15 +282,32 @@ git push origin beads-sync
 your working tree or needs the branch checked out, and it works the same from a linked worktree. It is a no-op
 when the branch already matches.
 
-The branch carries only `.beads/issues.jsonl`. `.beads/interactions.jsonl` is bd's interaction log: bd rotates it,
-dropping older records as it appends newer ones, so publishing it made the branch tip look like it was losing
-audit history. It is derived from the database, so it is ignored and not published. Both files are ignored
-everywhere else and `pre-commit` rejects either if staged. Never hand-edit the export: republish it instead.
+The branch carries the readable mirror in contract `0.1.0-draft.1`:
+
+- `.beads/issues.jsonl.gz` — gzipped full export (exact bytes of `bd export`)
+- `.beads/issues.index.jsonl` — compact id/title/status/priority index
+- `.beads/mirror.manifest.json` — format version plus lengths/SHA-256 checksums
+- `.beads/objects/<sha256>/…` — optional hash-named evidence attachments
+
+Legacy plain `.beads/issues.jsonl` may still appear on older tips; drift-check understands both.
+`.beads/interactions.jsonl` is bd's interaction log: bd rotates it, dropping older records as it
+appends newer ones, so publishing it made the branch tip look like it was losing audit history. It
+is derived from the database, so it is ignored and not published. Working-tree exports under
+`.beads/` stay ignored and `pre-commit` rejects staging them. Never hand-edit the mirror: republish
+it instead. Publishers validate every blob against GitHub's 100 MiB per-file limit before commit,
+and parent on the last pushable remote tip when local tips still hold oversized unpublished
+ancestors (backed up separately; do not force-push).
 
 To check the mirror:
 
 ```shell
 mise run beads:drift-check      # database against beads-sync
+```
+
+To recover a compressed tip into an import stream:
+
+```shell
+git show beads-sync:.beads/issues.jsonl.gz | gunzip | bd import -
 ```
 
 `pre-push` reports a stale mirror as a notice rather than blocking, since a mirror lagging an authoritative
@@ -581,7 +598,7 @@ bd close <id>         # Complete work
 - Run `bd prime` for detailed command reference and session close protocol
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
+**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; the beads-sync gzip/index/manifest (and optional `.beads/objects`) are a passive readable mirror. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
 
 ## Agent Context Profiles
 
