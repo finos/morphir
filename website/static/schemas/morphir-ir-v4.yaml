@@ -135,7 +135,7 @@ definitions:
           - $ref: "#/definitions/ModuleName"
           - $ref: "#/definitions/Name"
         description: "Legacy array representation: [packageName, moduleName, name]"
-        examples: [["morphir/SDK", "list", "map"], [["morphir"], ["s", "d", "k"], ["list"], ["map"]]]
+        examples: [["morphir/SDK", "list", "map"], [[["morphir"], ["s", "d", "k"]], [["list"]], ["map"]]]
 
   # Attributes
   SourceLocation:
@@ -832,7 +832,7 @@ definitions:
       Reference to a named type, optionally with type arguments.
 
       Canonical (no args): "morphir/SDK:basics#int"
-      Canonical (with args): {"Reference": ["morphir/SDK:list#list", "a"]}
+      Canonical (with args): {"Reference": {"fqname": "morphir/SDK:list#list", "args": ["a"]}}
 
       Accepted formats:
       - Bare FQName string: "morphir/SDK:basics#int"
@@ -2069,7 +2069,7 @@ definitions:
                 - $ref: "#/definitions/Type"
         description: |
           Input parameters.
-          Canonical (output): Object keyed by parameter name: { "x": type, "y": type }
+          Canonical (output): Object keyed by parameter name: { "x": type, "y": type }. The key order of "inputs" is the parameter order.
           Accepted (input): Array format: [["x", type], ["y", type]]
           Can be omitted if empty (no inputs).
       output: { $ref: "#/definitions/Type" }
@@ -2079,7 +2079,7 @@ definitions:
     description: |
       Value specification (public interface - signature only, no implementation).
 
-      Canonical format: { "inputs": { "a": type, "b": type }, "output": type }
+      Canonical format: { "inputs": { "a": type, "b": type }, "output": type }, where the key order of "inputs" is the parameter order.
       The "inputs" field can be omitted if empty.
 
       Encoders should output the canonical object format.
