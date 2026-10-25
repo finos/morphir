@@ -47,7 +47,8 @@ describe("beads mirror codec", () => {
 		const gzipped = compressExport(Buffer.from(sampleExport, "utf8"));
 		expect(() => decompressExport(gzipped.subarray(0, 8))).toThrow(/corrupt|truncat/i);
 		const flipped = Buffer.from(gzipped);
-		flipped[flipped.length - 1] ^= 0xff;
+		const last = flipped.length - 1;
+		flipped[last] = (flipped[last] ?? 0) ^ 0xff;
 		expect(() => decompressExport(flipped)).toThrow(/corrupt|truncat/i);
 	});
 

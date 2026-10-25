@@ -13,7 +13,7 @@
 		"@std/semver": "https://npm.jsr.io/~/11/@jsr/std__semver/1.0.8.tgz"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.4.0",
+		"@types/bun": "1.4.0",
 		"typescript": "~7.0.0"
 	}
 }
