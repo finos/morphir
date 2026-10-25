@@ -1458,6 +1458,21 @@ fn Verdict::parse(text : String) -> Verdict raise {
           _ => ()
         }
       }
+      // Actions serializes the native lanes as a JSON array in one output,
+      // without individual compiler/frontend/conformance outputs.
+      let lanes = match outputs.get("acceptance-lanes") {
+        Some(String(text)) => Some(@json.parse(text)) catch { _ => None }
+        _ => None
+      }
+      if lanes is Some(Array(items)) &&
+        items.iter().all(item => item is String(_)) {
+        for item in items {
+          if item is String(lane) &&
+            ["compiler", "frontend", "conformance"].contains(lane) {
+            selection.set(lane, true)
+          }
+        }
+      }
       let base = match receipt.get("pr") {
         Some(Object(pr)) =>
           match pr.get("base") {
@@ -1909,9 +1924,14 @@ fn fixture_verdict(
   selection : Map[String, Bool],
   base~ : String?,
   exact~ : Bool = false,
+  lanes~ : String? = None,
 ) -> String {
   let outputs : Map[String, Json] = Map([])
   for name in output_names {
+    // The workflow exposes these lanes only through acceptance-lanes.
+    if ["compiler", "frontend", "conformance"].contains(name) {
+      continue
+    }
     outputs.set(
       name,
       Json::string((selection.get(name) == Some(true)).to_string()),
@@ -1919,7 +1939,7 @@ fn fixture_verdict(
   }
   outputs.set(
     "acceptance-lanes",
-    Json::string(Json(acceptance_lanes(selection)).stringify()),
+    Json::string(lanes.unwrap_or(Json(acceptance_lanes(selection)).stringify())),
   )
   outputs.set("required", Json::string(Json(required(selection)).stringify()))
   let pr : Json = match base {
@@ -2088,6 +2108,27 @@ async fn reuse_wiring_test(script : String) -> Unit {
   if !(unchanged(run, only([]), queue_args) &&
     run.2.contains("\{log}enforced; selects full=false checks=[]\n")) {
     failures.push(run_failure("event_queue_enforced_nothing_landed", run))
+  }
+  // A missing lane stays unproven, and an unreadable list proves nothing.
+  for
+    case in [
+      ("[\"compiler\",\"frontend\"]", ["conformance"]),
+      ("[]", ["compiler", "frontend", "conformance"]),
+      ("not json", ["compiler", "frontend", "conformance"]),
+      ("{}", ["compiler", "frontend", "conformance"]),
+      ("[\"compiler\",1]", ["compiler", "frontend", "conformance"]),
+      ("[\"provider\"]", ["compiler", "frontend", "conformance"]),
+    ] {
+    let (lanes, expected) = case
+    let run = run_event(
+      script,
+      root,
+      queue_env,
+      fixture_verdict(receipt, base=Some(main_head), lanes=Some(lanes)),
+    )
+    if !unchanged(run, only(expected), queue_args) {
+      failures.push(run_failure("event_queue_unproven_lanes \{lanes}", run))
+    }
   }
   // event_queue_exact_not_skipped: only a push skips on an exact verdict. A
   // queue run treats it as any trusted verdict, and without a PR base it
