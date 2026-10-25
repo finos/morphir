@@ -132,6 +132,10 @@ jobs:
               - 'tools/check-vendored-fixture.ts'
               # regenerates the JSON schemas and compares them with the committed ones
               - 'tools/check-schemas-generated.ts'
+              # spec:mep-smithy-check validates the MEP Smithy model against the
+              # protocol draft examples and the MEP MCK cases
+              - 'spec/mep/**'
+              - 'tools/spec-mep-smithy*'
               # the Bun tooling tests the docs job runs through `mise run tools:test`
               - 'tools/*.test.ts'
               - 'tools/run-mck-gate.ts'
@@ -488,6 +492,9 @@ jobs:
 
       - name: Check the Morphir Compatibility Kit
         run: mise run mck:check
+
+      - name: Check the MEP Smithy model against MEP examples and MCK cases
+        run: mise run spec:mep-smithy-check
 
       - name: Test the native MCK engine for kit and schema changes
         if: ${{ needs.changes.outputs.mck == 'true' && needs.changes.outputs.rust != 'true' }}

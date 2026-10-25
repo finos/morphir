@@ -1,0 +1,122 @@
+{
+  "$comment": "JSON values that are not JSON-RPC messages, with the shape that each must satisfy. expect lists the finding codes of smithy validate value; an empty list means valid. A value with a pointer is read from its source file. Every non-JSON-RPC JSON example of protocol.md must be here.",
+  "values": [
+    {
+      "name": "protocol.md: the capability claim set example",
+      "shape": "morphir.mep#CapabilityClaimSet",
+      "source": "docs/design/draft/extensions/protocol.md",
+      "value": {
+        "claimsVersion": "0.1.0-draft.2",
+        "protocolVersions": [
+          "0.1"
+        ],
+        "extension": {
+          "id": "morphir-elm",
+          "name": "Morphir Elm frontend",
+          "version": "0.3.0",
+          "types": [
+            "frontend",
+            "workspace"
+          ]
+        },
+        "capabilities": {
+          "frontend": {
+            "languages": [
+              {
+                "id": "elm",
+                "fileExtensions": [
+                  ".elm"
+                ]
+              }
+            ],
+            "irVersions": [
+              "3"
+            ],
+            "compile": true,
+            "incremental": false
+          },
+          "workspace": {
+            "protocolVersions": [
+              "0.1.0-draft.1"
+            ],
+            "discover": true
+          }
+        },
+        "requires": {
+          "host": [
+            ">=0.4.0-alpha.7"
+          ]
+        },
+        "critical": [
+          "requires.host"
+        ]
+      },
+      "expect": []
+    },
+    {
+      "name": "protocol.md: the backend capability example",
+      "shape": "morphir.mep#ExtensionCapabilities",
+      "source": "docs/design/draft/extensions/protocol.md",
+      "value": {
+        "backend": {
+          "targets": [
+            "avro"
+          ],
+          "irVersions": [
+            "3",
+            "4"
+          ],
+          "generate": true
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "protocol.md: the source document example",
+      "shape": "morphir.mep#SourceDocument",
+      "source": "docs/design/draft/extensions/protocol.md",
+      "value": {
+        "uri": "file:///work/Example.elm",
+        "languageId": "elm",
+        "version": 1,
+        "text": "module Example exposing (add)\n\nadd : Int -> Int -> Int\nadd a b = a + b\n"
+      },
+      "expect": []
+    },
+    {
+      "name": "protocol.md: the inline dependency example",
+      "shape": "morphir.mep#CompileDependency",
+      "source": "docs/design/draft/extensions/protocol.md",
+      "value": {
+        "packageName": "morphir/sdk",
+        "irVersion": "3",
+        "distribution": {}
+      },
+      "expect": []
+    },
+    {
+      "name": "guest kit: compile sources",
+      "shape": "morphir.mep#SourceSet",
+      "source": "spec/mep/mck/guest-moonbit-bool.json",
+      "pointer": "/source/sources",
+      "expect": []
+    },
+    {
+      "name": "guest kit: compile package",
+      "shape": "morphir.mep#CompilePackage",
+      "source": "spec/mep/mck/guest-moonbit-bool.json",
+      "pointer": "/source/package",
+      "expect": []
+    },
+    {
+      "name": "guest kit: compile options",
+      "shape": "morphir.mep#CompileOptions",
+      "source": "spec/mep/mck/guest-moonbit-bool.json",
+      "pointer": "/source/options",
+      "expect": [
+        "UnknownMember"
+      ],
+      "note": "`profile` is an extra member beside the named members. MEP accepts it; Smithy cannot declare it: smithy-2qe.34.18."
+    }
+  ]
+}

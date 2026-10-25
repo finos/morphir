@@ -419,6 +419,12 @@ run = "bun run tools/spec-mep.ts"
 description = "Check the MEP contract: coverage, documented wire rules, and no drift in spec/mep/generated/mep.ir.json"
 run = "cargo test --locked -p morphir --test mep_contract"
 
+[tasks."spec:mep-smithy-check"]
+description = "Check the MEP Smithy model with the moonrockz/smithy CLI: model, transcripts, protocol draft examples and MCK cases"
+# moonx comes with the pinned MoonBit toolchain above and runs a pinned CLI
+# version. See spec/mep/smithy/README.md.
+run = "bun run tools/spec-mep-smithy.ts"
+
 [tasks."mck:vocabulary-check"]
 description = "Check vocabulary generation against the pinned TypeScript IR model"
 # Keep the semantic vocabulary authoring check; compatibility validation is native.
@@ -667,6 +673,7 @@ depends = [
     "mck:check",
     "package:schema-check",
     "spec:mep-check",
+    "spec:mep-smithy-check",
     "tools:test",
 ]
 

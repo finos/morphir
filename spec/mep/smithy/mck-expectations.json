@@ -1,0 +1,154 @@
+{
+  "$comment": "Expected smithy findings for each case of spec/mep/mck/model-transport.cases.json. request and result list the finding codes of smithy validate rpc; an empty list means valid. Each case also checks hostOffer.modelTransport and guestSupport.modelTransport as ModelTransportSupport values, which must be valid.",
+  "cases": {
+    "model-0001": {
+      "request": [],
+      "note": "Valid. The MEP outcome is accept."
+    },
+    "model-0002": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the tuple is not in the session. Not checked: smithy-2qe.34.24."
+    },
+    "model-0003": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the tuple is not in the session. Not checked: smithy-2qe.34.24."
+    },
+    "model-0004": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the tuple is not in the session. Not checked: smithy-2qe.34.24."
+    },
+    "model-0005": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the tuple is not in the session. Not checked: smithy-2qe.34.24."
+    },
+    "model-0006": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the tuple is not in the session. Not checked: smithy-2qe.34.24."
+    },
+    "model-0007": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the session has no generateModel tuple. Not checked: smithy-2qe.34.20."
+    },
+    "model-0008": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the session is not MEP 0.2.0-draft.1. Not checked: smithy-2qe.34.20."
+    },
+    "model-0009": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the session is not MEP 0.2.0-draft.1. Not checked: smithy-2qe.34.20."
+    },
+    "model-0010": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the tuple is not in the session. Not checked: smithy-2qe.34.24."
+    },
+    "model-0011": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the payload exceeds a negotiated limit. Not checked: smithy-2qe.34.24."
+    },
+    "model-0012": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the payload exceeds a negotiated limit. Not checked: smithy-2qe.34.24."
+    },
+    "model-0013": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission after decoding: depth limit. Out of scope for a message model."
+    },
+    "model-0014": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission after decoding: node limit. Out of scope for a message model."
+    },
+    "model-0015": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission after decoding: length mismatch. Out of scope for a message model."
+    },
+    "model-0016": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission after decoding: digest mismatch. Out of scope for a message model."
+    },
+    "model-0017": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the base64 is not canonical. The model has no base64 pattern: smithy-2qe.34.26."
+    },
+    "model-0018": {
+      "request": [],
+      "result": [],
+      "note": "Valid, but MEP refuses a success result without a model: smithy-2qe.34.21."
+    },
+    "model-0019": {
+      "request": [],
+      "result": [],
+      "note": "Valid, but MEP refuses a failure result with a model: smithy-2qe.34.21."
+    },
+    "model-0020": {
+      "request": [],
+      "result": [
+        "TypeMismatch"
+      ],
+      "note": "Refused: a null model is a TypeMismatch. The MEP outcome is reject."
+    },
+    "model-0021": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: evidence binding. Out of scope for a message model."
+    },
+    "model-0022": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: evidence binding. Out of scope for a message model."
+    },
+    "model-0023": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: the guarantee is not in the session. Not checked: smithy-2qe.34.24."
+    },
+    "model-0024": {
+      "request": [],
+      "note": "Valid. The MEP outcome is accept."
+    },
+    "model-0025": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: lossy projection. Out of scope for a message model."
+    },
+    "model-0026": {
+      "request": [],
+      "note": "Valid. The MEP outcome is accept."
+    },
+    "model-0027": {
+      "request": [],
+      "note": "Valid. The MEP outcome is accept."
+    },
+    "model-0028": {
+      "request": [],
+      "result": [],
+      "note": "Valid. The MEP outcome is accept."
+    },
+    "model-0029": {
+      "request": [],
+      "result": [],
+      "note": "Valid. The MEP outcome is accept."
+    },
+    "model-0030": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: evidence binding. Out of scope for a message model."
+    },
+    "model-0031": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: options.irVersion differs from output.irVersion. Not checked: smithy-2qe.34.24."
+    },
+    "model-0032": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: evidence binding. Out of scope for a message model."
+    },
+    "model-0033": {
+      "request": [
+        "UnknownMember"
+      ],
+      "note": "Refused as UnknownMember. MEP also refuses it, because critical names payload.futureMember, but the validator cannot read critical: smithy-2qe.34.17."
+    },
+    "model-0034": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: evidence scope. Out of scope for a message model."
+    },
+    "model-0035": {
+      "request": [],
+      "note": "Valid. MEP refuses it at admission: aggregate decoded limit. Not checked: smithy-2qe.34.24."
+    }
+  }
+}
