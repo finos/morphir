@@ -37,13 +37,15 @@ previously said there was.
 ### Working with Issues
 
 Issues in Beads are:
-- **Git-native**: Stored in `.beads/issues.jsonl` and synced like code
+- **Git-native**: The authoritative store is the local Dolt database; a readable
+  mirror is published to the `beads-sync` branch
 - **AI-friendly**: CLI-first design works perfectly with AI coding agents
 - **Branch-aware**: Issues can follow your branch workflow
-- **Kept in sync deliberately**: the Dolt database is authoritative and syncs
-  over `refs/dolt/data`. `issues.jsonl` is a readable mirror published to the
-  `beads-sync` branch, not committed alongside code. See the beads section of
-  [AGENTS.md](../AGENTS.md).
+- **Kept in sync deliberately**: Dolt syncs over `refs/dolt/data`. The mirror on
+  `beads-sync` is compressed JSONL plus an index and manifest (`0.1.0-draft.1`),
+  not committed alongside code. Recover with
+  `git show beads-sync:.beads/issues.jsonl.gz | gunzip | bd import -`.
+  See the beads section of [AGENTS.md](../AGENTS.md).
 
 ## Why Beads?
 
