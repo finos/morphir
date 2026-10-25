@@ -87,7 +87,7 @@ Each exception below is also written in the doc comment of its type. The test `e
 | `GenerateRequest` | `options` is read as empty when absent. |
 | `GenerateResult` | `artifacts` and `diagnostics` are read as empty when absent. |
 | `Artifact` | When `binary` is true, `content` is base64. `binary` is read as false when absent. |
-| `Diagnostic` | `code` and `location` are left out when absent. `related` is left out when empty. |
+| `Diagnostic` | `code`, `location` and `data` are left out when absent. `related` is left out when empty. |
 | `DiagnosticSeverity` | Wire values `error`, `warning`, `info`, `hint`. |
 | `SourcePosition` | Zero-based. `character` counts UTF-16 code units, as in the Language Server Protocol. |
 

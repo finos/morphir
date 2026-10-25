@@ -120,7 +120,7 @@ If the process exits before responding to `morphir.shutdown`, the host reports a
 
 | Method | Kind | Purpose |
 |---|---|---|
-| `morphir.initialize` | request | Negotiate the protocol version, identity, permissions, and capabilities |
+| `morphir.initialize` | request | Negotiate the protocol version, identity, and capabilities |
 | `morphir.initialized` | notification | Tell the extension that the host accepted the handshake |
 | `morphir.ping` | request | Check whether the extension process can respond |
 | `morphir.extension.describe` | request | Read the extension's capability claim set, before or after initialization, with no side effects |
@@ -146,19 +146,6 @@ The host offers the protocol versions it supports. The extension selects one ver
       "kind": "cli",
       "name": "morphir-cli",
       "version": "0.1.0"
-    },
-    "workspace": {
-      "rootUri": "file:///work/acme-orders"
-    },
-    "capabilities": {
-      "cancellation": true,
-      "progress": true
-    },
-    "permissions": {
-      "workspaceRead": false,
-      "workspaceWrite": false,
-      "network": false,
-      "environment": []
     }
   }
 }
@@ -169,7 +156,13 @@ The CLI sends `"cli"`. The field is optional for compatibility with earlier
 MEP 0.1 hosts; receivers treat an absent or unrecognized kind as unspecified
 rather than inferring it from `name`.
 
-The workspace may be absent for configuration-free compilation. Version 0.1 sends source text and Morphir IR inside operation requests, so a frontend does not need workspace access.
+The parameters are `protocolVersions`, `host` and, for the model-transport
+draft, `modelTransport` (see [model transport](https://github.com/finos/morphir/blob/main/spec/mep/model-transport.md)).
+Version 0.1 sends source text and Morphir IR inside operation requests, so a
+frontend does not need workspace access. A workspace root, host capabilities
+and permission grants in the handshake are future work. The Rust and MoonBit
+hosts do not send them, and a receiver ignores such members as unknown
+members.
 
 ```json
 {
@@ -180,7 +173,8 @@ The workspace may be absent for configuration-free compilation. Version 0.1 send
     "extension": {
       "id": "org.finos.morphir.frontend.elm",
       "name": "Morphir Elm frontend",
-      "version": "2.100.0"
+      "version": "2.100.0",
+      "types": ["frontend"]
     },
     "capabilities": {
       "frontend": {
@@ -228,7 +222,7 @@ a law.
 sequenceDiagram
     participant H as Host
     participant E as Extension
-    H->>E: morphir.initialize (protocol versions, permissions)
+    H->>E: morphir.initialize (protocol versions, host identity)
     E-->>H: capabilities { irVersions: ["3","4"], incremental: true }
     Note over H: the advertised set is the only authority
     H->>E: morphir.frontend.compile (irVersion: "4")

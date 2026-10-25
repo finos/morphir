@@ -773,8 +773,10 @@ fn the_contract_covers_compile_diagnostics_and_generate() {
         ("generate-request", &["ir", "target", "options"]),
         ("generate-result", &["success", "artifacts", "diagnostics"]),
         (
+            // `data` comes from the protocol draft; the Rust SDK does not
+            // carry it yet (morphir-xo35).
             "diagnostic",
-            &["severity", "code", "message", "location", "related"],
+            &["severity", "code", "message", "location", "related", "data"],
         ),
         ("source-location", &["uri", "range"]),
         ("source-range", &["start", "end"]),

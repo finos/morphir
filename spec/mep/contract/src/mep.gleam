@@ -717,10 +717,12 @@ pub type Artifact {
 
 // -- Diagnostics ------------------------------------------------------------
 
-/// A diagnostic message.
+/// A diagnostic message. `data` is structured data that the extension owns,
+/// such as values for a fix.
 ///
-/// Wire rules: `code` and `location` are left out when absent. `related` is
-/// left out when empty, and an absent `related` is read as empty.
+/// Wire rules: `code`, `location` and `data` are left out when absent.
+/// `related` is left out when empty, and an absent `related` is read as
+/// empty.
 pub type Diagnostic {
   Diagnostic(
     severity: DiagnosticSeverity,
@@ -728,6 +730,7 @@ pub type Diagnostic {
     message: String,
     location: Option(SourceLocation),
     related: List(RelatedInformation),
+    data: Option(Json),
   )
 }
 
