@@ -117,6 +117,7 @@
 {"id":"morphir-5uau","title":"beads: DB and git-tracked export drift because jsonl edits bypass Dolt","status":"closed","priority":2}
 {"id":"morphir-5xq1","title":"Support Python function applications and lambdas in IR v3 and v4","status":"closed","priority":2}
 {"id":"morphir-5xzg","title":"Document required submodule initialization","status":"closed","priority":2}
+{"id":"morphir-5zvt","title":"Refuse MoonBit guest operations before morphir.initialized","status":"open","priority":2}
 {"id":"morphir-648","title":"Fix version embedding in binary - morphir --version shows 'dev' instead of release version","status":"closed","priority":1}
 {"id":"morphir-6cq2","title":"Standalone single-file compile ignores the env layer for frontend prelude and extension (GH #887)","status":"open","priority":3}
 {"id":"morphir-6f1o","title":"Finish CI reuse follow-ups from PR #199 review","status":"closed","priority":3}
@@ -724,7 +725,7 @@
 {"id":"morphir-p6n","title":"Phase 3: CLI Commands","status":"closed","priority":2}
 {"id":"morphir-p7rw","title":"Audit: moon CI gate ran nothing between bootstrap and 2026-08-28","status":"open","priority":2}
 {"id":"morphir-pda","title":"Add VFS traversal helpers","status":"closed","priority":2}
-{"id":"morphir-perf","title":"MoonBit CLI host skips morphir.initialized before the MEP operation","status":"open","priority":2}
+{"id":"morphir-perf","title":"MoonBit CLI host skips morphir.initialized before the MEP operation","status":"closed","priority":2}
 {"id":"morphir-pf13","title":"Windows: morphir CLI needs MSVC Spectre-mitigated CRT libs to build (GH #886)","status":"open","priority":2}
 {"id":"morphir-pfi","title":"Toolchain Integration Framework","status":"open","priority":3}
 {"id":"morphir-pg0","title":"Implement godog test entry point and context","status":"closed","priority":1}
