@@ -2563,7 +2563,7 @@
                 },
                 "diagnostic": {
                   "Public": {
-                    "doc": "A diagnostic message.\n\nWire rules: `code` and `location` are left out when absent. `related` is\nleft out when empty, and an absent `related` is read as empty.",
+                    "doc": "A diagnostic message. `data` is structured data that the extension owns,\nsuch as values for a fix.\n\nWire rules: `code`, `location` and `data` are left out when absent.\n`related` is left out when empty, and an absent `related` is read as\nempty.",
                     "CustomTypeDefinition": {
                       "typeParams": [],
                       "access": "Public",
@@ -2624,6 +2624,21 @@
                                   {
                                     "Reference": {
                                       "fqname": "morphir/mep:mep#related-information"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ],
+                          [
+                            "data",
+                            {
+                              "Reference": {
+                                "fqname": "morphir/SDK:maybe#maybe",
+                                "args": [
+                                  {
+                                    "Reference": {
+                                      "fqname": "morphir/mep:mep#json"
                                     }
                                   }
                                 ]
