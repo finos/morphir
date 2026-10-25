@@ -486,6 +486,10 @@ run = "moonx scripts/typescript-tooling.mbtx test-supervision"
 description = "Smoke-test CLI targets and installed package"
 run = "moonx scripts/typescript-tooling.mbtx test-cli"
 
+[tasks."test:cli-native-prerequisites"]
+description = "Focused native source-CLI compile, provider and local repository acceptance; requires explicit --shared or MORPHIR_SHARED_SOURCE"
+run = "moon run scripts/native-services.mbtx -- --acceptance"
+
 [tasks."check:typescript"]
 description = "Install frozen dependencies and check all TypeScript projects"
 run = "moonx scripts/typescript-tooling.mbtx check"

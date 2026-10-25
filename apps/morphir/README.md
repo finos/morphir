@@ -43,8 +43,41 @@ commands to an explicitly pinned prebuilt canonical backend. See the
 [MCK guide](docs/mck.md) for provisioning, supported hosts, output and cancellation.
 
 `morphir extension describe|compile|generate` runs an explicitly pinned MEP extension in a fresh
-guest process. Its one binding runs the saved core-Wasm MoonBit guest in the pinned Node host;
+guest process. Bindings include the saved core-Wasm guest in a pinned Node host and an explicit
+native process through the shared Rust host. Local repository and bundle lifecycle commands
+use the shared distribution library;
 see the [extension guide](docs/extension.md) for pins, reports, limits and cancellation.
+
+`morphir compile` exposes embedded rich compilation without an extension host:
+
+```sh
+morphir compile path/to/project --language moonbit --provider finos/morphir-moonbit-frontend --profile moonbit-model-stable-v1 --json
+morphir compile path/to/elm-project --language elm --provider finos/morphir-elm --profile library-origins --json
+```
+
+The command reuses `run` discovery, frontend registration, planning, model admission and
+atomic publication. `--input` is an alternative to the positional directory/file path;
+`--project` selects a workspace member; `--file` or `--directory` asserts the selection kind.
+`--package` sets the model package identity. `--output` is a workspace-relative output root
+containing `compile.dest`, with the same member layout as `run`.
+
+Ion binary is the default. `--model-format ion-text` retains readable metadata and origins.
+`--model-format morphir-json` performs the existing checked export and refuses lost metadata;
+the Elm `library` profile supports plain JSON, while `library-origins` retains source origins.
+Only draft IR version `4`, `4.0.0` or `4.0.0-draft` is accepted by `--version`. Types-only,
+unregistered providers/profiles and provider-specific flags are refused. These commands retain
+the existing frontend capability limits; they do not imply arbitrary imports or numeric support.
+
+Compile JSON has `profile: "morphir/command-result"`, `contractVersion: "0.1.0"`,
+`command: "compile"`, `state`, `exitCode` and `diagnostics`. Success includes `result` with
+provider facts, artifacts and publication receipts. Failure includes `error: {code, message}`
+and no `result`. Source/validation failures exit 1, cancellation exits 130 and parser syntax
+errors retain exit 2. Help uses the existing CLI JSON help schema and writes no artifacts.
+Diagnostics use stderr; stdout contains one JSON result. Existing `run` and `generate` success
+schemas are unchanged.
+On process-capable hosts, compile logs default to `.morphir/logs/frontend.ionb`.
+`--log-file` and `--log-format` use the existing telemetry sink contract. Portable
+hosts without process/clock support keep compilation available without default file logging.
 
 ## WASM and WASM-GC
 

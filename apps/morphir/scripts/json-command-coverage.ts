@@ -4,19 +4,24 @@ type Run = (args: string[], expected?: number) => { stdout: string; stderr: stri
 
 // These are public command paths, independent of the parser's declarations.
 const commands = [
-  'run', 'execute', 'verify', 'conform', 'eval', 'worksheet', 'generate',
+  'run', 'execute', 'verify', 'conform', 'eval', 'worksheet', 'compile', 'generate',
   'model inspect', 'model export-original', 'connected connect', 'connected run',
   'connected artifacts', 'connected originals', 'workspace', 'workspace init',
   'project list', 'project add', 'project remove', 'toolchain info',
   'toolchain setup', 'toolchain build', 'toolchain run', 'toolchain exec', 'mck',
   'extension describe', 'extension compile', 'extension generate',
+  'extension bundle', 'extension install', 'extension list', 'extension search',
+  'extension update', 'extension uninstall', 'extension repository init',
+  'extension repository add', 'extension repository list', 'extension repository inspect',
+  'extension repository enable', 'extension repository disable', 'extension repository remove',
+  'extension repository publish', 'extension repository verify',
 ];
 
 export function exerciseJsonCommandCoverage(run: Run) {
   const root = JSON.parse(run(['--json', '--help']).stdout);
   assert.deepEqual(root.commands, commands);
   // Parent command help is an interface too, even without an operation.
-  for (const path of ['', ...commands, 'model', 'connected', 'project', 'toolchain', 'extension']) {
+  for (const path of ['', ...commands, 'model', 'connected', 'project', 'toolchain', 'extension', 'extension repository']) {
     const argv = path ? path.split(' ') : [];
     const human = run([...argv, '--help']);
     // Native Windows text stdout uses CRLF; JSON strings retain logical LF.

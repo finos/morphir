@@ -1148,11 +1148,27 @@ fn extension_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     raise @config.Invalid("extension.explicit_pin_and_helper_required")
   }
   let pin_bytes = @platform.read_input(pin_path, 65536)
-  let pin = extension_pin(
-    @json.parse(@utf8.decode(pin_bytes[:])) catch {
-      _ => raise @config.Invalid("extension.invalid_pin")
-    },
-  )
+  let pin_json = @json.parse(@utf8.decode(pin_bytes[:])) catch {
+    _ => raise @config.Invalid("extension.invalid_pin")
+  }
+  if pin_json is Object(fields) &&
+    fields.get("binding") == Some(Json::string("native-process")) {
+    return native_extension_command(cli, mode, pin_json, helper, operation) catch {
+      cause => {
+        let message = @host.error_message(cause)
+        @platform.stderr(message + "\n")
+        native_services_emit(
+          native_services_report(cli.command, Json::null(), message, 1),
+          mode,
+        )
+        1
+      }
+    }
+  }
+  if value(cli, "log-file") != "" || value(cli, "log-format") != "" {
+    raise @config.Invalid("extension.portable_file_logging_unavailable")
+  }
+  let pin = extension_pin(pin_json)
   let timeout = build_timeout(value(cli, "timeout", fallback="60000"))
   if timeout > 594000 {
     raise @config.Invalid("extension.timeout_limit: maximum 594000 ms")

@@ -1,19 +1,19 @@
 # Pinned extension commands
 
-`morphir extension` runs one MEP extension that you select with an explicit pin
-file. Each invocation starts a fresh guest process, runs a single MEP session and
-writes the returned model or generated library to a new directory. The CLI never
-searches for extensions, installs them or substitutes another engine.
+`morphir extension describe|compile|generate` invokes a provider selected by an
+explicit pin. Each operation writes to a new output directory. Repository and
+bundle commands below manage local installations separately. Invocation never
+silently substitutes an installed provider or another engine.
 
-The only binding today is `core-wasm-process`. A saved core-Wasm guest
+The portable `core-wasm-process` binding runs a saved core-Wasm guest
 (`model.wasm` plus its binary Ion `manifest.ion`) runs inside the Node process
 host in `pkgs/morphir-host/embedding`, which speaks Content-Length JSON-RPC on
 stdio. This is the route qualified by issue #152. It is not a WebAssembly
-Component Model binding. Component, native-process and Extism bindings are
-refused with `extension.unsupported_binding`. Installed extension bundles and
-repository selection are separate work.
+Component Model binding. The explicit `native-process` route delegates to the
+shared Rust host as described below. Components and Extism require separately
+qualified adapters.
 
-## A complete example
+## A portable example
 
 Package the MoonBit extension, then write a pin over the bytes you built:
 
@@ -77,7 +77,7 @@ The npm launcher selects its adjacent helper. A native executable needs
 `MORPHIR_EXTENSION_HELPER`) and can name the Node that runs the helper with
 `--node`. The guest always runs under the pinned runtime, not under `--node`.
 
-## What each session does
+## What each portable session does
 
 The CLI builds the whole session before it starts a process: `describe`,
 `initialize` with exactly one model tuple, the operation, `shutdown` and the
@@ -114,7 +114,7 @@ name when the path is absolute or contains `..`. The context digest is the SHA-2
 of the package name and options for `compile`, and of the target and model
 identity for `generate`.
 
-## Output, exit status and cancellation
+## Portable output, exit status and cancellation
 
 Human output prints a summary on stdout and diagnostics on stderr. `--json` prints
 one report, and `--json-lines` wraps it in `{"type":"extension","data":...}`. The
@@ -169,3 +169,140 @@ pinned runtime. It checks identity refusal before launch, a runtime version
 mismatch, separate stdout and stderr, guest file writes, execution of verified
 copies when pinned paths change during a run, process-group cleanup after a deadline or cancellation, and the stderr
 limit.
+
+## Explicit native processes
+
+Build the adapter against the pinned shared checkout using Rust 1.98.0. The
+MoonBit build script verifies the shared revision and library tree, uses the
+tracked Cargo lock and writes `.dev/native-services/host-pin.json`:
+
+```sh
+moon run scripts/native-services.mbtx -- --shared /path/to/finos/morphir --json
+```
+
+The adapter links the shared `morphir-host`, `morphir-host-native`,
+`morphir-extension-sdk` and `morphir-distribution` libraries at finos/morphir
+`ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409`. It does not invoke the Rust product CLI
+or implement a checker. Copy the generated host pin into this explicit provider pin:
+
+```json
+{
+  "contractVersion": "0.1.0",
+  "binding": "native-process",
+  "host": {
+    "executable": "/work/adapter",
+    "sha256": "<adapter SHA-256>",
+    "sourceRevision": "ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409"
+  },
+  "artifact": {
+    "executable": "/work/morphir-moonbit",
+    "sha256": "<native guest SHA-256>",
+    "extensionId": "morphir-moonbit",
+    "version": "0.1.0",
+    "args": []
+  },
+  "origin": "description of the explicitly selected local build"
+}
+```
+
+Use the same describe/compile/generate arguments as above, with
+`--extension-helper /work/apps/morphir/build-provider/native-services.mjs` and
+`--extension-pin native.json`. The native helper is always explicit, including
+from the npm launcher. Pin after building; rebuilding either executable invalidates
+its old digest. Optional native `artifact.args` is an opaque array, forwarded
+unchanged, including empty strings and delimiters.
+
+For an operation, the shared host first describes an immutable executable copy
+and closes that probe. It then initializes a new copy of the same verified bytes,
+holding identity, version and capabilities to the description. The shared SDK
+owns immutable tuple negotiation, request/result checks, framing and shutdown.
+Compile and generate negotiate separate tuples. Payload bytes remain exact; the
+retained envelope round-trips to the generator's source-envelope sidecar without
+changing bytes. Optional claims are assertions, not authenticated authorship.
+
+Native execution has no enforced sandbox. The adapter and provider inherit no
+user environment. The helper owns a private temporary root and the entire process
+group, terminates it on cancellation or deadline, and cleans its storage after
+the group stops. Wire cancellation remains unsupported. Guest diagnostics use
+stderr. Requests are limited to 4 MiB, helper replies to 16 MiB, and shared MEP
+frames to the canonical host's 64 MiB limit; model negotiation has the smaller
+limits shown in the report. Explicit executables are limited to 128 MiB.
+Native commands record bounded cleanup observations through the existing telemetry
+sink at `.morphir/logs/execution.ionb`. `--log-file` and `--log-format` honor explicit
+paths and existing formats, including JSON Lines. Portable extension invocation
+keeps its existing no-file-logging behavior and explicitly refuses these native
+log controls.
+
+Native JSON results use `morphir/command-result` version `0.1.0`, with `command`,
+`state`, `exitCode` and `diagnostics`. Success has `result.binding`, `result.session`,
+output digest receipts and lifecycle facts. Failure has `error: {code, message}`
+instead of `result`; expected validation failures exit 1, cancellation exits 130
+and parser syntax retains exit 2. Human mode currently prints the same structured
+report. Help keeps the existing CLI help schema. The portable success schema is
+unchanged. Wasm/Wasm GC and native Windows refuse execution explicitly; their help
+remains available. This source acceptance is scoped to macOS arm64 and does not
+claim installed or other-platform qualification.
+
+## Controlled local repositories
+
+These commands require `--services-pin host-pin.json` and
+`--services-helper /work/apps/morphir/build-provider/native-services.mjs`.
+Use `--home /isolated/morphir-home` to isolate state. Otherwise `MORPHIR_HOME`, then
+the user's `.morphir` directory, supplies the home. Canonical directory layouts,
+release descriptors, digests, locks, catalogs and installation transactions belong
+to the shared distribution library.
+
+```sh
+morphir extension repository init /work/local-repository
+morphir extension repository add local --directory /work/local-repository
+morphir extension bundle --executable /work/guest --sha256 <SHA-256> --extension-id morphir-moonbit --short-id moonbit --version 0.1.0 --platform aarch64-apple-darwin --output bundle
+morphir extension repository publish bundle --repository local
+morphir extension search moonbit
+morphir extension install morphir-moonbit --repository local --version 0.1.0
+morphir extension list
+morphir extension update morphir-moonbit --repository local --version 0.1.1
+morphir extension uninstall morphir-moonbit
+```
+
+The example omits the common explicit service controls for readability. Repository
+`list`, `inspect <name>`, `enable <name>`, `disable <name>`, `verify <name>` and
+`remove <name>` complete the lifecycle. Disable excludes a repository from search,
+resolution and publication. Bundle accepts an already-built native executable,
+probes its declared identity/version and validates the canonical descriptor before
+publication. Its current bounded byte bridge accepts artifacts up to 11 MiB and
+requires the probing host's exact Rust target triple. Larger bundles, remote
+repositories, channels, Wasm installation and cross-platform probing are outside
+this adapter. Unsupported syntax is refused, never ignored.
+
+Publish and fresh install use canonical describe probes. Update probes an isolated
+materialization of the selected digest before the shared replacement installer
+rehashes that digest and atomically replaces state. Its canonical lock retains the
+repository claim record; the command also returns its separate probe evidence.
+Corrupt bundles, failed probes and corrupt/disabled update selections leave the
+previous active installation intact. `extension list` revalidates installed bytes
+offline without executing them or reopening the repository. Uninstall removes
+active state and retains the shared content-addressed cache. No signed registry or
+authenticated publisher chain is required for this explicit local workflow.
+
+Every lifecycle command accepts `--json` and uses the native finite-result schema
+above. Diagnostics and child logs go to stderr; successful output appears only
+after required writes. These commands do not automatically join installed
+selection to invocation. That downstream acceptance remains morphir-ukvn.5.64.30.
+
+Run the focused real native source-CLI path with:
+
+```sh
+mise run test:cli-native-prerequisites -- --shared /path/to/finos/morphir --json
+```
+
+It freezes separately built native guests and fault peers, tests embedded Boolean
+and Elm compilation, compile/retain/generate/consumer execution, malformed/oversized
+frames, tuple and context refusal, crashes, diagnostics, deadlines, cancellation,
+shutdown and cleanup. It also tests local publication/install, a real version
+update, corrupt and disabled selections, offline replay and removal in a fresh
+home. It reruns the existing portable provider tests and CLI unit suite. The task
+passes the produced CLI, adapter and guest paths explicitly to each test process,
+binding its receipts to tested artifacts even when the caller has artifact
+override variables set. Evidence and host pins stay under `.dev/native-services`;
+no installed matrix, new CI job,
+release or default switch is performed.

@@ -1,0 +1,332 @@
+///|
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/async@0.22.4",
+  "moonbitlang/async@0.22.4/fs",
+  "moonbitlang/async@0.22.4/process",
+  "moonbitlang/async@0.22.4/stdio",
+  "moonbitlang/x@0.5.5/sys",
+  "moonbitlang/x@0.5.5/crypto",
+}
+
+///|
+/// Build the shared-library adapter or run focused source-CLI qualification.
+
+///|
+async fn output(args : Array[String]) -> String {
+  let (code, out, err) = @process.collect_output("git", args)
+  guard code == 0 else { fail(err.text()) }
+  out.text().trim().to_owned()
+}
+
+///|
+async fn checked(
+  program : String,
+  args : Array[String],
+  environment~ : Map[String, String] = Map([]),
+) -> Unit {
+  let moon_home = @env.get_env_var("MOON_HOME").unwrap_or("")
+  let executable = if program == "moon" && moon_home != "" {
+    moon_home + "/bin/moon"
+  } else {
+    program
+  }
+  let path = if moon_home == "" {
+    @env.get_env_var("PATH").unwrap_or("")
+  } else {
+    moon_home + "/bin:" + @env.get_env_var("PATH").unwrap_or("")
+  }
+  let child_environment = environment.copy()
+  child_environment["PATH"] = path
+  let code = @process.run(
+    executable,
+    args,
+    extra_env=child_environment,
+    stdout=@stdio.stderr,
+    stderr=@stdio.stderr,
+  )
+  guard code == 0 else {
+    raise ChildFailed(
+      if code > 0 {
+        code
+      } else {
+        1
+      },
+      program + " failed with status " + code.to_string(),
+    )
+  }
+}
+
+///|
+suberror ChildFailed {
+  ChildFailed(Int32, String)
+}
+
+///|
+async fn digest(path : String) -> String {
+  @crypto.bytes_to_hex_string(@crypto.sha256(@fs.read_file(path).binary()))
+}
+
+///|
+async fn main {
+  let mut json_mode = @env.args().contains("--json")
+  try {
+    let schema = @argparse.Command(
+      "native-services",
+      about="Build a pinned shared-library adapter; --acceptance also builds and tests the native source CLI. JSON uses morphir/command-result 0.1.0; progress and child logs use stderr. This does not qualify installed .64.30 or change defaults.",
+      disable_help_flag=true,
+      disable_help_subcommand=true,
+      options=[@argparse.OptionArg("shared")],
+      flags=[
+        @argparse.FlagArg("json"),
+        @argparse.FlagArg("help", short='h'),
+        @argparse.FlagArg("acceptance"),
+      ],
+    )
+    let cli = schema.parse(argv=@env.args()[1:])
+    json_mode = cli.flags.get("json").unwrap_or(false)
+    if cli.flags.get("help").unwrap_or(false) {
+      if json_mode {
+        println(
+          (
+            {
+              "profile": "morphir/command-result",
+              "contractVersion": "0.1.0",
+              "command": "native-services",
+              "state": "succeeded",
+              "exitCode": 0,
+              "diagnostics": [],
+              "result": { "help": schema.render_help() },
+            } : Json).stringify(),
+        )
+      } else {
+        println(schema.render_help())
+      }
+      return
+    }
+    let shared_path = match cli.values.get("shared") {
+      Some([path]) => path
+      _ => @env.get_env_var("MORPHIR_SHARED_SOURCE").unwrap_or("")
+    }
+    guard shared_path != "" else {
+      fail(
+        "Set --shared or MORPHIR_SHARED_SOURCE to the pinned finos/morphir checkout",
+      )
+    }
+    let shared = @fs.realpath(shared_path)
+    let revision = "ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409"
+    guard output(["-C", shared, "rev-parse", "HEAD"]) == revision else {
+      fail("Expected shared Morphir revision " + revision)
+    }
+    guard output([
+        "-C", shared, "diff", "HEAD", "--", "Cargo.toml", "Cargo.lock", "ecosystem/morphir-rust",
+        "third_party",
+      ]) ==
+      "" else {
+      fail("Shared libraries must match their pinned revision")
+    }
+    let root = @fs.realpath(".")
+    let acceptance = cli.flags.get("acceptance").unwrap_or(false)
+    if acceptance {
+      checked("moon", [
+        "build", "apps/morphir-extension", "--target", "native", "--release",
+      ])
+      checked("moon", ["build", "apps/morphir", "--target", "native"])
+      checked("bun", ["install", "--frozen-lockfile"])
+      checked("bun", ["tools/build-runtimes.ts"])
+    }
+    let directory = root + "/.dev/native-services"
+    if !@fs.exists(directory) {
+      @fs.mkdir(directory, recursive=true)
+    }
+    let mut manifest = "[package]\nname='morphir-moonbit-native-services'\nversion='0.1.0'\nedition='2024'\n[workspace]\n[[bin]]\nname='morphir-moonbit-native-services'\npath=" +
+      Json::string(root + "/apps/morphir/native-services/main.rs").stringify() +
+      "\n[dependencies]\n"
+    for
+      name in [
+        "morphir-host", "morphir-host-native", "morphir-extension-sdk", "morphir-distribution",
+        "morphir-common",
+      ] {
+      manifest += name +
+        "={path=" +
+        Json::string(shared + "/ecosystem/morphir-rust/crates/" + name).stringify() +
+        "}\n"
+    }
+    manifest += "serde_json='1.0'\nserde={version='1.0',features=['derive']}\ntokio={version='1',features=['rt','macros','time','io-util','io-std','process']}\ntempfile='3'\nsemver='1'\nasync-trait='0.1'\nbase64='0.23'\n"
+    let guest = root +
+      "/_build/native/release/build/finos/morphir-extension/morphir-extension.exe"
+    if @fs.exists(guest) {
+      for
+        name in [
+          "native-fault-fixture", "native-catalog-v1", "native-catalog-v2",
+        ] {
+        manifest += "[[bin]]\nname=" +
+          Json::string(name).stringify() +
+          "\npath=" +
+          Json::string(root + "/apps/morphir/native-services/fault-fixture.rs").stringify() +
+          "\n"
+      }
+    }
+    manifest += "[profile.dev]\ndebug=0\n"
+    @fs.write_file(directory + "/Cargo.toml", manifest)
+    @fs.write_file(
+      directory + "/Cargo.lock",
+      @fs.read_file(root + "/apps/morphir/native-services/Cargo.lock"),
+    )
+    let (rust_status, rust_info, _) = @process.collect_output("rustc", [
+      "+1.98.0", "-vV",
+    ])
+    guard rust_status == 0 else { fail("Rust 1.98.0 is required") }
+    let mut target = ""
+    for line in rust_info.text().split("\n") {
+      if line.has_prefix("host: ") {
+        target = line[6:].to_owned()
+      }
+    }
+    guard target != "" else { fail("Rust host target is missing") }
+    let code = @process.run(
+      "cargo",
+      [
+        "+1.98.0",
+        "build",
+        "--locked",
+        "--manifest-path",
+        directory + "/Cargo.toml",
+      ],
+      extra_env={ "MORPHIR_NATIVE_TARGET": target, "MORPHIR_TEST_GUEST": guest },
+      stdout=@stdio.stderr,
+      stderr=@stdio.stderr,
+    )
+    guard code == 0 else {
+      raise ChildFailed(
+        if code > 0 {
+          code
+        } else {
+          1
+        },
+        "Native adapter build failed",
+      )
+    }
+    let executable = directory + "/target/debug/morphir-moonbit-native-services"
+    let host_pin : Json = {
+      "executable": executable,
+      "sha256": digest(executable),
+      "sourceRevision": revision,
+    }
+    @fs.write_file(directory + "/host-pin.json", host_pin.stringify() + "\n")
+    let tests : Array[Json] = []
+    if acceptance {
+      let environment = Map::from_array([
+        (
+          "MORPHIR_HEADLESS_BINARY",
+          root + "/_build/native/debug/build/morphir/morphir/morphir.exe",
+        ),
+        ("MORPHIR_NATIVE_SERVICES", executable),
+        ("MORPHIR_NATIVE_GUEST", guest),
+      ])
+      for
+        test_file in [
+          "test-embedded-compile.ts", "test-native-prerequisites.ts", "test-local-extension-lifecycle.ts",
+        ] {
+        checked("node", ["apps/morphir/scripts/" + test_file], environment~)
+        tests.push({ "test": test_file, "exitCode": 0 })
+      }
+      checked(
+        "node",
+        ["--test", "apps/morphir/scripts/test-extension-provider.ts"],
+        environment~,
+      )
+      tests.push({ "test": "test-extension-provider.ts", "exitCode": 0 })
+      checked(
+        "moon",
+        ["test", "apps/morphir", "--target", "native"],
+        environment~,
+      )
+      tests.push({ "test": "MoonBit CLI native unit suite", "exitCode": 0 })
+    }
+    let artifacts : Map[String, Json] = Map([])
+    for
+      path in [
+        executable,
+        guest,
+        root + "/_build/native/debug/build/morphir/morphir/morphir.exe",
+        directory + "/target/debug/native-fault-fixture",
+        directory + "/target/debug/native-catalog-v2",
+      ] {
+      if @fs.exists(path) {
+        artifacts[path] = { "sha256": digest(path) }
+      }
+    }
+    let moon_home = @env.get_env_var("MOON_HOME").unwrap_or("")
+    let moon_program = if moon_home == "" {
+      "moon"
+    } else {
+      moon_home + "/bin/moon"
+    }
+    let (moon_status, moon_info, _) = @process.collect_output(moon_program, [
+      "version", "--all",
+    ])
+    guard moon_status == 0 else {
+      fail("MoonBit toolchain identity is unavailable")
+    }
+    let result : Json = {
+      "sourceRevision": revision,
+      "sharedRustTree": output([
+        "-C", shared, "rev-parse", "HEAD:ecosystem/morphir-rust",
+      ]),
+      "host": host_pin,
+      "target": target,
+      "rust": rust_info.text(),
+      "moonbit": moon_info.text(),
+      "artifacts": Json::object(artifacts),
+      "cargoLockSha256": digest(directory + "/Cargo.lock"),
+      "tests": tests,
+      "installedQualification": "not-run",
+    }
+    @fs.write_file(directory + "/evidence.json", result.stringify() + "\n")
+    if json_mode {
+      println(
+        (
+          {
+            "profile": "morphir/command-result",
+            "contractVersion": "0.1.0",
+            "command": "native-services",
+            "state": "succeeded",
+            "exitCode": 0,
+            "diagnostics": [],
+            "result": result,
+          } : Json).stringify(),
+      )
+    } else {
+      println(result.stringify())
+    }
+  } catch {
+    error => {
+      let status = match error {
+        ChildFailed(status, _) => status
+        _ => 1
+      }
+      @stdio.stderr.write(error.to_string() + "\n")
+      if json_mode {
+        println(
+          (
+            {
+              "profile": "morphir/command-result",
+              "contractVersion": "0.1.0",
+              "command": "native-services",
+              "state": "failed",
+              "exitCode": status,
+              "diagnostics": [],
+              "error": {
+                "code": "native.build_failed",
+                "message": error.to_string(),
+              },
+            } : Json).stringify(),
+        )
+      }
+      @sys.exit(status)
+    }
+  }
+}

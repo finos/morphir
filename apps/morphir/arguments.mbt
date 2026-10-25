@@ -68,7 +68,14 @@ let model_options : Array[String] = ["model-format", "unit-id", "filename"]
 
 ///|
 let extension_options : Array[String] = [
-  "extension-pin", "extension-helper", "node", "timeout", "cancel-file",
+  "extension-pin", "extension-helper", "node", "timeout", "cancel-file", "log-file",
+  "log-format",
+]
+
+///|
+let catalog_options : Array[String] = [
+  "services-pin", "services-helper", "home", "node", "timeout", "cancel-file", "log-file",
+  "log-format",
 ]
 
 ///|
@@ -82,7 +89,8 @@ fn command_schema(path : String) -> CliSchema {
     "" =>
       children = [
         "run", "workspace", "execute", "verify", "conform", "eval", "worksheet",
-        "generate", "model", "connected", "project", "toolchain", "mck", "extension",
+        "compile", "generate", "model", "connected", "project", "toolchain", "mck",
+        "extension",
       ]
     "run" => {
       flags = ["all", "dry-run", "file", "directory", "log"]
@@ -142,6 +150,14 @@ fn command_schema(path : String) -> CliSchema {
       ]
       positional = true
     }
+    "compile" => {
+      flags = ["file", "directory", "types-only", "log"]
+      options = [
+        "input", "project", "package", "output", "version", "language", "provider",
+        "profile", "model-format", "cancel-file", "log-file", "log-format",
+      ]
+      positional = true
+    }
     "generate" => {
       flags = ["dry-run"]
       options = generation_cli_options
@@ -151,7 +167,48 @@ fn command_schema(path : String) -> CliSchema {
     "model" => children = ["inspect", "export-original"]
     "mck" =>
       options = ["runner-pin", "mck-helper", "node", "timeout", "cancel-file"]
-    "extension" => children = ["describe", "compile", "generate"]
+    "extension" =>
+      children = [
+        "describe", "compile", "generate", "bundle", "install", "list", "search",
+        "update", "uninstall", "repository",
+      ]
+    "extension repository" =>
+      children = [
+        "init", "add", "list", "inspect", "enable", "disable", "remove", "publish",
+        "verify",
+      ]
+    "extension repository init"
+    | "extension repository inspect"
+    | "extension repository enable"
+    | "extension repository disable"
+    | "extension repository remove"
+    | "extension repository verify" => {
+      options = catalog_options
+      positional = true
+    }
+    "extension repository add" => {
+      options = catalog_options + ["directory"]
+      positional = true
+    }
+    "extension repository publish" => {
+      options = catalog_options + ["repository"]
+      positional = true
+    }
+    "extension repository list" | "extension list" => options = catalog_options
+    "extension install" | "extension update" => {
+      options = catalog_options + ["repository", "version"]
+      positional = true
+    }
+    "extension search" | "extension uninstall" => {
+      options = catalog_options
+      positional = true
+    }
+    "extension bundle" =>
+      options = catalog_options +
+        [
+          "executable", "sha256", "extension-id", "short-id", "version", "platform",
+          "output",
+        ]
     "extension describe" => options = extension_options
     "extension compile" => {
       options = extension_options +
@@ -233,7 +290,19 @@ fn render_help(path : String) -> String {
     }
   }
   text += " [options]\n"
-  if path == "eval" {
+  if path == "compile" {
+    text += "\nCompile with the embedded rich engine and publish admitted checkpoints.\n"
+    text += "--input is an alternative to the positional project/directory/file path.\n"
+    text += "--project selects a workspace member; --package sets the model package name.\n"
+    text += "--output is a workspace-relative output root containing compile.dest.\n"
+    text += "Languages/providers: moonbit / finos/morphir-moonbit-frontend; elm / finos/morphir-elm.\n"
+    text += "Profiles: moonbit-model-stable-v1, moonbit-model-experimental-v1; library, library-origins.\n"
+    text += "Defaults retain origins: stable MoonBit or Elm library-origins, Ion binary.\n"
+    text += "Formats: ion-binary, ion-text, morphir-json (checked loss refusal).\n"
+    text += "Only draft IR version 4 is supported; types-only and provider-specific options refuse.\n"
+    text += "JSON returns morphir/command-result 0.1.0; diagnostics go to stderr.\n"
+    text += "Validation/compilation failures exit 1; argument syntax errors exit 2.\n"
+  } else if path == "eval" {
     text += "\nEvaluate public model functions with the local Scheme provider.\n"
     text += "Checking policy: strict (whole model) or permissive (as code executes).\n"
     text += "Model formats: JSON, YAML, Ion text, Ion binary; stdin requires --model-format.\n"
@@ -252,12 +321,17 @@ fn render_help(path : String) -> String {
     text += "\nExample: morphir mck --runner-pin runner.json workbench check --kit KIT --report REPORT\n"
   } else if path.has_prefix("extension") {
     text += "\nRun one fresh MEP session with an explicitly pinned extension binding.\n"
-    text += "Binding: core-wasm-process, a saved core-Wasm guest in the pinned Node host.\n"
+    text += "Bindings: core-wasm-process in pinned Node; native-process via shared Rust services.\n"
     text += "The pin fixes the runtime, host modules, guest Wasm/manifest and execution profile.\n"
-    text += "Component Model, native and Extism bindings are not dispatched by this command.\n"
+    text += "Component Model and Extism bindings require their own qualified adapters.\n"
     text += "compile writes model-envelope.json plus model.ionb (Ion, default) or model.json.\n"
     text += "generate reads a model envelope and writes the returned artifacts.\n"
     text += "Wire cancellation is unsupported; cancellation terminates the guest process.\n"
+    text += "Local repository/bundle commands use --services-pin and --services-helper.\n"
+    text += "They return morphir/command-result 0.1.0, with logs on stderr; failures exit 1.\n"
+    text += "Install/update require an exact --version and enabled --repository.\n"
+    text += "Only local native process artifacts on the current platform are supported.\n"
+    text += "Remote repositories, channel selection and cross-platform probing are not provided.\n"
     text += "\nExample: morphir extension compile src/main.mbt --extension-pin pin.json --package my/pkg --output out\n"
   }
   if !schema.children.is_empty() {
