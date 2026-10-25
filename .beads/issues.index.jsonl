@@ -61,12 +61,14 @@
 {"id":"morphir-1qhu.9","title":"morphir-inspect: queries, ingest, select and filter","status":"open","priority":2}
 {"id":"morphir-1rp2","title":"Clean stale Morphir worktrees and branches","status":"closed","priority":3}
 {"id":"morphir-1sa","title":"Define task/target execution engine","status":"closed","priority":2}
+{"id":"morphir-1sw3","title":"Land MoonBit CLI native prerequisites .64.2, .64.4 and .64.5","status":"closed","priority":2}
 {"id":"morphir-1v7","title":"Port Package IR to Go","status":"closed","priority":1}
 {"id":"morphir-1yvq","title":"Archive and remove stale Morphir workspaces idle over one hour","status":"closed","priority":2}
 {"id":"morphir-20tz","title":"Main CI red: workbench test uses priv fn that the frontend now rejects","status":"closed","priority":1}
 {"id":"morphir-2aqh","title":"Extend extension release bundles to describe frontend capabilities","status":"closed","priority":2}
 {"id":"morphir-2bu","title":"Improve release process based on v0.4.0-alpha.2 retrospective","status":"closed","priority":2}
 {"id":"morphir-2fg","title":"Add Project type and ProjectSection to config","status":"closed","priority":2}
+{"id":"morphir-2gp1","title":"Carry Diagnostic.data in the Rust SDK and the MoonBit MEP adapters","status":"open","priority":3}
 {"id":"morphir-2kn","title":"Release Process Retrospective: v0.4.0-alpha.1","status":"closed","priority":1}
 {"id":"morphir-2lme","title":"Address morphir #756 review findings","status":"closed","priority":1}
 {"id":"morphir-2w01","title":"Clean merged Morphir branch and worktree leftovers","status":"closed","priority":2}
@@ -722,6 +724,7 @@
 {"id":"morphir-p6n","title":"Phase 3: CLI Commands","status":"closed","priority":2}
 {"id":"morphir-p7rw","title":"Audit: moon CI gate ran nothing between bootstrap and 2026-08-28","status":"open","priority":2}
 {"id":"morphir-pda","title":"Add VFS traversal helpers","status":"closed","priority":2}
+{"id":"morphir-perf","title":"MoonBit CLI host skips morphir.initialized before the MEP operation","status":"open","priority":2}
 {"id":"morphir-pf13","title":"Windows: morphir CLI needs MSVC Spectre-mitigated CRT libs to build (GH #886)","status":"open","priority":2}
 {"id":"morphir-pfi","title":"Toolchain Integration Framework","status":"open","priority":3}
 {"id":"morphir-pg0","title":"Implement godog test entry point and context","status":"closed","priority":1}
@@ -784,15 +787,15 @@
 {"id":"morphir-u39v","title":"Move active checkout onto updated main","status":"closed","priority":3}
 {"id":"morphir-u3f6","title":"Separate private records from source downloads","status":"open","priority":2}
 {"id":"morphir-u8ef","title":"Remove merged capability job policy worktree","status":"closed","priority":3}
-{"id":"morphir-u8tx","title":"Restore beads-sync publication beyond GitHub file size limit","status":"in_progress","priority":2}
-{"id":"morphir-u8tx.1","title":"Restore beads-sync publication beyond GitHub file size limit","status":"open","priority":2}
+{"id":"morphir-u8tx","title":"Restore beads-sync publication beyond GitHub file size limit","status":"closed","priority":2}
+{"id":"morphir-u8tx.1","title":"Restore beads-sync publication beyond GitHub file size limit","status":"closed","priority":2}
 {"id":"morphir-u8tx.1.1","title":"Task 1: Shared mirror codec","status":"closed","priority":2}
-{"id":"morphir-u8tx.1.2","title":"Task 2: Publisher compressed layout","status":"in_progress","priority":2}
-{"id":"morphir-u8tx.1.3","title":"Task 3: Drift checker dual format","status":"open","priority":2}
-{"id":"morphir-u8tx.1.4","title":"Task 4: Guidance and reader compatibility","status":"open","priority":2}
-{"id":"morphir-u8tx.1.5","title":"Task 5: Attachment inventory and extract","status":"open","priority":2}
-{"id":"morphir-u8tx.1.6","title":"Task 6: Reference migration with compare-and-update","status":"open","priority":2}
-{"id":"morphir-u8tx.1.7","title":"Task 7: Publication cutover verification","status":"open","priority":2}
+{"id":"morphir-u8tx.1.2","title":"Task 2: Publisher compressed layout","status":"closed","priority":2}
+{"id":"morphir-u8tx.1.3","title":"Task 3: Drift checker dual format","status":"closed","priority":2}
+{"id":"morphir-u8tx.1.4","title":"Task 4: Guidance and reader compatibility","status":"closed","priority":2}
+{"id":"morphir-u8tx.1.5","title":"Task 5: Attachment inventory and extract","status":"closed","priority":2}
+{"id":"morphir-u8tx.1.6","title":"Task 6: Reference migration with compare-and-update","status":"closed","priority":2}
+{"id":"morphir-u8tx.1.7","title":"Task 7: Publication cutover verification","status":"closed","priority":2}
 {"id":"morphir-udex","title":"Remove timing assumptions from daemon validation worker tests","status":"open","priority":2}
 {"id":"morphir-ufmp","title":"Ship cross-agent project-management skill in morphir-moonbit","status":"closed","priority":2}
 {"id":"morphir-uhd2","title":"Support Rust frontend native bindings in IR v4","status":"closed","priority":2}
@@ -1287,7 +1290,7 @@
 {"id":"morphir-ukvn.5.64.17","title":"Locate operation logs and collect sanitized diagnostics","status":"open","priority":1}
 {"id":"morphir-ukvn.5.64.18","title":"Inspect and clean owned disposable CLI caches","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.19","title":"Install, repair and roll back local Morphir tools","status":"open","priority":1}
-{"id":"morphir-ukvn.5.64.2","title":"Expose compile compatibility through the existing rich engine","status":"open","priority":1}
+{"id":"morphir-ukvn.5.64.2","title":"Expose compile compatibility through the existing rich engine","status":"closed","priority":1}
 {"id":"morphir-ukvn.5.64.20","title":"Launch the official shared Workbench and Try Morphir from the CLI","status":"open","priority":1}
 {"id":"morphir-ukvn.5.64.21","title":"Make the shared Workbench and try-morphir the official web experiences","status":"open","priority":1}
 {"id":"morphir-ukvn.5.64.22","title":"Expose shared MCK kit inspection and offline checks","status":"closed","priority":1}
@@ -1303,8 +1306,8 @@
 {"id":"morphir-ukvn.5.64.31","title":"Qualify official Workbench and Playground launch and route migration","status":"open","priority":1}
 {"id":"morphir-ukvn.5.64.32","title":"Qualify and stage the primary CLI release and ecosystem default switch","status":"open","priority":1}
 {"id":"morphir-ukvn.5.64.33","title":"Qualify installed portable MEP flow through the MoonBit CLI","status":"open","priority":2}
-{"id":"morphir-ukvn.5.64.4","title":"Invoke a pinned native MEP provider from the MoonBit CLI","status":"open","priority":1}
-{"id":"morphir-ukvn.5.64.5","title":"Manage local extension repositories and native bundle lifecycle","status":"open","priority":1}
+{"id":"morphir-ukvn.5.64.4","title":"Invoke a pinned native MEP provider from the MoonBit CLI","status":"closed","priority":1}
+{"id":"morphir-ukvn.5.64.5","title":"Manage local extension repositories and native bundle lifecycle","status":"closed","priority":1}
 {"id":"morphir-ukvn.5.64.6","title":"Integrate the qualified Wasm extension route with the MoonBit CLI","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.64.7","title":"Connect the MoonBit CLI to an existing MEP daemon provider","status":"open","priority":2}
 {"id":"morphir-ukvn.5.64.8","title":"Create and sign Libraries through the MoonBit CLI","status":"open","priority":2}
@@ -1616,7 +1619,7 @@
 {"id":"morphir-xgd9.8","title":"Decide: remove mck:run-rust and mck:run from finos/morphir CI (owning repos already run the kit)","status":"closed","priority":2}
 {"id":"morphir-xgd9.9","title":"Gap: the package MCK suite (spec/package/mck) is not vendored or embedded in the released mck driver","status":"open","priority":2}
 {"id":"morphir-xihy","title":"Implement classic-to-v4 IR converter","status":"open","priority":2}
-{"id":"morphir-xo35","title":"Align protocol.md MEP examples with the Gleam contract (types, initialize members, diagnostic data)","status":"open","priority":3}
+{"id":"morphir-xo35","title":"Align protocol.md MEP examples with the Gleam contract (types, initialize members, diagnostic data)","status":"closed","priority":3}
 {"id":"morphir-y5p3","title":"Harden Avro IDL rendering and validation","status":"closed","priority":2}
 {"id":"morphir-y66y","title":"Advance morphir-ui after PR #15","status":"closed","priority":2}
 {"id":"morphir-y68p","title":"Insight: accessibility pass on selectable node labels","status":"open","priority":3}
