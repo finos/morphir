@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>add-mission-control-document-viewer: design</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> as it is, and write the content inside <main>.
+  Styles and scripts are files in docs/templates/assets/, referenced and not embedded. In a copy, change the
+  "assets/" prefix of each href and src to the relative path from the copy to that directory, for example
+  "../../docs/templates/assets/" from .dev/beads-specs/. See AGENTS.md, "Specs and plans are HTML documents".
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc.
+-->
+<link rel="stylesheet" href="../../../docs/templates/assets/agent-document.css">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script defer src="../../../docs/templates/assets/highlight/highlight.min.js"></script>
+<script defer src="../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
+<script defer src="../../../docs/templates/assets/agent-document.js"></script>
+</head>
+<body>
+<main>
+<h1>add-mission-control-document-viewer: design</h1>
+<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.97</code> · 2026-10-25 · intent captured; decisions below are proposals for the maintainer</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#flow">How an open command works</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See proposal.md for the motivation. What exists now:</p>
+<table>
+<thead><tr><th>Part</th><th>Where</th><th>Use here</th></tr></thead>
+<tbody>
+<tr><td>Agent document template and shared assets</td><td><code>docs/templates/agent-document.html</code>, <code>docs/templates/assets/</code></td><td>Every rendered page uses them unchanged.</td></tr>
+<tr><td>Markdown to HTML, heading ids, Mermaid</td><td><code>apps/morphir-site/content</code> (<code>render_markdown</code>), MoonBit native</td><td>Render <code>proposal.md</code>, <code>tasks.md</code>, <code>spec.md</code> and older <code>design.md</code> files.</td></tr>
+<tr><td>Reading a bead design</td><td><code>scripts/beads-companion.mbtx design export</code></td><td>Same tracker access and refusal rules for a bead id.</td></tr>
+<tr><td>HTTP server</td><td><code>moonbitlang/async</code> 0.22.4 <code>@http.Server</code>, already a dependency of <code>apps/morphir-site</code></td><td>The local server.</td></tr>
+<tr><td>Static file server, TypeScript</td><td><code>apps/morphir-site/scripts/serve.ts</code></td><td>Reference for path checks; not reused.</td></tr>
+</tbody>
+</table>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> one command opens any reviewed document correctly; repeated commands reuse one server;
+documents convert between the referenced and standalone forms.</p>
+<p><strong>Non-goals:</strong> the other jobs of mission control; editing documents in the browser; publishing to the
+project site; serving to other machines.</p>
+
+<h2 id="flow">How an open command works</h2>
+<svg viewBox="0 0 640 250" width="100%" role="img" aria-labelledby="flow-title flow-desc">
+<title id="flow-title">Open command flow</title>
+<desc id="flow-desc">The command reads the server record. If a live server answers the health check for this checkout, the command asks it for the page URL. Otherwise it starts a server in the background, writes the record, and then asks. Finally it opens the URL in the browser.</desc>
+<g font-family="system-ui, sans-serif" font-size="13" fill="none" stroke="currentColor">
+<rect x="10" y="20" width="150" height="44" rx="6"/><text x="85" y="47" text-anchor="middle" fill="currentColor" stroke="none">open TARGET</text>
+<rect x="220" y="20" width="190" height="44" rx="6"/><text x="315" y="40" text-anchor="middle" fill="currentColor" stroke="none">read server record,</text><text x="315" y="56" text-anchor="middle" fill="currentColor" stroke="none">GET /_health</text>
+<rect x="220" y="120" width="190" height="44" rx="6"/><text x="315" y="140" text-anchor="middle" fill="currentColor" stroke="none">start server in background,</text><text x="315" y="156" text-anchor="middle" fill="currentColor" stroke="none">write the record</text>
+<rect x="470" y="20" width="160" height="44" rx="6"/><text x="550" y="40" text-anchor="middle" fill="currentColor" stroke="none">resolve TARGET</text><text x="550" y="56" text-anchor="middle" fill="currentColor" stroke="none">to a page URL</text>
+<rect x="470" y="190" width="160" height="44" rx="6"/><text x="550" y="217" text-anchor="middle" fill="currentColor" stroke="none">open in browser</text>
+<path d="M160 42 H220"/><path d="M410 42 H470"/><text x="440" y="34" text-anchor="middle" fill="currentColor" stroke="none" font-size="11">live</text>
+<path d="M315 64 V120"/><text x="350" y="96" fill="currentColor" stroke="none" font-size="11">none or stale</text>
+<path d="M410 142 H440 V42"/><path d="M550 64 V190"/>
+</g>
+</svg>
+
+<h2 id="decisions">Decisions</h2>
+<p>These are proposals made while capturing intent. Each can change before implementation.</p>
+
+<h3 id="d-language">D1. MoonBit native app in <code>apps/morphir-mission-control</code></h3>
+<p>Build the app as a MoonBit native program with argparse subcommands and <code>--json</code> output, following the
+repository script conventions. It can use <code>render_markdown</code> from <code>apps/morphir-site/content</code> and
+<code>@http.Server</code> from <code>moonbitlang/async</code> directly.
+<em>Alternative:</em> TypeScript on Bun, like <code>serve.ts</code>; rejected because Markdown rendering would then need
+a second renderer and the repository prefers MoonBit for its tools.</p>
+
+<h3 id="d-record">D2. One server for each checkout, found through a record</h3>
+<p>The server writes <code>.dev/mission-control/server.json</code> with its process id, port, checkout root and app
+version. An open command reads the record and calls <code>GET /_health</code>. The server answers with its checkout
+root and version. The command reuses the server only when both match; otherwise it starts a new one and replaces the
+record. The server binds <code>127.0.0.1</code> on a free port that the operating system chooses.</p>
+<pre><code class="language-json">{ "pid": 4242, "port": 51873, "root": "/path/to/checkout", "version": "0.1.0" }</code></pre>
+<p><em>Alternative:</em> a fixed port; rejected because two checkouts or worktrees would then compete for it.</p>
+
+<h3 id="d-routes">D3. URLs mirror checkout paths; rendered views have their own routes</h3>
+<table>
+<thead><tr><th>Route</th><th>Content</th></tr></thead>
+<tbody>
+<tr><td><code>/&lt;path&gt;</code></td><td>A checkout file. Markdown files are rendered into the template; other files are served as they are.</td></tr>
+<tr><td><code>/_bead/&lt;id&gt;</code></td><td>The bead's design, read from the tracker on each request.</td></tr>
+<tr><td><code>/_change/&lt;name&gt;/</code></td><td>Index of an OpenSpec change, active or archived, linking to each file.</td></tr>
+<tr><td><code>/_health</code></td><td>Checkout root and app version, as JSON.</td></tr>
+</tbody>
+</table>
+<p>Any request path that ends in <code>docs/templates/assets/&lt;file&gt;</code> returns that asset, whatever comes
+before it. A page with a wrong relative prefix, such as an archived design, still gets its styles. A page from
+<code>/_bead/&lt;id&gt;</code> gets the referenced form with root-relative asset paths.</p>
+
+<h3 id="d-transform">D4. The transform marks inlined assets so it can reverse them</h3>
+<p>Standalone output replaces each known asset reference with an inline element that names the asset:</p>
+<pre><code class="language-html">&lt;style data-agent-asset="agent-document.css"&gt;…&lt;/style&gt;
+&lt;script data-agent-asset="highlight/highlight.min.js"&gt;…&lt;/script&gt;</code></pre>
+<p>The referenced conversion replaces each marked element with a link that has the correct relative prefix for the
+output path. Only files in <code>docs/templates/assets/</code> are known assets. Any other script or stylesheet stops the
+conversion. The transform never uses the network.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>A stale record points at a reused process id.</td><td>Trust the health check, not the process id.</td></tr>
+<tr><td>A server stays running after it is no longer needed.</td><td>A <code>stop</code> command; the idle policy is an open question.</td></tr>
+<tr><td>Bead designs come from a shared tracker that other people write.</td><td>Serve on loopback only, with a Content-Security-Policy that allows scripts only from the shared assets, so a script in a design does not run.</td></tr>
+<tr><td><code>apps/morphir-site/content</code> is native-only and owned by the site.</td><td>Depend on its public API; move the renderer to a shared package if both apps need changes.</td></tr>
+</tbody>
+</table>
+
+<h2 id="open-questions">Open questions</h2>
+<p>Task group 1, bead <code>morphir-ukvn.5.97.1</code>, records the answers.</p>
+<ul>
+<li>What else mission control does, besides documents.</li>
+<li>When the server stops: on a command, after a time with no requests, or both.</li>
+<li>What a standalone copy is for: sharing with people who have no checkout, storing in beads, or both. This decides whether <code>beads-companion design store</code> writes the standalone form.</li>
+<li>Confirm D1, the implementation language.</li>
+</ul>
+
+</main>
+</body>
+</html>
