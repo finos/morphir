@@ -1,7 +1,9 @@
 # morphir-moonbit
 
-- `AGENTS.md` owns document/tracker policy. Start documents from `docs/templates/agent-document.html`; retain
-  its head/CSS and optional pinned highlighter. Add no other external resources or scripts.
+- `AGENTS.md` owns document/tracker policy. Start documents from `docs/templates/agent-document.html` and retain
+  its head. Its styles and the vendored highlighter are files in `docs/templates/assets/`, referenced by relative
+  paths: correct the `assets/` prefix for the copy's location. Embed no CSS or JavaScript, and add no other
+  external resources or scripts.
 - The complete pinned [Archify package](../../archify/SKILL.md) is installed in `.agents/skills/archify/`.
   Its [upstream record](../../archify/UPSTREAM.md) identifies the revision and licenses. Use the project copy,
   not a personal installation or an unpinned download.

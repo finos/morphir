@@ -34,6 +34,12 @@ test "classify sources" {
   assert_eq(@site.classify("docs/x.mbt.md", config), Other)
   assert_eq(@site.classify("docs/superpowers/plans/p.md", config), Forbidden)
   assert_eq(@site.classify("docs/superpowers/x.png", config), Forbidden)
+  // Authoring templates and their assets are not site pages.
+  assert_eq(@site.classify("docs/templates/agent-document.html", config), Other)
+  assert_eq(
+    @site.classify("docs/templates/assets/highlight/UPSTREAM.md", config),
+    Other,
+  )
   assert_eq(
     @site.classify("site/blog/2026-10-13-a.md", config),
     Post("2026-10-13-a.md"),

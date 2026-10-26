@@ -13,6 +13,11 @@ This repository includes AI agent skills to enhance development workflows. The s
 - **Grok**
 - **Muse Code**
 - **Devin**
+- **Gemini CLI**
+- **OpenCode**
+
+This list is not complete. Any agent that reads `AGENTS.md` or the shared `.agents/skills/` directory can use
+this guidance and the skills.
 
 ## Available Skills
 
@@ -96,6 +101,26 @@ Read its `SKILL.md` for reporting or work-management requests. The skill uses th
 tools and the repository's tracker rules. It does not require a personal skill installation.
 The [skill catalog](skills/README.md) lists discovery paths for Codex, Claude, Grok, Muse, Cursor, Copilot,
 and Devin, plus a direct-file invocation for other agents.
+
+### OpenSpec
+
+**Location**: `openspec/` and the `openspec-*` skills in each agent's skill directory
+
+[OpenSpec](https://github.com/Fission-AI/OpenSpec) is a spec-driven change workflow. A change in
+`openspec/changes/<name>/` holds `proposal.md`, `design.html`, spec deltas and `tasks.md`. Archiving the change
+merges its deltas into `openspec/specs/`. The project schema `openspec/schemas/html-design/` makes the design an
+HTML review page; the CLI parses the other files, so they stay Markdown. See the root
+[AGENTS.md](../AGENTS.md#specs-and-plans-are-html-documents). The skills are `openspec-explore`, `openspec-propose`, `openspec-apply-change`,
+`openspec-update-change`, `openspec-sync-specs` and `openspec-archive-change`. Invoke them as
+`/openspec-propose`, or as `$openspec-propose` in Codex.
+
+The skills run the `openspec` CLI. Install the version that generated them, which each skill records as
+`generatedBy` (now 1.14.3): `mise use -g npm:@fission-ai/openspec@1.14.3`. Do not add it to
+`.config/mise/config.toml`: `mise run` installs every missing tool in that file, so each CI job would download it.
+
+The CLI generates the skills: do not edit them. To change the version, install the new version, run
+`openspec update`, and commit the regenerated files. The
+[skill catalog](skills/README.md#openspec-across-agents) lists the directory for each agent.
 
 ### Code Reviewer
 

@@ -53,6 +53,10 @@ pub fn classify(path : String, config : @model.SiteConfig) -> Kind {
   if path.has_prefix("docs/superpowers/") {
     return Forbidden
   }
+  // Authoring templates and their assets, not pages.
+  if path.has_prefix("docs/templates/") {
+    return Other
+  }
   if path.has_prefix("docs/") && is_content(path) {
     return Doc(path[5:].to_owned())
   }

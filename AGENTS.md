@@ -146,21 +146,40 @@ of contents, tables, collapsible sections and highlighted code gets read, questi
 structure lets an agent re-read and edit its own document reliably on every later pass. HTML costs more output
 tokens per document, so the rule covers specs, plans and reports, not commit messages, issue text or notes.
 
-- Start from [docs/templates/agent-document.html](docs/templates/agent-document.html). Keep its `<head>` and CSS as
-  they are, so every document looks the same and the effort goes into content.
-- Put code in `<pre><code class="language-moonbit">` (also `scheme`, `toml`, `json`, `bash`, `diff`). The template
-  loads highlight.js 11.11.1 from cdnjs, pinned with integrity hashes, deferred and optional: online it highlights;
-  offline the browser's cache serves it, or the page shows plain code blocks. Add no other external resource and no
-  other script. Do not inline a highlighter or its CSS.
+- Start from [docs/templates/agent-document.html](docs/templates/agent-document.html). Keep its `<head>` as it is,
+  so every document looks the same and the effort goes into content.
+- Reference styles and scripts; do not embed them. They are files in the project, in `docs/templates/assets/`: the
+  document styles, the highlight.js setup and highlight.js 11.12.0 (vendored from `@highlightjs/cdn-assets`, with
+  its license). A document holds only its content, so an agent that reads it does not read the CSS and JavaScript
+  too. In a copy of the template, change each `assets/` prefix to the relative path from the copy to
+  `docs/templates/assets/`, for example `../../docs/templates/assets/` from `.dev/beads-specs/`. Add no `<style>`
+  element, no inline script, no other script and no external resource. If the files do not load, the page shows
+  unstyled content and plain code blocks.
+- Put code in `<pre><code class="language-moonbit">` (also `scheme`, `toml`, `json`, `bash`, `diff`).
 - Escape `<`, `>` and `&`. Give every section an `id` and list the sections in `nav.toc`.
 - A plan has one `<section class="task" id="task-N">` with an `<h3>Task N: title</h3>` heading per task.
 - Files: `.dev/beads-specs/<epic>.html` and `.dev/beads-plans/<plan-epic>.html`. `.dev/` is gitignored; beads is
   the record (next section).
 
+OpenSpec changes follow this rule only for the design. The `openspec` CLI parses `proposal.md`, `tasks.md` and the
+`spec.md` files, so those stay Markdown: they are the contract the tool validates and merges, not the review page.
+The design is the HTML page for review. The project schema `openspec/schemas/html-design/`, which
+`openspec/config.yaml` selects, makes each change write `design.html` from a copy of this template. Its `<head>`
+references the same assets from `openspec/changes/<name>/`, and the archive guidance in `openspec/config.yaml`
+adds one `../` when the change moves to `openspec/changes/archive/`. When you change the template's `<head>`, copy
+the change into `openspec/schemas/html-design/templates/design.html`. The generated `openspec-*` skills say
+`design.md`; in this repository that file is `design.html`.
+
 ### Specs, plans and ledgers live in beads
 
 Superpowers specs, implementation plans and execution ledgers are stored in beads, not committed here. This
-overrides the superpowers skill defaults for spec, plan and ledger location.
+overrides the superpowers skill defaults for spec, plan and ledger location. OpenSpec changes and specs are
+different: they live in `openspec/` and are committed. See [OpenSpec](.github/AGENTS.md#openspec). Beads still
+track them. Each change has an epic bead whose spec id is `openspec/changes/<name>`, named in the proposal's
+`## Beads` section and in the design's meta line. Each `## N.` group in `tasks.md` is a child task bead, with its
+id at the end of the group heading. A requirement that comes from a bead ends with `(bead: <id>)`. The
+`html-design` schema instructions and the archive guidance in `openspec/config.yaml` say when to create, claim,
+close and relink these beads.
 
 - **Spec:** draft it locally, then `mise run beads:plan -- spec <epic> <file.html>` stores it as the epic's design;
   the design holds text of any format. `mise run beads:plan -- spec <epic> --render` writes it back to
