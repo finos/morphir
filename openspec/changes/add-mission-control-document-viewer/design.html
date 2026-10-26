@@ -23,12 +23,13 @@
 <body>
 <main>
 <h1>add-mission-control-document-viewer: design</h1>
-<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.97</code> · 2026-10-25 · intent captured; decisions below are proposals for the maintainer</p>
+<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.97</code> · 2026-10-25 · decisions confirmed by the maintainer</p>
 
 <nav class="toc" aria-label="Contents">
 <ul>
 <li><a href="#context">Context</a></li>
 <li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#vision">Vision: later work</a></li>
 <li><a href="#flow">How an open command works</a></li>
 <li><a href="#decisions">Decisions</a></li>
 <li><a href="#risks">Risks and trade-offs</a></li>
@@ -45,15 +46,35 @@
 <tr><td>Markdown to HTML, heading ids, Mermaid</td><td><code>apps/morphir-site/content</code> (<code>render_markdown</code>), MoonBit native</td><td>Render <code>proposal.md</code>, <code>tasks.md</code>, <code>spec.md</code> and older <code>design.md</code> files.</td></tr>
 <tr><td>Reading a bead design</td><td><code>scripts/beads-companion.mbtx design export</code></td><td>Same tracker access and refusal rules for a bead id.</td></tr>
 <tr><td>HTTP server</td><td><code>moonbitlang/async</code> 0.22.4 <code>@http.Server</code>, already a dependency of <code>apps/morphir-site</code></td><td>The local server.</td></tr>
+<tr><td>Open Knowledge Format library</td><td><code>moonrockz/okf</code> in <code>moonrockz/mission-control</code> (<code>pkgs/okf</code>), with an <code>openspec</code> profile</td><td>Not used in this change. The future common format for intent documents (see Vision).</td></tr>
+<tr><td>Rabbita web framework</td><td><code>moonbit-community/rabbita@0.16.3</code>, used by <code>apps/morphir-site</code> (islands) and <code>apps/morphir-workbench</code></td><td>The app's web interface: the bead browser and the change index.</td></tr>
+<tr><td>Bead data</td><td><code>bd list --json --all</code>, <code>bd show --json</code>, <code>bd comments --json</code></td><td>The bead browser. <code>bd show --json</code> can embed whole related beads, with their designs, in its dependency list, so the app keeps only scalar fields of a dependency.</td></tr>
 <tr><td>Static file server, TypeScript</td><td><code>apps/morphir-site/scripts/serve.ts</code></td><td>Reference for path checks; not reused.</td></tr>
 </tbody>
 </table>
 
 <h2 id="goals">Goals and non-goals</h2>
-<p><strong>Goals:</strong> one command opens any reviewed document correctly; repeated commands reuse one server;
-documents convert between the referenced and standalone forms.</p>
-<p><strong>Non-goals:</strong> the other jobs of mission control; editing documents in the browser; publishing to the
-project site; serving to other machines.</p>
+<p><strong>Goals:</strong> one command opens any reviewed document correctly; every bead in the tracker can be read
+as a web page; repeated commands reuse one server; documents convert between the referenced and standalone forms.</p>
+<p><strong>Non-goals:</strong> the other jobs of mission control (see Vision); editing documents or beads in the
+browser;
+publishing to the project site; serving to other machines.</p>
+
+<h2 id="vision">Vision: later work</h2>
+<p>Mission control coordinates intent and tasks for the people and agents who work on Morphir. Viewing documents is
+its first part, and this change builds only that part. The table lists the rest of the vision so that this change
+does not close it off. Each row needs its own OpenSpec change.</p>
+<table>
+<thead><tr><th>Part</th><th>What it does</th><th>In this change</th></tr></thead>
+<tbody>
+<tr><td>Tasks across trackers</td><td>A common representation of tasks, with import and export for GitHub Issues, beads and JIRA, added over time.</td><td>No</td></tr>
+<tr><td>OKF as the common format</td><td>Intent documents, such as OpenSpec changes, represented in the Open Knowledge Format through <code>moonrockz/okf</code> and its <code>openspec</code> profile.</td><td>No</td></tr>
+<tr><td>View and work with everything</td><td>Documents and tasks from all of these sources, in one place.</td><td>Viewing documents and beads, read only</td></tr>
+<tr><td>Executable specs</td><td>Integration with Morphir, so that a spec runs as a contract.</td><td>No</td></tr>
+</tbody>
+</table>
+<p>One consequence for this change: the server routes in SRV-2 and the document kinds in <code>open</code> must stay
+open to new kinds, so that tasks and OKF bundles can be added later without a second server.</p>
 
 <h2 id="flow">How an open command works</h2>
 <svg viewBox="0 0 640 250" width="100%" role="img" aria-labelledby="flow-title flow-desc">
@@ -72,16 +93,16 @@ project site; serving to other machines.</p>
 </svg>
 
 <h2 id="decisions">Decisions</h2>
-<p>These are proposals made while capturing intent. Each can change before implementation.</p>
+<p>The maintainer confirmed these decisions on 2026-10-25, in task group 1 (<code>morphir-ukvn.5.97.1</code>).</p>
 
-<h3 id="d-language">D1. MoonBit native app in <code>apps/morphir-mission-control</code></h3>
+<h3 id="app-1">APP-1. MoonBit native app in <code>apps/morphir-mission-control</code> (confirmed)</h3>
 <p>Build the app as a MoonBit native program with argparse subcommands and <code>--json</code> output, following the
 repository script conventions. It can use <code>render_markdown</code> from <code>apps/morphir-site/content</code> and
 <code>@http.Server</code> from <code>moonbitlang/async</code> directly.
-<em>Alternative:</em> TypeScript on Bun, like <code>serve.ts</code>; rejected because Markdown rendering would then need
-a second renderer and the repository prefers MoonBit for its tools.</p>
+TypeScript on Bun, like <code>serve.ts</code>, was not chosen: Markdown rendering would then need a second renderer,
+and the repository prefers MoonBit for its tools.</p>
 
-<h3 id="d-record">D2. One server for each checkout, found through a record</h3>
+<h3 id="srv-1">SRV-1. One server for each checkout, found through a record</h3>
 <p>The server writes <code>.dev/mission-control/server.json</code> with its process id, port, checkout root and app
 version. An open command reads the record and calls <code>GET /_health</code>. The server answers with its checkout
 root and version. The command reuses the server only when both match; otherwise it starts a new one and replaces the
@@ -89,21 +110,23 @@ record. The server binds <code>127.0.0.1</code> on a free port that the operatin
 <pre><code class="language-json">{ "pid": 4242, "port": 51873, "root": "/path/to/checkout", "version": "0.1.0" }</code></pre>
 <p><em>Alternative:</em> a fixed port; rejected because two checkouts or worktrees would then compete for it.</p>
 
-<h3 id="d-routes">D3. URLs mirror checkout paths; rendered views have their own routes</h3>
+<h3 id="srv-2">SRV-2. URLs mirror checkout paths; rendered views have their own routes</h3>
 <table>
 <thead><tr><th>Route</th><th>Content</th></tr></thead>
 <tbody>
 <tr><td><code>/&lt;path&gt;</code></td><td>A checkout file. Markdown files are rendered into the template; other files are served as they are.</td></tr>
-<tr><td><code>/_bead/&lt;id&gt;</code></td><td>The bead's design, read from the tracker on each request.</td></tr>
+<tr><td><code>/beads/</code>, <code>/beads/&lt;id&gt;</code></td><td>The Rabbita bead browser: the list of all beads, and one bead's page.</td></tr>
+<tr><td><code>/_api/beads</code>, <code>/_api/beads/&lt;id&gt;</code></td><td>Bead data as JSON for the browser, with the time the tracker was read.</td></tr>
+<tr><td><code>/_bead/&lt;id&gt;/design</code></td><td>The bead's design as a document in the template, read from the tracker on each request.</td></tr>
 <tr><td><code>/_change/&lt;name&gt;/</code></td><td>Index of an OpenSpec change, active or archived, linking to each file.</td></tr>
 <tr><td><code>/_health</code></td><td>Checkout root and app version, as JSON.</td></tr>
 </tbody>
 </table>
 <p>Any request path that ends in <code>docs/templates/assets/&lt;file&gt;</code> returns that asset, whatever comes
 before it. A page with a wrong relative prefix, such as an archived design, still gets its styles. A page from
-<code>/_bead/&lt;id&gt;</code> gets the referenced form with root-relative asset paths.</p>
+<code>/_bead/&lt;id&gt;/design</code> gets the referenced form with root-relative asset paths.</p>
 
-<h3 id="d-transform">D4. The transform marks inlined assets so it can reverse them</h3>
+<h3 id="std-1">STD-1. The transform marks inlined assets so it can reverse them</h3>
 <p>Standalone output replaces each known asset reference with an inline element that names the asset:</p>
 <pre><code class="language-html">&lt;style data-agent-asset="agent-document.css"&gt;…&lt;/style&gt;
 &lt;script data-agent-asset="highlight/highlight.min.js"&gt;…&lt;/script&gt;</code></pre>
@@ -111,25 +134,54 @@ before it. A page with a wrong relative prefix, such as an archived design, stil
 output path. Only files in <code>docs/templates/assets/</code> are known assets. Any other script or stylesheet stops the
 conversion. The transform never uses the network.</p>
 
+<h3 id="srv-3">SRV-3. The server stops on a command and when idle</h3>
+<p><code>stop</code> ends the server for the checkout. The server also exits by itself after 30 minutes with no
+requests; <code>--idle-minutes</code> changes the period. On either exit the server removes
+<code>.dev/mission-control/server.json</code>, so the next <code>open</code> starts a new server. If the server dies
+without removing the record, the stale-record check in SRV-1 handles it.</p>
+
+<h3 id="std-2">STD-2. The standalone form is for sharing without a checkout</h3>
+<p>A standalone copy goes to people, or to machines, that have no checkout and do not want to pull the repository.
+Committed documents and designs stored in beads keep the referenced form, so <code>beads-companion design store</code>
+does not change and tracker designs stay small. The viewer serves a bead design with root-relative asset paths
+(SRV-2), so a referenced design in beads still renders.</p>
+
+<h3 id="ui-1">UI-1. A Rabbita interface around server-rendered documents</h3>
+<p>The app's own pages, the bead browser and the change index, are Rabbita views compiled to JavaScript and served
+by the native server. Documents stay pages in the agent document template, rendered by the server, so they look the
+same inside and outside the app. A bead page shows the bead's fields, Markdown text and comments in Rabbita, and
+shows its design in a frame from <code>/_bead/&lt;id&gt;/design</code>.</p>
+<p>The frame has the <code>sandbox</code> attribute without <code>allow-same-origin</code>, and the design response
+has a Content-Security-Policy that allows scripts and styles only from the shared assets and no remote images. A
+script that someone put in a design cannot then reach the app or the bead data. Markdown fields render with raw HTML
+escaped, for the same reason.</p>
+<pre><code class="language-html">&lt;iframe src="/_bead/morphir-ukvn.5.97/design" sandbox="allow-scripts" title="Design"&gt;&lt;/iframe&gt;</code></pre>
+<p>The pin is the one that <code>apps/morphir-site</code> and <code>apps/morphir-workbench</code> use, so the three apps
+move to a new Rabbita release together.</p>
+
+<h3 id="bead-1">BEAD-1. Bead data comes from the bd command and is projected</h3>
+<p>The server runs <code>bd list --json --all</code> for the list, and <code>bd show --json</code> and
+<code>bd comments --json</code> for one bead. It does not pull from the remote: it shows the local database and the
+time it read it, and reads again when the page asks. The list response keeps only the fields that the list shows. A
+dependency keeps only its id, title, status, type and dependency type, because <code>bd show --json</code> can embed
+the full related bead, with a design of several megabytes.</p>
+
 <h2 id="risks">Risks and trade-offs</h2>
 <table>
 <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
 <tbody>
 <tr><td>A stale record points at a reused process id.</td><td>Trust the health check, not the process id.</td></tr>
-<tr><td>A server stays running after it is no longer needed.</td><td>A <code>stop</code> command; the idle policy is an open question.</td></tr>
+<tr><td>A server stays running after it is no longer needed.</td><td>A <code>stop</code> command and a 30-minute idle exit (SRV-3).</td></tr>
 <tr><td>Bead designs come from a shared tracker that other people write.</td><td>Serve on loopback only, with a Content-Security-Policy that allows scripts only from the shared assets, so a script in a design does not run.</td></tr>
+<tr><td>The tracker has thousands of beads, and some designs are several megabytes.</td><td>The list response leaves out long text; a bead page loads one bead; designs load only in their frame (BEAD-1).</td></tr>
+<tr><td>A front end adds a JavaScript build to a native app.</td><td>Use the build that <code>apps/morphir-site</code> already uses for its Rabbita islands.</td></tr>
 <tr><td><code>apps/morphir-site/content</code> is native-only and owned by the site.</td><td>Depend on its public API; move the renderer to a shared package if both apps need changes.</td></tr>
 </tbody>
 </table>
 
 <h2 id="open-questions">Open questions</h2>
-<p>Task group 1, bead <code>morphir-ukvn.5.97.1</code>, records the answers.</p>
-<ul>
-<li>What else mission control does, besides documents.</li>
-<li>When the server stops: on a command, after a time with no requests, or both.</li>
-<li>What a standalone copy is for: sharing with people who have no checkout, storing in beads, or both. This decides whether <code>beads-companion design store</code> writes the standalone form.</li>
-<li>Confirm D1, the implementation language.</li>
-</ul>
+<p>None for this change. Task group 1 (<code>morphir-ukvn.5.97.1</code>) answered the earlier questions in APP-1, SRV-3 and
+STD-2. The other jobs of mission control are under Vision.</p>
 
 </main>
 </body>

@@ -1,7 +1,9 @@
 ## Purpose
 
 Convert an agent document between the referenced form, which links to the shared template assets, and the
-standalone form, which carries those assets inline, so one document can be committed small and shared whole.
+standalone form, which carries those assets inline, so one document can be committed small and shared whole. The
+standalone form is for people, and for machines, that have no checkout and do not want to pull the repository.
+Committed documents and designs stored in beads keep the referenced form.
 
 ## ADDED Requirements
 

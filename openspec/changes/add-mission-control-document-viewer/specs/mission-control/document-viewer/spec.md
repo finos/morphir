@@ -8,12 +8,13 @@ template and its shared assets, through one command and one reused local server.
 ### Requirement: Open a bead design
 
 The app SHALL open the design of a bead, given its id, by reading it from the shared beads tracker. It SHALL not
-require the person to export the design first.
+require the person to export the design first. The open command SHALL open the bead's page in the bead browser,
+which shows the design with the rest of the bead.
 
 #### Scenario: HTML design in a bead
 
 - **WHEN** a person runs the open command with the id of a bead whose design is an HTML document
-- **THEN** the browser shows that design with the template styles and code highlighting
+- **THEN** the browser shows the bead's page, and its design renders with the template styles and code highlighting
 
 #### Scenario: Bead without a design
 
@@ -78,6 +79,22 @@ new page. It SHALL not start a second server or fail because the port is in use.
 
 - **WHEN** the app's record of a running server names a process that is no longer listening
 - **THEN** the app starts a new server and replaces the record
+
+### Requirement: Stop the server
+
+The app SHALL stop the server on a `stop` command, and the server SHALL stop by itself after a period with no
+requests. The period SHALL be 30 minutes unless the person sets another value. When the server stops, it SHALL
+remove its record.
+
+#### Scenario: Stop command
+
+- **WHEN** a person runs the stop command while the server for the checkout is running
+- **THEN** the server process ends, and `.dev/mission-control/server.json` no longer exists
+
+#### Scenario: Idle server
+
+- **WHEN** the server receives no request for the idle period
+- **THEN** the server exits and removes its record, and the next open command starts a new server
 
 ### Requirement: Local access only
 

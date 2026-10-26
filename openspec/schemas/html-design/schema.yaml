@@ -208,6 +208,10 @@ artifacts:
       - **Context**: Only the current state and constraints needed to explain the approach. Reference the proposal for motivation instead of restating it (e.g., "See proposal.md - Why").
       - **Goals / Non-Goals**: What this design achieves and explicitly excludes. Don't restate the proposal's scope - add only design-level boundaries.
       - **Decisions**: Key technical choices with rationale (why X over Y?). Include alternatives considered for each decision.
+        Name each decision with a short slug for its area, 2 to 5 capital letters, and a number: `SRV-1`, `SRV-2`
+        for server decisions, `UI-1` for the interface. Do not use single-letter ids such as `D1`: the slug tells
+        the reader what the decision is about. Give the heading the lowercase id as its `id` (`<h3 id="srv-1">`)
+        and use the same id wherever another section refers to the decision.
       - **Risks / Trade-offs**: Known limitations, things that could go wrong. Format: [Risk] → Mitigation
       - **Migration Plan**: Steps to deploy, rollback strategy (if applicable)
       - **Open Questions**: Unknowns that can safely be answered later without
