@@ -305,7 +305,8 @@ fn openapi() {
 #[test]
 #[ignore = "requires MORPHIR_PUBLISHED_BUNDLES"]
 fn python() {
-    // morphir-python-binding/tests/pipeline.rs: backend_accepts_an_independently_authored_sum.
+    // finos/morphir-python, rust/crates/morphir-python-binding/tests/pipeline.rs:
+    // backend_accepts_an_independently_authored_sum.
     wasm(
         "python",
         serde_json::from_str(include_str!(

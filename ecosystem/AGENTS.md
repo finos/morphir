@@ -8,7 +8,7 @@ This directory holds **git submodules** for Morphir ecosystem repositories. Use 
 - **morphir-rust** – Rust workspace (morphir-core, morphir-common, morphir-daemon, morphir-ext, etc.). The **morphir** CLI binary lives in this repo under `crates/morphir`, not in the submodule; it depends on morphir-rust crates via path.
 - **morphir-examples** – Example Morphir projects.
 - **morphir-moonbit** – MoonBit implementation of Morphir tooling.
-- **morphir-python** – Python implementation of Morphir tooling.
+- **morphir-python** – Python implementation of Morphir tooling. Owns the Python compiler and the `morphir-python` WASM extension.
 - **morphir-scala** – Scala implementation of Morphir tooling. Mill build, cross-compiled to JVM, JS, and Scala Native.
 - **morphir-ui** – Morphir's UI monorepo: the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application (moonrepo + mise + bun toolchain).
 - **morphir-typescript** – TypeScript binding for the Morphir IR: the reference semantic model, the version and profile codecs, and its MCK adapter. Shared IR and package runners live in the parent Rust CLI, `morphir mck`. TypeScript retains independent adapters/implementations. PKG-2 moves draft.3 corpus/fixture support to parent Rust MCK and bounded runtime helpers to `morphir-package` in [#852](https://github.com/finos/morphir/issues/852). See [spec/mck/migration.md](../spec/mck/migration.md). Bun workspace; runtime-neutral (Node, Bun, Deno, browser).
@@ -61,6 +61,8 @@ Valid package names: `morphir-sdk`, `morphir-core`, `morphir-moonbit-bindings`
 ### morphir-python
 
 Python implementation of Morphir tooling. Uses `uv` for package management and `behave` for BDD tests.
+
+It also owns the Python compiler, the Rust crate `rust/crates/morphir-python-binding`, and the `morphir-python` WASM extension built from it (extension id `morphir-python`, short id `python`, artifact `morphir-python-binding-<version>`, release tags `extension/python/v<version>`). Bundles up to `extension/python/v0.4.0` were released from finos/morphir-rust and stay in its releases. finos/morphir does not build the bundle: `[bundles.python]` in `.config/published-extension-bundles.toml` pins a published release and names its repository. The guides are `docs/python-extension.md` and `docs/python-compiler.md` in that repository.
 
 ```bash
 cd ecosystem/morphir-python && uv sync && uv run behave
