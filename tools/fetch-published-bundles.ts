@@ -4,6 +4,8 @@
 // CI runs the CLI built from a pull request against these bundles, which are the ones users
 // install. Each guest is checked against the sha256 pinned in this repository, not against the
 // .sha256 asset of the same release, so replaced release assets fail instead of running.
+// A bundle is downloaded from the releases of the repository its pin names, finos/morphir-rust
+// when the pin names none.
 // Each bundle directory holds exactly what `extension repository publish` expects: the
 // descriptor named release.json, the guest and its checksum file. A process extension is pinned
 // under [executables.<id>] and unpacked to one executable.
@@ -11,9 +13,20 @@ import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const RELEASES = "https://github.com/finos/morphir-rust/releases/download";
+/** The repository a [bundles.*] pin downloads from when it names none. */
+export const DEFAULT_BUNDLE_REPOSITORY = "finos/morphir-rust";
 
-export type Pin = { tag: string; artifact: string; sha256: string };
+// A GitHub `owner/name`. It becomes part of a download URL, so nothing else is accepted.
+const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9-]*\/(?!\.\.?$)[A-Za-z0-9._-]+$/;
+
+function checkRepository(where: string, repository: unknown): string {
+	if (typeof repository !== "string" || !REPOSITORY.test(repository)) {
+		throw new Error(`${where} has no repository of the form owner/name: ${JSON.stringify(repository)}`);
+	}
+	return repository;
+}
+
+export type Pin = { repository: string; tag: string; artifact: string; sha256: string };
 
 export function parsePins(text: string): Record<string, Pin> {
 	const bundles = (Bun.TOML.parse(text) as { bundles?: Record<string, Partial<Pin>> }).bundles ?? {};
@@ -24,7 +37,11 @@ export function parsePins(text: string): Record<string, Pin> {
 				throw new Error(`bundles.${shortId} has no ${key}`);
 			}
 		}
-		pins[shortId] = pin as Pin;
+		const repository =
+			"repository" in pin
+				? checkRepository(`bundles.${shortId}`, pin.repository)
+				: DEFAULT_BUNDLE_REPOSITORY;
+		pins[shortId] = { ...(pin as Pin), repository };
 	}
 	return pins;
 }
@@ -52,6 +69,7 @@ export function parseExecutablePins(text: string): Record<string, ExecutablePin>
 				throw new Error(`executables.${shortId} has no ${key}`);
 			}
 		}
+		checkRepository(`executables.${shortId}`, pin.repository);
 		const named = [pin.archive, pin.asset].filter((name) => typeof name === "string" && name !== "");
 		if (named.length !== 1) {
 			throw new Error(`executables.${shortId} must name exactly one of archive or asset`);
@@ -74,8 +92,8 @@ export function archiveUrl(pin: Pick<ExecutablePin, "repository" | "tag" | "arch
 	return `https://github.com/${pin.repository}/releases/download/${pin.tag}/${pin.archive ?? pin.asset}`;
 }
 
-export function assetUrls(tag: string, artifact: string) {
-	const base = `${RELEASES}/${tag}/${artifact}`;
+export function assetUrls(pin: Pick<Pin, "repository" | "tag" | "artifact">) {
+	const base = `https://github.com/${pin.repository}/releases/download/${pin.tag}/${pin.artifact}`;
 	return { guest: `${base}.wasm`, checksum: `${base}.wasm.sha256`, descriptor: `${base}.release.json` };
 }
 
@@ -95,7 +113,7 @@ async function download(url: string): Promise<Uint8Array> {
 }
 
 async function fetchBundle(shortId: string, pin: Pin, output: string): Promise<void> {
-	const urls = assetUrls(pin.tag, pin.artifact);
+	const urls = assetUrls(pin);
 	const guest = await download(urls.guest);
 	verifyGuest(shortId, guest, pin.sha256);
 	const bundle = join(output, shortId);
@@ -104,7 +122,7 @@ async function fetchBundle(shortId: string, pin: Pin, output: string): Promise<v
 	writeFileSync(join(bundle, `${pin.artifact}.wasm`), guest);
 	writeFileSync(join(bundle, `${pin.artifact}.wasm.sha256`), await download(urls.checksum));
 	writeFileSync(join(bundle, "release.json"), await download(urls.descriptor));
-	console.log(`${shortId}: ${pin.tag} -> ${bundle}`);
+	console.log(`${shortId}: ${pin.repository} ${pin.tag} -> ${bundle}`);
 }
 
 async function fetchExecutable(shortId: string, pin: ExecutablePin, output: string): Promise<void> {
