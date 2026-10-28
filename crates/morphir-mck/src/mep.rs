@@ -103,8 +103,8 @@ struct Consumer {
 }
 
 enum Document {
-    Moonbit(MoonbitDocument),
-    Python(python::Document),
+    Moonbit(Box<MoonbitDocument>),
+    Python(Box<python::Document>),
 }
 
 pub struct Kit {
@@ -139,7 +139,7 @@ pub fn load_kit(path: &Path) -> Result<Kit, String> {
     if value["profile"] == python::PROFILE {
         let document = python::load(value)?;
         return Ok(Kit {
-            document: Document::Python(document),
+            document: Document::Python(Box::new(document)),
             digest: sha256_hex(&bytes),
         });
     }
@@ -175,7 +175,7 @@ pub fn load_kit(path: &Path) -> Result<Kit, String> {
         return Err("unsupported or incomplete MEP guest kit".into());
     }
     Ok(Kit {
-        document: Document::Moonbit(document),
+        document: Document::Moonbit(Box::new(document)),
         digest: sha256_hex(&bytes),
     })
 }
