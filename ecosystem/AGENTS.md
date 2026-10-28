@@ -64,8 +64,10 @@ Python implementation of Morphir tooling. Uses `uv` for package management and `
 
 It also owns the Python compiler, the Rust crate `rust/crates/morphir-python-binding`, and the `morphir-python` WASM extension built from it (extension id `morphir-python`, short id `python`, artifact `morphir-python-binding-<version>`, release tags `extension/python/v<version>`). Bundles up to `extension/python/v0.4.0` were released from finos/morphir-rust and stay in its releases. finos/morphir does not build the bundle: `[bundles.python]` in `.config/published-extension-bundles.toml` pins a published release and names its repository. The guides are `docs/python-extension.md` and `docs/python-compiler.md` in that repository.
 
+Its mise configuration supplies Python, uv and the Rust toolchain that builds the native compiler from source:
+
 ```bash
-cd ecosystem/morphir-python && uv sync && uv run behave
+cd ecosystem/morphir-python && mise install && mise run install && mise run test-bdd
 ```
 
 ### morphir-scala
