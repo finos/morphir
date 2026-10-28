@@ -122,14 +122,14 @@
 - [ ] 8.1 Add `moonrockz/notebooks` at the current Moon-Lander version and the pure package
   `pkgs/morphir-engine/worksheet/notebook` with the form, comment and observation mapping (NB-1); verify unit tests
   for forms, comment blocks, Jupyter outputs, source-only DIB and the round-trip scenario on all four targets
-- [ ] 8.2 Add `morphir notebook export` (`--format`, `-o`, `--evaluate`) and `morphir notebook import` with `--json`
+- [x] 8.2 Add `morphir notebook export` (`--format`, `-o`, `--evaluate`) and `morphir notebook import` with `--json`
   results in the `morphir/command-result` envelope; verify every scenario of the `worksheets/notebook-interchange`
   spec with argv tests, including invalid notebooks and the DIB `--evaluate` usage error, with no evaluation or file writes
-- [ ] 8.3 Check the exported `.ipynb` with an independent nbformat validator in the test tooling; verify the
+- [x] 8.3 Check the exported `.ipynb` with an independent nbformat validator in the test tooling; verify the
   validator accepts every exported fixture
-- [ ] 8.4 Add Workbench export and open actions for Jupyter and DIB using the same package; verify the Workbench
+- [x] 8.4 Add Workbench export and open actions for Jupyter and DIB using the same package; verify the Workbench
   scenarios in browser tests that compare the downloads with CLI output, including the source-only DIB action
-- [ ] 8.5 Document notebooks in `apps/morphir/README.md` and the Workbench README, and record the profile name for
+- [x] 8.5 Document notebooks in `apps/morphir/README.md` and the Workbench README, and record the profile name for
   `morphir-o6vm.11` as a bead comment; verify the documented commands
 
 ## 9. Integration checks across hosts (morphir-ukvn.5.99.9)
