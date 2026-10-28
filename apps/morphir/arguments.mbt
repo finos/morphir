@@ -90,7 +90,7 @@ fn command_schema(path : String) -> CliSchema {
       children = [
         "run", "workspace", "execute", "verify", "conform", "eval", "worksheet",
         "compile", "generate", "model", "connected", "project", "toolchain", "mck",
-        "extension",
+        "notebook", "extension",
       ]
     "run" => {
       flags = ["all", "dry-run", "file", "directory", "log"]
@@ -124,6 +124,16 @@ fn command_schema(path : String) -> CliSchema {
     }
     "worksheet" => {
       options = worksheet_options
+      positional = true
+    }
+    "notebook" => children = ["export", "import"]
+    "notebook export" => {
+      flags = ["evaluate"]
+      options = ["output", "format"]
+      positional = true
+    }
+    "notebook import" => {
+      options = ["output"]
       positional = true
     }
     "connected" => children = ["connect", "run", "artifacts", "originals"]
@@ -310,6 +320,15 @@ fn render_help(path : String) -> String {
     text += "Invocation suite codecs are selected separately with --suite-format.\n"
   } else if path == "worksheet" {
     text += "\nEvaluate Scheme expressions with shared definitions and typed source ranges.\n"
+  } else if path.has_prefix("notebook") {
+    text += "\nShare Scheme worksheets as Jupyter (.ipynb) or source-only DIB (.dib).\n"
+    text += "Export accepts --format ipynb|dib, -o/--output and --evaluate. Jupyter is the default.\n"
+    text += "DIB --evaluate is refused before evaluation or file writes; saved outputs require Jupyter.\n"
+    text += "Import infers its format from the input extension and accepts -o/--output.\n"
+    text += "JSON returns morphir/command-result 0.1.0 with outputPath, format, cellCount, skippedCells and evaluated.\n"
+    text += "Help returns result.help without effects. JSON-lines wraps one result in the existing result record.\n"
+    text += "Diagnostics and skipped-cell warnings use stderr. Invalid input/syntax exits 2, write or timeout failure 1, cancellation 130.\n"
+    text += "Evaluation uses the existing worksheet limits and a 120-second deadline; WASI permits source-only export.\n"
   } else if path == "mck" {
     text += "\nDelegate to an explicitly pinned canonical MCK runner.\n"
     text += "Place runner controls before the canonical MCK command; all later arguments are opaque.\n"
@@ -391,8 +410,14 @@ fn command_spec(path : String, name : String) -> @argparse.Command {
     flags.push(@argparse.FlagArg("json-lines", global=true))
   }
   let options = schema.options.map(option => {
+    let short = if path.has_prefix("notebook ") && option == "output" {
+      Some('o')
+    } else {
+      None
+    }
     @argparse.OptionArg(
       option,
+      short?,
       action=Append,
       allow_hyphen_values=hyphen_options.contains(option),
     )

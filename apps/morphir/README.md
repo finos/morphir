@@ -590,6 +590,37 @@ with an explicit unavailable-interruption error before reading their input.
 Evaluation and worksheets produce reports. Use `generate` to generate from an
 existing model, or `run` to compile project sources and publish their outputs.
 
+## Share worksheets as notebooks
+
+Export Scheme forms and whole-line `;;` comment blocks to Jupyter or .NET Interactive, then import them as a
+worksheet again. Each form becomes a Scheme code cell; comment blocks become Markdown cells.
+
+```bash
+morphir notebook export worksheet.scm -o sheet.ipynb --evaluate --json
+morphir notebook export worksheet.scm --format dib -o sheet.dib --json
+morphir notebook import sheet.ipynb -o restored.scm --json
+```
+
+Jupyter is the default export format. Otherwise `--format ipynb|dib` wins over the output extension; without
+`-o`/`--output`, export replaces the input extension with the selected format and import uses `.scm`.
+Import infers the format from `.ipynb` or `.dib`. The output must differ from the input.
+Other-language and raw cells are skipped with warnings naming the cells; outputs are not imported.
+
+`--evaluate` saves observations as Jupyter `text/plain` previews and
+`application/vnd.morphir.observation+json` results, including error outputs for failed observations.
+DIB saves source only: combining DIB with `--evaluate` exits 2 before reading, evaluating or writing.
+WASI supports source-only conversion and refuses evaluation with exit 2. Native, JS and Wasm GC use the existing
+interruptible evaluation host. Cancellation exits 130 without writing; conversion/input errors exit 2 and output
+write failures exit 1. Existing output contents survive validation failures.
+
+`--json` emits one `morphir/command-result` document with `contractVersion: "0.1.0"`, command
+`notebook.export` or `notebook.import`, `state`, `exitCode` and `diagnostics`. Success contains
+`result: {outputPath, format, cellCount, skippedCells, evaluated}`. Each skipped cell has its index, name and
+reason. Failure contains `error: {code, message}` and no result. Warnings and diagnostics go to stderr.
+Help with `--json` returns the same successful envelope with `result.help`; parser errors use a failed envelope.
+`--json-lines` retains the CLI result-record framing. Run the CLI acceptance suite to exercise these modes and
+validate exported Jupyter documents against the independently vendored nbformat 4.5 schema.
+
 ## Inspect models and save captured originals
 
 ```sh

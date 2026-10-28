@@ -1,4 +1,46 @@
 ///|
+test "notebook options belong to their subcommands" {
+  let cli = parse_cli([
+    "--json", "notebook", "export", "sheet.scm", "--format", "dib", "-o", "sheet.dib",
+  ])
+  assert_eq(cli.command, "notebook export")
+  assert_eq(value(cli, "path"), "sheet.scm")
+  assert_eq(value(cli, "output"), "sheet.dib")
+  assert_eq(value(cli, "format"), "dib")
+  assert_true(flag(cli, "json"))
+  assert_true(
+    flag(
+      parse_cli(["notebook", "export", "sheet.scm", "--evaluate"]),
+      "evaluate",
+    ),
+  )
+  assert_eq(
+    value(
+      parse_cli(["notebook", "import", "sheet.dib", "--output", "sheet.scm"]),
+      "output",
+    ),
+    "sheet.scm",
+  )
+  assert_true(parse_cli(["notebook", "import", "--help", "--json"]).help)
+  for
+    args in [
+      ["notebook", "import", "sheet.dib", "--evaluate"],
+      ["notebook", "import", "sheet.dib", "--format", "dib"],
+      ["notebook", "export", "sheet.scm", "-o", "a", "--output", "b"],
+      ["worksheet", "sheet.scm", "--format", "ipynb"],
+    ] {
+    assert_true(
+      try {
+        ignore(parse_cli(args))
+        false
+      } catch {
+        _ => true
+      },
+    )
+  }
+}
+
+///|
 test "the parser selects subcommands and global output without exiting for help" {
   let cli = parse_cli(["--json", "toolchain", "run", "work", "--help"])
   assert_eq(cli.command, "toolchain run")

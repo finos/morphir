@@ -225,8 +225,8 @@ pub fn export_notebook(
   format : Format,
   report? : @worksheet.WorksheetReport,
 ) -> Exported raise {
-  if format == Dib && report is Some(_) {
-    raise OutputsRequireJupyter
+  if report is Some(_) {
+    format.require_outputs()
   }
   if report is Some(report) && report.source() != source {
     raise StaleObservations
@@ -464,4 +464,12 @@ pub fn SkippedCell::name(self : SkippedCell) -> String {
 ///|
 pub fn SkippedCell::reason(self : SkippedCell) -> SkipReason {
   self.reason
+}
+
+///|
+/// Check output support before the caller starts evaluation or writes a file.
+pub fn Format::require_outputs(self : Format) -> Unit raise Invalid {
+  if self == Dib {
+    raise OutputsRequireJupyter
+  }
 }

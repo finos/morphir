@@ -16,6 +16,8 @@
     "@types/bun": "1.4.4",
     "@types/node": "26.6.5",
     "@types/ws": "8.18.2",
+    "ajv": "8.20.0",
+    "ajv-draft-04": "1.0.0",
     "typescript": "7.0.2",
     "ws": "8.22.0"
   }

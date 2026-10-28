@@ -1,5 +1,6 @@
 import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
+import { exerciseNotebooks } from './notebook-acceptance.ts';
 import { exerciseJsonCommandCoverage } from './json-command-coverage.ts';
 import { exerciseMck, exerciseMckCancellation, exerciseMckTransport } from './mck-acceptance.ts';
 import type { PipelineReport, Warning, FrontendInventory } from '../../../tests/cli-contracts.ts';
@@ -41,14 +42,16 @@ async function headlessAcceptance(target: string, binary: string, launcher?: str
     env.XDG_CONFIG_HOME = join(directory, 'config');
     delete env.APPDATA;
     try {
-      exerciseJsonCommandCoverage((args, expected = 0) => {
+      const runJson = (args: string[], expected = 0) => {
         const result = spawnSync(jsonInvocation.command, [...jsonInvocation.prefix, ...args], {
           cwd: directory, env, encoding: 'utf8', timeout: 15000,
         });
         assert.equal(result.status, expected, `${target} ${JSON.stringify(args)}:\n${result.stdout}\n${result.stderr}`);
         return result;
-      });
+      };
+      exerciseJsonCommandCoverage(runJson);
       assert.deepEqual(readdirSync(directory), [], 'JSON help and parser errors do not write files');
+      exerciseNotebooks(runJson, directory, target);
     } finally { rmSync(directory, { recursive: true, force: true }); }
   }
   let evidence: string | undefined;
@@ -148,6 +151,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("packages/tools/lib/Main.scm", '"hello λ😀"');
   checkHelp(run([]).stdout);
   exerciseJsonCommandCoverage(run);
+  exerciseNotebooks(run, directory, target);
   assert.match(run(['mck', '--help']).stdout, /explicitly pinned canonical MCK runner/);
   assert.match(JSON.parse(run(['mck', '--help', '--json']).stdout).usage, /report check\/render\/compare/);
   if (target === 'wasm' || target === 'wasm-gc' || (target === 'native' && process.platform === 'win32')) {
@@ -551,7 +555,9 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     const out=join(directory,name,'.morphir/out/compile.dest');
     const ion=readFileSync(join(out,'Main.ion'),'utf8');
     assert.ok(ion.includes(profile));assert.ok(ion.includes(marker));
-    const loss=JSON.parse(run([...args,'--checkpoint-format','morphir-json','--json'],1).stdout);
+    const refused=run([...args,'--checkpoint-format','morphir-json','--json'],1);
+    assert.notEqual(refused.stdout.trim(), '', `${target}/${name}: conversion refusal must emit JSON\n${refused.stderr}`);
+    const loss=JSON.parse(refused.stdout);
     assert.match(loss.diagnostics[0].message,/data.lossy_conversion/);
     assert.deepEqual(loss.committed,[]);
     assert.equal(JSON.parse(run([...args,'--backend','scheme','--validation','source-only','--json']).stdout).successful,true);

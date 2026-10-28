@@ -1,12 +1,60 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { chromium, type Page } from 'playwright';
 import type { CodeEditor } from '../browser/editor/code-editor.ts';
 import { createWorkbenchServer } from './server.ts';
 import { gettingStarted } from './workbench-steps.ts';
+import {validateJupyterNotebook} from '../../morphir/scripts/notebook-acceptance.ts';
+
+async function downloadNotebook(page: Page, format: string) {
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', {name: format === 'ipynb' ? 'Export Jupyter' : 'Export DIB (source only)', exact: true}).click();
+  const download = await downloaded;
+  assert.equal(download.suggestedFilename(), 'worksheet.' + format);
+  const stream = await download.createReadStream();
+  assert.ok(stream);
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+async function notebookDownloads(page: Page, source: string) {
+  const directory = await mkdtemp(join(tmpdir(), 'morphir-notebook-browser-'));
+  const workspace = fileURLToPath(new URL('../../../', import.meta.url));
+  try {
+    await writeFile(join(directory, 'worksheet.scm'), source);
+    execFileSync('moon', ['build', 'apps/morphir', '--target', 'js', '--release'], {cwd: workspace, stdio: ['ignore', 'pipe', 'pipe']});
+    const worker = new URL('../../../pkgs/morphir-host/runners/terminal-worker.mjs', import.meta.url).href;
+    const artifact = new URL('../../../_build/js/release/build/morphir/morphir/morphir.js', import.meta.url).href;
+    const launcher = join(directory, 'launcher.mjs');
+    await writeFile(launcher, `import {terminalWorker} from ${JSON.stringify(worker)};\nif (!terminalWorker(new URL(import.meta.url),process.argv.slice(2))) await import(${JSON.stringify(artifact)});\n`);
+    for (const format of ['ipynb', 'dib']) {
+      const output = join(directory, 'worksheet.' + format);
+      const result = JSON.parse(execFileSync(process.execPath, [launcher, 'notebook', 'export', join(directory, 'worksheet.scm'),
+        '-o', output, '--json', ...(format === 'ipynb' ? ['--evaluate'] : [])], {encoding: 'utf8'}));
+      assert.equal(result.state, 'succeeded');
+      const actual = await downloadNotebook(page, format);
+      const expected = await readFile(output, 'utf8');
+      if (format === 'ipynb') {
+        const notebook: unknown = JSON.parse(actual);
+        validateJupyterNotebook(notebook);
+        assert.deepEqual(notebook, JSON.parse(expected), 'Workbench cells and current outputs match the CLI');
+      } else assert.equal(actual, expected, 'Workbench DIB source matches the CLI');
+    }
+  } finally { await rm(directory, {recursive: true, force: true}); }
+}
+
+async function openNotebook(page: Page, name: string, content: string) {
+  const picker = page.waitForEvent('filechooser');
+  await page.getByRole('button', {name: 'Open notebook…', exact: true}).click();
+  await (await picker).setFiles({name, mimeType: 'application/octet-stream', buffer: Buffer.from(content)});
+}
 
 interface WorksheetReport {
   source: { id: string; revision: number; text: string };
@@ -58,6 +106,7 @@ export async function worksheetWorkflow(page: Page) {
   assert.deepEqual(first.observations[0]!.outcome, { status: 'returned', value: { type: 'text', units: [55357, 56832] } });
   assert.deepEqual(first.observations[1]!.outcome, { status: 'returned', value: { type: 'int', value: '42' } });
   assert.equal(first.observations[2]!.preview, '-0.0');
+  await notebookDownloads(page, captured);
   await page.getByRole('button', { name: 'Show expression in source', exact: true }).nth(1).click();
   await page.waitForFunction(() => {
     const view = document.querySelector<CodeEditor>('#source')?.view;
@@ -73,6 +122,10 @@ export async function worksheetWorkflow(page: Page) {
   await page.locator('.worksheet-stale').waitFor();
   assert.equal(await page.getByRole('button', { name: 'Show expression in source', exact: true }).nth(1).isDisabled(), true);
   assert.equal(await page.locator('#source').evaluate(node => (node as CodeEditor).dataset.marks), '');
+  const staleExport: unknown = JSON.parse(await downloadNotebook(page, 'ipynb'));
+  validateJupyterNotebook(staleExport);
+  assert.ok(staleExport.cells.filter(cell => cell.cell_type === 'code').every(cell => cell.outputs?.length === 0),
+    'Editing must never attach outputs from the previous worksheet revision');
 
   await setSource('1\nmissing\n2');
   await run.click();
@@ -100,6 +153,21 @@ export async function worksheetWorkflow(page: Page) {
   await run.click();
   await page.getByRole('status').filter({ hasText: 'Worksheet finished' }).waitFor();
   assert.deepEqual(await page.locator('.worksheet-result .value').allTextContents(), ['4']);
+  await openNotebook(page, 'mixed.ipynb', JSON.stringify({nbformat: 4, nbformat_minor: 4,
+    metadata: {language_info: {name: 'scheme'}}, cells: [
+      {cell_type: 'code', metadata: {}, source: '42', outputs: [], execution_count: null},
+      {cell_type: 'code', metadata: {language: 'python'}, source: 'print(1)', outputs: [], execution_count: null},
+      {cell_type: 'markdown', metadata: {}, source: '# End'},
+    ]}));
+  await page.getByRole('status').filter({hasText: 'Opened mixed.ipynb'}).waitFor();
+  assert.equal(await source.evaluate(node => (node as CodeEditor).value), '42\n\n;; # End\n');
+  assert.match(await page.locator('body').innerText(), /skipped 1 cells/);
+  await openNotebook(page, 'broken.ipynb', '{');
+  await page.getByRole('status').filter({hasText: 'Notebook could not be opened'}).waitFor();
+  assert.equal(await source.evaluate(node => (node as CodeEditor).value), '42\n\n;; # End\n');
+  await openNotebook(page, 'source.dib', '#!scheme\n\n(+ 2 3)\n');
+  await page.getByRole('status').filter({hasText: 'Opened source.dib'}).waitFor();
+  assert.equal(await source.evaluate(node => (node as CodeEditor).value), '(+ 2 3)\n');
   return page.evaluate(() => (globalThis as unknown as { worksheetTestReceipts: WorksheetReport[] }).worksheetTestReceipts);
 }
 

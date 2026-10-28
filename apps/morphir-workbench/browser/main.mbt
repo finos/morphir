@@ -416,6 +416,9 @@ enum Msg {
   EvaluationMode(@evaluation.InputMode)
   ResultMode(@result.Mode)
   Worksheet(@worksheet_view.Action)
+  NotebookOpen
+  NotebookPicked(@worksheet.CapturedWorksheetSource, String)
+  NotebookExport(@notebook.Format)
   EvaluationEdit(@arguments.Edit)
   EvaluationArguments(String)
   Evaluate
@@ -4056,6 +4059,9 @@ fn update_core(
           download_ir(model_source(model.document.inspection()))
         }),
       )
+    NotebookOpen => notebook_open(model, emit)
+    NotebookPicked(source, reply) => notebook_picked(model, source, reply, emit)
+    NotebookExport(format) => notebook_export(model, format)
     Worksheet(Reveal(source, range)) => {
       if !worksheet_matches(model, source) || !model.worksheet {
         return (
@@ -4327,6 +4333,25 @@ fn output_panel(model : Model, emit : @cmd.Emit[Msg]) -> @html.Html {
         @html.nothing
       },
       @html.div(class="panel-actions", [
+        @html.button(
+          class="ghost",
+          hidden=!model.worksheet,
+          disabled=model.busy || !workspace_writable(model),
+          on_click=emit(NotebookOpen),
+          "Open notebook…",
+        ),
+        @html.button(
+          class="ghost",
+          hidden=!model.worksheet,
+          on_click=emit(NotebookExport(Ipynb)),
+          "Export Jupyter",
+        ),
+        @html.button(
+          class="ghost",
+          hidden=!model.worksheet,
+          on_click=emit(NotebookExport(Dib)),
+          "Export DIB (source only)",
+        ),
         @html.span(
           class="stale-badge",
           hidden=!stale,

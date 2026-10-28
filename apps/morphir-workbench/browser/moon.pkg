@@ -6,6 +6,7 @@ import {
   "finos/morphir-workbench/capabilities",
   "finos/morphir-workbench-native-session/workspace-files" @filewire,
   "finos/morphir-workbench/worksheet",
+  "finos/morphir-engine/worksheet/notebook",
   "finos/morphir-workbench/browser/worksheet-view" @worksheet_view,
   "finos/morphir-workbench/outcomes",
   "finos/morphir-workbench/arguments",

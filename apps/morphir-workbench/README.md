@@ -167,6 +167,18 @@ results visible but disables their source links and marks until another run.
 Runtime failures keep the completed prefix; a value without a portable
 representation keeps its Scheme preview and an explicit projection failure.
 
+Use **Export Jupyter** to download the open worksheet with results from its current revision. After editing,
+export saves source until you run the worksheet again. **Export DIB (source only)** always saves forms and
+Markdown comment blocks without results. Both actions use the same `morphir/worksheet-notebook` 0.1.0 mapping
+as `morphir notebook export`; Jupyter includes Scheme cell metadata, text previews, typed Morphir observations
+and error outputs.
+
+**Open notebook…** accepts `.ipynb` and `.dib` files up to 8 MiB and replaces the worksheet draft only after
+validation. Scheme cells become forms and Markdown becomes whole-line `;;` comments. Other-language and raw
+cells are skipped with named warnings in the Output panel. Invalid files, a cancelled picker or edits made
+while the picker is open preserve the draft. Imported results are discarded. Conversion runs in the browser
+and adds no worker or connected protocol messages.
+
 Worksheets run in a local browser worker in standalone, connected and desktop
 shells. Cancellation stops that owned worker and retains a captured cancellation
 report without claiming partial results. Timeout and worker failure remain

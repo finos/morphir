@@ -8,16 +8,16 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
           Json::array(
             [
               "run", "execute", "verify", "conform", "eval", "worksheet", "compile",
-              "generate", "model inspect", "model export-original", "connected connect",
-              "connected run", "connected artifacts", "connected originals", "workspace",
-              "workspace init", "project list", "project add", "project remove",
-              "toolchain info", "toolchain setup", "toolchain build", "toolchain run",
-              "toolchain exec", "mck", "extension describe", "extension compile",
-              "extension generate", "extension bundle", "extension install", "extension list",
-              "extension search", "extension update", "extension uninstall", "extension repository init",
-              "extension repository add", "extension repository list", "extension repository inspect",
-              "extension repository enable", "extension repository disable", "extension repository remove",
-              "extension repository publish", "extension repository verify",
+              "generate", "model inspect", "model export-original", "notebook export",
+              "notebook import", "connected connect", "connected run", "connected artifacts",
+              "connected originals", "workspace", "workspace init", "project list",
+              "project add", "project remove", "toolchain info", "toolchain setup",
+              "toolchain build", "toolchain run", "toolchain exec", "mck", "extension describe",
+              "extension compile", "extension generate", "extension bundle", "extension install",
+              "extension list", "extension search", "extension update", "extension uninstall",
+              "extension repository init", "extension repository add", "extension repository list",
+              "extension repository inspect", "extension repository enable", "extension repository disable",
+              "extension repository remove", "extension repository publish", "extension repository verify",
             ].map(Json::string),
           ),
         ),
@@ -26,17 +26,17 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
           "options",
           Json::array(
             [
-              "--project", "--all", "--frontend", "--frontend-provider", "--frontend-profile",
-              "--backend", "--target", "--output", "--config", "--file", "--directory",
-              "--json", "--json-lines", "--dry-run", "--checkpoint-format", "--validation",
-              "--build-provider", "--build-helper", "--sdk", "--build-node", "--component",
-              "--help", "--home", "--yes", "--package", "--timeout", "--suite", "--suite-format",
-              "--model-format", "--unit-id", "--execution-helper", "--dependency",
-              "--node", "--log-file", "--log-format", "--toolchain-pin", "--telemetry-adapter",
-              "--otel-binary", "--otel-pin", "--otel-helper", "--otel-endpoint",
-              "--otel-protocol", "--otel-flush-timeout", "--log", "--build-mode",
-              "--comparison", "--absolute-tolerance", "--relative-tolerance", "--cancel-file",
-              "--cases", "--cases-format", "--evaluators", "--require-evaluator",
+              "--format", "--evaluate", "--project", "--all", "--frontend", "--frontend-provider",
+              "--frontend-profile", "--backend", "--target", "--output", "--config",
+              "--file", "--directory", "--json", "--json-lines", "--dry-run", "--checkpoint-format",
+              "--validation", "--build-provider", "--build-helper", "--sdk", "--build-node",
+              "--component", "--help", "--home", "--yes", "--package", "--timeout",
+              "--suite", "--suite-format", "--model-format", "--unit-id", "--execution-helper",
+              "--dependency", "--node", "--log-file", "--log-format", "--toolchain-pin",
+              "--telemetry-adapter", "--otel-binary", "--otel-pin", "--otel-helper",
+              "--otel-endpoint", "--otel-protocol", "--otel-flush-timeout", "--log",
+              "--build-mode", "--comparison", "--absolute-tolerance", "--relative-tolerance",
+              "--cancel-file", "--cases", "--cases-format", "--evaluators", "--require-evaluator",
               "--rust-evaluator", "--rust-evaluator-pin", "--rust-helper", "--receipt",
               "--receipt-format", "--metadata-grants", "--metadata-timeout", "--provider",
               "--checking-policy", "--source-id", "--source-revision", "--connection",
@@ -67,6 +67,7 @@ fn main {
   let args = @platform.arguments()
   let mut mode = error_output_mode(args)
   let mut status = 0
+  let notebook_scope = notebook_error_operation(args)
   let mut compiling = false
   try {
     let cli = parse_cli(args)
@@ -85,7 +86,9 @@ fn main {
         @toolchain.ToolchainError(message) => message
         _ => @host.error_message(error)
       }
-      @platform.stderr(message + "\n")
+      if notebook_scope is None {
+        @platform.stderr(message + "\n")
+      }
       status = if message == "Cancelled" {
         130
       } else if compiling {
@@ -93,7 +96,13 @@ fn main {
       } else {
         2
       }
-      if compiling {
+      if notebook_scope is Some(operation) {
+        ignore(
+          notebook_failure(
+            operation, mode, "notebook.invalid_arguments", message, status,
+          ),
+        )
+      } else if compiling {
         compilation_error(message, mode, status)
       } else {
         print_error(message, mode)
@@ -105,6 +114,9 @@ fn main {
 
 ///|
 fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
+  if notebook_operation(cli.command) is Some(_) {
+    return notebook_command(cli, mode)
+  }
   if cli.help {
     usage(mode, cli.help_text)
     return 0
