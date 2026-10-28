@@ -88,7 +88,7 @@
   CLI test and argv test passes unchanged
 - [x] 5.2 Route `pkgs/morphir-engine/execution/workbench/boundary.mbt` through the synchronous mediator; verify the
   boundary tests and an unknown `op` refusal test give the same results as before
-- [ ] 5.3 Route `pkgs/morphir-workbench-native/service.mbt` through the async mediator; verify the native service
+- [x] 5.3 Route `pkgs/morphir-workbench-native/service.mbt` through the async mediator; verify the native service
   tests and the bridge acceptance suite pass unchanged
 
 ## 6. Run the CLI through the Moon-Lander host (morphir-ukvn.5.99.6)

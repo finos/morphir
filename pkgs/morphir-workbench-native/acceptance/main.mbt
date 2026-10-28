@@ -55,7 +55,7 @@ fn value(reply : Json) -> Json raise {
 }
 
 ///|
-fn identity(service : @native.Service, format~ : String = "json") -> Json raise {
+async fn identity(service : @native.Service, format~ : String = "json") -> Json {
   @wire.field(value(service.request("submit", Some(body(format~)))), "identity")
 }
 
@@ -269,7 +269,10 @@ async fn run(arguments : ArrayView[String], structured : Bool) -> Unit {
       "queue",
     )
     defer service.close()
-    let ids = Array::makei(8, _ => identity(service))
+    let ids = []
+    for _ in 0..<8 {
+      ids.push(identity(service))
+    }
     assert_eq(
       @wire.field(service.request("submit", Some(body())), "status"),
       Json::number(409),

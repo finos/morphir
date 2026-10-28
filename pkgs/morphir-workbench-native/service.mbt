@@ -108,14 +108,18 @@ fn response(status : Int32, value : Json) -> Json {
 
 ///|
 /// Business bodies stay raw until the shared duplicate-aware host decoder.
-pub fn Service::request(self : Service, path : String, body : String?) -> Json {
+pub async fn Service::request(
+  self : Service,
+  path : String,
+  body : String?,
+) -> Json {
   self.request_with(path, body, WholeModel)
 }
 
 ///|
 /// Policy-aware dispatch is separate from the frozen whole-model mapping.
 /// Only the native bridge that negotiated the new mapping calls this method.
-pub fn Service::policy_request(
+pub async fn Service::policy_request(
   self : Service,
   path : String,
   body : String?,
@@ -124,7 +128,7 @@ pub fn Service::policy_request(
 }
 
 ///|
-fn Service::request_with(
+async fn Service::request_with(
   self : Service,
   path : String,
   body : String?,
@@ -137,22 +141,18 @@ fn Service::request_with(
     guard !self.closed else { raise Invalid("workbench.native_closed") }
     if path == "session" {
       guard body == None else { raise Invalid("workbench.native_shape") }
-      return response(200, {
-        "profile": "morphir/workbench/host",
-        "contractVersion": "0.2.0-draft.1",
-        "offer": self.offer,
-      })
+      return response(200, field(service_sender.send(self, Session), "value"))
     }
-    guard ["submit", "query", "cancel", "release"].contains(path) &&
-      body is Some(body) else {
+    let operation = ServiceOperation::from_path(path)
+    guard body is Some(body) else {
       raise Invalid("workbench.native_operation")
     }
-    let op = match (path, mode) {
-      ("submit", SelectedScheme) => "submit-native-policy"
-      _ => path
+    let result = service_sender.send(self, Execution(operation, body, mode))
+    guard field(result, "ok") == Json::boolean(true) else {
+      raise Invalid(text(field(result, "code")))
     }
-    let value = self.command({ "op": op, "body": body })
-    self.apply(path, body, value, mode~)
+    let value = field(result, "value")
+    self.apply(operation, body, value, mode~)
     response(200, value)
   } catch {
     error => {
@@ -527,12 +527,12 @@ pub fn Service::stats(self : Service) -> Json {
 ///|
 fn Service::apply(
   self : Service,
-  path : String,
+  operation : ServiceOperation,
   body : String,
   value : Json,
   mode~ : SubmissionMode = WholeModel,
 ) -> Unit raise {
-  if path == "submit" {
+  if operation is Submit {
     let identity = field(value, "identity")
     let claim = match mode {
       WholeModel => WorkerClaim::WholeModel
@@ -554,7 +554,7 @@ fn Service::apply(
     self.records[text(field(identity, "executionId"))] = record
     self.queue.push(record)
     self.drain()
-  } else if path == "cancel" {
+  } else if operation is Cancel {
     if self.records.get(text(field(field(value, "identity"), "executionId")))
       is Some(record) &&
       !record.done {
@@ -571,7 +571,7 @@ fn Service::apply(
         }
       }
     }
-  } else if path == "release" {
+  } else if operation is Release {
     let identity = field(@executions.decode(body), "identity")
     self.records.remove(text(field(identity, "executionId")))
   }
@@ -606,7 +606,7 @@ pub fn native_code(code : String) -> @reply.Code {
 ///|
 /// Only the owner's explicit rejected command proves no effect. After owner
 /// acceptance, scheduling, cancellation and reply publication may have occurred.
-pub fn Service::native_request(
+pub async fn Service::native_request(
   self : Service,
   operation : String,
   payload : Json,
@@ -615,7 +615,7 @@ pub fn Service::native_request(
 }
 
 ///|
-pub fn Service::native_policy_request(
+pub async fn Service::native_policy_request(
   self : Service,
   operation : String,
   payload : Json,
@@ -624,7 +624,7 @@ pub fn Service::native_policy_request(
 }
 
 ///|
-fn Service::native_request_with(
+async fn Service::native_request_with(
   self : Service,
   operation : String,
   payload : Json,
@@ -633,22 +633,12 @@ fn Service::native_request_with(
   if self.closed || self.uncertain {
     return @reply.failure(@reply.Unavailable, @reply.NoEffect)
   }
-  let path = match operation {
-    "execution.submit" => "submit"
-    "execution.query" => "query"
-    "execution.cancel" => "cancel"
-    "execution.release" => "release"
-    _ => return @reply.failure(@reply.InvalidRequest, @reply.NoEffect)
+  guard ServiceOperation::from_native(operation) is Some(selected) else {
+    return @reply.failure(@reply.InvalidRequest, @reply.NoEffect)
   }
   try {
     let body = payload.stringify()
-    let op = match (path, mode) {
-      ("submit", SelectedScheme) => "submit-native-policy"
-      _ => path
-    }
-    let result = self.host.handle(
-      ({ "op": op, "body": body } : Json).stringify(),
-    )
+    let result = service_sender.send(self, Execution(selected, body, mode))
     if field(result, "ok") == Json::boolean(false) {
       // The shared owner validates and constructs receipts before mutating its
       // state. A returned rejection is the explicit pre-commit branch.
@@ -661,7 +651,7 @@ fn Service::native_request_with(
       raise Invalid("workbench.native_shape")
     }
     let value = field(result, "value")
-    self.apply(path, body, value, mode~)
+    self.apply(selected, body, value, mode~)
     match mode {
       WholeModel => @reply.success(operation, value)
       SelectedScheme => @reply.success_policy(operation, value)
