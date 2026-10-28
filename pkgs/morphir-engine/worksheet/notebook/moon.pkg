@@ -1,0 +1,14 @@
+import {
+  "finos/morphir-engine/worksheet",
+  "finos/morphir-scheme" @scheme,
+  "moonrockz/notebooks",
+  "moonrockz/notebooks/nbformat",
+  "moonrockz/notebooks/dib",
+  "moonbitlang/core/debug",
+}
+
+import {
+  "finos/morphir-engine/worksheet/notebook",
+  "finos/morphir-engine/worksheet",
+  "moonrockz/notebooks/nbformat",
+} for "test"

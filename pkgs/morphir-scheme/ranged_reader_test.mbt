@@ -47,3 +47,17 @@ test "ranged reader never returns a valid prefix on syntax failure" {
   }
   assert_true(rejected)
 }
+
+///|
+test "worksheet comment ranges exclude nested discarded and inline comments" {
+  let source = "  ;; leading 😀\r\n#|\n;; hidden\n|#\n#;(begin\n;; discarded\n1)\n(+ 1\n;; nested\n2) ;; inline\n;; trailing\n"
+  let chars = source.iter().to_array()
+  let (forms, comments) = @scheme.parse_program_with_comments(source)
+  assert_eq(forms.map(form => form.datum()), @scheme.parse_program(source))
+  assert_eq(
+    comments.map(range => {
+      String::from_array(chars[range.scalar_start():range.scalar_end()])
+    }),
+    [";; leading 😀\r", ";; trailing"],
+  )
+}
