@@ -99,9 +99,10 @@ change. A `.scm` path given to `--config` SHALL be refused with a usage error th
 
 ### Requirement: Project file discovery
 
-The CLI and Workbench SHALL find the workspace by walking up from the working directory to the first directory that
-holds a primary file: `morphir.toml`, `.morphir/morphir.toml` or `.config/morphir/config.toml`, or the same names
-with `.yaml`, `.yml`, `.json` or `.json5`.
+The CLI and Workbench SHALL parse primary configuration while walking up from the working directory. The first
+directory whose merged primary documents contain a `workspace` section SHALL be the workspace root. A standalone
+project SHALL NOT stop this search. Discovery SHALL check the nearest primary itself before its parents. With no
+workspace within the boundary, it SHALL use the nearest project primary.
 
 #### Scenario: Primary file in a parent directory
 
@@ -112,6 +113,32 @@ with `.yaml`, `.yml`, `.json` or `.json5`.
 
 - **WHEN** the working directory is `/w/app/src` and only `/w/app/morphir.json` exists
 - **THEN** the workspace root is `/w/app` and the configuration comes from `morphir.json`
+
+#### Scenario: Standalone member file does not hide its workspace
+
+- **WHEN** `/repo/app/morphir.toml` defines a project, `/repo/morphir.toml` declares a workspace, and the working directory is `/repo/app/src`
+- **THEN** the selected workspace root is `/repo` and the project primary remains `/repo/app/morphir.toml`
+
+#### Scenario: Nearest declared workspace stops the search
+
+- **WHEN** `/repo/morphir.toml` and `/repo/nested/morphir.toml` both declare workspaces, and the working directory is `/repo/nested/src`
+- **THEN** the selected workspace root is `/repo/nested` and the outer workspace is not read
+
+#### Scenario: Standalone project fallback
+
+- **WHEN** `/repo/app/morphir.toml` defines a project and no workspace exists within the boundary
+- **THEN** the root is `/repo/app`
+
+### Requirement: Primary configuration names
+
+Primary names SHALL be `morphir.toml`, `.morphir/morphir.toml` and `.config/morphir/config.toml`, and the same names
+with `.yaml`, `.yml`, `.json` or `.json5`. The supplemental `morphir-workspace.json` SHALL also identify a primary
+location and participate in the JSON layer.
+
+#### Scenario: Hidden layout remains discoverable
+
+- **WHEN** only `/repo/.morphir/morphir.toml` exists and the working directory is `/repo/src`
+- **THEN** discovery examines `/repo` as a primary location
 
 ### Requirement: Warning for YAML beside TOML
 

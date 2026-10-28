@@ -138,6 +138,13 @@ sources (CFG-4). Environment files and the local override layer stay off,
 because they would read files that Morphir ignores today. The environment source with prefix <code>MORPHIR</code>
 already uses <code>__</code> as the separator, skips <code>_</code> after the prefix, refuses an empty segment, and
 merges a shorter path last, as <code>@config.environment</code> does.</p>
+<p>The maintainer clarified root selection on 2026-10-28: inspect each primary document while walking upward and
+stop at the first declared workspace, continuing past standalone project files. Check the nearest primary itself
+before its parents. If no workspace exists within the boundary, use the nearest project primary. This follows the
+workspace-declaration search used by Cargo. The published 0.6.0 conventions need upstream support for this policy
+and the ordered format layers; <a href="https://github.com/moonrockz/moon-lander/pull/110">Moon-Lander proposal #110</a>
+specifies those changes and public root evidence for Morphir's member walk. Group 3 waits for a published exact
+version that supplies them; it does not copy the discovery algorithm locally.</p>
 <p>Alternative: keep Morphir discovery and use only the Moon-Lander merge. Rejected; discovery is where the isolated
 mode for <code>morphir-o6vm.10</code> comes from.</p>
 
