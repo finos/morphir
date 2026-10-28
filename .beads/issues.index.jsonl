@@ -112,9 +112,9 @@
 {"id":"morphir-5dz","title":"Migrate task runner from just to mise","status":"closed","priority":2}
 {"id":"morphir-5g12","title":"morphir-rust loader.rs still reads an older directory format the canonical tree reader refuses","status":"open","priority":3}
 {"id":"morphir-5hxy","title":"Add a process MEP guest for the Python compiler","status":"in_progress","priority":2}
-{"id":"morphir-5hxy.1","title":"Negotiate current and legacy MEP","status":"in_progress","priority":2}
-{"id":"morphir-5hxy.2","title":"Adapt supported model envelopes","status":"in_progress","priority":2}
-{"id":"morphir-5hxy.3","title":"Serve native stdio sessions","status":"in_progress","priority":2}
+{"id":"morphir-5hxy.1","title":"Negotiate current and legacy MEP","status":"closed","priority":2}
+{"id":"morphir-5hxy.2","title":"Adapt supported model envelopes","status":"closed","priority":2}
+{"id":"morphir-5hxy.3","title":"Serve native stdio sessions","status":"closed","priority":2}
 {"id":"morphir-5hxy.4","title":"Distribute both runtime choices","status":"in_progress","priority":2}
 {"id":"morphir-5hxy.5","title":"Qualify host interoperability","status":"in_progress","priority":2}
 {"id":"morphir-5il","title":"Add Morphir IR visitor framework","status":"closed","priority":2}
@@ -185,7 +185,7 @@
 {"id":"morphir-albt.8","title":"Bootstrap kb/ folder in finos/morphir","status":"closed","priority":2}
 {"id":"morphir-albt.9","title":"Port kb skill to finos/morphir backed by morphir CLI","status":"closed","priority":2}
 {"id":"morphir-arf","title":"Update Workspace type to track members","status":"closed","priority":2}
-{"id":"morphir-av8s","title":"Add executable Python JSON Library MEP guest profile","status":"in_progress","priority":1}
+{"id":"morphir-av8s","title":"Add executable Python JSON Library MEP guest profile","status":"closed","priority":1}
 {"id":"morphir-b1g7","title":"Out directory, task results, and install (Mill-style .morphir/out)","status":"closed","priority":1}
 {"id":"morphir-b1g7.1","title":"morphir-rust: devkit out module (resolve_out_root, TaskId, TaskPaths, TaskResult)","status":"closed","priority":1}
 {"id":"morphir-b1g7.2","title":"morphir-rust: config renames and remove old path helpers","status":"closed","priority":1}
@@ -1512,7 +1512,7 @@
 {"id":"morphir-ukvn.5.98.4","title":"Qualify packaged Python Extism support and publish compatibility evidence","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.98.5","title":"Release Python multiDocument capability and matching compiler API","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.99","title":"Adopt Moon-Lander as the application framework for the CLI and Workbench","status":"open","priority":2}
-{"id":"morphir-ukvn.5.99.1","title":"Publish the Moon-Lander framework modules on mooncakes.io","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.1","title":"Publish the Moon-Lander framework modules on mooncakes.io","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.99.2","title":"Add Moon-Lander dependencies and record the adoption","status":"open","priority":2}
 {"id":"morphir-ukvn.5.99.3","title":"Load configuration through Moon-Lander","status":"open","priority":2}
 {"id":"morphir-ukvn.5.99.4","title":"Add leveled diagnostic logging","status":"open","priority":2}
