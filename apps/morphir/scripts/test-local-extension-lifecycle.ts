@@ -28,7 +28,7 @@ const invoke = (args: string[], status = 0) => {
   return report;
 };
 try {
-  writeFileSync(join(root, 'services.json'), JSON.stringify({ executable: adapter, sha256: sha256(adapter), sourceRevision: 'ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409' }));
+  writeFileSync(join(root, 'services.json'), JSON.stringify({ executable: adapter, sha256: sha256(adapter), sourceRevision: 'fc9f723a2cf0adae1299892c6cc4bee5ebcf4560' }));
   assert.deepEqual(invoke(['extension', 'list']).result, []);
   invoke(['extension', 'repository', 'init', 'repository']);
   invoke(['extension', 'repository', 'add', 'local', '--directory', 'repository']);

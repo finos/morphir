@@ -10,6 +10,7 @@ import {
   "finos/morphir-engine/conformance",
   "finos/morphir-engine/data",
   "finos/morphir-ir/wire" @model_wire,
+  "finos/morphir-ir/versioned/json" @versioned_json,
   "finos/morphir-engine/model-document" @model_document,
   "finos/morphir-host/identity",
   "finos/morphir-execution" @protocol,

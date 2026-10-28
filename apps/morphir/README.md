@@ -44,7 +44,10 @@ commands to an explicitly pinned prebuilt canonical backend. See the
 
 `morphir extension describe|compile|generate` runs an explicitly pinned MEP extension in a fresh
 guest process. Bindings include the saved core-Wasm guest in a pinned Node host and an explicit
-native process through the shared Rust host. Local repository and bundle lifecycle commands
+native process through the shared Rust host. The explicit `extism-wasm` binding supports
+the Python bundle's legacy MEP 0.1 and plain JSON IR 3/4 workflow; see the
+[Python Extism guide](docs/extension.md#explicit-python-extism-bundles) for its qualification
+task, pins, denied access and target matrix. Local repository and bundle lifecycle commands
 use the shared distribution library;
 see the [extension guide](docs/extension.md) for pins, reports, limits and cancellation.
 

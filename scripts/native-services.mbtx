@@ -116,7 +116,7 @@ async fn main {
       )
     }
     let shared = @fs.realpath(shared_path)
-    let revision = "ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409"
+    let revision = "fc9f723a2cf0adae1299892c6cc4bee5ebcf4560"
     guard output(["-C", shared, "rev-parse", "HEAD"]) == revision else {
       fail("Expected shared Morphir revision " + revision)
     }
@@ -154,7 +154,13 @@ async fn main {
         Json::string(shared + "/ecosystem/morphir-rust/crates/" + name).stringify() +
         "}\n"
     }
-    manifest += "serde_json='1.0'\nserde={version='1.0',features=['derive']}\ntokio={version='1',features=['rt','macros','time','io-util','io-std','process']}\ntempfile='3'\nsemver='1'\nasync-trait='0.1'\nbase64='0.23'\n"
+    manifest += "serde_json='1.0'\nserde={version='1.0',features=['derive']}\ntokio={version='1',features=['rt','macros','time','io-util','io-std','process']}\ntempfile='3'\nsemver='1'\nasync-trait='0.1'\nbase64='0.23'\n[dev-dependencies]\nwat='1'\n"
+    manifest += "[[test]]\nname='shared-restricted-extism'\npath=" +
+      Json::string(
+        shared +
+        "/ecosystem/morphir-rust/crates/morphir-host-native/tests/restricted_extism.rs",
+      ).stringify() +
+      "\n"
     let guest = root +
       "/_build/native/release/build/finos/morphir-extension/morphir-extension.exe"
     if @fs.exists(guest) {

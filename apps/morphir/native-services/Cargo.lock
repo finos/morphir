@@ -2264,7 +2264,7 @@ dependencies = [
 
 [[package]]
 name = "morphir-extension-sdk"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.22.1",
  "extism-pdk",
@@ -2342,6 +2342,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "wat",
 ]
 
 [[package]]
@@ -5290,7 +5291,3 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
-
-[[patch.unused]]
-name = "tuf"
-version = "0.3.0-beta14"

@@ -212,11 +212,12 @@ fn command_schema(path : String) -> CliSchema {
     "extension describe" => options = extension_options
     "extension compile" => {
       options = extension_options +
-        ["package", "frontend-profile", "model-format", "output"]
+        ["package", "frontend-profile", "model-format", "output", "ir-version"]
       positional = true
     }
     "extension generate" => {
-      options = extension_options + ["target", "output"]
+      options = extension_options +
+        ["target", "output", "model-format", "ir-version"]
       positional = true
     }
     "model inspect" => {

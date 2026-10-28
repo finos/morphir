@@ -16,9 +16,12 @@ use std::{
 };
 mod catalog;
 mod diagnostics;
+mod extism;
+#[cfg(test)]
+mod extism_tests;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
-const REVISION: &str = "ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409";
+const REVISION: &str = "fc9f723a2cf0adae1299892c6cc4bee5ebcf4560";
 
 #[derive(Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -31,6 +34,7 @@ enum NativeOperation {
 #[serde(untagged)]
 enum Operation {
     Native(NativeOperation),
+    Extism(extism::Operation),
     Catalog(catalog::Action),
 }
 
@@ -161,6 +165,7 @@ async fn main() {
             Ok(request) => {
                 match serde_json::from_value::<Operation>(request["operation"].clone()) {
                     Ok(Operation::Native(operation)) => invoke(&request, operation).await,
+                    Ok(Operation::Extism(operation)) => extism::invoke(&request, operation).await,
                     Ok(Operation::Catalog(operation)) => catalog::run(&request, operation).await,
                     Err(error) => Err(error.into()),
                 }
@@ -174,7 +179,13 @@ async fn main() {
             json!({"profile":"morphir/native-services","contractVersion":"0.1.0","sourceRevision":REVISION,"state":"succeeded","result":result})
         }
         Err(error) => {
-            json!({"profile":"morphir/native-services","contractVersion":"0.1.0","sourceRevision":REVISION,"state":"failed","error":{"code":"native.operation_failed","message":error.to_string()}})
+            let message = error.to_string();
+            let code = message
+                .split(':')
+                .next()
+                .filter(|code| code.starts_with("extension."))
+                .unwrap_or("native.operation_failed");
+            json!({"profile":"morphir/native-services","contractVersion":"0.1.0","sourceRevision":REVISION,"state":"failed","error":{"code":code,"message":message}})
         }
     };
     println!("{report}");

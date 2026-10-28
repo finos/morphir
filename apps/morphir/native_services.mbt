@@ -1,5 +1,5 @@
 ///|
-let native_services_revision : String = "ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409"
+let native_services_revision : String = "fc9f723a2cf0adae1299892c6cc4bee5ebcf4560"
 
 ///|
 fn native_services_host(value : Json) -> Json raise {

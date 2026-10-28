@@ -76,6 +76,7 @@ compiler/core pair.
 | `mise run test:workbench-capability-execution-mck` | Opt-in exact draft.19 immutable Scheme execution traces in Node/Chromium/native debug/release; requires explicit parent runner/kit and Workbench Chromium dependencies. Actual isolated-worker acceptance is separate | All |
 | `mise run test:conformance` | Compare versioned independent Ion expectations, live Scheme and explicitly pinned optional Rust; retain separate coverage receipts | All |
 | `mise run test:cli` | Run CLI target and npm package smoke tests | All |
+| `mise run test:cli-extism-python -- --shared /absolute/morphir --bundle /absolute/python-bundle --python /absolute/venv/bin/python --json` | Opt-in pinned Python Extism IR 3/4 qualification through source and packaged CLIs; requires an existing matching Python API and bundle. See [setup, limits and receipts](../apps/morphir/docs/extension.md#explicit-python-extism-bundles) | Qualified on macOS arm64; other cells remain unqualified or unsupported |
 | `mise run test:moonbit-frontend` | Compare original Boolean MoonBit, Scheme and generated libraries across four targets in debug and release; requires pinned `MOON_HOME` and retains identities | All |
 | `mise run test:supervision` | Verify process-tree cleanup, cancellation, deadlines and bounded diagnostics on Linux, macOS and Windows | All |
 | `mise run test:embedding` | Install embedding dependencies and Chromium, then test Node, installed npm and browser hosts | All |

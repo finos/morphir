@@ -153,6 +153,10 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   if (target === 'wasm' || target === 'wasm-gc' || (target === 'native' && process.platform === 'win32')) {
     assert.match(JSON.parse(run(['--json', 'mck', 'check', 'kit'], 2).stdout).error, /mck.runtime_unavailable/);
     assert.match(JSON.parse(run(['--json', 'extension', 'describe'], 2).stdout).error, /extension.runtime_unavailable/);
+    put('extism-pin.json', JSON.stringify({binding:'extism-wasm'}));
+    const refusedExtism = JSON.parse(run(['extension','describe','--extension-pin','extism-pin.json','--extension-helper','extism.mjs','--json'],1).stdout);
+    assert.equal(refusedExtism.error.code,'extension.unsupported_target');
+    assert.ok(!('result' in refusedExtism));
   } else {
     // Hosts with process effects still select nothing implicitly.
     assert.match(JSON.parse(run(['--json', 'extension', 'describe'], 2).stdout).error, /extension.explicit_pin_and_helper_required/);

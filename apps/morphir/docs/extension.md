@@ -10,8 +10,9 @@ The portable `core-wasm-process` binding runs a saved core-Wasm guest
 host in `pkgs/morphir-host/embedding`, which speaks Content-Length JSON-RPC on
 stdio. This is the route qualified by issue #152. It is not a WebAssembly
 Component Model binding. The explicit `native-process` route delegates to the
-shared Rust host as described below. Components and Extism require separately
-qualified adapters.
+shared Rust host as described below. The separate `extism-wasm` profile runs the
+Python bundle through that host's Extism engine. Component Model execution
+requires its own qualified adapter.
 
 ## A portable example
 
@@ -182,7 +183,7 @@ moon run scripts/native-services.mbtx -- --shared /path/to/finos/morphir --json
 
 The adapter links the shared `morphir-host`, `morphir-host-native`,
 `morphir-extension-sdk` and `morphir-distribution` libraries at finos/morphir
-`ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409`. It does not invoke the Rust product CLI
+`fc9f723a2cf0adae1299892c6cc4bee5ebcf4560`. It does not invoke the Rust product CLI
 or implement a checker. Copy the generated host pin into this explicit provider pin:
 
 ```json
@@ -192,7 +193,7 @@ or implement a checker. Copy the generated host pin into this explicit provider 
   "host": {
     "executable": "/work/adapter",
     "sha256": "<adapter SHA-256>",
-    "sourceRevision": "ab8d5c9198c0f1ac8a3cabfd11b9ab59a468c409"
+    "sourceRevision": "fc9f723a2cf0adae1299892c6cc4bee5ebcf4560"
   },
   "artifact": {
     "executable": "/work/morphir-moonbit",
@@ -306,3 +307,199 @@ binding its receipts to tested artifacts even when the caller has artifact
 override variables set. Evidence and host pins stay under `.dev/native-services`;
 no installed matrix, new CI job,
 release or default switch is performed.
+
+## Explicit Python Extism bundles
+
+The `extism-wasm` binding runs the existing `morphir-python` extension through
+shared Rust host libraries. It is separate from `core-wasm-process`, whose byte
+callbacks and rich-model methods do not implement the Extism ABI. The Rust product
+CLI is not invoked. The selected host executable embeds the shared Extism engine,
+MEP session checks and canonical distribution descriptor parser.
+
+Full multi-module qualification requires a corrected bundle advertising
+`frontend.multiDocument=true`. Python 0.4.1 omits that claim, so the adapter
+refuses requests with more than one source document for that release. There is
+no digest-based exception. Single-document use still undergoes all ordinary
+identity, language, IR and operation checks.
+
+The corrected release is [Python extension 0.4.2](https://github.com/finos/morphir-python/releases/tag/extension/python/v0.4.2),
+from source commit `1f547d17f648d5b398862f9dfceb05b6d463cb3f`.
+Its WASM SHA-256 is
+`10acafa0f0282c5240e9620a5f2bb21629cc7580b9add528e7b77c7e54db22b5`;
+the descriptor SHA-256 is
+`72770f73f05a72535fd8c86ad4629175019037441a758b827c1ba47cc9a52ebd`.
+The qualification task rechecks those selected bytes and live capabilities.
+
+The acceptance path is `mise run test:cli-extism-python`. It requires an existing
+local bundle, an exact shared-source checkout and an independently installed
+matching Python API. Acquisition happens before this command. For the corrected
+Python 0.4.2 bundle, the independent Python packages used by the fixture are
+`morphir-python==0.1.0`, `morphir-python-native==0.1.1` and `morphir==0.1.0`.
+The native package's compiler identity must report `0.4.2`; package and extension
+versions are separate contracts.
+
+From the repository root, acquire the release and prepare the independent API:
+
+```sh
+mkdir -p .dev/extism/python-bundle
+gh release download extension/python/v0.4.2 --repo finos/morphir-python --dir .dev/extism/python-bundle
+cp .dev/extism/python-bundle/morphir-python-binding-0.4.2.release.json .dev/extism/python-bundle/release.json
+uv venv --python 3.14 .dev/extism/python-api
+uv pip install --python .dev/extism/python-api/bin/python morphir-python==0.1.0
+```
+
+Then qualify against a checkout at the shared revision required by
+`scripts/native-services.mbtx`. Dependencies and Rust 1.98.0 must already be
+available; the task does not install them or download a bundle:
+
+```sh
+mise run test:cli-extism-python -- --shared /path/to/pinned/finos/morphir --bundle "$PWD/.dev/extism/python-bundle" --python "$PWD/.dev/extism/python-api/bin/python" --json
+```
+
+The task builds the pinned host and CLI candidates, checks the helper and command
+boundaries, unpacks the actual npm package into an isolated location and checks a
+relocated native release executable. It compiles the two-module loans fixture in
+IR 3 and 4, compares it with the independent Python API, generates Python, checks
+selected consumer results and recompiles without changing the IR. It also checks
+failure statuses, unsupported input, diagnostics and cleanup. Guest network
+access is denied by the engine policy. Invocation uses a retained local bundle
+copy in a fresh Morphir home and does not consult an extension repository.
+
+Success writes `.dev/extism/qualification.json` and a reusable local
+`.dev/extism/python-pin.json`. The receipt records platform/architecture, exact
+CLI, host, runtime, helper, bundle and check digests, source identities and the
+API/consumer results. It is evidence for those inputs only. A missing, failed,
+skipped or mismatched receipt cannot qualify another build or platform. Keep the
+bundle and pin local. Rebuilding a pinned file requires creating and qualifying
+a new pin.
+
+One local macOS arm64 run used a 111,185,856-byte host, about 106 MiB.
+The first describe invocation through each of the four entry points took
+3.9 to 4.4 seconds, including verification, copies and guest initialization.
+These are observations from that run, with no disk-cache control or startup
+guarantee. The receipt retains every call duration and the exact host digest.
+
+After qualification, these repository entry-point commands use the generated pin:
+
+```sh
+node apps/morphir/bin/morphir.js extension describe --extension-pin .dev/extism/python-pin.json --extension-helper "$PWD/apps/morphir/build-provider/extism.mjs" --json
+node apps/morphir/bin/morphir.js extension compile apps/morphir/fixtures/extism-python/v1 --package acme/example --ir-version 3 --output .dev/extism/example-ir3 --extension-pin .dev/extism/python-pin.json --extension-helper "$PWD/apps/morphir/build-provider/extism.mjs" --json
+node apps/morphir/bin/morphir.js extension generate .dev/extism/example-ir3/morphir-ir.json --ir-version 3 --output .dev/extism/example-python3 --extension-pin .dev/extism/python-pin.json --extension-helper "$PWD/apps/morphir/build-provider/extism.mjs" --json
+```
+
+Use a new output directory for every operation. Repeat with `--ir-version 4` and
+new output paths for draft IR 4. Compile accepts one UTF-8 `.py` file or a bounded,
+sorted directory snapshot of Python modules. Relative module paths are retained;
+symlinks and special entries are refused. Source code is statically parsed, never
+imported by the plugin. The Python interpreter above is used by the qualification
+harness to check generated code, not made available to the guest.
+
+### Protocol and IR boundary
+
+This profile offers exactly MEP `0.1` and calls `morphir.frontend.compile` and
+`morphir.backend.generate`. It checks exported metadata, performs live describe,
+then initializes a fresh container held to the same identity and capabilities.
+Shutdown must be acknowledged; the container is dropped and the isolated host
+process reaped before output publication. Describe drops its probe container too.
+
+`--ir-version` is required for compile and generate. Accepted aliases are `3`,
+`3.0.0`, `4` and `4.0.0`; the model header must agree. Compile writes plain
+`morphir-ir.json`, using the guest's classic-v3 or compact-v4 representation.
+Generate validates it with the corresponding MoonBit versioned JSON codec and
+passes it without migration. JSON is the default for this binding; an explicit
+`--model-format json` is accepted. Semantic JSON values are retained without implicit migration, including the
+qualified exact integers. Rich-envelope byte retention is a different contract.
+
+Ion, YAML, MorphirModel envelopes, IR 1/2/3.1, rich profiles and implicit conversion
+are refused. An IR 4 spelling does not authorize MEP `0.2.0-draft.1`, envelope
+`0.1.0-draft.1`, `compileModel`, `generateModel` or rich-model guarantees. Those
+require a separate guest/profile qualification. The fixture proves a bounded
+Python subset with local imports, algebraic data types, tuples, conditional
+functions and lambdas; it does not qualify arbitrary Python or every IR value.
+
+### Pins, authority and limits
+
+The generated pin has contractVersion `0.1.0`, binding `extism-wasm` and
+executionProfile `morphir/extism-mep-0.1/v1`. Its fields are:
+
+| Field | Meaning |
+| --- | --- |
+| `host` | Absolute executable, SHA-256 and exact shared `sourceRevision` |
+| `runtime` | Absolute Node executable, exact version and SHA-256 |
+| `helper` | Absolute root and exact SHA-256 map for `extism.mjs`, `supervision.mjs`, `windows-job.mjs` |
+| `artifact` | Absolute bundle directory, descriptor and WASM SHA-256, extension ID and version |
+| `origin` | User-visible asserted source of the selected bytes |
+
+`artifact.descriptorSha256` covers `release.json`; `artifact.wasmSha256` must
+select exactly one canonical version-2 WASM artifact. Unknown pin fields are
+refused. The explicit helper path must be `<helper.root>/extism.mjs`. The CLI
+verifies and copies the bootstrap modules before loading them. That trusted
+bootstrap then verifies no-follow snapshots of the selected Node, host,
+descriptor and guest before running their copies. Changes to original paths
+cannot substitute different executed bytes. The outer CLI runtime and installed
+CLI package remain the verifier's trust base.
+
+Descriptor claims are compared with live describe and initialized capabilities.
+A successful invocation reports scoped `claimCheck: "runtime-verified"` and
+`provenance: "asserted"`. Installation's unchecked WASM claims alone grant no
+execution authority, and digests or probes do not authenticate an author.
+Signatures are optional. There is no automatic installed-provider fallback.
+
+The guest has no preopened workspace paths, no inherited user environment, no
+HTTP hosts and no subprocess interface. It receives source/IR in requests and
+returns artifacts for host publication. The existing bounded Morphir callbacks
+see only an empty private workspace. Host cancellation terminates the complete
+process group; wire cancellation is unavailable.
+The CLI also checks the cancellation file while preparing inputs and immediately
+before the publication rename. A marker observed after helper exit still refuses
+publication with exit status 130.
+
+| Resource | Extism profile ceiling |
+| --- | --- |
+| Descriptor / WASM file | 1 MiB / 128 MiB |
+| Control request / helper reply / stderr | 4 MiB / 16 MiB / 64 KiB |
+| WASM memory / fuel per call | 256 MiB / 1,000,000,000 |
+| Engine call / default session | 30 seconds / 60 seconds |
+| Maximum explicit session timeout | 594 seconds |
+| Plain IR bytes / depth / nodes | 2 MiB / 128 / 100,000 |
+| Python sources / directory depth | 1,024 files, 2 MiB total, 16,384 entries / 32 |
+| Generated files / decoded total | 1,024 / 8 MiB |
+
+These are independent limits. Escaped JSON must also fit its enclosing request
+or reply budget. The shared legacy 64 MiB frame ceiling is not widened. No
+artifact-response profile with a larger memory budget is selected. Output paths
+must be safe relative paths, unique under portable normalization; absolute,
+traversing, symlink-escaping and case-colliding artifacts fail. Validation,
+shutdown or write failure leaves no published partial destination.
+
+### Results and supported targets
+
+Extism commands accept `--json` and emit one `morphir/command-result` version
+`0.1.0` object on stdout. `command` is `extension.describe`, `extension.compile`
+or `extension.generate`; `state`, `exitCode` and `diagnostics` are always present.
+Success adds `result.binding`, `result.session`, output digests and lifecycle/access
+facts. Failure adds `error: {code, message}` instead of `result`. Python diagnostic
+code, severity, location and related data remain in `diagnostics`; child logs use
+stderr. Human mode currently prints the same finite result. Expected validation
+refusals exit 1, cancellation exits 130 and parser syntax retains exit 2. Existing
+portable/native success and help schemas remain unchanged. Extism file-log
+controls are explicitly unavailable. No new self-test flag is reserved.
+
+Refusals use stable `extension.*` codes for invalid pins, integrity/identity,
+unsupported binding/profile/target/model format, IR mismatch, capability/session
+failure, resource limits, unsafe artifacts and incomplete cleanup. A guest
+`success: false` is `extension.operation_unsuccessful`, with its original Python
+diagnostics. `execution.cancelled` retains cancellation status.
+
+| Host / CLI entry point | Qualification scope |
+| --- | --- |
+| macOS arm64, native debug/release and Node JS/npm | Python 0.4.2 source/relocated/unpacked-package acceptance; candidate receipt required |
+| Linux GNU x86_64/aarch64, macOS x86_64 | Planned; unqualified until independent candidate receipts pass |
+| Windows, Linux musl, browser, MoonBit wasm/wasm-gc | Unsupported execution; explicit refusal, help remains available |
+
+This does not release an installed native host distribution or qualify other
+platforms. The opt-in task is the candidate evidence path; no recurring CI or
+scarce-runner job is added. Related documentation work is tracked by
+`morphir-ukvn.9`, finos/morphir-python `openspec/changes/add-documentation-site`.
+That site can document the current adapter matrix without waiting for additional
+platform support here.

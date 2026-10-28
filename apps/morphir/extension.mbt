@@ -870,7 +870,9 @@ fn extension_files(
 fn extension_publish(
   output : String,
   files : Array[(String, Bytes)],
+  check~ : () -> Unit raise = fn() {  },
 ) -> Array[Json] raise {
+  check()
   let staging = output + ".morphir-partial"
   @platform.mkdir(staging)
   let created : Array[String] = []
@@ -889,6 +891,7 @@ fn extension_publish(
   }
   let receipts : Array[Json] = []
   for entry in files {
+    check()
     let (path, bytes) = entry
     let parts = path.split("/").map(p => p.to_owned()).to_array()
     let mut parent = staging
@@ -907,6 +910,7 @@ fn extension_publish(
       "sha256": extension_sha256(bytes),
     })
   }
+  check()
   @platform.rename_directory_new(staging, output)
   receipts
 }
@@ -1130,9 +1134,6 @@ fn extension_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     "extension generate" => Generate
     _ => raise @config.Invalid("extension.command_required")
   }
-  if !connected_supported() {
-    raise @config.Invalid("extension.runtime_unavailable")
-  }
   let pin_path = value(
     cli,
     "extension-pin",
@@ -1146,11 +1147,24 @@ fn extension_command(cli : Cli, mode : OutputMode) -> Int32 raise {
       .unwrap_or(""),
   )
   if pin_path == "" || helper == "" {
+    if !connected_supported() {
+      raise @config.Invalid("extension.runtime_unavailable")
+    }
     raise @config.Invalid("extension.explicit_pin_and_helper_required")
   }
   let pin_bytes = @platform.read_input(pin_path, 65536)
   let pin_json = @json.parse(@utf8.decode(pin_bytes[:])) catch {
     _ => raise @config.Invalid("extension.invalid_pin")
+  }
+  if pin_json is Object(fields) &&
+    fields.get("binding") == Some(Json::string("extism-wasm")) {
+    return extism_command(cli, mode, pin_json, helper, operation)
+  }
+  if !connected_supported() {
+    raise @config.Invalid("extension.runtime_unavailable")
+  }
+  if value(cli, "ir-version") != "" {
+    raise @config.Invalid("extension.ir_version_requires_extism")
   }
   if pin_json is Object(fields) &&
     fields.get("binding") == Some(Json::string("native-process")) {
