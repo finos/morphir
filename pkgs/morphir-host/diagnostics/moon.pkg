@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/debug",
+  "moonrockz/moon-lander-config" @lander_config,
+  "moonrockz/moon-lander-logging" @logging,
+  "moonrockz/moon-lander-logging/formatting",
+}
+
+import {
+  "finos/morphir-host/diagnostics",
+  "moonrockz/moon-lander-config" @lander_config,
+  "moonrockz/moon-lander-logging" @logging,
+  "moonrockz/moon-lander-logging/formatting",
+} for "test"
