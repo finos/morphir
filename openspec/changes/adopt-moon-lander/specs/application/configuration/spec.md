@@ -460,7 +460,7 @@ one of those primaries SHALL retain its control authority while its ordinary val
 
 #### Scenario: Non-base selected file cannot define controls
 
-- **WHEN** a selected file outside the discovered base contains `profiles.active`
+- **WHEN** profile processing is enabled and not explicitly disabled and a selected file outside the discovered base contains `profiles.active`
 - **THEN** the run fails with a typed control-location error naming that file
 
 #### Scenario: Selecting the discovered base preserves authority
@@ -477,7 +477,7 @@ provenance. Explicit disabled processing SHALL strip controls without interpreti
 
 #### Scenario: Member cannot change activation
 
-- **WHEN** a member primary or user override sets `profiles.active`
+- **WHEN** profile processing is enabled and not explicitly disabled and a member primary or user override sets `profiles.active`
 - **THEN** the run fails with its file and control key before executing the command
 
 #### Scenario: Disable invalid controls
