@@ -15,6 +15,7 @@
 {"id":"morphir-0gwk","title":"Tests leak temp directories: morphir-binaries-* (167 MB each, morphir-typescript release packaging) and morphir-install-tests-home-* (CLI)","status":"open","priority":3}
 {"id":"morphir-0ij","title":"Implement type/value/pattern BDD features","status":"closed","priority":2}
 {"id":"morphir-0ley","title":"Decide the disposition of crates/morphir-live","status":"closed","priority":2}
+{"id":"morphir-0qvv","title":"Move crates.io publishing to trusted publishing","status":"open","priority":3}
 {"id":"morphir-0r6n","title":"Retire draft25 schema validator workaround","status":"open","priority":3}
 {"id":"morphir-0rgk","title":"morphir-common cache_maintenance_inventory tests fail on case-insensitive filesystems","status":"closed","priority":3}
 {"id":"morphir-0tca","title":"Scope YAML float lexemes to admitted Value paths","status":"open","priority":2}
@@ -263,6 +264,7 @@
 {"id":"morphir-e88w","title":"Ion foundation completion precedes exhaustive case migration","status":"closed","priority":2}
 {"id":"morphir-eadj","title":"Decide whether Hole.partialBody and IncompleteTypeDefinition.partialTypeExp should be one member","status":"open","priority":2}
 {"id":"morphir-eag3","title":"morphir-rust: daemon installed_wasm_extension tests cannot start on Windows (os error 740, installer detection)","status":"open","priority":3}
+{"id":"morphir-ebyr","title":"Set up OpenSpec with HTML designs and beads links","status":"closed","priority":2}
 {"id":"morphir-ec0","title":"Define VEntry and virtual filesystem (VFS) core types","status":"closed","priority":1}
 {"id":"morphir-ed79","title":"Incremental cache: inputsHash on task result record","status":"open","priority":3}
 {"id":"morphir-ei7","title":"Document new Go module checklist","status":"closed","priority":3}
@@ -584,6 +586,7 @@
 {"id":"morphir-nfo","title":"Create example decoration schemas and value files","status":"closed","priority":2}
 {"id":"morphir-nhbd","title":"Publish Python extension with multiple module support","status":"open","priority":2}
 {"id":"morphir-ni2l","title":"Preserve literal JSON keys with shared bounded decoding","status":"closed","priority":2}
+{"id":"morphir-npbw","title":"Release morphir-extension-sdk 0.3.0 and first publish of morphir-json 0.2.0","status":"closed","priority":2}
 {"id":"morphir-nq22","title":"Update and squash-merge Gleam golden test PR","status":"closed","priority":2}
 {"id":"morphir-ns1l","title":"Lint generated CLI docs for MDX-hostile characters","status":"open","priority":2}
 {"id":"morphir-ns55","title":"Document Python binding support and IR conformance precisely","status":"closed","priority":2}
@@ -718,6 +721,7 @@
 {"id":"morphir-opua.2.5","title":"feat: add the TypeScript guest SDK package","status":"open","priority":2}
 {"id":"morphir-opua.2.6","title":"refactor(mep): retire the Elm extension's hand-ported discovery rules","status":"open","priority":2}
 {"id":"morphir-opua.2.7","title":"feat: add the Python guest SDK package","status":"open","priority":3}
+{"id":"morphir-ov51","title":"Publish morphir library and release the CLI independently","status":"closed","priority":2}
 {"id":"morphir-p02","title":"Phase 4: API Endpoints","status":"open","priority":2}
 {"id":"morphir-p088","title":"Consolidate the Morphir CLI into finos/morphir","status":"closed","priority":1}
 {"id":"morphir-p48j","title":"IR transform stages between compile and generate","status":"open","priority":3}
@@ -798,6 +802,7 @@
 {"id":"morphir-u8tx.1.6","title":"Task 6: Reference migration with compare-and-update","status":"closed","priority":2}
 {"id":"morphir-u8tx.1.7","title":"Task 7: Publication cutover verification","status":"closed","priority":2}
 {"id":"morphir-udex","title":"Remove timing assumptions from daemon validation worker tests","status":"open","priority":2}
+{"id":"morphir-udu4","title":"Publish bundled morphir-python 0.0.1 with trusted publishing","status":"closed","priority":2}
 {"id":"morphir-ufmp","title":"Ship cross-agent project-management skill in morphir-moonbit","status":"closed","priority":2}
 {"id":"morphir-uhd2","title":"Support Rust frontend native bindings in IR v4","status":"closed","priority":2}
 {"id":"morphir-uhds","title":"Use .mfs for Morphir source and reserve .morphir for model packages","status":"closed","priority":2}
@@ -936,7 +941,15 @@
 {"id":"morphir-ukvn.1.3.3","title":"Qualify the reusable ecosystem repository template and extension release workflow","status":"open","priority":2}
 {"id":"morphir-ukvn.1.4","title":"A3: move the Gleam extension to finos/morphir-gleam, built in by pin","status":"open","priority":1}
 {"id":"morphir-ukvn.1.5","title":"A10: TypeScript extension in finos/morphir-typescript","status":"open","priority":1}
-{"id":"morphir-ukvn.1.6","title":"A4: move the Python extension to finos/morphir-python","status":"open","priority":1}
+{"id":"morphir-ukvn.1.6","title":"A4: move the Python extension to finos/morphir-python","status":"in_progress","priority":1}
+{"id":"morphir-ukvn.1.6.1","title":"Move and qualify the standalone Rust compiler","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.6.2","title":"Expose the compiler through a typed in-process Python API","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.6.3","title":"Package the native compiler for Python users","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.6.4","title":"Add Python compile and generate CLI commands","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.6.5","title":"Qualify scoped CI and independently owned extension bundles","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.6.6","title":"Measure native and Python integration costs","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.6.7","title":"Remove the old provider and prepare ecosystem cutover","status":"closed","priority":2}
+{"id":"morphir-ukvn.1.6.8","title":"A4 release: publish the qualified Python compiler and cut over the live provider","status":"closed","priority":1}
 {"id":"morphir-ukvn.1.7","title":"A5: move the Avro and OpenAPI extensions to finos/morphir","status":"open","priority":2}
 {"id":"morphir-ukvn.1.8","title":"A6: move Elm-native to finos/morphir-elm","status":"open","priority":2}
 {"id":"morphir-ukvn.1.9","title":"A9: restructure finos/morphir-scala and decommission morphir-scala-elm","status":"open","priority":2}
@@ -1222,7 +1235,7 @@
 {"id":"morphir-ukvn.5.55","title":"MoonBit rich MEP integration and installed qualification","status":"open","priority":2}
 {"id":"morphir-ukvn.5.55.1","title":"Expose native compileModel for the qualified MoonBit frontend","status":"closed","priority":1}
 {"id":"morphir-ukvn.5.55.10","title":"Run shared MEP conformance and reconcile MoonBit F4 completion evidence","status":"open","priority":2}
-{"id":"morphir-ukvn.5.55.11","title":"Validate MoonBit MEP sessions with Smithy transcript validation","status":"open","priority":2}
+{"id":"morphir-ukvn.5.55.11","title":"Validate MoonBit MEP sessions with Smithy transcript validation","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.55.2","title":"Route canonical CLI compile and generation through rich MorphirModel operations","status":"open","priority":2}
 {"id":"morphir-ukvn.5.55.3","title":"Qualify the installed native rich MoonBit source-to-consumer flow","status":"open","priority":2}
 {"id":"morphir-ukvn.5.55.4","title":"Specify authenticated provider authority across the native MEP guest boundary","status":"open","priority":3}
@@ -1472,6 +1485,18 @@
 {"id":"morphir-ukvn.5.94.3","title":"Stabilize requested JSON editor browser-test transition","status":"closed","priority":1}
 {"id":"morphir-ukvn.5.95","title":"Install shared Archify diagramming skill and narrative documentation guidance","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.96","title":"Document MoonBit script argument parsing and preferred package owners","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.97","title":"Mission control: view and convert agent documents","status":"open","priority":2}
+{"id":"morphir-ukvn.5.97.1","title":"Decisions before building","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.97.2","title":"App skeleton and server reuse","status":"open","priority":2}
+{"id":"morphir-ukvn.5.97.3","title":"Viewing documents","status":"open","priority":2}
+{"id":"morphir-ukvn.5.97.4","title":"Standalone and referenced forms","status":"open","priority":2}
+{"id":"morphir-ukvn.5.97.5","title":"Bead browser","status":"open","priority":2}
+{"id":"morphir-ukvn.5.98","title":"Qualify Python Extism extensions through the MoonBit CLI","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.98.1","title":"Expose a bounded shared Extism host policy","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.98.2","title":"Add explicit verified Extism invocation and JSON reporting","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.98.3","title":"Qualify Python legacy JSON IR operations","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.98.4","title":"Qualify packaged Python Extism support and publish compatibility evidence","status":"open","priority":2}
+{"id":"morphir-ukvn.5.98.5","title":"Release Python multiDocument capability and matching compiler API","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.6","title":"Support entry-root reachability and Morphir tree-shaking","status":"open","priority":3}
 {"id":"morphir-ukvn.7","title":"Conceptual models and executable specifications","status":"open","priority":1}
 {"id":"morphir-ukvn.7.1","title":"Draft and review the conceptual model and executable specification design","status":"in_progress","priority":1}
@@ -1501,7 +1526,7 @@
 {"id":"morphir-ukvn.7.13.5","title":"Map Smithy AI traits and prompt template dialects","status":"open","priority":1}
 {"id":"morphir-ukvn.7.13.6","title":"Author Smithy service, condition, protocol and prompt records","status":"open","priority":1}
 {"id":"morphir-ukvn.7.13.7","title":"Qualify full Smithy condition evaluation for the selected profile","status":"open","priority":2}
-{"id":"morphir-ukvn.7.13.8","title":"Model MEP in Smithy as the interim protocol contract","status":"open","priority":2}
+{"id":"morphir-ukvn.7.13.8","title":"Model MEP in Smithy as the interim protocol contract","status":"closed","priority":2}
 {"id":"morphir-ukvn.7.14","title":"Generated specifications and early CLI delivery","status":"open","priority":1}
 {"id":"morphir-ukvn.7.14.1","title":"Generate structured EARS and typed contract cases","status":"open","priority":1}
 {"id":"morphir-ukvn.7.14.2","title":"Generate Gherkin for the existing shared runner","status":"open","priority":1}
@@ -1541,6 +1566,45 @@
 {"id":"morphir-ukvn.7.9","title":"IR 4.0.0 untagged union adoption","status":"open","priority":1}
 {"id":"morphir-ukvn.7.9.1","title":"Implement native Union nodes, codecs and typing","status":"closed","priority":1}
 {"id":"morphir-ukvn.7.9.2","title":"Integrate union projection and qualify ecosystem consumers","status":"open","priority":1}
+{"id":"morphir-ukvn.8","title":"Add first-class Morphir IR v3 alongside v4 in morphir-python","status":"open","priority":2}
+{"id":"morphir-ukvn.8.1","title":"Format-version reader and V3 IR model and codecs","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.10","title":"Fixtures docs and integration checks","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.11","title":"Draft v4 JSON codec","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.12","title":"Support Morphir IR formats 1 and 2 in morphir-python","status":"closed","priority":3}
+{"id":"morphir-ukvn.8.12.1","title":"Legacy format-version reading","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.12.2","title":"Format 1 and format 2 decoders","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.12.3","title":"CLI upgrade of legacy files","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.12.4","title":"Docs and integration checks","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.13","title":"Support Morphir IR 3.1.0 in morphir-python","status":"closed","priority":3}
+{"id":"morphir-ukvn.8.13.1","title":"Format-version support table for IR 3.1","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.13.2","title":"V3 Specs distribution model and codec","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.13.3","title":"V3 and v4 Specs migrations","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.13.4","title":"IR interchange CLI and docs for IR 3.1","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.13.5","title":"Integration checks for IR 3.1","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.14","title":"Realign the Python v4 model with upstream finos/morphir v4","status":"closed","priority":3}
+{"id":"morphir-ukvn.8.14.1","title":"Value-definition bodies (native, external, incomplete)","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.14.2","title":"Typed hole reasons, incompleteness and incomplete type definitions","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.14.3","title":"Annotations on specifications","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.14.4","title":"Union type expression","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.14.5","title":"Deprecations, docs and integration checks","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.15","title":"Spell per-input value attributes in the draft v4 codec","status":"closed","priority":3}
+{"id":"morphir-ukvn.8.16","title":"Re-sync the draft v4 codec when upstream v4 settles, then archive add-ir-v3-support","status":"deferred","priority":3}
+{"id":"morphir-ukvn.8.16.1","title":"Write compact canonical IR v4 and flattened documentation","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.17","title":"Read and write v3 and v4 JSON and YAML document trees in morphir-python","status":"open","priority":3}
+{"id":"morphir-ukvn.8.18","title":"Remove the deprecated Python-only v4 constructs (Native/External value nodes, TypeConstraints)","status":"open","priority":4}
+{"id":"morphir-ukvn.8.2","title":"V4 package layout and re-exports","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.3","title":"V3↔V4 migrations","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.4","title":"IR interchange CLI","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.5","title":"Fixtures docs and integration checks","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.6","title":"V3 IR model and codecs","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.7","title":"V4 package layout and re-exports","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.8","title":"V3↔V4 migrations","status":"closed","priority":2}
+{"id":"morphir-ukvn.8.9","title":"IR interchange CLI","status":"closed","priority":2}
+{"id":"morphir-ukvn.9","title":"Publish Python documentation site and verified user guides","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.9.1","title":"Establish Telescope site and local preview","status":"closed","priority":2}
+{"id":"morphir-ukvn.9.2","title":"Publish verified Python API and CLI examples","status":"closed","priority":2}
+{"id":"morphir-ukvn.9.3","title":"Document qualified Morphir CLI integrations","status":"closed","priority":2}
+{"id":"morphir-ukvn.9.4","title":"Validate and publish documentation through scoped CI","status":"in_progress","priority":2}
 {"id":"morphir-uo8","title":"Remove Go code and migrate CI/CD to Rust","status":"closed","priority":1}
 {"id":"morphir-uqub","title":"Plan V3 semantic dogfooding alongside IR MCK migration","status":"in_progress","priority":1}
 {"id":"morphir-uqub.1","title":"Implement IR-3 vocabulary coverage","status":"closed","priority":1}
