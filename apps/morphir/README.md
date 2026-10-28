@@ -681,7 +681,7 @@ morphir verify model.json --suite calls.ion \
 ```
 
 Supply SDK and execution protocol 0.1.0, Ion 0.5.0, x 0.5.5 and async 0.22.4.
-The default compiler/core pin is `0.10.16+b1a0e846e`; the C lane forces
+The default compiler/core pin is `0.10.17+d971670cd`; the C lane forces
 `MOONBIT_NEW_NATIVE=0`. Preparation copies and hashes
 these explicit dependencies into a frozen workspace; it does not fetch packages.
 The driver imports public generated exports and applies their curried arguments

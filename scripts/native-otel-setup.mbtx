@@ -1,15 +1,17 @@
-///|
-/// Explicit acquisition and build of the optional native host component.
+----
 import {
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/stdio",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+// Explicit acquisition and build of the optional native host component.
 
 ///|
 // Selected only at the owned CLI boundary, never from a child or a path value.
@@ -179,7 +181,7 @@ async fn execute() -> Json {
   }
   @fs.write_file(
     root + "/moon.work",
-    "members = " + members.to_json().stringify() + "\n",
+    "members = " + Json(members).stringify() + "\n",
   )
   @env.unset_env_var("MOON_WORK")
   ignore(
@@ -217,7 +219,7 @@ async fn execute() -> Json {
         #|const {fileIdentity,treeIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/identity.mjs')));
         #|const {compilerIdentity}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/capabilities.mjs')));
         #|const {checkedCore}=await import(pathToFileURL(join(repo,'apps/morphir/build-provider/core.mjs')));
-        #|console.log(JSON.stringify({compilerIdentity:compilerIdentity(home),coreIdentity:treeIdentity(checkedCore(home,'0.10.16+b1a0e846e'),{core:true}),binaryIdentity:fileIdentity(binary),sourceIdentity:treeIdentity(source)}));
+        #|console.log(JSON.stringify({compilerIdentity:compilerIdentity(home),coreIdentity:treeIdentity(checkedCore(home,'0.10.17+d971670cd'),{core:true}),binaryIdentity:fileIdentity(binary),sourceIdentity:treeIdentity(source)}));
       ),
       repo,
       home,

@@ -7,12 +7,12 @@ This document provides a reference for all available mise tasks in the Morphir M
 
 ## Pinned compiler and core
 
-The compiler is the stock `0.10.16+b1a0e846e` release, and every command uses the
+The compiler is the stock `0.10.17+d971670cd` release, and every command uses the
 core that ships with it, as consumers of published modules do. That core is the
-upstream source commit `1886b2f93eff7365ccdbaed2c13abd33858841f8` and includes the
+upstream source commit `eb321a18f7a33d37114546682a8d1cd6658afab8` and includes the
 fix for long decimal integers on Wasm GC (`moonbitlang/core#4345`). The release
 archives, their SHA-256 values and the complete source digest are recorded in
-[the core pin](../tools/moonbit-core-pin.json). Consumers need moonc 0.10.16 or later.
+[the core pin](../tools/moonbit-core-pin.json). Consumers need moonc 0.10.17 or later.
 
 `mise install` and entering an activated mise shell complete the toolchain and verify
 the source bytes of `$MOON_HOME/lib/core` against the pin. No core override is used:

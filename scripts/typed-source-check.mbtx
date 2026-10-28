@@ -1,12 +1,11 @@
-///|
-/// Compile original and generated mixed-type libraries on the pinned four targets.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.5/stdio",
   "moonbitlang/core/argparse",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
   "moonbitlang/core/json",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/crypto",
@@ -16,6 +15,9 @@ import {
   "moonrockz/ion@0.5.0/binary",
   "moonrockz/ion@0.5.0/text",
 }
+----
+
+// Compile original and generated mixed-type libraries on the pinned four targets.
 
 ///|
 fn field(value : Json, key : String) -> Json raise {
@@ -86,7 +88,7 @@ async fn execute() -> Json {
   }
   @fs.mkdir(workspace)
   let compiler = command("moonc", ["-v"])
-  assert_true(compiler.has_prefix("v0.10.16+b1a0e846e"))
+  assert_true(compiler.has_prefix("v0.10.17+d971670cd"))
   let home = match @env.get_env_var("MOON_HOME") {
     Some(home) => home
     None => command("mise", ["where", "http:moonbit"]).trim().to_owned()
@@ -851,8 +853,8 @@ async fn execute() -> Json {
       },
       "pinnedStringMethods": {
         "sourcePackage": "moonbitlang/core/builtin",
-        "sourceVersion": "0.10.16+b1a0e846e",
-        "sourceTree": "1886b2f93eff7365ccdbaed2c13abd33858841f8",
+        "sourceVersion": "0.10.17+d971670cd",
+        "sourceTree": "eb321a18f7a33d37114546682a8d1cd6658afab8",
         "methods": [
           {
             "source": "String::is_empty",

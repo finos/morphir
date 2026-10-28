@@ -1,11 +1,9 @@
-///|
-/// Independent shared runner owns the cases, expected results and verdicts.
-/// This gate pins inputs, launches native/saved guests and rechecks reports.
+----
 import {
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
-  "moonbitlang/async@0.22.1/stdio",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
+  "moonbitlang/async@0.22.5/stdio",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
   "moonbitlang/x@0.5.5/sys",
@@ -14,6 +12,10 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/x@0.5.5/crypto",
 }
+----
+
+// Independent shared runner owns the cases, expected results and verdicts.
+// This gate pins inputs, launches native/saved guests and rechecks reports.
 
 ///|
 async fn digest(path : String) -> String {
@@ -180,8 +182,8 @@ async fn execute() -> Json {
   let kit_value = @fs.read_file(kit).json()
   let root = @fs.realpath(".")
   let compiler = checked("moon", ["version", "--all"])
-  guard compiler.contains("0.10.16+b1a0e846e") else {
-    fail("Pinned MoonBit 0.10.16 required")
+  guard compiler.contains("0.10.17+d971670cd") else {
+    fail("Pinned MoonBit 0.10.17 required")
   }
   let artifacts = @fs.realpath(
     @env.get_env_var("MORPHIR_MEP_ARTIFACTS").unwrap_or(".dev/portable-mep") +
@@ -391,7 +393,7 @@ async fn main {
   let result : Json = try {
     let matches = json_command().parse(argv~)
     if matches.flags.get_or_default("help", false) ||
-      matches.subcommand.is_some() {
+      matches.subcommand is Some(_) {
       {
         "render_help": legacy_command().render_help(),
         "json_help": json_command().render_help(),

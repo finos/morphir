@@ -1,11 +1,10 @@
-///|
-/// Verify that the selected MoonBit toolchain carries the pinned stock core.
+----
 import {
   "moonbitlang/x@0.5.5/sys",
-  "moonbitlang/async@0.22.1/stdio",
-  "moonbitlang/async@0.22.1",
-  "moonbitlang/async@0.22.1/fs",
-  "moonbitlang/async@0.22.1/process",
+  "moonbitlang/async@0.22.5/stdio",
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/process",
   "moonbitlang/core/argparse",
   "moonbitlang/core/debug",
   "moonbitlang/core/env",
@@ -15,6 +14,9 @@ import {
   "moonbitlang/x@0.5.5/path",
   "moonbitlang/x@0.5.5/path/win32" @winpath,
 }
+----
+
+// Verify that the selected MoonBit toolchain carries the pinned stock core.
 
 ///|
 // Selected only at the owned CLI boundary, never from a child or a path value.

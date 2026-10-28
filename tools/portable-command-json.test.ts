@@ -89,7 +89,7 @@ async fn main {
   if program == "git" {
     if args[0] == "rev-parse" { @stdio.stdout.write("fixture-source-revision\n") }
   } else if program == "moon" {
-    if args[0] == "version" { @stdio.stdout.write("moon 0.1 fixture\nmoonc v0.10.16+b1a0e846e\n") }
+    if args[0] == "version" { @stdio.stdout.write("moon 0.1 fixture\nmoonc v0.10.17+d971670cd\n") }
     else if args[0] == "run" { @stdio.stdout.write(env("PORTABLE_CORE") + "\n") }
     else if args.contains("tree") { @stdio.stdout.write("{\"fixtureGraph\":true}\n") }
     else if args.contains("--dry-run") { @stdio.stdout.write("fixture recipe\n") }
@@ -194,7 +194,7 @@ async function regression() {
     const moonrun = Bun.which('moonrun'); assert.ok(moonrun);
     const version = build([moon, 'version', '--all']);
     versionText = version.stdout.toString();
-    assert.match(version.stdout.toString(), /0\.10\.16\+b1a0e846e/);
+    assert.match(version.stdout.toString(), /0\.10\.17\+d971670cd/);
     assert.equal(Bun.version, '1.4.4');
     mkdirSync(join(root, '.dev'), { recursive: true });
     scratch = mkdtempSync(join(root, '.dev/portable-json-'));

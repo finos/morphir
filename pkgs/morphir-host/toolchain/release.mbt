@@ -1,14 +1,14 @@
 ///|
-// SHA-256 of the official versioned archives, retrieved 2026-10-21.
-let core_digest : String = "e7db6e3c80a97af953598b374cf14f3e330918b1ca4659b141b9f550c9c0adb0"
+// SHA-256 of the official versioned archives, retrieved 2026-10-28.
+let core_digest : String = "2d837ecbef5933c09726d63682a7695123d622e6aee13525fbc98c4b49433714"
 
 ///|
 fn binary_digest(target : String) -> String raise {
   match target {
     "darwin-aarch64" =>
-      "6fe394f394a4e82939ecf3339660af6a15007e1cb74e7dceb04dcaea9442aa1e"
+      "39e02f7730486cea54d12e8e781d83a665f245f6a621d01e17a3a13f104eb437"
     "linux-x86_64" =>
-      "84ae424cd31bc485d2cf4d3736534e52f2f265ceafb562a187b9ab26d9566212"
+      "d0a96eaf91c77cfcdd7b7df75390c5a1a95d0b8a328b1a5ed6fee050cfbf8d50"
     _ => raise ToolchainError("No archive digest for " + target)
   }
 }
