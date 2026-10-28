@@ -11,7 +11,7 @@
 
 ## 2. Add dependencies and record the adoption (morphir-ukvn.5.99.2)
 
-- [ ] 2.1 Add the pure modules at the exact version to the `moon.mod` of `pkgs/morphir-engine` and the host modules
+- [x] 2.1 Add the pure modules at the exact version to the `moon.mod` of `pkgs/morphir-engine` and the host modules
   to `apps/morphir`, `apps/morphir-workbench`, `apps/morphir-workbench-desktop`, `pkgs/morphir-host` and
   `pkgs/morphir-workbench-native`, following DEP-2; verify `mise run check` (or the repository's full gate) passes
   on native, js, wasm and wasm-gc with no new warnings
