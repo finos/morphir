@@ -64,12 +64,59 @@ log queue is full, the newest records SHALL be dropped and the count of dropped 
 ### Requirement: Structured records
 
 Each log record SHALL have a timestamp in UTC, a level, a category that names the part of Morphir that wrote it, a
-message, and named properties. JSON Lines records SHALL keep the properties as named fields.
+message, and named properties. JSON Lines records SHALL keep event properties as fields of a `properties` object,
+preserving each value's JSON type, including null, arrays and objects. Event properties SHALL NOT replace record
+metadata.
 
 #### Scenario: Property in a JSON Lines record
 
 - **WHEN** the configuration loader logs the file it read, as the property `path`, in JSON Lines format
-- **THEN** the record has a `path` field with the file path
+- **THEN** `record.properties.path` holds the file path
+
+#### Scenario: Property name matches record metadata
+
+- **WHEN** an event has level `Debug` and an event property named `level` with value `project`
+- **THEN** the record's level remains `Debug` and `record.properties.level` is `project`
+
+#### Scenario: Array-valued property
+
+- **WHEN** an event has one `paths` property whose value is `["a", "b"]`
+- **THEN** `record.properties.paths` is `["a", "b"]` and the record has no `duplicateProperties` field
+
+### Requirement: Duplicate property winner
+
+When an event's ordered property list repeats a name, `record.properties` SHALL keep the last occurrence's value
+for that name, preserving its JSON type.
+
+#### Scenario: Last path wins
+
+- **WHEN** an event has `path` values `/repo/morphir.toml` and then `/repo/app/morphir.toml`
+- **THEN** `record.properties.path` is `/repo/app/morphir.toml`
+
+### Requirement: Duplicate property history
+
+A JSON Lines record with repeated property names SHALL include a `duplicateProperties` object. Each repeated name
+SHALL map to an array of all its values in original per-name order, including the winning value, with their JSON
+types preserved. Names occurring once SHALL NOT appear in this object. When no names repeat, the record SHALL
+omit `duplicateProperties`.
+
+#### Scenario: All repeated values retained
+
+- **WHEN** an event has `path` values `/repo/morphir.toml` and then `/repo/app/morphir.toml`, and one `command` value
+  `project.list`
+- **THEN** `record.duplicateProperties.path` is `["/repo/morphir.toml", "/repo/app/morphir.toml"]`
+- **AND** `record.duplicateProperties` has no `command` field
+
+#### Scenario: Repeated structured values retain their types
+
+- **WHEN** an event has `value` occurrences `null`, `[1, 2]` and then `{"enabled": true}`
+- **THEN** `record.properties.value` is `{"enabled": true}`
+- **AND** `record.duplicateProperties.value` is `[null, [1, 2], {"enabled": true}]`
+
+#### Scenario: No repeated names
+
+- **WHEN** every event property name occurs once
+- **THEN** the record has no `duplicateProperties` field
 
 ### Requirement: Telemetry stays separate
 

@@ -249,6 +249,28 @@ wire formats remain unchanged.</p>
 session: console on standard error, and, when enabled, rolling files with the stem <code>morphir-diagnostics</code>
 in <code>.morphir/logs/</code>, guarded by the module's ownership marker so that retention never removes telemetry
 files. On wasm and wasm-gc a small Logger writes text lines to standard error through <code>@platform</code>.</p>
+<p>JSON Lines files put named event values inside a <code>properties</code> object, so readers use
+<code>record.properties.path</code> and event names cannot overwrite metadata such as <code>level</code>. When the
+event's ordered property list repeats a name, its last value wins. A separate <code>duplicateProperties</code>
+object retains every occurrence of each repeated name in original per-name order, including the winner. Omit that
+object when no names repeat, and preserve every value's JSON type. A property whose value is an array remains an
+array-valued property; it does not imply repeated occurrences.</p>
+<pre><code class="language-json">{
+  "properties": {
+    "path": "/repo/app/morphir.toml",
+    "command": "project.list"
+  },
+  "duplicateProperties": {
+    "path": [
+      "/repo/morphir.toml",
+      "/repo/app/morphir.toml"
+    ]
+  }
+}</code></pre>
+<p>The maintainer approved this contract on 28 October 2026. Select the public upstream opt-in object format once
+it is published; keep Moon-Lander's existing array-format defaults compatible for its other consumers. Track that
+support in <a href="https://github.com/moonrockz/moon-lander/issues/112">Moon-Lander issue 112</a>. Morphir does not
+add a local serializer to replace the framework's format.</p>
 <p>Alternative: send diagnostics into the telemetry session. Rejected; telemetry has typed observations with a
 consumer (<code>apps/morphir-otel</code>) and must keep its format.</p>
 

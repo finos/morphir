@@ -52,8 +52,10 @@ rolling log files, configuration environments and workspaces) as Moon-Lander rel
 - **BREAKING**: the Scheme configuration script option `--config` becomes `--config-script`. A `.scm` path given to
   `--config` fails with a message that names the new option.
 - Logging: add leveled, structured diagnostic logging through `moon-lander-logging`, written to standard error and
-  optionally to rolling files under `.morphir/logs/`. Keep the `--log` telemetry observations and their formats as
-  they are. Log output never goes to standard output.
+  optionally to rolling files under `.morphir/logs/`. JSON Lines uses a named `properties` object: the last occurrence
+  wins, and `duplicateProperties` retains every value of repeated names in order. Use the upstream opt-in format
+  once published. Keep the `--log` telemetry observations and their formats as they are. Log output never goes to
+  standard output.
 - Lifecycle: run the CLI commands through `moon-lander-hosting`, with one cancellation path for SIGINT and SIGTERM,
   stop hooks that run in reverse order, logs that are drained before exit, and the current exit codes kept. The
   desktop Workbench runs its native services as hosted services under the Proton event loop.
@@ -101,6 +103,9 @@ The maintainer confirmed these on 2026-10-28:
 - Configuration profiles are enabled in this release, as approved on 2026-10-28. They use Moon-Lander's
   activation and group rules, remain separate from frontend profiles, and do not enable environment files or
   local overrides.
+- Diagnostic JSON properties are nested under `properties`, as approved on 2026-10-28. The last occurrence of a
+  repeated name wins; optional `duplicateProperties` preserves all occurrences, including the winner, in original
+  per-name order. Values keep their JSON types, and records without repeated names omit `duplicateProperties`.
 - The work lands in as few pull requests as needed: one pull request for the migration here, with a separate pull
   request only for a group that is blocked while the rest is ready.
 
