@@ -148,15 +148,19 @@ fn Host::scheme_submission(
 /// New private operations. Frozen host submission and receipt shapes are retained.
 fn Host::scheme_command(
   self : Host,
-  op : String,
+  operation : SchemeOperation,
   fields : Map[String, Json],
 ) -> Json raise {
-  if op == "submit-native-policy" || op == "submit-http-policy" {
+  if operation is (SubmitNativePolicy | SubmitHttpPolicy) {
     ignore(closed(Json::object(fields), ["op", "body"]))
     let (unit, suite, policy) = scheme_request(
       decode(string(fields["body"])),
       @wire.field(self.owner.offer().to_json(), "providerId"),
-      mapping=if op == "submit-http-policy" { HttpPolicy } else { NativePolicy },
+      mapping=if operation is SubmitHttpPolicy {
+        HttpPolicy
+      } else {
+        NativePolicy
+      },
     )
     let prepared : Ref[Json?] = Ref(None)
     ignore(
@@ -173,7 +177,7 @@ fn Host::scheme_command(
           }
           // Reserve the actual complete native reply, including the selected
           // boundary, before the owner publishes an accepted execution.
-          if op == "submit-native-policy" {
+          if operation is SubmitNativePolicy {
             ignore(@native_reply.success_policy("execution.submit", value))
           } else {
             // Reserve the actual bare HTTP reply before owner publication.
@@ -188,7 +192,7 @@ fn Host::scheme_command(
     }
     return value
   }
-  if op == "submit-scheme" {
+  if operation is SubmitScheme {
     ignore(closed(Json::object(fields), ["op", "body"]))
     let (unit, suite, policy) = scheme_request(
       decode(string(fields["body"])),
@@ -198,7 +202,7 @@ fn Host::scheme_command(
       self.owner.submit_scheme(unit, suite, policy~),
     )
   }
-  if op == "plan-scheme" {
+  if operation is PlanScheme {
     ignore(closed(Json::object(fields), ["op", "body"]))
     let body = closed(decode(string(fields["body"])), [
       "contractVersion", "identity",
@@ -210,7 +214,7 @@ fn Host::scheme_command(
       ),
     )
   }
-  let (body, identity) = if op == "claim-scheme" {
+  let (body, identity) = if operation is ClaimScheme {
     ignore(closed(Json::object(fields), ["op", "identity", "selection"]))
     (fields, @receipts.Identity::from_json(fields["identity"]))
   } else {
@@ -222,7 +226,7 @@ fn Host::scheme_command(
     (body, @receipts.Identity::from_json(body["identity"]))
   }
   let (plan_id, provider_id, policy) = selection(body["selection"])
-  if op == "replan-scheme" {
+  if operation is ReplanScheme {
     return self.scheme_submission(
       self.owner.replan_scheme(
         identity,
@@ -332,7 +336,7 @@ pub fn Host::claim_selected(
   self : Host,
   selection : SchemeSelection,
 ) -> Json raise {
-  self.scheme_command("claim-scheme", {
+  self.scheme_command(ClaimScheme, {
     "op": "claim-scheme",
     "identity": selection.plan.identity.to_json(),
     "selection": {

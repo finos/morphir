@@ -86,7 +86,7 @@
 - [ ] 5.1 Define a request type and sender per CLI command and the shared middleware (cancellation, timing and log
   scope, failure mapping) (MED-1); replace the string-compare chain in `apps/morphir/main.mbt`; verify every existing
   CLI test and argv test passes unchanged
-- [ ] 5.2 Route `pkgs/morphir-engine/execution/workbench/boundary.mbt` through the synchronous mediator; verify the
+- [x] 5.2 Route `pkgs/morphir-engine/execution/workbench/boundary.mbt` through the synchronous mediator; verify the
   boundary tests and an unknown `op` refusal test give the same results as before
 - [ ] 5.3 Route `pkgs/morphir-workbench-native/service.mbt` through the async mediator; verify the native service
   tests and the bridge acceptance suite pass unchanged
