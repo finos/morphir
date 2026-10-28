@@ -15,13 +15,13 @@
   to `apps/morphir`, `apps/morphir-workbench`, `apps/morphir-workbench-desktop`, `pkgs/morphir-host` and
   `pkgs/morphir-workbench-native`, following DEP-2; verify `mise run check` (or the repository's full gate) passes
   on native, js, wasm and wasm-gc with no new warnings
-- [ ] 2.2 Group the Moon-Lander imports in one Renovate rule in `renovate.json`; verify with the Renovate config
+- [x] 2.2 Group the Moon-Lander imports in one Renovate rule in `renovate.json`; verify with the Renovate config
   validator
-- [ ] 2.3 Add a check that fails when an engine package imports a host module (DEP-2), wired into the existing lint
+- [x] 2.3 Add a check that fails when an engine package imports a host module (DEP-2), wired into the existing lint
   task; verify it fails on a deliberate bad import and passes on the tree
 - [ ] 2.4 Run a build-master review of the native release jobs for `moonbitlang/async` modules on Darwin and Windows;
   verify the review result is in the pull request
-- [ ] 2.5 Write `docs/adr/0004-adopt-moon-lander.md` and add the CONTEXT.md terms from DOC-1; verify the docs site
+- [x] 2.5 Write `docs/adr/0004-adopt-moon-lander.md` and add the CONTEXT.md terms from DOC-1; verify the docs site
   build and link check pass
 
 ## 3. Load configuration through Moon-Lander (morphir-ukvn.5.99.3)
