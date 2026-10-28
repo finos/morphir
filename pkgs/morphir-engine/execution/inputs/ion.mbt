@@ -12,7 +12,7 @@ pub fn ion_arguments(
       "input_limit", "Ion arguments exceed the input byte limit",
     )
   }
-  let list = @ion_text.read_ion(source[:])
+  let list = @ion_text.read_ion(source[:], fuel=Limited(@ion.Budget(128)))
   if list.has_annotations() {
     raise @wire.Invalid(
       "ion_arguments", "The argument list cannot have annotations",
@@ -184,7 +184,7 @@ pub fn convert_inputs(
     @ion.IonValue::list(values.map(v => @protocol.Value::from_json(v).to_ion()))
   } else {
     // read_json keeps exact JSON number lexemes; generic down-conversion is never used.
-    @ion_json.read_json(document[:])
+    @ion_json.read_json(document[:], fuel=Limited(@ion.Budget(128)))
   }
   @ion_text.write_ion_pretty(list)
 }

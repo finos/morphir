@@ -8,7 +8,7 @@ priv struct GraphFact {
 
 ///|
 fn record(entries : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::new(@ion.Struct(entries.map(e => @ion.Field::new(e.0, e.1))))
+  @ion.Ion(@ion.IonValueKind::Struct(entries.map(e => @ion.field(e.0, e.1))))
 }
 
 ///|

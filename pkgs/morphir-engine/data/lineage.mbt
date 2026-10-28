@@ -173,7 +173,7 @@ pub fn fill_lineage(before : IRUnit, after : @ir.IRFile) -> Lineage raise {
 
 ///|
 fn lineage_record(fields : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::from_fields(fields.map(p => @ion.Field::new(p.0, p.1)))
+  @ion.IonValue::from_fields(fields.map(p => @ion.field(p.0, p.1)))
 }
 
 ///|
@@ -300,7 +300,7 @@ pub fn apply_rewrite(
         }),
       ),
     ),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_rewrite"))
+  ]).with_annotation(@ion.symbol("morphir_rewrite"))
   {
     ..unit,
     distribution: rewrite.distribution,

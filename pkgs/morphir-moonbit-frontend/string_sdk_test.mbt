@@ -191,11 +191,11 @@ test "String predicates bind the receiver first and apply the SDK needle first" 
     assert_eq(facts["sdk_classification"], @ir.Data::Text("classic"))
   }
   let receipts = @ion.IonValue::from_fields([
-    @ion.Field::new(
+    @ion.field(
       "source_metadata",
       @ion.IonValue::list(output.metadata.map(m => m.data)),
     ),
-    @ion.Field::new("future_fact", @ion.IonValue::string("retain-me")),
+    @ion.field("future_fact", @ion.IonValue::string("retain-me")),
   ])
   let text = @ion_text.write_ion(receipts)
   assert_true(text.contains("String::contains"))

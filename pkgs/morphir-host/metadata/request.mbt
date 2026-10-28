@@ -22,9 +22,7 @@ pub fn capabilities_request(
     record([
       ("invocation", @ion.IonValue::string(invocation)),
       ("projectScope", @ion.IonValue::string(project_scope)),
-    ]).with_annotation(
-      @ion.SymbolToken::new("morphir_provider_capabilities_request_v1"),
-    ),
+    ]).with_annotation(@ion.symbol("morphir_provider_capabilities_request_v1")),
   )
   if bytes.length() > MAX_REQUEST_BYTES {
     raise Invalid("metadata.restore_request_limit")
@@ -58,9 +56,7 @@ pub fn snapshot_request(
       ("output", @ion.IonValue::string(output)),
       ("policy", @ion.IonValue::blob(policy)),
       ("lock", @ion.IonValue::blob(lock)),
-    ]).with_annotation(
-      @ion.SymbolToken::new("morphir_provider_snapshot_request_v1"),
-    ),
+    ]).with_annotation(@ion.symbol("morphir_provider_snapshot_request_v1")),
   )
   if bytes.length() > MAX_REQUEST_BYTES {
     raise Invalid("metadata.restore_request_limit")

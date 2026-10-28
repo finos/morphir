@@ -2,5 +2,37 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)moon\\.mod$/",
+        "/\\.mbtx$/"
+      ],
+      "matchStringsStrategy": "recursive",
+      "matchStrings": [
+        "(?:^|\\n)import[ \\t]*\\{[^}]*\\}",
+        "\"(?<depName>moonrockz/(?:moon-lander(?:-[a-z-]+)?|notebooks))@(?<currentValue>[^\"/]+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "moonrockz/moon-lander",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^v?(?<version>.+)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Keep the published Moon-Lander framework and notebooks at one exact release version",
+      "matchPackageNames": [
+        "moonrockz/moon-lander"
+      ],
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "groupName": "Moon-Lander",
+      "groupSlug": "moon-lander",
+      "rangeStrategy": "pin"
+    }
   ]
 }

@@ -29,7 +29,7 @@ test "unit frontend planning is lazy and fixes its callback and dependency inven
   let dependencies = Map::from_array([("parser", "1.0")])
   let mut calls = 0
   let data = @ion.IonValue::string("origin").with_annotation(
-    @ion.SymbolToken::new("audit"),
+    @ion.symbol("audit"),
   )
   engine.register_unit_frontend(
     "rich",

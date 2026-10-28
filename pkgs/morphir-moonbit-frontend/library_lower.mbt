@@ -825,7 +825,7 @@ fn library_lower(
     ir,
     entries: public_entries,
     metadata,
-    annotations: [@ion.SymbolToken::new("morphir_pipeline")],
+    annotations: [@ion.symbol("morphir_pipeline")],
     warnings,
     provenance: [
       ion_record([
@@ -834,7 +834,7 @@ fn library_lower(
         ("parser_version", @ion.IonValue::string(PARSER_VERSION)),
         ("naming_policy", @ion.IonValue::string(NAMING_POLICY)),
         ("unit_id", @ion.IonValue::string(input.unit_id)),
-      ]).with_annotation(@ion.SymbolToken::new("morphir_moonbit_frontend")),
+      ]).with_annotation(@ion.symbol("morphir_moonbit_frontend")),
     ] +
     warnings.map(w => w.to_ion()),
   }

@@ -119,6 +119,7 @@ pub fn provider() -> @metadata.RestoredLibrary raise {
       "{'@context':{'@vocab':\"morphir://ir/pkg/morphir/metadata?format=4.1.0#/module/schema/value/\"},'@graph':[{'@id':\"" +
       @metadata.TARGET_NAMES_PREDICATE +
       "\",'subject-role':\"ValueDefinition\",'object-form':\"data\",interpreter:\"target-name-language-ids\"}]}",
+      fuel=Limited(@ion.Budget(128)),
     ),
   }
 }
@@ -149,6 +150,7 @@ pub fn adapter(
     ",'@graph':" +
     graph +
     "}}",
+    fuel=Limited(@ion.Budget(128)),
   )
 }
 

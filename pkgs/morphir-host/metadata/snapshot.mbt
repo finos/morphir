@@ -113,7 +113,10 @@ pub fn Snapshot::decode(bytes : Bytes, expected : Expected) -> Snapshot raise {
     invalid("Missing requested root Library")
   }
   let native = members(
-    @ion_json.read_json(@utf8.decode(libraries[root].native[:])[:]),
+    @ion_json.read_json(
+      @utf8.decode(libraries[root].native[:])[:],
+      fuel=Limited(@ion.Budget(128)),
+    ),
   )
   if text(required(native, "formatVersion")) != "4.1.0" {
     invalid("Wrong native root format")
@@ -139,7 +142,9 @@ pub fn Snapshot::decode(bytes : Bytes, expected : Expected) -> Snapshot raise {
   } else {
     let body = @utf8.decode(blob(raw_metadata)[:])
     guard native.get("$meta") is Some(authored) &&
-      authored.equals(@ion_json.read_json(body[:])) else {
+      authored.equals(
+        @ion_json.read_json(body[:], fuel=Limited(@ion.Budget(128))),
+      ) else {
       invalid("Native metadata view differs from original payload")
     }
     Some(body)
@@ -161,7 +166,7 @@ pub fn Snapshot::restored(
     revision +
     "#/distribution",
     document_metadata: match self.metadata {
-      Some(body) => @ion_json.read_json(body[:])
+      Some(body) => @ion_json.read_json(body[:], fuel=Limited(@ion.Budget(128)))
       None => @ion.IonValue::from_fields([])
     },
   }

@@ -87,7 +87,7 @@ fn error_code(error : Error) -> String {
     @wire.Invalid(code, _) => code
     @protocol.Invalid(code) => code
     @generator.Invalid(code, _, _) => code
-    @ion.LimitExceeded(_) => "execution.value_limit"
+    @ion.FuelExhausted(..) => "execution.value_limit"
     @scheme.Unsupported(_) => "scheme.unsupported"
     @scheme.Unbound(_) => "scheme.unbound"
     @scheme.Limit(_) => "scheme.limit"
@@ -116,7 +116,7 @@ fn invocation_arguments(input : Json) -> Json raise {
   if field_value(arguments, "format") == Json::string("ion-text") {
     return @arguments.ion_arguments(Json::null(), source, true) catch {
       @protocol.Invalid(_) as error => raise error
-      @ion.LimitExceeded(_) as error => raise error
+      @ion.FuelExhausted(..) as error => raise error
       _ => raise @protocol.Invalid("execution.invalid_arguments")
     }
   }

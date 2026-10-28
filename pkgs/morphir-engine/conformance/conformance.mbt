@@ -399,7 +399,13 @@ pub fn Report::to_ion(self : Report) -> @ion.IonValue raise {
             ("provider", @ion.IonValue::string(lane.provider)),
             ("profile", @ion.IonValue::string(lane.profile)),
             ("required", @ion.IonValue::bool(lane.required)),
-            ("evidence", @text.read_ion(lane.evidence.stringify()[:])),
+            (
+              "evidence",
+              @text.read_ion(
+                lane.evidence.stringify()[:],
+                fuel=Limited(@ion.Budget(128)),
+              ),
+            ),
             (
               "calls",
               @ion.IonValue::list(

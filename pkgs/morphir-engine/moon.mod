@@ -11,6 +11,11 @@ readme = "README.md"
 description = "Host-independent project and workspace transformation engine"
 
 import {
+  "moonrockz/moon-lander-core@0.6.0",
+  "moonrockz/moon-lander-logging@0.6.0",
+  "moonrockz/moon-lander-config@0.6.0",
+  "moonrockz/moon-lander-mediator@0.6.0",
+  "moonrockz/notebooks@0.6.0",
   "moonbitlang/x@0.5.5",
   "finos/morphir-toml-edit@0.1.0",
   "finos/morphir-workbench-native-session@0.1.0",
@@ -26,7 +31,7 @@ import {
   "finos/morphir-typing@0.1.0",
   "finos/morphir-sdk-spec@0.1.0",
   "moonbit-community/toml@0.5.0",
-  "moonrockz/ion@0.5.0",
+  "moonrockz/ion@0.6.0",
   "moonrockz/krueger@0.8.0",
   "moonrockz/expect@0.6.1",
 }

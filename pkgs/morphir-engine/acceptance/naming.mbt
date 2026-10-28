@@ -168,8 +168,10 @@ fn naming_fixtures() -> Json raise {
     )
     metadata[0] = {
       node_id: entry.node_id,
-      data: @ion.IonValue::new(
-        @ion.Struct(fields + [@ion.Field::new("vendor_payload", payload)]),
+      data: @ion.Ion(
+        @ion.IonValueKind::Struct(
+          fields + [@ion.field("vendor_payload", payload)],
+        ),
       ).with_annotations(entry.data.annotations()),
     }
     let enriched = { ..unit, metadata, }

@@ -121,7 +121,7 @@ test "math snapshot resolves finite calls and refuses invalid bindings through e
   })
   // Future facts on the real checkpoint survive both Ion encodings.
   let future = @ion.IonValue::from_fields([
-    @ion.Field::new("future_math", @ion.IonValue::string("retain-me")),
+    @ion.field("future_math", @ion.IonValue::string("retain-me")),
   ])
   let metadata = unit.metadata.copy()
   let owner = metadata[0]
@@ -129,8 +129,8 @@ test "math snapshot resolves finite calls and refuses invalid bindings through e
   metadata[0] = {
     ..owner,
     data: @ion.IonValue::from_fields([
-      @ion.Field::new("source_facts", original),
-      @ion.Field::new("future_math", future),
+      @ion.field("source_facts", original),
+      @ion.field("future_math", future),
     ]),
   }
   let unit = { ..unit, metadata, }

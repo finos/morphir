@@ -6,8 +6,8 @@ async fn rich_process_cases(
 ) -> Unit {
   let ir = @fixtures.input()
   let root_value = @ion.IonValue::from_fields([
-    @ion.Field::new("ir", @ion_json.to_ion(@ir_json.to_json(ir))),
-    @ion.Field::new(
+    @ion.field("ir", @ion_json.Ion(@ir_json.to_json(ir))),
+    @ion.field(
       "enrichments",
       @ion.IonValue::list([
         @ion_text.read_ion(
@@ -15,8 +15,8 @@ async fn rich_process_cases(
         ),
       ]),
     ),
-    @ion.Field::new("provenance", @ion.IonValue::list([])),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_model"))
+    @ion.field("provenance", @ion.IonValue::list([])),
+  ]).with_annotation(@ion.symbol("morphir_model"))
   let bytes = @binary.write_binary_value(root_value)
   let tuple : Json = {
     "operation": "morphir.backend.generateModel",

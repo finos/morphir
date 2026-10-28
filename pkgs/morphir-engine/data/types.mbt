@@ -81,7 +81,7 @@ pub fn IRUnit::new(
     id,
     distribution,
     metadata: metadata.copy(),
-    annotations: [@ion.SymbolToken::new("morphir_pipeline")],
+    annotations: [@ion.symbol("morphir_pipeline")],
     provenance: [],
   }
 }

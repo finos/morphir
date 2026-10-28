@@ -141,7 +141,7 @@ fn library_profile(
           let path = workspace_paths.get(o.path).unwrap_or(o.path)
           origin_metadata(package_name, { ..o, path, })
         }),
-        annotations: [@ion.SymbolToken::new("morphir_pipeline")],
+        annotations: [@ion.symbol("morphir_pipeline")],
         provenance: [provenance(unit_id)],
       }
     }),
@@ -165,8 +165,8 @@ const KRUEGER_VERSION : String = "0.8.0"
 
 ///|
 fn record(fields : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::new(
-    @ion.Struct(fields.map(pair => @ion.Field::new(pair.0, pair.1))),
+  @ion.Ion(
+    @ion.IonValueKind::Struct(fields.map(pair => @ion.field(pair.0, pair.1))),
   )
 }
 
@@ -223,5 +223,5 @@ fn provenance(unit_id : String) -> @ion.IonValue {
     ("parser", @ion.IonValue::string("moonrockz/krueger")),
     ("parser_version", @ion.IonValue::string(KRUEGER_VERSION)),
     ("unit_id", @ion.IonValue::string(unit_id)),
-  ]).with_annotation(@ion.SymbolToken::new("morphir_elm_frontend"))
+  ]).with_annotation(@ion.symbol("morphir_elm_frontend"))
 }

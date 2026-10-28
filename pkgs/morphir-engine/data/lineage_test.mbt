@@ -46,7 +46,6 @@ test "identity preserves rich Ion metadata and ordered annotations without proje
       false
     } catch {
       @data.Invalid(code, _) => code == "data.lossy_conversion"
-      _ => false
     },
   )
 }

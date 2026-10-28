@@ -35,8 +35,8 @@ test "numeric SDK type call and effect facts survive checkpoints and generated r
   metadata[0] = {
     ..owner,
     data: @ion.IonValue::from_fields([
-      @ion.Field::new("source_facts", owner.data),
-      @ion.Field::new("future_numeric", @ion.IonValue::string("retain-me")),
+      @ion.field("source_facts", owner.data),
+      @ion.field("future_numeric", @ion.IonValue::string("retain-me")),
     ]),
   }
   let generated = library_generated({ ..output, metadata, })

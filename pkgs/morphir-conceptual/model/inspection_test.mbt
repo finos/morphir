@@ -18,7 +18,7 @@ fn set(
 ) -> @ion.IonValue {
   guard value.kind() is Struct(fs) else { abort("Not a fixture struct") }
   let output = fs.filter(f => f.name().text() != Some(key))
-  output.push(@ion.Field::new(key, replacement))
+  output.push(@ion.field(key, replacement))
   @ion.IonValue::from_fields(output).with_annotations(value.annotations())
 }
 
@@ -102,7 +102,7 @@ test "M1 0004 five concern states and original recovery diagnostics remain indep
 test "duplicate record members fail while opaque descriptive multiplicity survives" {
   let original = parsed(@fixtures.prose_only)
   guard original.kind() is Struct(fs) else { abort("fixture") }
-  fs.push(@ion.Field::new("model", get(original, "model")))
+  fs.push(@ion.field("model", get(original, "model")))
   assert_eq(
     failure(fn() raise { ignore(@model.Graph::decode(original)) }),
     ("conceptual.duplicate_member", "/model"),

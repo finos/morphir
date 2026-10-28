@@ -164,7 +164,10 @@ fn frame(
   names : Array[String],
 ) -> Map[String, @ion.IonValue] raise {
   preflight(bytes)
-  let value = @binary.read_binary_value(bytes[:])
+  let value = @binary.read_binary_value(
+    bytes[:],
+    fuel=Limited(@ion.Budget(128)),
+  )
   if value.annotations().map(a => a.text()) != [Some(annotation)] {
     invalid("Wrong response profile")
   }
@@ -229,5 +232,5 @@ fn raw_digest(value : String) -> String raise {
 
 ///|
 fn record(values : Array[(String, @ion.IonValue)]) -> @ion.IonValue {
-  @ion.IonValue::from_fields(values.map(v => @ion.Field::new(v.0, v.1)))
+  @ion.IonValue::from_fields(values.map(v => @ion.field(v.0, v.1)))
 }

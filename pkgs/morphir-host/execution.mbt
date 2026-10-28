@@ -465,9 +465,13 @@ pub fn process_execution(
           if bytes.length() > 1048576 {
             raise @config.Invalid("execution.output_limit")
           }
-          let f = @protocol.fields(@ion_binary.read_binary_value(bytes[:]), [
-            "profile", "suite_identity", "calls", "traceparent", "extensions",
-          ])
+          let f = @protocol.fields(
+            @ion_binary.read_binary_value(
+              bytes[:],
+              fuel=Limited(@ion.Budget(128)),
+            ),
+            ["profile", "suite_identity", "calls", "traceparent", "extensions"],
+          )
           if @protocol.string(@protocol.required(f, "profile")) !=
             "morphir-outcomes-v1" ||
             @protocol.string(@protocol.required(f, "suite_identity")) !=

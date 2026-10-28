@@ -11,5 +11,5 @@ readme = "README.md"
 description = "Rich conceptual model preservation and revision-scoped intent inspection"
 
 import {
-  "moonrockz/ion@0.5.0",
+  "moonrockz/ion@0.6.0",
 }

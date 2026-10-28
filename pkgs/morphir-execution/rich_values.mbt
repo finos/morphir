@@ -443,7 +443,10 @@ fn payload_value(value : @ion.IonValue, depth : Int32) -> Value raise {
 
 ///|
 pub fn Value::from_json(value : Json) -> Value raise {
-  let result = payload_value(@text.read_ion(value.stringify()[:]), 0)
+  let result = payload_value(
+    @text.read_ion(value.stringify()[:], fuel=Limited(@ion.Budget(128))),
+    0,
+  )
   validate_value(result, 0, Ref(100000))
   result
 }
@@ -451,17 +454,12 @@ pub fn Value::from_json(value : Json) -> Value raise {
 ///|
 pub fn Value::to_ion(self : Value) -> @ion.IonValue {
   match self {
-    Integer(n) => @ion.IonValue::new(@ion.Int(n))
+    Integer(n) => @ion.Ion(@ion.IonValueKind::Int(n))
     Boolean(b) => @ion.IonValue::bool(b)
     Unit =>
-      @ion.IonValue::untyped_null().with_annotation(
-        @ion.SymbolToken::new("morphir_unit"),
-      )
-    Decimal(n, e) => @ion.IonValue::decimal(@ion.Decimal::new(n, e))
-    _ =>
-      value_payload(self).with_annotation(
-        @ion.SymbolToken::new("morphir_value"),
-      )
+      @ion.IonValue::untyped_null().with_annotation(@ion.symbol("morphir_unit"))
+    Decimal(n, e) => @ion.IonValue::decimal(@ion.decimal(n, e))
+    _ => value_payload(self).with_annotation(@ion.symbol("morphir_value"))
   }
 }
 
@@ -481,7 +479,7 @@ pub fn Value::from_ion(value : @ion.IonValue) -> Value raise {
     Unit
   } else if annotations.length() == 1 &&
     annotations[0].text() == Some("morphir_value") {
-    payload_value(@ion.IonValue::new(value.kind()), 0)
+    payload_value(@ion.Ion(value.kind()), 0)
   } else {
     raise Invalid("execution.value_annotation")
   }

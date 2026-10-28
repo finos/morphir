@@ -349,7 +349,10 @@ fn resolve_context(
           "metadata.invalid_context_form", resource_ref, "Context must be JSON, not general Ion",
         )
     }
-    let document = fields(@ion_text.read_ion(source[:]), resource_ref)
+    let document = fields(
+      @ion_text.read_ion(source[:], fuel=Limited(@ion.Budget(128))),
+      resource_ref,
+    )
     if document.length() != 1 || !document.contains("@context") {
       raise Invalid(
         "metadata.invalid_context_form", resource_ref, "Context document needs exactly one @context member",

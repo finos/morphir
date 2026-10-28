@@ -86,9 +86,7 @@ fn decode_document(value : @ion.IonValue, json : Bool) -> Expectations raise {
       if v.has_annotations() {
         raise @protocol.Invalid("conformance.annotation")
       }
-      @protocol.Value::from_ion(
-        v.with_annotation(@ion.SymbolToken::new("morphir_value")),
-      )
+      @protocol.Value::from_ion(v.with_annotation(@ion.symbol("morphir_value")))
     } else {
       @protocol.Value::from_ion(v)
     }
@@ -135,11 +133,16 @@ pub fn Expectations::decode(
     // Validate JSON syntax, then parse the original lexemes with Ion. The JSON
     // AST is deliberately unused so no semantic number passes through Double.
     ignore(@json.parse(@utf8.decode(bytes)))
-    return decode_document(@text.read_ion(@utf8.decode(bytes)[:]), true)
+    return decode_document(
+      @text.read_ion(@utf8.decode(bytes)[:], fuel=Limited(@ion.Budget(128))),
+      true,
+    )
   }
   let value = match format {
-    "ion-text" => @text.read_ion(@utf8.decode(bytes)[:])
-    "ion-binary" => @binary.read_binary_value(bytes[:])
+    "ion-text" =>
+      @text.read_ion(@utf8.decode(bytes)[:], fuel=Limited(@ion.Budget(128)))
+    "ion-binary" =>
+      @binary.read_binary_value(bytes[:], fuel=Limited(@ion.Budget(128)))
     _ => raise @protocol.Invalid("conformance.format")
   }
   Expectations::from_ion(value)
