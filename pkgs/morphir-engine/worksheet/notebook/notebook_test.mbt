@@ -152,3 +152,19 @@ test "invalid notebooks and syntax failures never produce a worksheet or valid p
   }
   assert_true(invalid_dib)
 }
+
+///|
+test "DIB empty cells retain counts and skipped cell indexes through the public lossless codec" {
+  let imported = @notebook.import_notebook(
+    "#!csharp\n#!scheme\n42\n#!markdown\n",
+    Dib,
+  )
+  assert_eq(imported.cells(), 3)
+  assert_eq(imported.skipped().map(cell => cell.index()), [0])
+  let report = @worksheet.WorksheetRequest::new(capture(imported.source())).evaluate()
+  assert_eq(report.observations().length(), 1)
+  assert_eq(report.observations()[0].preview(), "42")
+  let empty_comment = @notebook.export_notebook(capture(";;\n42"), Dib)
+  let restored = @notebook.import_notebook(empty_comment.content(), Dib)
+  assert_eq(restored.cells(), 2)
+}

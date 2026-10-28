@@ -122,7 +122,7 @@
 
 ## 8. Import and export worksheets as notebooks (morphir-ukvn.5.99.8)
 
-- [ ] 8.1 Add `moonrockz/notebooks` at the current Moon-Lander version and the pure package
+- [x] 8.1 Add `moonrockz/notebooks` at the current Moon-Lander version and the pure package
   `pkgs/morphir-engine/worksheet/notebook` with the form, comment and observation mapping (NB-1); verify unit tests
   for forms, comment blocks, Jupyter outputs, source-only DIB and the round-trip scenario on all four targets
 - [x] 8.2 Add `morphir notebook export` (`--format`, `-o`, `--evaluate`) and `morphir notebook import` with `--json`

@@ -237,9 +237,17 @@ pub fn export_notebook(
       let cells = sources.map(cell => {
         match cell {
           Form(text, _) =>
-            @dib.Cell::Cell(text, kernel=@dib.KernelName("scheme"))
+            @dib.Cell::Cell(
+              text,
+              kernel=@dib.KernelName("scheme"),
+              source_mode=Lossless,
+            )
           Comment(text) =>
-            @dib.Cell::Cell(text, kernel=@dib.KernelName("markdown"))
+            @dib.Cell::Cell(
+              text,
+              kernel=@dib.KernelName("markdown"),
+              source_mode=Lossless,
+            )
         }
       })
       let notebook = @dib.Notebook::Notebook(
@@ -247,7 +255,10 @@ pub fn export_notebook(
         metadata=metadata(),
         registry=registry(),
       )
-      { content: notebook.to_string(), cells: cells.length(), }
+      {
+        content: notebook.to_string(source_mode=Lossless),
+        cells: cells.length(),
+      }
     }
     Ipynb => {
       let rows = report.map(r => r.observations()).unwrap_or([])
@@ -292,7 +303,10 @@ pub fn export_notebook(
         ReadOnlyArray::from_array(cells[:]),
         metadata=metadata(),
       )
-      { content: notebook.to_string(), cells: cells.length(), }
+      {
+        content: notebook.to_string(),
+        cells: cells.length(),
+      }
     }
   }
 }
@@ -376,7 +390,11 @@ pub fn import_notebook(content : String, format : Format) -> Imported raise {
       notebook.cells().length()
     }
     Dib => {
-      let notebook = @dib.parse(content, registry=registry())
+      let notebook = @dib.parse(
+        content,
+        registry=registry(),
+        source_mode=Lossless,
+      )
       for index, cell in notebook.cells() {
         let name = cell.kernel().to_string()
         match name {
