@@ -130,7 +130,7 @@ pub fn invocation_driver(
       content: Text(
         "name = \"morphir-generated/driver\"\nversion = \"0.0.0\"\nimport {\n" +
         quote(output.project.module_name + "@0.0.0") +
-        ",\n\"finos/morphir-sdk@0.1.0\",\n\"finos/morphir-execution@0.1.0\",\n\"moonrockz/ion@0.5.0\",\n\"moonbitlang/x@0.5.5\",\n}\n",
+        ",\n\"finos/morphir-sdk@0.1.0\",\n\"finos/morphir-execution@0.1.0\",\n\"moonrockz/ion@0.6.0\",\n\"moonbitlang/x@0.5.6\",\n}\n",
       ),
     },
     {

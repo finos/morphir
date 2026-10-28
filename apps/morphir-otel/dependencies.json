@@ -10,9 +10,9 @@
     },
     {
       "name": "moonrockz/ion",
-      "version": "0.5.0",
-      "url": "https://download.mooncakes.io/user/moonrockz/ion/0.5.0.zip",
-      "sha256": "ea750c19508a7fd448697bb605a194a72263d094b6ce706bea71e3938cff7996"
+      "version": "0.6.0",
+      "url": "https://download.mooncakes.io/user/moonrockz/ion/0.6.0.zip",
+      "sha256": "a5e2d4ed357ece4db5e5496abb4dfebd7070a41dcd13cbfe8859105f4baa805d"
     },
     {
       "name": "moonbitlang/async",

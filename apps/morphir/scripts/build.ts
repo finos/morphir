@@ -8,7 +8,8 @@ const buildDirectory = fileURLToPath(new URL("../_build/", import.meta.url));
 execFileSync(
   "moon",
   ["build", ".", "../../pkgs/morphir-host/connected-core", "--target", "js", "--release", "--target-dir", buildDirectory],
-  { cwd: appDirectory, stdio: "inherit" },
+  // Build summaries must not corrupt npm pack --json during prepack.
+  { cwd: appDirectory, stdio: ["inherit", 2, 2] },
 );
 
 mkdirSync(new URL("../dist/", import.meta.url), { recursive: true });
