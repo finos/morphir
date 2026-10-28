@@ -104,12 +104,19 @@
 {"id":"morphir-4rin","title":"Specify and validate Morphir IR using Morphir","status":"in_progress","priority":2}
 {"id":"morphir-4uc2","title":"Gleam binding hand-rolls a third tree format (.morphir-dist/pkg/<pkg>/<mod>/{module.json,types/,values/})","status":"open","priority":3}
 {"id":"morphir-4wm","title":"Port Distribution IR to Go","status":"closed","priority":1}
+{"id":"morphir-4wrx","title":"Preserve canonical MEP request IDs in the published Rust SDK","status":"closed","priority":2}
 {"id":"morphir-4z2","title":"Integrate bytecodealliance/wit decoder with adapter","status":"closed","priority":2}
 {"id":"morphir-50v6","title":"Restore the root mise check gate","status":"open","priority":2}
 {"id":"morphir-56wf","title":"Add a Tree-sitter grammar for Morphir .mfs source","status":"open","priority":2}
 {"id":"morphir-5b6w","title":"Rust mirror stage 3: document-tree layout (readTree/writeTree) in morphir-core, morphir-common as adapters","status":"closed","priority":1}
 {"id":"morphir-5dz","title":"Migrate task runner from just to mise","status":"closed","priority":2}
 {"id":"morphir-5g12","title":"morphir-rust loader.rs still reads an older directory format the canonical tree reader refuses","status":"open","priority":3}
+{"id":"morphir-5hxy","title":"Add a process MEP guest for the Python compiler","status":"in_progress","priority":2}
+{"id":"morphir-5hxy.1","title":"Negotiate current and legacy MEP","status":"in_progress","priority":2}
+{"id":"morphir-5hxy.2","title":"Adapt supported model envelopes","status":"in_progress","priority":2}
+{"id":"morphir-5hxy.3","title":"Serve native stdio sessions","status":"in_progress","priority":2}
+{"id":"morphir-5hxy.4","title":"Distribute both runtime choices","status":"in_progress","priority":2}
+{"id":"morphir-5hxy.5","title":"Qualify host interoperability","status":"in_progress","priority":2}
 {"id":"morphir-5il","title":"Add Morphir IR visitor framework","status":"closed","priority":2}
 {"id":"morphir-5mnj","title":"Publish and shepherd WASM and Avro pull requests","status":"closed","priority":2}
 {"id":"morphir-5nuu","title":"Reconcile Beads remote sync after package landing","status":"closed","priority":2}
@@ -178,6 +185,7 @@
 {"id":"morphir-albt.8","title":"Bootstrap kb/ folder in finos/morphir","status":"closed","priority":2}
 {"id":"morphir-albt.9","title":"Port kb skill to finos/morphir backed by morphir CLI","status":"closed","priority":2}
 {"id":"morphir-arf","title":"Update Workspace type to track members","status":"closed","priority":2}
+{"id":"morphir-av8s","title":"Add executable Python JSON Library MEP guest profile","status":"in_progress","priority":1}
 {"id":"morphir-b1g7","title":"Out directory, task results, and install (Mill-style .morphir/out)","status":"closed","priority":1}
 {"id":"morphir-b1g7.1","title":"morphir-rust: devkit out module (resolve_out_root, TaskId, TaskPaths, TaskResult)","status":"closed","priority":1}
 {"id":"morphir-b1g7.2","title":"morphir-rust: config renames and remove old path helpers","status":"closed","priority":1}
@@ -193,6 +201,11 @@
 {"id":"morphir-bex","title":"Remove Go source code directories","status":"closed","priority":1}
 {"id":"morphir-bg1d","title":"Polish Insight view from morphir-elm reference","status":"closed","priority":2}
 {"id":"morphir-biw","title":"Add WASI WIT package test fixtures","status":"closed","priority":2}
+{"id":"morphir-bj9r","title":"GitHub release delivery and mise CLI installation","status":"closed","priority":2}
+{"id":"morphir-bj9r.1","title":"Document managed CLI installation","status":"closed","priority":2}
+{"id":"morphir-bj9r.2","title":"Qualify candidate installer behavior","status":"closed","priority":2}
+{"id":"morphir-bj9r.3","title":"Gate platform and WASM publication","status":"closed","priority":2}
+{"id":"morphir-bj9r.4","title":"Verify integrated delivery","status":"closed","priority":2}
 {"id":"morphir-bke9","title":"Load browser-local project models from compile artifact records","status":"open","priority":2}
 {"id":"morphir-bm9","title":"Update target resolution to run all enabled matching tasks","status":"closed","priority":2}
 {"id":"morphir-bmwy","title":"Pin morphir-scala-elm v0.5.0-M10 on milestone/v0.4.0-beta.9","status":"closed","priority":2}
@@ -953,6 +966,7 @@
 {"id":"morphir-ukvn.1.7","title":"A5: move the Avro and OpenAPI extensions to finos/morphir","status":"open","priority":2}
 {"id":"morphir-ukvn.1.8","title":"A6: move Elm-native to finos/morphir-elm","status":"open","priority":2}
 {"id":"morphir-ukvn.1.9","title":"A9: restructure finos/morphir-scala and decommission morphir-scala-elm","status":"open","priority":2}
+{"id":"morphir-ukvn.10","title":"Archive completed Python documentation OpenSpec change","status":"closed","priority":3}
 {"id":"morphir-ukvn.2","title":"Track 2: WIT contract and components","status":"open","priority":1}
 {"id":"morphir-ukvn.2.1","title":"B1: WIT backend extension, types only","status":"open","priority":1}
 {"id":"morphir-ukvn.2.2","title":"B2: the MEP contract as WIT","status":"open","priority":1}
@@ -1491,12 +1505,22 @@
 {"id":"morphir-ukvn.5.97.3","title":"Viewing documents","status":"open","priority":2}
 {"id":"morphir-ukvn.5.97.4","title":"Standalone and referenced forms","status":"open","priority":2}
 {"id":"morphir-ukvn.5.97.5","title":"Bead browser","status":"open","priority":2}
-{"id":"morphir-ukvn.5.98","title":"Qualify Python Extism extensions through the MoonBit CLI","status":"in_progress","priority":2}
-{"id":"morphir-ukvn.5.98.1","title":"Expose a bounded shared Extism host policy","status":"in_progress","priority":2}
-{"id":"morphir-ukvn.5.98.2","title":"Add explicit verified Extism invocation and JSON reporting","status":"in_progress","priority":2}
-{"id":"morphir-ukvn.5.98.3","title":"Qualify Python legacy JSON IR operations","status":"in_progress","priority":2}
-{"id":"morphir-ukvn.5.98.4","title":"Qualify packaged Python Extism support and publish compatibility evidence","status":"open","priority":2}
-{"id":"morphir-ukvn.5.98.5","title":"Release Python multiDocument capability and matching compiler API","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.98","title":"Qualify Python Extism extensions through the MoonBit CLI","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.98.1","title":"Expose a bounded shared Extism host policy","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.98.2","title":"Add explicit verified Extism invocation and JSON reporting","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.98.3","title":"Qualify Python legacy JSON IR operations","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.98.4","title":"Qualify packaged Python Extism support and publish compatibility evidence","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.98.5","title":"Release Python multiDocument capability and matching compiler API","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.99","title":"Adopt Moon-Lander as the application framework for the CLI and Workbench","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.1","title":"Publish the Moon-Lander framework modules on mooncakes.io","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.2","title":"Add Moon-Lander dependencies and record the adoption","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.3","title":"Load configuration through Moon-Lander","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.4","title":"Add leveled diagnostic logging","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.5","title":"Dispatch commands and Workbench operations through the mediator","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.6","title":"Run the CLI through the Moon-Lander host","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.7","title":"Host the desktop Workbench services","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.8","title":"Import and export worksheets as notebooks","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.9","title":"Integration checks across hosts","status":"open","priority":2}
 {"id":"morphir-ukvn.6","title":"Support entry-root reachability and Morphir tree-shaking","status":"open","priority":3}
 {"id":"morphir-ukvn.7","title":"Conceptual models and executable specifications","status":"open","priority":1}
 {"id":"morphir-ukvn.7.1","title":"Draft and review the conceptual model and executable specification design","status":"in_progress","priority":1}
@@ -1600,11 +1624,11 @@
 {"id":"morphir-ukvn.8.7","title":"V4 package layout and re-exports","status":"closed","priority":2}
 {"id":"morphir-ukvn.8.8","title":"V3↔V4 migrations","status":"closed","priority":2}
 {"id":"morphir-ukvn.8.9","title":"IR interchange CLI","status":"closed","priority":2}
-{"id":"morphir-ukvn.9","title":"Publish Python documentation site and verified user guides","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.9","title":"Publish Python documentation site and verified user guides","status":"closed","priority":2}
 {"id":"morphir-ukvn.9.1","title":"Establish Telescope site and local preview","status":"closed","priority":2}
 {"id":"morphir-ukvn.9.2","title":"Publish verified Python API and CLI examples","status":"closed","priority":2}
 {"id":"morphir-ukvn.9.3","title":"Document qualified Morphir CLI integrations","status":"closed","priority":2}
-{"id":"morphir-ukvn.9.4","title":"Validate and publish documentation through scoped CI","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.9.4","title":"Validate and publish documentation through scoped CI","status":"closed","priority":2}
 {"id":"morphir-uo8","title":"Remove Go code and migrate CI/CD to Rust","status":"closed","priority":1}
 {"id":"morphir-uqub","title":"Plan V3 semantic dogfooding alongside IR MCK migration","status":"in_progress","priority":1}
 {"id":"morphir-uqub.1","title":"Implement IR-3 vocabulary coverage","status":"closed","priority":1}
