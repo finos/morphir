@@ -1,9 +1,12 @@
-# Published finos/morphir-rust extension bundles that CI runs the CLI against.
+# Published WASM extension bundles that CI runs the CLI against.
 #
 # These are the bundles users install. A CLI change that breaks one of them turns CI red.
+# Each bundle is downloaded from the releases of the repository that owns it. `repository` names
+# that repository as `owner/name`; a pin without one comes from finos/morphir-rust.
 # `sha256` is the digest of the guest `.wasm`. It is checked against the download, so a release
-# asset that someone replaces does not run. For a deliberate protocol change, publish a compatible bundle from finos/morphir-rust first,
-# then move the pin here in the same pull request as the CLI change.
+# asset that someone replaces does not run. For a deliberate protocol change, publish a compatible
+# bundle from the repository that owns it first, then move the pin here in the same pull request
+# as the CLI change.
 
 [bundles.avro]
 tag = "extension/avro/v0.2.0"
@@ -15,10 +18,13 @@ tag = "extension/openapi/v0.2.0"
 artifact = "morphir-openapi-extension-0.2.0"
 sha256 = "ccef0ebcc8f4fff5579c5c28ee4cb44cdec46a6f4ec993a8e6ceb029996f5ec0"
 
+# finos/morphir-python owns the Python extension. Bundles up to extension/python/v0.4.0 remain in
+# the finos/morphir-rust releases.
 [bundles.python]
-tag = "extension/python/v0.4.0"
-artifact = "morphir-python-binding-0.4.0"
-sha256 = "e5bc0d1593eb1b3f7d33d6a627e07c14c0fd21c9274abc22bd326318c602c36b"
+repository = "finos/morphir-python"
+tag = "extension/python/v0.4.1"
+artifact = "morphir-python-binding-0.4.1"
+sha256 = "a04722e16115667fc7c332177805dcb049aef563afcee0e5f80c5fea302f5b4e"
 
 [bundles.rust]
 tag = "extension/rust/v0.3.0"

@@ -311,9 +311,10 @@ jobs:
 
       - name: Fetch the published extensions
         # The extensions users install, at the tags and digests pinned in
-        # .config/published-extension-bundles.toml: four WASM bundles from
-        # finos/morphir-rust, the Elm process extension from finos/morphir-elm
-        # and the Scala Elm provider from finos/morphir-scala. The owning
+        # .config/published-extension-bundles.toml: four WASM bundles from the
+        # repositories that release them, the Elm process extension from
+        # finos/morphir-elm and the Scala Elm provider from
+        # finos/morphir-scala. The owning
         # repository checks that a new release
         # works with the released CLI; this job checks that a CLI change does
         # not break the published releases.

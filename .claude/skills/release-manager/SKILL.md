@@ -153,11 +153,17 @@ Before a release, check finos/morphir-elm for a newer `extension/elm/v*` tag and
 finos/morphir-scala for a newer `v*` release, and move the pins.
 
 **WASM extensions (Avro, OpenAPI, Python, Rust).** finos/morphir does not build
-the guests. finos/morphir-rust owns the check that a new bundle works with the
-released CLI. This repository owns the check that a CLI change does not break the
-bundles users already installed: CI downloads the bundles pinned in
+the guests. The repository that owns an extension checks that a new bundle works
+with the released CLI: finos/morphir-rust for Avro, OpenAPI and Rust, and
+finos/morphir-python for Python (crate `rust/crates/morphir-python-binding`,
+release tags `extension/python/v<version>`). Python bundles up to
+`extension/python/v0.4.0` stay in the finos/morphir-rust releases. This
+repository owns the check that a CLI change does not break the bundles users
+already installed: CI downloads the bundles pinned in
 `.config/published-extension-bundles.toml` and runs the ignored extension tests
-against them. Run the same check with the release binary:
+against them. A `[bundles.<id>]` pin names the releasing repository in
+`repository`; a pin without one comes from finos/morphir-rust. Run the same check
+with the release binary:
 
 ```bash
 mise run ci:fetch-published-bundles
@@ -169,10 +175,12 @@ MORPHIR_PYTHON_BUNDLE="$B/python" MORPHIR_RUST_BUNDLE="$B/rust" \
     --test python_extension --test rust_extension -- --ignored
 ```
 
-Before a release, check finos/morphir-rust releases for newer `extension/<id>/v*`
-tags and move the pins. When the CLI changes the extension protocol on purpose,
-publish a compatible bundle from finos/morphir-rust first, then move the pin in
-the same pull request as the CLI change.
+Before a release, check the releases of each owning repository for newer
+`extension/<id>/v*` tags and move the pins: finos/morphir-rust for Avro, OpenAPI
+and Rust, finos/morphir-python for Python. A pin that moves to another repository
+changes `repository` with its tag, artifact and `sha256`. When the CLI changes the
+extension protocol on purpose, publish a compatible bundle from the owning
+repository first, then move the pin in the same pull request as the CLI change.
 
 Then prove one bundle by hand in a clean home. `generate` needs a project
 configuration, so the steps run inside a directory with a `morphir.toml`:

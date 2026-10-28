@@ -10,7 +10,7 @@ This directory contains [git submodules](https://git-scm.com/book/en/v2/Git-Tool
 | **morphir-rust** | [finos/morphir-rust](https://github.com/finos/morphir-rust) | main | Rust libraries (morphir-core, morphir-common, etc.) used by the morphir CLI in this repo |
 | **morphir-examples** | [finos/morphir-examples](https://github.com/finos/morphir-examples) | main | Example Morphir projects; used for docs, tests, and reference |
 | **morphir-moonbit** | [finos/morphir-moonbit](https://github.com/finos/morphir-moonbit) | main | MoonBit implementation of Morphir tooling |
-| **morphir-python** | [finos/morphir-python](https://github.com/finos/morphir-python) | main | Python implementation of Morphir tooling |
+| **morphir-python** | [finos/morphir-python](https://github.com/finos/morphir-python) | main | Python implementation of Morphir tooling; owns the Python compiler and the `morphir-python` WASM extension |
 | **morphir-scala** | [finos/morphir-scala](https://github.com/finos/morphir-scala) | main | Scala implementation of Morphir tooling; Mill build cross-compiled to JVM, JS, and Scala Native |
 | **morphir-ui** | [finos/morphir-ui](https://github.com/finos/morphir-ui) | main | Morphir's UI monorepo: the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application |
 
@@ -66,7 +66,7 @@ mise run submodules:status
 - **morphir-rust**: The morphir CLI (in `crates/`) depends on morphir-rust crates via Cargo path dependencies (e.g. `morphir-core`, `morphir-common`). The submodule is required to build those crates.
 - **morphir-examples**: Used for examples, documentation, and tests. See each submodule's own README for build and usage.
 - **morphir-moonbit**: MoonBit implementation with packages for SDK, core types, and WASM bindings. See below for build commands.
-- **morphir-python**: Python implementation of Morphir tooling. See the submodule's own README for build and usage.
+- **morphir-python**: Python implementation of Morphir tooling. It owns the Python compiler (the Rust crate `rust/crates/morphir-python-binding`) and the `morphir-python` WASM extension that the CLI installs, and releases new `extension/python/v<version>` bundles. Bundles up to `extension/python/v0.4.0` were released from finos/morphir-rust and stay there. The CLI in this repository does not build the extension; CI runs it against the bundle pinned in `.config/published-extension-bundles.toml`. See the submodule's own README, `docs/python-extension.md` and `docs/python-compiler.md` for build and usage.
 - **morphir-scala**: Scala implementation of Morphir tooling, built with Mill. See below for build commands.
 - **morphir-ui**: Morphir's UI monorepo — the morphir-desktop (Electron) and morphir-web apps sharing one Svelte + Effect application, with `morphir-ir.json` browsing, MORPHIR_HOME-backed configuration, and GitHub token capture. Build from within the submodule (it has its own mise toolchain): `cd ecosystem/morphir-ui && mise install && bun install && moon run :build` (see that repo's README for the full getting-started guide).
 

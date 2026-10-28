@@ -42,8 +42,8 @@ class CiRustOptimizationTests(unittest.TestCase):
         self.assertIn("link-arg=-fuse-ld=mold", self.setup_rust_ci_action)
 
     def test_ci_tests_published_bundles_and_builds_no_wasm_guest(self) -> None:
-        # finos/morphir-rust owns the guest builds. This repository checks that a CLI change
-        # does not break the bundles users already installed.
+        # The repository that owns each extension builds its guest. This repository checks
+        # that a CLI change does not break the bundles users already installed.
         self.assertIn("mise run ci:fetch-published-bundles", self.ci_workflow)
         self.assertNotIn("--target wasm32-unknown-unknown", self.ci_workflow)
         self.assertNotIn("package_extension.py", self.ci_workflow)

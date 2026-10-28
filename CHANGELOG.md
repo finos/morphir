@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The `morphir-python` extension now comes from finos/morphir-python, which maintains the
+  Python compiler. CI tests the CLI against its `extension/python/v0.4.1` bundle; bundles up to
+  `extension/python/v0.4.0` remain in the finos/morphir-rust releases. Extension bundle pins
+  can name the repository that owns them.
+
 ## [0.4.0-beta.10] - 2026-10-21
 
 ### Added

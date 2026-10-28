@@ -47,7 +47,7 @@ Current `mise` releases auto-trust project configuration in normal mode; the exp
 - **[finos/morphir-rust](https://github.com/finos/morphir-rust)** — Rust libraries (`morphir-core`, `morphir-common`, etc.) used by the CLI
 - **[finos/morphir-examples](https://github.com/finos/morphir-examples)** — Example Morphir projects
 - **[finos/morphir-moonbit](https://github.com/finos/morphir-moonbit)** — MoonBit implementation of Morphir tooling
-- **[finos/morphir-python](https://github.com/finos/morphir-python)** — Python implementation of Morphir tooling
+- **[finos/morphir-python](https://github.com/finos/morphir-python)** — Python implementation of Morphir tooling, and the owner of the Python compiler and the `morphir-python` WASM extension (new `extension/python/v*` releases; bundles up to `v0.4.0` stay in finos/morphir-rust releases)
 - **[finos/morphir-scala](https://github.com/finos/morphir-scala)** — Scala implementation of Morphir tooling
 - **[finos/morphir-ui](https://github.com/finos/morphir-ui)** — User-interface work for the Morphir project
 
