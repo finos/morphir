@@ -5,6 +5,7 @@
 mod binary;
 mod envelope;
 mod metadata;
+mod python;
 #[cfg(test)]
 mod replay_tests;
 
@@ -81,7 +82,7 @@ const CASES: &[&str] = &[
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Document {
+struct MoonbitDocument {
     contract_version: semver::Version,
     profile: String,
     mep_version: String,
@@ -101,24 +102,48 @@ struct Consumer {
     expected_stdout: String,
 }
 
+enum Document {
+    Moonbit(MoonbitDocument),
+    Python(python::Document),
+}
+
 pub struct Kit {
     document: Document,
     pub digest: String,
 }
 impl Kit {
     pub fn profile(&self) -> &str {
-        &self.document.profile
+        match &self.document {
+            Document::Moonbit(d) => &d.profile,
+            Document::Python(_) => python::PROFILE,
+        }
     }
     pub fn case_ids(&self) -> &[&str] {
-        CASES
+        match self.document {
+            Document::Moonbit(_) => CASES,
+            Document::Python(_) => python::CASES,
+        }
+    }
+    fn moonbit(&self) -> &MoonbitDocument {
+        match &self.document {
+            Document::Moonbit(d) => d,
+            _ => unreachable!("MoonBit profile data"),
+        }
     }
 }
 
 pub fn load_kit(path: &Path) -> Result<Kit, String> {
     let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
-    crate::json::strict::parse(text)?;
-    let document: Document = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let value = crate::json::strict::parse(text)?;
+    if value["profile"] == python::PROFILE {
+        let document = python::load(value)?;
+        return Ok(Kit {
+            document: Document::Python(document),
+            digest: sha256_hex(&bytes),
+        });
+    }
+    let document: MoonbitDocument = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     if !semver::VersionReq::parse("=0.1.0-draft.1")
         .unwrap()
         .matches(&document.contract_version)
@@ -150,7 +175,7 @@ pub fn load_kit(path: &Path) -> Result<Kit, String> {
         return Err("unsupported or incomplete MEP guest kit".into());
     }
     Ok(Kit {
-        document,
+        document: Document::Moonbit(document),
         digest: sha256_hex(&bytes),
     })
 }
@@ -272,16 +297,16 @@ fn payload(bytes: &[u8], codec: &str) -> Value {
     json!({"codec":codec,"layout":"single-document","decodedByteLength":bytes.len(),"sha256":sha256_hex(bytes),"content":STANDARD.encode(bytes)})
 }
 fn json_model(kit: &Kit) -> Value {
-    let bytes = serde_json::to_vec(&kit.document.plain_ir).unwrap();
+    let bytes = serde_json::to_vec(&kit.moonbit().plain_ir).unwrap();
     json!({"envelopeVersion":"0.1.0-draft.1","modelId":"urn:morphir:mck:bool","revision":"independent-1","irVersion":"4.0.0","profile":"morphir-ir","payload":payload(&bytes,"morphir-json")})
 }
 fn opaque_model(kit: &Kit, records: &[Record]) -> Result<Value, String> {
     let mut model = compiled(records)?;
     let bytes = decode_payload(&model["payload"])?;
     let element = binary::read(&bytes)?;
-    metadata::validate_model(&kit.document.source, &element)?;
+    metadata::validate_model(&kit.moonbit().source, &element)?;
     let root = element.as_struct().ok_or("compiled model must be struct")?;
-    let additions = Element::read_one(&kit.document.opaque_fixture).map_err(|e| e.to_string())?;
+    let additions = Element::read_one(&kit.moonbit().opaque_fixture).map_err(|e| e.to_string())?;
     let additions = additions
         .as_struct()
         .ok_or("opaque fixture must be struct")?;
@@ -336,8 +361,11 @@ fn opaque_model(kit: &Kit, records: &[Record]) -> Result<Value, String> {
 }
 
 fn request(kit: &Kit, id: &str, records: &[Record]) -> Result<Value, String> {
+    if let Document::Python(document) = &kit.document {
+        return python::request(document, id, records);
+    }
     let compile = || {
-        let mut p = kit.document.source.clone();
+        let mut p = kit.moonbit().source.clone();
         p["output"] = tuple(COMPILE, false);
         p
     };
@@ -423,7 +451,7 @@ fn request(kit: &Kit, id: &str, records: &[Record]) -> Result<Value, String> {
         "bounded-recovery-ping" => ("morphir.ping", json!({})),
         "legacy-json-generate" | "legacy-json" => (
             "morphir.backend.generate",
-            json!({"ir":kit.document.plain_ir,"target":"moonbit"}),
+            json!({"ir":kit.moonbit().plain_ir,"target":"moonbit"}),
         ),
         "unknown-method" => ("morphir.mck.unknown", json!({})),
         "after-shutdown" => ("morphir.ping", json!({})),
@@ -449,7 +477,7 @@ pub fn run_process(kit: &Kit, identity: Identity, limits: Limits) -> Report {
     };
     let result = (|| -> Result<(), String> {
         let mut session = None;
-        for id in CASES.iter().copied() {
+        for id in kit.case_ids().iter().copied() {
             if session.is_none() {
                 session = Some(
                     Session::spawn_mep(
@@ -478,11 +506,13 @@ pub fn run_process(kit: &Kit, identity: Identity, limits: Limits) -> Report {
                     .map_err(|e| e.to_string())?;
                 json!({"silent":true})
             } else {
-                session
-                    .as_mut()
-                    .unwrap()
-                    .exchange_mep(method, &req["params"])
-                    .map_err(|e| e.to_string())?
+                let session = session.as_mut().unwrap();
+                if let Some(id) = req.get("id") {
+                    session.exchange_mep_with_id(id, method, &req["params"])
+                } else {
+                    session.exchange_mep(method, &req["params"])
+                }
+                .map_err(|e| e.to_string())?
             };
             let record = Record {
                 case_id: id.into(),
@@ -532,11 +562,11 @@ fn adjudicate(kit: &Kit, report: &Report) -> Result<(), String> {
         || report.profile != kit.profile()
         || report.corpus_sha256 != kit.digest
         || report.error.is_some()
-        || report.records.len() != CASES.len()
+        || report.records.len() != kit.case_ids().len()
     {
         return Err("incomplete report or mismatched corpus identity".into());
     }
-    for (index, (id, record)) in CASES.iter().zip(&report.records).enumerate() {
+    for (index, (id, record)) in kit.case_ids().iter().zip(&report.records).enumerate() {
         if record.case_id != *id || record.request != request(kit, id, &report.records[..index])? {
             return Err(format!("case order or request mismatch at {id}"));
         }
@@ -636,6 +666,9 @@ fn admits_ir4(capability: &Value) -> Result<(), String> {
     )
 }
 fn compare(kit: &Kit, record: &Record, previous: &[Record]) -> Result<(), String> {
+    if let Document::Python(document) = &kit.document {
+        return python::compare(document, record, previous);
+    }
     let id = record.case_id.as_str();
     if !id.ends_with("silent") && !is_exit(id) {
         let session_start = previous
@@ -893,11 +926,11 @@ fn validate_compiled(kit: &Kit, model: &Value) -> Result<(), String> {
     )?;
     let element = envelope::validate(
         model,
-        kit.document.source["contextDigest"]
+        kit.moonbit().source["contextDigest"]
             .as_str()
             .ok_or("kit context missing")?,
     )?;
-    metadata::validate_model(&kit.document.source, &element)?;
+    metadata::validate_model(&kit.moonbit().source, &element)?;
     require(
         element
             .annotations()
@@ -920,7 +953,7 @@ fn validate_compiled(kit: &Kit, model: &Value) -> Result<(), String> {
     }
     let ir = ion_json(fields.get("ir").unwrap(), 0, &mut 0)?;
     require(
-        canonical(&ir) == canonical(&kit.document.expected_ir),
+        canonical(&ir) == canonical(&kit.moonbit().expected_ir),
         "source semantic IR differs from fixed source expectations",
     )?;
     require(
@@ -1072,9 +1105,9 @@ fn validate_generated(kit: &Kit, result: &Value, model: Option<&Value>) -> Resul
         "artifact inventory mismatch",
     )?;
     let expected_artifacts = if model.is_some_and(|m| m["profile"] == "morphir-model") {
-        &kit.document.expected_artifacts
+        &kit.moonbit().expected_artifacts
     } else {
-        &kit.document.expected_json_artifacts
+        &kit.moonbit().expected_json_artifacts
     };
     for (name, text) in expected_artifacts {
         let artifact = by_path[name.as_str()];
@@ -1124,7 +1157,7 @@ fn validate_generated(kit: &Kit, result: &Value, model: Option<&Value>) -> Resul
     } else {
         None
     };
-    metadata::validate_symbols(&kit.document.source, &symbols, source_root.as_ref())?;
+    metadata::validate_symbols(&kit.moonbit().source, &symbols, source_root.as_ref())?;
     let ir_text = symbols
         .as_struct()
         .and_then(|s| s.get("source_ir_json"))
@@ -1132,9 +1165,9 @@ fn validate_generated(kit: &Kit, result: &Value, model: Option<&Value>) -> Resul
         .ok_or("symbol source IR missing")?;
     let ir = crate::json::strict::parse(ir_text)?;
     let expected_ir = if source_root.is_some() {
-        &kit.document.expected_ir
+        &kit.moonbit().expected_ir
     } else {
-        &kit.document.plain_ir
+        &kit.moonbit().plain_ir
     };
     require(
         canonical(&ir) == canonical(expected_ir),
