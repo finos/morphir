@@ -28,7 +28,9 @@ rolling log files, configuration environments and workspaces) as Moon-Lander rel
   (`apps/morphir-workbench`, `apps/morphir-workbench-desktop`) and the packages that serve them. Take each module from
   mooncakes.io at an exact pinned version, like the other `moonrockz` dependencies. Moon-Lander releases up to `0.5.0`
   published only `notebooks` and `openrpc`; release `0.6.0` published the framework modules and is the exact version
-  used by this migration. Each migration group starts when its module is on the registry.
+  used for the initial dependency phase. The migration now pins published `0.7.0`, which supplies the approved
+  configuration, host-control, diagnostic-object and lossless-DIB additions. Each migration group starts when its
+  module is on the registry.
 - Configuration: load Morphir configuration through `moon-lander-config` and its conventions, with the TOML, JSON
   and JSON5 parsers, and YAML. Keep the current TOML file names, locations, environment-variable mapping and provenance. Add an
   explicit discovery boundary for isolated hosts. Retire the private loader and merge.

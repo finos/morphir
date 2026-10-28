@@ -9,13 +9,13 @@ repository = "https://github.com/finos/morphir-moonbit"
 readme = "README.md"
 
 import {
-  "moonrockz/moon-lander-core@0.6.0",
-  "moonrockz/moon-lander-logging@0.6.0",
-  "moonrockz/moon-lander-config@0.6.0",
-  "moonrockz/moon-lander-mediator@0.6.0",
-  "moonrockz/moon-lander-logging-hosting-async@0.6.0",
-  "moonrockz/moon-lander-hosting@0.6.0",
-  "moonrockz/moon-lander@0.6.0",
+  "moonrockz/moon-lander-core@0.7.0",
+  "moonrockz/moon-lander-logging@0.7.0",
+  "moonrockz/moon-lander-config@0.7.0",
+  "moonrockz/moon-lander-mediator@0.7.0",
+  "moonrockz/moon-lander-logging-hosting-async@0.7.0",
+  "moonrockz/moon-lander-hosting@0.7.0",
+  "moonrockz/moon-lander@0.7.0",
   "finos/morphir-metadata@0.1.0",
   "finos/morphir-moonbit@0.1.0",
   "finos/morphir-execution@0.1.0",
