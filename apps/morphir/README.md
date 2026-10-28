@@ -632,6 +632,7 @@ reason. Failure contains `error: {code, message}` and no result. Warnings and di
 Help with `--json` returns the same successful envelope with `result.help`; parser errors use a failed envelope.
 `--json-lines` retains the CLI result-record framing. Run the CLI acceptance suite to exercise these modes and
 validate exported Jupyter documents against the independently vendored nbformat 4.5 schema.
+`mise run test:cli` installs its locked validator dependencies before running these checks.
 
 ## Inspect models and save captured originals
 

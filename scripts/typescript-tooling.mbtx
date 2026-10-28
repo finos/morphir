@@ -1,5 +1,4 @@
-///|
-/// Portable Bun setup, checked builds and Node compatibility gates.
+----
 import {
   "moonbitlang/core/json",
   "moonbitlang/async@0.22.1",
@@ -11,6 +10,10 @@ import {
   "moonbitlang/x@0.5.5/crypto",
   "moonbitlang/x@0.5.5/sys",
 }
+----
+
+///|
+/// Portable Bun setup, checked builds and Node compatibility gates.
 
 ///|
 suberror ToolingError {
@@ -243,6 +246,8 @@ async fn execute(
       run("node", ["apps/morphir/build-provider/test-supervision.mts"])
     }
     "test-cli" => {
+      // Notebook schema validation uses the locked root development dependencies.
+      install(".")
       install("pkgs/morphir-elm/scripts")
       run("bun", ["run", "build:runtimes"])
       run("bun", ["run", "--cwd", "apps/morphir", "test"])
@@ -505,6 +510,7 @@ async fn self_test() -> Unit {
       "test-cli",
       false,
       [
+        ("bun", ["install", "--frozen-lockfile", "--cwd", "."]),
         (
           "bun",
           ["install", "--frozen-lockfile", "--cwd", "pkgs/morphir-elm/scripts"],
