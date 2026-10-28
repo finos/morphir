@@ -62,6 +62,11 @@
   breaking `--config-script` rename and how to keep the old result for a workspace with both files; verify every
   documented command runs as written
 
+- [ ] 3.11 Enable configuration profiles with `--profiles`, `--no-profiles`, `MORPHIR_PROFILES`, base controls and
+  layered profile files; preserve frontend `--profile` and reserved control origins, including a selected file that
+  is already a discovered base; verify all profile scenarios on four targets and in CLI/Workbench tests, and document
+  activation, precedence, JSON help/errors, groups, isolation and disabled processing with commands that run as written
+
 ## 4. Add leveled diagnostic logging (morphir-ukvn.5.99.4)
 
 - [ ] 4.1 Add the `logging.level` key, `MORPHIR_LOGGING__LEVEL` and `--log-level` with the `warn` default and usage

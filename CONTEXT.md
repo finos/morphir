@@ -84,6 +84,9 @@ A root that defines project membership, shared configuration and output ownershi
 **Host**:
 The embedding environment that supplies external capabilities and controls their lifetime.
 
+**Configuration profile**:
+A named, composable selection of settings and configuration overlays for one application run.
+
 **Host lifetime**:
 The lifetime of one Morphir run, from starting its services through execution to ordered cleanup.
 

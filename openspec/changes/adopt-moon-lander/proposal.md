@@ -39,6 +39,10 @@ rolling log files, configuration environments and workspaces) as Moon-Lander rel
   layers are JSON, then YAML, then TOML, and a later layer wins; two files of one layer are an ambiguity error. YAML
   beside TOML is allowed but gives a warning. Members use the same rules as the workspace root.
 - `morphir-workspace.json` becomes a JSON configuration file, below `morphir.json` in the JSON layer.
+- Configuration profiles: enable the policy published in Moon-Lander 0.6.0. Add repeatable `--profiles`,
+  `--no-profiles`, `MORPHIR_PROFILES`, base-file defaults/includes/groups, and profile files between member
+  configuration and user overrides. Preserve profile control origins through the JSON/YAML/TOML layers.
+  The existing frontend `--profile` keeps its meaning.
 - Configuration warnings have codes that the host can suppress with `--suppress-warning`,
   `MORPHIR_DIAGNOSTICS__SUPPRESS` or `diagnostics.suppress` in the system or global user file.
 - TOML stays the default format: commands that create or change configuration write `morphir.toml` only. A change
@@ -65,7 +69,7 @@ rolling log files, configuration environments and workspaces) as Moon-Lander rel
 ### New Capabilities
 
 - `application/configuration`: how the CLI and Workbench find, merge and report Morphir configuration, including
-  precedence, provenance, environment variables and isolated discovery.
+  precedence, provenance, configuration profiles, environment variables and isolated discovery.
 - `application/lifecycle`: how a CLI or Workbench run starts, is cancelled or stopped, cleans up, and chooses its exit
   code.
 - `application/logging`: leveled diagnostic logging, its settings, its outputs and its separation from command
@@ -94,6 +98,9 @@ The maintainer confirmed these on 2026-10-28:
   JSON files take canonical keys and the morphir-elm manifest fields; `morphir.json5` is discovered like
   `morphir.json`.
 - `--config` selects a configuration file. The Scheme script option is renamed to `--config-script`.
+- Configuration profiles are enabled in this release, as approved on 2026-10-28. They use Moon-Lander's
+  activation and group rules, remain separate from frontend profiles, and do not enable environment files or
+  local overrides.
 - The work lands in as few pull requests as needed: one pull request for the migration here, with a separate pull
   request only for a group that is blocked while the rest is ready.
 

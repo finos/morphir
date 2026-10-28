@@ -216,6 +216,33 @@ value: <code>project add</code> writes every member in <code>workspace.members</
 <p>Alternatives: edit YAML and JSON in place (rejected: no format-preserving editors, and JSON5 comments could be
 lost); refuse every non-TOML workspace (rejected by the maintainer, because a TOML file beside them works).</p>
 
+<h3 id="cfg-6">CFG-6. Configuration profiles are enabled as a separate aspect</h3>
+<p>The maintainer approved configuration profiles for this release on 2026-10-28. Use the policy published in
+Moon-Lander 0.6.0, with repeatable <code>--profiles</code>, <code>--no-profiles</code>, <code>MORPHIR_PROFILES</code>
+and the reserved base-file <code>profiles</code> controls. The existing singular <code>--profile</code> selects a
+frontend profile and keeps that meaning. There is no implicit default profile. Environment files and local
+configuration overrides stay off.</p>
+<p>Resolve controls from the merged discovered workspace primaries, or project primaries for a standalone project,
+then load active profile files at priority 380: after member primaries and before user overrides. For each active
+name, load workspace JSON, YAML and TOML, then member JSON, YAML and TOML, before moving to the next active name.
+Keep the framework's includes, group expansion, last-occurrence rule, graph limits and explicit-disable behavior.
+Each control and failure retains its supplying file origin.</p>
+<p>Profile authority stays with the discovered base. Selecting one of those same files moves its ordinary values to
+the selected overlay but retains its control authority; parse it once and emit one ordinary source report. A
+selected file outside that base cannot introduce profile controls. Profile files do not select a different root or
+member. Isolated runs retain eligible profile files inside their boundary. The upstream layering proposal includes
+these interactions and retains the existing default policies for other applications.</p>
+<pre><code class="language-toml">[profiles]
+default = ["development"]
+include = ["common"]
+
+[profiles.groups]
+production = ["postgres", "metrics"]</code></pre>
+<p>For example, <code>--profiles production,postgres</code> keeps configured includes and expands the group before
+keeping the last occurrence of each name. <code>--no-profiles</code> suppresses includes, defaults, groups and file
+reads. Typed resolution is shared by configuration, the host and command middleware; existing MEP and Workbench
+wire formats remain unchanged.</p>
+
 <h3 id="log-1">LOG-1. One Logger value per run; sinks by host</h3>
 <p>The services record holds one <code>&amp;Logger</code> made with <code>min_level</code> and
 <code>with_category</code>. On native and js it writes through a <code>moon-lander-logging-hosting-async</code>
