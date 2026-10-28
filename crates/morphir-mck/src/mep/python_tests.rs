@@ -266,3 +266,36 @@ fn frozen_ir_and_distribution_refusals_are_valid_contract_documents() {
         }
     }
 }
+
+#[test]
+fn malformed_base64_vector_preserves_other_payload_boundaries() {
+    let kit = kit();
+    let document = document(&kit);
+    let valid = model(document, "4.0.0");
+    let request = request(document, "bad-base64", &[]).unwrap();
+    let actual = &request["params"]["model"]["payload"];
+    assert_eq!(
+        actual["content"].as_str().unwrap().len(),
+        valid["payload"]["content"].as_str().unwrap().len()
+    );
+    for field in ["codec", "layout", "decodedByteLength", "sha256"] {
+        assert_eq!(actual[field], valid["payload"][field], "changed {field}");
+    }
+    assert!(
+        STANDARD
+            .decode(actual["content"].as_str().unwrap())
+            .is_err()
+    );
+}
+
+#[test]
+fn semantic_ir_version_vector_keeps_tuple_and_envelope_admitted() {
+    let kit = kit();
+    let request = request(document(&kit), "bad-ir-version", &[]).unwrap();
+    let params = &request["params"];
+    assert_eq!(params["input"], tuple(GENERATE, "3.0.0"));
+    assert_eq!(params["model"]["irVersion"], "3.0.0");
+    let bytes = decode_payload(&params["model"]["payload"]).unwrap();
+    let ir = crate::json::strict::parse_exact(std::str::from_utf8(&bytes).unwrap()).unwrap();
+    assert_eq!(ir["formatVersion"], 4);
+}

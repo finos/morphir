@@ -310,10 +310,22 @@ pub(super) fn request(document: &Document, id: &str, records: &[Record]) -> Resu
             match id {
                 "bad-digest" => p["model"]["payload"]["sha256"] = json!("0".repeat(64)),
                 "bad-length" => p["model"]["payload"]["decodedByteLength"] = json!(0),
-                "bad-base64" => p["model"]["payload"]["content"] = json!("%%%="),
+                "bad-base64" => {
+                    // Keep length preflight unchanged so the decoder must inspect base64.
+                    let mut content = p["model"]["payload"]["content"]
+                        .as_str()
+                        .unwrap()
+                        .to_owned();
+                    content.replace_range(..1, "%");
+                    p["model"]["payload"]["content"] = json!(content);
+                }
                 "bad-json" => p["model"]["payload"] = payload(b"{", "morphir-json"),
                 "bad-version" => p["model"]["envelopeVersion"] = json!("0.1.0-draft.2"),
-                "bad-ir-version" => p["model"]["irVersion"] = json!("3.0.0"),
+                "bad-ir-version" => {
+                    // Admit the complete v3 tuple and envelope; the hashed body stays v4.
+                    p["input"] = tuple(GENERATE, "3.0.0");
+                    p["model"]["irVersion"] = json!("3.0.0");
+                }
                 "tuple-mismatch" => p["input"]["codec"] = json!("ion-binary"),
                 "tuple-operation" => p["input"]["operation"] = json!(COMPILE),
                 "unknown-critical" => p["model"]["critical"] = json!(["payload.future"]),
