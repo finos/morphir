@@ -27,8 +27,8 @@ rolling log files, configuration environments and workspaces) as Moon-Lander rel
 - Adopt the Moon-Lander modules as dependencies of the CLI (`apps/morphir`), the Workbench
   (`apps/morphir-workbench`, `apps/morphir-workbench-desktop`) and the packages that serve them. Take each module from
   mooncakes.io at an exact pinned version, like the other `moonrockz` dependencies. Moon-Lander releases up to `0.5.0`
-  published only `notebooks` and `openrpc`; the framework modules are being published in a coordinated Moon-Lander
-  release, and each migration group starts when its module is on the registry.
+  published only `notebooks` and `openrpc`; release `0.6.0` published the framework modules and is the exact version
+  used by this migration. Each migration group starts when its module is on the registry.
 - Configuration: load Morphir configuration through `moon-lander-config` and its conventions, with the TOML, JSON
   and JSON5 parsers, and YAML. Keep the current TOML file names, locations, environment-variable mapping and provenance. Add an
   explicit discovery boundary for isolated hosts. Retire the private loader and merge.
@@ -57,7 +57,8 @@ rolling log files, configuration environments and workspaces) as Moon-Lander rel
   middleware for cancellation, timing and logging, in place of string compares. This is internal; command names,
   operation names and results do not change.
 - Notebooks: add import and export between Scheme worksheets and Jupyter (`.ipynb`) and .NET Interactive (`.dib`)
-  notebooks through `moonrockz/notebooks`, in the CLI and in the Workbench.
+  notebooks through `moonrockz/notebooks`, in the CLI and in the Workbench. Jupyter exports can preserve evaluation
+  results. DIB exports preserve source only; `--evaluate` with DIB is a usage error, because DIB stores no outputs.
 
 ## Capabilities
 

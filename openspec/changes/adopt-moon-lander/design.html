@@ -44,18 +44,20 @@ Moon-Lander module that takes the job over, and says what stays in Morphir.</p>
 <table>
 <thead><tr><th>Job</th><th>Morphir today</th><th>Moon-Lander module (status on 2026-10-28)</th><th>Stays in Morphir</th></tr></thead>
 <tbody>
-<tr><td>Load, merge, provenance</td><td><code>pkgs/morphir-engine/config</code> (<code>Document</code>, <code>merge</code>, <code>environment</code>)</td><td><code>moon-lander-config</code> core, all four targets; not yet published</td><td>Morphir keys, defaults and <code>validate</code></td></tr>
+<tr><td>Load, merge, provenance</td><td><code>pkgs/morphir-engine/config</code> (<code>Document</code>, <code>merge</code>, <code>environment</code>)</td><td><code>moon-lander-config</code> core, all four targets; published at <code>0.6.0</code></td><td>Morphir keys, defaults and <code>validate</code></td></tr>
 <tr><td>File discovery</td><td><code>pkgs/morphir-engine/workspace</code> (<code>primary_paths</code>, <code>user</code>), <code>pkgs/morphir-host/configuration.mbt</code> (system and global paths, legacy markers)</td><td><code>moon-lander-config/conventions</code>: walk-up in the same three layouts, <code>.user</code> overrides, legacy fallback, stop boundary, isolated mode, <code>&lt;PREFIX&gt;_HOME</code></td><td>Workspace members and projects</td></tr>
 <tr><td>File access</td><td><code>pkgs/morphir-host</code> platform I/O, WASI preopen fd 3</td><td><code>moon-lander-config/host</code> on native and js; an injected <code>FileTree</code> on wasm</td><td>The WASI file tree adapter</td></tr>
 <tr><td>Diagnostic logs</td><td>None; direct <code>@platform.stderr</code> writes</td><td><code>moon-lander-logging</code> (pure, all targets), <code>moon-lander-logging-hosting-async</code> (native, js)</td><td>Telemetry: <code>pkgs/morphir-execution/observability</code>, <code>apps/morphir-otel</code></td></tr>
 <tr><td>Lifecycle and exit codes</td><td><code>apps/morphir/main.mbt</code> (<code>"Cancelled"</code> gives 130), <code>@platform.interruption_*</code> per command</td><td><code>moon-lander-hosting</code>: <code>run</code> and <code>@console.run</code> on native and js, <code>run_embedded</code> on wasm and wasm-gc, <code>Lifetime</code>, <code>StopReason</code>, <code>set_exit_code</code></td><td>The SIGINT forwarding to child processes in <code>platform.c</code></td></tr>
 <tr><td>Dispatch</td><td>String compares in <code>apps/morphir/main.mbt</code>; <code>op</code> matches in <code>pkgs/morphir-workbench-native/service.mbt</code> and <code>pkgs/morphir-engine/execution/workbench/boundary.mbt</code></td><td><code>moon-lander-mediator</code> (sync, all targets) and <code>moon-lander-mediator/async</code></td><td>Wire formats and operation names</td></tr>
-<tr><td>Notebooks</td><td>None</td><td><code>moonrockz/notebooks</code>: Jupyter and DIB models and codecs; published at <code>0.5.0</code></td><td>The worksheet to notebook mapping</td></tr>
+<tr><td>Notebooks</td><td>None</td><td><code>moonrockz/notebooks</code>: Jupyter and DIB models and codecs; published at <code>0.6.0</code></td><td>The worksheet to notebook mapping</td></tr>
 </tbody>
 </table>
 <p>The Moon-Lander framework modules were not published in releases <code>0.3.0</code> to <code>0.5.0</code>, by
-oversight. A Moon-Lander release that publishes them is in progress. The notebook work needs only
-<code>moonrockz/notebooks</code>, which is already on the registry.</p>
+oversight. <a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.6.0">Moon-Lander 0.6.0</a> published
+all seven framework modules and <code>moonrockz/notebooks</code> on 2026-10-28. Each framework module resolved with
+<code>moon add moonrockz/&lt;module&gt;@0.6.0</code> in an independent scratch module outside this checkout.
+The adoption pins every Moon-Lander module to <code>0.6.0</code>.</p>
 
 <h2 id="goals">Goals and non-goals</h2>
 <p><strong>Goals:</strong> every capability in the table above comes from one Moon-Lander module in the CLI and in
@@ -246,11 +248,16 @@ handlers wait for I/O.</p>
 <h3 id="nb-1">NB-1. Worksheet forms are cells; observations are outputs</h3>
 <p>The mapping lives in a new pure package, <code>pkgs/morphir-engine/worksheet/notebook</code>, so the CLI and the
 browser Workbench share it. Each top-level form is a code cell with language <code>scheme</code>; each block of
-whole-line <code>;;</code> comments between forms is a Markdown cell. With evaluation, an observation becomes an
+whole-line <code>;;</code> comments between forms is a Markdown cell. With Jupyter evaluation, an observation becomes an
 <code>execute_result</code> with <code>text/plain</code> (the preview) and
 <code>application/vnd.morphir.observation+json</code> (the observation's JSON), and a failed outcome becomes an
 <code>error</code> output. Notebook metadata records the profile <code>morphir/worksheet-notebook</code>, version
 <code>0.1.0</code>, under <code>metadata.morphir</code>. DIB cells use the kernel name <code>scheme</code>.</p>
+<p>The maintainer approved source-only DIB exports on 2026-10-28. The
+<a href="https://github.com/moonrockz/moon-lander/blob/v0.6.0/pkgs/notebooks/dib/README.md">Moon-Lander DIB codec</a>
+stores no execution outputs. <code>--evaluate</code> with DIB is therefore a usage error with exit code 2, before
+evaluation or file writes, and its message directs the user to Jupyter for saved outputs. The Workbench labels its
+DIB action as source-only; its Jupyter action includes the latest results.</p>
 <pre><code class="language-scheme">;; # Totals
 (define prices '(3 4 5))
 
@@ -294,8 +301,6 @@ the old exit-code mapping are removed in the commits that prove parity, so rever
 
 <h2 id="open-questions">Open questions</h2>
 <ul>
-<li>Which Moon-Lander version is the first with the framework modules on the registry. The pins take that version;
-nothing else in the plan depends on its number.</li>
 <li>Whether .NET Interactive users want a different DIB kernel name than <code>scheme</code>. The name is one
 constant in the mapping.</li>
 </ul>

@@ -2,11 +2,11 @@
 
 ## 1. Publish the Moon-Lander framework modules (morphir-ukvn.5.99.1)
 
-- [ ] 1.1 Confirm with the Moon-Lander release that `moon-lander-core`, `moon-lander-logging`, `moon-lander-config`,
+- [x] 1.1 Confirm with the Moon-Lander release that `moon-lander-core`, `moon-lander-logging`, `moon-lander-config`,
   `moon-lander-mediator`, `moon-lander-logging-hosting-async`, `moon-lander-hosting` and `moon-lander` are on
   mooncakes.io at one version; verify each resolves with `moon add moonrockz/<module>@<version>` in a scratch module
   outside this checkout
-- [ ] 1.2 Record the published version and the release URL in design.html (open question 1) and remove that open
+- [x] 1.2 Record the published version and the release URL in design.html (open question 1) and remove that open
   question; verify with `openspec validate adopt-moon-lander --strict`
 
 ## 2. Add dependencies and record the adoption (morphir-ukvn.5.99.2)
@@ -116,14 +116,14 @@
 
 - [ ] 8.1 Add `moonrockz/notebooks` at the current Moon-Lander version and the pure package
   `pkgs/morphir-engine/worksheet/notebook` with the form, comment and observation mapping (NB-1); verify unit tests
-  for forms, comment blocks, outputs and the round-trip scenario on all four targets
+  for forms, comment blocks, Jupyter outputs, source-only DIB and the round-trip scenario on all four targets
 - [ ] 8.2 Add `morphir notebook export` (`--format`, `-o`, `--evaluate`) and `morphir notebook import` with `--json`
   results in the `morphir/command-result` envelope; verify every scenario of the `worksheets/notebook-interchange`
-  spec with argv tests, including the invalid-notebook case that writes no file
+  spec with argv tests, including invalid notebooks and the DIB `--evaluate` usage error, with no evaluation or file writes
 - [ ] 8.3 Check the exported `.ipynb` with an independent nbformat validator in the test tooling; verify the
   validator accepts every exported fixture
 - [ ] 8.4 Add Workbench export and open actions for Jupyter and DIB using the same package; verify the Workbench
-  scenario in a browser test that compares the download with CLI output
+  scenarios in browser tests that compare the downloads with CLI output, including the source-only DIB action
 - [ ] 8.5 Document notebooks in `apps/morphir/README.md` and the Workbench README, and record the profile name for
   `morphir-o6vm.11` as a bead comment; verify the documented commands
 

@@ -35,13 +35,21 @@ Markdown cell SHALL become such a comment block on import.
 
 ### Requirement: Evaluation results as outputs
 
-With `--evaluate`, export SHALL evaluate the worksheet and attach each observation to the cell of its form as an
+With `--evaluate`, Jupyter export SHALL evaluate the worksheet and attach each observation to the cell of its form as an
 output with a `text/plain` preview and a Morphir JSON result. A failed observation SHALL become an error output.
+DIB export SHALL preserve source only. `--evaluate` with DIB SHALL fail with a usage error and exit code 2 before
+evaluating the worksheet or writing a file. The error SHALL explain that saved outputs require Jupyter.
 
 #### Scenario: Evaluated export
 
 - **WHEN** `morphir notebook export worksheet.scm --evaluate -o sheet.ipynb` runs and the second form fails
 - **THEN** the first cell has an execute result with the preview, and the second cell has an error output
+
+#### Scenario: DIB evaluation is refused
+
+- **WHEN** `morphir notebook export worksheet.scm --evaluate -o sheet.dib` runs
+- **THEN** the run fails with exit code 2, explains that saved outputs require Jupyter, does not evaluate the worksheet,
+  and does not create `sheet.dib`
 
 ### Requirement: Import a notebook as a worksheet
 
@@ -87,10 +95,17 @@ cell count and the skipped cells in the `morphir/command-result` envelope.
 
 ### Requirement: Workbench notebooks
 
-The Workbench SHALL export the open worksheet, with its latest results, as a Jupyter or DIB notebook, and SHALL open
+The Workbench SHALL export the open worksheet with its latest results as a Jupyter notebook, and SHALL export a
+source-only DIB notebook. The DIB export action SHALL make clear that it saves source only. The Workbench SHALL open
 a Jupyter or DIB notebook as a worksheet, with the same cell mapping as the CLI.
 
 #### Scenario: Export from the Workbench
 
 - **WHEN** a user evaluates a worksheet in the Workbench and chooses export as Jupyter
 - **THEN** the downloaded notebook has the same cells and outputs as `morphir notebook export --evaluate` gives for that worksheet
+
+#### Scenario: Source-only DIB export from the Workbench
+
+- **WHEN** a user evaluates a worksheet in the Workbench and chooses the source-only DIB export action
+- **THEN** the downloaded notebook has the same cells as `morphir notebook export -o sheet.dib` gives for that worksheet,
+  without persisted execution outputs
