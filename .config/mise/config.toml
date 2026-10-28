@@ -99,6 +99,10 @@ run = "moonx scripts/repository-tasks.mbtx lint"
 description = "Check Moonbit code formatting"
 run = "moonx scripts/repository-tasks.mbtx lint:moonbit"
 
+[tasks."lint:engine-boundaries"]
+description = "Enforce synchronous engine imports"
+run = "moonx scripts/engine-boundaries.mbtx"
+
 [tasks."lint:yaml"]
 description = "Lint YAML files in the repository"
 run = "moonx scripts/repository-tasks.mbtx lint:yaml"
@@ -149,6 +153,9 @@ run = [
   "bun apps/morphir/scripts/test-developer-json-presentation.ts",
   "bun apps/morphir/scripts/test-ci-evidence-json-presentation.ts",
   "actionlint",
+  "moon fmt --check scripts/engine-boundaries.mbtx",
+  "moonx scripts/engine-boundaries.mbtx --self-test --json",
+  "moonx scripts/engine-boundaries.mbtx --json",
   "moon run scripts/moonbit-core.mbtx --self-test",
   "moon fmt --check scripts/ci-changes.mbtx scripts/ci-gate.mbtx scripts/ci-measure.mbtx scripts/check.mbtx scripts/beads-companion.mbtx scripts/ci-mise-impact.mbtx scripts/ci-reuse.mbtx scripts/ci-platforms.mbtx scripts/ci-breach.mbtx scripts/ci-evidence.mbtx",
   "moonx scripts/ci-changes.mbtx --self-test",
