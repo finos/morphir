@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>adopt-moon-lander: design</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> as it is, and write the content inside <main>.
+  Styles and scripts are files in docs/templates/assets/, referenced and not embedded. In a copy, change the
+  "assets/" prefix of each href and src to the relative path from the copy to that directory, for example
+  "../../docs/templates/assets/" from .dev/beads-specs/. See AGENTS.md, "Specs and plans are HTML documents".
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc.
+-->
+<link rel="stylesheet" href="../../../docs/templates/assets/agent-document.css">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script defer src="../../../docs/templates/assets/highlight/highlight.min.js"></script>
+<script defer src="../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
+<script defer src="../../../docs/templates/assets/agent-document.js"></script>
+</head>
+<body>
+<main>
+<h1>adopt-moon-lander: design</h1>
+<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.99</code> · 2026-10-28 · proposed</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#run">How a CLI run works after the change</a></li>
+<li><a href="#layers">Where each module is used</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See proposal.md for the motivation. This table pairs each Morphir part that does the job today with the
+Moon-Lander module that takes the job over, and says what stays in Morphir.</p>
+<table>
+<thead><tr><th>Job</th><th>Morphir today</th><th>Moon-Lander module (status on 2026-10-28)</th><th>Stays in Morphir</th></tr></thead>
+<tbody>
+<tr><td>Load, merge, provenance</td><td><code>pkgs/morphir-engine/config</code> (<code>Document</code>, <code>merge</code>, <code>environment</code>)</td><td><code>moon-lander-config</code> core, all four targets; not yet published</td><td>Morphir keys, defaults and <code>validate</code></td></tr>
+<tr><td>File discovery</td><td><code>pkgs/morphir-engine/workspace</code> (<code>primary_paths</code>, <code>user</code>), <code>pkgs/morphir-host/configuration.mbt</code> (system and global paths, legacy markers)</td><td><code>moon-lander-config/conventions</code>: walk-up in the same three layouts, <code>.user</code> overrides, legacy fallback, stop boundary, isolated mode, <code>&lt;PREFIX&gt;_HOME</code></td><td>Workspace members and projects</td></tr>
+<tr><td>File access</td><td><code>pkgs/morphir-host</code> platform I/O, WASI preopen fd 3</td><td><code>moon-lander-config/host</code> on native and js; an injected <code>FileTree</code> on wasm</td><td>The WASI file tree adapter</td></tr>
+<tr><td>Diagnostic logs</td><td>None; direct <code>@platform.stderr</code> writes</td><td><code>moon-lander-logging</code> (pure, all targets), <code>moon-lander-logging-hosting-async</code> (native, js)</td><td>Telemetry: <code>pkgs/morphir-execution/observability</code>, <code>apps/morphir-otel</code></td></tr>
+<tr><td>Lifecycle and exit codes</td><td><code>apps/morphir/main.mbt</code> (<code>"Cancelled"</code> gives 130), <code>@platform.interruption_*</code> per command</td><td><code>moon-lander-hosting</code>: <code>run</code> and <code>@console.run</code> on native and js, <code>run_embedded</code> on wasm and wasm-gc, <code>Lifetime</code>, <code>StopReason</code>, <code>set_exit_code</code></td><td>The SIGINT forwarding to child processes in <code>platform.c</code></td></tr>
+<tr><td>Dispatch</td><td>String compares in <code>apps/morphir/main.mbt</code>; <code>op</code> matches in <code>pkgs/morphir-workbench-native/service.mbt</code> and <code>pkgs/morphir-engine/execution/workbench/boundary.mbt</code></td><td><code>moon-lander-mediator</code> (sync, all targets) and <code>moon-lander-mediator/async</code></td><td>Wire formats and operation names</td></tr>
+<tr><td>Notebooks</td><td>None</td><td><code>moonrockz/notebooks</code>: Jupyter and DIB models and codecs; published at <code>0.5.0</code></td><td>The worksheet to notebook mapping</td></tr>
+</tbody>
+</table>
+<p>The Moon-Lander framework modules were not published in releases <code>0.3.0</code> to <code>0.5.0</code>, by
+oversight. A Moon-Lander release that publishes them is in progress. The notebook work needs only
+<code>moonrockz/notebooks</code>, which is already on the registry.</p>
+
+<h2 id="goals">Goals and non-goals</h2>
+<p><strong>Goals:</strong> every capability in the table above comes from one Moon-Lander module in the CLI and in
+the Workbench; user-visible behavior is kept except where the specs change it (JSON configuration and the
+<code>--config</code> rename); the work lands in as few pull requests as needed, with
+one commit series per group so that a group can be reverted on its own.</p>
+<p><strong>Non-goals:</strong> changes to MEP, the Workbench worker protocol or any other wire format; replacing
+telemetry with logging; configuration environments (<code>morphir.Production.toml</code>) and local override files
+(<code>morphir.local.toml</code>); configuration editing (stays with <code>pkgs/morphir-toml-edit</code>); protocol definitions, which later
+work does in Smithy through <code>moonrockz/smithy</code>, not with <code>moonrockz/openrpc</code>.</p>
+
+<h2 id="run">How a CLI run works after the change</h2>
+<p>Take <code>morphir project list --json --log-level debug</code> on native. The diagram shows the order. The host
+fixes the arguments, environment and working directory once, then loads configuration, then builds the services
+record that every handler shares. The command is a typed request sent through the mediator, so the cancellation,
+timing and error middleware is the same for every command. When the command ends, for any reason, the stop hooks run
+in reverse order and the logging bridge drains the log queue before the console driver ends the process.</p>
+<svg role="img" aria-labelledby="run-title run-desc" viewBox="0 0 760 300" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="13">
+<title id="run-title">Order of one CLI run</title>
+<desc id="run-desc">Six steps from left to right: console driver, host builder, configuration load, services record, mediator send through middleware to the command handler, and stop hooks with log drain, ending with the exit code.</desc>
+<g fill="none" stroke="currentColor">
+<rect x="10" y="20" width="160" height="56" rx="6"/>
+<rect x="200" y="20" width="160" height="56" rx="6"/>
+<rect x="390" y="20" width="160" height="56" rx="6"/>
+<rect x="580" y="20" width="170" height="56" rx="6"/>
+<rect x="10" y="150" width="340" height="56" rx="6"/>
+<rect x="390" y="150" width="360" height="56" rx="6"/>
+<path d="M170 48 H200 M360 48 H390 M550 48 H580 M665 76 V110 H180 V150 M350 178 H390"/>
+</g>
+<g fill="currentColor">
+<text x="22" y="44">@console.run</text><text x="22" y="64" font-size="11">SIGINT, SIGTERM probe</text>
+<text x="212" y="44">@lander.cli("morphir")</text><text x="212" y="64" font-size="11">args, env, working dir</text>
+<text x="402" y="44">configuration load</text><text x="402" y="64" font-size="11">conventions, TOML and JSON</text>
+<text x="592" y="44">services record S</text><text x="592" y="64" font-size="11">engine, Logger, telemetry</text>
+<text x="22" y="174">mediator send ProjectList</text><text x="22" y="194" font-size="11">cancel, timing, log scope, error middleware</text>
+<text x="402" y="174">stop hooks in reverse, log drain</text><text x="402" y="194" font-size="11">exit 0, 1, 2, 130 or 143</text>
+</g>
+</svg>
+<p>On wasm and wasm-gc the same builder runs through <code>run_embedded</code> with the WASI file tree. There is no
+signal probe, so only a host cancellation or the cancel file stops a run, and commands that need interruption keep
+their current refusal.</p>
+
+<h2 id="layers">Where each module is used</h2>
+<p>ADR 0002 keeps the engine synchronous and leaves file, network and process access to host adapters. The modules
+follow that line: the pure ones may be used by engine packages, the host ones only by apps and
+<code>pkgs/morphir-host</code>.</p>
+<table>
+<thead><tr><th>Module</th><th>Kind</th><th>Allowed importers</th></tr></thead>
+<tbody>
+<tr><td><code>moon-lander-core</code>, <code>moon-lander-logging</code>, <code>moon-lander-config</code> (core, conventions), <code>moon-lander-mediator</code>, <code>moonrockz/notebooks</code></td><td>Pure, all four targets</td><td>Engine packages, Workbench packages, apps</td></tr>
+<tr><td><code>moon-lander-config/host</code>, <code>moon-lander-hosting</code>, <code>moon-lander-hosting/console</code>, <code>moon-lander-logging-hosting-async</code>, <code>moon-lander-mediator/async</code></td><td>Host, native and js (hosting also wasm through <code>run_embedded</code>)</td><td><code>apps/*</code>, <code>pkgs/morphir-host</code>, <code>pkgs/morphir-workbench-native</code></td></tr>
+</tbody>
+</table>
+
+<h2 id="decisions">Decisions</h2>
+
+<h3 id="dep-1">DEP-1. Take every module from mooncakes.io at one exact version</h3>
+<p>Each <code>moon.mod</code> that needs a module imports it at an exact version, as with <code>moonrockz/ion</code>.
+Moon-Lander releases share one version across its modules, so all Moon-Lander imports in this repository move
+together, in one pull request and one Renovate group. A group of tasks starts only when its module is on the
+registry.</p>
+<p>Alternatives: a git submodule or path dependency on a Moon-Lander checkout (rejected by the maintainer; it adds
+build plumbing and couples our CI to an unreleased tree); copying the code (rejected; we would maintain a fork).</p>
+
+<h3 id="dep-2">DEP-2. Pure modules may enter the engine; host modules stay at the edge</h3>
+<p>See the table in <a href="#layers">Where each module is used</a>. The engine takes a <code>&amp;@logging.Logger</code>
+and configuration values; it never starts a host or a sink. This keeps ADR 0002 and lets the Workbench browser build
+use the same engine code.</p>
+<p>Alternative: confine all Moon-Lander imports to the apps. Rejected, because the configuration merge and the
+worksheet notebook mapping must run in the browser Workbench too.</p>
+
+<h3 id="cfg-1">CFG-1. Map Morphir discovery onto Moon-Lander conventions, with extra layers off</h3>
+<p>The conventions for the name <code>morphir</code> already find <code>morphir.toml</code>,
+<code>.morphir/morphir.toml</code> and <code>.config/morphir/config.toml</code> by walk-up, refuse two in one
+directory, read <code>morphir.user.toml</code>, honor <code>MORPHIR_HOME</code>, and give the system and global user
+directories per platform. <code>morphir-workspace.json</code>, <code>morphir.json</code> and <code>morphir.json5</code> become configuration
+sources (CFG-4). Environment files and the local override layer stay off,
+because they would read files that Morphir ignores today. The environment source with prefix <code>MORPHIR</code>
+already uses <code>__</code> as the separator, skips <code>_</code> after the prefix, refuses an empty segment, and
+merges a shorter path last, as <code>@config.environment</code> does.</p>
+<p>Alternative: keep Morphir discovery and use only the Moon-Lander merge. Rejected; discovery is where the isolated
+mode for <code>morphir-o6vm.10</code> comes from.</p>
+
+<h3 id="cfg-2">CFG-2. Workspace members stay in Morphir, on Moon-Lander values</h3>
+<p>Morphir members have their own defaults and take only the <code>shared()</code> part of the root file and the root
+user file. The Moon-Lander member layer selects one member per run, which does not fit a command that loads all
+members. <code>pkgs/morphir-engine/workspace</code> keeps the member walk and builds each member's configuration from
+Moon-Lander sources and merge, so values and provenance come from one engine.</p>
+
+<h3 id="cfg-3">CFG-3. Link the TOML, YAML and JSON parsers</h3>
+<p>The executables override the <code>formats</code> virtual package with a set of TOML, YAML and JSON/JSON5, so only
+the Ion parser is not linked. YAML uses Moon-Lander's default YAML profile and is read from <code>.yaml</code> and
+<code>.yml</code> files. Both <code>.json</code> and <code>.json5</code> files are parsed as JSON5, which accepts
+strict JSON, so a <code>morphir.json</code> may hold comments and trailing commas. Tools that read
+<code>morphir.json</code> as strict JSON, such as morphir-elm, reject such a file; that is the author's choice. Reading
+YAML replaces the YAML refusal in ADR 0002, which ADR 0004 records. A parity corpus (task group 3) checks that the
+Moon-Lander TOML parser and <code>moonbit-community/toml</code> give the same values for every configuration file in
+the repository's tests and fixtures, and that every <code>morphir.json</code> fixture gives the same project values as
+the current <code>legacy</code> reader.</p>
+
+<h3 id="cfg-4">CFG-4. Three format layers below a selected file</h3>
+<p>The workspace primary layer becomes three sources in one directory, each found in the three layouts
+(<code>morphir.*</code>, <code>.morphir/morphir.*</code>, <code>.config/morphir/config.*</code>): JSON
+(<code>.json</code>, <code>.json5</code>), then YAML (<code>.yaml</code>, <code>.yml</code>), then TOML. A later
+layer wins, so TOML is the most specific format, and every key that only a lower layer sets stays in effect.
+Ambiguity is checked inside each layer only: <code>morphir.yaml</code> with <code>morphir.yml</code> is an error,
+<code>morphir.yaml</code> with <code>morphir.toml</code> is not, but it is bad form, so it gives the warning
+<code>config.yaml_beside_toml</code>. Inside the JSON layer, <code>morphir-workspace.json</code> merges first and
+<code>morphir.json</code> or <code>morphir.json5</code> after it; it takes the canonical keys only. Members use the
+same layers and rules as the root, so a morphir-elm member with only <code>morphir.json</code> keeps working. User
+override files follow the same order.</p>
+<p>Configuration warnings have codes (<code>config.yaml_beside_toml</code>,
+<code>config.json_keys_below_toml</code>) and one host-only suppression list: <code>--suppress-warning
+&lt;code&gt;</code>, <code>MORPHIR_DIAGNOSTICS__SUPPRESS</code> (comma-separated) or <code>diagnostics.suppress</code>
+in the system or global user file. The loader reads <code>diagnostics.suppress</code> from the host layers only, so a
+workspace cannot hide its own mixed files.</p>
+<p> Before the
+merge, a reader turns the morphir-elm fields into canonical keys, each with the JSON file as its origin, and puts the
+Elm checkpoint defaults in the defaults layer, as the current <code>legacy</code> function does.
+<code>--config &lt;path&gt;</code> adds one source above the TOML layer and below the member layer; when it names a
+file that discovery also found, that file is taken out of its discovered layer so it is merged once.</p>
+<pre><code class="language-json">{
+  "name": "Acme.Billing",
+  "sourceDirectory": "elm-src",
+  "exposedModules": ["Acme.Billing.Api"]
+}</code></pre>
+<pre><code class="language-toml">[project]
+source_directory = "src"</code></pre>
+<p>With these two files, <code>project.source_directory</code> is <code>src</code> from <code>morphir.toml</code>
+and <code>project.name</code> is <code>Acme.Billing</code> from <code>morphir.json</code>. With
+<code>--config morphir.json</code>, <code>project.source_directory</code> is <code>elm-src</code>.</p>
+<p>If the Moon-Lander conventions treat files of different formats in one directory as ambiguous, or cannot add a
+source above the project file, Morphir registers these sources itself through the builder's source provider and files
+a Moon-Lander issue for the convention.</p>
+<p>The Scheme script option moves to <code>--config-script</code>, because <code>--config</code> now names a
+configuration file. A <code>.scm</code> path given to <code>--config</code> fails with a usage error that names
+<code>--config-script</code>, so a script user gets a clear fix instead of a format error.</p>
+<p>Alternatives: keep <code>--config</code> for scripts and add <code>--config-file</code> (rejected by the
+maintainer); choose the meaning of <code>--config</code> by extension (rejected: one option with two meanings).</p>
+
+<h3 id="cfg-5">CFG-5. Write TOML only</h3>
+<p>TOML is the default Morphir format. Scaffolding already writes <code>morphir.toml</code>
+(<code>pkgs/morphir-engine/workspace/scaffold.mbt</code>), and edits go through <code>pkgs/morphir-toml-edit</code>,
+which keeps formatting and comments. Reading YAML and JSON does not add writers for them. A write to a workspace with
+JSON or YAML files and no TOML file creates <code>morphir.toml</code> in the same directory, which is valid because
+TOML is the top layer (CFG-4). Because a TOML value replaces a lower value whole, each written key holds its full new
+value: <code>project add</code> writes every member in <code>workspace.members</code>, not only the new one.
+<code>ensure_new_config</code> also refuses a new project where any primary file, of any format, exists.</p>
+<p>Alternatives: edit YAML and JSON in place (rejected: no format-preserving editors, and JSON5 comments could be
+lost); refuse every non-TOML workspace (rejected by the maintainer, because a TOML file beside them works).</p>
+
+<h3 id="log-1">LOG-1. One Logger value per run; sinks by host</h3>
+<p>The services record holds one <code>&amp;Logger</code> made with <code>min_level</code> and
+<code>with_category</code>. On native and js it writes through a <code>moon-lander-logging-hosting-async</code>
+session: console on standard error, and, when enabled, rolling files with the stem <code>morphir-diagnostics</code>
+in <code>.morphir/logs/</code>, guarded by the module's ownership marker so that retention never removes telemetry
+files. On wasm and wasm-gc a small Logger writes text lines to standard error through <code>@platform</code>.</p>
+<p>Alternative: send diagnostics into the telemetry session. Rejected; telemetry has typed observations with a
+consumer (<code>apps/morphir-otel</code>) and must keep its format.</p>
+
+<h3 id="log-2">LOG-2. Name the option <code>--log-level</code></h3>
+<p><code>--log</code> already turns on telemetry, so the level option cannot be <code>--log</code> or
+<code>--verbose=</code> without confusion. <code>--log-level</code> matches the configuration key
+<code>logging.level</code> and the variable <code>MORPHIR_LOGGING__LEVEL</code>.</p>
+
+<h3 id="host-1">HOST-1. Run the CLI through the host, and keep Morphir exit codes</h3>
+<p><code>main</code> builds the host with <code>@lander.cli("morphir", args)</code>, and runs it with
+<code>@console.run</code> and the logging bridge on native and js, and with <code>run_embedded</code> on wasm. The
+host's default code for an unhandled failure is 1, while Morphir uses 2 for every failure except <code>compile</code>.
+A failure middleware maps each command failure to Morphir's code and calls <code>set_exit_code</code>, so the
+<code>application/lifecycle</code> codes hold. Cancellation is a <code>StopReason</code>, not the message text
+<code>"Cancelled"</code>. The cancel file becomes a host stop request polled by the same check as signals.</p>
+<p>Moon-Lander's own change <code>add-host-lifecycle</code> is still open. Group 6 uses only what the published
+release documents; any gap becomes a Moon-Lander issue, not a local workaround.</p>
+
+<h3 id="host-2">HOST-2. The desktop Workbench embeds the host under Proton</h3>
+<p>Proton owns the window event loop. The desktop app builds a host whose hosted services are the native Workbench
+services, starts it when Proton starts, and asks it to stop with the <code>Embedder</code> stop reason from
+Proton's <code>on_shutdown</code> hook. Running host executions are cancelled through the same lifetime.</p>
+
+<h3 id="med-1">MED-1. Typed requests behind unchanged names</h3>
+<p>Each CLI command becomes a request type with a <code>Sender</code>. One table maps the parsed argparse subcommand
+to a request value; the mediator runs it through the shared middleware. In the Workbench, the native service and the
+engine boundary decode <code>op</code> into a request value once, then send it. Operation names, payloads and results
+do not change. The engine boundary uses the synchronous mediator; the native service uses the async mediator, where
+handlers wait for I/O.</p>
+
+<h3 id="nb-1">NB-1. Worksheet forms are cells; observations are outputs</h3>
+<p>The mapping lives in a new pure package, <code>pkgs/morphir-engine/worksheet/notebook</code>, so the CLI and the
+browser Workbench share it. Each top-level form is a code cell with language <code>scheme</code>; each block of
+whole-line <code>;;</code> comments between forms is a Markdown cell. With evaluation, an observation becomes an
+<code>execute_result</code> with <code>text/plain</code> (the preview) and
+<code>application/vnd.morphir.observation+json</code> (the observation's JSON), and a failed outcome becomes an
+<code>error</code> output. Notebook metadata records the profile <code>morphir/worksheet-notebook</code>, version
+<code>0.1.0</code>, under <code>metadata.morphir</code>. DIB cells use the kernel name <code>scheme</code>.</p>
+<pre><code class="language-scheme">;; # Totals
+(define prices '(3 4 5))
+
+(apply + prices)</code></pre>
+<p>This worksheet exports as three cells: Markdown <code># Totals</code>, then two Scheme code cells.</p>
+
+<h3 id="nb-2">NB-2. Stay compatible with the shared notebook profile</h3>
+<p><code>morphir-o6vm.11</code> plans one Morphir notebook profile for workspaces and itest scenarios. This change
+keeps its metadata under its own profile name and reads <code>moonrockz/notebooks</code> models only, so the shared
+profile can later adopt or extend it without a second notebook reader.</p>
+
+<h3 id="doc-1">DOC-1. Record the adoption as ADR 0004</h3>
+<p><code>docs/adr/0004-adopt-moon-lander.md</code> records DEP-1, DEP-2, the import rule and the configuration formats
+(CFG-3, CFG-4), which replace the YAML refusal in ADR 0002, and
+<code>CONTEXT.md</code> gets the terms host lifetime, stop reason, diagnostic log and worksheet notebook.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<table>
+<thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+<tbody>
+<tr><td>Moon-Lander framework modules are not on the registry when a group is ready to start</td><td>The notebook group needs only <code>moonrockz/notebooks</code> and can go first. The other groups depend on the publication bead and wait.</td></tr>
+<tr><td>Moon-Lander is young (0.x, breaking changes each minor release)</td><td>Exact pins and one Renovate group; each upgrade runs the full gates. The parity corpus and the lifecycle tests catch behavior drift.</td></tr>
+<tr><td>TOML parse differences change effective configuration</td><td>Parity corpus in group 3, compared on all four targets before the old loader is removed.</td></tr>
+<tr><td>Host lifecycle features that group 6 needs are not yet released</td><td>HOST-1 uses only released API; gaps go to Moon-Lander as issues; the old <code>main</code> stays until the lifecycle tests pass.</td></tr>
+<tr><td><code>moonbitlang/async</code> does not cross-build to Darwin or Windows</td><td>The CLI release jobs already build native on each OS; the hosting and logging session modules need the same, which the build-master review in group 2 checks.</td></tr>
+<tr><td>Binary size grows on wasm and js</td><td>TOML, YAML and JSON format set, no Ion; size of each artifact recorded before and after group 3 and group 6.</td></tr>
+<tr><td>A workspace with <code>morphir.json</code> and <code>morphir.toml</code> now merges both; before, the JSON file was ignored. If <code>morphir.toml</code> does not set <code>frontend.language</code>, the frontend becomes <code>elm</code></td><td>The CLI warns once per run when both files exist and the JSON file sets keys that the TOML file does not; the README and release notes show how to keep the old result (set the key in <code>morphir.toml</code> or remove <code>morphir.json</code>).</td></tr>
+<tr><td>Scripts and CI that pass <code>--config x.scm</code> break</td><td>The usage error names <code>--config-script</code>; release notes mark the change as breaking; repository uses are updated in group 3.</td></tr>
+<tr><td>Rolling diagnostic files and telemetry share <code>.morphir/logs/</code></td><td>Distinct file stem and the ownership marker (LOG-1); a test proves retention leaves telemetry files.</td></tr>
+</tbody>
+</table>
+
+<h2 id="migration">Migration plan</h2>
+<p>The maintainer asked on 2026-10-28 for as few pull requests as needed. Group 1 happens in the Moon-Lander
+repository. Groups 2 to 9 land in one pull request in this repository, with one commit series per group in this
+order: dependencies and ADR (group 2), configuration with the parity corpus (group 3), logging, which reads its level
+from configuration (group 4), dispatch (group 5), the CLI host (group 6), the desktop host (group 7), notebooks
+(group 8) and the integration checks (group 9). A group gets its own pull request only when it is blocked and the
+rest is ready, for example when group 6 waits for a Moon-Lander hosting feature. The old configuration loader and
+the old exit-code mapping are removed in the commits that prove parity, so reverting those commits restores them.</p>
+
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li>Which Moon-Lander version is the first with the framework modules on the registry. The pins take that version;
+nothing else in the plan depends on its number.</li>
+<li>Whether .NET Interactive users want a different DIB kernel name than <code>scheme</code>. The name is one
+constant in the mapping.</li>
+</ul>
+
+</main>
+</body>
+</html>
