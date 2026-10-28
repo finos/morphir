@@ -60,6 +60,58 @@ admission, all languages/backends, every Boolean frontend construct, cancellatio
 progress, or trusted remote evidence. The broader host qualification remains
 [#965](https://github.com/finos/morphir/issues/965).
 
+## Python JSON Library profile
+
+[`guest-python-json.json`](guest-python-json.json) selects the separate
+`python-json-library-v1` executable profile. Use the same `guest-run` and
+`report-check` commands above with this kit path. Run each standalone stdio and
+Extism WASM artifact separately and retain both reports. A report qualifies the
+exact host, arguments and identity files it records; a native run does not
+qualify a WASM artifact.
+
+The fixed `main.py` source defines `identity(flag: bool) -> bool` and
+`always() -> bool`. Its package is `mck/python`, with public module `main` and
+`typesOnly: false`. The kit independently fixes complete Library JSON IR for
+`3.0.0` and `4.0.0`, and the exact generated `main.py` artifact. The v3 expectation
+uses classic access/documentation wrappers, SDK Bool references and typed value
+attributes. The v4 expectation uses canonical Library, ExpressionBody, Variable
+and BoolLiteral forms. No implementation IR codec supplies expected results.
+The profile accepts a canonical SemVer extension version, so qualification is
+not tied to one Python package release.
+
+The required cases cover:
+
+- Static claims, exact `0.2.0-draft.1` and legacy `0.1` negotiation, refusal of a
+  different draft, pre-initialization work, duplicate initialization, silent
+  notifications, unknown methods, shutdown and clean exit.
+- Exact JSON-RPC identity echo for unsigned `u64::MAX`, a Unicode string and an
+  empty string. The existing MoonBit numeric request sequence stays unchanged.
+- Legacy JSON compile/generate and JSON `compileModel`/`generateModel` for both
+  IR versions. Generated source compiles back to the frozen semantic IR.
+  Independently constructed envelopes exercise generation without depending on
+  the compiler's output. Repeated model compilation must retain model identity
+  and bytes.
+- Complete operation/profile/codec/envelope/IR tuples. Fresh processes exercise
+  compile-only admission, an unoffered IR version, each encoded-byte,
+  decoded-byte, depth and node bound separately, and offers above the guest's
+  limits. Selection must use each bilateral minimum. Request-local support
+  cannot widen a selected bound, and a refused request permits later work.
+- Invalid SHA-256, decoded length, base64, JSON, envelope version, IR version,
+  operation/codec tuple and unknown critical members. Ion model input, Ion
+  evidence and unavailable required guarantees must be refused. Valid Specs and
+  Application distributions return structured failure diagnostics and no
+  artifacts. Malformed Python and `typesOnly` functions return diagnostics and
+  no model.
+
+This profile qualifies the Python JSON Library subset. It makes no rich Ion,
+source provenance or guarantee-preservation claim. The MoonBit profile above
+continues to require every rich-model retention, metadata and artifact check.
+Both profiles use the same `mep-guest` report suite, corpus digest, complete
+observation replay, executable identity checks, frame/deadline bounds and
+process cleanup. Synthetic replay tests verify adjudication only. Actual guest
+qualification requires a successful executable report and independent
+`report-check` using the unchanged checker binary and files.
+
 ## Model transport reference corpus
 
 [`model-transport.cases.json`](model-transport.cases.json) records fixed examples

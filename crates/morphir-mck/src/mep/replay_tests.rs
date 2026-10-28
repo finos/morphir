@@ -8,7 +8,7 @@ fn kit() -> Kit {
 }
 
 fn model(kit: &Kit) -> Value {
-    let root = metadata::synthetic_model(&kit.document.expected_ir);
+    let root = metadata::synthetic_model(&kit.moonbit().expected_ir);
     let bytes = root.encode_as(ion_rs::v1_0::Binary).unwrap();
     json!({"envelopeVersion":"0.1.0-draft.1","modelId":"urn:morphir:mck:synthetic","revision":"independent-revision","irVersion":"4.0.0","profile":"morphir-model","payload":payload(&bytes,"ion-binary")})
 }
@@ -22,9 +22,9 @@ fn generated_result(kit: &Kit, request: &Value) -> Value {
         None
     };
     let expected = if rich {
-        &kit.document.expected_artifacts
+        &kit.moonbit().expected_artifacts
     } else {
-        &kit.document.expected_json_artifacts
+        &kit.moonbit().expected_json_artifacts
     };
     let mut artifacts = expected
         .iter()
@@ -37,9 +37,9 @@ fn generated_result(kit: &Kit, request: &Value) -> Value {
         );
     }
     let symbols = if let Some(root) = source {
-        metadata::synthetic_symbols(&root, &kit.document.expected_ir)
+        metadata::synthetic_symbols(&root, &kit.moonbit().expected_ir)
     } else {
-        metadata::synthetic_plain_symbols(&kit.document.plain_ir)
+        metadata::synthetic_plain_symbols(&kit.moonbit().plain_ir)
     };
     artifacts.push(json!({"path":"symbols.10n","binary":true,"content":STANDARD.encode(symbols.encode_as(ion_rs::v1_0::Binary).unwrap())}));
     json!({"success":true,"artifacts":artifacts,"diagnostics":[]})
@@ -198,7 +198,7 @@ fn saved_report_is_recomputed_from_complete_independent_observations() {
 #[test]
 fn a_valid_digest_cannot_hide_wrong_compiled_semantics() {
     let kit = kit();
-    let mut wrong = kit.document.expected_ir.clone();
+    let mut wrong = kit.moonbit().expected_ir.clone();
     wrong["distribution"]["Library"]["def"]["modules"]["main"]["Public"]["values"]["is-ready"]["Public"]
         ["ExpressionBody"]["body"] = json!({"Literal":{"BoolLiteral":true}});
     let root = metadata::synthetic_model(&wrong);

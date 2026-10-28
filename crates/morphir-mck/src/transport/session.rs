@@ -432,6 +432,24 @@ pub(crate) fn validate_mep_response(response: &Value, id: u64) -> Result<(), Tra
     Ok(())
 }
 
+/// Validate a canonical unsigned-integer or string JSON-RPC request identity.
+pub(crate) fn validate_mep_response_id(response: &Value, id: &Value) -> Result<(), TransportError> {
+    if !(id.is_u64() || id.is_string()) {
+        return Err(TransportError::Malformed(
+            "MEP request id must be u64 or string".into(),
+        ));
+    }
+    if response.get("id") != Some(id) {
+        return Err(TransportError::Malformed(
+            "MEP response id differs from request".into(),
+        ));
+    }
+    // Reuse every existing envelope check. Only the caller's identity differs.
+    let mut numeric = response.clone();
+    numeric["id"] = serde_json::json!(1);
+    validate_mep_response(&numeric, 1)
+}
+
 impl Session {
     /// Starts `program` with `args`, its stdin, stdout and stderr piped.
     pub fn spawn(
@@ -549,6 +567,41 @@ impl Session {
                 let response =
                     crate::json::strict::parse_exact(&body).map_err(TransportError::Malformed)?;
                 validate_mep_response(&response, id)?;
+                Ok(response)
+            });
+        if let Err(error) = &result {
+            self.broken = Some(error.clone());
+        }
+        result
+    }
+
+    /// Sends a MEP request with an explicit u64 or string identity.
+    /// The exact value and JSON type must be echoed by the peer.
+    pub fn exchange_mep_with_id(
+        &mut self,
+        id: &Value,
+        method: &str,
+        params: &Value,
+    ) -> Result<Value, TransportError> {
+        if let Some(broken) = &self.broken {
+            return Err(broken.clone());
+        }
+        if !(id.is_u64() || id.is_string()) {
+            return Err(TransportError::Malformed(
+                "MEP request id must be u64 or string".into(),
+            ));
+        }
+        let deadline = self.request_deadline(self.next_id);
+        self.next_id += 1;
+        let request =
+            serde_json::json!({"jsonrpc":"2.0", "id":id, "method":method, "params":params});
+        let result = self
+            .send_line(&request.to_string(), &deadline)
+            .and_then(|()| {
+                let body = self.receive_frame(&deadline)?;
+                let response =
+                    crate::json::strict::parse_exact(&body).map_err(TransportError::Malformed)?;
+                validate_mep_response_id(&response, id)?;
                 Ok(response)
             });
         if let Err(error) = &result {
