@@ -67,11 +67,13 @@ fn main {
   let args = @platform.arguments()
   let mut mode = error_output_mode(args)
   let mut status = 0
-  let notebook_scope = notebook_error_operation(args)
-  let mut compiling = false
+  let mut presentation = match notebook_error_operation(args) {
+    Some(operation) => FailurePresentation::Notebook(operation)
+    None => FailurePresentation::Legacy
+  }
   try {
     let cli = parse_cli(args)
-    compiling = cli.command == "compile"
+    presentation = failure_presentation(cli.command)
     mode = if flag(cli, "json-lines") {
       JSONLines
     } else if flag(cli, "json") {
@@ -81,93 +83,38 @@ fn main {
     }
     status = command(cli, mode)
   } catch {
-    error => {
-      let message = match error {
-        @toolchain.ToolchainError(message) => message
-        _ => @host.error_message(error)
-      }
-      if notebook_scope is None {
-        @platform.stderr(message + "\n")
-      }
-      status = if message == "Cancelled" {
-        130
-      } else if compiling {
-        1
-      } else {
-        2
-      }
-      if notebook_scope is Some(operation) {
-        ignore(
-          notebook_failure(
-            operation, mode, "notebook.invalid_arguments", message, status,
-          ),
-        )
-      } else if compiling {
-        compilation_error(message, mode, status)
-      } else {
-        print_error(message, mode)
-      }
-    }
+    error => status = report_command_failure(presentation, mode, error)
   }
   @platform.exit(status)
 }
 
 ///|
 fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
-  if notebook_operation(cli.command) is Some(_) {
-    return notebook_command(cli, mode)
-  }
   if cli.help {
+    if notebook_operation(cli.command) is Some(_) {
+      return notebook_command(cli, mode)
+    }
     usage(mode, cli.help_text)
     return 0
   }
-  let cli = if cli.command == "compile" { compilation_cli(cli) } else { cli }
-  if cli.command.has_prefix("toolchain ") {
-    return toolchain_command(cli, mode)
-  }
-  if cli.command == "mck" {
-    return mck_command(cli, mode)
-  }
-  if cli.command.has_prefix("extension ") {
-    if !["extension describe", "extension compile", "extension generate"].contains(
-        cli.command,
-      ) {
-      return catalog_command(cli, mode)
-    }
-    return extension_command(cli, mode)
-  }
-  if cli.command == "eval" {
-    return evaluation_command(cli, mode)
-  }
-  if cli.command == "worksheet" {
-    return worksheet_command(cli, mode)
-  }
-  if cli.command == "connected artifacts" {
-    return transfer_command(cli, mode)
-  }
-  if cli.command == "connected originals" {
-    return originals_command(cli, mode)
-  }
-  if cli.command.has_prefix("connected ") {
-    return connected_command(cli, mode)
-  }
-  if cli.command == "generate" {
-    return generation_command(cli, mode)
-  }
-  if cli.command.has_prefix("model ") {
-    return model_command(cli, mode)
-  }
-  if cli.command == "execute" ||
-    cli.command == "verify" ||
-    cli.command == "conform" {
-    return execution_command(cli, mode)
-  }
-  if cli.command == "workspace init" ||
-    cli.command == "project add" ||
-    cli.command == "project remove" {
-    return scaffolding_command(cli, mode)
-  }
-  let project_list = cli.command == "project list"
+  dispatch_cli(cli, command_context(mode))
+}
+
+///|
+priv enum PipelineKind {
+  PipelineRun
+  PipelineCompile
+  WorkspaceOverview
+  ListProjects
+}
+
+///|
+fn pipeline_command(
+  cli : Cli,
+  mode : OutputMode,
+  kind : PipelineKind,
+) -> Int32 raise {
+  let project_list = kind is ListProjects
   let path = value(cli, "path", fallback=".")
   let selector = value(cli, "project")
   let all = flag(cli, "all")
@@ -212,7 +159,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
       }
     }
   }
-  if cli.command == "compile" {
+  if kind is PipelineCompile {
     overlay_fields["ir"] = { "format_version": Json::number(4.0, repr="4") }
   }
   let location = @host.locate(path)
@@ -253,7 +200,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
   for warning in workspace.warnings {
     @platform.stderr("warning: " + warning + "\n")
   }
-  if cli.command == "workspace" {
+  if kind is WorkspaceOverview {
     if !(mode is Human) {
       emit_workspace(workspace.to_json(), mode)
     } else {
@@ -269,7 +216,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
   }
   // A package name changes the selected model, not the names used to select
   // configured workspace projects.
-  let overlay = if cli.command == "compile" && value(cli, "package") != "" {
+  let overlay = if kind is PipelineCompile && value(cli, "package") != "" {
     @config.merge(
       discovery_overlay,
       @config.from_json(
@@ -360,7 +307,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
     overlay,
   }
   let plan = engine.plan(snapshot.engine_host(), workspace, request)
-  if cli.command == "compile" && plan.sources().is_empty() {
+  if kind is PipelineCompile && plan.sources().is_empty() {
     raise @config.Invalid(
       "compile.no_sources: no source matched the selected project, language and input",
     )
@@ -415,7 +362,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
     error => {
       let message = @host.error_message(error)
       @platform.stderr(message + "\n")
-      if cli.command == "compile" {
+      if kind is PipelineCompile {
         compilation_error(
           message,
           mode,
@@ -456,7 +403,7 @@ fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
     @platform.stderr(error + "\n")
   }
   if !(mode is Human) {
-    let emit = if cli.command == "compile" {
+    let emit = if kind is PipelineCompile {
       fn(report, mode) {
         compilation_result(report, mode, cancelled=result.cancelled)
       }

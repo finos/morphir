@@ -590,6 +590,18 @@ with an explicit unavailable-interruption error before reading their input.
 Evaluation and worksheets produce reports. Use `generate` to generate from an
 existing model, or `run` to compile project sources and publish their outputs.
 
+## Command execution
+
+The parser owns command and option syntax. Each command becomes a distinct typed request sent through a
+Moon-Lander sender. Shared middleware checks cancellation before entering a handler, supplies its diagnostic
+log category, records elapsed time and maps thrown failures to the command's existing status and result schema.
+Handlers retain ownership of successful output and finite results, including existing JSON and JSON Lines formats.
+Help returns before dispatch and performs no command work.
+
+The run supplies logging, time, cancellation and failure reporting as services. Tests can supply these services
+directly without starting a process, while argv and installed-package tests qualify the real host adapters.
+Forwarded external-tool arguments retain their original ownership and literal values.
+
 ## Share worksheets as notebooks
 
 Export Scheme forms and whole-line `;;` comment blocks to Jupyter or .NET Interactive, then import them as a
