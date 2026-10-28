@@ -1,6 +1,7 @@
 import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
 import { exerciseNotebooks } from './notebook-acceptance.ts';
+import {verifyConfigurationCorpus} from './configuration-parity.ts';
 import { exerciseJsonCommandCoverage } from './json-command-coverage.ts';
 import { exerciseMck, exerciseMckCancellation, exerciseMckTransport } from './mck-acceptance.ts';
 import type { PipelineReport, Warning, FrontendInventory } from '../../../tests/cli-contracts.ts';
@@ -14,6 +15,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const appDirectory = fileURLToPath(new URL("../", import.meta.url));
 const workspaceDirectory = fileURLToPath(new URL("../../../", import.meta.url));
+verifyConfigurationCorpus(workspaceDirectory);
 const runner = join(workspaceDirectory, "pkgs/morphir-host/runners/wasm.mjs");
 const targets = ["native", "js", "wasm", "wasm-gc"];
 const selected = process.argv[2] ? [process.argv[2]] : targets;

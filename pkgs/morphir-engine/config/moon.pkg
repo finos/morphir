@@ -7,4 +7,6 @@ import {
 import {
   "finos/morphir-engine/config",
   "finos/morphir-toml-edit" @edit,
+  "moonrockz/moon-lander-config" @lander_config,
+  "moonrockz/moon-lander-config/parsers/toml" @lander_toml,
 } for "test"
