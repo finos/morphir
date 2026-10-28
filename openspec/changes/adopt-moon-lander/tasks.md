@@ -83,7 +83,7 @@
 
 ## 5. Dispatch through the mediator (morphir-ukvn.5.99.5)
 
-- [x] 5.1 Define a request type and sender per CLI command and the shared middleware (cancellation, timing and log
+- [ ] 5.1 Define a request type and sender per CLI command and the shared middleware (cancellation, timing and log
   scope, failure mapping) (MED-1); replace the string-compare chain in `apps/morphir/main.mbt`; verify every existing
   CLI test and argv test passes unchanged
 - [x] 5.2 Route `pkgs/morphir-engine/execution/workbench/boundary.mbt` through the synchronous mediator; verify the
