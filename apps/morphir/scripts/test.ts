@@ -820,7 +820,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
 if (selected.some(target => target === 'js' || target === 'native')) {
   execFileSync(process.execPath, ['--experimental-transform-types', '--test',
     join(appDirectory, 'scripts/test-connected-session.ts'), join(appDirectory, 'scripts/test-mck-provider.ts'),
-    join(appDirectory, 'scripts/test-extension-provider.ts')], {
+    join(appDirectory, 'scripts/test-extension-provider.ts'), join(appDirectory, 'scripts/configuration-parity.test.ts')], {
     cwd: workspaceDirectory, stdio: 'inherit', timeout: 30000,
   });
 }

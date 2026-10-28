@@ -6,7 +6,8 @@ It also checks replacement of lists, inherited fields, scalar values and success
 
 The corpus embeds the three tracked `morphir*.toml` fixtures under
 `apps/morphir-workbench/scripts/fixtures/folder-import/monorepo/`: the root workspace and its `core` and `utils`
-members. `tests/configuration/toml-corpus.json` freezes their text and SHA-256 digests. CLI acceptance checks
+members. `tests/configuration/toml-corpus.json` freezes their canonical LF text and UTF-8 SHA-256 digests.
+Checkout CRLF pairs are normalized before comparison and hashing. CLI acceptance checks
 that every tracked fixture is represented, each snapshot still matches its source, and the embedded MoonBit
 test data matches the manifest. Update the manifest when changing a fixture, then regenerate it with:
 
