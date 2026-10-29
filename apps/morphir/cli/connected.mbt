@@ -123,6 +123,20 @@ fn connected_dispatch(
   let path = root + "/connected.json"
   @platform.write(path, config.stringify())
   defer @platform.remove_file(path)
+  let cancel_file = match config {
+    Object(fields) =>
+      match fields.get("cancelFile") {
+        Some(String(path)) => path
+        _ => ""
+      }
+    _ => ""
+  }
+  // The helper receives this same file and must finish its cancellation report
+  // even when Node has not installed its signal handler yet.
+  let delivery = @platform.CooperativeProcessScope::install(() => {
+    cancel_file != "" && (@platform.kind(cancel_file) catch { _ => 1 }) != 0
+  })
+  defer delivery.close()
   let result = @platform.process(
     node,
     [helper, "--morphir-connected-v1", path],

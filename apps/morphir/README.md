@@ -1297,6 +1297,11 @@ Execution state is held only for the current command; no process-restart recover
 or implicit resubmission is provided. CLI interruption closes its own transport
 and helper and never terminates the remote host.
 
+Cancel-file cancellation before authentication reports `refused` with
+`connected.interrupted_before_authentication` and preserves the unused launch
+token. The native adapter lets the helper observe the same cancel file during
+startup, before Node installs its signal handler, so it can finish that report.
+
 Connected host effects require Node and POSIX private credential-file support. Portable
 Wasm/Wasm-GC retain pure receipt/core and help support and refuse connected effects
 explicitly. Windows private credential-file protection is not qualified by this

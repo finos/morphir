@@ -38,7 +38,7 @@ const program = target === 'native' ? binary : process.execPath;
 const runner = process.env.MORPHIR_HEADLESS_WASM_RUNNER ?? join(repo, 'pkgs/morphir-host/runners/wasm.mjs');
 const prefix = target === 'native' ? [] : target === 'js' ? [launcher] : [runner, binary];
 type Scenario = 'normal' | 'lost-submit' | 'lost-query' | 'lost-release' | 'cancel' | 'cancel-unknown' | 'late-completion' | 'terminal-query-lost' | 'host-exit' | 'timeout' |
-  'connect-pre-cancel' | 'connect-pending-cancel' | 'connect-selection-cancel' | 'connect-pending-sigint' | 'connect-pending-timeout' | 'connect-replaced-cancel';
+  'connect-pre-cancel' | 'connect-startup-cancel' | 'connect-pending-cancel' | 'connect-selection-cancel' | 'connect-pending-sigint' | 'connect-pending-timeout' | 'connect-replaced-cancel';
 
 function launch(args: string[], cwd: string, input?: string, selectedHelper = helper) {
   const child = spawn(program, [...prefix, ...args, '--provider', 'workbench-http', '--connected-helper', selectedHelper, '--json'], {
@@ -68,6 +68,7 @@ function delayedWorker(env: NodeJS.ProcessEnv): ProviderWorker {
   };
 }
 async function scenario(name: Scenario) {
+  const beforeAuthentication = name === 'connect-pre-cancel' || name === 'connect-startup-cancel';
   const root = mkdtempSync(join(tmpdir(), 'morphir-connected-cli-'));
   const workspace = join(root, 'workspace');
   mkdirSync(workspace);
@@ -140,7 +141,7 @@ async function scenario(name: Scenario) {
     server.prependListener('request', (incoming, response) => {
       if (incoming.url?.startsWith('/launch?')) {
         launches++;
-        if (name.startsWith('connect-') && name !== 'connect-pre-cancel' && name !== 'connect-selection-cancel' && launches === 1) {
+        if (name.startsWith('connect-') && !beforeAuthentication && name !== 'connect-selection-cancel' && launches === 1) {
           // Hold the actual host reply after the one-use token was consumed.
           // Cancellation cannot establish that this remote effect was undone.
           response.end = () => { resolveAuthenticating(); return response; };
@@ -163,11 +164,40 @@ async function scenario(name: Scenario) {
     if (name.startsWith('connect-')) {
       const cancelFile = join(root, 'cancel');
       if (name === 'connect-pre-cancel') writeFileSync(cancelFile, 'cancel');
+      const helperReady = join(root, 'helper-ready');
+      let selectedHelper = helper;
+      if (name === 'connect-startup-cancel') {
+        selectedHelper = join(root, 'startup-helper.mjs');
+        // The real helper is delayed after Node starts, before it installs its
+        // interrupt handler or consumes the one-use authentication token.
+        writeFileSync(selectedHelper, `
+import {existsSync,readFileSync,writeFileSync} from 'node:fs';
+import {connectedCommand as actual} from ${JSON.stringify(pathToFileURL(helper).href)};
+export async function connectedCommand(config,core,interrupted) {
+  writeFileSync(${JSON.stringify(helperReady)},'ready');
+  while(!existsSync(config.cancelFile)) await new Promise(resolve=>setTimeout(resolve,5));
+  await new Promise(resolve=>setTimeout(resolve,250));
+  return actual(config,core,interrupted);
+}
+if(process.argv[2]==='--morphir-connected-v1') {
+  const value=await connectedCommand(JSON.parse(readFileSync(process.argv[3],'utf8')));
+  console.log(JSON.stringify(value.report));
+  process.exitCode=value.code;
+}
+`);
+      }
       const invocation = launch(['connected', 'connect', launchFile, '--connection', connection,
-        '--cancel-file', cancelFile, '--timeout', name === 'connect-pending-timeout' ? '500' : '5000'], root);
+        '--cancel-file', cancelFile, '--timeout', name === 'connect-pending-timeout' ? '500' : '5000'], root, undefined, selectedHelper);
       running = invocation.child;
       if (name !== 'connect-pre-cancel') {
-        await Promise.race([authenticating, invocation.done.then(result => {
+        const ready = name === 'connect-startup-cancel' ? (async () => {
+          const deadline = Date.now() + 5000;
+          while (!existsSync(helperReady)) {
+            assert.ok(Date.now() < deadline, 'Real helper did not reach its startup boundary');
+            await new Promise(resolve => setTimeout(resolve, 5));
+          }
+        })() : authenticating;
+        await Promise.race([ready, invocation.done.then(result => {
           throw new Error('Connect exited before the host authenticated: ' + result.stdout + result.stderr);
         })]);
         if (name === 'connect-replaced-cancel') {
@@ -180,7 +210,7 @@ async function scenario(name: Scenario) {
       const cancelledAt = performance.now();
       const result = await invocation.done;
       assert.equal(result.signal, null, result.stdout + result.stderr);
-      assert.equal(result.code, name === 'connect-pending-timeout' ? 1 : 130, result.stdout + result.stderr);
+      assert.equal(result.code, name === 'connect-pending-timeout' ? 1 : 130, `${name}: ${result.stdout}${result.stderr}`);
       assert.ok(performance.now() - cancelledAt < 2000, 'Cancellation must not wait for the authentication timeout');
       if (name === 'connect-replaced-cancel') {
         assert.equal(readFileSync(connection, 'utf8'), 'another owner', 'Cleanup preserves a replacement carrier');
@@ -189,7 +219,10 @@ async function scenario(name: Scenario) {
       assert.deepEqual(readdirSync(root).filter(name => name.startsWith('morphir-toolchain-')), [], 'Owned helper scratch is removed');
       assert.equal(counts.session, name === 'connect-selection-cancel' ? 1 : 0, 'Cancellation never retries capability selection');
       assert.ok(!result.stdout.includes(secret) && !result.stderr.includes(secret));
-      if (name === 'connect-pre-cancel') {
+      if (beforeAuthentication) {
+        assert.equal(JSON.parse(result.stdout).observation, 'refused');
+        assert.equal(JSON.parse(result.stdout).error, 'connected.interrupted_before_authentication',
+          'The real helper reports cancellation even before its signal handler starts');
         assert.equal(launches, 0, 'Pre-cancellation must not start authentication');
         unlinkSync(cancelFile);
         const retry = await launch(['connected', 'connect', launchFile, '--connection', connection], root).done;
@@ -329,7 +362,7 @@ if (portable) {
   } finally { rmSync(root, {recursive:true,force:true}); }
 } else {
 console.log(JSON.stringify({ hostBinary: rust, sha256: createHash('sha256').update(readFileSync(rust!)).digest('hex'), target }));
-const scenarios = ['connect-pre-cancel', 'connect-pending-cancel', 'connect-selection-cancel', 'connect-pending-sigint', 'connect-pending-timeout', 'connect-replaced-cancel',
+const scenarios = ['connect-pre-cancel', 'connect-startup-cancel', 'connect-pending-cancel', 'connect-selection-cancel', 'connect-pending-sigint', 'connect-pending-timeout', 'connect-replaced-cancel',
   'normal', 'lost-submit', 'lost-query', 'lost-release', 'cancel', 'cancel-unknown', 'late-completion', 'terminal-query-lost', 'host-exit', 'timeout'] as const;
 const selected = process.env.MORPHIR_CONNECTED_SCENARIO;
 assert.ok(!selected || scenarios.some(name => name === selected), 'Select a maintained connected scenario');
