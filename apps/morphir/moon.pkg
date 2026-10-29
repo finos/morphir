@@ -5,7 +5,7 @@ import {
   "moonrockz/moon-lander-mediator" @mediator,
   "moonrockz/moon-lander-logging" @logging,
   "moonbitlang/x/crypto",
-  "moonbitlang/core/argparse",
+  "moonrockz/moon-lander-hosting/argparse" @argparse,
   "moonbitlang/core/string",
   "finos/morphir-engine/execution",
   "finos/morphir-engine/execution/workbench" @connected_core,
