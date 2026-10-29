@@ -96,8 +96,7 @@ pub fn InterruptionScope::close(Self) -> Unit
 pub fn InterruptionScope::install(() -> Bool) -> Self
 
 pub struct ProcessScope {
-  previous : ((String) -> Unit)?
-  mut open : Bool
+  // private fields
 }
 pub fn ProcessScope::close(Self) -> Unit
 pub fn ProcessScope::install((String) -> Unit) -> Self

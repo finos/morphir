@@ -2,7 +2,6 @@
 package "morphir/morphir/cli"
 
 import {
-  "finos/morphir-engine/config",
   "finos/morphir-host/diagnostics",
   "moonrockz/moon-lander-hosting",
   "moonrockz/moon-lander-logging",
@@ -16,12 +15,6 @@ pub fn startup_failure(Array[String], Error, status? : Int32) -> Int32
 
 // Types and methods
 pub struct Invocation {
-  environment : Map[String, String]
-  directory : String
-  root : String
-  configuration : @config.Document
-  settings : @diagnostics.Settings
-  cancel_file : String
   // private fields
 }
 pub fn Invocation::diagnostics(Self) -> @diagnostics.Settings
