@@ -86,9 +86,13 @@ test "project metadata binding is frozen per job and restoration stays lazy" {
       assert_eq(request.policy.origin, scope.project_root + "/morphir.toml")
     }
     // A caller's later configuration changes do not replace a bound authority.
-    for project in workspace.projects {
-      if project.document.value is @toml.TomlTable(fields) {
-        fields["metadata"] = @toml.TomlTable(Map([]))
+    for index, project in workspace.projects {
+      workspace.projects[index] = {
+        ..project,
+        document: @configuration.from_json(
+          Json::object(Map([])),
+          origin="later configuration",
+        ),
       }
     }
     let result = engine.execute_content(plan, fn(_, _) { content })
