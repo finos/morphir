@@ -13,13 +13,13 @@ license = "Apache-2.0"
 readme = "README.md"
 
 import {
-  "moonrockz/moon-lander-core@0.7.0",
-  "moonrockz/moon-lander-logging@0.7.0",
-  "moonrockz/moon-lander-config@0.7.0",
-  "moonrockz/moon-lander-mediator@0.7.0",
-  "moonrockz/moon-lander-logging-hosting-async@0.7.0",
-  "moonrockz/moon-lander-hosting@0.7.0",
-  "moonrockz/moon-lander@0.7.0",
+  "moonrockz/moon-lander-core@0.7.1",
+  "moonrockz/moon-lander-logging@0.7.1",
+  "moonrockz/moon-lander-config@0.7.1",
+  "moonrockz/moon-lander-mediator@0.7.1",
+  "moonrockz/moon-lander-logging-hosting-async@0.7.1",
+  "moonrockz/moon-lander-hosting@0.7.1",
+  "moonrockz/moon-lander@0.7.1",
   "moonbitlang/async@0.22.4",
   "moonbitlang/x@0.5.5",
   "moonrockz/expect@0.6.1",

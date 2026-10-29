@@ -58,12 +58,15 @@ oversight. <a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.6.0
 all seven framework modules and <code>moonrockz/notebooks</code> on 2026-10-28. Each framework module resolved with
 <code>moon add moonrockz/&lt;module&gt;@0.6.0</code> in an independent scratch module outside this checkout.
 The initial dependency phase used <code>0.6.0</code>. The adoption now pins every Moon-Lander module and notebooks to
-<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.7.0">published <code>0.7.0</code></a>, from commit
-<code>df4b628bc9c9040ac3d6201a044e7eb98938f63d</code>. Its Release workflow
-<a href="https://github.com/moonrockz/moon-lander/actions/runs/40786298088">40786298088</a> succeeded. Independent
+<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.7.1">published <code>0.7.1</code></a>, from commit
+<code>281bf43a42d54072ddd7e2704fab53302debe19b</code>. Its Release workflow
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/40803233375">40803233375</a> succeeded. Independent
 public archive hashes match the approved Release artifact, and each required exact module resolves with
 <code>moon add</code> in a scratch module outside this checkout. This release supplies layered discovery, profile
-authority, host controls, diagnostic object properties and lossless DIB support.</p>
+authority, host controls, diagnostic object properties and lossless DIB support. The patch also exposes the real
+logging session to hosted cleanup and forwards a parent-owned signal probe through the logging bridge.
+The separate main CI worker-fixture timeout remains an upstream harness investigation; the actual Release
+validation and public archive gates passed.</p>
 
 <h2 id="goals">Goals and non-goals</h2>
 <p><strong>Goals:</strong> every capability in the table above comes from one Moon-Lander module in the CLI and in
