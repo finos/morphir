@@ -55,6 +55,11 @@ returns to the workspace that was open and says why; **Stop waiting** does the s
 when a browser does not report a cancelled picker. Examples open in their own
 workspaces and stay separate from Recent workspaces.
 
+Browser folder import preserves the existing Elm-project response for a lone legacy `morphir.json` with
+`name`, `sourceDirectory` and `exposedModules`. It still selects Elm sources and maps them under `src/`.
+Modern JSON with a `project` or `workspace` table, and folders combining JSON with YAML or TOML primaries,
+use workspace import. That path preserves original file paths and applies the shared configuration layers.
+
 The header's workspace picker switches workspaces. Each open workspace keeps its
 drafts, selection, filters, sections, layout, revisions and tool panel. Switching
 never cancels or releases work: a reply for a workspace that is not active changes

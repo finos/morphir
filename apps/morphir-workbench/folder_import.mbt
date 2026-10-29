@@ -143,7 +143,26 @@ fn import_folder(request : Json) -> Json raise {
     error =>
       return folder_failure("workbench.folder_configuration", error.to_string())
   }
-  if @workspace.primary_paths("").any(path => files.contains(path)) ||
+  // Flat morphir.json keeps the existing Elm-project import response. Modern
+  // configuration documents and layered folders use workspace import instead.
+  let legacy_elm = match files.get("morphir.json") {
+    Some(text) => {
+      let document = @config.from_json(@wire.parse(text), origin="morphir.json") catch {
+        @wire.Invalid(_, message) =>
+          return folder_failure("workbench.folder_configuration", message)
+        error =>
+          return folder_failure(
+            "workbench.folder_configuration",
+            error.to_string(),
+          )
+      }
+      document.get("project") is None && document.get("workspace") is None
+    }
+    None => false
+  }
+  if @workspace.primary_paths("").any(path => {
+      files.contains(path) && (path != "morphir.json" || !legacy_elm)
+    }) ||
     files.contains("morphir-workspace.json") {
     let workspace = workspace_files.discover() catch {
       @config.Invalid(message) =>
