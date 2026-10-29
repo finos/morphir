@@ -7,7 +7,7 @@ priv struct TextSink {
 ///|
 impl @logging.Logger for TextSink with fn log(self, event) {
   let record = @formatting.LogRecord::capture(event, (self.clock)())
-  (self.write)(@formatting.format_text(record) + "\n")
+  (self.write)(@formatting.format_text(record))
 }
 
 ///|

@@ -78,7 +78,11 @@ test "text logging uses UTC category properties and framework filtering" {
   assert_true(lines[0].contains("morphir.configuration"))
   assert_true(lines[0].contains("/workspace/morphir.toml"))
   assert_true(
-    lines.all(line => line.has_suffix("\n") && !line.contains("private")),
+    lines.all(line => {
+      line.has_suffix("\n") &&
+      !line.has_suffix("\n\n") &&
+      !line.contains("private")
+    }),
   )
   let disabled = @diagnostics.text_logger(Off, line => lines.push(line), fn() {
     ticks.val += 1
