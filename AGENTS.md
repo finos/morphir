@@ -634,3 +634,16 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 - Do not commit or push without clear authority from the active profile or the current user request.
 - If a required sync or push is blocked, stop and report the exact command and error.
 <!-- END BEADS INTEGRATION -->
+
+## OpenSpec change proposals
+
+New proposals use the shared `html-design` schema and a standalone `design.html`
+with inline CSS and SVG. Use the generated OpenSpec skills for proposing,
+exploring, applying, updating, syncing and archiving changes. Beads remains the
+task tracker; record the OpenSpec change path in its owning bead and link the
+GitHub issue. Existing review and approval rules still apply.
+
+The canonical bundle is managed by Mission Control openspec-ext. Do not edit
+its schema, templates, checker or feature file locally. Keep repository policy
+in `openspec/config.yaml` and run `mise run openspec:verify` before submission.
+See [the OpenSpec guide](docs/developers/openspec.md) for setup and updates.

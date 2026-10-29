@@ -118,6 +118,9 @@ jobs:
               - 'website/package.json'
               - 'website/package-lock.json'
             docs:
+              - 'openspec/**'
+              - 'scripts/openspec-ext.mbtx'
+              - 'scripts/features/openspec_ext.feature'
               - 'website/**'
               - 'docs/**'
               - '**/*.md'
@@ -459,6 +462,9 @@ jobs:
 
       - name: Set up Rust CI
         uses: ./.github/actions/setup-rust-ci
+
+      - name: Verify the shared OpenSpec workflow
+        run: mise run openspec:verify
 
       - name: Validate schemas against the metaschema
         run: mise run schema:validate
