@@ -278,7 +278,7 @@ async function scenario(name: Scenario) {
       assert.equal(result.code, 1); assert.equal(report.observation, 'observation-stopped');
       assert.equal(report.result, null); assert.equal(report.release, 'not-requested'); assert.equal(counts.release, 0);
     } else if (name === 'cancel-unknown') {
-      assert.equal(result.code, 1); assert.equal(report.observation, 'observation-stopped');
+      assert.equal(result.code, 130); assert.equal(report.observation, 'observation-stopped');
       assert.equal(report.result, null); assert.equal(report.cancellation.requested, true); assert.equal(report.cancellation.acknowledged, false);
       assert.equal(report.release, 'not-requested'); assert.equal(counts.cancel, 1);
     } else {

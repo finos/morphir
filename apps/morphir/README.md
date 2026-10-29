@@ -1286,9 +1286,10 @@ are reconciled only after fresh authentication and exact offer validation.
 JSON output includes the validated execution view, typed terminal outcomes when
 known, cancellation acknowledgement and release state. JSON-lines wraps that
 report as a `result` record. Exit 0 means returned outcomes and confirmed release,
-130 means confirmed user cancellation or stopping before submission on user request,
-1 means failed,
-unknown or incomplete execution/cleanup, and 2 means refused setup or input.
+130 means CLI-owned cancellation, including when the remote outcome remains unknown.
+The report's terminal, acknowledgement and release fields describe the remote state;
+exit 130 alone does not confirm termination or release. Exit 1 means failed, unknown
+or incomplete execution/cleanup without CLI cancellation, and 2 means refused setup or input.
 Execution state is held only for the current command; no process-restart recovery
 or implicit resubmission is provided. CLI interruption closes its own transport
 and helper and never terminates the remote host.

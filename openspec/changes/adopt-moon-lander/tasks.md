@@ -105,9 +105,9 @@
 - [ ] 6.3 Make the cancel file a host stop request and register the telemetry session and log session as hosted
   services; replace per-command `interruption_start`/`interruption_stop`; verify the cancel-file, child-process and
   cleanup-order scenarios
-- [ ] 6.4 Keep JSON failure output on standard output and the WASI worksheet refusal; verify the JSON failure and
+- [x] 6.4 Keep JSON failure output on standard output and the WASI worksheet refusal; verify the JSON failure and
   hosts-without-signals scenarios
-- [ ] 6.5 File each missing hosting feature as a Moon-Lander issue and link it in the pull request; verify none is
+- [x] 6.5 File each missing hosting feature as a Moon-Lander issue and link it in the pull request; verify none is
   worked around locally
 - [x] 6.6 Document exit codes and signals in `apps/morphir/README.md`; verify the documented table against the tests
 

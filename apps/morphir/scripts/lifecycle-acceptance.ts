@@ -26,11 +26,12 @@ export async function exerciseHostLifecycle(target: string, binary: string, laun
     try {
       const env = headlessEnvironment(root);
       writeFileSync(join(root, 'morphir.toml'), '[workspace]\nmembers=[]\n[logging]\nlevel="debug"\n[logging.file]\nenabled=true\nformat="json-lines"\n');
+      const ready = join(root, 'command-ready');
       let args: string[];
       if (item.command === 'connected') {
         const helper = join(root, 'waiting-helper.mjs');
         writeFileSync(join(root, 'input.scm'), '(define answer 42)');
-        writeFileSync(helper, `export async function connectedCommand(config,core,interrupted){while(!interrupted())await new Promise(resolve=>setTimeout(resolve,10));return {code:130,report:{profile:'morphir/cli/connected-command',contractVersion:'0.1.0',observation:'cancelled',completedAt:Date.now()}};}\n`);
+        writeFileSync(helper, `import {writeFileSync} from 'node:fs';export async function connectedCommand(config,core,interrupted){writeFileSync(${JSON.stringify(ready)},'ready');while(!interrupted())await new Promise(resolve=>setTimeout(resolve,10));return {code:130,report:{profile:'morphir/cli/connected-command',contractVersion:'0.1.0',observation:'cancelled',completedAt:Date.now()}};}\n`);
         args = ['connected', 'connect', join(root, 'input.scm'), '--provider', 'workbench-http', '--connection', 'controlled', '--connected-helper', helper];
       } else args = item.command === 'notebook' ? ['notebook', 'export', '-', '--evaluate', '-o', 'cancelled.ipynb'] : ['worksheet', '-'];
       args.push('--json', '--isolated', '--discovery-boundary', '.');
@@ -50,13 +51,31 @@ export async function exerciseHostLifecycle(target: string, binary: string, laun
       const deadline = setTimeout(() => child.kill('SIGKILL'), 8000);
       let result: Awaited<typeof closed>;
       try {
-        // Retain the caller's open stdin. The final receipt proves the command
-        // entered its host, produced its cancellation result and drained logs.
-        await new Promise(resolve => setTimeout(resolve, 350));
+        if (item.command === 'connected') {
+          const until = Date.now() + 7000;
+          while (!existsSync(ready) && child.exitCode === null && Date.now() < until) {
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
+          assert.ok(existsSync(ready), `Helper did not start: ${stdout}\n${stderr}`);
+        } else {
+          // Fill beyond the supported hosts' stdin pipe capacity, then await
+          // its backpressure callback. The command must read to make progress.
+          // Exactly one MiB stays within worksheet's input limit. Keep the pipe
+          // open so the command remains in its next read until cancellation.
+          await Promise.race([
+            new Promise<void>((resolve, reject) => {
+              child.stdin.write(Buffer.alloc(1048576, 0x20), error => error ? reject(error) : resolve());
+            }),
+            closed.then(() => { throw new Error(`Command exited before reading stdin: ${stdout}\n${stderr}`); }),
+          ]);
+        }
         if (item.request === 'cancel-file') writeFileSync(cancel, 'stop');
         else child.kill(item.request as NodeJS.Signals);
         result = await closed;
-      } finally { clearTimeout(deadline); child.stdin.destroy(); }
+      } finally {
+        clearTimeout(deadline); child.stdin.destroy();
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+      }
       assert.equal(result.signal, null, `${target} ${item.request}: ${stdout}\n${stderr}`);
       assert.equal(result.code, item.code, `${target} ${item.request}: ${stdout}\n${stderr}`);
       const report = JSON.parse(stdout);
