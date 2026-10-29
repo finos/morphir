@@ -9,6 +9,24 @@ previously validated command-line override. It performs no file discovery or env
 the framework captures and formats records. Disabled or filtered records invoke neither callback. Hosts must
 bind the writer to stderr so finite command results and protocol stdout retain their existing schemas.
 
+`Settings::from_config` binds `logging.level`, `logging.file.enabled` and
+`logging.file.format` from the shared configuration. File formats are `text` and
+`json-lines`; the disabled state has no file-format value. A validated CLI level
+overrides the configuration level. Telemetry options and files are separate.
+
+`Settings::session` receives the workspace's granted `.morphir/logs` directory and
+builds public Moon-Lander session settings. Its console uses stderr. Enabled files
+use the `morphir-diagnostics` stem, daily and 10 MiB rolling, and newest-31 retention.
+JSON Lines uses named `properties`, with last-wins values and complete
+`duplicateProperties` histories provided by the framework. Level `off` constructs
+no destinations. The runtime session owns the bounded queue, writes and draining;
+building these settings performs no I/O.
+
+`moon test pkgs/morphir-host/diagnostics/acceptance --target native,js` exercises
+the published file sink on the real filesystem. It verifies typed properties,
+duplicate history, metadata-name collisions, omission without repeats, draining,
+retention and byte preservation of telemetry and unowned files.
+
 Run `moon test pkgs/morphir-host/diagnostics --target <target>` on native, JS, WASI and Wasm GC to verify names,
 selection, level filtering, disabled logging, timestamps and text output. CLI options, async console/file sessions
 and lifecycle draining are integrated by the application host, outside this policy package.

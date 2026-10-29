@@ -1,0 +1,13 @@
+supported_targets = "native+js"
+
+import {
+  "finos/morphir-host/diagnostics",
+  "finos/morphir-host/platform",
+  "moonrockz/moon-lander-core" @lander_core,
+  "moonrockz/moon-lander-logging-hosting-async" @sinks,
+  "moonrockz/moon-lander-logging-hosting-async/runtime",
+  "moonrockz/moon-lander-logging/formatting",
+  "moonrockz/moon-lander-logging" @logging,
+  "moonbitlang/core/json",
+  "moonbitlang/async",
+} for "test"

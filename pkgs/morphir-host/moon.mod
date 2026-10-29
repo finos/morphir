@@ -24,4 +24,5 @@ import {
   "moonrockz/ion@0.6.0",
   "finos/morphir-engine@0.1.0",
   "moonbitlang/x@0.5.5",
+  "moonbitlang/async@0.22.5",
 }

@@ -3,6 +3,8 @@ import {
   "moonrockz/moon-lander-config" @lander_config,
   "moonrockz/moon-lander-logging" @logging,
   "moonrockz/moon-lander-logging/formatting",
+  "moonrockz/moon-lander-logging/rolling",
+  "moonrockz/moon-lander-logging-hosting-async" @sinks,
 }
 
 import {
@@ -10,4 +12,7 @@ import {
   "moonrockz/moon-lander-config" @lander_config,
   "moonrockz/moon-lander-logging" @logging,
   "moonrockz/moon-lander-logging/formatting",
+  "moonrockz/moon-lander-logging/rolling",
+  "moonrockz/moon-lander-logging-hosting-async" @sinks,
+  "moonrockz/moon-lander-core" @lander_core,
 } for "test"
