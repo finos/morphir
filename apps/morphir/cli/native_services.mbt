@@ -160,7 +160,8 @@ fn catalog_execute(cli : Cli, mode : OutputMode) -> Int32 raise {
   let root = @platform.temporary()
   errdefer extension_cleanup(root)
   let logs = native_services_logs(cli)
-  errdefer logs.flush()
+  let flush_logs = telemetry_flush(fn() { logs.flush() })
+  errdefer flush_logs()
   @platform.mkdir(root + "/guest")
   // Repository roots and bundle inputs are absolute because the adapter has
   // an empty private working directory and no inherited user environment.
@@ -194,8 +195,6 @@ fn catalog_execute(cli : Cli, mode : OutputMode) -> Int32 raise {
     "timeout": timeout,
     "cancelFile": value(cli, "cancel-file"),
   }
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   extension_dispatch(
     helper,
     control,
@@ -211,7 +210,7 @@ fn catalog_execute(cli : Cli, mode : OutputMode) -> Int32 raise {
           raise @config.Invalid(error)
         }
         if process.get("state") == Some(Json::string("cancelled")) {
-          status = 130
+          status = cancellation_exit_code()
         }
         if process.get("stderr") is Some(String(stderr)) && stderr != "" {
           @platform.stderr(stderr)
@@ -260,7 +259,7 @@ fn catalog_execute(cli : Cli, mode : OutputMode) -> Int32 raise {
         status = 1
         error = "native.scratch_cleanup_failed"
       }
-      logs.flush()
+      flush_logs()
       if status != 0 {
         @platform.stderr(error + "\n")
       }
@@ -322,7 +321,8 @@ fn native_extension_command(
   let root = @platform.temporary()
   errdefer extension_cleanup(root)
   let logs = native_services_logs(cli)
-  errdefer logs.flush()
+  let flush_logs = telemetry_flush(fn() { logs.flush() })
+  errdefer flush_logs()
   @platform.mkdir(root + "/guest")
   @platform.write(
     root + "/request.bin",
@@ -346,8 +346,6 @@ fn native_extension_command(
     "timeout": timeout,
     "cancelFile": value(cli, "cancel-file"),
   }
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   extension_dispatch(
     helper,
     control,
@@ -364,7 +362,7 @@ fn native_extension_command(
           raise @config.Invalid(error)
         }
         if process.get("state") == Some(Json::string("cancelled")) {
-          status = 130
+          status = cancellation_exit_code()
         }
         if process.get("stderr") is Some(String(stderr)) && stderr != "" {
           @platform.stderr(stderr)
@@ -446,7 +444,7 @@ fn native_extension_command(
         status = 1
         error = "native.scratch_cleanup_failed"
       }
-      logs.flush()
+      flush_logs()
       if status != 0 {
         @platform.stderr(error + "\n")
       }

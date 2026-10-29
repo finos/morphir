@@ -4,5 +4,8 @@ supported_targets = "native+js"
 
 import {
   "morphir/morphir/cli",
+  "moonrockz/moon-lander-hosting" @hosting,
+  "moonrockz/moon-lander-hosting/logging" @bridge,
+  "moonbitlang/async",
   "finos/morphir-host/platform",
 }

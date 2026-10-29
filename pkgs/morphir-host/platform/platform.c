@@ -604,7 +604,25 @@ int morphir_host_stdin_read(unsigned char *buffer, int length, int (*interrupted
   if (length < 1 || length > 65536 || interrupted()) return -1;
 #ifdef _WIN32
   int previous_mode = _setmode(0, _O_BINARY);
-  int result = _read(0, buffer, (unsigned int)length);
+  HANDLE input = (HANDLE)_get_osfhandle(0);
+  int result;
+  if (GetFileType(input) == FILE_TYPE_PIPE) {
+    for (;;) {
+      if (interrupted()) { result = -1; break; }
+      DWORD available = 0;
+      if (!PeekNamedPipe(input, NULL, 0, NULL, &available, NULL)) {
+        DWORD error = GetLastError();
+        result = error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED ? 0 : -1;
+        break;
+      }
+      if (available) {
+        unsigned int count = available < (DWORD)length ? (unsigned int)available : (unsigned int)length;
+        result = _read(0, buffer, count);
+        break;
+      }
+      Sleep(10);
+    }
+  } else result = _read(0, buffer, (unsigned int)length);
   if (previous_mode >= 0) _setmode(0, previous_mode);
   return result;
 #else

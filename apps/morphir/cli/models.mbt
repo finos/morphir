@@ -4,7 +4,7 @@ fn model_command(cli : Cli, mode : OutputMode) -> Int32 {
     error => {
       let message = @host.error_message(error)
       let code = match error {
-        @platform.IOError("Cancelled") => "execution.cancelled"
+        @platform.Interrupted => "execution.cancelled"
         @model_document.InvalidFilename =>
           @model_document.DocumentError::InvalidFilename.code()
         @model_document.InvalidCodec =>
@@ -32,8 +32,8 @@ fn model_command(cli : Cli, mode : OutputMode) -> Int32 {
         JSONLines => emit_record("error", report)
         Human => ()
       }
-      if message == "Cancelled" {
-        130
+      if error is @platform.Interrupted || @platform.interruption_requested() {
+        cancellation_exit_code()
       } else {
         2
       }
@@ -47,8 +47,6 @@ fn model_command_run(cli : Cli, mode : OutputMode) -> Int32 raise {
   if path == "" {
     raise @config.Invalid("model.input_required")
   }
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   let limits = { ..@data.Limits::default(), max_bytes: 16777216, }
   let (inspection, original) = capture_local_original(cli, limits)
   let unit = inspection.unit
@@ -109,7 +107,7 @@ fn model_command_run(cli : Cli, mode : OutputMode) -> Int32 raise {
     names.sort()
     for name in names {
       if @platform.interruption_requested() {
-        raise @platform.IOError("Cancelled")
+        raise @platform.Interrupted
       }
       (transaction.stage)({
         path: @workspace.join(destination, name),
@@ -119,7 +117,7 @@ fn model_command_run(cli : Cli, mode : OutputMode) -> Int32 raise {
       })
     }
     if @platform.interruption_requested() {
-      raise @platform.IOError("Cancelled")
+      raise @platform.Interrupted
     }
     (transaction.commit)(destination)
     names.map(name => {
@@ -135,7 +133,12 @@ fn model_command_run(cli : Cli, mode : OutputMode) -> Int32 raise {
       let message = @host.error_message(error)
       @platform.stderr(message + "\n")
       print_error(message, mode)
-      return if message == "Cancelled" { 130 } else { 1 }
+      return if error is @platform.Interrupted ||
+        @platform.interruption_requested() {
+        cancellation_exit_code()
+      } else {
+        1
+      }
     }
   }
   let exported : Json = {

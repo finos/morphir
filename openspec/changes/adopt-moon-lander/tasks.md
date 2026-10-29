@@ -96,10 +96,10 @@
 
 ## 6. Run the CLI through the Moon-Lander host (morphir-ukvn.5.99.6)
 
-- [ ] 6.1 Build the host with `@lander.cli("morphir", args)` and run it with `@console.run` and the logging bridge on
+- [x] 6.1 Build the host with `@lander.cli("morphir", args)` and run it with `@console.run` and the logging bridge on
   native and js, and with `run_embedded` on wasm and wasm-gc (HOST-1); verify `--help` and a self-test on all four
   targets
-- [ ] 6.2 Map failures to Morphir exit codes with `set_exit_code`, and cancellation to 130 and SIGTERM to 143 through
+- [x] 6.2 Map failures to Morphir exit codes with `set_exit_code`, and cancellation to 130 and SIGTERM to 143 through
   `StopReason`; remove the `"Cancelled"` string compare; verify the exit-code scenarios of the `application/lifecycle`
   spec with argv tests that send real signals on native
 - [ ] 6.3 Make the cancel file a host stop request and register the telemetry session and log session as hosted
@@ -109,7 +109,7 @@
   hosts-without-signals scenarios
 - [ ] 6.5 File each missing hosting feature as a Moon-Lander issue and link it in the pull request; verify none is
   worked around locally
-- [ ] 6.6 Document exit codes and signals in `apps/morphir/README.md`; verify the documented table against the tests
+- [x] 6.6 Document exit codes and signals in `apps/morphir/README.md`; verify the documented table against the tests
 
 ## 7. Host the desktop Workbench services (morphir-ukvn.5.99.7)
 

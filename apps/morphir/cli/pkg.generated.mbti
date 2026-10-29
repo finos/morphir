@@ -1,12 +1,35 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "morphir/morphir/cli"
 
+import {
+  "finos/morphir-engine/config",
+  "finos/morphir-host/diagnostics",
+  "moonrockz/moon-lander-hosting",
+  "moonrockz/moon-lander-logging",
+  "moonrockz/moon-lander-logging-hosting-async",
+}
+
 // Values
-pub fn run(Array[String]) -> Unit
+pub fn startup_failure(Array[String], Error, status? : Int32) -> Int32
 
 // Errors
 
 // Types and methods
+pub struct Invocation {
+  environment : Map[String, String]
+  directory : String
+  root : String
+  configuration : @config.Document
+  settings : @diagnostics.Settings
+  cancel_file : String
+  // private fields
+}
+pub fn Invocation::diagnostics(Self) -> @diagnostics.Settings
+pub async fn Invocation::execute(Self, @moon-lander-hosting.Context[Unit]) -> Unit
+pub fn Invocation::host(Self, &@moon-lander-logging.Logger, async () -> Unit) -> @moon-lander-hosting.Host[Unit] raise
+pub fn Invocation::log_directory(Self) -> @moon-lander-logging-hosting-async.LogDirectory raise
+pub fn Invocation::prepare(Array[String]) -> Self raise
+pub fn Invocation::report_unstarted_stop(Self, Int32) -> Unit
 
 // Type aliases
 

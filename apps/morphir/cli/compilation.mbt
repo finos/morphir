@@ -55,7 +55,15 @@ fn compilation_result(
     ("state", Json::string(if success { "succeeded" } else { "failed" })),
     (
       "exitCode",
-      Json::number(if success { 0.0 } else if cancelled { 130.0 } else { 1.0 }),
+      Json::number(
+        if success {
+          0.0
+        } else if cancelled {
+          cancellation_exit_code().to_double()
+        } else {
+          1.0
+        },
+      ),
     ),
     ("diagnostics", diagnostics),
   ])

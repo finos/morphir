@@ -24,8 +24,6 @@ fn generation_command(cli : Cli, mode : OutputMode) -> Int32 raise {
       "generate.host_unavailable: Local files and cancellation are required",
     )
   }
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   let backend = value(cli, "target", fallback="moonbit")
   if !["moonbit", "elm"].contains(backend) {
     raise @config.Invalid("generation.unsupported_target: " + backend)
@@ -87,7 +85,8 @@ fn generation_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     enabled=true,
     format=value(cli, "log-format", fallback="ion-binary"),
   )
-  defer logs.flush()
+  let flush_logs = telemetry_flush(fn() { logs.flush() })
+  defer flush_logs()
   let mount = @host.Mount::memory(
     Map::from_array(plan.sources().map(path => (path, ""))),
   )
@@ -151,7 +150,7 @@ fn generation_command(cli : Cli, mode : OutputMode) -> Int32 raise {
       }
   }
   if result.cancelled {
-    130
+    cancellation_exit_code()
   } else if result.successful() {
     0
   } else {

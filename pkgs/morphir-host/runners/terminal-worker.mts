@@ -2,7 +2,7 @@ import { isMainThread, parentPort, Worker, workerData } from 'node:worker_thread
 
 const globals = globalThis as typeof globalThis & {
   __morphirInterrupt?: Int32Array;
-  __morphirStdinRead?: (buffer: Uint8Array, length: number) => number;
+  __morphirStdinRead?: (buffer: Uint8Array, length: number, interrupted?: () => boolean) => number;
 };
 
 /** Select only the leading Morphir command. Its parser still validates every
@@ -34,15 +34,18 @@ export function terminalWorker(entry: URL, args: string[]): boolean {
       const state = new Int32Array(workerData.morphirInputState);
       const bytes = new Uint8Array(workerData.morphirInputBytes);
       globals.__morphirInterrupt = interrupted;
-      globals.__morphirStdinRead = (buffer, length) => {
-        if (length < 1 || length > bytes.length || Atomics.load(interrupted, 0)) return -1;
+      globals.__morphirStdinRead = (buffer, length, probe) => {
+        // A local callback adds cancel-file polling without changing the parent
+        // message or shared-buffer protocol. It runs on the calling JS stack.
+        const stopped = () => Atomics.load(interrupted, 0) !== 0 || !!probe?.();
+        if (length < 1 || length > bytes.length || stopped()) return -1;
         Atomics.store(state, 0, 0);
         parentPort!.postMessage({ type: 'morphir:stdin', length });
         while (Atomics.load(state, 0) === 0) {
-          if (Atomics.load(interrupted, 0)) return -1;
+          if (stopped()) return -1;
           Atomics.wait(state, 0, 0, 100);
         }
-        if (Atomics.load(interrupted, 0)) return -1;
+        if (stopped()) return -1;
         const status = Atomics.load(state, 0);
         if (status === 2) return 0;
         if (status !== 1) return -1;
@@ -133,6 +136,6 @@ export function terminalWorker(entry: URL, args: string[]): boolean {
 }
 
 /** The bounded bridge uses this only from its synchronous worker. */
-export function terminalStdinRead(buffer: Uint8Array, length: number): number | undefined {
-  return globals.__morphirStdinRead?.(buffer, length);
+export function terminalStdinRead(buffer: Uint8Array, length: number, interrupted?: () => boolean): number | undefined {
+  return globals.__morphirStdinRead?.(buffer, length, interrupted);
 }

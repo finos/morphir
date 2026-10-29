@@ -267,3 +267,17 @@ The parent owns signal delivery while synchronous worker code runs: the existing
 shared flag distinguishes interrupt and terminate, and a second signal exits
 immediately with that signal's status. Stdin remains a bounded request/reply
 channel. Command results and wire payloads retain their existing shapes.
+
+The Node synchronous process adapter keeps its child on an owned worker, while
+the calling command polls the run's cooperative probe. This lets signals and
+cancel files reach a child while the command waits, without changing child argv
+or the existing `{exitCode, stdout, stderr}` result. Successful completion waits
+for the child's streams to close. Captured stdout and stderr retain their
+16 MiB limits; timeout remains exit 124 and spawn failure remains -1. The worker
+escalates an unacknowledged cancellation and confirms close before returning.
+A bridge that cannot confirm cleanup returns failure.
+
+`platform.ProcessScope` connects owned process launches to a run's logger.
+Native/JS platform calls announce their program, and local JS supervision
+adapters can use `process_started` without adding protocol fields. A diagnostic
+observer cannot alter the child argument array or its successful output.

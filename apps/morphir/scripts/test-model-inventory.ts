@@ -84,13 +84,17 @@ try {
     assert.deepEqual(JSON.parse(readFileSync(join(root, 'trace.json'), 'utf8')), {closes: 1});
     writeFileSync(join(root, 'trace.mjs'), `
       import fs from 'node:fs'; const open=fs.opendirSync; let closes=0;
-      globalThis.__morphirInterrupt=new Int32Array(new SharedArrayBuffer(4));Atomics.store(globalThis.__morphirInterrupt,0,1);
+      globalThis.__morphirInterrupt=new Int32Array(new SharedArrayBuffer(4));
       fs.opendirSync=(...args)=>{const d=open(...args),close=d.closeSync.bind(d);
-        d.closeSync=()=>{closes++;return close()};return d};
+        d.closeSync=()=>{closes++;return close()};Atomics.store(globalThis.__morphirInterrupt,0,1);return d};
       process.on('exit',()=>fs.writeFileSync(${JSON.stringify(join(root, 'trace.json'))},JSON.stringify({closes})));
     `);
     assert.equal(invoke('small', false, [], 'cancel').code, 'execution.cancelled');
     assert.deepEqual(JSON.parse(readFileSync(join(root, 'trace.json'), 'utf8')), {closes: 1});
+    writeFileSync(join(root, 'trace.mjs'), `
+      globalThis.__morphirInterrupt=new Int32Array(new SharedArrayBuffer(4));Atomics.store(globalThis.__morphirInterrupt,0,1);
+    `);
+    assert.equal(invoke('small', false, [], 'cancel').code, 'execution.cancelled');
   }
 
   mkdirSync(join(root, 'files'));

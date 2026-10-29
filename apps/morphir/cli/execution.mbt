@@ -159,13 +159,13 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   } else {
     logs.observer()
   }
-  let flush_logs = fn() {
+  let flush_logs = telemetry_flush(fn() {
     match native_telemetry {
       Some(adapter) =>
         logs.flush_native(adapter, options.get("--node").unwrap_or("node"))
       None => logs.flush()
     }
-  }
+  })
   errdefer flush_logs()
   let available = match pin {
     Some(value) => execution_pin_targets(value)
@@ -315,10 +315,11 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   }
   if conformance_plan is Some(prepared) {
     let result = @conformance.run(prepared, provider.unwrap(), observer~, cancelled=fn() {
-      match options.get("--cancel-file") {
+      @platform.interruption_requested() ||
+      (match options.get("--cancel-file") {
         Some(path) => (@platform.kind(path) catch { _ => 1 }) != 0
         None => false
-      }
+      })
     })
     flush_logs()
     if options.get("--receipt") is Some(path) {
@@ -342,7 +343,7 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
       emit_result(result.to_json(), mode)
     }
     return if result.cancelled() {
-      130
+      cancellation_exit_code()
     } else if result.successful() {
       0
     } else {
@@ -360,10 +361,11 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     observer~,
     comparison~,
     cancelled=fn() {
-      match options.get("--cancel-file") {
+      @platform.interruption_requested() ||
+      (match options.get("--cancel-file") {
         Some(path) => (@platform.kind(path) catch { _ => 1 }) != 0
         None => false
-      }
+      })
     },
   )
   flush_logs()

@@ -122,17 +122,20 @@ test "hidden configuration layout, arrays and member user precedence" {
 }
 
 ///|
-test "ambiguity, YAML, traversal and invalid default fail before execution" {
+test "format ambiguity, traversal and invalid default fail before execution" {
   for
     extra in [
-      [("morphir.yaml", "workspace: {}")],
+      [("morphir.yaml", "workspace: {}"), ("morphir.yml", "workspace: {}")],
       [("morphir.toml", "[workspace]\nmembers=['../escape']")],
       [
         (
           "morphir.toml", "[workspace]\nmembers=['packages/*']\ndefault_member='absent'",
         ),
       ],
-      [("packages/core/morphir.user.yaml", "project: {}")],
+      [
+        ("packages/core/morphir.user.yaml", "project: {}"),
+        ("packages/core/morphir.user.yml", "project: {}"),
+      ],
     ] {
     let message = try {
       ignore(prepare(fixture(extra~)))
@@ -362,4 +365,21 @@ test "toolchain effects require an explicit host provider" {
   }
   assert_true(stopped)
   assert_eq(calls.length(), 1)
+}
+
+///|
+test "typed adapter cancellation preserves host wire error identity" {
+  assert_eq(@host.error_message(@platform.Interrupted), "Cancelled")
+  assert_eq(@host.error_code(@platform.Interrupted), "host.invalid_input")
+}
+
+///|
+test "host snapshots retain supported YAML layers beside TOML" {
+  let (_, _, plan) = prepare(
+    fixture(extra=[
+      ("morphir.yaml", "workspace: {}"),
+      ("packages/core/morphir.user.yaml", "project: {name: YamlMember}"),
+    ]),
+  )
+  assert_eq(plan.sources(), ["packages/core/src/Main.scm"])
 }

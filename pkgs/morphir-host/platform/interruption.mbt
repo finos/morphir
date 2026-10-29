@@ -80,3 +80,14 @@ pub fn interruption_stop() -> Unit {
     raw_interruption_stop()
   }
 }
+
+///|
+/// Cooperative cancellation at a host adapter boundary; display stays compatible.
+pub(all) suberror Interrupted
+
+///|
+/// The enclosing embedded driver reads its source without re-entering a bound
+/// run probe. Console drivers keep their own published signal reader.
+pub fn external_interruption_requested() -> Bool {
+  raw_interruption_requested()
+}

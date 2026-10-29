@@ -258,6 +258,7 @@ pub fn error_message(error : Error) -> String {
       code + ": " + context + " " + detail
     @data.Invalid(code, detail) => code + ": " + detail
     @config.Invalid(message) => message
+    @platform.Interrupted => "Cancelled"
     @platform.IOError(message) => message
     @toolchain.ToolchainError(message) => message
     _ => error.to_string()
@@ -269,6 +270,7 @@ pub fn error_message(error : Error) -> String {
 /// error's code instead of reconstructing it from its formatted message.
 pub fn error_code(error : Error) -> String {
   match error {
+    @platform.Interrupted => "host.invalid_input"
     // These compatibility errors carry a code followed by optional context.
     // The human message retains that context; machine code stays a code.
     @protocol.Invalid(detail) | @execution.AdmissionInvalid(detail) =>

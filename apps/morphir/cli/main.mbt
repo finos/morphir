@@ -65,40 +65,12 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
 }
 
 ///|
-pub fn run(args : Array[String]) -> Unit {
-  let mut mode = error_output_mode(args)
-  let mut status = 0
-  let mut presentation = match notebook_error_operation(args) {
-    Some(operation) => FailurePresentation::Notebook(operation)
-    None => FailurePresentation::Legacy
+fn help_command(cli : Cli, mode : OutputMode) -> Int32 {
+  if notebook_operation(cli.command) is Some(_) {
+    return notebook_command(cli, mode)
   }
-  try {
-    let cli = parse_cli(args)
-    presentation = failure_presentation(cli.command)
-    mode = if flag(cli, "json-lines") {
-      JSONLines
-    } else if flag(cli, "json") {
-      JSON
-    } else {
-      Human
-    }
-    status = command(cli, mode)
-  } catch {
-    error => status = report_command_failure(presentation, mode, error)
-  }
-  @platform.exit(status)
-}
-
-///|
-fn command(cli : Cli, mode : OutputMode) -> Int32 raise {
-  if cli.help {
-    if notebook_operation(cli.command) is Some(_) {
-      return notebook_command(cli, mode)
-    }
-    usage(mode, cli.help_text)
-    return 0
-  }
-  dispatch_cli(cli, command_context(mode))
+  usage(mode, cli.help_text)
+  0
 }
 
 ///|
@@ -185,7 +157,8 @@ fn pipeline_command(
     )
   }
   let host = @host.Host::new(mount, environment~, cancelled=fn() {
-    cancel_file != "" && (@platform.kind(cancel_file) catch { _ => 1 }) != 0
+    @platform.interruption_requested() ||
+    (cancel_file != "" && (@platform.kind(cancel_file) catch { _ => 1 }) != 0)
   })
   let snapshot = host.snapshot()
   let discovery_overlay = @config.from_json(
@@ -239,7 +212,8 @@ fn pipeline_command(
     kind="frontend",
     format=value(cli, "log-format", fallback="ion-binary"),
   )
-  defer logs.flush()
+  let flush_logs = telemetry_flush(fn() { logs.flush() })
+  defer flush_logs()
   let engine = @engine.Engine::new()
     ..register_source_provider(
       @moonbit_frontend.provider(observer=logs.observer()),
@@ -367,8 +341,9 @@ fn pipeline_command(
         compilation_error(
           message,
           mode,
-          if message == "Cancelled" {
-            130
+          if error is @platform.Interrupted ||
+            @platform.interruption_requested() {
+            cancellation_exit_code()
           } else {
             1
           },
@@ -376,7 +351,12 @@ fn pipeline_command(
       } else {
         print_error(message, mode)
       }
-      return if message == "Cancelled" { 130 } else { 1 }
+      return if error is @platform.Interrupted ||
+        @platform.interruption_requested() {
+        cancellation_exit_code()
+      } else {
+        1
+      }
     }
   }
   for diagnostic in result.report.diagnostics {
@@ -488,7 +468,7 @@ fn pipeline_command(
     }
   }
   if result.cancelled {
-    130
+    cancellation_exit_code()
   } else if result.successful() {
     0
   } else {

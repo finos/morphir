@@ -159,6 +159,7 @@ pub fn process(
   home : String,
   timeout : Int32,
 ) -> Json raise {
+  process_started(program)
   let data = process_c(
     cstring(program),
     cstring(args.join("\u0000")),
@@ -370,13 +371,15 @@ fn directory_list(path : String, limit : Int32) -> Array[String] raise {
   })
   if packed.is_empty() || packed[0] != 0 {
     let code = if packed.is_empty() { 0 } else { packed[0].to_int() }
+    if code == 6 {
+      raise Interrupted
+    }
     raise IOError(
       match code {
         1 => "directory.entry_limit"
         2 => "directory.name_limit"
         4 => "directory.close_failed"
         5 => "directory.open_failed"
-        6 => "Cancelled"
         _ => "directory.read_failed"
       },
     )

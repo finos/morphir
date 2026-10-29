@@ -340,7 +340,7 @@ fn extism_report(
 ///|
 fn extism_failure_status(error : String) -> Int32 {
   if error == "execution.cancelled" {
-    130
+    cancellation_exit_code()
   } else {
     1
   }
@@ -357,7 +357,8 @@ fn extism_command(
   extism_execute(cli, mode, pin, helper, operation) catch {
     cause => {
       let message = @host.error_message(cause)
-      let message = if message == "Cancelled" {
+      let message = if cause is @platform.Interrupted ||
+        @platform.interruption_requested() {
         "execution.cancelled"
       } else {
         message
@@ -398,8 +399,6 @@ fn extism_execute(
   let cancel_file = value(cli, "cancel-file")
   let deadline = @platform.monotonic_seconds() +
     configured_timeout.to_double() / 1000.0
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   let (params, version) = extism_params(cli, operation, deadline)
   let root = @platform.temporary()
   errdefer extism_cleanup(root)
@@ -480,12 +479,12 @@ fn extism_execute(
           @platform.stderr(stderr)
         }
         if process.get("state") == Some(Json::string("cancelled")) {
-          status = 130
+          status = cancellation_exit_code()
           error = "execution.cancelled"
         }
         guard process.get("state") == Some(Json::string("exited")) &&
           process.get("workDirectoryEmpty") == Some(Json::boolean(true)) else {
-          if status != 130 {
+          if ![130, 143, 131].contains(status) {
             error = match process.get("error") {
               Some(String(message)) => message
               _ => "extension.incomplete_session"

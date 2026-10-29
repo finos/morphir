@@ -12,8 +12,6 @@ fn worksheet_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     _ => raise @config.Invalid("worksheet.invalid_revision")
   }
   let cancel_file = value(cli, "cancel-file")
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   let source = worksheet_capture(
     @platform.read_input(path, 1048576),
     value(cli, "source-id", fallback="source"),
@@ -80,7 +78,7 @@ fn worksheet_capture(
 ///|
 fn worksheet_status(report : @worksheet.WorksheetReport) -> Int32 {
   if report.completion() is Cancelled {
-    130
+    cancellation_exit_code()
   } else if report.successful() {
     0
   } else {

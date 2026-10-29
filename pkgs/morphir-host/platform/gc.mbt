@@ -114,7 +114,8 @@ pub fn list(path : String) -> Array[String] raise {
 
 ///|
 fn directory_list(path : String, limit : Int32) -> Array[String] raise {
-  match call("list_bounded", a=path, b=limit.to_string()) {
+  let response = interruptible_call("list_bounded", path, limit.to_string())
+  match response {
     Array(items) if items.length() <= limit => {
       let mut units = 0
       items.map(fn(item) raise {
@@ -293,7 +294,7 @@ pub fn read_input(path : String, limit : Int32) -> Bytes raise {
   if limit < 1 || limit > 16777216 {
     raise IOError("input.invalid_limit")
   }
-  let response = call("read_input", a=path, b=limit.to_string())
+  let response = interruptible_call("read_input", path, limit.to_string())
   guard response is Array(items) && items.length() <= limit else {
     raise IOError("input.invalid_response")
   }
@@ -312,5 +313,23 @@ pub fn read_input(path : String, limit : Int32) -> Bytes raise {
 pub fn interruption_supported() -> Bool {
   (call("interruption_supported") is True) catch {
     _ => false
+  }
+}
+
+///|
+/// Preserve the existing host envelope and classify a failed interruptible
+/// operation using the shared stop state, rather than its displayed message.
+fn interruptible_call(op : String, a : String, b : String) -> Json raise {
+  let result : Result[Json, Error] = Ok(call(op, a~, b~)) catch {
+    error => Err(error)
+  }
+  match result {
+    Ok(value) => value
+    Err(error) => {
+      if interruption_requested() {
+        raise Interrupted
+      }
+      raise error
+    }
   }
 }

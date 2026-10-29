@@ -26,8 +26,6 @@ fn evaluation_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   if !@platform.interruption_supported() {
     raise @config.Invalid("eval.interruption_unavailable")
   }
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   // All input boundaries are checked before entering the interpreter. A model
   // codec does not change the invocation suite's independently versioned codec.
   let unit = load_local_model(cli, limits)
@@ -126,7 +124,7 @@ fn evaluation_status(
     if timed_out {
       1
     } else {
-      130
+      cancellation_exit_code()
     }
   } else if outcomes.cleanup is Some(_) ||
     outcomes.calls.any(call => !(call.outcome is Returned(_))) {

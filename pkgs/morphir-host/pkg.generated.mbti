@@ -35,7 +35,7 @@ pub fn native_telemetry_endpoint(String) -> Bool
 
 pub fn process_execution(String, String, String, Map[String, String], timeout? : Int32, toolchain_pin? : Json?, build_mode? : String, cancel_file? : String, payload_capture? : @observability.PayloadCapture, observer? : @observability.Observer) -> @execution.Provider raise
 
-pub fn run_configuration(Location, Map[String, String], @workspace.ConfigurationOptions) -> @config.Document raise
+pub fn run_configuration(Location, Map[String, String], @workspace.ConfigurationOptions, overlay? : @config.Document) -> @config.Document raise
 
 pub fn rust_classic_ir(@data.IRUnit) -> @v3.IRFile raise
 

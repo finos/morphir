@@ -58,8 +58,12 @@ pub fn rename_directory_new(a : String, b : String) -> Unit raise {
 }
 
 ///|
-extern "js" fn list_bounded_js(path : String, limit : Int32) -> String =
-  #| (path,limit) => {
+extern "js" fn list_bounded_js(
+  path : String,
+  limit : Int32,
+  stopped : () -> Bool,
+) -> String =
+  #| (path,limit,stopped) => {
   #|   try {
   #|     const fs=process.getBuiltinModule('node:fs');
   #|     if (!fs.lstatSync(path).isDirectory()) throw new Error('directory.open_failed');
@@ -67,7 +71,7 @@ extern "js" fn list_bounded_js(path : String, limit : Int32) -> String =
   #|     const names=[]; let units=0;
   #|     try {
   #|       for (;;) {
-  #|         if (globalThis.__morphirInterrupt && Atomics.load(globalThis.__morphirInterrupt,0)) throw new Error('Cancelled');
+  #|         if (stopped()) return JSON.stringify({cancelled:true});
   #|         const entry=dir.readSync(); if (!entry) break;
   #|         if (names.length>=limit) throw new Error('directory.entry_limit');
   #|         const name=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(entry.name);
@@ -81,7 +85,7 @@ extern "js" fn list_bounded_js(path : String, limit : Int32) -> String =
 
 ///|
 fn directory_list(path : String, limit : Int32) -> Array[String] raise {
-  match @json.parse(list_bounded_js(path, limit)) {
+  match @json.parse(list_bounded_js(path, limit, interruption_requested)) {
     { "value": Array(items), .. } if items.length() <= limit => {
       let mut units = 0
       items.map(fn(item) raise {
@@ -94,6 +98,7 @@ fn directory_list(path : String, limit : Int32) -> Array[String] raise {
         }
       })
     }
+    { "cancelled": true, .. } => raise Interrupted
     { "error": String(message), .. } => raise IOError(message)
     _ => raise IOError("directory.invalid_response")
   }
@@ -189,17 +194,6 @@ extern "js" fn spawn(
 ) -> Process = "spawnSync"
 
 ///|
-extern "js" fn execute_js(
-  spawn : (String, FixedArray[String], Process) -> Process,
-  program : String,
-  args : FixedArray[String],
-  cwd : String,
-  home : String,
-  timeout : Int32,
-) -> String =
-  #| (spawn,program,args,cwd,home,timeout) => { const env={...process.env}; if(home) { env.MOON_HOME=home; env.PATH=home+'/bin'+(process.platform==='win32'?';':':')+(env.PATH||''); } const r=spawn(program,args,{cwd,env,encoding:'utf8',timeout,maxBuffer:16777216,windowsHide:true}); return JSON.stringify({exitCode:r.error ? (r.error.code==='ETIMEDOUT'?124:-1) : (r.status??-1),stdout:r.stdout||'',stderr:(r.stderr||'')+(r.error ? r.error.message : '')}); }
-
-///|
 pub fn process(
   program : String,
   args : Array[String],
@@ -208,7 +202,16 @@ pub fn process(
   timeout : Int32,
 ) -> Json raise {
   @json.parse(
-    execute_js(spawn, program, FixedArray::from_array(args), cwd, home, timeout),
+    execute_js(
+      spawn,
+      program,
+      FixedArray::from_array(args),
+      cwd,
+      home,
+      timeout,
+      interruption_requested,
+      process_started,
+    ),
   )
 }
 
@@ -323,12 +326,13 @@ pub extern "js" fn file_chunks_supported() -> Bool =
 extern "js" fn shared_stdin_read(
   buffer : FixedArray[Byte],
   length : Int32,
+  interrupted : () -> Bool,
 ) -> Int32 =
-  #| (buffer, length) => typeof globalThis.__morphirStdinRead === 'function' ? globalThis.__morphirStdinRead(buffer, length) : -2
+  #| (buffer, length, interrupted) => typeof globalThis.__morphirStdinRead === 'function' ? globalThis.__morphirStdinRead(buffer, length, interrupted) : -2
 
 ///|
 fn stdin_read(buffer : FixedArray[Byte], length : Int32) -> Int32 {
-  let count = shared_stdin_read(buffer, length)
+  let count = shared_stdin_read(buffer, length, interruption_requested)
   if count == -2 {
     file_read(0, buffer, length)
   } else {

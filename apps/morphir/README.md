@@ -696,6 +696,29 @@ The run supplies logging, time, cancellation and failure reporting as services. 
 directly without starting a process, while argv and installed-package tests qualify the real host adapters.
 Forwarded external-tool arguments retain their original ownership and literal values.
 
+
+The CLI uses one Moon-Lander host lifetime. Native and JavaScript use its console driver and logging bridge;
+Wasm and Wasm GC use `run_embedded`. Command handlers retain their existing result schemas.
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | Success |
+| 1 | Compilation, execution or publication failure |
+| 2 | Invalid invocation or configuration |
+| 130 | SIGINT, cancel file or host cancellation |
+| 143 | SIGTERM |
+
+`--cancel-file PATH` requests a stop when that path exists. On native and JavaScript, the same lifetime reaches
+evaluation, bounded filesystem reads, stdin waits and owned child processes. The first signal requests
+cleanup. A second signal ends the process immediately with that signal's exit code. The JavaScript launcher
+keeps signal reception on its parent thread while command work runs in an owned worker.
+
+Started services stop in reverse order after success, failure or cancellation. The diagnostic session drains
+before telemetry flushes, and the logging bridge closes it again idempotently before exit. JSON failures stay on
+stdout; diagnostic records and child logs use their documented channels. MEP and native-worker messages retain
+their existing formats and child status fields. WASI refuses worksheet evaluation with
+`worksheet.interruption_unavailable` and exit 2 because it cannot receive interruption.
+
 ## Share worksheets as notebooks
 
 Export Scheme forms and whole-line `;;` comment blocks to Jupyter or .NET Interactive, then import them as a

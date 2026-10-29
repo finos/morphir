@@ -36,7 +36,9 @@ fn notebook_error_operation(argv : Array[String]) -> NotebookOperation? {
       @argparse.FlagArg("json"),
       @argparse.FlagArg("json-lines"),
       @argparse.FlagArg("help", short='h'),
+      ..configuration_flags(false),
     ],
+    options=configuration_arguments(false),
     positionals=[
       @argparse.PositionArg(
         "command",
@@ -204,10 +206,6 @@ fn notebook_command(cli : Cli, mode : OutputMode) -> Int32 {
             2,
           )
         }
-        if evaluate {
-          @platform.interruption_start()
-        }
-        defer (if evaluate { @platform.interruption_stop() })
         let captured : Result[Bytes, Error] = Ok(
           @platform.read_input(input, 1048576),
         ) catch {
@@ -218,8 +216,11 @@ fn notebook_command(cli : Cli, mode : OutputMode) -> Int32 {
           Err(error) => {
             if @platform.interruption_requested() {
               return notebook_failure(
-                operation, mode, "notebook.cancelled", "Notebook evaluation was cancelled",
-                130,
+                operation,
+                mode,
+                "notebook.cancelled",
+                "Notebook evaluation was cancelled",
+                cancellation_exit_code(),
               )
             }
             raise error
@@ -241,8 +242,11 @@ fn notebook_command(cli : Cli, mode : OutputMode) -> Int32 {
           match report.completion() {
             Cancelled =>
               return notebook_failure(
-                operation, mode, "notebook.cancelled", "Notebook evaluation was cancelled",
-                130,
+                operation,
+                mode,
+                "notebook.cancelled",
+                "Notebook evaluation was cancelled",
+                cancellation_exit_code(),
               )
             Failed(failure) if failure.code == "worksheet.timeout" =>
               return notebook_failure(

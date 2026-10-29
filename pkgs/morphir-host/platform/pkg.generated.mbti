@@ -16,6 +16,8 @@ pub fn environment() -> Map[String, String]
 
 pub fn exit(Int32) -> Unit
 
+pub fn external_interruption_requested() -> Bool
+
 pub fn file_chunks(String, Int32, (Bytes) -> Unit raise) -> Unit raise
 
 pub fn file_chunks_supported() -> Bool
@@ -45,6 +47,8 @@ pub fn monotonic_seconds() -> Double
 pub fn observation_id() -> String raise
 
 pub fn process(String, Array[String], String, String, Int32) -> Json raise
+
+pub fn process_started(String) -> Unit
 
 pub fn process_supported() -> Bool
 
@@ -81,6 +85,8 @@ pub(all) suberror IOError {
   IOError(String)
 }
 
+pub(all) suberror Interrupted
+
 // Types and methods
 pub struct InterruptionScope {
   previous : (() -> Bool)?
@@ -88,6 +94,13 @@ pub struct InterruptionScope {
 }
 pub fn InterruptionScope::close(Self) -> Unit
 pub fn InterruptionScope::install(() -> Bool) -> Self
+
+pub struct ProcessScope {
+  previous : ((String) -> Unit)?
+  mut open : Bool
+}
+pub fn ProcessScope::close(Self) -> Unit
+pub fn ProcessScope::install((String) -> Unit) -> Self
 
 // Type aliases
 

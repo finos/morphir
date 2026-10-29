@@ -5,4 +5,11 @@ supported_targets = "wasm+wasm-gc"
 import {
   "morphir/morphir/cli",
   "finos/morphir-host/platform",
+  "finos/morphir-host/diagnostics",
+  "moonrockz/moon-lander-hosting" @hosting,
+  "moonrockz/moon-lander-logging" @logging,
+  "moonrockz/moon-lander-logging/formatting",
+  "finos/morphir-engine/config",
 }
+
+warnings = "-29"

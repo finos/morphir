@@ -1,4 +1,5 @@
 import {cliPackage, stageCliArtifact} from './artifact.ts';
+import {exerciseHostLifecycle} from './lifecycle-acceptance.ts';
 import {exerciseTelemetryDiagnosticParity, exerciseAsyncDiagnosticScope} from './logging-acceptance.ts';
 import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
@@ -883,6 +884,7 @@ for (const target of selected) {
       writeFileSync(headlessLauncher, `import {terminalWorker} from ${JSON.stringify(workerHost)};\nif (!terminalWorker(new URL(import.meta.url),process.argv.slice(2))) await import(${JSON.stringify(pathToFileURL(binary).href)});\n`);
     }
     await headlessAcceptance(target, binary, headlessLauncher);
+    await exerciseHostLifecycle(target, binary, headlessLauncher);
     exerciseTelemetryDiagnosticParity(target, binary, headlessLauncher);
     exerciseAsyncDiagnosticScope(target, binary, headlessLauncher);
   } finally { rmSync(directory, {recursive:true,force:true}); }
