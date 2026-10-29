@@ -3,6 +3,7 @@ import {spawnSync} from 'node:child_process';
 import {mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {headlessEnvironment} from './headless-environment.ts';
 
 /** Compare actual nonempty CLI Ion output under controlled clocks and IDs.
@@ -22,7 +23,7 @@ Date.now=()=>1793246400000;process.hrtime.bigint=()=>1000000000n;syncBuiltinESME
     const args = ['run', '.', '--frontend', 'moonbit', '--backend', 'checkpoint', '--checkpoint-format', 'ion-binary', '--log', '--log-format', 'ion-binary', '--json', '--isolated', '--discovery-boundary', '.'];
     const baseline = join(root, 'baseline.ionb'), diagnostic = join(root, 'diagnostic.ionb');
     const invoke = (file: string, extra: string[]) => {
-      const result = spawnSync(process.execPath, ['--import', preload, launcher ?? binary, ...args, '--log-file', file, ...extra], {cwd: root, env, encoding: 'utf8', timeout: 20000, maxBuffer: 1048576});
+      const result = spawnSync(process.execPath, ['--import', pathToFileURL(preload).href, launcher ?? binary, ...args, '--log-file', file, ...extra], {cwd: root, env, encoding: 'utf8', timeout: 20000, maxBuffer: 1048576});
       assert.equal(result.status, 0, result.stdout + '\n' + result.stderr);
       return {report: JSON.parse(result.stdout), stderr: result.stderr};
     };
