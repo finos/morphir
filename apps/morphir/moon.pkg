@@ -1,6 +1,7 @@
 pkgtype(kind: "executable")
 
 import {
+  "moonrockz/moon-lander-config" @lander_config,
   "moonrockz/moon-lander-mediator" @mediator,
   "moonrockz/moon-lander-logging" @logging,
   "moonbitlang/x/crypto",

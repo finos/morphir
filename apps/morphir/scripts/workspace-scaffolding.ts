@@ -55,4 +55,21 @@ export function exerciseScaffolding(
     const report = JSON.parse(run(['run', '--json'], 0, folder).stdout);
     assert.equal(report.successful, true, language);
   }
+
+  for (const [filename, content] of [
+    ['morphir.json', '{workspace:{members:["existing"]}}'],
+    ['morphir.yaml', 'workspace:\n  members: [existing]\n'],
+  ]) {
+    const folder = join(directory, `scaffold-${filename}`);
+    mkdirSync(join(folder, 'existing'), {recursive: true});
+    writeFileSync(join(folder, filename), content);
+    writeFileSync(join(folder, 'existing/morphir.toml'), "project.name='Existing'");
+    const local = (args: string[]) => run(['--isolated', '--discovery-boundary', '.', ...args, '--json'], 0, folder);
+    local(['project', 'add', 'new', '--name', 'New', '--language', 'scheme']);
+    assert.equal(readFileSync(join(folder, filename), 'utf8'), content);
+    assert.deepEqual(JSON.parse(local(['workspace']).stdout).projects.map((project: {name: string}) => project.name).sort(), ['Existing', 'New']);
+    local(['project', 'remove', 'existing']);
+    assert.deepEqual(JSON.parse(local(['workspace']).stdout).projects.map((project: {name: string}) => project.name), ['New']);
+    assert.ok(existsSync(join(folder, 'existing/morphir.toml')));
+  }
 }

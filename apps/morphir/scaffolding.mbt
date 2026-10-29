@@ -1,9 +1,10 @@
 ///|
 fn scaffolding_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   let location = if cli.command == "workspace init" {
-    @host.Location::{ root: @platform.cwd(), invocation: "", file: None, }
+    @host.Location::at_root(@platform.cwd())
   } else {
-    @host.locate(".")
+    let boundary = values(cli, "discovery-boundary").last()
+    @host.locate(".", boundary?)
   }
   let snapshot = @host.Host::new(@host.Mount::filesystem(location.root)).snapshot()
   // Scaffolding needs every occupied file path, but never reads arbitrary binary files.
@@ -43,7 +44,12 @@ fn scaffolding_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     }
     @workspace.init_workspace(tree, project~)
   } else {
-    let workspace = @workspace.discover(tree)
+    let environment = @platform.environment()
+    let workspace = @workspace.discover(
+      tree,
+      environment~,
+      options=configuration_controls(cli, location, environment),
+    )
     let raw_path = match values(cli, "path").get(0) {
       Some(path) => path
       None => raise @config.Invalid("A project path is required")

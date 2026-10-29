@@ -1,6 +1,6 @@
 # Configuration compatibility corpus
 
-`parity_test.mbt` compares the current TOML document loader with the published Moon-Lander TOML parser and
+`../workspace/parity_test.mbt` compares the frozen former TOML loader with the published Moon-Lander TOML parser and
 explicit-source loader. It collects every leaf-value and winning-origin difference before reporting a failure.
 It also checks replacement of lists, inherited fields, scalar values and successive source origins.
 
@@ -12,10 +12,10 @@ that every tracked fixture is represented, each snapshot still matches its sourc
 test data matches the manifest. Update the manifest when changing a fixture, then regenerate it with:
 
 ```sh
-moon tool embed --text --name toml_corpus_json --input tests/configuration/toml-corpus.json --output pkgs/morphir-engine/config/corpus_generated_test.mbt
+moon tool embed --text --name toml_corpus_json --input tests/configuration/toml-corpus.json --output pkgs/morphir-engine/workspace/corpus_generated_test.mbt
 ```
 
-Run `moon test pkgs/morphir-engine/config --target <target>` on native, JS, WASI and Wasm GC.
-This is explicit-source compatibility evidence. The adoption's complete loader parity test must also exercise
-the production conventions adapter once the upstream workspace discovery and format-layer support is published.
-No discovery algorithm is implemented by this corpus.
+Run `moon test pkgs/morphir-engine/config pkgs/morphir-engine/workspace --target <target>` on native, JS, WASI and Wasm GC.
+The workspace suite also compares every effective leaf and origin from the production conventions adapter
+with the former loader. The former parser and merge live only in `workspace/old_loader_test.mbt`; production
+configuration delegates to Moon-Lander. No discovery algorithm is implemented by the oracle.

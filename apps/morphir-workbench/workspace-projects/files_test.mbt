@@ -197,19 +197,54 @@ test "settings edit real project files and remove an override to reveal inherite
 }
 
 ///|
-test "legacy conversion is explicit and preserves the original manifest" {
+test "layered settings include profile values and write a TOML override" {
+  let workspace = files([
+    (
+      "morphir.json5", "{project:{name:'Shop'},frontend:{language:'scheme'},profiles:{default:['metrics']}}",
+    ),
+    ("morphir.profile.metrics.yaml", "pipeline:\n  backend: elm\n"),
+  ])
+  assert_eq(
+    workspace.setting(path("."), @projects.Generation).effective,
+    Some("elm"),
+  )
+  assert_eq(
+    workspace.setting(path("."), @projects.Generation).origin,
+    Some("morphir.profile.metrics.yaml"),
+  )
+  let edited = workspace.configure(
+    path("."),
+    @projects.Generation,
+    Some("moonbit"),
+  )
+  // Profiles intentionally precede user overrides, so an explicit user file wins.
+  let user = edited.write("morphir.user.toml", "pipeline.backend='moonbit'")
+  assert_eq(
+    user.setting(path("."), @projects.Generation).effective,
+    Some("moonbit"),
+  )
+}
+
+///|
+test "settings overlay a legacy manifest and explicit conversion preserves it" {
   let manifest = "{\"name\":\"Orders\",\"sourceDirectory\":\"lib\",\"exposedModules\":[\"Api\"]}\n"
   let workspace = files([
     ("morphir.json", manifest),
     ("lib/Orders/Api.elm", "module Orders.Api exposing (value)\nvalue = 1"),
   ])
-  assert_true(
-    try {
-      ignore(workspace.configure(path("."), @projects.Generation, Some("elm")))
-      false
-    } catch {
-      _ => true
-    },
+  let overlaid = workspace.configure(
+    path("."),
+    @projects.Generation,
+    Some("elm"),
+  )
+  assert_eq(overlaid.read("morphir.json"), Some(manifest))
+  assert_eq(
+    overlaid.setting(path("."), @projects.Generation).effective,
+    Some("elm"),
+  )
+  assert_eq(
+    overlaid.setting(path("."), @projects.SourceDirectory).effective,
+    Some("lib"),
   )
   assert_eq(
     workspace.setting(path("."), @projects.Language).effective,

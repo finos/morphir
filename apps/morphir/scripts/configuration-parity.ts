@@ -22,7 +22,7 @@ export function verifyConfigurationCorpus(workspace: string): void {
   try {
     const output = join(temporary, 'corpus_generated_test.mbt');
     execFileSync('moon', ['tool', 'embed', '--text', '--name', 'toml_corpus_json', '--input', input, '--output', output], {cwd: workspace});
-    assert.equal(canonicalText(readFileSync(join(workspace, 'pkgs/morphir-engine/config/corpus_generated_test.mbt'), 'utf8')), canonicalText(readFileSync(output, 'utf8')),
+    assert.equal(canonicalText(readFileSync(join(workspace, 'pkgs/morphir-engine/workspace/corpus_generated_test.mbt'), 'utf8')), canonicalText(readFileSync(output, 'utf8')),
       'Regenerate the embedded configuration corpus with moon tool embed');
   } finally { rmSync(temporary, {recursive: true, force: true}); }
 }

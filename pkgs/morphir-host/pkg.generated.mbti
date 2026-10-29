@@ -15,18 +15,19 @@ import {
   "finos/morphir-metadata",
   "moonbitlang/core/debug",
   "moonrockz/ion/ion",
+  "moonrockz/moon-lander-config",
 }
 
 // Values
 pub fn apply_workspace_edit(String, @workspace.Tree, @workspace.Edit) -> Unit raise
 
-pub fn configuration(Map[String, String]) -> (@config.Document, @config.Document) raise
+pub fn configuration_options(Location, Map[String, String], selected? : String, profiles? : @moon-lander-config.ProfileSelection, isolated? : Bool, suppress? : Array[String]) -> @workspace.ConfigurationOptions raise
 
 pub fn error_code(Error) -> String
 
 pub fn error_message(Error) -> String
 
-pub fn locate(String) -> Location raise
+pub fn locate(String, boundary? : String) -> Location raise
 
 pub fn metadata_helper_bundle_sha256(String) -> String raise
 
@@ -133,7 +134,10 @@ pub(all) struct Location {
   root : String
   invocation : String
   file : String?
+  directory : @moon-lander-config.FileTreePath
+  configuration_files : Map[String, String]
 }
+pub fn Location::at_root(String) -> Self raise
 
 pub(all) struct MetadataAuditEvidence {
   service : String
@@ -172,7 +176,7 @@ pub(all) struct MetadataAuditRecord {
   wall_seconds : Double
   duration_seconds : Double
 }
-pub fn MetadataAuditRecord::to_ion(Self) -> @ion.IonValue raise
+pub fn MetadataAuditRecord::to_ion(Self) -> @ion.Ion raise
 pub fn MetadataAuditRecord::to_json(Self) -> Json
 
 pub(all) struct MetadataAuditSink {

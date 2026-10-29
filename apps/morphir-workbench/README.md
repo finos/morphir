@@ -901,7 +901,7 @@ shared MCK client qualification is also a separate gate.
 
 ## Projects
 
-A workspace is a bounded file tree, including its `morphir.toml` configuration.
+A workspace is a bounded file tree, including its Morphir configuration.
 The shared workspace engine discovers its projects. Project identity is the normalized
 path from the workspace root, with `.` naming a root project; two projects can use the
 same language. A virtual workspace can contain only members, while a root project can
@@ -909,9 +909,19 @@ also have members. The innermost project owning the open file is current.
 
 Each project chooses its language, source profile and generation settings in its own
 configuration. Workspace defaults apply when a project has no override. Settings shows
-effective values and their origins; clearing an override restores inheritance. Legacy
-`morphir.json` projects stay readable and offer an explicit conversion to TOML before
-settings edits.
+effective values and their origins; clearing a TOML override restores the lower layers.
+JSON/JSON5, YAML/YML and TOML primaries merge in that order. Settings creates a TOML
+counterpart beside a lower-format primary and preserves the original file. Legacy
+`morphir.json` projects also offer an explicit conversion to TOML.
+
+Configuration profiles use the same loader as the CLI. Base `profiles.active` or
+`profiles.default` controls activate adjacent `morphir.profile.<name>.<ext>` files.
+Profiles follow member primaries and precede user overrides. An edit to a primary can
+therefore remain overridden by an active profile; the displayed origin identifies that
+profile. User overrides can set the final value. Profile includes, groups, invalid
+controls and same-group ambiguities use the shared validation. Browser discovery stays
+inside the mounted tree; no fields are added to the worker protocol. See the CLI's
+[configuration profiles](../morphir/README.md#configuration-profiles) for precedence.
 
 ### Project explorer
 

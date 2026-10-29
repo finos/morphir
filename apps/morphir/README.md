@@ -1,6 +1,6 @@
 # Morphir CLI
 
-The CLI discovers Morphir workspaces, resolves TOML configuration, runs Scheme/IR pipelines and publishes artifacts through a host adapter.
+The CLI discovers Morphir workspaces, resolves layered configuration, runs Scheme/IR pipelines and publishes artifacts through a host adapter.
 
 ## Run from this repository
 
@@ -104,7 +104,7 @@ morphir run [path] --project packages/core
 morphir run [path] --all
 morphir run path/to/file.scm --file
 morphir run path/to/source-directory --directory
-morphir run [path] --config transforms.scm --backend scheme
+morphir run [path] --config-script transforms.scm --backend scheme
 morphir run [path] --dry-run
 ```
 
@@ -112,9 +112,9 @@ Paths are relative to the current directory. Without a selection, the CLI choose
 
 `--backend scheme` works on MoonBit and Elm projects. Next to each `<unit>.scm` it writes `<unit>.symbols.10n`, a binary Ion sidecar that keeps the unit's metadata, and it comments each `define` with its source name and position, so it reports no `backend.metadata_dropped`. Elm projects carry declaration origins with `frontend.profile = "library-origins"`; the default `library` profile carries none.
 
-Options include `--frontend`, `--frontend-provider`, `--frontend-profile`, `--backend`, `--output`, `--config`, `--json` and `--dry-run`. Dry run resolves scripts and prints planned sources/destinations without reading source contents or publishing outputs. Exit statuses are 0 success, 2 invalid invocation/configuration, 1 execution/publication failure and 130 cancellation.
+Options include `--frontend`, `--frontend-provider`, `--frontend-profile`, `--backend`, `--output`, `--config`, `--config-script`, `--json` and `--dry-run`. Dry run resolves scripts and prints planned sources/destinations without reading source contents or publishing outputs. Exit statuses are 0 success, 2 invalid invocation/configuration, 1 execution/publication failure and 130 cancellation.
 
-`project list` lists every discovered project in workspace order, including the enclosing workspace when invoked from a member. A standalone project produces one entry. Each entry has its project name, relative path, effective frontend and target. Target names are the configured backend identifiers from `pipeline.backend`, defaulting to `ir-json`; frontend defaults to `scheme`. Workspace and member Scheme scripts are applied after manifest configuration, and `--config` adds a final script. Listing can report language choices whose compiler plugins are not installed. It reads configuration without reading source contents or publishing artifacts.
+`project list` lists every discovered project in workspace order, including the enclosing workspace when invoked from a member. A standalone project produces one entry. Each entry has its project name, relative path, effective frontend and target. Target names are the configured backend identifiers from `pipeline.backend`, defaulting to `ir-json`; frontend defaults to `scheme`. Workspace and member Scheme scripts are applied after manifest configuration, and `--config-script` adds a final script. Listing can report language choices whose compiler plugins are not installed. It reads configuration without reading source contents or publishing artifacts.
 
 For `project list`, `--frontend` and `--target` filter these effective choices using exact, case-sensitive names. Repeated values match any value within that filter; frontend and target filters must both match when combined. Filters do not override configuration. No matches produce an empty list with exit status 0. Invalid project configuration produces diagnostics and exit status 2, including when filters exclude that project. Text output has `NAME`, `PATH`, `FRONTEND` and `TARGET` columns. JSON output contains `projects`, `diagnostics` and `successful`.
 
@@ -187,9 +187,46 @@ name = "Core"
 source_directory = "src"
 ```
 
-The CLI also finds `.morphir/morphir.toml` and `.config/morphir/config.toml`. Multiple primary candidates are errors. YAML candidates are detected and reported as unsupported. `morphir.json` is the morphir-elm project file and is read as an Elm project (see [Elm projects](#elm-projects)); other languages, Scheme included, use `morphir.toml`. `morphir-workspace.json` remains supported; canonical configuration takes precedence with a warning.
+The primary stems are `morphir`, `.morphir/morphir` and `.config/morphir/config`. At a location the loader merges JSON/JSON5, then YAML/YML, then TOML. Two files in the same format group or two layouts in that group are ambiguous. JSON and JSON5 both accept JSON5 syntax. `morphir-workspace.json` is a supplemental canonical configuration below ordinary JSON; use `workspace.members` in it. A JSON document can use canonical sections such as `project` and `frontend`. Legacy top-level `name`, `sourceDirectory` and `exposedModules` retain their Elm meaning and validation. Conflicting legacy and canonical fields are refused.
 
-Configuration layers are defaults, system, global user, workspace primary, member primary, workspace/member user overrides, environment and CLI. Global configuration and shared workspace defaults exclude project identity and workspace-root settings when applied to a member. Tables merge recursively and arrays replace. Generic TOML encoding preserves unknown values semantically. Workspace scaffolding uses the lossless editor to preserve comments, formatting and untouched values.
+Discovery walks upward to the first document declaring a workspace and otherwise uses the nearest project. A workspace can therefore own a project invoked from a member directory. `--discovery-boundary .` stops that walk at the current directory. `--isolated` skips machine, global and user-override files while retaining project primaries, selected configuration, active profiles and environment values. WASI remains confined to its preopened directory. Scenario drivers should pass both controls to avoid enclosing workspaces and personal configuration.
+
+Configuration layers are defaults, system, global user, workspace primary, selected configuration, member primary, active profiles, workspace/member user overrides, environment and CLI. Each location uses the format order above. Shared workspace defaults exclude project identity and workspace-root settings when applied to a member. Tables merge recursively and arrays replace. TOML encoding preserves unknown values semantically. Workspace scaffolding uses the lossless editor to preserve comments, formatting and untouched values.
+
+`--config PATH` selects a TOML, YAML, YML, JSON or JSON5 overlay above workspace primaries. Paths are relative to the invocation directory; the WASI path must stay inside its preopen. Other extensions produce `Unsupported configuration format`. This is a breaking rename for Scheme scripts: replace `--config transforms.scm` with `--config-script transforms.scm`. Giving `.scm` to `--config` reports that migration hint before reading files. When JSON and TOML coexist, lower-format keys now remain unless replaced. To reproduce the former TOML-only configuration, move the lower-format primary outside the discovery layouts or explicitly replace each retained key in TOML.
+
+Mixed YAML/TOML emits `config.yaml_beside_toml`. JSON keys retained below TOML emit `config.json_keys_below_toml`. Repeat `--suppress-warning CODE`, set comma-separated `MORPHIR_DIAGNOSTICS__SUPPRESS`, or use `diagnostics.suppress` in system/global configuration to suppress those warnings. Workspace and member configuration cannot suppress them; unknown suppression codes produce a diagnostic. Warnings use stderr and the existing discovery diagnostics; `--json` results remain a single document on stdout.
+
+### Configuration profiles
+
+Profiles apply optional configuration between member primaries and user overrides. No profile activates implicitly. Selection uses explicit `--profiles` or `--no-profiles`, then a present `MORPHIR_PROFILES`, then base `profiles.active`, then base `profiles.default`. A present empty or whitespace-only variable disables profiles. The plural option is separate from frontend `--profile`.
+
+For a project named `Shop`, the following JSON primary and TOML profile select a different generation target without changing source ownership:
+
+```json
+{"project":{"name":"Shop"},"pipeline":{"backend":"scala"},"profiles":{"default":["metrics"]}}
+```
+
+Save that primary as `morphir.json` and put this in `morphir.profile.metrics.toml`:
+
+```toml
+pipeline.backend = "javascript"
+```
+
+```shell
+morphir project list --json --profiles metrics
+morphir project list --json --no-profiles
+morphir project list --json --isolated --discovery-boundary . --profiles metrics
+morphir project list --help --json --profiles metrics
+```
+
+The first command reports target `javascript`; the second reports `scala`. Profiles stay eligible during isolation. Help performs no discovery. Invalid names, empty comma elements or combining `--profiles` and `--no-profiles` return the existing JSON failure object with `successful: false`, `error` and `committed`, and exit 2. Human failures use stderr. Configuration errors retain the owning command's existing failure schema.
+
+`--profiles postgres,metrics --profiles tracing` appends roots in argument order and trims ASCII whitespace. Names use 1–64 lowercase letters, digits, underscores or hyphens, starting with a lowercase letter. `profiles.include` precedes the chosen roots. `profiles.groups` expands groups depth-first; later occurrences win and later definitions replace whole groups. For example, include `metrics`, define `production = ['postgres', 'metrics']` under `[profiles.groups]`, and select `production,postgres` to activate `production`, `metrics`, `postgres` in that order. Inactive cycles and excessive graphs are errors.
+
+Only discovered workspace primaries, or project primaries when no workspace exists, may supply `profiles.active`, `profiles.default`, `profiles.include` and `profiles.groups`. A selected file that is already a primary keeps that authority. Member, user, machine, non-base selected, profile and environment-mapped controls fail before filtering. These controls never become ordinary configuration values or leaf provenance. `--no-profiles` strips them without interpreting invalid types and also disables includes.
+
+For each active name, adjacent profile files use the same stem/layout and JSON/YAML/TOML groups. Workspace files precede member files within a name; the next name then overrides both. A profile cannot change workspace or member selection. Same-group alternatives are ambiguous, inactive files are unread, and a missing marker profile stays active. The Workbench uses the same loader inside its mounted files. Its existing protocols gain no profile fields.
 
 Create a workspace and add projects with the same scaffolding used by the Workbench:
 
@@ -212,7 +249,7 @@ These commands support human, `--json` and `--json-lines` output. JSON Lines emi
 
 Discovery responses use protocol version `"0.1.0"`, with warnings in `diagnostics`, including missing literal members and duplicate project names. The request decoder still accepts numeric version `1` for compatibility. The shared corpus is in `pkgs/morphir-engine/workspace/fixtures/upstream.json`.
 
-Workspace and project `morphir.config.scm` files supply pipeline configuration and transforms. An explicit `--config` script runs last; explicit CLI language/provider/profile/backend choices are reapplied afterward. Scripts cannot access filesystem, processes or network implicitly.
+Workspace and project `morphir.config.scm` files supply pipeline configuration and transforms. An explicit `--config-script` script runs last; explicit CLI language/provider/profile/backend choices are reapplied afterward. Scripts cannot access filesystem, processes or network implicitly.
 
 Outputs go to `.morphir/out/<member-path>/compile.dest/<source-stem>.ir.json`. Each source produces an independent distribution. Project-wide linking and dependency resolution are separate compiler work. The legacy text frontends/backends are `scheme` and `ir-json`. The explicitly registered `moonbit` and `elm` source frontends use the typed checkpoint or generation pipeline below; requested unregistered frontends fail explicitly. JSON output supports IR versions 1 through 4 through existing lossless migration codecs. Unsupported layouts and serialization formats fail validation.
 

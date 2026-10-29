@@ -91,7 +91,7 @@ test "ignored morphir.json fields give warnings" {
 }
 
 ///|
-test "morphir.toml beside morphir.json wins and keeps its language" {
+test "TOML wins its keys and retains the JSON frontend with a mixed-format warning" {
   let workspace = @workspace.discover(
     tree([
       ("morphir.toml", "[project]\nname='Toml'\n"),
@@ -100,15 +100,19 @@ test "morphir.toml beside morphir.json wins and keeps its language" {
   )
   let project = workspace.projects[0]
   assert_eq(project.name, "Toml")
-  assert_eq(project.document.text("frontend.language", ""), "scheme")
-  assert_true(workspace.warnings.any(w => w.contains("legacy manifest")))
+  assert_eq(project.document.text("frontend.language", ""), "elm")
+  assert_true(
+    workspace.warnings.any(w => w.contains("config.json_keys_below_toml")),
+  )
 }
 
 ///|
 test "members of morphir-workspace.json are Elm projects" {
   let workspace = @workspace.discover(
     tree([
-      ("morphir-workspace.json", "{\"projects\":[\"one\",\"two\"]}"),
+      (
+        "morphir-workspace.json", "{\"workspace\":{\"members\":[\"one\",\"two\"]}}",
+      ),
       ("one/morphir.json", "{\"name\":\"One\",\"exposedModules\":[\"A\"]}"),
       ("two/morphir.json", "{\"name\":\"Two\",\"exposedModules\":[\"B\"]}"),
     ]),

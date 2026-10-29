@@ -73,9 +73,8 @@ fn[T] metadata_invalid(
 
 ///|
 fn metadata_text(document : Document, key : String) -> String raise {
-  match document.get(key) {
-    Some(TomlString(text)) if text.trim() != "" && !text.contains("\u0000") =>
-      text
+  match document.json(key) {
+    Some(String(text)) if text.trim() != "" && !text.contains("\u0000") => text
     None => metadata_invalid(document, key, "is required")
     _ => metadata_invalid(document, key, "must be a nonempty string")
   }
@@ -134,17 +133,17 @@ fn exact_provider_release(text : String) -> Bool {
 pub fn Document::metadata_provider_request(
   self : Document,
 ) -> MetadataProviderRequest raise {
-  match self.get("metadata") {
-    None | Some(TomlTable(_)) => ()
+  match self.json("metadata") {
+    None | Some(Object(_)) => ()
     _ => metadata_invalid(self, "metadata", "must be a table")
   }
-  match self.get("metadata.naming") {
-    None | Some(TomlTable(_)) => ()
+  match self.json("metadata.naming") {
+    None | Some(Object(_)) => ()
     _ => metadata_invalid(self, "metadata.naming", "must be a table")
   }
-  let provider = match self.get("metadata.provider") {
+  let provider = match self.json("metadata.provider") {
     None => "none"
-    Some(TomlString(text)) => text
+    Some(String(text)) => text
     _ => metadata_invalid(self, "metadata.provider", "must be a string")
   }
   if provider == "none" {
@@ -153,7 +152,7 @@ pub fn Document::metadata_provider_request(
         "metadata.service", "metadata.policy", "metadata.lock", "metadata.registry",
         "metadata.state", "metadata.assurance", "metadata.naming.release",
       ] {
-      if self.get(key) is Some(_) {
+      if self.json(key) is Some(_) {
         metadata_invalid(
           self, key, "requires metadata.provider = 'shared-local-restore'",
         )

@@ -30,23 +30,24 @@ fn usage(mode : OutputMode, help_text : String) -> Unit {
               "--frontend-profile", "--backend", "--target", "--output", "--config",
               "--file", "--directory", "--json", "--json-lines", "--dry-run", "--checkpoint-format",
               "--validation", "--build-provider", "--build-helper", "--sdk", "--build-node",
-              "--component", "--help", "--home", "--yes", "--package", "--timeout",
-              "--suite", "--suite-format", "--model-format", "--unit-id", "--execution-helper",
-              "--dependency", "--node", "--log-file", "--log-format", "--toolchain-pin",
-              "--telemetry-adapter", "--otel-binary", "--otel-pin", "--otel-helper",
-              "--otel-endpoint", "--otel-protocol", "--otel-flush-timeout", "--log",
-              "--build-mode", "--comparison", "--absolute-tolerance", "--relative-tolerance",
-              "--cancel-file", "--cases", "--cases-format", "--evaluators", "--require-evaluator",
-              "--rust-evaluator", "--rust-evaluator-pin", "--rust-helper", "--receipt",
-              "--receipt-format", "--metadata-grants", "--metadata-timeout", "--provider",
-              "--checking-policy", "--source-id", "--source-revision", "--connection",
-              "--connected-helper", "--build-target", "--backend-option", "--filename",
-              "--overwrite", "--connection-scope", "--transfer-helper", "--originals-helper",
-              "--list", "--name", "--language", "--profile", "--delete", "--runner-pin",
-              "--mck-helper", "--extension-pin", "--extension-helper", "--input",
-              "--version", "--types-only", "--services-pin", "--services-helper",
-              "--repository", "--executable", "--sha256", "--extension-id", "--short-id",
-              "--platform", "--ir-version",
+              "--config-script", "--profiles", "--no-profiles", "--suppress-warning",
+              "--discovery-boundary", "--isolated", "--component", "--help", "--home",
+              "--yes", "--package", "--timeout", "--suite", "--suite-format", "--model-format",
+              "--unit-id", "--execution-helper", "--dependency", "--node", "--log-file",
+              "--log-format", "--toolchain-pin", "--telemetry-adapter", "--otel-binary",
+              "--otel-pin", "--otel-helper", "--otel-endpoint", "--otel-protocol",
+              "--otel-flush-timeout", "--log", "--build-mode", "--comparison", "--absolute-tolerance",
+              "--relative-tolerance", "--cancel-file", "--cases", "--cases-format",
+              "--evaluators", "--require-evaluator", "--rust-evaluator", "--rust-evaluator-pin",
+              "--rust-helper", "--receipt", "--receipt-format", "--metadata-grants",
+              "--metadata-timeout", "--provider", "--checking-policy", "--source-id",
+              "--source-revision", "--connection", "--connected-helper", "--build-target",
+              "--backend-option", "--filename", "--overwrite", "--connection-scope",
+              "--transfer-helper", "--originals-helper", "--list", "--name", "--language",
+              "--profile", "--delete", "--runner-pin", "--mck-helper", "--extension-pin",
+              "--extension-helper", "--input", "--version", "--types-only", "--services-pin",
+              "--services-helper", "--repository", "--executable", "--sha256", "--extension-id",
+              "--short-id", "--platform", "--ir-version",
             ].map(Json::string),
           ),
         ),
@@ -123,7 +124,7 @@ fn pipeline_command(
   let dry_run = flag(cli, "dry-run")
   let directory = flag(cli, "directory")
   let file = flag(cli, "file")
-  let script_path = value(cli, "config")
+  let script_path = value(cli, "config-script")
   let overlay_fields : Map[String, Json] = Map([])
   if !project_list {
     for
@@ -162,7 +163,8 @@ fn pipeline_command(
   if kind is PipelineCompile {
     overlay_fields["ir"] = { "format_version": Json::number(4.0, repr="4") }
   }
-  let location = @host.locate(path)
+  let boundary = values(cli, "discovery-boundary").last()
+  let location = @host.locate(path, boundary?)
   if file && location.file is None {
     raise @config.Invalid("--file requires a file path")
   }
@@ -171,7 +173,7 @@ fn pipeline_command(
   }
   let mount = @host.Mount::filesystem(location.root)
   let environment = @platform.environment()
-  let (system, global) = @host.configuration(environment)
+  let configuration = configuration_controls(cli, location, environment)
   let cancel_path = value(cli, "cancel-file")
   let cancel_file = if cancel_path == "" {
     ""
@@ -182,7 +184,7 @@ fn pipeline_command(
       @platform.system_type(),
     )
   }
-  let host = @host.Host::new(mount, environment~, system~, global~, cancelled=fn() {
+  let host = @host.Host::new(mount, environment~, cancelled=fn() {
     cancel_file != "" && (@platform.kind(cancel_file) catch { _ => 1 }) != 0
   })
   let snapshot = host.snapshot()
@@ -192,8 +194,7 @@ fn pipeline_command(
   )
   let workspace = @workspace.discover(
     snapshot.tree,
-    system~,
-    global~,
+    options=configuration,
     environment~,
     overlay=discovery_overlay,
   )

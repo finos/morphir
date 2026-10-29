@@ -237,7 +237,7 @@ test "option data retains equals Unicode and whitespace without scalar conversio
   assert_eq(value(cli, "absolute-tolerance"), "-0.5")
   assert_true(
     try {
-      ignore(parse_cli(["run", "--config", "--target=js"]))
+      ignore(parse_cli(["run", "--config-script", "--target=js"]))
       false
     } catch {
       _ => true
@@ -356,4 +356,71 @@ test "ordinary syntax preserves ordered repeats and rejects conflicts in both or
       },
     )
   }
+}
+
+///|
+test "configuration controls use explicit arrays and keep frontend profiles separate" {
+  let cli = parse_cli([
+    "--profiles", "postgres,metrics", "project", "list", "--profiles", "tracing",
+    "--config", "morphir.json", "--isolated", "--discovery-boundary", ".", "--json",
+  ])
+  assert_eq(values(cli, "profiles"), ["postgres,metrics", "tracing"])
+  assert_true(flag(cli, "isolated"))
+  assert_true(flag(cli, "json"))
+  assert_eq(value(cli, "config"), "morphir.json")
+  guard configuration_profiles(cli) is Selected(names) else {
+    fail("expected selected profiles")
+  }
+  assert_eq(names.names().map(name => name.to_string()), [
+    "postgres", "metrics", "tracing",
+  ])
+  let init = parse_cli([
+    "workspace", "init", "--project", "Example", "--profile", "library", "--profiles",
+    "metrics",
+  ])
+  assert_eq(value(init, "profile"), "library")
+  assert_eq(value(init, "profiles"), "metrics")
+}
+
+///|
+test "invalid profile and file selections are refused without host effects" {
+  for
+    args in [
+      ["project", "list", "--profiles", "postgres,,metrics", "--json"],
+      ["project", "list", "--profiles="],
+      ["--profiles", "UPPER", "project", "list"],
+      ["project", "list", "--profiles", "metrics", "--no-profiles"],
+      ["project", "list", "--no-profiles", "--profiles", "metrics"],
+      ["project", "list", "--config", "settings.ini"],
+    ] {
+    let refused = try {
+      ignore(parse_cli(args))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(refused)
+  }
+  let message = try {
+    ignore(parse_cli(["run", "--config", "transform.scm"]))
+    "accepted"
+  } catch {
+    @config.Invalid(message) => message
+    _ => "unexpected"
+  }
+  assert_true(message.contains("--config-script"))
+}
+
+///|
+test "MCK configuration controls precede its command while child argv stays opaque" {
+  let cli = parse_cli([
+    "--profiles", "metrics", "--isolated", "--json", "mck", "--", "check", "--profiles",
+    "child", "--config", "literal", "--", "",
+  ])
+  assert_eq(value(cli, "profiles"), "metrics")
+  assert_true(flag(cli, "isolated"))
+  assert_eq(
+    cli.forwarded,
+    Some(["check", "--profiles", "child", "--config", "literal", "--", ""]),
+  )
 }

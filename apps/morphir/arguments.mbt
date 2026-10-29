@@ -21,8 +21,8 @@ struct CliSchema {
 ///|
 let pipeline_options : Array[String] = [
   "project", "frontend", "frontend-provider", "frontend-profile", "backend", "output",
-  "config", "checkpoint-format", "validation", "target", "build-provider", "build-helper",
-  "build-node", "sdk", "home", "timeout", "component",
+  "config-script", "checkpoint-format", "validation", "target", "build-provider",
+  "build-helper", "build-node", "sdk", "home", "timeout", "component",
 ]
 
 ///|
@@ -77,6 +77,31 @@ let catalog_options : Array[String] = [
   "services-pin", "services-helper", "home", "node", "timeout", "cancel-file", "log-file",
   "log-format",
 ]
+
+///|
+let configuration_option_names : Array[String] = [
+  "config", "profiles", "suppress-warning", "discovery-boundary",
+]
+
+///|
+fn configuration_arguments(global : Bool) -> Array[@argparse.OptionArg] {
+  configuration_option_names.map(name => {
+    @argparse.OptionArg(
+      name,
+      global~,
+      action=Append,
+      conflicts_with=if name == "profiles" { ["no-profiles"] } else { [] },
+    )
+  })
+}
+
+///|
+fn configuration_flags(global : Bool) -> Array[@argparse.FlagArg] {
+  [
+    @argparse.FlagArg("isolated", global~),
+    @argparse.FlagArg("no-profiles", global~, conflicts_with=["profiles"]),
+  ]
+}
 
 ///|
 fn command_schema(path : String) -> CliSchema {
@@ -249,7 +274,7 @@ fn command_schema(path : String) -> CliSchema {
       positional = true
     }
     "project list" => {
-      options = ["frontend", "target", "config"]
+      options = ["frontend", "target", "config-script"]
       repeatable = options
       positional = true
     }
@@ -358,6 +383,7 @@ fn render_help(path : String) -> String {
     text += "\nCommands:\n  " + schema.children.join("\n  ") + "\n"
   }
   text += "\nOptions:\n  -h, --help\n  --json\n  --json-lines\n"
+  text += "\nConfiguration: --config FILE, --profiles NAME[,NAME] (repeatable), --no-profiles, --suppress-warning CODE (repeatable), --discovery-boundary DIR, --isolated. These support --json; help reads no configuration. For mck, place Morphir controls before mck; its child argv remains literal.\n"
   for name in schema.flags {
     text += "  --" + name + "\n"
   }
@@ -408,6 +434,7 @@ fn command_spec(path : String, name : String) -> @argparse.Command {
     flags.push(@argparse.FlagArg("help", short='h', global=true))
     flags.push(@argparse.FlagArg("json", global=true))
     flags.push(@argparse.FlagArg("json-lines", global=true))
+    flags.append(configuration_flags(true))
   }
   let options = schema.options.map(option => {
     let short = if path.has_prefix("notebook ") && option == "output" {
@@ -422,6 +449,9 @@ fn command_spec(path : String, name : String) -> @argparse.Command {
       allow_hyphen_values=hyphen_options.contains(option),
     )
   })
+  if path == "" {
+    options.append(configuration_arguments(true))
+  }
   let positionals = if schema.positional {
     [@argparse.PositionArg("path", num_args=@argparse.ValueRange(upper=1))]
   } else {
@@ -447,15 +477,21 @@ fn command_spec(path : String, name : String) -> @argparse.Command {
 /// rejects repeated controls and bounds candidate attempts. Domain checks and
 /// successful help still use parse_cli_local. No-banner must be recognized here
 /// before filtering, so it cannot be mistaken for a missing option's value.
-fn mck_syntax_spec() -> @argparse.Command {
+fn mck_syntax_spec(routing~ : Bool = false) -> @argparse.Command {
   @argparse.Command(
     "morphir",
     flags=[
-      @argparse.FlagArg("help", short='h', global=true),
+      if routing {
+        @argparse.FlagArg("help", global=true)
+      } else {
+        @argparse.FlagArg("help", short='h', global=true)
+      },
       @argparse.FlagArg("json", global=true),
       @argparse.FlagArg("json-lines", global=true),
       @argparse.FlagArg("no-banner", global=true, hidden=true),
+      ..configuration_flags(false),
     ],
+    options=configuration_arguments(false),
     subcommands=[
       @argparse.Command(
         "mck",
@@ -521,7 +557,9 @@ fn parse_cli_local(args : Array[String]) -> Cli raise {
     if values.any(value => value == "") {
       raise @config.Invalid("Missing value for --" + name)
     }
-    if values.length() > 1 && !schema.repeatable.contains(name) {
+    if values.length() > 1 &&
+      !schema.repeatable.contains(name) &&
+      !["profiles", "suppress-warning"].contains(name) {
       raise @config.Invalid("Repeated option: --" + name)
     }
   }
@@ -549,7 +587,28 @@ fn parse_cli_local(args : Array[String]) -> Cli raise {
     !help {
     raise @config.Invalid("A subcommand is required for " + command)
   }
-  { command, flags, entries, forwarded, help, help_text: render_help(command), }
+  let cli = {
+    command,
+    flags,
+    entries,
+    forwarded,
+    help,
+    help_text: render_help(command),
+  }
+  ignore(configuration_profiles(cli))
+  if values(cli, "config").last() is Some(path) {
+    if path.has_suffix(".scm") {
+      raise @config.Invalid(
+        "Use --config-script for Scheme configuration scripts: " + path,
+      )
+    }
+    if ![".toml", ".yaml", ".yml", ".json", ".json5"].any(extension => {
+        path.has_suffix(extension)
+      }) {
+      raise @config.Invalid("Unsupported configuration format: " + path)
+    }
+  }
+  cli
 }
 
 ///|
@@ -566,4 +625,36 @@ fn values(cli : Cli, name : String) -> Array[String] {
 fn value(cli : Cli, name : String, fallback~ : String = "") -> String {
   let entries = values(cli, name)
   entries.get(entries.length() - 1).unwrap_or(fallback)
+}
+
+///|
+fn configuration_profiles(cli : Cli) -> @lander_config.ProfileSelection raise {
+  if flag(cli, "no-profiles") {
+    return Disabled
+  }
+  let profiles = values(cli, "profiles")
+  if profiles.is_empty() {
+    Unspecified
+  } else {
+    Selected(@lander_config.ProfileNames::parse_csv(profiles.join(","))) catch {
+      error => raise @config.Invalid(error.message())
+    }
+  }
+}
+
+///|
+fn configuration_controls(
+  cli : Cli,
+  location : @host.Location,
+  environment : Map[String, String],
+) -> @workspace.ConfigurationOptions raise {
+  let selected = values(cli, "config").last()
+  @host.configuration_options(
+    location,
+    environment,
+    selected?,
+    profiles=configuration_profiles(cli),
+    isolated=flag(cli, "isolated"),
+    suppress=values(cli, "suppress-warning"),
+  )
 }

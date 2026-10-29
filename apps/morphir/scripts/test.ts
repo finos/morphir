@@ -2,6 +2,7 @@ import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
 import { exerciseNotebooks } from './notebook-acceptance.ts';
 import {verifyConfigurationCorpus} from './configuration-parity.ts';
+import {exerciseConfiguration} from './configuration-acceptance.ts';
 import { exerciseJsonCommandCoverage } from './json-command-coverage.ts';
 import { exerciseMck, exerciseMckCancellation, exerciseMckTransport } from './mck-acceptance.ts';
 import type { PipelineReport, Warning, FrontendInventory } from '../../../tests/cli-contracts.ts';
@@ -143,6 +144,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     assert.ok(Object.hasOwn(record, "data"));
     return record;
   });
+  exerciseConfiguration(directory, run, target);
   put("morphir.toml", '[workspace]\nmembers=["packages/*"]\nexclude=["packages/skip"]\ndefault_member="packages/core"\n');
   put("morphir.config.scm", '(pipeline (transform (lambda (file) file)))');
   put("packages/core/morphir.toml", '[project]\nname="Core"\nsource_directory="src"\n');
@@ -275,7 +277,11 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   assert.equal(streamed.at(-1).data.successful, true);
   assert.equal(streamed.at(-1).data.processed, 3);
   put("morphir.yaml", "workspace: {}");
-  assert.match(run(["run"], 2).stderr, /Ambiguous/);
+  assert.match(run(["run", "--dry-run"]).stderr, /config.yaml_beside_toml/);
+  assert.ok(!run(["run", "--dry-run", "--suppress-warning", "config.yaml_beside_toml"]).stderr.includes("config.yaml_beside_toml"));
+  put("morphir.yml", "{}");
+  assert.match(run(["run"], 2).stderr, /Ambiguous configuration/);
+  rmSync(join(directory, "morphir.yml"));
   rmSync(join(directory, "morphir.yaml"));
   run(["run", "--all", "--project", "Core"], 2);
   run(["run", "--output", "../outside"], 2);
@@ -332,7 +338,7 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     assert.equal(JSON.parse(run([...args, "--json"], 2).stdout).successful, false);
   }
   put("select.scm", '(pipeline (backend "rust"))');
-  assert.equal(list("--config", "select.scm", "--target", "rust").projects.length, 3);
+  assert.equal(list("--config-script", "select.scm", "--target", "rust").projects.length, 3);
   put("catalog/b/morphir.config.scm", '(pipeline (frontend 42))');
   const invalidList = JSON.parse(run(["project", "list", "catalog", "--frontend", "elm", "--json"], 2).stdout);
   assert.deepEqual(invalidList.projects.map((p: {name: string;frontend: string;target: string}) => p.name), ["A"]);
@@ -489,8 +495,8 @@ function exercise(command: string, prefix: readonly string[], directory: string,
     [["--frontend-profile="],"Missing value for --frontend-profile"],
   ] as const) assert.ok(JSON.parse(run([...librarySourceArgs,...flags,"--dry-run","--json"],2).stdout).error.includes(code),code + ": " + run([...librarySourceArgs,...flags,"--dry-run","--json"],2).stdout);
   put("library-choice.scm", '(pipeline (frontend-profile "moonbit-model-stable-v1"))');
-  assert.equal(JSON.parse(run([...librarySourceArgs,"--config","library-choice.scm","--dry-run","--json"]).stdout).frontends[0].defaultProfile,true);
-  assert.equal(JSON.parse(run([...librarySourceArgs,"--config","library-choice.scm","--frontend-profile",libraryProfile,"--frontend-provider",sourceProvider,"--dry-run","--json"]).stdout).frontends[0].profile,libraryProfile);
+  assert.equal(JSON.parse(run([...librarySourceArgs,"--config-script","library-choice.scm","--dry-run","--json"]).stdout).frontends[0].defaultProfile,true);
+  assert.equal(JSON.parse(run([...librarySourceArgs,"--config-script","library-choice.scm","--frontend-profile",libraryProfile,"--frontend-provider",sourceProvider,"--dry-run","--json"]).stdout).frontends[0].profile,libraryProfile);
   const sourceLibrary = 'fn helper(x : Bool) -> Bool { !x }\npub fn eligible(x : Bool) -> Bool { let y = helper(x); y }\npub fn zero() -> Bool { eligible(false) }';
   put("moon-library/src/Main.mbt",sourceLibrary);
   const librarySourceResult = JSON.parse(run([...librarySourceArgs,"--json"]).stdout);
@@ -807,13 +813,13 @@ function exercise(command: string, prefix: readonly string[], directory: string,
   put("legacy/morphir.json", '{"name":"Legacy","sourceDirectory":"src","exposedModules":["Main"]}');
   put("legacy/src/Legacy/Main.elm", 'module Legacy.Main exposing (answer)\n\n\nanswer : Int\nanswer =\n    42\n');
   // Keep the legacy project independent of its enclosing test workspace.
-  run(["run", "--dry-run"], 0, legacy);
-  assert.equal(JSON.parse(run(["project", "list", "--json"], 0, legacy).stdout).projects[0].name, "Legacy");
-  assert.equal(JSON.parse(run(["project", "list", "--json"], 0, legacy).stdout).projects[0].frontend, "elm");
-  // A morphir.json is always a morphir-elm project, and morphir-elm requires exposedModules.
+  run(["run", "--dry-run", "--isolated", "--discovery-boundary", "."], 0, legacy);
+  assert.equal(JSON.parse(run(["project", "list", "--json", "--isolated", "--discovery-boundary", "."], 0, legacy).stdout).projects[0].name, "Legacy");
+  assert.equal(JSON.parse(run(["project", "list", "--json", "--isolated", "--discovery-boundary", "."], 0, legacy).stdout).projects[0].frontend, "elm");
+  // Legacy top-level fields select morphir-elm and still require exposedModules.
   const legacyElm = join(directory, "legacy-elm");
   put("legacy-elm/morphir.json", '{"name":"Legacy","sourceDirectory":"src"}');
-  assert.match(run(["run", "--dry-run", "--json"], 2, legacyElm).stdout, /exposedModules must be a list of module names/);
+  assert.match(run(["run", "--dry-run", "--json", "--isolated", "--discovery-boundary", "."], 2, legacyElm).stdout, /exposedModules must be a list of module names/);
   console.log(`CLI workspace integration passed: ${target}`);
 }
 

@@ -91,7 +91,7 @@ them. Older embedding hosts continue to support text pipelines without adding
 imports. These JSON arrays are a byte transport for the embedding ABI, independent
 of the engine's selected data codec.
 
-Desktop hosts resolve system/global configuration using the platform config directory and Morphir home rules. WASI only accesses its preopen. Its CLI accepts optional `.morphir-host/system/morphir.{toml,yaml}` and `.morphir-host/user/morphir.{toml,yaml}` within that preopen. Library callers can supply separate read-only configuration documents directly.
+Desktop hosts resolve system/global configuration using Moon-Lander conventions for the platform config directory and Morphir home rules. Each location accepts JSON/JSON5, YAML/YML and TOML layers in that order. WASI only accesses its preopen. Its CLI accepts optional `.morphir-host/system/morphir.{json,json5,yaml,yml,toml}` and `.morphir-host/user/morphir.{json,json5,yaml,yml,toml}` within that preopen. Library callers can supply separate read-only configuration documents directly. The discovery protocol uses the same format loader without changing its request or response fields. CLI `--discovery-boundary` bounds the ancestor walk; `--isolated` skips machine/global sources and user overrides while retaining active profiles and project primaries.
 
 ## Publication and limits
 

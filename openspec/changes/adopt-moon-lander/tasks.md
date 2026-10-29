@@ -26,7 +26,7 @@
 
 ## 3. Load configuration through Moon-Lander (morphir-ukvn.5.99.3)
 
-- [ ] 3.1 Build a parity corpus from every `morphir*.toml` in tests and fixtures, and a test that compares effective
+- [x] 3.1 Build a parity corpus from every `morphir*.toml` in tests and fixtures, and a test that compares effective
   values and origins from the old loader and the Moon-Lander loader on all four targets; verify it runs and reports
   each difference
 - [ ] 3.2 Load through `moon-lander-config` conventions for `morphir` (CFG-1), reading `.yaml` and `.yml` primary

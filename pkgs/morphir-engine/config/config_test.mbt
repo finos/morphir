@@ -3,7 +3,18 @@ test "TOML semantic round trip retains unknown values" {
   let text = "title = 'demo'\n[project]\nname = 'Core'\n[extension]\nlarge = 9223372036854775807\ndate = 2026-09-28T12:30:00Z\nvalues = [1, 2, 3]\n"
   let first = @config.parse(text)
   let second = @config.parse(first.encode())
-  assert_true(first.value == second.value)
+  assert_true(first.value() == second.value())
+}
+
+///|
+test "TOML date and time values survive the public representation adapter" {
+  let original = @config.parse(
+    "date=2026-10-28\nlocal=2026-10-28T12:30:45\ntime=12:30:45.001200\noffset=2026-10-28T12:30:45+05:30\n",
+  )
+  let written = original.encode()
+  assert_true(written.contains("time = 12:30:45.001200"), msg=written)
+  let recovered = @config.parse(written)
+  assert_eq(original.value(), recovered.value())
 }
 
 ///|
@@ -53,8 +64,8 @@ test "environment conversions follow upstream mapping" {
       ("MORPHIR_CUSTOM__QUOTED", "\"text\""),
     ]),
   )
-  assert_eq(result.get("ir.strict_mode"), Some(@toml.TomlBoolean(true)))
-  assert_eq(result.get("ir.format_version"), Some(@toml.TomlInteger(3)))
+  assert_eq(result.json("ir.strict_mode"), Some(Json::boolean(true)))
+  assert_eq(result.json("ir.format_version"), Some(Json::number(3.0)))
   assert_eq(result.text("custom.float", ""), "1.5")
   assert_eq(result.text("custom.quoted", ""), "\"text\"")
 }

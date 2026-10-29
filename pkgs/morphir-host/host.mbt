@@ -115,11 +115,15 @@ pub(all) struct Snapshot {
 
 ///|
 fn configuration_path(path : String) -> Bool {
-  [
-    "morphir.toml", "morphir.yaml", "morphir.user.toml", "morphir.user.yaml", "config.toml",
-    "config.yaml", "config.user.toml", "config.user.yaml", "morphir.json", "morphir-workspace.json",
-    "morphir.config.scm",
-  ].contains(path.split("/").last().unwrap_or("").to_owned())
+  let name = path.split("/").last().unwrap_or("").to_owned()
+  name == "morphir.config.scm" ||
+  (
+    ["morphir", "config"].any(stem => name.has_prefix(stem + ".")) &&
+    [".toml", ".json", ".json5", ".yaml", ".yml"].any(extension => {
+      name.has_suffix(extension)
+    })
+  ) ||
+  name == "morphir-workspace.json"
 }
 
 ///|

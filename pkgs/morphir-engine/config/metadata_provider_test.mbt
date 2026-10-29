@@ -56,8 +56,8 @@ test "provider requests retain each winning configuration origin without grantin
   assert_eq(request.service.origin, "member/morphir.toml")
   assert_eq(request.release, "example.com/morphir/naming@2.0.0")
   assert_eq(request.assurance, "portable")
-  guard effective.value is @toml.TomlTable(fields) else { fail("table") }
-  fields["metadata"] = @toml.TomlTable(Map([]))
+  guard effective.json("") is Some(Object(fields)) else { fail("table") }
+  fields["metadata"] = Json::object(Map([]))
   effective.provenance["metadata.policy"] = "later mutation"
   assert_eq(request.policy.path, "/user/policy.json")
   assert_eq(request.policy.origin, "CLI")

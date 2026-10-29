@@ -78,16 +78,29 @@ fn MckRunnerPin::to_json(self : MckRunnerPin) -> Json {
 /// Only the prefix belongs to this CLI. The canonical command and its complete
 /// argv remain opaque, including help, repeated options, empty strings and --.
 fn mck_cli(args : Array[String]) -> Cli? raise {
-  let mut start = 0
-  while start < args.length() &&
-        ["--json", "--json-lines", "--help", "-h", "--no-banner"].contains(
-          args[start],
-        ) {
-    start += 1
+  let syntax = mck_syntax_spec(routing=true)
+  let mut command_start = None
+  // The library distinguishes a command token from a control option's value.
+  // Only literal mck candidates need parsing; the child tail is never decoded.
+  for index, token in args {
+    if token != "mck" {
+      continue
+    }
+    let found = try {
+      let prefix = args[:index + 1]
+        .to_owned()
+        .map(token => if token == "-h" { "--help" } else { token })
+      let parsed = syntax.parse(argv=prefix, env=Map([]))
+      parsed.subcommand is Some(("mck", _))
+    } catch {
+      _ => false
+    }
+    if found {
+      command_start = Some(index)
+      break
+    }
   }
-  if start >= args.length() || args[start] != "mck" {
-    return None
-  }
+  guard command_start is Some(start) else { return None }
   let end = mck_prefix_end(args, start + 1)
   let bootstrap = args[:end].to_owned().filter(arg => arg != "--no-banner")
   let cli = parse_cli_local(bootstrap)

@@ -10,7 +10,6 @@ import {
   "finos/morphir-ir" @ir,
   "finos/morphir-ir/version",
   "finos/morphir-ir/versioned",
-  "moonbit-community/toml",
   "moonbitlang/core/debug",
   "finos/morphir-ir/json" @ir_json,
   "finos/morphir-ir/versioned/json" @versioned_json,

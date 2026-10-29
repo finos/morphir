@@ -278,7 +278,7 @@ test "MCK root routing and compatibility flags keep their exact ownership" {
       ["--node", "node", "mck", "check"],
       ["run", "mck", "check"],
     ] {
-    assert_true(mck_cli(args) is None)
+    assert_true(mck_cli(args) is None, msg=Json(args).stringify())
   }
 }
 

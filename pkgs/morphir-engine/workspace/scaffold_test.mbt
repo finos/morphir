@@ -130,12 +130,49 @@ test "project removal handles literals globs defaults and explicit deletion" {
       assert_eq(result.files.contains("one/src/main.scm"), !delete_files)
       assert_true(result.files["morphir.toml"].has_prefix("# keep\n"))
       assert_eq(
-        @config.parse(result.files["morphir.toml"]).get(
+        @config.parse(result.files["morphir.toml"]).json(
           "workspace.default_member",
         ),
         None,
       )
     }
+  }
+}
+
+///|
+test "lower-format project removal writes full members exclusions and clears a default" {
+  for
+    (filename, content) in [
+      (
+        "morphir.json", "{workspace:{members:['one','two'],exclude:['skip'],default_member:'one'}}",
+      ),
+      (
+        "morphir.yaml", "workspace:\n  members: ['*']\n  exclude: [skip]\n  default_member: one\n",
+      ),
+    ] {
+    let initial = tree([
+      (filename, content),
+      ("one/morphir.toml", "project.name='One'"),
+      ("two/morphir.toml", "project.name='Two'"),
+      ("skip/morphir.toml", "project.name='Skip'"),
+    ])
+    let edit = @workspace.remove_project(
+      @workspace.discover(initial),
+      initial,
+      @workspace.ProjectPath::parse("one"),
+    )
+    let result = edit.apply(initial)
+    assert_eq(result.files[filename], content)
+    let workspace = @workspace.discover(result)
+    assert_eq(workspace.projects.map(project => project.name), ["Two"])
+    assert_eq(
+      workspace.document.text("workspace.default_member", "missing"),
+      "",
+    )
+    assert_true(
+      workspace.document.strings("workspace.exclude").contains("skip"),
+    )
+    assert_true(result.files.contains("one/morphir.toml"))
   }
 }
 

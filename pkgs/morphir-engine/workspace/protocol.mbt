@@ -54,10 +54,17 @@ fn mount_document(value : Json?) -> @config.Document raise {
     None | Some(Null) => @config.empty()
     Some(value) => {
       let tree = Tree::from_json(value)
-      match primary(tree, "") {
-        Some(path) => @config.parse(tree.files[path], origin=path)
-        None => @config.empty()
-      }
+      let loaded = resolve_configuration(
+        tree,
+        "",
+        None,
+        ConfigurationOptions::new(isolated=true, profiles=Disabled),
+        @config.empty(),
+        @config.empty(),
+        Map([]),
+        @config.empty(),
+      )
+      loaded.primary
     }
   }
 }

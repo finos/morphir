@@ -13,7 +13,7 @@ for (const newline of ['\n', '\r\n']) {
     const source = "[project]\nname='Example'\n";
     const path = 'tests/fixtures/morphir.toml';
     const input = 'tests/configuration/toml-corpus.json';
-    const generated = 'pkgs/morphir-engine/config/corpus_generated_test.mbt';
+    const generated = 'pkgs/morphir-engine/workspace/corpus_generated_test.mbt';
     const put = (path: string, text: string) => {
       const full = join(workspace, path);
       mkdirSync(dirname(full), {recursive: true});

@@ -1,4 +1,6 @@
 import {
+  "moonrockz/moon-lander-config" @lander_config,
+  "moonrockz/moon-lander-config/conventions",
   "moonbitlang/core/debug",
   "moonbitlang/core/string",
   "finos/morphir-metadata" @linked_metadata,
