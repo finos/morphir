@@ -193,8 +193,6 @@ fn mck_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   if @utf8.encode(config.stringify()).length() > 131072 {
     raise @config.Invalid("mck.argument_limit")
   }
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   mck_dispatch(
     helper,
     config,
@@ -211,18 +209,19 @@ extern "js" fn mck_start(
   config : String,
   interrupted : () -> Bool,
   mode : Int32,
-) -> Unit =
-  #| (helper, config, interrupted, mode) => {
-  #|   import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
-  #|     .then(module=>module.mckCommand(JSON.parse(config),interrupted))
+  started : (String) -> Unit,
+) -> @js_async.Promise[Int32] =
+  #| (helper, config, interrupted, mode, started) => {
+  #|   return import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
+  #|     .then(module=>module.mckCommand(JSON.parse(config),interrupted,started))
   #|     .then(report=>{
   #|       if(mode) console.log(JSON.stringify(mode===2?{type:'mck',data:report}:report));
   #|       else {process.stdout.write(report.stdout);process.stderr.write(report.stderr);if(report.error)process.stderr.write(report.error+'\n');}
-  #|       process.exitCode=report.exitCode;
+  #|       process.exitCode=report.exitCode; return report.exitCode;
   #|     }).catch(error=>{
   #|       const report={profile:'morphir/cli/mck-command',contractVersion:'0.1.0-draft.1',state:'failed',exitCode:1,stdout:'',stderr:'',error:'mck.helper_unavailable'};
   #|       if(mode)console.log(JSON.stringify(mode===2?{type:'mck',data:report}:report));else console.error(report.error);
-  #|       process.exitCode=1;
+  #|       process.exitCode=1; return 1;
   #|     });
   #| }
 
@@ -235,15 +234,18 @@ fn mck_dispatch(
   _node : String,
   mode : OutputMode,
 ) -> Int32 {
-  mck_start(
-    helper,
-    config.stringify(),
-    @platform.interruption_requested,
-    match mode {
-      Human => 0
-      JSON => 1
-      JSONLines => 2
-    },
+  remember_completion(
+    mck_start(
+      helper,
+      config.stringify(),
+      @platform.interruption_requested,
+      match mode {
+        Human => 0
+        JSON => 1
+        JSONLines => 2
+      },
+      @platform.process_started,
+    ),
   )
   0
 }

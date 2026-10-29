@@ -688,6 +688,10 @@ log category, records elapsed time and maps thrown failures to the command's exi
 Handlers retain ownership of successful output and finite results, including existing JSON and JSON Lines formats.
 Help returns before dispatch and performs no command work.
 
+Native and JavaScript await asynchronous helper completion inside the same middleware scope, so timing and
+finish records cover the real operation. The host injects the resolved configuration and active profile metadata.
+Embedded Wasm and Wasm GC use the same public mediator composition without requiring an event loop.
+
 The run supplies logging, time, cancellation and failure reporting as services. Tests can supply these services
 directly without starting a process, while argv and installed-package tests qualify the real host adapters.
 Forwarded external-tool arguments retain their original ownership and literal values.

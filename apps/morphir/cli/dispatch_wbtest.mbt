@@ -1,17 +1,19 @@
 ///|
-test "command middleware scopes timing and preserves the handler result" {
+async fn assert_middleware_timing() -> Unit {
   let logs = @logging.MemoryLogger::new()
   let ticks = Ref(1.0)
   let context : CommandContext = {
     mode: JSON,
+    configuration: @config.from_json({ "fixture": true }, origin="test").framework(),
     logger: logs,
     clock: fn() { ticks.val },
     check_cancelled: fn() { () },
     failed: fn(_, _) { -1 },
   }
-  let sender : @mediator.Sender[CommandContext, Int32, Int32] = command_sender(
+  let sender : @mediator_async.Sender[CommandContext, Int32, Int32] = command_sender(
     "project list",
     (scope, value) => {
+      assert_true(@lander_config.bind(scope.configuration, "fixture"))
       scope.logger.info("Selected {Count} projects", [
         Json::number(value.to_double()),
       ])
@@ -19,7 +21,14 @@ test "command middleware scopes timing and preserves the handler result" {
       value
     },
   )
-  assert_eq(sender.send(context, 7), 7)
+  assert_eq(
+    sender.send(context, 7),
+    7,
+    msg=logs
+      .events()
+      .map(event => event.error.map(error => error.to_string()).unwrap_or(""))
+      .join("; "),
+  )
   let events = logs.events()
   assert_eq(events.length(), 4)
   assert_true(
@@ -35,13 +44,14 @@ test "command middleware scopes timing and preserves the handler result" {
 }
 
 ///|
-test "command middleware checks cancellation before effects and maps failure once" {
+async fn assert_middleware_cancellation() -> Unit {
   let calls = Ref(0)
   let failures = Ref(0)
   let mapped = Ref(false)
   let logs = @logging.MemoryLogger::new()
   let context : CommandContext = {
     mode: JSON,
+    configuration: @config.from_json({ "fixture": true }, origin="test").framework(),
     logger: logs,
     clock: fn() { 1.0 },
     check_cancelled: fn() raise { raise CommandCancelled },
@@ -51,7 +61,7 @@ test "command middleware checks cancellation before effects and maps failure onc
       130
     },
   }
-  let sender : @mediator.Sender[CommandContext, Unit, Int32] = command_sender(
+  let sender : @mediator_async.Sender[CommandContext, Unit, Int32] = command_sender(
     "compile",
     (_, _) => {
       calls.val += 1
@@ -76,4 +86,47 @@ test "command middleware retains notebook and legacy failure presentation" {
     CommandRequest::decode(parse_cli(["notebook", "import", "sheet.dib"]))
     is NotebookImportCommand(_),
   )
+}
+
+///|
+#cfg(any(target="native", target="js"))
+async test "process command middleware scopes timing and preserves the handler result" {
+  assert_middleware_timing()
+}
+
+///|
+#cfg(any(target="native", target="js"))
+async test "process command middleware checks cancellation before effects and maps failure once" {
+  assert_middleware_cancellation()
+}
+
+///|
+#cfg(any(target="wasm", target="wasm-gc"))
+fn run_middleware_assertion(work : async () -> Unit) -> Unit raise {
+  let variables : Map[String, String] = Map([])
+  let host = @lander.cli(
+      @lander_core.AppName::parse("middleware-test"),
+      [],
+      env_vars=variables,
+      working_dir=@lander_core.AbsolutePath::root(),
+    )
+    |> @hosting.build(_ => ())
+  let outcome = @hosting.run_embedded(host, _ => work())
+  assert_eq(
+    outcome.exit_code().to_int(),
+    0,
+    msg=outcome.failures().map(error => error.to_string()).join("; "),
+  )
+}
+
+///|
+#cfg(any(target="wasm", target="wasm-gc"))
+test "embedded command middleware scopes timing and preserves the handler result" {
+  run_middleware_assertion(() => assert_middleware_timing())
+}
+
+///|
+#cfg(any(target="wasm", target="wasm-gc"))
+test "embedded command middleware checks cancellation before effects and maps failure once" {
+  run_middleware_assertion(() => assert_middleware_cancellation())
 }

@@ -24,8 +24,6 @@ fn transfer_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     raise @config.Invalid("transfer.output_exists")
   }
   let timeout = build_timeout(value(cli, "timeout", fallback="120000"))
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   let source = @utf8.decode(@platform.read_input(path, 1048576)[:]) catch {
     _ => raise @config.Invalid("transfer.invalid_input")
   }
@@ -76,7 +74,7 @@ fn transfer_publish(
   let mut total = 0
   for entry in inventory {
     if @platform.interruption_requested() {
-      raise @platform.IOError("Cancelled")
+      raise @platform.Interrupted
     }
     guard entry
       is {
@@ -100,7 +98,7 @@ fn transfer_publish(
   let files : Array[TransferFile] = []
   for index, (path, length, digest) in entries {
     if @platform.interruption_requested() {
-      raise @platform.IOError("Cancelled")
+      raise @platform.Interrupted
     }
     let bytes = @platform.read_input(
       scratch + "/file-" + index.to_string(),
@@ -129,7 +127,7 @@ fn transfer_publish(
   }
   for file in files {
     if @platform.interruption_requested() {
-      raise @platform.IOError("Cancelled")
+      raise @platform.Interrupted
     }
     (transaction.stage)({
       path: @workspace.join(destination, file.path),
@@ -139,7 +137,7 @@ fn transfer_publish(
     })
   }
   if @platform.interruption_requested() {
-    raise @platform.IOError("Cancelled")
+    raise @platform.Interrupted
   }
   (transaction.commit)(destination)
   {
@@ -219,7 +217,12 @@ fn transfer_finish(
   } catch {
     error => {
       let message = @host.error_message(error)
-      exit_code = if message == "Cancelled" { 130 } else { 1 }
+      exit_code = if error is @platform.Interrupted ||
+        @platform.interruption_requested() {
+        cancellation_exit_code()
+      } else {
+        1
+      }
       (
         {
           "profile": "morphir/cli/transfer-command",
@@ -258,13 +261,13 @@ extern "js" fn transfer_start(
   core : (String) -> String,
   interrupted : () -> Bool,
   finish : (String, Int32) -> Int32,
-) -> Unit =
+) -> @js_async.Promise[Int32] =
   #| (helper,config,core,interrupted,finish) => {
   #|   let invoked=false;
-  #|   import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
+  #|   return import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
   #|     .then(module=>{invoked=true;return module.transferCommand(JSON.parse(config),core,interrupted);})
-  #|     .then(({code,report})=>{process.exitCode=finish(JSON.stringify(report),code);})
-  #|     .catch(()=>{process.exitCode=finish(JSON.stringify({profile:'morphir/cli/transfer-command',contractVersion:'0.1.0',binding:'workbench-http',operation:'artifacts',observation:invoked?'helper-lost':'refused',error:'transfer.helper_unavailable',cleanup:'unknown'}),invoked?1:2);});
+  #|     .then(({code,report})=>{process.exitCode=finish(JSON.stringify(report),code); return process.exitCode;})
+  #|     .catch(()=>{process.exitCode=finish(JSON.stringify({profile:'morphir/cli/transfer-command',contractVersion:'0.1.0',binding:'workbench-http',operation:'artifacts',observation:invoked?'helper-lost':'refused',error:'transfer.helper_unavailable',cleanup:'unknown'}),invoked?1:2); return process.exitCode;});
   #| }
 
 ///|
@@ -279,12 +282,14 @@ fn transfer_dispatch(
   mode : OutputMode,
 ) -> Int32 {
   let core = @connected_core.Client::new()
-  transfer_start(
-    helper,
-    config.stringify(),
-    source => core.handle(source).stringify(),
-    @platform.interruption_requested,
-    (source, code) => transfer_finish(source, code, scratch, output, mode),
+  remember_completion(
+    transfer_start(
+      helper,
+      config.stringify(),
+      source => core.handle(source).stringify(),
+      @platform.interruption_requested,
+      (source, code) => transfer_finish(source, code, scratch, output, mode),
+    ),
   )
   0
 }

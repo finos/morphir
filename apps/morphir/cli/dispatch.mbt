@@ -251,7 +251,7 @@ fn CommandRequest::decode(cli : Cli) -> CommandRequest raise {
 }
 
 ///|
-let run_sender : @mediator.Sender[CommandContext, RunRequest, Int32] = command_sender(
+let run_sender : @mediator_async.Sender[CommandContext, RunRequest, Int32] = command_sender(
   "run",
   (context, request) => {
     let RunRequest(cli) = request
@@ -260,16 +260,17 @@ let run_sender : @mediator.Sender[CommandContext, RunRequest, Int32] = command_s
 )
 
 ///|
-let execute_sender : @mediator.Sender[CommandContext, ExecuteRequest, Int32] = command_sender(
-  "execute",
-  (context, request) => {
-    let ExecuteRequest(cli) = request
-    execution_command(cli, context.mode)
-  },
-)
+let execute_sender : @mediator_async.Sender[
+  CommandContext,
+  ExecuteRequest,
+  Int32,
+] = command_sender("execute", (context, request) => {
+  let ExecuteRequest(cli) = request
+  execution_command(cli, context.mode)
+})
 
 ///|
-let verify_sender : @mediator.Sender[CommandContext, VerifyRequest, Int32] = command_sender(
+let verify_sender : @mediator_async.Sender[CommandContext, VerifyRequest, Int32] = command_sender(
   "verify",
   (context, request) => {
     let VerifyRequest(cli) = request
@@ -278,16 +279,17 @@ let verify_sender : @mediator.Sender[CommandContext, VerifyRequest, Int32] = com
 )
 
 ///|
-let conform_sender : @mediator.Sender[CommandContext, ConformRequest, Int32] = command_sender(
-  "conform",
-  (context, request) => {
-    let ConformRequest(cli) = request
-    execution_command(cli, context.mode)
-  },
-)
+let conform_sender : @mediator_async.Sender[
+  CommandContext,
+  ConformRequest,
+  Int32,
+] = command_sender("conform", (context, request) => {
+  let ConformRequest(cli) = request
+  execution_command(cli, context.mode)
+})
 
 ///|
-let eval_sender : @mediator.Sender[CommandContext, EvalRequest, Int32] = command_sender(
+let eval_sender : @mediator_async.Sender[CommandContext, EvalRequest, Int32] = command_sender(
   "eval",
   (context, request) => {
     let EvalRequest(cli) = request
@@ -296,34 +298,37 @@ let eval_sender : @mediator.Sender[CommandContext, EvalRequest, Int32] = command
 )
 
 ///|
-let worksheet_sender : @mediator.Sender[CommandContext, WorksheetRequest, Int32] = command_sender(
-  "worksheet",
-  (context, request) => {
-    let WorksheetRequest(cli) = request
-    worksheet_command(cli, context.mode)
-  },
-)
+let worksheet_sender : @mediator_async.Sender[
+  CommandContext,
+  WorksheetRequest,
+  Int32,
+] = command_sender("worksheet", (context, request) => {
+  let WorksheetRequest(cli) = request
+  worksheet_command(cli, context.mode)
+})
 
 ///|
-let compile_sender : @mediator.Sender[CommandContext, CompileRequest, Int32] = command_sender(
-  "compile",
-  (context, request) => {
-    let CompileRequest(cli) = request
-    pipeline_command(compilation_cli(cli), context.mode, PipelineCompile)
-  },
-)
+let compile_sender : @mediator_async.Sender[
+  CommandContext,
+  CompileRequest,
+  Int32,
+] = command_sender("compile", (context, request) => {
+  let CompileRequest(cli) = request
+  pipeline_command(compilation_cli(cli), context.mode, PipelineCompile)
+})
 
 ///|
-let generate_sender : @mediator.Sender[CommandContext, GenerateRequest, Int32] = command_sender(
-  "generate",
-  (context, request) => {
-    let GenerateRequest(cli) = request
-    generation_command(cli, context.mode)
-  },
-)
+let generate_sender : @mediator_async.Sender[
+  CommandContext,
+  GenerateRequest,
+  Int32,
+] = command_sender("generate", (context, request) => {
+  let GenerateRequest(cli) = request
+  generation_command(cli, context.mode)
+})
 
 ///|
-let model_inspect_sender : @mediator.Sender[
+let model_inspect_sender : @mediator_async.Sender[
   CommandContext,
   ModelInspectRequest,
   Int32,
@@ -333,7 +338,7 @@ let model_inspect_sender : @mediator.Sender[
 })
 
 ///|
-let model_export_original_sender : @mediator.Sender[
+let model_export_original_sender : @mediator_async.Sender[
   CommandContext,
   ModelExportOriginalRequest,
   Int32,
@@ -343,7 +348,7 @@ let model_export_original_sender : @mediator.Sender[
 })
 
 ///|
-let notebook_export_sender : @mediator.Sender[
+let notebook_export_sender : @mediator_async.Sender[
   CommandContext,
   NotebookExportRequest,
   Int32,
@@ -353,7 +358,7 @@ let notebook_export_sender : @mediator.Sender[
 })
 
 ///|
-let notebook_import_sender : @mediator.Sender[
+let notebook_import_sender : @mediator_async.Sender[
   CommandContext,
   NotebookImportRequest,
   Int32,
@@ -363,7 +368,7 @@ let notebook_import_sender : @mediator.Sender[
 })
 
 ///|
-let connected_connect_sender : @mediator.Sender[
+let connected_connect_sender : @mediator_async.Sender[
   CommandContext,
   ConnectedConnectRequest,
   Int32,
@@ -373,7 +378,7 @@ let connected_connect_sender : @mediator.Sender[
 })
 
 ///|
-let connected_run_sender : @mediator.Sender[
+let connected_run_sender : @mediator_async.Sender[
   CommandContext,
   ConnectedRunRequest,
   Int32,
@@ -383,7 +388,7 @@ let connected_run_sender : @mediator.Sender[
 })
 
 ///|
-let connected_artifacts_sender : @mediator.Sender[
+let connected_artifacts_sender : @mediator_async.Sender[
   CommandContext,
   ConnectedArtifactsRequest,
   Int32,
@@ -393,7 +398,7 @@ let connected_artifacts_sender : @mediator.Sender[
 })
 
 ///|
-let connected_originals_sender : @mediator.Sender[
+let connected_originals_sender : @mediator_async.Sender[
   CommandContext,
   ConnectedOriginalsRequest,
   Int32,
@@ -403,16 +408,17 @@ let connected_originals_sender : @mediator.Sender[
 })
 
 ///|
-let workspace_sender : @mediator.Sender[CommandContext, WorkspaceRequest, Int32] = command_sender(
-  "workspace",
-  (context, request) => {
-    let WorkspaceRequest(cli) = request
-    pipeline_command(cli, context.mode, WorkspaceOverview)
-  },
-)
+let workspace_sender : @mediator_async.Sender[
+  CommandContext,
+  WorkspaceRequest,
+  Int32,
+] = command_sender("workspace", (context, request) => {
+  let WorkspaceRequest(cli) = request
+  pipeline_command(cli, context.mode, WorkspaceOverview)
+})
 
 ///|
-let workspace_init_sender : @mediator.Sender[
+let workspace_init_sender : @mediator_async.Sender[
   CommandContext,
   WorkspaceInitRequest,
   Int32,
@@ -422,7 +428,7 @@ let workspace_init_sender : @mediator.Sender[
 })
 
 ///|
-let project_list_sender : @mediator.Sender[
+let project_list_sender : @mediator_async.Sender[
   CommandContext,
   ProjectListRequest,
   Int32,
@@ -432,7 +438,7 @@ let project_list_sender : @mediator.Sender[
 })
 
 ///|
-let project_add_sender : @mediator.Sender[
+let project_add_sender : @mediator_async.Sender[
   CommandContext,
   ProjectAddRequest,
   Int32,
@@ -442,7 +448,7 @@ let project_add_sender : @mediator.Sender[
 })
 
 ///|
-let project_remove_sender : @mediator.Sender[
+let project_remove_sender : @mediator_async.Sender[
   CommandContext,
   ProjectRemoveRequest,
   Int32,
@@ -452,7 +458,7 @@ let project_remove_sender : @mediator.Sender[
 })
 
 ///|
-let toolchain_info_sender : @mediator.Sender[
+let toolchain_info_sender : @mediator_async.Sender[
   CommandContext,
   ToolchainInfoRequest,
   Int32,
@@ -462,7 +468,7 @@ let toolchain_info_sender : @mediator.Sender[
 })
 
 ///|
-let toolchain_setup_sender : @mediator.Sender[
+let toolchain_setup_sender : @mediator_async.Sender[
   CommandContext,
   ToolchainSetupRequest,
   Int32,
@@ -472,7 +478,7 @@ let toolchain_setup_sender : @mediator.Sender[
 })
 
 ///|
-let toolchain_build_sender : @mediator.Sender[
+let toolchain_build_sender : @mediator_async.Sender[
   CommandContext,
   ToolchainBuildRequest,
   Int32,
@@ -482,7 +488,7 @@ let toolchain_build_sender : @mediator.Sender[
 })
 
 ///|
-let toolchain_run_sender : @mediator.Sender[
+let toolchain_run_sender : @mediator_async.Sender[
   CommandContext,
   ToolchainRunRequest,
   Int32,
@@ -492,7 +498,7 @@ let toolchain_run_sender : @mediator.Sender[
 })
 
 ///|
-let toolchain_exec_sender : @mediator.Sender[
+let toolchain_exec_sender : @mediator_async.Sender[
   CommandContext,
   ToolchainExecRequest,
   Int32,
@@ -502,7 +508,7 @@ let toolchain_exec_sender : @mediator.Sender[
 })
 
 ///|
-let mck_sender : @mediator.Sender[CommandContext, MckRequest, Int32] = command_sender(
+let mck_sender : @mediator_async.Sender[CommandContext, MckRequest, Int32] = command_sender(
   "mck",
   (context, request) => {
     let MckRequest(cli) = request
@@ -511,7 +517,7 @@ let mck_sender : @mediator.Sender[CommandContext, MckRequest, Int32] = command_s
 )
 
 ///|
-let extension_describe_sender : @mediator.Sender[
+let extension_describe_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionDescribeRequest,
   Int32,
@@ -521,7 +527,7 @@ let extension_describe_sender : @mediator.Sender[
 })
 
 ///|
-let extension_compile_sender : @mediator.Sender[
+let extension_compile_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionCompileRequest,
   Int32,
@@ -531,7 +537,7 @@ let extension_compile_sender : @mediator.Sender[
 })
 
 ///|
-let extension_generate_sender : @mediator.Sender[
+let extension_generate_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionGenerateRequest,
   Int32,
@@ -541,7 +547,7 @@ let extension_generate_sender : @mediator.Sender[
 })
 
 ///|
-let extension_bundle_sender : @mediator.Sender[
+let extension_bundle_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionBundleRequest,
   Int32,
@@ -551,7 +557,7 @@ let extension_bundle_sender : @mediator.Sender[
 })
 
 ///|
-let extension_install_sender : @mediator.Sender[
+let extension_install_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionInstallRequest,
   Int32,
@@ -561,7 +567,7 @@ let extension_install_sender : @mediator.Sender[
 })
 
 ///|
-let extension_list_sender : @mediator.Sender[
+let extension_list_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionListRequest,
   Int32,
@@ -571,7 +577,7 @@ let extension_list_sender : @mediator.Sender[
 })
 
 ///|
-let extension_search_sender : @mediator.Sender[
+let extension_search_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionSearchRequest,
   Int32,
@@ -581,7 +587,7 @@ let extension_search_sender : @mediator.Sender[
 })
 
 ///|
-let extension_update_sender : @mediator.Sender[
+let extension_update_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionUpdateRequest,
   Int32,
@@ -591,7 +597,7 @@ let extension_update_sender : @mediator.Sender[
 })
 
 ///|
-let extension_uninstall_sender : @mediator.Sender[
+let extension_uninstall_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionUninstallRequest,
   Int32,
@@ -601,7 +607,7 @@ let extension_uninstall_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_init_sender : @mediator.Sender[
+let extension_repository_init_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryInitRequest,
   Int32,
@@ -611,7 +617,7 @@ let extension_repository_init_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_add_sender : @mediator.Sender[
+let extension_repository_add_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryAddRequest,
   Int32,
@@ -621,7 +627,7 @@ let extension_repository_add_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_list_sender : @mediator.Sender[
+let extension_repository_list_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryListRequest,
   Int32,
@@ -631,7 +637,7 @@ let extension_repository_list_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_inspect_sender : @mediator.Sender[
+let extension_repository_inspect_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryInspectRequest,
   Int32,
@@ -641,7 +647,7 @@ let extension_repository_inspect_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_enable_sender : @mediator.Sender[
+let extension_repository_enable_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryEnableRequest,
   Int32,
@@ -651,7 +657,7 @@ let extension_repository_enable_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_disable_sender : @mediator.Sender[
+let extension_repository_disable_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryDisableRequest,
   Int32,
@@ -661,7 +667,7 @@ let extension_repository_disable_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_remove_sender : @mediator.Sender[
+let extension_repository_remove_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryRemoveRequest,
   Int32,
@@ -671,7 +677,7 @@ let extension_repository_remove_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_publish_sender : @mediator.Sender[
+let extension_repository_publish_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryPublishRequest,
   Int32,
@@ -681,7 +687,7 @@ let extension_repository_publish_sender : @mediator.Sender[
 })
 
 ///|
-let extension_repository_verify_sender : @mediator.Sender[
+let extension_repository_verify_sender : @mediator_async.Sender[
   CommandContext,
   ExtensionRepositoryVerifyRequest,
   Int32,
@@ -691,7 +697,7 @@ let extension_repository_verify_sender : @mediator.Sender[
 })
 
 ///|
-fn dispatch_cli(cli : Cli, context : CommandContext) -> Int32 raise {
+async fn dispatch_cli(cli : Cli, context : CommandContext) -> Int32 {
   match CommandRequest::decode(cli) {
     RunCommand(request) => run_sender.send(context, request)
     ExecuteCommand(request) => execute_sender.send(context, request)

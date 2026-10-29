@@ -1190,8 +1190,6 @@ fn extension_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   }
   let plan = extension_plan(cli, operation)
   let frames = extension_frames(plan)
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   let root = @platform.temporary()
   let control : Json = {
     "profile": extension_profile,
@@ -1251,13 +1249,14 @@ extern "js" fn extension_start(
   config : String,
   interrupted : () -> Bool,
   finish : (String) -> Int32,
-) -> Unit =
-  #| (helper, config, interrupted, finish) => {
+  started : (String) -> Unit,
+) -> @js_async.Promise[Int32] =
+  #| (helper, config, interrupted, finish, started) => {
   #|   const failed = JSON.stringify({profile:'morphir/cli/extension-command',contractVersion:'0.1.0-draft.1',state:'failed',exitCode:null,stderr:'',error:'extension.helper_unavailable',workDirectoryEmpty:false});
-  #|   import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
-  #|     .then(module=>module.extensionCommand(JSON.parse(config),interrupted))
+  #|   return import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
+  #|     .then(module=>module.extensionCommand(JSON.parse(config),interrupted,started))
   #|     .then(reply=>JSON.stringify(reply),()=>failed)
-  #|     .then(reply=>{process.exitCode=finish(reply);});
+  #|     .then(reply=>{process.exitCode=finish(reply); return process.exitCode;});
   #| }
 
 ///|
@@ -1270,11 +1269,14 @@ fn extension_dispatch(
   _timeout : Int32,
   finish : (String) -> Int32,
 ) -> Int32 {
-  extension_start(
-    helper,
-    control.stringify(),
-    @platform.interruption_requested,
-    finish,
+  remember_completion(
+    extension_start(
+      helper,
+      control.stringify(),
+      @platform.interruption_requested,
+      finish,
+      @platform.process_started,
+    ),
   )
   0
 }

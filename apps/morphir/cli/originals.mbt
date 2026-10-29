@@ -16,7 +16,7 @@ priv struct OriginalsObservation {
 fn originals_check(control : OriginalsControl) -> Unit raise {
   if @platform.interruption_requested() ||
     (control.cancel_file != "" && @platform.kind(control.cancel_file) != 0) {
-    raise @platform.IOError("Cancelled")
+    raise @platform.Interrupted
   }
   if @platform.monotonic_seconds() >= control.deadline {
     raise @config.Invalid("originals.timeout")
@@ -55,8 +55,6 @@ fn originals_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     deadline: @platform.monotonic_seconds() + timeout.to_double() / 1000.0,
     cancel_file: value(cli, "cancel-file"),
   }
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   let source = @utf8.decode(@platform.read_input(path, 1048576)[:])
   let scratch = @platform.temporary()
   let config : Json = {
@@ -313,7 +311,12 @@ fn originals_finish(
   } catch {
     error => {
       let message = @host.error_message(error)
-      status = if message == "Cancelled" { 130 } else { 1 }
+      status = if error is @platform.Interrupted ||
+        @platform.interruption_requested() {
+        cancellation_exit_code()
+      } else {
+        1
+      }
       (
         {
           "profile": "morphir/cli/originals-command",
@@ -360,10 +363,10 @@ extern "js" fn originals_start(
   core : (String) -> String,
   interrupted : () -> Bool,
   finish : (String, Int32, (String, String, Bool) -> Unit) -> Int32,
-) -> Unit =
+) -> @js_async.Promise[Int32] =
   #| (helper,config,core,interrupted,finish)=>{
   #|   const noop=()=>{};
-  #|   import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
+  #|   return import('node:url').then(({pathToFileURL})=>import(pathToFileURL(helper).href))
   #|     .then(async module=>{
   #|       const input=JSON.parse(config);
   #|       const owner=input.operation==='originals'?module.openOriginalsOuterObservation?.():undefined;
@@ -376,9 +379,9 @@ extern "js" fn originals_start(
   #|       }catch{}};
   #|       try{
   #|         let value;try{value=await module.originalsCommand(input,core,interrupted);}catch{value={code:1,report:null};}
-  #|         process.exitCode=finish(value.report===null?'':JSON.stringify(value.report),value.code,observe);
+  #|         process.exitCode=finish(value.report===null?'':JSON.stringify(value.report),value.code,observe); return process.exitCode;
   #|       }finally{owner?.finish({kind:'in-process'});}
-  #|     }).catch(()=>{process.exitCode=finish('',1,noop);});
+  #|     }).catch(()=>{process.exitCode=finish('',1,noop); return process.exitCode;});
   #| }
 
 ///|
@@ -394,29 +397,31 @@ fn originals_dispatch(
   control : OriginalsControl,
 ) -> Int32 {
   let core = @connected_core.Client::new()
-  originals_start(
-    helper,
-    config.stringify(),
-    source => core.handle(source).stringify(),
-    @platform.interruption_requested,
-    (source, code, observe) => {
-      originals_finish(
-        source,
-        code,
-        scratch,
-        output,
-        mode,
-        control,
-        Some({
-          commit: (path, returned) => {
-            observe("destination-commit-finished", path, returned)
-          },
-          cleanup: (path, returned) => {
-            observe("scratch-cleanup-finished", path, returned)
-          },
-        }),
-      )
-    },
+  remember_completion(
+    originals_start(
+      helper,
+      config.stringify(),
+      source => core.handle(source).stringify(),
+      @platform.interruption_requested,
+      (source, code, observe) => {
+        originals_finish(
+          source,
+          code,
+          scratch,
+          output,
+          mode,
+          control,
+          Some({
+            commit: (path, returned) => {
+              observe("destination-commit-finished", path, returned)
+            },
+            cleanup: (path, returned) => {
+              observe("scratch-cleanup-finished", path, returned)
+            },
+          }),
+        )
+      },
+    ),
   )
   0
 }

@@ -19,8 +19,6 @@ fn connected_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     raise @config.Invalid("connected.explicit_inputs_required")
   }
   let timeout = build_timeout(value(cli, "timeout", fallback="120000"))
-  @platform.interruption_start()
-  defer @platform.interruption_stop()
   let bytes = @platform.read_input(path, 1048576)
   let source = @utf8.decode(bytes[:]) catch {
     _ => raise @config.Invalid("connected.input_unavailable")
@@ -75,14 +73,14 @@ extern "js" fn connected_start(
   core : (String) -> String,
   interrupted : () -> Bool,
   mode : Int32,
-) -> Unit =
+) -> @js_async.Promise[Int32] =
   #| (helper, config, core, interrupted, mode) => {
   #|   const emit = report => console.log(JSON.stringify(mode === 2 ? {type:'result',data:report} : report));
   #|   let invoked = false;
-  #|   import('node:url').then(({pathToFileURL}) => import(pathToFileURL(helper).href))
+  #|   return import('node:url').then(({pathToFileURL}) => import(pathToFileURL(helper).href))
   #|     .then(module => { invoked = true; return module.connectedCommand(JSON.parse(config), core, interrupted); })
-  #|     .then(({code,report}) => { emit(report); process.exitCode = code; })
-  #|     .catch(() => { let view; try { view = JSON.parse(core(JSON.stringify({op:'view'}))); } catch {} emit({profile:'morphir/cli/connected-command',contractVersion:'0.1.0',observation:invoked?'helper-lost':'refused',error:'connected.helper_unavailable',execution:view?.ok?view.execution:null,result:view?.ok?view.result:null,release:invoked?'unknown':'not-requested'}); process.exitCode = invoked ? 1 : 2; });
+  #|     .then(({code,report}) => { emit(report); process.exitCode = code; return code; })
+  #|     .catch(() => { let view; try { view = JSON.parse(core(JSON.stringify({op:'view'}))); } catch {} emit({profile:'morphir/cli/connected-command',contractVersion:'0.1.0',observation:invoked?'helper-lost':'refused',error:'connected.helper_unavailable',execution:view?.ok?view.execution:null,result:view?.ok?view.result:null,release:invoked?'unknown':'not-requested'}); process.exitCode = invoked ? 1 : 2; return process.exitCode; });
   #| }
 
 ///|
@@ -95,16 +93,18 @@ fn connected_dispatch(
   mode : OutputMode,
 ) -> Int32 {
   let core = @connected_core.Client::new()
-  connected_start(
-    helper,
-    config.stringify(),
-    source => core.handle(source).stringify(),
-    @platform.interruption_requested,
-    if mode is JSONLines {
-      2
-    } else {
-      1
-    },
+  remember_completion(
+    connected_start(
+      helper,
+      config.stringify(),
+      source => core.handle(source).stringify(),
+      @platform.interruption_requested,
+      if mode is JSONLines {
+        2
+      } else {
+        1
+      },
+    ),
   )
   0
 }

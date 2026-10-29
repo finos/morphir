@@ -1,11 +1,15 @@
 import {
+  "moonrockz/moon-lander" @lander,
+  "moonrockz/moon-lander-core" @lander_core,
+  "moonrockz/moon-lander-hosting" @hosting,
+  "moonrockz/moon-lander-logging-hosting-async" @sinks,
   "moonrockz/moon-lander-config" @lander_config,
-  "moonrockz/moon-lander-mediator" @mediator,
-  "moonbitlang/async" @aio,
+  "moonrockz/moon-lander-mediator/async" @mediator_async,
+  "moonbitlang/async",
   "moonbitlang/async/js_async",
   "moonrockz/moon-lander-logging" @logging,
   "moonbitlang/x/crypto",
-  "moonrockz/moon-lander-hosting/argparse" @argparse,
+  "moonrockz/moon-lander-hosting/argparse",
   "moonbitlang/core/string",
   "finos/morphir-engine/execution",
   "finos/morphir-engine/execution/workbench" @connected_core,
@@ -48,3 +52,11 @@ import {
 // The JS adapters use connected_core. Other targets use their own adapters.
 
 warnings = "-29"
+
+// The CLI owns one process-scoped run at a time, including its foreign callbacks.
+
+max_concurrent_tests = 1
+
+options(
+  targets: { "hosting_wbtest.mbt": [ "native", "js" ] },
+)
