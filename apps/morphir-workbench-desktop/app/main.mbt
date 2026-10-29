@@ -52,6 +52,72 @@ async fn main {
     return
   }
   presentation.report(Startup)
+  let status = desktop_run(presentation) catch {
+    error => {
+      let message = match error {
+        @diagnostics.InvalidLevel(_) as failure => failure.message()
+        @diagnostics.InvalidFileFormat(_) as failure => failure.message()
+        _ => @host.error_message(error)
+      }
+      if presentation.enabled {
+        presentation.report(Failure("desktop_start_failed", message))
+      } else {
+        @stdio.stderr.write(message + "\n") catch {
+          _ => ()
+        }
+      }
+      1
+    }
+  }
+  presentation.report(Exit(status))
+  if status != 0 {
+    presentation_exit(status)
+  }
+}
+
+///|
+async fn desktop_run(presentation : DesktopPresentation) -> Int32 {
+  let environment = @env.get_env_vars()
+  let location = @host.locate(".")
+  let options = @host.configuration_options(location, environment)
+  let document = @host.run_configuration(location, environment, options)
+  let settings = @diagnostics.Settings::from_config(document.framework())
+  let directory = @sinks.LogDirectory::from_absolute(
+    @lander_core.AbsolutePath::parse(location.root + "/.morphir/logs"),
+  )
+  @runtime.with_session(settings.session(directory), session => {
+    let logger = @logging.with_category(
+      session.logger(),
+      "morphir.workbench.desktop",
+    )
+    let configuration_logger = @logging.with_category(
+      session.logger(),
+      "morphir.configuration",
+    )
+    for report in document.framework().reports() {
+      if report.status is Loaded && report.path is Some(path) {
+        configuration_logger.debug("Loaded configuration {path}", [Json(path)])
+      }
+    }
+    let status = desktop_app(presentation, document.framework(), logger)
+    let report = session.close()
+    for message in report.failure_messages() {
+      ignore(@runtime.write_diagnostic(message + "\n"))
+    }
+    if status == 0 && report.delivery_failed() {
+      1
+    } else {
+      status
+    }
+  })
+}
+
+///|
+async fn desktop_app(
+  presentation : DesktopPresentation,
+  configuration : @configuration.Config,
+  logger : &@logging.Logger,
+) -> Int32 {
   let app = @proton.asset(
     "Morphir Workbench",
     "frontend/dist/index.html",
@@ -63,27 +129,27 @@ async fn main {
     None => None
     Some(url) => {
       guard @session.loopback_launch_origin(url) is Some(origin) else {
-        if enabled {
+        if presentation.enabled {
           presentation.report(
             Failure(
               "invalid_launch_url", "Expected an authenticated loopback launch URL",
             ),
           )
-          presentation.report(Exit(1))
-          presentation_exit(1)
-          return
+          return 1
         } else {
-          abort("Expected an authenticated loopback launch URL")
+          raise @session.Rejected(
+            "Expected an authenticated loopback launch URL",
+          )
         }
       }
       Some(origin)
     }
   }
   let app = match launch {
-    None => with_native_session(app, presentation)
+    None => with_native_session(app, presentation, configuration, logger)
     Some(url) => app.entry_url(url)
   }
-  let app = app.on_download_request(async fn(browser, request) noraise {
+  let app = app.on_download_request(fn(browser, request) noraise {
     let page = browser.state() catch {
       _ => return @proton.DownloadDecision::Deny
     }
@@ -98,7 +164,8 @@ async fn main {
       @proton.DownloadDecision::Deny
     }
   })
-  if enabled {
+  let status = Ref(0)
+  if presentation.enabled {
     app
     .on_window_event(async fn(_, event) noraise {
       if event is ReadyToShow {
@@ -127,19 +194,24 @@ async fn main {
         _ => ()
       }
     })
-    .on_quit(async fn(_, status) noraise { presentation.report(Exit(status)) })
+    .on_quit(fn(_, code) noraise { status.val = code })
     .run() catch {
       error => {
         presentation.report(
           Failure(desktop_run_error_code(error), error.message()),
         )
-        presentation.report(Exit(1))
-        presentation_exit(1)
+        return 1
       }
     }
   } else {
-    app.run_or_abort()
+    app.on_quit(fn(_, code) noraise { status.val = code }).run() catch {
+      error => {
+        @stdio.stderr.write(error.message() + "\n")
+        return 1
+      }
+    }
   }
+  status.val
 }
 
 ///|

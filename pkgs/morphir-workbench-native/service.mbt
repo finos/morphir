@@ -28,6 +28,7 @@ struct Record {
 pub struct Service {
   priv group : @async.TaskGroup[Unit]
   priv executable : String
+  priv logger : &@logging.Logger
   priv host : @executions.Host
   priv offer : Json
   priv records : Map[String, Record]
@@ -47,6 +48,7 @@ pub fn Service::new(
   session : String,
   deadline~ : Int32 = 30000,
   memory~ : Double = 268435456.0,
+  logger~ : &@logging.Logger = @logging.null_logger(),
 ) -> Service raise {
   guard supported() &&
     deadline > 0 &&
@@ -66,6 +68,7 @@ pub fn Service::new(
   {
     group,
     executable,
+    logger,
     host: @executions.Host::new(offer.stringify()),
     offer,
     records: Map([]),
@@ -313,6 +316,7 @@ async fn Service::run(self : Service, record : Record) -> Unit {
       defer reader.close()
       let (errors, stderr) = @process.read_from_process()
       defer errors.close()
+      self.logger.debug("Starting native worker {path}", [Json(self.executable)])
       let child = @process.spawn(
         group,
         self.executable,
@@ -326,6 +330,10 @@ async fn Service::run(self : Service, record : Record) -> Unit {
       )
       record.child = Some(child)
       record.last_pid = child.pid
+      self.logger.debug("Started native worker {path} as {pid}", [
+        Json(self.executable),
+        Json(child.pid),
+      ])
       if record.stop != "" {
         child.cancel()
       }
@@ -406,6 +414,10 @@ async fn Service::run(self : Service, record : Record) -> Unit {
         }
       })
       code = child.wait()
+      self.logger.debug("Native worker {pid} exited with {exitCode}", [
+        Json(child.pid),
+        Json(code),
+      ])
       record.exited = true
       output.wait()
       error_output.wait()

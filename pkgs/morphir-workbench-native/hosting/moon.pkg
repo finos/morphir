@@ -1,0 +1,16 @@
+supported_targets = "native"
+
+import {
+  "moonrockz/moon-lander-hosting" @lander_host,
+  "moonrockz/moon-lander-core" @lander_core,
+  "moonrockz/moon-lander-config" @configuration,
+  "moonrockz/moon-lander-logging" @logging,
+  "moonbitlang/async",
+}
+
+import {
+  "finos/morphir-workbench-native/hosting" @desktop_host,
+  "moonrockz/moon-lander-config" @configuration,
+  "moonrockz/moon-lander-logging" @logging,
+  "moonbitlang/async",
+} for "test"

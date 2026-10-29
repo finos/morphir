@@ -35,10 +35,11 @@ pub fn Owner::new(
   executions~ : Bool,
   workspace~ : Bool,
   contract~ : @request.Contract = Executions,
+  logger~ : &@logging.Logger = @logging.null_logger(),
 ) -> Owner {
   let execution_factory : ((String, @request.Contract) -> ExecutionsService raise)? = if executions {
     Some(fn(id, selected_contract) raise {
-      let service = @native.Service::new(group, executable, id)
+      let service = @native.Service::new(group, executable, id, logger~)
       {
         offer: fn() { service.offer() },
         request: async fn(operation, payload) {

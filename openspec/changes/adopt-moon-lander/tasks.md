@@ -113,12 +113,12 @@
 
 ## 7. Host the desktop Workbench services (morphir-ukvn.5.99.7)
 
-- [ ] 7.1 Register the native Workbench services as hosted services, start the host when Proton starts and stop it
+- [x] 7.1 Register the native Workbench services as hosted services, start the host when Proton starts and stop it
   with the `Embedder` reason from `on_shutdown` (HOST-2); verify the desktop shutdown scenario with a test that quits
   during a host execution
-- [ ] 7.2 Use the configuration loader and the Logger from groups 3 and 4 in the desktop app; verify the desktop
+- [x] 7.2 Use the configuration loader and the Logger from groups 3 and 4 in the desktop app; verify the desktop
   smoke test and that logs reach standard error
-- [ ] 7.3 Document the desktop lifecycle in the Workbench README; verify the documented behavior with the smoke test
+- [x] 7.3 Document the desktop lifecycle in the Workbench README; verify the documented behavior with the smoke test
 
 ## 8. Import and export worksheets as notebooks (morphir-ukvn.5.99.8)
 

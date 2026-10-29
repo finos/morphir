@@ -11,28 +11,44 @@ fn native_caller(context : @proton.CommandContext) -> @session.Caller raise {
 fn with_native_session(
   app : @proton.App,
   presentation : DesktopPresentation,
+  configuration : @configuration.Config,
+  logger : &@logging.Logger,
 ) -> @proton.App {
   let mut owner : @bridge.Owner? = None
+  let mut controller : @desktop_host.Controller? = None
   let files = @bridge.FileOwner::new(
     enabled=@native.desktop_supported() && @workspace.supported(),
   )
   app
   .app_lifecycle(
-    on_start=fn(context) {
-      owner = Some(
-        @bridge.Owner::new(
-          context.task_group(),
-          context.application_executable,
-          executions=@native.desktop_supported(),
-          contract=@request.CapabilityChecks,
-          workspace=@native.desktop_supported() && @workspace.supported(),
-        ),
+    on_start=context => {
+      let host = @desktop_host.create(
+        configuration,
+        logger,
+        start_workspace=() => (),
+        stop_workspace=() => files.close(),
+        start_executions=() => {
+          owner = Some(
+            @bridge.Owner::new(
+              context.task_group(),
+              context.application_executable,
+              executions=@native.desktop_supported(),
+              contract=@request.CapabilityChecks,
+              logger~,
+              workspace=@native.desktop_supported() && @workspace.supported(),
+            ),
+          )
+        },
+        stop_executions=() => if owner is Some(owner) { owner.shutdown() },
       )
+      let started = @desktop_host.start(context.task_group(), host)
+      controller = Some(started)
+      started
     },
-    on_shutdown=async fn(_) {
-      files.close()
-      if owner is Some(owner) {
-        owner.shutdown()
+    on_shutdown=started => {
+      let outcome = started.shutdown()
+      if outcome.failures().get(0) is Some(error) {
+        raise error
       }
     },
   )
@@ -91,9 +107,16 @@ fn with_native_session(
   })
   .on_before_quit(async fn(_) noraise {
     try {
-      files.close()
-      if owner is Some(owner) {
-        owner.shutdown()
+      if controller is Some(controller) {
+        let outcome = controller.shutdown()
+        if outcome.failures().get(0) is Some(error) {
+          raise error
+        }
+      } else {
+        files.close()
+        if owner is Some(owner) {
+          owner.shutdown()
+        }
       }
       @proton.ApplicationQuitDecision::Allow
     } catch {
