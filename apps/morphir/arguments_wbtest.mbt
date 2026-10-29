@@ -424,3 +424,27 @@ test "MCK configuration controls precede its command while child argv stays opaq
     Some(["check", "--profiles", "child", "--config", "literal", "--", ""]),
   )
 }
+
+///|
+test "diagnostic levels validate before IO and retain external argument ownership" {
+  for level in ["trace", "debug", "info", "warn", "error", "fatal", "off"] {
+    let cli = parse_cli(["project", "list", "--log-level", level, "--json"])
+    assert_eq(diagnostic_level(cli).unwrap().name(), level)
+  }
+  let message = try {
+    ignore(parse_cli(["project", "list", "--log-level", "loud", "--json"]))
+    "accepted"
+  } catch {
+    @config.Invalid(message) => message
+    error => error.to_string()
+  }
+  assert_true(
+    message.contains("trace, debug, info, warn, error, fatal or off"),
+    msg=message,
+  )
+  let cli = parse_cli([
+    "--log-level", "debug", "mck", "check", "--log-level", "external", "--", "",
+  ])
+  assert_eq(diagnostic_level(cli).unwrap().name(), "debug")
+  assert_eq(cli.forwarded, Some(["check", "--log-level", "external", "--", ""]))
+}

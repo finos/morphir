@@ -22,6 +22,12 @@ JSON Lines uses named `properties`, with last-wins values and complete
 no destinations. The runtime session owns the bounded queue, writes and draining;
 building these settings performs no I/O.
 
+`morphir-host.run_configuration` uses the shared format adapters and published
+root conventions/profile provider to resolve run-wide services without scanning
+project sources. The command's workspace loader retains ownership of its all-member
+walk. Run-wide diagnostic settings preserve format, profile, environment and CLI
+level precedence. The public sink qualification also checks this service setup.
+
 `moon test pkgs/morphir-host/diagnostics/acceptance --target native,js` exercises
 the published file sink on the real filesystem. It verifies typed properties,
 duplicate history, metadata-name collisions, omission without repeats, draining,

@@ -68,6 +68,8 @@ pub fn system_type() -> String
 
 pub fn temporary() -> String raise
 
+pub fn utc_milliseconds() -> Int64 raise
+
 pub fn wall_seconds() -> Double
 
 pub fn write(String, String) -> Unit raise

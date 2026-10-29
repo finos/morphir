@@ -80,7 +80,7 @@ let catalog_options : Array[String] = [
 
 ///|
 let configuration_option_names : Array[String] = [
-  "config", "profiles", "suppress-warning", "discovery-boundary",
+  "config", "profiles", "suppress-warning", "discovery-boundary", "log-level",
 ]
 
 ///|
@@ -383,7 +383,7 @@ fn render_help(path : String) -> String {
     text += "\nCommands:\n  " + schema.children.join("\n  ") + "\n"
   }
   text += "\nOptions:\n  -h, --help\n  --json\n  --json-lines\n"
-  text += "\nConfiguration: --config FILE, --profiles NAME[,NAME] (repeatable), --no-profiles, --suppress-warning CODE (repeatable), --discovery-boundary DIR, --isolated. These support --json; help reads no configuration. For mck, place Morphir controls before mck; its child argv remains literal.\n"
+  text += "\nConfiguration: --config FILE, --profiles NAME[,NAME] (repeatable), --no-profiles, --suppress-warning CODE (repeatable), --discovery-boundary DIR, --isolated. Diagnostic logging: --log-level trace|debug|info|warn|error|fatal|off. These support --json; help reads no configuration. For mck, place Morphir controls before mck; its child argv remains literal.\n"
   for name in schema.flags {
     text += "  --" + name + "\n"
   }
@@ -595,6 +595,7 @@ fn parse_cli_local(args : Array[String]) -> Cli raise {
     help,
     help_text: render_help(command),
   }
+  ignore(diagnostic_level(cli))
   ignore(configuration_profiles(cli))
   if values(cli, "config").last() is Some(path) {
     if path.has_suffix(".scm") {
@@ -609,6 +610,17 @@ fn parse_cli_local(args : Array[String]) -> Cli raise {
     }
   }
   cli
+}
+
+///|
+fn diagnostic_level(cli : Cli) -> @diagnostics.DiagnosticLevel? raise {
+  values(cli, "log-level")
+  .last()
+  .map(text => {
+    @diagnostics.DiagnosticLevel::parse(text) catch {
+      error => raise @config.Invalid(error.message())
+    }
+  })
 }
 
 ///|

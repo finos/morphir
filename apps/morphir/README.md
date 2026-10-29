@@ -140,6 +140,59 @@ unchanged to the child program. Help/output flags, empty arguments, Unicode and
 additional `--` tokens in that segment belong to the program. Morphir does not
 interpret them. Other commands reject a program-argument segment.
 
+## Diagnostic logging
+
+Diagnostic levels are `trace`, `debug`, `info`, `warn`, `error`, `fatal` and `off`.
+The default is `warn`. `--log-level` overrides `MORPHIR_LOGGING__LEVEL`, which
+overrides `logging.level` in the layered configuration. Unknown levels are usage
+errors with exit 2; the diagnostic lists valid values. These controls support
+`--json`, including help and errors. Logs go to stderr so stdout retains the
+command's existing result schema.
+
+```shell
+morphir project list --json --log-level trace
+morphir project list --help --json --log-level debug
+```
+
+Enable rolling files in the workspace configuration:
+
+```toml
+[logging]
+level = "debug"
+
+[logging.file]
+enabled = true
+format = "json-lines"
+```
+
+The default file format is `text`. Files use the `morphir-diagnostics` stem under
+`.morphir/logs/`, roll daily and at 10 MiB, and retain the newest 31 files. File
+retention applies to that owned diagnostic set. It preserves telemetry and
+unrelated files. `off` disables diagnostic destinations. Accepted records drain
+before exit; queue overflow drops the newest records and reports the drop count.
+
+JSON Lines keeps event metadata separate from named values. Given `path` twice,
+the last value is selected and all occurrences remain in order:
+
+```json
+{
+  "properties": {"path": "/repo/app/morphir.toml", "command": "project.list"},
+  "duplicateProperties": {"path": ["/repo/morphir.toml", "/repo/app/morphir.toml"]}
+}
+```
+
+Each complete record also contains its UTC timestamp, level, category and message.
+A property called `level` stays inside `properties` and cannot replace the record's
+level. Null, arrays and objects keep their JSON types. A single array value stays
+an array in `properties`; it does not create duplicate history. Names appearing
+once are absent from `duplicateProperties`, and the field is omitted entirely
+when no names repeat.
+
+`--log`, `--log-file`, `--log-format` and `--otel-*` retain their telemetry meaning
+and formats. Diagnostic settings do not change their observations or retention.
+Native and JavaScript use the published asynchronous session and rolling-file
+sink. Embedded wasm and wasm-gc use a text Logger bound to host stderr and UTC.
+
 ## Structured output
 
 Every command, including help and dry runs, supports `--json` and `--json-lines`. These flags can appear before or after the command and cannot be combined. `--json` emits one JSON document. `--json-lines` emits one JSON object per line, each with a `type` and `data` field. Diagnostics on stderr do not affect JSON parsing on stdout. A diagnostic has `code` and `location` (`startLine`, `startColumn`, `endLine`, `endColumn`) when the engine knows the problem.

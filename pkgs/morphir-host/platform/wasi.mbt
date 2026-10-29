@@ -537,6 +537,20 @@ fn clock_time_ffi(
 ) -> Int32 = "wasi_snapshot_preview1" "clock_time_get"
 
 ///|
+/// UTC for diagnostic records, using the existing WASI Preview 1 clock import.
+pub fn utc_milliseconds() -> Int64 raise {
+  let result = FixedArray::make(8, b'\x00')
+  if clock_time_ffi(0, 1000000L, result) != 0 {
+    raise IOError("diagnostics.utc_clock_unavailable")
+  }
+  let mut nanos = 0UL
+  for index = 7; index >= 0; index = index - 1 {
+    nanos = (nanos << 8) | result[index].to_int().to_uint64()
+  }
+  (nanos / 1000000UL).reinterpret_as_int64()
+}
+
+///|
 pub fn monotonic_seconds() -> Double {
   let result = FixedArray::make(8, b'\x00')
   if clock_time_ffi(1, 1000000L, result) != 0 {

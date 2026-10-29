@@ -28,6 +28,7 @@ import {
   "finos/morphir-engine/ids",
   "finos/morphir-engine/workspace",
   "finos/morphir-host" @host,
+  "finos/morphir-host/diagnostics",
   "finos/morphir-host/metadata/grants" @metadata_grants,
   "finos/morphir-host/platform",
   "finos/morphir-host/toolchain",
