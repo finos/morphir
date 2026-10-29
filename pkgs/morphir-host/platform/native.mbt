@@ -256,6 +256,7 @@ extern "C" fn originals_observer_process_c(
   cwd : Bytes,
   home : Bytes,
   timeout : Int32,
+  interrupted : FuncRef[() -> Int32],
 ) -> Bytes = "morphir_originals_observer_process"
 
 ///|
@@ -267,6 +268,7 @@ pub fn OriginalsObserver::process(
   home : String,
   timeout : Int32,
 ) -> Json raise {
+  process_started(program)
   decode_process(
     originals_observer_process_c(
       self,
@@ -276,6 +278,7 @@ pub fn OriginalsObserver::process(
       cstring(cwd),
       cstring(home),
       timeout,
+      fn() { process_stop_code() },
     ),
   )
 }

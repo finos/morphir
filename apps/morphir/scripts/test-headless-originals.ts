@@ -33,8 +33,12 @@ async function cli(cwd:string,args:string[],helper?:string,interruptOnWrite=fals
    if(existsSync(part)&&readdirSync(part).length){child.kill('SIGINT');clearInterval(timer);break;}
   }
  },5);
- const code=await new Promise<number|null>((resolve,reject)=>{child.once('error',reject);child.once('close',resolve);});
+ const {code,signal}=await new Promise<{code:number|null,signal:NodeJS.Signals|null}>((resolve,reject)=>{
+  child.once('error',reject);child.once('close',(code,signal)=>resolve({code,signal}));
+ });
  clearInterval(timer);
+ assert.equal(signal,null,`CLI ${JSON.stringify(args)} terminated by ${signal}:\n${stdout}\n${stderr}`);
+ assert.notEqual(stdout.trim(),'',`CLI ${JSON.stringify(args)} returned ${code} without JSON:\n${stderr}`);
  return{code,stdout,stderr,report:JSON.parse(stdout)};
 }
 function inventory(path:string,base=path):{path:string;kind:'file'|'directory';sha256?:string;length?:number}[]{

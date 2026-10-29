@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <string.h>
-#include "moonbit.h"
+#include "process.h"
 #ifndef _WIN32
 #include <unistd.h>
 #include <dirent.h>

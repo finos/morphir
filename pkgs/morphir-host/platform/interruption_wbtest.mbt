@@ -1,4 +1,45 @@
 ///|
+#cfg(target="native")
+test "unselected originals observer forwards the hosted stop callback" {
+  if !process_supported() {
+    return
+  }
+  let root = temporary()
+  defer remove_dir(root)
+  let ready = root + "/ready"
+  defer remove_file(ready)
+  let owner = originals_observer_start()
+  defer owner.finish()
+  let launches : Array[String] = []
+  let launch_scope = ProcessScope::install(program => launches.push(program))
+  defer launch_scope.close()
+  let stop = InterruptionScope::install(() => {
+    (kind(ready) catch { _ => 0 }) == 1
+  })
+  defer stop.close()
+  let started = monotonic_seconds()
+  let result = owner.process(
+    "sh",
+    [
+      "-c",
+      "trap 'printf stopped; exit 0' INT; touch '" +
+      ready +
+      "'; while :; do sleep 0.01; done",
+    ],
+    root,
+    "",
+    2000,
+  )
+  assert_true(monotonic_seconds() - started < 1.5)
+  assert_eq(launches, ["sh"])
+  assert_true(
+    result is Object(fields) &&
+    fields.get("exitCode") == Some(Json(0)) &&
+    fields.get("stdout") == Some(Json("stopped")),
+  )
+}
+
+///|
 #cfg(not(target="wasm-gc"))
 test "host interruption scopes restore the enclosing state and close once" {
   let outer = InterruptionScope::install(() => false)

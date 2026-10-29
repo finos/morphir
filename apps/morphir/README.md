@@ -716,6 +716,8 @@ failure without a CLI stop remains exit 1; child status fields retain their orig
 evaluation, bounded filesystem reads, stdin waits and owned child processes. The first signal requests
 cleanup. A second signal ends the process immediately with that signal's exit code. The JavaScript launcher
 keeps signal reception on its parent thread while command work runs in an owned worker.
+Native originals publication polls that same lifetime, including when optional consumer observation
+is active. Its owned helper receives cancellation and retains its cleanup budget before escalation.
 
 Started services stop in reverse order after success, failure or cancellation. The diagnostic session drains
 before telemetry flushes, and the logging bridge closes it again idempotently before exit. The public completion
