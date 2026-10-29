@@ -168,3 +168,11 @@ test "DIB empty cells retain counts and skipped cell indexes through the public 
   let restored = @notebook.import_notebook(empty_comment.content(), Dib)
   assert_eq(restored.cells(), 2)
 }
+
+///|
+test "DIB imports preserve a leading blank source line" {
+  let imported = @notebook.import_notebook("#!scheme\n\n(+ 2 3)\n", Dib)
+  assert_eq(imported.source(), "\n(+ 2 3)\n")
+  let report = @worksheet.WorksheetRequest::new(capture(imported.source())).evaluate()
+  assert_eq(report.observations()[0].preview(), "5")
+}

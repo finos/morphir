@@ -167,7 +167,8 @@ export async function worksheetWorkflow(page: Page) {
   assert.equal(await source.evaluate(node => (node as CodeEditor).value), '42\n\n;; # End\n');
   await openNotebook(page, 'source.dib', '#!scheme\n\n(+ 2 3)\n');
   await page.getByRole('status').filter({hasText: 'Opened source.dib'}).waitFor();
-  assert.equal(await source.evaluate(node => (node as CodeEditor).value), '(+ 2 3)\n');
+  // Lossless DIB parsing retains the blank source line after the kernel directive.
+  assert.equal(await source.evaluate(node => (node as CodeEditor).value), '\n(+ 2 3)\n');
   return page.evaluate(() => (globalThis as unknown as { worksheetTestReceipts: WorksheetReport[] }).worksheetTestReceipts);
 }
 

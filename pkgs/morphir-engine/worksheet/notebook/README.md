@@ -23,8 +23,9 @@ reject evaluated DIB requests before invoking evaluation or writing files.
 The Jupyter document uses nbformat 4.5, deterministic cell IDs, the Scheme kernel
 and language metadata, and `metadata.morphir` containing
 `{profile: "morphir/worksheet-notebook", version: "0.1.0"}`. Each code cell also
-names its language. DIB uses the `scheme` kernel and the same Morphir metadata. The published 0.7.0
-codec runs in lossless mode at construction, writing and parsing, so empty cells
+names its language. DIB uses the `scheme` kernel and the same Morphir metadata. The published
+codec runs in lossless mode at construction, writing and parsing. Leading blank
+source lines remain in imported Scheme cells, and empty cells
 retain their positions and skipped-cell indexes. DIB normalizes line endings to LF.
 This profile is independent of the planned workspace and itest notebook profile.
 
