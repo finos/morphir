@@ -1290,6 +1290,7 @@ report as a `result` record. Exit 0 means returned outcomes and confirmed releas
 The report's terminal, acknowledgement and release fields describe the remote state;
 exit 130 alone does not confirm termination or release. Exit 1 means failed, unknown
 or incomplete execution/cleanup without CLI cancellation, and 2 means refused setup or input.
+A late SIGINT can therefore exit 130 while retaining an already returned terminal value.
 Execution state is held only for the current command; no process-restart recovery
 or implicit resubmission is provided. CLI interruption closes its own transport
 and helper and never terminates the remote host.

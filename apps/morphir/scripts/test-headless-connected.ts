@@ -289,7 +289,8 @@ async function scenario(name: Scenario) {
         assert.equal(report.result.terminalOutcomes.calls[0].outcome.status, 'cancelled');
         assert.equal(counts.cancel, 1);
       } else {
-        assert.equal(result.code, 0); assert.deepEqual(report.result.terminalOutcomes, expectedOutcomes);
+        assert.equal(result.code, name === 'late-completion' || name === 'terminal-query-lost' ? 130 : 0);
+        assert.deepEqual(report.result.terminalOutcomes, expectedOutcomes);
       }
       if (name === 'lost-query' || name === 'lost-release' || name === 'terminal-query-lost') assert.equal(report.reconnects, 1);
       await assert.rejects(real.command('query', JSON.stringify({ contractVersion: '0.2.0-draft.1', identity: acceptedIdentity }), authenticatedSession!), /rejected/);
