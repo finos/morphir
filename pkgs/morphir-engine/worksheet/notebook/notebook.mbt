@@ -303,10 +303,7 @@ pub fn export_notebook(
         ReadOnlyArray::from_array(cells[:]),
         metadata=metadata(),
       )
-      {
-        content: notebook.to_string(),
-        cells: cells.length(),
-      }
+      { content: notebook.to_string(), cells: cells.length(), }
     }
   }
 }
