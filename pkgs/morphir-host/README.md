@@ -281,3 +281,9 @@ A bridge that cannot confirm cleanup returns failure.
 Native/JS platform calls announce their program, and local JS supervision
 adapters can use `process_started` without adding protocol fields. A diagnostic
 observer cannot alter the child argument array or its successful output.
+
+Configuration directory listings retain inaccessible entries as the framework's
+`Inaccessible` kind. A locked sibling, such as a Windows drive-root system file,
+does not prevent discovery. If that entry is an actual configuration candidate,
+the loader requests its contents and the regular-file read boundary reports the
+failure; the candidate is never silently treated as absent.

@@ -100,15 +100,11 @@ fn read_configuration_requests(
             "Cannot list configuration directory: " + native,
           )
         }
-        let entries = @platform.list(native).map(name => {
-          let kind : @lander_config.EntryKind = match
-            @platform.kind(native + "/" + name) {
-            1 => File
-            2 => Directory
-            _ => Inaccessible
-          }
-          @lander_config.DirEntry::{ name, kind, }
-        })
+        let entries = configuration_entries(
+          native,
+          @platform.list(native),
+          @platform.kind,
+        )
         tree = tree.with_listing(path, entries)
       }
       ReadFile(path) => {
@@ -346,4 +342,26 @@ fn machine_conventions(
   conventions : @conventions.Conventions,
 ) -> @conventions.Conventions {
   conventions
+}
+
+///|
+/// Listing a parent must retain inaccessible entries without inspecting them as
+/// candidates. A selected configuration file still crosses ReadFile explicitly.
+fn configuration_entries(
+  directory : String,
+  names : Array[String],
+  inspect : (String) -> Int32 raise,
+) -> Array[@lander_config.DirEntry] {
+  names.map(name => {
+    let kind : @lander_config.EntryKind = try {
+      match inspect(directory + "/" + name) {
+        1 => File
+        2 => Directory
+        _ => Inaccessible
+      }
+    } catch {
+      _ => Inaccessible
+    }
+    @lander_config.DirEntry::{ name, kind, }
+  })
 }
