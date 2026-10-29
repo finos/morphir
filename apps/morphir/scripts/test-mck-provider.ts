@@ -41,7 +41,10 @@ test('MCK preserves canonical argv, stdout, stderr and failed verdict exit statu
   const f = fixture(`process.stdout.write(JSON.stringify(process.argv.slice(2)));process.stderr.write('diagnostic without newline');process.exitCode=1;`);
   try {
     f.config.arguments = ['workbench', 'run', '--adapter-arg', '', '--adapter-arg', '--json', 'λ 😀', '$(literal)', '--'];
-    const result = await mckCommand(f.config);
+    const starts: string[] = [];
+    const result = await mckCommand(f.config, () => false, program => starts.push(program));
+    assert.equal(starts.length, 3);
+    assert.ok(starts.every(program => program === f.config.pin.executable));
     assert.equal(result.state, 'completed'); assert.equal(result.exitCode, 1);
     assert.deepEqual(JSON.parse(result.stdout), ['--no-banner', 'mck', ...f.config.arguments]);
     assert.equal(result.stderr, 'diagnostic without newline');

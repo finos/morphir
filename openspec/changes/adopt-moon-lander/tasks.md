@@ -69,19 +69,19 @@
 
 ## 4. Add leveled diagnostic logging (morphir-ukvn.5.99.4)
 
-- [ ] 4.1 Add the `logging.level` key, `MORPHIR_LOGGING__LEVEL` and `--log-level` with the `warn` default and usage
+- [x] 4.1 Add the `logging.level` key, `MORPHIR_LOGGING__LEVEL` and `--log-level` with the `warn` default and usage
   error for an unknown level; verify the level and setting scenarios of the `application/logging` spec as tests
 - [ ] 4.2 Build the run's Logger (LOG-1) with a standard-error console sink on native and js and a text Logger on wasm
   and wasm-gc; verify with an argv test that `--json --log-level trace` keeps standard output a single JSON document
-- [ ] 4.3 Add rolling files with the stem `morphir-diagnostics` under `.morphir/logs/` (`logging.file.*` keys); verify
+- [x] 4.3 Add rolling files with the stem `morphir-diagnostics` under `.morphir/logs/` (`logging.file.*` keys); verify
   the file scenario, named `properties`, last-wins duplicate values, full `duplicateProperties` history, preserved
   JSON types and omission without repeats through the public sink, plus a retention test that leaves telemetry
   files in place
 - [ ] 4.4 Log configuration loading, command start and end, and child process starts through the Logger, replacing
   ad hoc `@platform.stderr` diagnostics where they are not command output; verify the structured-record scenario
-- [ ] 4.5 Prove that `--log`, `--log-file`, `--log-format` and `--otel-*` output is unchanged; verify the telemetry
+- [x] 4.5 Prove that `--log`, `--log-file`, `--log-format` and `--otel-*` output is unchanged; verify the telemetry
   scenario with a byte comparison of Ion binary output with and without `--log-level`
-- [ ] 4.6 Document logging in `apps/morphir/README.md`, including output channels, named properties and duplicate
+- [x] 4.6 Document logging in `apps/morphir/README.md`, including output channels, named properties and duplicate
   history; verify the documented commands
 
 ## 5. Dispatch through the mediator (morphir-ukvn.5.99.5)

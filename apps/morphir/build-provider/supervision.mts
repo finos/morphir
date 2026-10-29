@@ -13,17 +13,18 @@ export function supervised(program: string,args: string[],options: SuperviseOpti
 // Model payloads use a separate byte channel. The text API keeps its original
 // combined one-MiB cap; binary stdout has a fixed 16-MiB cap and diagnostics an
 // independent 64-KiB cap. Both paths share tree ownership and quiescence checks.
-export function supervisedBytes(program: string,args: string[],{cwd,env,timeout,cancelFile='',cancelled,input}: SuperviseOptions): Promise<SupervisedResult<Buffer>> {
-  return supervise(program,args,{cwd,env,timeout,cancelFile,cancelled,input},true) as Promise<SupervisedResult<Buffer>>;
+export function supervisedBytes(program: string,args: string[],{cwd,env,timeout,cancelFile='',cancelled,input,onProcessStarted}: SuperviseOptions): Promise<SupervisedResult<Buffer>> {
+  return supervise(program,args,{cwd,env,timeout,cancelFile,cancelled,input,onProcessStarted},true) as Promise<SupervisedResult<Buffer>>;
 }
 
-async function supervise(program: string,args: string[],{cwd,env,timeout,cancelFile='',cancelled,interruptGraceMs=0,limit=1048576,input}: SuperviseOptions,binary: boolean) {
+async function supervise(program: string,args: string[],{cwd,env,timeout,cancelFile='',cancelled,interruptGraceMs=0,limit=1048576,input,onProcessStarted}: SuperviseOptions,binary: boolean) {
   if(!Number.isInteger(timeout)||timeout<1||timeout>600000||!Number.isInteger(limit)||limit<1||limit>1048576)throw Error('execution.supervision_limit');
   if(input!==undefined&&(!Buffer.isBuffer(input)||input.length>4194304))throw Error('execution.input_limit');
   if(!Number.isInteger(interruptGraceMs)||interruptGraceMs<0||interruptGraceMs>5000)throw Error('execution.supervision_limit');
   if(cancelled?.() || (cancelFile && existsSync(cancelFile)))throw Error('execution.cancelled');
   const job=process.platform==='win32'?windowsJob(program,args,{cwd,env,timeout}):null;
   const child=spawn(job?.program||program,job?.args||args,{cwd,env:job?.env||env,detached:process.platform!=='win32',stdio:[input===undefined?'ignore':'pipe','pipe','pipe'],windowsHide:true});
+  child.once('spawn',()=>{try{onProcessStarted?.(program);}catch{}});
   type Closed = [number | null, NodeJS.Signals | null];
   const closed=new Promise<Closed>(resolve=>child.once('close',(code, signal)=>resolve([code, signal])));
   let reason='',treeError='',spawnError: Error | null=null,size=0,outputSize=0,diagnosticSize=0,termination: Promise<void> | null=null;const out: Buffer[]=[],err: Buffer[]=[];

@@ -36,3 +36,9 @@ retention and byte preservation of telemetry and unowned files.
 Run `moon test pkgs/morphir-host/diagnostics --target <target>` on native, JS, WASI and Wasm GC to verify names,
 selection, level filtering, disabled logging, timestamps and text output. CLI options, async console/file sessions
 and lifecycle draining are integrated by the application host, outside this policy package.
+
+Owned child launches use `platform.ProcessScope` to report the program through the
+run's `morphir.host.process` logger. JavaScript supervision accepts the same local
+observer callback; it does not add a field to child requests or results. Closing
+the scope restores the enclosing observer and is idempotent. Native and Node
+process adapters retain ownership of argv, output, deadlines and child cleanup.

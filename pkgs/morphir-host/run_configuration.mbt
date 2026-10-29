@@ -5,6 +5,7 @@ pub fn run_configuration(
   location : Location,
   environment : Map[String, String],
   options : @workspace.ConfigurationOptions,
+  overlay? : @config.Document,
 ) -> @config.Document raise {
   let conventions = machine_conventions(
       @workspace.configuration_conventions(
@@ -36,6 +37,14 @@ pub fn run_configuration(
       reserved=["MORPHIR_HOME", "MORPHIR_PROFILES"],
       selection=Explicit(environment),
     )
+  let builder = match overlay {
+    Some(document) =>
+      builder
+      |> @lander_config.add(
+        @lander_config.in_memory(document.value(), name="CLI", priority=700),
+      )
+    None => builder
+  }
   let mut tree = @lander_config.FileTree::new()
   for path, text in options.external_files {
     tree = tree.with_file(@lander_config.FileTreePath::parse(path), text)

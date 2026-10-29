@@ -47,7 +47,7 @@ function request(value: unknown): MckRequest {
 }
 
 /** Effects only: the canonical runner retains every kit, suite and verdict. */
-export async function mckCommand(value: unknown, interrupted: () => boolean = () => false): Promise<MckResult> {
+export async function mckCommand(value: unknown, interrupted: () => boolean = () => false, onProcessStarted?: (program: string) => void): Promise<MckResult> {
   let config: MckRequest | undefined, started = false;
   try {
     config = request(value);
@@ -62,7 +62,7 @@ export async function mckCommand(value: unknown, interrupted: () => boolean = ()
       tick();
       return supervised(config!.pin.executable, args, {
         cwd: config!.cwd, env: { ...process.env, MORPHIR_NO_BANNER: '1' },
-        timeout: Math.max(1, Math.floor(deadline - performance.now())), cancelFile, cancelled: interrupted, interruptGraceMs: 5000,
+        timeout: Math.max(1, Math.floor(deadline - performance.now())), cancelFile, cancelled: interrupted, onProcessStarted, interruptGraceMs: 5000,
       });
     };
     pin();
