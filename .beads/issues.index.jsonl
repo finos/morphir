@@ -12,6 +12,7 @@
 {"id":"morphir-0bi4","title":"Select the native Workbench MCK adapter explicitly","status":"closed","priority":2}
 {"id":"morphir-0cf4","title":"Decide: should morphir-scala's local web host consume finos/morphir-ui?","status":"open","priority":1}
 {"id":"morphir-0dol","title":"Support multiple Python modules and local imports","status":"closed","priority":2}
+{"id":"morphir-0fra","title":"Investigate adoption size and startup growth","status":"open","priority":2}
 {"id":"morphir-0gwk","title":"Tests leak temp directories: morphir-binaries-* (167 MB each, morphir-typescript release packaging) and morphir-install-tests-home-* (CLI)","status":"open","priority":3}
 {"id":"morphir-0ij","title":"Implement type/value/pattern BDD features","status":"closed","priority":2}
 {"id":"morphir-0ley","title":"Decide the disposition of crates/morphir-live","status":"closed","priority":2}
@@ -87,6 +88,7 @@
 {"id":"morphir-3y1d","title":"Make Kyo JSON encoding stack-safe for deeply nested IR","status":"open","priority":2}
 {"id":"morphir-3zv","title":"Improve domain/ package test coverage","status":"open","priority":2}
 {"id":"morphir-40fd","title":"Keep the selected Scheme witness independently scoped","status":"closed","priority":2}
+{"id":"morphir-4aid","title":"Clean up stale Morphir workspaces and branches","status":"closed","priority":3}
 {"id":"morphir-4b6","title":"Define Morphir CLI usage spec (KDL)","status":"open","priority":2}
 {"id":"morphir-4bi","title":"Implement WIT parser","status":"closed","priority":2}
 {"id":"morphir-4f3","title":"Phase 2: WIT Toolchain Adapter","status":"closed","priority":1}
@@ -111,12 +113,16 @@
 {"id":"morphir-5b6w","title":"Rust mirror stage 3: document-tree layout (readTree/writeTree) in morphir-core, morphir-common as adapters","status":"closed","priority":1}
 {"id":"morphir-5dz","title":"Migrate task runner from just to mise","status":"closed","priority":2}
 {"id":"morphir-5g12","title":"morphir-rust loader.rs still reads an older directory format the canonical tree reader refuses","status":"open","priority":3}
-{"id":"morphir-5hxy","title":"Add a process MEP guest for the Python compiler","status":"in_progress","priority":2}
+{"id":"morphir-5hxy","title":"Add a process MEP guest for the Python compiler","status":"closed","priority":2}
 {"id":"morphir-5hxy.1","title":"Negotiate current and legacy MEP","status":"closed","priority":2}
 {"id":"morphir-5hxy.2","title":"Adapt supported model envelopes","status":"closed","priority":2}
 {"id":"morphir-5hxy.3","title":"Serve native stdio sessions","status":"closed","priority":2}
-{"id":"morphir-5hxy.4","title":"Distribute both runtime choices","status":"in_progress","priority":2}
-{"id":"morphir-5hxy.5","title":"Qualify host interoperability","status":"in_progress","priority":2}
+{"id":"morphir-5hxy.4","title":"Distribute both runtime choices","status":"closed","priority":2}
+{"id":"morphir-5hxy.5","title":"Qualify host interoperability","status":"closed","priority":2}
+{"id":"morphir-5hxy.6","title":"Version changed core metadata before CLI publication","status":"closed","priority":2}
+{"id":"morphir-5hxy.7","title":"Route extension tags through native wheel verification correctly","status":"closed","priority":2}
+{"id":"morphir-5hxy.8","title":"Refresh host evidence for committed process documentation","status":"closed","priority":2}
+{"id":"morphir-5hxy.9","title":"Isolate pip and uv caches in released installer qualification","status":"closed","priority":2}
 {"id":"morphir-5il","title":"Add Morphir IR visitor framework","status":"closed","priority":2}
 {"id":"morphir-5mnj","title":"Publish and shepherd WASM and Avro pull requests","status":"closed","priority":2}
 {"id":"morphir-5nuu","title":"Reconcile Beads remote sync after package landing","status":"closed","priority":2}
@@ -127,6 +133,7 @@
 {"id":"morphir-5xzg","title":"Document required submodule initialization","status":"closed","priority":2}
 {"id":"morphir-5zvt","title":"Refuse MoonBit guest operations before morphir.initialized","status":"open","priority":2}
 {"id":"morphir-648","title":"Fix version embedding in binary - morphir --version shows 'dev' instead of release version","status":"closed","priority":1}
+{"id":"morphir-6b0k","title":"Adopt shared OpenSpec html-design in the umbrella repository","status":"in_progress","priority":2}
 {"id":"morphir-6cq2","title":"Standalone single-file compile ignores the env layer for frontend prelude and extension (GH #887)","status":"open","priority":3}
 {"id":"morphir-6f1o","title":"Finish CI reuse follow-ups from PR #199 review","status":"closed","priority":3}
 {"id":"morphir-6nn5","title":"Netlify deploy preview fails consistently on PR #791 (renovate/mise-tools)","status":"open","priority":3}
@@ -429,6 +436,7 @@
 {"id":"morphir-go-u53","title":"Implement native functions registry for SDK","status":"closed","priority":2}
 {"id":"morphir-go-vn8","title":"Create fixture fetching script","status":"closed","priority":2}
 {"id":"morphir-go-x59","title":"Add error code appendix to validation reports","status":"closed","priority":2}
+{"id":"morphir-guvd","title":"Group Renovate updates into fewer PRs and remove the stray debug log","status":"closed","priority":2}
 {"id":"morphir-gy64","title":"Gate main with a merge queue and a single required ci-ok check","status":"closed","priority":1}
 {"id":"morphir-h0pf","title":"Implement verified multi-runtime extension hosting","status":"closed","priority":1}
 {"id":"morphir-h0pf.1","title":"Unblock native extension hosts on Windows ARM64","status":"closed","priority":1}
@@ -741,6 +749,7 @@
 {"id":"morphir-p65j","title":"Use capabilities terminology in Workbench documentation","status":"closed","priority":2}
 {"id":"morphir-p6n","title":"Phase 3: CLI Commands","status":"closed","priority":2}
 {"id":"morphir-p7rw","title":"Audit: moon CI gate ran nothing between bootstrap and 2026-08-28","status":"open","priority":2}
+{"id":"morphir-pbtn","title":"Land current Morphir Python Renovate updates","status":"closed","priority":2}
 {"id":"morphir-pda","title":"Add VFS traversal helpers","status":"closed","priority":2}
 {"id":"morphir-perf","title":"MoonBit CLI host skips morphir.initialized before the MEP operation","status":"closed","priority":2}
 {"id":"morphir-pf13","title":"Windows: morphir CLI needs MSVC Spectre-mitigated CRT libs to build (GH #886)","status":"open","priority":2}
@@ -771,6 +780,7 @@
 {"id":"morphir-rqio","title":"Windows process supervision deadline case misses cold-start allowance","status":"open","priority":2}
 {"id":"morphir-rust-3kl","title":"Update IR V4 types to match latest finos/morphir spec","status":"closed","priority":0}
 {"id":"morphir-rust-72s","title":"Implement Python binding using Ruff parser crate","status":"open","priority":2}
+{"id":"morphir-rust-b3e","title":"Gate metadata-only CI and refresh repository inventory","status":"closed","priority":2}
 {"id":"morphir-rust-builtins","title":"Implement morphir-builtins with migrate extension","status":"open","priority":1}
 {"id":"morphir-rust-builtins-v2","title":"[UPDATED] Implement morphir-builtins with migrate extension","status":"open","priority":1}
 {"id":"morphir-rust-daemon-client1","title":"Implement DaemonClient for IPC to daemon actors","status":"open","priority":1}
@@ -782,6 +792,7 @@
 {"id":"morphir-rust-kam1","title":"Implement Kameo actor wrapper for extensions","status":"open","priority":1}
 {"id":"morphir-rust-kw8","title":"Design and implement Morphir daemon and extension system","status":"open","priority":2}
 {"id":"morphir-rust-ohk","title":"Fix docs sidebar grouping issues","status":"closed","priority":2}
+{"id":"morphir-rust-rtz","title":"Persist runtime-tagged installed artifacts","status":"closed","priority":2}
 {"id":"morphir-rust-std1","title":"Implement standard library host functions","status":"open","priority":2}
 {"id":"morphir-rust-steel-thread","title":"Steel Thread: Implement migrate command using extension architecture","status":"open","priority":3}
 {"id":"morphir-rust-steel-thread-v2","title":"[UPDATED] Steel Thread with Integration Test Plan","status":"open","priority":3}
@@ -1405,10 +1416,10 @@
 {"id":"morphir-ukvn.5.86.8","title":"Workbench: Settings › Projects edits project files","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.86.9","title":"Workbench: intent, conceptual, worksheet and models as files; presets","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.87","title":"Let source and output show split or as separate tabs, and expand the source","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.88","title":"Publish Morphir modules to Mooncakes","status":"open","priority":2}
-{"id":"morphir-ukvn.5.88.1","title":"Task 1: Define the publish set and correct CLI identity","status":"open","priority":2}
-{"id":"morphir-ukvn.5.88.2","title":"Task 2: Implement dependency-aware publishing and consumer checks","status":"open","priority":2}
-{"id":"morphir-ukvn.5.88.3","title":"Task 3: Add gated release jobs and maintainer instructions","status":"open","priority":2}
+{"id":"morphir-ukvn.5.88","title":"Publish Morphir modules to Mooncakes","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.88.1","title":"Task 1: Define the publish set and correct CLI identity","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.88.2","title":"Task 2: Implement dependency-aware publishing and consumer checks","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.88.3","title":"Task 3: Add gated release jobs and maintainer instructions","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.5.88.4","title":"Task 4: Verify the first authorized Mooncakes release","status":"open","priority":2}
 {"id":"morphir-ukvn.5.89","title":"Support multiple generation targets per project across the Morphir ecosystem","status":"open","priority":2}
 {"id":"morphir-ukvn.5.89.1","title":"Specify multiple generation targets per project in morphir.toml","status":"open","priority":2}
@@ -1511,16 +1522,16 @@
 {"id":"morphir-ukvn.5.98.3","title":"Qualify Python legacy JSON IR operations","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.98.4","title":"Qualify packaged Python Extism support and publish compatibility evidence","status":"closed","priority":2}
 {"id":"morphir-ukvn.5.98.5","title":"Release Python multiDocument capability and matching compiler API","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.99","title":"Adopt Moon-Lander as the application framework for the CLI and Workbench","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99","title":"Adopt Moon-Lander as the application framework for the CLI and Workbench","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.5.99.1","title":"Publish the Moon-Lander framework modules on mooncakes.io","status":"closed","priority":2}
-{"id":"morphir-ukvn.5.99.2","title":"Add Moon-Lander dependencies and record the adoption","status":"open","priority":2}
-{"id":"morphir-ukvn.5.99.3","title":"Load configuration through Moon-Lander","status":"open","priority":2}
-{"id":"morphir-ukvn.5.99.4","title":"Add leveled diagnostic logging","status":"open","priority":2}
-{"id":"morphir-ukvn.5.99.5","title":"Dispatch commands and Workbench operations through the mediator","status":"open","priority":2}
-{"id":"morphir-ukvn.5.99.6","title":"Run the CLI through the Moon-Lander host","status":"open","priority":2}
-{"id":"morphir-ukvn.5.99.7","title":"Host the desktop Workbench services","status":"open","priority":2}
-{"id":"morphir-ukvn.5.99.8","title":"Import and export worksheets as notebooks","status":"open","priority":2}
-{"id":"morphir-ukvn.5.99.9","title":"Integration checks across hosts","status":"open","priority":2}
+{"id":"morphir-ukvn.5.99.2","title":"Add Moon-Lander dependencies and record the adoption","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.99.3","title":"Load configuration through Moon-Lander","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.99.4","title":"Add leveled diagnostic logging","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.99.5","title":"Dispatch commands and Workbench operations through the mediator","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.99.6","title":"Run the CLI through the Moon-Lander host","status":"in_progress","priority":2}
+{"id":"morphir-ukvn.5.99.7","title":"Host the desktop Workbench services","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.99.8","title":"Import and export worksheets as notebooks","status":"closed","priority":2}
+{"id":"morphir-ukvn.5.99.9","title":"Integration checks across hosts","status":"in_progress","priority":2}
 {"id":"morphir-ukvn.6","title":"Support entry-root reachability and Morphir tree-shaking","status":"open","priority":3}
 {"id":"morphir-ukvn.7","title":"Conceptual models and executable specifications","status":"open","priority":1}
 {"id":"morphir-ukvn.7.1","title":"Draft and review the conceptual model and executable specification design","status":"in_progress","priority":1}
