@@ -59,7 +59,7 @@ export function exerciseScaffolding(
   for (const [filename, content] of [
     ['morphir.json', '{workspace:{members:["existing"]}}'],
     ['morphir.yaml', 'workspace:\n  members: [existing]\n'],
-  ]) {
+  ] as const) {
     const folder = join(directory, `scaffold-${filename}`);
     mkdirSync(join(folder, 'existing'), {recursive: true});
     writeFileSync(join(folder, filename), content);
