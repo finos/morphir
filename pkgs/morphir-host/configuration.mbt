@@ -89,7 +89,9 @@ fn read_configuration_requests(
           continue
         }
         let kind = @platform.kind(native)
-        if kind == 0 {
+        // A file or a link cannot contain automatically discovered children.
+        // Explicit files still pass through the regular-file ReadFile boundary.
+        if kind == 0 || kind == 1 || kind == 3 {
           tree = tree.with_missing(path)
           continue
         }
