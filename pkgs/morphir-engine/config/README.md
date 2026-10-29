@@ -19,3 +19,14 @@ Run `moon test pkgs/morphir-engine/config pkgs/morphir-engine/workspace --target
 The workspace suite also compares every effective leaf and origin from the production conventions adapter
 with the former loader. The former parser and merge live only in `workspace/old_loader_test.mbt`; production
 configuration delegates to Moon-Lander. No discovery algorithm is implemented by the oracle.
+
+The JSON corpus freezes all 23 tracked `morphir.json` fixtures, including Elm
+conformance projects and the Workbench Rentals import. A test-only copy of the
+former legacy field mapping compares project values, legacy pipeline defaults,
+winning origins and unsupported-field warnings with production discovery. The CLI
+guard checks fixture membership, LF-normalized bytes, hashes and embedded data for
+both corpora. Regenerate JSON after updating its manifest with:
+
+```sh
+moon tool embed --text --name json_corpus_json --input tests/configuration/json-corpus.json --output pkgs/morphir-engine/workspace/json_corpus_generated_test.mbt
+```

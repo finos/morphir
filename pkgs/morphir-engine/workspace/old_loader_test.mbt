@@ -148,3 +148,84 @@ fn OldDocument::json(self : OldDocument, path : String) -> Json? raise {
     Some(value) => Some(old_toml_json(value, path))
   }
 }
+
+///|
+/// Frozen legacy field mapping from db20f41, independent of the adopted manifest parser.
+fn old_legacy(
+  tree : @workspace.Tree,
+  root : String,
+  warnings : Array[String],
+) -> (@config.Document, @config.Document) raise {
+  let path = @workspace.join(root, "morphir.json")
+  guard @json.parse(tree.files[path]) is Object(fields) else {
+    raise @config.Invalid("Expected project manifest object: " + path)
+  }
+  let fail = fn(message : String) -> @config.Invalid {
+    @config.Invalid("morphir.json " + message + ": " + path)
+  }
+  let name = match fields.get("name") {
+    Some(String(text)) => text
+    None => "user"
+    Some(_) => raise fail("name must be a string")
+  }
+  ignore(
+    @ids.SourcePackageName::parse(name) catch {
+      @config.Invalid(message) => raise fail("name: " + message)
+    },
+  )
+  let source_directory = match fields.get("sourceDirectory") {
+    Some(String(text)) => text
+    None => "src"
+    Some(_) => raise fail("sourceDirectory must be a string")
+  }
+  guard fields.get("exposedModules") is Some(Array(items)) else {
+    raise fail("exposedModules must be a list of module names")
+  }
+  let exposed : Array[Json] = []
+  for item in items {
+    guard item is String(text) else {
+      raise fail("exposedModules must be a list of module names")
+    }
+    ignore(
+      @ids.SourceModuleName::parse(text) catch {
+        @config.Invalid(message) => raise fail("exposedModules: " + message)
+      },
+    )
+    exposed.push(Json::string(text))
+  }
+  for key in ["dependencies", "localDependencies", "decorations"] {
+    let present = match fields.get(key) {
+      None | Some(Null) => false
+      Some(Array(values)) => !values.is_empty()
+      Some(Object(values)) => !values.is_empty()
+      Some(_) => true
+    }
+    if present {
+      warnings.push(
+        "Ignoring morphir.json " + key + " (not supported): " + path,
+      )
+    }
+  }
+  let primary = @config.from_json(
+    {
+      "project": {
+        "name": Json::string(name),
+        "source_directory": Json::string(source_directory),
+        "exposed_modules": Json::array(exposed),
+      },
+      "frontend": { "language": "elm" },
+    },
+    origin=path,
+  )
+  // The pipeline settings are defaults only: system, global and workspace configuration may replace them.
+  let defaults = @config.from_json(
+    {
+      "pipeline": {
+        "backend": "checkpoint",
+        "checkpoint_format": "morphir-json",
+      },
+    },
+    origin=path,
+  )
+  (defaults, primary)
+}

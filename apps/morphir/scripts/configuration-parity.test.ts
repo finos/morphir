@@ -29,6 +29,11 @@ for (const newline of ['\n', '\r\n']) {
       execFileSync('moon', ['tool', 'embed', '--text', '--name', 'toml_corpus_json', '--input', input, '--output', generated], {cwd: workspace});
       const embedded = readFileSync(join(workspace, generated), 'utf8');
       put(generated, embedded);
+      const jsonPath = 'tests/fixtures/morphir.json';
+      const jsonText = '{"name":"Example","exposedModules":[]}\n';
+      put(jsonPath, jsonText);
+      put('tests/configuration/json-corpus.json', JSON.stringify([{path: jsonPath, text: jsonText, sha256: createHash('sha256').update(jsonText).digest('hex')}]) + '\n');
+      execFileSync('moon', ['tool', 'embed', '--text', '--name', 'json_corpus_json', '--input', 'tests/configuration/json-corpus.json', '--output', 'pkgs/morphir-engine/workspace/json_corpus_generated_test.mbt'], {cwd: workspace});
       git(['add', '.']);
       verifyConfigurationCorpus(workspace);
       put(path, source.replace('Example', 'Changed'));
@@ -37,6 +42,9 @@ for (const newline of ['\n', '\r\n']) {
       put(generated, embedded + '// stale generated data\n');
       assert.throws(() => verifyConfigurationCorpus(workspace), /Regenerate the embedded configuration corpus/);
       put(generated, embedded);
+      put(jsonPath, jsonText.replace('Example', 'Changed'));
+      assert.throws(() => verifyConfigurationCorpus(workspace), /parity snapshot is stale/);
+      put(jsonPath, jsonText);
       put('tests/fixtures/morphir.extra.toml', source);
       git(['add', '.']);
       assert.throws(() => verifyConfigurationCorpus(workspace), /Every tracked morphir.*fixture belongs to the parity corpus/);

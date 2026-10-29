@@ -1,0 +1,117 @@
+[
+  {
+    "path": "apps/morphir-workbench/scripts/fixtures/folder-import/rentals/morphir.json",
+    "text": "{\n    \"name\": \"Morphir.Example.App\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Rentals\"\n    ]\n}\n",
+    "sha256": "a7e5b0cb739f77bd3a0c6e31f1b4f6d8be5773d9199d65d3250709778081fde9"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/custom-types/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Custom\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Shapes\"\n    ]\n}\n",
+    "sha256": "f41d0f4feec656466c6563bd4f6da618f989c5e01e141dc953b4437dbfb005ea"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-attribute-model/morphir.json",
+    "text": "{\n    \"name\": \"Morphir.Attribute.Model\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"JsonSchema\",\n        \"Sensitivity\"\n    ]\n}\n",
+    "sha256": "c04a1bd2e2fcb460e5db99c4e828593e85c8d815addff8452a19cff178391554"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-business-terms/morphir.json",
+    "text": "{\n    \"name\": \"Morphir.Remote.App\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"BusinessTerms\"\n    ]\n}\n",
+    "sha256": "c38c3d63f563b7ac163cee24cd33af15bae54a33c62be4429777c00e122620a4"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-decoration-model/morphir.json",
+    "text": "{\n    \"name\": \"Morphir.Decoration.Model\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Composites\",\n        \"Database\",\n        \"JsonSchema\",\n        \"NumberConstraints\",\n        \"PrivacyControl\",\n        \"StringConstraints\"\n    ]\n}\n",
+    "sha256": "d346ab3c1aa7be9be367ad81a9d30e519050abb4d74516ba9ee7ec050f67627b"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-json-schema/morphir.json",
+    "text": "{\n    \"name\": \"TestModel\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"AdvancedTypes\",\n        \"BasicTypes\",\n        \"CollectionTypes\",\n        \"CustomTypes\",\n        \"OptionalTypes\",\n        \"RecordTypes\",\n        \"ResultTypes\",\n        \"TupleTypes\"\n    ]\n}\n",
+    "sha256": "e261944b9814eba03b641ef068623f61df427385ab757bbf26b1a403a2e044b3"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-reference-model/morphir.json",
+    "text": "{\n    \"name\": \"Morphir.Reference.Model\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"BooksAndRecords\",\n        \"BranchCoverage\",\n        \"Formulas\",\n        \"Insight.UseCase1\",\n        \"Insight.UseCase2\",\n        \"Issues.Common\",\n        \"Issues.DecisionTables\",\n        \"Issues.Issue210\",\n        \"Issues.Issue227\",\n        \"Issues.Issue273\",\n        \"Issues.Issue330\",\n        \"Issues.Issue331\",\n        \"Issues.Issue333\",\n        \"Issues.Issue349\",\n        \"Issues.Issue350\",\n        \"Issues.Issue364\",\n        \"Issues.Issue401\",\n        \"Issues.Issue407\",\n        \"Issues.Issue409\",\n        \"Issues.Issue410\",\n        \"Issues.Issue432\",\n        \"Issues.Issue448\",\n        \"Issues.Issue450\",\n        \"Issues.Issue493\",\n        \"Issues.Issue571\",\n        \"Issues.Issue600\",\n        \"Issues.Issue889\",\n        \"Issues.Issue959\",\n        \"Issues.Issue962\",\n        \"Issues.Issue969\",\n        \"Issues.PatternModel.BasicEnum\",\n        \"Issues.PatternModel.BasicRule\",\n        \"Issues.PatternModel.OtherBasicEnum\",\n        \"Issues.RecordUpdateVariableLookup\",\n        \"Issues.ResolveIssue1\",\n        \"Issues.UIDependency\",\n        \"Presentations.UKFintechMeetup\",\n        \"Relational\",\n        \"SDK.Dict\",\n        \"SDK.LocalDate\",\n        \"SDK.Result\",\n        \"SDK.String\",\n        \"SDK.Tuple\",\n        \"SDK.UUID\",\n        \"TestModel.LooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongnameTestModelWordsAsdTestWord\",\n        \"TestModel.Testing\",\n        \"TypeAscription\",\n        \"Types\",\n        \"ValueEditors\",\n        \"Values\"\n    ]\n}\n",
+    "sha256": "5fc983bc851b3324fb043410323161418a3ef9048b2c2f022589cde08c9cd76a"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-rentals/morphir.json",
+    "text": "{\n    \"name\": \"Morphir.Example.App\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Rentals\"\n    ]\n}\n",
+    "sha256": "a7e5b0cb739f77bd3a0c6e31f1b4f6d8be5773d9199d65d3250709778081fde9"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-snowpark/morphir.json",
+    "text": "{\n    \"name\": \"CompanyAssets\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"DataDefinition.Assets\",\n        \"DataDefinition.Types\",\n        \"DataDefinition.Vendors\",\n        \"Rules.DepreciationRules\"\n    ]\n}\n",
+    "sha256": "481960fdb09c38df2282297a8bd18ce103febf077500b95e9a7d1dc9a05badf7"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-spark/morphir.json",
+    "text": "{\n    \"name\": \"SparkTests\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"AggregationTests\",\n        \"AntiqueRulesTests\",\n        \"DataDefinition.Action\",\n        \"DataDefinition.Field.Age\",\n        \"DataDefinition.Field.Amount\",\n        \"DataDefinition.Field.Category\",\n        \"DataDefinition.Field.Date\",\n        \"DataDefinition.Field.Name\",\n        \"DataDefinition.Field.Price\",\n        \"DataDefinition.Field.Product\",\n        \"DataDefinition.Field.Report\",\n        \"DataDefinition.Field.SubProduct\",\n        \"DataDefinition.Persistence.Expenditure.Bills\",\n        \"DataDefinition.Persistence.Expenditure.Loans\",\n        \"DataDefinition.Persistence.Income.AntiqueShop\",\n        \"DataDefinition.Persistence.Income.ElectronicShop\",\n        \"DataDefinition.Persistence.Income.GroceryShop\",\n        \"FunctionTests\",\n        \"ListMemberTests\",\n        \"ReturnTypeTests\",\n        \"Rules.Income.Antique\",\n        \"Rules.Rules\",\n        \"TypeTests\",\n        \"Types\"\n    ]\n}\n",
+    "sha256": "a3add7524152ba4610b6dc7bb94ad25f39b1787e967ad25187a8945eb52f1f4e"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/elm-typespec/morphir.json",
+    "text": "{\n    \"name\": \"TestModel\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"AdvancedTypes\",\n        \"BasicTypes\",\n        \"CollectionTypes\",\n        \"CompositeTypes\",\n        \"OptionalTypes\",\n        \"UnionTypes\"\n    ]\n}\n",
+    "sha256": "6a6e410c44c771f1c21534d01a1418eb3e1588bd310350e1079c8907e15cb025"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/examples-sample/morphir.json",
+    "text": "{\n    \"name\": \"Morphir.Sample\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Apps.BooksAndRecords.Deal\",\n        \"Apps.Shared.Client\",\n        \"Apps.Shared.Market\",\n        \"Apps.Shared.Price\",\n        \"Apps.Shared.Product\",\n        \"Apps.Shared.Quantity\",\n        \"Apps.Shared.Rate\",\n        \"Apps.Trader.Logic\",\n        \"Reg.Country\",\n        \"Reg.Currency\",\n        \"Reg.LCR.Basics\",\n        \"Reg.LCR.CentralBank\",\n        \"Reg.LCR.Counterparty\",\n        \"Reg.LCR.FedCode\",\n        \"Reg.LCR.FedCodeRules\",\n        \"Reg.LCR.Flows\",\n        \"Reg.LCR.Inflows\",\n        \"Reg.LCR.MaturityBucket\",\n        \"Reg.LCR.Product\",\n        \"Reg.LCR.Rules\",\n        \"Rules.Direct\",\n        \"Rules.RuleSet\"\n    ]\n}\n",
+    "sha256": "f67418717d8cbc8350ed910628ec926422763f17984a8ff9de1f0e69e2bee207"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/examples-tutorial/morphir.json",
+    "text": "{\n    \"name\": \"Morphir.Example.App\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"App\",\n        \"Analytics\",\n        \"Forecast\",\n        \"Rentals\",\n        \"Winds\"\n    ]\n}\n",
+    "sha256": "c2f0026b7043e2542773b285077cd0dff545620d073b6b664d274427510acef0"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/lambdas/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Lambdas\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Fns\"\n    ]\n}\n",
+    "sha256": "5a2b6cd7e2d0cc90fdeb593a6ebace9a9d5cf14a95ad35cb867a5039e10ba078"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/lets/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Lets\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Blocks\"\n    ]\n}\n",
+    "sha256": "19e2e02b8f55b341f8c4e90763580d7a9a943272c8d565ddfc0eb89609977bad"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/modules/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Modules\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Api\"\n    ]\n}\n",
+    "sha256": "cb8a08615fd7b805bba8745e5e0d02f401cb28a15cbd3eb47dda734c9048af82"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/operators/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Operators\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Ops\"\n    ]\n}\n",
+    "sha256": "605e6f4ced637015fd9f09e1762a084cdbcae76896892cfcd1762187143fdb35"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/patterns/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Patterns\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Cases\"\n    ]\n}\n",
+    "sha256": "49b265ca6976886e81a5b8af8920575ba620601de8446d7d9037263c355a2d29"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/records/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Records\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Points\"\n    ]\n}\n",
+    "sha256": "4a5f1f7b6846d24009cb99267864345a3f05ea6c5f7d4dad0d2417eff9fc801f"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/sdk-modules/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Sdk\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Trades\"\n    ]\n}\n",
+    "sha256": "330d3b539a532cc0b352896ab7fc35dbdf785f836a4afe63d7dc1a761d96f6e6"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/signatures/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Signatures\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Functions\",\n        \"Constrained\"\n    ]\n}\n",
+    "sha256": "5bd4e3b51b3e6b593bf3c17118694fdedd0c632301690d974f3a1a6181c10f44"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/types-and-aliases/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Types\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Aliases\",\n        \"DocNoImports\",\n        \"DocDetached\",\n        \"DocBetween\",\n        \"DocTight\",\n        \"DocBlank\"\n    ]\n}\n",
+    "sha256": "ebfe5bd54b7c60f58810c333fd16c367ccfe2abfa2ec26101b677d351b5ea84c"
+  },
+  {
+    "path": "pkgs/morphir-elm/conformance/projects/unannotated/morphir.json",
+    "text": "{\n    \"name\": \"Parity.Unannotated\",\n    \"sourceDirectory\": \"src\",\n    \"exposedModules\": [\n        \"Free\"\n    ]\n}\n",
+    "sha256": "6b0e2b4b35fe2ed74075ba84a9c9ddcb96de72bb881cbf59edb001fc5261e575"
+  }
+]

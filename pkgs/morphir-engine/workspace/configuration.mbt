@@ -519,9 +519,12 @@ fn resolve_configuration(
     @lander.ConfigSource::defaults_value(defaults, name="defaults", priority=0),
   ]
   let own = if member_path is Some(_) { member_files } else { primaries }
-  if own.any(file => {
+  if own
+    .iter()
+    .find_first(file => {
       file.role is Workspace && parsers.manifests.contains(file.path)
-    }) {
+    })
+    is Some(manifest) {
     sources.push(
       @lander.ConfigSource::defaults(
         {
@@ -530,7 +533,7 @@ fn resolve_configuration(
             "checkpoint_format": "morphir-json",
           },
         },
-        name="manifest defaults",
+        name=manifest.path,
         priority=1,
       ),
     )

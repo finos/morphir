@@ -29,40 +29,40 @@
 - [x] 3.1 Build a parity corpus from every `morphir*.toml` in tests and fixtures, and a test that compares effective
   values and origins from the old loader and the Moon-Lander loader on all four targets; verify it runs and reports
   each difference
-- [ ] 3.2 Load through `moon-lander-config` conventions for `morphir` (CFG-1), reading `.yaml` and `.yml` primary
+- [x] 3.2 Load through `moon-lander-config` conventions for `morphir` (CFG-1), reading `.yaml` and `.yml` primary
   and user files as a YAML layer below TOML (CFG-3, CFG-4), with the `config.yaml_beside_toml` warning and the
   host-only suppression list (`--suppress-warning`, `MORPHIR_DIAGNOSTICS__SUPPRESS`, `diagnostics.suppress`), keeping the `Unsupported configuration format` error for other extensions and
   the `Ambiguous configuration` error; verify the parity corpus passes for TOML files, and the precedence, discovery,
   ambiguity, YAML, YAML-beside-TOML warning, suppression, format and environment scenarios of the `application/configuration` spec pass as tests
-- [ ] 3.3 Discover `morphir-workspace.json`, `morphir.json` and `morphir.json5` as a JSON layer below the YAML layer,
+- [x] 3.3 Discover `morphir-workspace.json`, `morphir.json` and `morphir.json5` as a JSON layer below the YAML layer,
   with ambiguity checked per layer, the morphir-elm field mapping and the `config.json_keys_below_toml` warning
   (CFG-4); link the TOML, YAML and JSON/JSON5 parsers and parse both `.json` and `.json5` as JSON5 (CFG-3); verify the
   format-layer, manifest-field, `morphir-workspace.json`, JSON5, JSON5-syntax-in-`.json` and invalid-JSON scenarios of
   the `application/configuration` spec as tests, and that every `morphir.json` fixture gives the same project values
   as the current `legacy` reader
-- [ ] 3.4 Add `--config <path>` for TOML, YAML, JSON and JSON5 files as a layer above the TOML layer, and rename the Scheme
+- [x] 3.4 Add `--config <path>` for TOML, YAML, JSON and JSON5 files as a layer above the TOML layer, and rename the Scheme
   script option to `--config-script` with a usage error for a `.scm` path given to `--config`; update the uses in
   `apps/morphir/main.mbt`, `apps/morphir/arguments_wbtest.mbt`, `apps/morphir/scripts/test.ts` and
   `apps/morphir/README.md`; verify the selected-file and script-option scenarios with argv tests
 - [ ] 3.5 Keep `workspace init`, `project add` and `project remove` writing TOML only (CFG-5): create `morphir.toml`
   beside JSON or YAML primary files with the full value of each written key, and extend `ensure_new_config` to every
   primary name; verify the written-format and JSON/YAML-workspace scenarios with scaffold tests and argv tests
-- [ ] 3.6 Rebuild the workspace member walk in `pkgs/morphir-engine/workspace` on Moon-Lander values (CFG-2), with
+- [x] 3.6 Rebuild the workspace member walk in `pkgs/morphir-engine/workspace` on Moon-Lander values (CFG-2), with
   the same format layers, ambiguity rule and warnings for each member; verify the member-format scenarios and
   the existing workspace and member tests pass unchanged
 - [ ] 3.7 Add the explicit discovery boundary and isolation to the CLI and the itest driver (`morphir-o6vm.10`);
   verify the isolated-discovery scenarios as tests, including a project under a temporary root with a parent
   `morphir.toml`
-- [ ] 3.8 Use the same loader in the Workbench settings (`apps/morphir-workbench/workspace-projects/settings.mbt`) and
+- [x] 3.8 Use the same loader in the Workbench settings (`apps/morphir-workbench/workspace-projects/settings.mbt`) and
   the engine protocol overlay; verify the Workbench settings tests and the native/wasm-gc agreement scenario
 - [ ] 3.9 Remove the old load, merge and environment code from `pkgs/morphir-engine/config` and the discovery paths
   from `pkgs/morphir-host/configuration.mbt`; verify the full gate and record the binary size of each CLI artifact
   before and after in the pull request
-- [ ] 3.10 Update the configuration section of `apps/morphir/README.md` with JSON configuration, `--config`, the
+- [x] 3.10 Update the configuration section of `apps/morphir/README.md` with JSON configuration, `--config`, the
   breaking `--config-script` rename and how to keep the old result for a workspace with both files; verify every
   documented command runs as written
 
-- [ ] 3.11 Enable configuration profiles with `--profiles`, `--no-profiles`, `MORPHIR_PROFILES`, base controls and
+- [x] 3.11 Enable configuration profiles with `--profiles`, `--no-profiles`, `MORPHIR_PROFILES`, base controls and
   layered profile files; preserve frontend `--profile` and reserved control origins, including a selected file that
   is already a discovered base; verify all profile scenarios on four targets and in CLI/Workbench tests, and document
   activation, precedence, JSON help/errors, groups, isolation and disabled processing with commands that run as written

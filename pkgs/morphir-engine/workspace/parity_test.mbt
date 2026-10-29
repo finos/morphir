@@ -74,6 +74,35 @@ fn parity_differences(
 }
 
 ///|
+test "published manifest loading preserves every tracked legacy fixture project value" {
+  guard @json.parse(json_corpus_json) is Array(rows) else {
+    fail("JSON corpus")
+  }
+  assert_eq(rows.length(), 23)
+  for row in rows {
+    guard row is Object(fields) &&
+      fields.get("path") is Some(String(path)) &&
+      fields.get("text") is Some(String(text)) else {
+      fail("JSON corpus entry")
+    }
+    let fixture = tree([("morphir.json", text)])
+    let warnings = []
+    let (defaults, expected) = old_legacy(fixture, "", warnings)
+    let adopted = @workspace.discover(fixture)
+    let actual = adopted.projects[0].document
+    for (key, origin) in expected.provenance {
+      assert_eq(actual.json(key), expected.json(key), msg=path + ": " + key)
+      assert_eq(actual.provenance.get(key), Some(origin), msg=path + ": " + key)
+    }
+    for (key, origin) in defaults.provenance {
+      assert_eq(actual.json(key), defaults.json(key), msg=path + ": " + key)
+      assert_eq(actual.provenance.get(key), Some(origin), msg=path + ": " + key)
+    }
+    assert_eq(adopted.warnings, warnings, msg=path)
+  }
+}
+
+///|
 test "published TOML loading matches all tracked configuration fixture leaves and origins" {
   let corpus = toml_corpus()
   assert_eq(corpus.length(), 3)

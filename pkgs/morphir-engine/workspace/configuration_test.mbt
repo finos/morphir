@@ -317,6 +317,73 @@ test "empty profile environment disables includes and missing marker files stay 
 }
 
 ///|
+test "profile controls retain format origins and reject invalid literal controls and graph bounds" {
+  let workspace = @workspace.discover(
+    tree([
+      ("morphir.json", "{profiles:{default:['old']}}"),
+      ("morphir.toml", "profiles.default=['metrics']"),
+    ]),
+  )
+  guard workspace.document.framework().profiles() is Resolved(resolution) else {
+    fail("resolution")
+  }
+  assert_eq(resolution.active().names().map(name => name.to_string()), [
+    "metrics",
+  ])
+  assert_true(
+    resolution
+    .controls()
+    .any(origin => {
+      match origin {
+        Control(source, _) =>
+          source.location == Some("/__morphir_workspace/morphir.toml")
+        _ => false
+      }
+    }),
+  )
+  for
+    control in [
+      "profiles.default=42", "profiles.unknown=[]", "profiles.active={env='ACTIVE'}",
+    ] {
+    let message = failure([("morphir.toml", control)])
+    assert_true(
+      message != "accepted" && message.contains("morphir.toml"),
+      msg=message,
+    )
+  }
+  let names = Array::makei(1025, index => "p" + index.to_string())
+  let excessive = failure([
+    ("morphir.toml", "profiles.active=" + Json(names).stringify()),
+  ])
+  assert_true(
+    excessive != "accepted" && excessive.contains("morphir.toml"),
+    msg=excessive,
+  )
+}
+
+///|
+test "no implicit profile requests or inactive file parsing occurs" {
+  let workspace = @workspace.discover(
+    tree([
+      ("morphir.toml", "project.name='Example'"),
+      ("morphir.profile.metrics.toml", "not valid TOML!"),
+    ]),
+  )
+  guard workspace.document.framework().profiles() is Resolved(resolution) else {
+    fail("resolution")
+  }
+  assert_true(resolution.active().names().is_empty())
+  assert_true(
+    !workspace.document
+    .framework()
+    .reports()
+    .any(report => {
+      report.path == Some("/__morphir_workspace/morphir.profile.metrics.toml")
+    }),
+  )
+}
+
+///|
 test "machine document controls cannot acquire base authority through a protocol mount" {
   let message = try {
     ignore(
