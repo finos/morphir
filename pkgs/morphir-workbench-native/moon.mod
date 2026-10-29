@@ -13,13 +13,13 @@ description = "Owned native workers for the Morphir Workbench"
 supported_targets = "native"
 
 import {
-  "moonrockz/moon-lander-core@0.7.2",
-  "moonrockz/moon-lander-logging@0.7.2",
-  "moonrockz/moon-lander-config@0.7.2",
-  "moonrockz/moon-lander-mediator@0.7.2",
-  "moonrockz/moon-lander-logging-hosting-async@0.7.2",
-  "moonrockz/moon-lander-hosting@0.7.2",
-  "moonrockz/moon-lander@0.7.2",
+  "moonrockz/moon-lander-core@0.7.3",
+  "moonrockz/moon-lander-logging@0.7.3",
+  "moonrockz/moon-lander-config@0.7.3",
+  "moonrockz/moon-lander-mediator@0.7.3",
+  "moonrockz/moon-lander-logging-hosting-async@0.7.3",
+  "moonrockz/moon-lander-hosting@0.7.3",
+  "moonrockz/moon-lander@0.7.3",
   "finos/morphir-engine@0.1.0",
   "finos/morphir-workbench-native-session@0.1.0",
   "finos/morphir-workbench@0.1.0",

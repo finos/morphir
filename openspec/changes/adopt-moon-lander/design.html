@@ -58,16 +58,19 @@ oversight. <a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.6.0
 all seven framework modules and <code>moonrockz/notebooks</code> on 2026-10-28. Each framework module resolved with
 <code>moon add moonrockz/&lt;module&gt;@0.6.0</code> in an independent scratch module outside this checkout.
 The initial dependency phase used <code>0.6.0</code>. The adoption now pins every Moon-Lander module and notebooks to
-<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.7.2">published <code>0.7.2</code></a>, from commit
-<code>2a6f34cfe3da9e574ccf0106bcd6ed0a6433fb1f</code>. Its Release workflow
-<a href="https://github.com/moonrockz/moon-lander/actions/runs/40810716958">40810716958</a> succeeded. Independent
+<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.7.3">published <code>0.7.3</code></a>, from commit
+<code>10402785e4462c2fdbd1a8f500a063f8076e353a</code>. Its Release workflow
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/40826473564">40826473564</a> succeeded. Independent
 public archive hashes match the approved Release artifact, and each required exact module resolves with
 <code>moon add</code> in a scratch module outside this checkout. This release supplies layered discovery, profile
 authority, host controls, diagnostic object properties and lossless DIB support. The patch also exposes the real
 logging session to hosted cleanup and forwards a parent-owned signal probe through the logging bridge.
 It also provides four-target async mediator composition and foreign-callback-safe <code>stop_requested</code>
-methods on the same lifetime. Main CI <a href="https://github.com/moonrockz/moon-lander/actions/runs/40810716973">40810716973</a>
-completed all 13 jobs, and the actual Release validation and public archive gates passed.</p>
+methods on the same lifetime. The public completion callback receives the real outcome and selected exit code
+after diagnostic draining and finalization, so Morphir can report cancellation even before the first service hook.
+Main CI <a href="https://github.com/moonrockz/moon-lander/actions/runs/40826473568">40826473568</a>
+completed all 13 jobs. All nine archive hashes match actual Release artifact <code>12877891039</code>, and 42
+independent cold-cache consumers passed, including native/JS pre-first-hook cancellation at 130 and 143.</p>
 
 <h2 id="goals">Goals and non-goals</h2>
 <p><strong>Goals:</strong> every capability in the table above comes from one Moon-Lander module in the CLI and in
