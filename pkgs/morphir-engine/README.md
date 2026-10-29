@@ -588,3 +588,14 @@ snapshot-bound receipts around validated engine plans. It captures rich inputs,
 allows one execution claim, acknowledges cooperative cancellation and validates
 terminal outputs against the retained public declarations. Authenticated host
 transport and shared Workbench UI adoption are separate integrations.
+
+
+### Cancellation before provider discovery
+
+A host can observe cancellation after validating a plan but before discovering
+executable capabilities. `execution.cancelled_report(plan, ...)` returns the
+ordinary cancellation report without a provider or acquired storage.
+`conformance.cancelled_report(plan, observer?)` also retains every comparison
+and evaluator coverage row. Both paths validate the frozen plan and preserve
+existing result fields and failure identities. They grant no execution authority
+and run no live evaluator.

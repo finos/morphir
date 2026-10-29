@@ -266,6 +266,11 @@ pub fn process_execution(
         )
         let path = directory + "/request.json"
         @platform.write(path, Json::object(fields).stringify())
+        let delivery = @platform.CooperativeProcessScope::install(() => {
+          cancel_file != "" &&
+          (@platform.kind(cancel_file) catch { _ => 1 }) != 0
+        })
+        defer delivery.close()
         let result = @platform.process(
           program,
           [helper, path],

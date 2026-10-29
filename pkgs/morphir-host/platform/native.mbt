@@ -148,7 +148,7 @@ extern "C" fn process_c(
   cwd : Bytes,
   home : Bytes,
   timeout : Int32,
-  interrupted : FuncRef[() -> Bool],
+  interrupted : FuncRef[() -> Int32],
 ) -> Bytes = "morphir_host_process"
 
 ///|
@@ -167,7 +167,7 @@ pub fn process(
     cstring(cwd),
     cstring(home),
     timeout,
-    fn() { interruption_requested() },
+    fn() { process_stop_code() },
   )
   decode_process(data)
 }

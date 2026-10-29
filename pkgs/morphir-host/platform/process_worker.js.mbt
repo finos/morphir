@@ -10,7 +10,7 @@ extern "js" fn execute_js(
   cwd : String,
   home : String,
   timeout : Int32,
-  interrupted : () -> Bool,
+  interrupted : () -> Int32,
   started : (String) -> Unit,
 ) -> String =
   #| (spawn,program,args,cwd,home,timeout,interrupted,started) => {
@@ -25,7 +25,7 @@ extern "js" fn execute_js(
   #|     function append(data,isError){const offset=isError?capacity+diagnostics:output;const used=isError?diagnostics:output;if(data.length>capacity-used){error='Process output exceeds 16 MiB';stop('limit');return;}bytes.set(data,offset);if(isError)diagnostics+=data.length;else output+=data.length;}
   #|     function signal(value,group){if(!child?.pid)return;try{if(process.platform==='win32'){spawnSync((process.env.SystemRoot||'C:\\Windows')+'\\System32\\taskkill.exe',['/PID',String(child.pid),'/T','/F'],{timeout:5000,windowsHide:true,stdio:'ignore'});}else if(group){try{process.kill(-child.pid,value);}catch{}child.kill(value);}else child.kill(value);}catch{}}
   #|     function finish(code){if(done)return;done=true;clearInterval(poll);clearTimeout(timer);clearTimeout(grace);clearTimeout(kill);if(error)append(Buffer.from(error),true);Atomics.store(state,1,code);Atomics.store(state,2,output);Atomics.store(state,3,diagnostics);Atomics.store(state,0,1);Atomics.notify(state,0);}
-  #|     function stop(value){if(reason||done)return;reason=value;if(value==='cancel'&&process.platform!=='win32'){signal('SIGINT',false);grace=setTimeout(()=>{signal('SIGTERM',true);kill=setTimeout(()=>signal('SIGKILL',true),500);},5000);}else{signal('SIGTERM',true);kill=setTimeout(()=>signal('SIGKILL',true),500);}}
+  #|     function stop(value,delivery=1){if(reason||done)return;reason=value;if(value==='cancel'&&(delivery===2||process.platform!=='win32')){if(delivery!==2)signal('SIGINT',false);grace=setTimeout(()=>{signal('SIGTERM',true);kill=setTimeout(()=>signal('SIGKILL',true),500);},5000);}else{signal('SIGTERM',true);kill=setTimeout(()=>signal('SIGKILL',true),500);}}
   #|     try{
   #|       if(Atomics.load(state,5)){finish(-1);}else{
   #|         child=spawn(workerData.program,workerData.args,{cwd:workerData.cwd,env:workerData.env,detached:process.platform!=='win32',encoding:'buffer',stdio:['ignore','pipe','pipe'],windowsHide:true});
@@ -34,7 +34,7 @@ extern "js" fn execute_js(
   #|         child.once('error',cause=>{error=cause.message;});
   #|         child.once('close',code=>finish(reason==='timeout'?124:error?-1:code??-1));
   #|         timer=setTimeout(()=>stop('timeout'),workerData.timeout);
-  #|         poll=setInterval(()=>{if(Atomics.load(state,5))stop('cancel');},10);
+  #|         poll=setInterval(()=>{const delivery=Atomics.load(state,5);if(delivery)stop('cancel',delivery);},10);
   #|       }
   #|     }catch(cause){error=String(cause.message||cause);finish(-1);}
   #|   `;
@@ -45,7 +45,7 @@ extern "js" fn execute_js(
   #|     while(true){
   #|       if(!announced&&Atomics.load(state,4)>0){announced=true;started(program);}
   #|       if(Atomics.load(state,0)===1)break;
-  #|       if(interrupted()){Atomics.store(state,5,1);stoppedAt ||= performance.now();}
+  #|       const delivery=interrupted();if(delivery){Atomics.compareExchange(state,5,0,delivery);stoppedAt ||= performance.now();}
   #|       if(performance.now()-start>timeout+12000||(stoppedAt&&performance.now()-stoppedAt>12000)){
   #|         const pid=Atomics.load(state,4);if(pid>0){try{if(process.platform==='win32')spawn((process.env.SystemRoot||'C:\\Windows')+'\\System32\\taskkill.exe',['/PID',String(pid),'/T','/F'],{timeout:5000,windowsHide:true,stdio:'ignore'});else{try{process.kill(-pid,'SIGKILL');}catch{}process.kill(pid,'SIGKILL');}}catch{}}
   #|         return failed('Process bridge did not confirm child cleanup');

@@ -287,3 +287,10 @@ Configuration directory listings retain inaccessible entries as the framework's
 does not prevent discovery. If that entry is an actual configuration candidate,
 the loader requests its contents and the regular-file read boundary reports the
 failure; the candidate is never silently treated as absent.
+
+`platform.CooperativeProcessScope` lets a protocol helper that already receives
+the cancel file finish its own child cleanup. The process adapter still polls
+the run's single stop state. When the file is visible to the helper, it retains
+the existing five-second grace before escalation instead of killing the helper
+before it can confirm cleanup. Signal delivery without that cooperative scope
+keeps its existing behavior. Closing a scope restores the enclosing policy.

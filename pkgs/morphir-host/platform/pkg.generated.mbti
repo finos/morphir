@@ -88,6 +88,12 @@ pub(all) suberror IOError {
 pub(all) suberror Interrupted
 
 // Types and methods
+pub struct CooperativeProcessScope {
+  // private fields
+}
+pub fn CooperativeProcessScope::close(Self) -> Unit
+pub fn CooperativeProcessScope::install(() -> Bool) -> Self
+
 pub struct InterruptionScope {
   previous : (() -> Bool)?
   mut open : Bool

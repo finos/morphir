@@ -708,6 +708,10 @@ Wasm and Wasm GC use `run_embedded`. Command handlers retain their existing resu
 | 130 | SIGINT, cancel file or host cancellation |
 | 143 | SIGTERM |
 
+For `execute` and `verify`, CLI-owned cancellation also uses 130, including cancellation before capability
+discovery. Their existing reports retain cancelled terminals and failure details. An intrinsic child or protocol
+failure without a CLI stop remains exit 1; child status fields retain their original values.
+
 `--cancel-file PATH` requests a stop when that path exists. On native and JavaScript, the same lifetime reaches
 evaluation, bounded filesystem reads, stdin waits and owned child processes. The first signal requests
 cleanup. A second signal ends the process immediately with that signal's exit code. The JavaScript launcher

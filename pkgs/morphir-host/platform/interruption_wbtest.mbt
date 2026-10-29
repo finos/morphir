@@ -155,3 +155,47 @@ test "Node process bridge bounds captured output without truncating valid output
   assert_eq(fields.get("exitCode"), Some(Json(-1)))
   assert_true(message.contains("Process output exceeds 16 MiB"))
 }
+
+///|
+#cfg(any(target="js", target="native"))
+test "a cooperative helper receives its cancel file before signal escalation" {
+  if !process_supported() {
+    return
+  }
+  let root = temporary()
+  defer remove_dir(root)
+  let ready = root + "/ready"
+  let stop = root + "/stop"
+  defer remove_file(ready)
+  defer remove_file(stop)
+  let host = InterruptionScope::install(() => {
+    if (kind(ready) catch { _ => 0 }) == 1 {
+      write(stop, "stop") catch {
+        _ => ()
+      }
+      true
+    } else {
+      false
+    }
+  })
+  defer host.close()
+  let delivery = CooperativeProcessScope::install(() => {
+    (kind(stop) catch { _ => 0 }) == 1
+  })
+  defer delivery.close()
+  let result = process(
+    "node",
+    [
+      "-e", "const fs=require('fs');process.on('SIGINT',()=>process.exit(99));fs.writeFileSync(process.argv[1],'ready');setInterval(()=>{if(fs.existsSync(process.argv[2]))process.exit(7)},5)",
+      ready, stop,
+    ],
+    root,
+    "",
+    5000,
+  )
+  guard result is Object(fields) else { fail("process result") }
+  assert_eq(fields.get("exitCode"), Some(Json(7)))
+  delivery.close()
+  delivery.close()
+  assert_true(process_stop_delivery() is Signal)
+}

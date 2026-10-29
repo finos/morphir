@@ -217,6 +217,41 @@ pub fn run(
   observer~ : @observe.Observer = @observe.Observer::noop(),
   cancelled~ : () -> Bool = fn() { false },
 ) -> Report raise {
+  run_core(
+    plan,
+    provider.targets,
+    execution => {
+      @execution.run_report(execution, provider, observer~, cancelled~)
+    },
+    observer~,
+    cancelled~,
+  )
+}
+
+///|
+/// Preserve conformance rows and coverage when a host stops before acquiring
+/// its executable provider. No evaluator or provider receives authority.
+pub fn cancelled_report(
+  plan : Plan,
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+) -> Report raise {
+  run_core(
+    plan,
+    [plan.execution.target],
+    execution => @execution.cancelled_report(execution, observer~),
+    observer~,
+    cancelled=() => true,
+  )
+}
+
+///|
+fn run_core(
+  plan : Plan,
+  targets : Array[String],
+  execute : (@execution.Plan) -> @execution.Report raise,
+  observer~ : @observe.Observer = @observe.Observer::noop(),
+  cancelled~ : () -> Bool = fn() { false },
+) -> Report raise {
   let expectations = Expectations::from_ion(plan.expectations.to_ion())
   let source = @data.Registry::new().encode("ion-binary", plan.execution.unit)
   let unit = @data.Registry::new().decode("ion-binary", {
@@ -227,7 +262,7 @@ pub fn run(
     unit,
     expectations.suite(),
     target=plan.execution.target,
-    available_targets=provider.targets,
+    available_targets=targets,
   )
   if frozen.library.artifacts != plan.execution.library.artifacts ||
     frozen.driver != plan.execution.driver {
@@ -246,12 +281,7 @@ pub fn run(
   }
   let plan = prepare(frozen, expectations, lanes=plan.lanes)
   check()
-  let execution = @execution.run_report(
-    plan.execution,
-    provider,
-    observer~,
-    cancelled~,
-  )
+  let execution = execute(plan.execution)
   check()
   let rows = expectations.cases.map(c => {
     match execution.calls.filter(r => r.id == c.call.id).get(0) {

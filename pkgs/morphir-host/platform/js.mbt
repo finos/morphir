@@ -209,7 +209,7 @@ pub fn process(
       cwd,
       home,
       timeout,
-      interruption_requested,
+      process_stop_code,
       process_started,
     ),
   )

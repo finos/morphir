@@ -12,6 +12,8 @@ import {
 }
 
 // Values
+pub fn cancelled_report(Plan, evaluator? : Evaluator?, observer? : @observability.Observer, comparison? : @morphir-execution.ComparisonPolicy) -> Report raise
+
 pub fn matrix_successful(Array[String], Array[Report]) -> Bool
 
 pub fn plan(@data.IRUnit, @morphir-execution.Suite, target? : String, available_targets? : Array[String]) -> Plan raise
@@ -98,7 +100,7 @@ pub(all) struct Report {
 }
 pub fn Report::status(Self) -> String
 pub fn Report::successful(Self) -> Bool
-pub fn Report::to_ion(Self) -> @ion.IonValue raise
+pub fn Report::to_ion(Self) -> @ion.Ion raise
 pub fn Report::to_json(Self) -> Json
 
 pub struct SchemePlan {

@@ -296,10 +296,10 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
     }
     return 0
   }
-  let provider = if dry_run {
+  let provider = if @platform.interruption_requested() {
     None
   } else {
-    Some(
+    let resolved : Result[@execution.Provider, Error] = Ok(
       @host.process_execution(
         options.get("--node").unwrap_or("node"),
         options.get("--execution-helper").unwrap_or(""),
@@ -311,16 +311,31 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
         cancel_file=options.get("--cancel-file").unwrap_or(""),
         observer~,
       ),
-    )
+    ) catch {
+      error => Err(error)
+    }
+    match resolved {
+      Ok(provider) => Some(provider)
+      Err(error) =>
+        if @platform.interruption_requested() {
+          None
+        } else {
+          raise error
+        }
+    }
   }
   if conformance_plan is Some(prepared) {
-    let result = @conformance.run(prepared, provider.unwrap(), observer~, cancelled=fn() {
-      @platform.interruption_requested() ||
-      (match options.get("--cancel-file") {
-        Some(path) => (@platform.kind(path) catch { _ => 1 }) != 0
-        None => false
-      })
-    })
+    let result = match provider {
+      None => @conformance.cancelled_report(prepared, observer~)
+      Some(provider) =>
+        @conformance.run(prepared, provider, observer~, cancelled=fn() {
+          @platform.interruption_requested() ||
+          (match options.get("--cancel-file") {
+            Some(path) => (@platform.kind(path) catch { _ => 1 }) != 0
+            None => false
+          })
+        })
+    }
     flush_logs()
     if options.get("--receipt") is Some(path) {
       @platform.write_bytes(path, result.encode(format=receipt_format))
@@ -350,24 +365,38 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
       1
     }
   }
-  let result = @execution.run_report(
-    plan,
-    provider.unwrap(),
-    evaluator=if cli.command == "verify" {
-      Some(@execution.Evaluator::scheme())
-    } else {
-      None
-    },
-    observer~,
-    comparison~,
-    cancelled=fn() {
-      @platform.interruption_requested() ||
-      (match options.get("--cancel-file") {
-        Some(path) => (@platform.kind(path) catch { _ => 1 }) != 0
-        None => false
-      })
-    },
-  )
+  let result = match provider {
+    None =>
+      @execution.cancelled_report(
+        plan,
+        evaluator=if cli.command == "verify" {
+          Some(@execution.Evaluator::scheme())
+        } else {
+          None
+        },
+        observer~,
+        comparison~,
+      )
+    Some(provider) =>
+      @execution.run_report(
+        plan,
+        provider,
+        evaluator=if cli.command == "verify" {
+          Some(@execution.Evaluator::scheme())
+        } else {
+          None
+        },
+        observer~,
+        comparison~,
+        cancelled=fn() {
+          @platform.interruption_requested() ||
+          (match options.get("--cancel-file") {
+            Some(path) => (@platform.kind(path) catch { _ => 1 }) != 0
+            None => false
+          })
+        },
+      )
+  }
   flush_logs()
   if mode is Human {
     if result.failure is Some(failure) {
@@ -384,7 +413,11 @@ fn execution_command(cli : Cli, mode : OutputMode) -> Int32 raise {
   } else {
     emit_result(result.to_json(), mode)
   }
-  if result.successful() {
+  if result.failure is Some(failure) &&
+    failure.cancelled() &&
+    @platform.interruption_requested() {
+    cancellation_exit_code()
+  } else if result.successful() {
     0
   } else {
     1

@@ -194,11 +194,15 @@ moonbit_bytes_t morphir_host_process(const char *program, const char *packed,
     pid_t waited = waitpid(pid, &status, WNOHANG);
     if (waited == pid) break;
     if (waited < 0 && errno != EINTR) { status = 127 << 8; break; }
-    if (!interrupt_forwarded && interrupted()) {
-      // Forward only to this owned helper. Its protocol decides remote cancel.
-      kill(pid, SIGINT);
-      interrupt_forwarded = 1;
-      interrupt_deadline = elapsed + 5000;
+    if (!interrupt_forwarded) {
+      int delivery = interrupted();
+      if (delivery) {
+        // A cooperative helper already has its cancel file. Preserve the same
+        // five-second cleanup budget before escalating its owned process tree.
+        if (delivery == 1) kill(pid, SIGINT);
+        interrupt_forwarded = 1;
+        interrupt_deadline = elapsed + 5000;
+      }
     }
     struct stat out_stat, err_stat;
     if (!fstat(fileno(out), &out_stat) && !fstat(fileno(err), &err_stat) &&
