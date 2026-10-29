@@ -2,8 +2,9 @@
 package "finos/morphir-engine/config"
 
 import {
-  "moonbit-community/toml",
   "moonbitlang/core/debug",
+  "moonrockz/ion/ion",
+  "moonrockz/moon-lander-config",
 }
 
 // Values
@@ -11,9 +12,11 @@ pub fn empty() -> Document
 
 pub fn environment(Map[String, String]) -> Document raise
 
+pub fn from_framework(@moon-lander-config.Config) -> Document
+
 pub fn from_json(Json, origin? : String) -> Document raise
 
-pub fn merge(Document, Document) -> Document
+pub fn merge(Document, Document) -> Document raise
 
 pub fn parse(String, origin? : String) -> Document raise
 
@@ -24,18 +27,21 @@ pub(all) suberror Invalid {
 
 // Types and methods
 pub(all) struct Document {
-  value : @toml.TomlValue
   provenance : Map[String, String]
+  // private fields
 }
 pub fn Document::boolean(Self, String, Bool) -> Bool raise
-pub fn Document::encode(Self) -> String
-pub fn Document::get(Self, String) -> @toml.TomlValue?
+pub fn Document::encode(Self) -> String raise
+pub fn Document::framework(Self) -> @moon-lander-config.Config
+pub fn Document::get(Self, String) -> @ion.Ion?
 pub fn Document::json(Self, String) -> Json? raise
 pub fn Document::metadata_provider_request(Self) -> MetadataProviderRequest raise
-pub fn Document::shared(Self) -> Self
+pub fn Document::shared(Self) -> Self raise
+pub fn Document::sources(Self, @moon-lander-config.FileRole, Int32, String) -> Array[@moon-lander-config.ConfigSource] raise @moon-lander-config.ConfigError
 pub fn Document::strings(Self, String) -> Array[String] raise
 pub fn Document::text(Self, String, String) -> String raise
 pub fn Document::validate(Self) -> Unit raise
+pub fn Document::value(Self) -> @moon-lander-config.ConfigValue
 
 pub(all) struct MetadataPath {
   path : String
