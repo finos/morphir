@@ -85,9 +85,9 @@ hosts without process/clock support keep compilation available without default f
 ## WASM and WASM-GC
 
 ```sh
-mise exec -- moon build apps/morphir --target wasm --release
+mise exec -- moon build apps/morphir/embedded --target wasm --release
 node pkgs/morphir-host/runners/wasm.mjs \
-  _build/wasm/release/build/morphir/morphir/morphir.wasm run path/to/workspace --all
+  _build/wasm/release/build/morphir/morphir/embedded/embedded.wasm run path/to/workspace --all
 ```
 
 For WASM-GC, change both target/path occurrences from `wasm` to `wasm-gc`. WASI uses only Preview 1 imports and preopens the current directory; discovery cannot ascend outside that preopen. WASM-GC uses the documented `morphir_host_v1` embedding interface. See [host adapters](../../pkgs/morphir-host/README.md) for configuration mounts and runtime details.
@@ -1271,3 +1271,20 @@ original bytes with semantic conversion disabled, verifies the whole inventory,
 and publishes to the explicit destination only after acknowledged release.
 See [connected model originals](docs/connected-transfers.md#connected-model-originals)
 for source/project selection, commands, bounds and qualification scope.
+
+### CLI entry packages
+
+The `cli` package holds command parsing, dispatch, results and their tests for
+all four targets. The root executable is the native/JS process entry. The
+`embedded` executable is the WASI/WasmGC entry, with the same command behavior
+and the existing host capability refusals. These packages keep process-only
+console and file runtime dependencies out of embedded dependency graphs.
+
+Build the process entry with `moon build apps/morphir --target native --release`
+or `--target js`. Build the embedded entry with
+`moon build apps/morphir/embedded --target wasm --release` or `--target wasm-gc`.
+Its build output is `embedded/embedded.wasm` beneath the target's Morphir
+artifact directory. CLI acceptance stages it as `morphir.wasm` for the existing
+CI artifact names and verifies that the selected binary exists before upload.
+Run the shared unit suite with `moon test apps/morphir/cli --target all`.
+The module's default target is native; its supported targets remain all four.

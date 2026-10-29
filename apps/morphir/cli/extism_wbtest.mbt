@@ -58,8 +58,10 @@ test "Extism profile requires exact closure and separate binding" {
 
 ///|
 test "Extism IR selection is explicit and aliases only exact supported releases" {
-  assert_eq(extism_ir_version("3"), extism_ir_version("3.0.0"))
-  assert_eq(extism_ir_version("4"), extism_ir_version("4.0.0"))
+  assert_true(extism_ir_version("3") is PythonV3)
+  assert_true(extism_ir_version("3.0.0") is PythonV3)
+  assert_true(extism_ir_version("4") is PythonV4)
+  assert_true(extism_ir_version("4.0.0") is PythonV4)
   for version in ["", "1", "2", "3.1.0", "4.0.0-draft.1", "latest"] {
     let refused = try {
       ignore(extism_ir_version(version))

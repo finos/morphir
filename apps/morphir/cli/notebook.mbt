@@ -1,5 +1,5 @@
 ///|
-enum NotebookOperation {
+priv enum NotebookOperation {
   Index
   Export
   Import
@@ -121,7 +121,7 @@ fn notebook_success(
 }
 
 ///|
-enum NotebookPhase {
+priv enum NotebookPhase {
   Input(String)
   Convert(String)
   Evaluate(String)

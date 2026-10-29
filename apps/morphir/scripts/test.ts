@@ -1,3 +1,4 @@
+import {cliPackage, stageCliArtifact} from './artifact.ts';
 import { npmCli } from '../../../tests/npm.ts';
 import { exerciseScaffolding } from './workspace-scaffolding.ts';
 import { exerciseNotebooks } from './notebook-acceptance.ts';
@@ -827,6 +828,7 @@ if (selected.some(target => target === 'js' || target === 'native')) {
   execFileSync(process.execPath, ['--experimental-transform-types', '--test',
     join(appDirectory, 'scripts/test-connected-session.ts'), join(appDirectory, 'scripts/test-mck-provider.ts'),
     join(appDirectory, 'scripts/test-extension-provider.ts'), join(appDirectory, 'scripts/configuration-parity.test.ts'),
+    join(appDirectory, 'scripts/artifact.test.ts'),
     join(workspaceDirectory, 'pkgs/morphir-host/runners/terminal-worker.test.ts')], {
     cwd: workspaceDirectory, stdio: 'inherit', timeout: 30000,
   });
@@ -845,7 +847,7 @@ if (process.env.MORPHIR_WORKBENCH_LIVE_HOST && selected.some(target => target ==
 }
 for (const target of selected) {
   assert.ok(targets.includes(target), `Unknown target: ${target}`);
-  let admittedNative;
+  let admittedNative: string | undefined;
   if (target === "native" && process.env.MORPHIR_CI_NATIVE) {
     const artifact = JSON.parse(execFileSync("moon", ["run", "scripts/ci-artifact.mbtx", "verify", "native-cli", process.env.MORPHIR_CI_NATIVE], {cwd: workspaceDirectory, encoding: "utf8"}));
     assert.equal(artifact.metadata.buildMode, "release");
@@ -856,22 +858,21 @@ for (const target of selected) {
     const env = target === "native" && process.platform === "win32"
       ? { ...process.env, CL: `/bigobj ${process.env.CL ?? ""}`.trim() }
       : process.env;
-    execFileSync("moon", ["build", ".", "--target", target, "--release"], {cwd: appDirectory, stdio:"inherit", env});
+    execFileSync("moon", ["build", cliPackage(target), "--target", target, "--release"], {cwd: workspaceDirectory, stdio:"inherit", env});
   }
-  const artifactDirectory = join(workspaceDirectory, "_build", target, "release/build/morphir/morphir");
+  const binary: string = admittedNative || stageCliArtifact(join(workspaceDirectory, "_build"), target);
   const directory = mkdtempSync(join(tmpdir(), "morphir-cli-"));
   try {
-    if (!headlessOnly && target === "native") exercise(admittedNative || join(artifactDirectory,"morphir.exe"), [], directory, target);
-    else if (!headlessOnly && target === "js") exercise(process.execPath, [join(artifactDirectory,"morphir.js")], directory, target);
+    if (!headlessOnly && target === "native") exercise(binary, [], directory, target);
+    else if (!headlessOnly && target === "js") exercise(process.execPath, [binary], directory, target);
     else if (!headlessOnly) {
-      const artifact = join(artifactDirectory,"morphir.wasm");
+      const artifact = binary;
       if (target === "wasm") {
         const module = await WebAssembly.compile(readFileSync(artifact));
         assert.ok(WebAssembly.Module.imports(module).every(i => i.module === "wasi_snapshot_preview1"));
       }
       exercise(process.execPath, [runner,artifact], directory, target);
     }
-    const binary = admittedNative || join(artifactDirectory, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
     let headlessLauncher;
     if (target === 'js') {
       // Use the production effect adapter with this run's selected artifact.

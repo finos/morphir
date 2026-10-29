@@ -247,7 +247,7 @@ async fn main {
       tests.push({ "test": "test-extension-provider.ts", "exitCode": 0 })
       checked(
         "moon",
-        ["test", "apps/morphir", "--target", "native"],
+        ["test", "apps/morphir/cli", "--target", "native"],
         environment~,
       )
       tests.push({ "test": "MoonBit CLI native unit suite", "exitCode": 0 })

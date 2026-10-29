@@ -2,6 +2,8 @@ name = "morphir/morphir"
 
 version = "0.1.0"
 
+preferred_target = "native"
+
 description = "Morphir command-line application"
 
 repository = "https://github.com/finos/morphir-moonbit"

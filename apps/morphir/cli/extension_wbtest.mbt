@@ -209,12 +209,12 @@ test "extension envelopes select only the qualified model tuples" {
     "profile": "morphir-model",
     "payload": { "codec": "ion-binary" },
   }
-  assert_eq(extension_envelope_tuple(envelope), IonModel)
+  assert_true(extension_envelope_tuple(envelope) is IonModel)
   guard envelope is Object(fields) else { abort("envelope") }
   let json = fields.copy()
   json["profile"] = Json::string("morphir-ir")
   json["payload"] = { "codec": "morphir-json" }
-  assert_eq(extension_envelope_tuple(Json::object(json)), JsonIr)
+  assert_true(extension_envelope_tuple(Json::object(json)) is JsonIr)
   let mixed = fields.copy()
   mixed["payload"] = { "codec": "morphir-json" }
   let draft = fields.copy()

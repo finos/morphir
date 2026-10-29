@@ -184,7 +184,7 @@ async fn candidate(root : String, bundle : String, python : String) -> Json {
   let source_files : Map[String, Json] = Map([])
   for
     path in [
-      "apps/morphir/extism.mbt", "apps/morphir/extension.mbt", "apps/morphir/arguments.mbt",
+      "apps/morphir/cli/extism.mbt", "apps/morphir/cli/extension.mbt", "apps/morphir/cli/arguments.mbt",
       "apps/morphir/native-services/main.rs", "apps/morphir/native-services/extism.rs",
       "apps/morphir/native-services/extism_tests.rs", "apps/morphir/native-services/Cargo.lock",
       "apps/morphir/dist/morphir.js", "apps/morphir/build-provider/extism.mts", "apps/morphir/build-provider/test-extism.mts",
@@ -456,7 +456,7 @@ async fn main {
     checked("node", ["apps/morphir/build-provider/test-extism.mts"])
     for target in ["native", "js"] {
       checked("moon", [
-        "test", "apps/morphir/extism_wbtest.mbt", "--target", target,
+        "test", "apps/morphir/cli/extism_wbtest.mbt", "--target", target,
       ])
     }
     let expected = candidate(root, bundle, python)

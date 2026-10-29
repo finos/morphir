@@ -1,3 +1,4 @@
+import {cliArtifact} from './artifact.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -11,7 +12,7 @@ const target = process.argv[2] ?? 'js';
 assert.ok(['js', 'native', 'wasm', 'wasm-gc'].includes(target));
 const build = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? `.dev/build-model-cli`);
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
+const binary = process.env.MORPHIR_HEADLESS_BINARY ?? cliArtifact(build, target, profile);
 const runner = join(repo, 'pkgs/morphir-host/runners/wasm.mjs');
 const root = mkdtempSync(join(tmpdir(), 'morphir-model-inventory-'));
 const env = headlessEnvironment(join(root, 'cli-environment'), target === 'native' ? {PATH: ''} : {});

@@ -1,16 +1,16 @@
 ///|
-enum FailurePresentation {
+priv enum FailurePresentation {
   Legacy
   Compilation
   Notebook(NotebookOperation)
 }
 
 ///|
-suberror CommandCancelled
+priv suberror CommandCancelled
 
 ///|
 /// The host supplies these run services; command handlers own their result schemas.
-struct CommandContext {
+priv struct CommandContext {
   mode : OutputMode
   logger : &@logging.Logger
   clock : () -> Double

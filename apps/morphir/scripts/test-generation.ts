@@ -1,3 +1,4 @@
+import {cliArtifact} from './artifact.ts';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -23,7 +24,7 @@ const target = process.argv[2] ?? 'js';
 assert.ok(['js', 'native', 'wasm', 'wasm-gc'].includes(target));
 const build = resolve(repo, process.env.MORPHIR_GENERATION_BUILD ?? process.env.MORPHIR_HEADLESS_BUILD ?? '.dev/generation-build');
 const profile = process.env.MORPHIR_GENERATION_PROFILE ?? process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const cli = resolve(process.env.MORPHIR_GENERATION_BINARY ?? process.env.MORPHIR_HEADLESS_BINARY ?? join(build, `${target}/${profile}/build/morphir/morphir/morphir${target === 'js' ? '.js' : target === 'native' ? '.exe' : '.wasm'}`));
+const cli = resolve(process.env.MORPHIR_GENERATION_BINARY ?? process.env.MORPHIR_HEADLESS_BINARY ?? cliArtifact(build, target, profile));
 const cliDigest = createHash('sha256').update(readFileSync(cli)).digest('hex');
 const runner = resolve(process.env.MORPHIR_GENERATION_LAUNCHER ?? process.env.MORPHIR_HEADLESS_LAUNCHER ??
   (target === 'js' || target === 'native' ? cli : join(repo, 'pkgs/morphir-host/runners/wasm.mjs')));

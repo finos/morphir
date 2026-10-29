@@ -1,6 +1,6 @@
 ///|
 /// The parser receives explicit argv; host IO and process exit stay in main.
-struct Cli {
+priv struct Cli {
   command : String
   flags : Map[String, Bool]
   entries : Map[String, Array[String]]
@@ -10,7 +10,7 @@ struct Cli {
 }
 
 ///|
-struct CliSchema {
+priv struct CliSchema {
   flags : Array[String]
   options : Array[String]
   repeatable : Array[String]

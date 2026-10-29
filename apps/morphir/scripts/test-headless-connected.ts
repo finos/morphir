@@ -1,3 +1,4 @@
+import {cliArtifact} from './artifact.ts';
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
@@ -21,7 +22,7 @@ const rust = process.env.MORPHIR_WORKBENCH_LIVE_HOST;
 if (!portable && process.platform !== 'win32') assert.ok(rust, 'Select a qualified actual Rust host with MORPHIR_WORKBENCH_LIVE_HOST');
 const build = resolve(repo, process.env.MORPHIR_HEADLESS_BUILD ?? '.dev/build-connected');
 const profile = process.env.MORPHIR_HEADLESS_PROFILE ?? 'debug';
-const binary = process.env.MORPHIR_HEADLESS_BINARY ?? join(build, target, `${profile}/build/morphir/morphir`, target === 'native' ? 'morphir.exe' : target === 'js' ? 'morphir.js' : 'morphir.wasm');
+const binary = process.env.MORPHIR_HEADLESS_BINARY ?? cliArtifact(build, target, profile);
 const launcher = process.env.MORPHIR_HEADLESS_LAUNCHER ?? join(repo, 'apps/morphir/bin/morphir.js');
 const helper = process.env.MORPHIR_CONNECTED_HELPER ?? join(repo, 'apps/morphir/build-provider/connected.mjs');
 const artifacts = resolve(repo, process.env.MORPHIR_CONNECTED_PROVIDER_BUILD ?? '.dev/build-connected');

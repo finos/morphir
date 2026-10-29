@@ -1,19 +1,19 @@
 ///|
 /// The one binding this command dispatches: a saved core-Wasm MEP guest served
 /// by the pinned Node process host. It is not a Component Model binding.
-enum ExtensionBinding {
+priv enum ExtensionBinding {
   CoreWasmProcess
 }
 
 ///|
 /// Runtimes qualified for the binding. A new runtime needs new route evidence.
-enum ExtensionRuntime {
+priv enum ExtensionRuntime {
   Node24_22_0
   Node24_22_1
 }
 
 ///|
-enum ExtensionOperation {
+priv enum ExtensionOperation {
   Describe
   Compile
   Generate
@@ -21,13 +21,13 @@ enum ExtensionOperation {
 
 ///|
 /// The two model tuples the saved guest qualifies. Ion is the default.
-enum ExtensionModelTuple {
+priv enum ExtensionModelTuple {
   IonModel
   JsonIr
-} derive(Eq, Debug)
+} derive(Eq)
 
 ///|
-struct ExtensionPin {
+priv struct ExtensionPin {
   binding : ExtensionBinding
   runtime : ExtensionRuntime
   runtime_executable : String
@@ -43,7 +43,7 @@ struct ExtensionPin {
 ///|
 /// One fresh guest session. Requests are pipelined: the guest serves them in
 /// order, and responses are matched by id after the process exits.
-struct ExtensionPlan {
+priv struct ExtensionPlan {
   operation : ExtensionOperation
   messages : Array[Json]
   tuple : ExtensionModelTuple?
@@ -53,7 +53,7 @@ struct ExtensionPlan {
 ///|
 /// Host-process facts returned by the helper. `exited` means the guest process
 /// ended by itself; the protocol outcome is decided from its framed output.
-struct ExtensionProcess {
+priv struct ExtensionProcess {
   state : String
   exit_code : Int32?
   stderr : String

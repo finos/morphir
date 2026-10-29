@@ -1,11 +1,11 @@
 ///|
 /// A qualified backend version, independent of the suites' contract versions.
-enum MckRunnerVersion {
+priv enum MckRunnerVersion {
   Beta10
 }
 
 ///|
-struct MckRunnerPin {
+priv struct MckRunnerPin {
   version : MckRunnerVersion
   executable : String
   sha256 : String

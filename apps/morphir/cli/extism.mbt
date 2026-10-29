@@ -8,10 +8,10 @@ let extism_helper_modules : Array[String] = [
 ]
 
 ///|
-enum ExtismIrVersion {
+priv enum ExtismIrVersion {
   PythonV3
   PythonV4
-} derive(Eq, Debug)
+} derive(Eq)
 
 ///|
 fn ExtismIrVersion::major(self : ExtismIrVersion) -> String {

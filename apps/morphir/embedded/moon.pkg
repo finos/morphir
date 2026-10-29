@@ -1,0 +1,8 @@
+pkgtype(kind: "executable")
+
+supported_targets = "wasm+wasm-gc"
+
+import {
+  "morphir/morphir/cli",
+  "finos/morphir-host/platform",
+}
