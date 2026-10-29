@@ -82,6 +82,12 @@ pub(all) suberror IOError {
 }
 
 // Types and methods
+pub struct InterruptionScope {
+  previous : (() -> Bool)?
+  mut open : Bool
+}
+pub fn InterruptionScope::close(Self) -> Unit
+pub fn InterruptionScope::install(() -> Bool) -> Self
 
 // Type aliases
 

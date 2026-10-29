@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <poll.h>
 #endif
 #ifdef _WIN32
 #include <windows.h>
@@ -151,7 +152,7 @@ int morphir_host_interruption_requested(void);
 int morphir_host_interruption_active(void);
 
 moonbit_bytes_t morphir_host_process(const char *program, const char *packed,
-    int count, const char *cwd, const char *home, int timeout) {
+    int count, const char *cwd, const char *home, int timeout, int (*interrupted)(void)) {
 #ifdef _WIN32
   return process_error("Native Windows process adapter unavailable; use the Node host");
 #else
@@ -187,20 +188,22 @@ moonbit_bytes_t morphir_host_process(const char *program, const char *packed,
   if (pid < 0) { fclose(out); fclose(err); return process_error("Cannot start child process"); }
   setpgid(pid, pid);
   int status = 0, elapsed = 0, timed_out = 0, oversized = 0, interrupt_forwarded = 0;
+  int interrupt_deadline = -1;
   struct timespec interval = {0, 10000000};
   for (;;) {
     pid_t waited = waitpid(pid, &status, WNOHANG);
     if (waited == pid) break;
     if (waited < 0 && errno != EINTR) { status = 127 << 8; break; }
-    if (!interrupt_forwarded && morphir_host_interruption_active() && morphir_host_interruption_requested()) {
+    if (!interrupt_forwarded && interrupted()) {
       // Forward only to this owned helper. Its protocol decides remote cancel.
       kill(pid, SIGINT);
       interrupt_forwarded = 1;
+      interrupt_deadline = elapsed + 5000;
     }
     struct stat out_stat, err_stat;
     if (!fstat(fileno(out), &out_stat) && !fstat(fileno(err), &err_stat) &&
         out_stat.st_size + err_stat.st_size > 16777216) oversized = 1;
-    if (elapsed >= timeout || oversized) {
+    if (elapsed >= timeout || oversized || (interrupt_deadline >= 0 && elapsed >= interrupt_deadline)) {
       // Give protocol helpers time to reclaim their separately owned child groups.
       kill(-pid, SIGTERM); kill(pid, SIGTERM);
       for (int grace = 0; grace < 50; grace++) {
@@ -209,7 +212,7 @@ moonbit_bytes_t morphir_host_process(const char *program, const char *packed,
       }
       kill(-pid, SIGKILL); kill(pid, SIGKILL);
       while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
-      timed_out = !oversized; break;
+      timed_out = !oversized && interrupt_deadline < 0; break;
     }
     nanosleep(&interval, NULL); elapsed += 10;
   }
@@ -597,18 +600,25 @@ void morphir_host_interruption_stop(void) {
 }
 int morphir_host_interruption_requested(void) { return morphir_interrupted != 0; }
 int morphir_host_interruption_active(void) { return morphir_interrupt_active; }
-int morphir_host_stdin_read(unsigned char *buffer, int length) {
-  if (length < 1 || length > 65536 || morphir_interrupted) return -1;
+int morphir_host_stdin_read(unsigned char *buffer, int length, int (*interrupted)(void)) {
+  if (length < 1 || length > 65536 || interrupted()) return -1;
 #ifdef _WIN32
   int previous_mode = _setmode(0, _O_BINARY);
   int result = _read(0, buffer, (unsigned int)length);
   if (previous_mode >= 0) _setmode(0, previous_mode);
   return result;
 #else
-  ssize_t result;
-  do { result = read(0, buffer, (size_t)length); }
-  while (result < 0 && errno == EINTR && !morphir_interrupted);
-  return (int)result;
+  // Polling lets a hosted cancel file stop a read even without an OS signal.
+  struct pollfd input = {0, POLLIN, 0};
+  for (;;) {
+    if (interrupted()) return -1;
+    int ready = poll(&input, 1, 10);
+    if (ready < 0) { if (errno == EINTR) continue; return -1; }
+    if (!ready) continue;
+    ssize_t result = read(0, buffer, (size_t)length);
+    if (result < 0 && errno == EINTR) continue;
+    return (int)result;
+  }
 #endif
 }
 
@@ -634,7 +644,7 @@ static int directory_append(unsigned char **data, size_t *used, size_t *capacity
   return 0;
 }
 
-moonbit_bytes_t morphir_host_list_bounded(const char *path, int limit) {
+moonbit_bytes_t morphir_host_list_bounded(const char *path, int limit, int (*interrupted)(void)) {
   size_t used = 1, capacity = 64;
   unsigned char *data = malloc(capacity);
   int status = 0, count = 0;
@@ -659,7 +669,7 @@ moonbit_bytes_t morphir_host_list_bounded(const char *path, int limit) {
       if (directory == INVALID_HANDLE_VALUE) {
         if (open_error != ERROR_FILE_NOT_FOUND) status = 5;
       } else for (;;) {
-        if (morphir_interrupted) { status = 6; break; }
+        if (interrupted()) { status = 6; break; }
         char name[16385];
         int length = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
             entry.cFileName, -1, name, sizeof(name), NULL, NULL);
@@ -687,7 +697,7 @@ moonbit_bytes_t morphir_host_list_bounded(const char *path, int limit) {
   }
   if (directory) {
     for (;;) {
-      if (morphir_interrupted) { status = 6; break; }
+      if (interrupted()) { status = 6; break; }
       errno = 0;
       struct dirent *entry = readdir(directory);
       if (!entry) { if (errno) status = 3; break; }

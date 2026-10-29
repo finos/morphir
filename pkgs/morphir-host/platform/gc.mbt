@@ -278,7 +278,7 @@ pub fn bytes_supported() -> Bool {
 }
 
 ///|
-pub fn interruption_requested() -> Bool {
+fn raw_interruption_requested() -> Bool {
   let result = call("interruption_requested") catch {
     _ => Json::boolean(false)
   }

@@ -347,5 +347,5 @@ pub extern "js" fn interruption_stop() -> Unit =
 ///|
 /// The installed launcher owns SIGINT and sets this shared flag while the
 /// synchronous evaluator runs in its owned worker thread.
-pub extern "js" fn interruption_requested() -> Bool =
+extern "js" fn raw_interruption_requested() -> Bool =
   #| () => !!globalThis.__morphirInterrupt && Atomics.load(globalThis.__morphirInterrupt, 0) !== 0

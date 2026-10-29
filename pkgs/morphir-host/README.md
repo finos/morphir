@@ -245,3 +245,25 @@ should dispatch by profile, rather than assuming every record is an observation.
 This slice qualifies local audit sinks. An external exporter must explicitly
 support the new record profile. The native OpenTelemetry adapter's existing
 observation/metric qualification does not qualify metadata audit export.
+
+### Cooperative interruption adapters
+
+A process owner can install `platform.InterruptionScope` with a probe of its
+run's cancellation state. `interruption_requested` then consults that probe;
+closing the scope restores the enclosing probe and repeated close does nothing.
+Install scopes for one process owner and close nested scopes in reverse order.
+Legacy standalone callers keep their existing interruption APIs.
+
+Native process waits and bounded directory enumeration call the same probe at
+safe points through a C function pointer. POSIX stdin polls at 10 ms intervals,
+so a cancel file can end an otherwise idle read. A child gets SIGINT once; after
+five seconds without completion the adapter escalates to terminate and kill,
+then reaps it. These adapters install no additional signal handler while a run
+owns the scope. The owning host selects the final signal reason and exit code.
+
+The terminal launcher selects a worker from the leading Morphir command after
+its declared global controls. It never examines an opaque child argument tail.
+The parent owns signal delivery while synchronous worker code runs: the existing
+shared flag distinguishes interrupt and terminate, and a second signal exits
+immediately with that signal's status. Stdin remains a bounded request/reply
+channel. Command results and wire payloads retain their existing shapes.
