@@ -27,7 +27,7 @@ function tree(name: string) {
     cpSync(join(fixture, file.path), join(root, name, file.path));
   }
 }
-function invoke(path: string, ok = false, extra: string[] = [], trace: boolean | 'cancel' = false) {
+function invoke(path: string, ok = false, extra: string[] = [], trace: boolean | 'cancel' | 'terminate' = false) {
   const args = ['model', extra.length ? 'export-original' : 'inspect', path, '--json', ...extra];
   const prefix = target === 'native' ? [] : target === 'js' ? [binary] : [runner, binary];
   const result = spawnSync(target === 'native' ? binary : node, [...prefix, ...args], {
@@ -37,7 +37,7 @@ function invoke(path: string, ok = false, extra: string[] = [], trace: boolean |
   });
   assert.equal(result.error, undefined);
   assert.equal(result.signal, null);
-  assert.equal(result.status, trace === 'cancel' ? 130 : ok ? 0 : 2, `${path}: ${result.stdout}\n${result.stderr}`);
+  assert.equal(result.status, trace === 'cancel' ? 130 : trace === 'terminate' ? 143 : ok ? 0 : 2, `${path}: ${result.stdout}\n${result.stderr}`);
   return JSON.parse(result.stdout);
 }
 try {
@@ -91,10 +91,14 @@ try {
     `);
     assert.equal(invoke('small', false, [], 'cancel').code, 'execution.cancelled');
     assert.deepEqual(JSON.parse(readFileSync(join(root, 'trace.json'), 'utf8')), {closes: 1});
-    writeFileSync(join(root, 'trace.mjs'), `
-      globalThis.__morphirInterrupt=new Int32Array(new SharedArrayBuffer(4));Atomics.store(globalThis.__morphirInterrupt,0,1);
-    `);
-    assert.equal(invoke('small', false, [], 'cancel').code, 'execution.cancelled');
+    // The enclosing owner already retained its signal before loading the CLI.
+    // No hosted service or command has run when the public driver first polls.
+    for (const [signal, expected] of [[1, 'cancel'], [2, 'terminate']] as const) {
+      writeFileSync(join(root, 'trace.mjs'), `
+        globalThis.__morphirInterrupt=new Int32Array(new SharedArrayBuffer(4));Atomics.store(globalThis.__morphirInterrupt,0,${signal});
+      `);
+      assert.equal(invoke('small', false, [], expected).code, 'execution.cancelled');
+    }
   }
 
   mkdirSync(join(root, 'files'));

@@ -718,7 +718,10 @@ cleanup. A second signal ends the process immediately with that signal's exit co
 keeps signal reception on its parent thread while command work runs in an owned worker.
 
 Started services stop in reverse order after success, failure or cancellation. The diagnostic session drains
-before telemetry flushes, and the logging bridge closes it again idempotently before exit. JSON failures stay on
+before telemetry flushes, and the logging bridge closes it again idempotently before exit. The public completion
+callback reports a pending SIGINT or SIGTERM even when it stops the host before the first service or command
+starts. It runs after finalization; Morphir emits its command's cancellation result once, with exit 130 or 143.
+JSON failures stay on
 stdout; diagnostic records and child logs use their documented channels. MEP and native-worker messages retain
 their existing formats and child status fields. WASI refuses worksheet evaluation with
 `worksheet.interruption_unavailable` and exit 2 because it cannot receive interruption.

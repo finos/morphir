@@ -19,6 +19,9 @@ async fn main {
     session => invocation.host(session.logger(), () => ignore(session.close())),
     ctx => invocation.execute(ctx),
     signals?,
+    completed=(_, selected) => {
+      invocation.report_unstarted_stop(selected.to_int())
+    },
   ) catch {
     error => @platform.exit(@cli.startup_failure(args, error, status=1))
   }
