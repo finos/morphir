@@ -55,7 +55,7 @@
   `morphir.toml`
 - [x] 3.8 Use the same loader in the Workbench settings (`apps/morphir-workbench/workspace-projects/settings.mbt`) and
   the engine protocol overlay; verify the Workbench settings tests and the native/wasm-gc agreement scenario
-- [ ] 3.9 Remove the old load, merge and environment code from `pkgs/morphir-engine/config` and the discovery paths
+- [x] 3.9 Remove the old load, merge and environment code from `pkgs/morphir-engine/config` and the discovery paths
   from `pkgs/morphir-host/configuration.mbt`; verify the full gate and record the binary size of each CLI artifact
   before and after in the pull request
 - [x] 3.10 Update the configuration section of `apps/morphir/README.md` with JSON configuration, `--config`, the
