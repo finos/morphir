@@ -1001,6 +1001,10 @@ flag. Invalid evidence rejects; history retains at most 50 call previews with
 Input errors, stale results and late replies keep their existing handling.
 
 The browser and packaged Proton share the same component and acceptance workflow.
+Target selection waits for the project's applied settings before compiling. The
+Elm-to-MoonBit case uses a concrete `Int` value and checks for generated `.mbt`
+files; the polymorphic starter requires specialization and is not a successful
+generation fixture.
 Tests exercise actual typed values/SDK errors and explicit failure, cleanup and
 cancellation evidence fixtures. Connected v1 has no new execution or cancellation RPC;
 local cancellation still stops/discards the worker operation. Native provider

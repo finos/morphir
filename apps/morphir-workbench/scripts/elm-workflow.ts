@@ -210,10 +210,16 @@ export async function elmWorkflow(page: Page, {
   }
   await useSourceWorkspace(page, 'elm');
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#source')?.value.includes('module Workbench.Main'));
+  // The starter identity is polymorphic. MoonBit generation needs a concrete
+  // source value; compiling that starter correctly refuses specialization.
+  await replaceSourceDocument(page, 'module Workbench.Main exposing (answer)\n\nanswer : Int\nanswer = 42\n');
   await setTarget(page, 'moonbit');
   await build(page, 'Compile');
   await page.getByRole('status').filter({ hasText: /Model ready|Compiled [1-9]\d*\/[1-9]\d* projects/ }).waitFor();
   await page.getByText('Source changed · rerun', {exact:true}).waitFor({state:'hidden'});
+  await showGenerated(page);
+  await selector.locator('.artifact-file[aria-label$=".mbt"]').first().waitFor();
+  assert.ok((await selector.locator('.artifact-file').evaluateAll(items => items.map(item => item.getAttribute('aria-label')!))).some(path => path.endsWith('.mbt')), 'The Elm source generates MoonBit files after changing its target');
   await page.getByRole('button', { name: 'Morphir IR', exact: true }).click();
   await page.waitForFunction(() => document.querySelector<CodeEditor>('#output')?.value.includes('"distribution"'));
   const elmIr = JSON.parse(await page.locator('#output').evaluate(editor => (editor as CodeEditor).value));

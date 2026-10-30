@@ -161,8 +161,12 @@ async function withTarget<T>(page: Page, use: (select: Locator) => Promise<T>): 
 export async function setTarget(page: Page, target: string): Promise<void> {
   await withTarget(page, async select => {
     const value = target || 'checkpoint';
+    const path = await select.getAttribute('data-project-path');
     await select.selectOption(value);
-    await page.waitForFunction(value => document.querySelector<HTMLSelectElement>('#settings select[data-current-project="true"]')?.value === value, value);
+    await page.waitForFunction(({ path, value }) => {
+      const input = document.querySelector<HTMLSelectElement>('#settings select[data-current-project="true"]');
+      return input?.dataset.projectPath === path && input.dataset.effective === value;
+    }, { path, value });
   });
 }
 
