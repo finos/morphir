@@ -57,7 +57,7 @@ Moon-Lander module that takes the job over, and says what stays in Morphir.</p>
 oversight. <a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.6.0">Moon-Lander 0.6.0</a> published
 all seven framework modules and <code>moonrockz/notebooks</code> on 2026-10-28. Each framework module resolved with
 <code>moon add moonrockz/&lt;module&gt;@0.6.0</code> in an independent scratch module outside this checkout.
-The initial dependency phase used <code>0.6.0</code>. The adoption now pins every Moon-Lander module and notebooks to
+The initial dependency phase used <code>0.6.0</code>. The completion-reporting phase pinned every Moon-Lander module and notebooks to
 <a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.7.3">published <code>0.7.3</code></a>, from commit
 <code>10402785e4462c2fdbd1a8f500a063f8076e353a</code>. Its Release workflow
 <a href="https://github.com/moonrockz/moon-lander/actions/runs/40826473564">40826473564</a> succeeded. Independent
@@ -71,6 +71,16 @@ after diagnostic draining and finalization, so Morphir can report cancellation e
 Main CI <a href="https://github.com/moonrockz/moon-lander/actions/runs/40826473568">40826473568</a>
 completed all 13 jobs. All nine archive hashes match actual Release artifact <code>12877891039</code>, and 42
 independent cold-cache consumers passed, including native/JS pre-first-hook cancellation at 130 and 143.</p>
+<p>On 2026-10-30 the maintainer requested the latest published release. All 40 framework and notebook pins now use
+<a href="https://github.com/moonrockz/moon-lander/releases/tag/v0.8.0"><code>0.8.0</code></a>, source
+<code>d6216c7469c045548cb15b3f9321857ac41d2cd0</code>. Its actual
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/40990258646">Release workflow</a> and
+<a href="https://github.com/moonrockz/moon-lander/actions/runs/40990258634">main CI</a> passed. Downstream independently
+downloaded all ten public archives and matched every SHA-256 against actual release artifact
+<code>12949691881</code>. Each of the eight required exact modules also resolved with <code>moon add</code> in an
+independent scratch module outside this checkout. The release retains the adopted APIs and adds notebook virtual
+file trees and source conversion. Morphir keeps its existing notebook mapping; the new optional actors module is
+not imported by this adoption.</p>
 
 <h2 id="goals">Goals and non-goals</h2>
 <p><strong>Goals:</strong> every capability in the table above comes from one Moon-Lander module in the CLI and in

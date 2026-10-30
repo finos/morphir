@@ -28,7 +28,7 @@ rolling log files, configuration environments and workspaces) as Moon-Lander rel
   (`apps/morphir-workbench`, `apps/morphir-workbench-desktop`) and the packages that serve them. Take each module from
   mooncakes.io at an exact pinned version, like the other `moonrockz` dependencies. Moon-Lander releases up to `0.5.0`
   published only `notebooks` and `openrpc`; release `0.6.0` published the framework modules and is the exact version
-  used for the initial dependency phase. The migration now pins published `0.7.3`, which includes the approved
+  used for the initial dependency phase. The migration now pins published `0.8.0`, which retains the approved
   configuration, host-control, diagnostic-object and lossless-DIB additions and the logging bridge fixes for
   parent-owned signals and ordered hosted-session draining, plus four-target async mediator composition and
   foreign-callback-safe polling of the same hosted stop state. Its completion callback reports the real outcome and

@@ -6,6 +6,11 @@ exact release version, initially `0.6.0`, rather than maintaining parallel
 implementations or depending on an unreleased checkout. Renovate groups the
 framework and notebook dependencies into one version update.
 
+The current adoption pins these dependencies to published `0.8.0`. Its ten
+public archive hashes match the actual release checksum artifact, and the eight
+required modules resolve independently outside this checkout. The optional
+actors module is not a dependency of this adoption.
+
 The engine stays synchronous and consumes configuration values, a diagnostic
 logger and synchronous mediator senders. Its packages may import the pure core,
 logging, configuration, conventions, mediator and notebook packages. Configuration
