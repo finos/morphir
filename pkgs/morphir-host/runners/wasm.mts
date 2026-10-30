@@ -48,7 +48,10 @@ if (!imports.some(i => i.module === 'morphir_host_v1')) {
     if (requested && interrupted) Atomics.compareExchange(interrupted, 0, 0, 1);
     return requested;
   };
-  const stopRequested = () => !!interrupted && Atomics.load(interrupted, 0) !== 0 || fileStopRequested();
+  // Commands own ordinary cancel-file checkpoints and their result schemas.
+  // Only a host-owned stdin wait needs the registered path as an extra probe.
+  // That probe retains an observed request in the same interruption flag.
+  const stopRequested = () => !!interrupted && Atomics.load(interrupted, 0) !== 0;
   const dispatch = (op: string, a: string, b: string) => {
     switch (op) {
       case 'bytes_supported': return true;

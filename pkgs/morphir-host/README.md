@@ -103,8 +103,12 @@ capability refuses before the command starts with
 
 The supplied runner polls the path in the existing bounded stdin wait, retaining
 an observed request in its existing interrupt flag before returning to MoonBit.
-Removing the marker cannot undo that request. Registration cleanup runs after
-normal completion, cancellation and early startup failure. A failed clear emits
+Ordinary file reads and startup signal probes do not poll that path. Commands
+retain their existing cancel-file checkpoints and JSON outcomes, including
+evaluation's per-call cancellation result for a marker present before launch.
+Removing a marker observed during a stdin wait cannot undo that request.
+Registration cleanup runs after normal completion, cancellation and early
+startup failure. A failed clear emits
 `cancellation.cancel_file_cleanup_failed` on stderr; it changes an otherwise
 successful exit to 1 and keeps an existing failure/cancellation code. It does
 not add another stdout document. Existing worker messages and shared buffers

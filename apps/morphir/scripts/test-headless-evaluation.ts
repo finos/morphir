@@ -117,7 +117,12 @@ function evaluateCodecs() {
   writeFileSync(join(root, 'cancel'), 'cancel');
   writeFileSync(model, first.input.model);
   const cancelled = JSON.parse(invoke(['eval', model, '--suite', suite, '--checking-policy', 'permissive', '--cancel-file', join(root, 'cancel'), '--json'], 130).stdout);
+  assert.ok(cancelled.terminalOutcomes, `A pre-existing cancel marker retains the evaluation result: ${JSON.stringify(cancelled)}`);
   assert.equal(cancelled.terminalOutcomes.calls[0].outcome.status, 'cancelled');
+  const cancelledRecords = invoke(['eval', model, '--suite', suite, '--checking-policy', 'permissive', '--cancel-file', join(root, 'cancel'), '--json-lines'], 130)
+    .stdout.trim().split(/\r?\n/).map(line => JSON.parse(line));
+  assert.deepEqual(cancelledRecords.at(-1).data, cancelled);
+  assert.deepEqual(cancelledRecords.filter(record => record.type === 'call').map(record => record.data), cancelled.terminalOutcomes.calls);
   // Hand-authored domain-error control. The established SDK contract assigns
   // integer division by zero sdk.division_by_zero, independently of CLI output.
   const domainError = JSON.parse(first.input.model);
