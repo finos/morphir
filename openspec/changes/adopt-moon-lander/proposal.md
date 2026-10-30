@@ -52,7 +52,8 @@ rolling log files, configuration environments and workspaces) as Moon-Lander rel
   `MORPHIR_DIAGNOSTICS__SUPPRESS` or `diagnostics.suppress` in the system or global user file.
 - TOML stays the default format: commands that create or change configuration write `morphir.toml` only. A change
   to a workspace with only JSON or YAML files creates `morphir.toml` beside them, with the full value of each key it
-  writes.
+  writes. Removing a root project declared in a lower JSON or YAML primary refuses without writing files and names
+  the declaring file; an empty TOML table cannot delete that lower declaration.
 - `--config <path>` selects a TOML, YAML, JSON or JSON5 configuration file whose values override `morphir.toml`.
 - **BREAKING**: the Scheme configuration script option `--config` becomes `--config-script`. A `.scm` path given to
   `--config` fails with a message that names the new option.
@@ -111,6 +112,11 @@ The maintainer confirmed these on 2026-10-28:
 - Diagnostic JSON properties are nested under `properties`, as approved on 2026-10-28. The last occurrence of a
   repeated name wins; optional `duplicateProperties` preserves all occurrences, including the winner, in original
   per-name order. Values keep their JSON types, and records without repeated names omit `duplicateProperties`.
+- On 2026-10-30 the maintainer approved refusing root-project removal when a lower JSON or YAML primary declares
+  the project. The refusal identifies that file and leaves configuration and source files unchanged.
+- On 2026-10-30 the maintainer approved releasing the MoonBit discovery controls independently of the separate
+  Rust CLI itest driver. `morphir-o6vm.10` remains open for that companion work; its completion is not a prerequisite
+  for this release. All MoonBit isolation and boundary scenarios remain required here.
 - The work lands in as few pull requests as needed: one pull request for the migration here, with a separate pull
   request only for a group that is blocked while the rest is ready.
 
@@ -127,7 +133,7 @@ The maintainer confirmed these on 2026-10-28:
 - **Related**:
   - `morphir-ukvn.5.64` (the primary CLI and Workbench campaign that this change serves)
   - `morphir-ukvn.5.64.16` (configuration inspection; builds on the loader adopted here)
-  - `morphir-o6vm.10` (explicit configuration discovery boundary; satisfied by the isolated-discovery requirement)
+  - `morphir-o6vm.10` (separate Rust CLI itest-driver isolation companion; remains open and does not gate this release)
   - `morphir-o6vm.11` (shared notebook profile; the notebook model chosen here must stay compatible with it)
   - `morphir-lnr` (old request for structured CLI logging with levels; superseded by the logging capability)
 

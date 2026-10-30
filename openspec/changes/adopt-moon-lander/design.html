@@ -167,6 +167,11 @@ before its parents. If no workspace exists within the boundary, use the nearest 
 workspace-declaration search used by Cargo. Published <code>0.7.0</code> implements this policy, the ordered format layers and public root evidence from
 <a href="https://github.com/moonrockz/moon-lander/pull/110">Moon-Lander proposal #110</a>.
 Morphir consumes that public evidence for its member walk.</p>
+<p>On 2026-10-30 the maintainer approved landing the MoonBit discovery controls independently of the separate Rust
+CLI itest driver. The driver still owns its Rust executable and needs its own isolation support; passing MoonBit
+flags to that executable does not provide it. Keep <code>morphir-o6vm.10</code> open for the companion change, without
+making it a prerequisite for this release. The MoonBit CLI still qualifies temporary-root, enclosing-workspace
+and machine/global isolation scenarios on every supported target.</p>
 <p>Alternative: keep Morphir discovery and use only the Moon-Lander merge. Rejected; discovery is where the isolated
 mode for <code>morphir-o6vm.10</code> comes from.</p>
 
@@ -235,6 +240,13 @@ JSON or YAML files and no TOML file creates <code>morphir.toml</code> in the sam
 TOML is the top layer (CFG-4). Because a TOML value replaces a lower value whole, each written key holds its full new
 value: <code>project add</code> writes every member in <code>workspace.members</code>, not only the new one.
 <code>ensure_new_config</code> also refuses a new project where any primary file, of any format, exists.</p>
+<p>Root-project removal has one explicit limit, approved on 2026-10-30. If a lower JSON or YAML primary declares the
+root project, <code>project remove .</code> refuses before writing anything and names the declaring file. For example,
+<code>{"project":{"name":"demo/root"}}</code> in <code>morphir.json</code> cannot be undone by adding an empty
+<code>[project]</code> table in TOML: recursive merging retains the lower declaration. The error explains that the
+declaration must be removed in its source file. JSON mode reports the owning command's existing structured failure.
+Root projects declared only in TOML can still be removed while retaining source files, including when lower formats
+supply workspace settings. No project-disable key or deletion marker is introduced.</p>
 <p>Alternatives: edit YAML and JSON in place (rejected: no format-preserving editors, and JSON5 comments could be
 lost); refuse every non-TOML workspace (rejected by the maintainer, because a TOML file beside them works).</p>
 

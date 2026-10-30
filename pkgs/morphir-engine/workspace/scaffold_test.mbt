@@ -193,6 +193,122 @@ test "remove the root project keeps workspace files" {
 }
 
 ///|
+test "remove the root project refuses lower declarations without changing files" {
+  for root in ["", "nested"] {
+    for stem in ["morphir", ".morphir/morphir", ".config/morphir/config"] {
+      for
+        (extension, content) in [
+          ("json", "{workspace:{members:[]},project:{name:'Lower'}}"),
+          (
+            "json5", "// retain this comment\n{workspace:{members:[]},project:{name:'Lower'}}",
+          ),
+          ("yaml", "workspace:\n  members: []\nproject:\n  name: Lower\n"),
+          ("yml", "workspace:\n  members: []\nproject:\n  name: Lower\n"),
+        ] {
+        let filename = @workspace.join(root, stem + "." + extension)
+        for higher in [false, true] {
+          let files = [
+            (filename, content),
+            (@workspace.join(root, "src/keep.scm"), "(define keep 1)"),
+          ]
+          if higher {
+            files.push(
+              (
+                @workspace.toml_path(filename),
+                "# retain TOML\n[workspace]\nmembers=[]\n[project]\nname='Higher'\n",
+              ),
+            )
+          }
+          let initial = tree(files)
+          let original = initial.files.copy()
+          let failure = scaffold_refusal(() => {
+            ignore(
+              @workspace.remove_project(
+                @workspace.discover(initial, root~),
+                initial,
+                @workspace.ProjectPath::parse("."),
+              ),
+            )
+          })
+          assert_true(failure.contains(filename), msg=failure)
+          assert_true(failure.contains("project declaration"), msg=failure)
+          assert_eq(initial.files, original)
+        }
+      }
+    }
+  }
+}
+
+///|
+test "remove a TOML root project retains lower workspace settings" {
+  for root in ["", "nested"] {
+    for default_member in ["child", "."] {
+      let lower = "{workspace:{members:['child'],default_member:'" +
+        default_member +
+        "'}}"
+      let initial = tree([
+        (@workspace.join(root, "morphir.json"), lower),
+        (
+          @workspace.join(root, "morphir.toml"),
+          "# keep\n[project]\nname='Root'\n",
+        ),
+        (@workspace.join(root, "child/morphir.toml"), "project.name='Child'"),
+        (@workspace.join(root, "src/keep.scm"), "(define keep 1)"),
+      ])
+      let result = @workspace.remove_project(
+        @workspace.discover(initial, root~),
+        initial,
+        @workspace.ProjectPath::parse("."),
+      ).apply(initial)
+      let workspace = @workspace.discover(result, root~)
+      assert_eq(workspace.projects.map(project => project.name), ["Child"])
+      assert_eq(
+        workspace.document.text("workspace.default_member", ""),
+        if default_member == "." {
+          ""
+        } else {
+          "child"
+        },
+      )
+      assert_eq(result.files[@workspace.join(root, "morphir.json")], lower)
+      assert_true(
+        result.files[@workspace.join(root, "morphir.toml")].has_prefix(
+          "# keep\n",
+        ),
+      )
+      assert_true(result.files.contains(@workspace.join(root, "src/keep.scm")))
+    }
+  }
+}
+
+///|
+test "root removal also refuses legacy and supplemental JSON declarations" {
+  for
+    (filename, content) in [
+      (
+        "morphir-workspace.json", "{workspace:{members:[]},project:{name:'Root'}}",
+      ),
+      (
+        ".config/morphir/config.json", "{workspace:{members:[]},name:'Legacy',sourceDirectory:'src',exposedModules:[]}",
+      ),
+    ] {
+    let initial = tree([(filename, content)])
+    let failure = scaffold_refusal(() => {
+      ignore(
+        @workspace.remove_project(
+          @workspace.discover(initial),
+          initial,
+          @workspace.ProjectPath::parse("."),
+        ),
+      )
+    })
+    assert_true(failure.contains(filename), msg=failure)
+    assert_true(failure.contains("project declaration"), msg=failure)
+    assert_eq(initial.files[filename], content)
+  }
+}
+
+///|
 fn scaffold_refusal(action : () -> Unit raise) -> String {
   try {
     action()

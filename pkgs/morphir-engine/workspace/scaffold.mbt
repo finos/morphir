@@ -258,20 +258,52 @@ fn workspace_edit_config(
     raise @config.Invalid("Project changes require a workspace section")
   }
   let target = toml_path(workspace.anchor)
-  (target, tree.files.get(target).unwrap_or("[workspace]\n"))
+  let text = tree.files.get(target).unwrap_or("[workspace]\n")
+  let text = if @config.parse(text).get("workspace") is None {
+    edit_toml(text, doc => doc.add_table(["workspace"]))
+  } else {
+    text
+  }
+  (target, text)
 }
 
 ///|
-fn workspace_config(workspace : Workspace, tree : Tree) -> String raise {
-  if !workspace.anchor.has_suffix(".toml") ||
-    !tree.files.contains(workspace.anchor) {
-    raise @config.Invalid("Project changes require a morphir.toml workspace")
+fn workspace_primary_paths(workspace : Workspace) -> Array[String] raise {
+  // Hidden layouts contain ordinary primary names, so match the longest
+  // known suffix when finding the discovery root of a nested snapshot.
+  let names = primary_paths("")
+  names.sort_by((left, right) => right.length() - left.length())
+  let mut root = ""
+  for name in names {
+    if workspace.anchor == name {
+      break
+    }
+    if workspace.anchor.has_suffix("/" + name) {
+      root = workspace.anchor[:workspace.anchor.length() - name.length() - 1].to_owned()
+      break
+    }
   }
-  let text = tree.files[workspace.anchor]
-  if @config.parse(text).get("workspace") is None {
-    raise @config.Invalid("Project changes require a [workspace] table")
+  primary_paths(root)
+}
+
+///|
+fn lower_root_project(workspace : Workspace, tree : Tree) -> String? raise {
+  let formats = configuration_formats()
+  for path in workspace_primary_paths(workspace) {
+    if path.has_suffix(".toml") {
+      continue
+    }
+    if tree.files.get(path) is Some(text) {
+      let parsed = @lander.parse_file(formats, path, text)
+      let document = @lander.build([
+        @lander.ConfigSource::overrides_value(parsed, name=path),
+      ])
+      if document.get(@lander.KeyPath::parse("project")) is Some(_) {
+        return Some(path)
+      }
+    }
   }
-  text
+  None
 }
 
 ///|
@@ -383,12 +415,14 @@ pub fn remove_project(
   delete_files~ : Bool = false,
 ) -> Edit raise {
   let relative = path.to_string()
-  let (target, config) = if relative == "" {
-    // A lower-format root project needs a separate representation decision.
-    (workspace.anchor, workspace_config(workspace, tree))
-  } else {
-    workspace_edit_config(workspace, tree)
+  if relative == "" && lower_root_project(workspace, tree) is Some(source) {
+    raise @config.Invalid(
+      "Cannot remove root project declared in " +
+      source +
+      "; edit that file to remove its project declaration",
+    )
   }
+  let (target, config) = workspace_edit_config(workspace, tree)
   let root = join(workspace.root, relative)
   if !workspace.projects.any(p => p.root == root) {
     raise @config.Invalid("Unknown project: " + relative)
@@ -405,7 +439,7 @@ pub fn remove_project(
   let members = workspace.document.strings("workspace.members")
   let written = @config.parse(config)
   let excludes = workspace.document.strings("workspace.exclude")
-  let lower_primary = primary_paths("").any(path => {
+  let lower_primary = workspace_primary_paths(workspace).any(path => {
     path != target && tree.files.contains(path)
   })
   let updated = edit_toml(config, fn(doc) raise {

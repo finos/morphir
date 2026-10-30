@@ -46,11 +46,14 @@
   `apps/morphir/README.md`; verify the selected-file and script-option scenarios with argv tests
 - [ ] 3.5 Keep `workspace init`, `project add` and `project remove` writing TOML only (CFG-5): create `morphir.toml`
   beside JSON or YAML primary files with the full value of each written key, and extend `ensure_new_config` to every
-  primary name; verify the written-format and JSON/YAML-workspace scenarios with scaffold tests and argv tests
+  primary name; refuse root-project removal when a lower primary declares the project, naming that file without
+  writing anything; verify the written-format, JSON/YAML-workspace and root-removal scenarios with scaffold tests
+  and argv tests
 - [x] 3.6 Rebuild the workspace member walk in `pkgs/morphir-engine/workspace` on Moon-Lander values (CFG-2), with
   the same format layers, ambiguity rule and warnings for each member; verify the member-format scenarios and
   the existing workspace and member tests pass unchanged
-- [ ] 3.7 Add the explicit discovery boundary and isolation to the CLI and the itest driver (`morphir-o6vm.10`);
+- [ ] 3.7 Add the explicit discovery boundary and isolation to the MoonBit CLI; retain the separate Rust CLI itest
+  driver work in open companion `morphir-o6vm.10`, independently of this release as approved on 2026-10-30;
   verify the isolated-discovery scenarios as tests, including a project under a temporary root with a parent
   `morphir.toml`
 - [x] 3.8 Use the same loader in the Workbench settings (`apps/morphir-workbench/workspace-projects/settings.mbt`) and

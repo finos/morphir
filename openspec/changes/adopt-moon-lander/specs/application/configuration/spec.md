@@ -339,6 +339,21 @@ When a command must change a workspace that has JSON or YAML primary files and n
 - **THEN** a new `morphir.toml` next to `morphir.yml` sets `workspace.members` to `ledger` and `billing`, and
   `morphir.yml` is unchanged
 
+#### Scenario: Root project declared in a lower format
+
+- **WHEN** `morphir project remove .` runs and a JSON, JSON5, YAML or YML workspace primary declares the root project,
+  including a declaration also overridden by TOML
+- **THEN** the command refuses with an error naming the lower primary and explaining that its project declaration
+  must be removed there, without creating, changing or deleting files
+- **AND** JSON mode reports the existing structured command failure and exits with 2
+
+#### Scenario: Root project declared only in TOML
+
+- **WHEN** `morphir project remove .` runs and only TOML declares the root project, while lower formats may supply
+  workspace settings
+- **THEN** the command removes the TOML project table, keeps source files and lower primary files unchanged, and
+  retains the effective workspace settings
+
 ### Requirement: Environment variable mapping
 
 A variable whose name starts with `MORPHIR_`, except the reserved `MORPHIR_HOME` and `MORPHIR_PROFILES`, SHALL set the configuration key made from the
@@ -367,9 +382,12 @@ report configuration SHALL show this origin.
 
 ### Requirement: Isolated discovery
 
-A run SHALL accept an explicit discovery boundary. With a boundary, discovery SHALL NOT read a primary file above the
+A Morphir MoonBit run SHALL accept an explicit discovery boundary. With a boundary, discovery SHALL NOT read a primary file above the
 boundary directory, and SHALL NOT read system or global user files when isolation is requested. (bead:
 morphir-o6vm.10)
+
+This adoption SHALL qualify these controls in the MoonBit CLI independently of the separate Rust CLI itest driver.
+The Rust driver work remains tracked by `morphir-o6vm.10` and is not a release prerequisite or completed by this change.
 
 #### Scenario: Project under a temporary root
 

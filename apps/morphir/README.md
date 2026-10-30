@@ -242,7 +242,7 @@ source_directory = "src"
 
 The primary stems are `morphir`, `.morphir/morphir` and `.config/morphir/config`. At a location the loader merges JSON/JSON5, then YAML/YML, then TOML. Two files in the same format group or two layouts in that group are ambiguous. JSON and JSON5 both accept JSON5 syntax. `morphir-workspace.json` is a supplemental canonical configuration below ordinary JSON; use `workspace.members` in it. A JSON document can use canonical sections such as `project` and `frontend`. Legacy top-level `name`, `sourceDirectory` and `exposedModules` retain their Elm meaning and validation. Conflicting legacy and canonical fields are refused.
 
-Discovery walks upward to the first document declaring a workspace and otherwise uses the nearest project. A workspace can therefore own a project invoked from a member directory. `--discovery-boundary .` stops that walk at the current directory. `--isolated` skips machine, global and user-override files while retaining project primaries, selected configuration, active profiles and environment values. WASI remains confined to its preopened directory. Scenario drivers should pass both controls to avoid enclosing workspaces and personal configuration.
+Discovery walks upward to the first document declaring a workspace and otherwise uses the nearest project. A workspace can therefore own a project invoked from a member directory. `--discovery-boundary .` stops that walk at the current directory. `--isolated` skips machine, global and user-override files while retaining project primaries, selected configuration, active profiles and environment values. WASI remains confined to its preopened directory. MoonBit scenario drivers should pass both controls to avoid enclosing workspaces and personal configuration.
 
 Configuration layers are defaults, system, global user, workspace primary, selected configuration, member primary, active profiles, workspace/member user overrides, environment and CLI. Each location uses the format order above. Shared workspace defaults exclude project identity and workspace-root settings when applied to a member. Tables merge recursively and arrays replace. TOML encoding preserves unknown values semantically. Workspace scaffolding uses the lossless editor to preserve comments, formatting and untouched values.
 
@@ -297,6 +297,13 @@ morphir project remove packages/pricing
 At the workspace root, `run` builds every project, or `workspace.default_member` when set. From a member directory it builds the owning project. `--all` explicitly selects all projects; `--project .` selects the root project. A virtual workspace has no root project until `[project]` is added.
 
 `project remove PATH` removes membership and keeps the files. A glob-selected member is excluded. Add `--delete` to remove its folder too; deleting the workspace root is refused. Changes refuse symlinks, stale configurations and existing source files. An exclusive `.morphir-workspace-edit.lock` holds staging and backups until changes succeed; a rollback failure preserves it for manual recovery. TOML edits to dotted keys and arrays of tables currently return an explicit diagnostic.
+
+`project remove .` can remove a root project declared only in TOML, even when JSON or YAML supplies workspace settings.
+If a lower JSON/JSON5 or YAML/YML primary also declares that project, the command refuses with exit 2, names the
+declaring file and leaves all files unchanged. For example, `{"project":{"name":"demo/root"}}` in `morphir.json`
+cannot be removed by an empty TOML table because configuration tables merge recursively. Remove that declaration
+in its source file. JSON mode keeps the existing failure object on stdout with `successful: false` and `error`;
+diagnostics remain on stderr. No project-disable setting or deletion marker is added.
 
 These commands support human, `--json` and `--json-lines` output. JSON Lines emits a `workspace-edit` result with `writes`, `directories`, `deletes` and `warnings`. `workspace` lists discovery results; build flags such as `--all` and `--dry-run` belong to `run` and are refused by `workspace`.
 
