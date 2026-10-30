@@ -46,3 +46,30 @@ fn both_artifact_expectation_maps_require_the_complete_inventory() {
         }
     }
 }
+
+#[test]
+fn python_json_profile_has_separate_complete_inventory() {
+    let kit = load_kit(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/mep/mck/guest-python-json.json"),
+    )
+    .unwrap();
+    assert_eq!(kit.profile(), "python-json-library-v1");
+    for case in [
+        "compile-json-vthree",
+        "compile-json-vfour",
+        "compile-model-vthree",
+        "compile-model-vfour",
+        "generate-model-vthree",
+        "generate-model-vfour",
+        "id-u64-max",
+        "id-string",
+        "legacy-initialize",
+        "bounded-request-cannot-widen",
+        "unsupported-ion",
+        "unsupported-distribution",
+        "bad-version",
+    ] {
+        assert!(kit.case_ids().contains(&case), "missing {case}");
+    }
+    assert!(check_report(&kit, &serde_json::json!({"qualified":true})).is_err());
+}

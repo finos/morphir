@@ -1,0 +1,17 @@
+{
+  "format": 1,
+  "extension": "html-design",
+  "module": "moonrockz/openspec-ext",
+  "version": "0.1.0",
+  "files": {
+    "openspec/schemas/html-design/schema.yaml": "fc6b5efe9c43f7dbb3ca37aa1056f2a884b0906677ba425a08f7e408253fe2a9",
+    "openspec/schemas/html-design/templates/proposal.md": "4c06280738dad6e95c756698e9d65f1e9074efba429b31451478c0b5ce50e24f",
+    "openspec/schemas/html-design/templates/spec.md": "1cccfb573f031c6352bed2a879b7035ff710bc909112fc23d10bdcfcdd8d4318",
+    "openspec/schemas/html-design/templates/design.html": "b17033afa4c424919b3a81735782a8aa6138e7491d10c6b794e78b27deb7dde6",
+    "openspec/schemas/html-design/templates/tasks.md": "5849d2f13f59526d201f227208db76ea9cf0e2abdb353f2e3c58a5ac6dfafb1c",
+    "openspec/schemas/html-design/NOTICE": "d119910b35bfb38ab3a4482478150f7bac3442fd8f84348b014f92fa5c18e980",
+    "openspec/schemas/html-design/LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "scripts/openspec-ext.mbtx": "814f938732b7443a369a29b948d53a3c1e26b863127bc35df5bdc83964fe64e5",
+    "scripts/features/openspec_ext.feature": "b274713c50858787e97a9c5c04cf10b8c5dda0a660f51b457a7649f19791d991"
+  }
+}

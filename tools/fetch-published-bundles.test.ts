@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
 	archiveUrl,
 	assetUrls,
+	DEFAULT_BUNDLE_REPOSITORY,
 	parseExecutablePins,
 	parsePins,
 	pinnedVersion,
@@ -13,6 +14,7 @@ import {
 
 const root = join(import.meta.dir, "..");
 const pinsText = readFileSync(join(root, ".config/published-extension-bundles.toml"), "utf8");
+const digest = `sha256 = "${"0".repeat(64)}"\n`;
 
 describe("published extension bundle pins", () => {
 	test("every pin names a release tag, its artifact and the guest digest", () => {
@@ -34,11 +36,55 @@ describe("published extension bundle pins", () => {
 
 	test("the assets are the guest, its checksum file and the descriptor", () => {
 		const base = "https://github.com/finos/morphir-rust/releases/download/extension/avro/v0.1.1/";
-		expect(assetUrls("extension/avro/v0.1.1", "morphir-avro-extension-0.1.1")).toEqual({
+		expect(
+			assetUrls({
+				repository: "finos/morphir-rust",
+				tag: "extension/avro/v0.1.1",
+				artifact: "morphir-avro-extension-0.1.1",
+			}),
+		).toEqual({
 			guest: `${base}morphir-avro-extension-0.1.1.wasm`,
 			checksum: `${base}morphir-avro-extension-0.1.1.wasm.sha256`,
 			descriptor: `${base}morphir-avro-extension-0.1.1.release.json`,
 		});
+	});
+
+	test("a bundle pin without a repository comes from finos/morphir-rust", () => {
+		const pins = parsePins(`[bundles.avro]\ntag = "extension/avro/v0.1.1"\nartifact = "a-0.1.1"\n${digest}`);
+		expect(pins.avro?.repository).toBe("finos/morphir-rust");
+		expect(DEFAULT_BUNDLE_REPOSITORY).toBe("finos/morphir-rust");
+	});
+
+	test("a bundle is fetched from the repository its pin names", () => {
+		const pins = parsePins(
+			`[bundles.python]\nrepository = "finos/morphir-python"\ntag = "extension/python/v0.4.1"\n` +
+				`artifact = "morphir-python-binding-0.4.1"\n${digest}`,
+		);
+		const pin = pins.python;
+		if (pin === undefined) {
+			throw new Error("the parsed pins have no python entry");
+		}
+		expect(pin.repository).toBe("finos/morphir-python");
+		expect(assetUrls(pin).guest).toBe(
+			"https://github.com/finos/morphir-python/releases/download/extension/python/v0.4.1/" +
+				"morphir-python-binding-0.4.1.wasm",
+		);
+	});
+
+	test("a bundle pin with an empty or malformed repository is refused", () => {
+		const rest = `tag = "extension/avro/v0.1.1"\nartifact = "a-0.1.1"\n${digest}`;
+		for (const repository of ['""', '"finos"', '"finos/"', '"/morphir-rust"', '"finos/morphir-rust/x"',
+			'"https://github.com/finos/morphir-rust"', '"finos/.."', '"finos/morphir rust"', "1"]) {
+			expect(() => parsePins(`[bundles.avro]\nrepository = ${repository}\n${rest}`)).toThrow(
+				/bundles\.avro.*repository/,
+			);
+		}
+	});
+
+	test("every bundle pin names the repository that released it", () => {
+		for (const pin of Object.values(parsePins(pinsText))) {
+			expect(pin.repository).toMatch(/^finos\/morphir-(rust|python)$/);
+		}
 	});
 
 	test("a guest is checked against the digest pinned in this repository", () => {
@@ -71,6 +117,13 @@ describe("published extension bundle pins", () => {
 		);
 		expect(() => parseExecutablePins(`[executables.elm]\nrepository = "finos/morphir-elm"\n${pin}`)).toThrow(
 			/sha256/,
+		);
+	});
+
+	test("an executable pin with a malformed repository is refused", () => {
+		const pin = `tag = "v1.0.0"\nasset = "a"\nexecutable = "a"\n${digest}`;
+		expect(() => parseExecutablePins(`[executables.x]\nrepository = "finos"\n${pin}`)).toThrow(
+			/executables\.x.*repository/,
 		);
 	});
 

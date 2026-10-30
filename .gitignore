@@ -89,3 +89,6 @@ examples/**/.itest/
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Shared OpenSpec checker build cache
+/scripts/_build/

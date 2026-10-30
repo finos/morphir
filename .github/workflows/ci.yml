@@ -118,6 +118,9 @@ jobs:
               - 'website/package.json'
               - 'website/package-lock.json'
             docs:
+              - 'openspec/**'
+              - 'scripts/openspec-ext.mbtx'
+              - 'scripts/features/openspec_ext.feature'
               - 'website/**'
               - 'docs/**'
               - '**/*.md'
@@ -222,7 +225,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.4
       - run: bun install --frozen-lockfile
         working-directory: tools
       - run: bun run typecheck
@@ -311,9 +314,10 @@ jobs:
 
       - name: Fetch the published extensions
         # The extensions users install, at the tags and digests pinned in
-        # .config/published-extension-bundles.toml: four WASM bundles from
-        # finos/morphir-rust, the Elm process extension from finos/morphir-elm
-        # and the Scala Elm provider from finos/morphir-scala. The owning
+        # .config/published-extension-bundles.toml: four WASM bundles from the
+        # repositories that release them, the Elm process extension from
+        # finos/morphir-elm and the Scala Elm provider from
+        # finos/morphir-scala. The owning
         # repository checks that a new release
         # works with the released CLI; this job checks that a CLI change does
         # not break the published releases.
@@ -458,6 +462,9 @@ jobs:
 
       - name: Set up Rust CI
         uses: ./.github/actions/setup-rust-ci
+
+      - name: Verify the shared OpenSpec workflow
+        run: mise run openspec:verify
 
       - name: Validate schemas against the metaschema
         run: mise run schema:validate

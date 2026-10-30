@@ -47,7 +47,7 @@ Current `mise` releases auto-trust project configuration in normal mode; the exp
 - **[finos/morphir-rust](https://github.com/finos/morphir-rust)** — Rust libraries (`morphir-core`, `morphir-common`, etc.) used by the CLI
 - **[finos/morphir-examples](https://github.com/finos/morphir-examples)** — Example Morphir projects
 - **[finos/morphir-moonbit](https://github.com/finos/morphir-moonbit)** — MoonBit implementation of Morphir tooling
-- **[finos/morphir-python](https://github.com/finos/morphir-python)** — Python implementation of Morphir tooling
+- **[finos/morphir-python](https://github.com/finos/morphir-python)** — Python implementation of Morphir tooling, and the owner of the Python compiler and the `morphir-python` WASM extension (new `extension/python/v*` releases; bundles up to `v0.4.0` stay in finos/morphir-rust releases)
 - **[finos/morphir-scala](https://github.com/finos/morphir-scala)** — Scala implementation of Morphir tooling
 - **[finos/morphir-ui](https://github.com/finos/morphir-ui)** — User-interface work for the Morphir project
 
@@ -634,3 +634,16 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 - Do not commit or push without clear authority from the active profile or the current user request.
 - If a required sync or push is blocked, stop and report the exact command and error.
 <!-- END BEADS INTEGRATION -->
+
+## OpenSpec change proposals
+
+New proposals use the shared `html-design` schema and a standalone `design.html`
+with inline CSS and SVG. Use the generated OpenSpec skills for proposing,
+exploring, applying, updating, syncing and archiving changes. Beads remains the
+task tracker; record the OpenSpec change path in its owning bead and link the
+GitHub issue. Existing review and approval rules still apply.
+
+The canonical bundle is managed by Mission Control openspec-ext. Do not edit
+its schema, templates, checker or feature file locally. Keep repository policy
+in `openspec/config.yaml` and run `mise run openspec:verify` before submission.
+See [the OpenSpec guide](docs/developers/openspec.md) for setup and updates.

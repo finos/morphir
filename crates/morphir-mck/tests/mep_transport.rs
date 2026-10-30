@@ -436,6 +436,17 @@ fn framed_exchange_preserves_jsonrpc_envelope_and_notification_order() {
     session.close().unwrap();
 }
 
+fn explicit_mep_ids_preserve_u64_and_string_identity() {
+    let mut session = session("");
+    for id in [json!(u64::MAX), json!("mck-λ-id"), json!("")] {
+        let response = session
+            .exchange_mep_with_id(&id, "morphir.ping", &json!({}))
+            .unwrap();
+        assert_eq!(response["id"], id);
+    }
+    session.close().unwrap();
+}
+
 fn main() {
     if std::env::args().nth(1).as_deref() == Some("--heartbeat") {
         let mut output = std::fs::OpenOptions::new()
@@ -454,6 +465,10 @@ fn main() {
         return;
     }
     let tests: &[(&str, fn())] = &[
+        (
+            "explicit_mep_ids_preserve_u64_and_string_identity",
+            explicit_mep_ids_preserve_u64_and_string_identity,
+        ),
         (
             "framed_exchange_preserves_jsonrpc_envelope_and_notification_order",
             framed_exchange_preserves_jsonrpc_envelope_and_notification_order,

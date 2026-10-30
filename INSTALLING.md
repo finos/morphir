@@ -85,16 +85,31 @@ if ($actual -ne $expected) { throw "Checksum verification failed" }
 
 ## Install the Python extension
 
-The CLI ships separately from language extensions. With CLI `0.4.0-beta.7` or
-later, install the `morphir-python` WASM bundle `extension/python/v0.4.0` to compile
-supported Python ADTs, fixed tuples, conditional functions, typed calls and unary
-lambdas to Morphir IR v3 or v4 and generate Python. Its version-2 descriptor needs
-CLI `0.4.0-beta.7` to publish; with CLI `0.4.0-beta.1` to `0.4.0-beta.6`, use
-`extension/python/v0.3.0`. The earlier `v0.1.0` bundle does not compile with this CLI.
-See the [Python extension installation guide](https://github.com/finos/morphir-rust/blob/main/docs/tutorials/python-extension.md)
+The CLI ships separately from language extensions. The `morphir-python` WASM
+extension compiles supported Python ADTs, fixed tuples, conditional functions,
+typed calls and unary lambdas to Morphir IR v3 or v4 and generates Python.
+
+[finos/morphir-python](https://github.com/finos/morphir-python) owns the
+extension. It holds the compiler crate,
+[`morphir-python-binding`](https://github.com/finos/morphir-python/blob/main/rust/crates/morphir-python-binding/README.md),
+and publishes new `extension/python/v<version>` bundles in its releases. The
+bundles up to `extension/python/v0.4.0` were released from finos/morphir-rust and
+stay in the [finos/morphir-rust releases](https://github.com/finos/morphir-rust/releases).
+
+With CLI `0.4.0-beta.7` or later, install the bundle `extension/python/v0.4.0`. Its
+version-2 descriptor needs CLI `0.4.0-beta.7` to publish; with CLI `0.4.0-beta.1`
+to `0.4.0-beta.6`, use `extension/python/v0.3.0`. The earlier `v0.1.0` bundle does
+not compile with this CLI. See the
+[Python extension guide](https://github.com/finos/morphir-python/blob/main/docs/python-extension.md)
 for download, repository publication and installation commands, and the
-[binding README](https://github.com/finos/morphir-rust/blob/main/crates/morphir-python-binding/README.md)
+[binding README](https://github.com/finos/morphir-python/blob/main/rust/crates/morphir-python-binding/README.md)
 for the supported subset and conformance limits.
+
+finos/morphir-python also packages the same compiler for Python. From the first
+`morphir-python` release on PyPI that includes it, `pip install morphir-python`
+gives a Python API and a `morphir-python` command that compile and generate
+without the Morphir CLI. See the
+[Python compiler guide](https://github.com/finos/morphir-python/blob/main/docs/python-compiler.md).
 
 ## Build from source
 

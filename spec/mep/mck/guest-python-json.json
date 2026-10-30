@@ -1,0 +1,312 @@
+{
+  "contractVersion": "0.1.0-draft.1",
+  "profile": "python-json-library-v1",
+  "mepVersion": "0.2.0-draft.1",
+  "source": {
+    "languageId": "python",
+    "sources": {
+      "documents": [
+        {
+          "uri": "main.py",
+          "languageId": "python",
+          "version": 19,
+          "text": "def identity(flag: bool) -> bool:\n    return flag\n\ndef always() -> bool:\n    return True\n"
+        }
+      ]
+    },
+    "package": {
+      "name": "mck/python",
+      "exposedModules": [
+        "main"
+      ]
+    },
+    "options": {
+      "typesOnly": false,
+      "irVersion": "4.0.0"
+    },
+    "contextDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "expectedIrVersions": {
+    "3.0.0": {
+      "formatVersion": 3,
+      "distribution": [
+        "Library",
+        [
+          [
+            "mck"
+          ],
+          [
+            "python"
+          ]
+        ],
+        [],
+        {
+          "modules": [
+            [
+              [
+                [
+                  "main"
+                ]
+              ],
+              {
+                "access": "Public",
+                "value": {
+                  "types": [],
+                  "values": [
+                    [
+                      [
+                        "always"
+                      ],
+                      {
+                        "access": "Public",
+                        "value": {
+                          "doc": "",
+                          "value": {
+                            "inputTypes": [],
+                            "outputType": [
+                              "Reference",
+                              {},
+                              [
+                                [
+                                  [
+                                    "morphir"
+                                  ],
+                                  [
+                                    "s",
+                                    "d",
+                                    "k"
+                                  ]
+                                ],
+                                [
+                                  [
+                                    "basics"
+                                  ]
+                                ],
+                                [
+                                  "bool"
+                                ]
+                              ],
+                              []
+                            ],
+                            "body": [
+                              "Literal",
+                              [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "morphir"
+                                    ],
+                                    [
+                                      "s",
+                                      "d",
+                                      "k"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "basics"
+                                    ]
+                                  ],
+                                  [
+                                    "bool"
+                                  ]
+                                ],
+                                []
+                              ],
+                              [
+                                "BoolLiteral",
+                                true
+                              ]
+                            ]
+                          }
+                        }
+                      }
+                    ],
+                    [
+                      [
+                        "identity"
+                      ],
+                      {
+                        "access": "Public",
+                        "value": {
+                          "doc": "",
+                          "value": {
+                            "inputTypes": [
+                              [
+                                [
+                                  "flag"
+                                ],
+                                [
+                                  "Reference",
+                                  {},
+                                  [
+                                    [
+                                      [
+                                        "morphir"
+                                      ],
+                                      [
+                                        "s",
+                                        "d",
+                                        "k"
+                                      ]
+                                    ],
+                                    [
+                                      [
+                                        "basics"
+                                      ]
+                                    ],
+                                    [
+                                      "bool"
+                                    ]
+                                  ],
+                                  []
+                                ],
+                                [
+                                  "Reference",
+                                  {},
+                                  [
+                                    [
+                                      [
+                                        "morphir"
+                                      ],
+                                      [
+                                        "s",
+                                        "d",
+                                        "k"
+                                      ]
+                                    ],
+                                    [
+                                      [
+                                        "basics"
+                                      ]
+                                    ],
+                                    [
+                                      "bool"
+                                    ]
+                                  ],
+                                  []
+                                ]
+                              ]
+                            ],
+                            "outputType": [
+                              "Reference",
+                              {},
+                              [
+                                [
+                                  [
+                                    "morphir"
+                                  ],
+                                  [
+                                    "s",
+                                    "d",
+                                    "k"
+                                  ]
+                                ],
+                                [
+                                  [
+                                    "basics"
+                                  ]
+                                ],
+                                [
+                                  "bool"
+                                ]
+                              ],
+                              []
+                            ],
+                            "body": [
+                              "Variable",
+                              [
+                                "Reference",
+                                {},
+                                [
+                                  [
+                                    [
+                                      "morphir"
+                                    ],
+                                    [
+                                      "s",
+                                      "d",
+                                      "k"
+                                    ]
+                                  ],
+                                  [
+                                    [
+                                      "basics"
+                                    ]
+                                  ],
+                                  [
+                                    "bool"
+                                  ]
+                                ],
+                                []
+                              ],
+                              [
+                                "flag"
+                              ]
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  ],
+                  "doc": null
+                }
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    "4.0.0": {
+      "formatVersion": 4,
+      "distribution": {
+        "Library": {
+          "packageName": "mck/python",
+          "dependencies": {},
+          "def": {
+            "modules": {
+              "main": {
+                "Public": {
+                  "types": {},
+                  "values": {
+                    "always": {
+                      "Public": {
+                        "ExpressionBody": {
+                          "inputTypes": {},
+                          "outputType": "morphir/SDK:basics#bool",
+                          "body": {
+                            "Literal": {
+                              "BoolLiteral": true
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "identity": {
+                      "Public": {
+                        "ExpressionBody": {
+                          "inputTypes": {
+                            "flag": "morphir/SDK:basics#bool"
+                          },
+                          "outputType": "morphir/SDK:basics#bool",
+                          "body": {
+                            "Variable": "flag"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "expectedArtifacts": {
+    "main.py": "from __future__ import annotations\nfrom dataclasses import dataclass\nfrom collections.abc import Callable\n\n\ndef always() -> bool:\n    return True\n\n\ndef identity(flag: bool) -> bool:\n    return flag\n"
+  }
+}

@@ -3,46 +3,36 @@
   "extends": [
     "config:recommended"
   ],
-  "prHourlyLimit": 5,
-  "prConcurrentLimit": 10,
+  "timezone": "America/Chicago",
+  "schedule": ["* 0-5 * * 1"],
+  "updateNotScheduled": false,
+  "prHourlyLimit": 1,
+  "prConcurrentLimit": 3,
+  "separateMajorMinor": true,
   "cloneSubmodules": true,
   "cloneSubmodulesFilter": ["ecosystem/morphir-rust"],
+  "vulnerabilityAlerts": {
+    "groupName": null,
+    "schedule": [],
+    "dependencyDashboardApproval": false
+  },
   "packageRules": [
+    {
+      "description": "Group dependency updates across all managers",
+      "matchPackageNames": ["*"],
+      "groupName": "dependencies",
+      "groupSingleUpdates": true
+    },
+    {
+      "description": "Require dashboard approval for the major dependency batch",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
     {
       "description": "granit-parser is pinned to the version in ecosystem/morphir-rust, and serde-saphyr releases require a matching granit-parser; bump both together with the submodule",
       "matchManagers": ["cargo"],
       "matchPackageNames": ["granit-parser", "serde-saphyr"],
       "enabled": false
-    },
-    {
-      "description": "Group Rust/Cargo dependency updates",
-      "groupName": "rust",
-      "matchManagers": ["cargo"]
-    },
-    {
-      "description": "Group Go module updates",
-      "groupName": "go",
-      "matchManagers": ["gomod"]
-    },
-    {
-      "description": "Group npm/Node.js dependency updates",
-      "groupName": "npm",
-      "matchManagers": ["npm", "pnpm", "yarn"]
-    },
-    {
-      "description": "Group GitHub Actions updates",
-      "groupName": "github-actions",
-      "matchManagers": ["github-actions"]
-    },
-    {
-      "description": "Group mise tool version updates",
-      "groupName": "mise-tools",
-      "matchManagers": ["mise"]
-    },
-    {
-      "description": "Group Docker-related updates",
-      "groupName": "docker",
-      "matchManagers": ["dockerfile", "docker-compose"]
     }
   ]
 }

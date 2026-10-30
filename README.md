@@ -76,7 +76,7 @@ Morphir consists of a few projects based on the features they provide.
 - **[morphir-bosque](https://github.com/finos/morphir-bosque)** - Integration with the Bosque language.
 - **[morphir-dotnet](https://github.com/finos/morphir-dotnet)** - Integration with .NET via F#.
 - **[morphir-rust](https://github.com/finos/morphir-rust)** - Integration with Rust
-- **[morphir-python](https://github.com/finos/morphir-python)** - Integration with Python
+- **[morphir-python](https://github.com/finos/morphir-python)** - Integration with Python: the IR library and SDK, the Python compiler and the `morphir-python` extension for the Morphir CLI
 - **[morphir-moonbit](https://github.com/finos/morphir-moonbit)** - MoonBit implementation of Morphir tooling
 - **[morphir-go](https://github.com/finos/morphir-go)** - Go implementation of Morphir tooling (CLI, WIT pipeline, Go backends)
 - **[morphir-ui](https://github.com/finos/morphir-ui)** - User-interface work for the Morphir project
@@ -145,3 +145,9 @@ Copyright 2022 FINOS
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
+
+## OpenSpec change proposals
+
+New proposals use the shared `html-design` workflow, with capability specs,
+a standalone `design.html`, and implementation tasks linked to Beads.
+See [the OpenSpec guide](docs/developers/openspec.md) for setup and validation.

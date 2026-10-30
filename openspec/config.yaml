@@ -1,0 +1,15 @@
+# Copyright 2026 FINOS
+# SPDX-License-Identifier: Apache-2.0
+schema: html-design
+githubCopilot:
+  cloudAgent: false
+context: |
+  finos/morphir is the ecosystem umbrella repository, owning the Rust CLI,
+  documentation website, shared specifications and ecosystem integration.
+  Follow AGENTS.md and CONTRIBUTING.md. Keep domain logic pure and immutable,
+  preserve versioned contracts and use the shared native Morphir MCK runner.
+  Use Beads for task tracking and link the GitHub issue and OpenSpec change.
+  Keep language implementation work in its owning repository. Do not move
+  pinned ecosystem submodules unless a proposal explicitly covers that update.
+  Use the html-design workflow for new changes; repository review, tests and
+  approval rules still apply. Keep project policy here, outside managed files.
