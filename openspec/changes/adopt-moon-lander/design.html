@@ -408,6 +408,13 @@ from configuration (group 4), dispatch (group 5), the CLI host (group 6), the de
 (group 8) and the integration checks (group 9). A group gets its own pull request only when it is blocked and the
 rest is ready, for example when group 6 waits for a Moon-Lander hosting feature. The old configuration loader and
 the old exit-code mapping are removed in the commits that prove parity, so reverting those commits restores them.</p>
+<p>On 2026-10-30 the maintainer approved a Node-backed Moonx entry with an explicit Node prerequisite. A user
+running Morphir through Moonx installs the supported Node host as well as MoonBit; the published package supplies
+the Node CLI assets, without a separate npm installation. The entry preserves opaque arguments, input bytes,
+separate output channels, JSON schemas, cancellation and owned-child cleanup through the existing Node CLI.
+Release qualification must exercise the actual packaged entry on the supported minimum and pinned MoonBit
+runtimes, then repeat its consumer checks against the public registry. The native installer and npm delivery keep
+their existing entry contracts.</p>
 
 <h2 id="open-questions">Open questions</h2>
 <ul>

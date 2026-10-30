@@ -125,7 +125,11 @@ The maintainer confirmed these on 2026-10-28:
   state retains an observed request after the marker disappears. Existing worker messages and shared buffers stay unchanged.
 - On 2026-10-30 the maintainer confirmed that this release includes a qualified Moonx entry. Its compiler/runtime,
   filesystem, JSON, failure and help/version qualification is part of release delivery; a help-only stub or silent
-  deferral does not satisfy that scope. Any additional runtime prerequisite requires an explicit maintainer decision.
+  deferral does not satisfy that scope.
+- On 2026-10-30 the maintainer approved a Node-backed Moonx entry with an explicit Node prerequisite. The entry
+  reuses the packaged Node CLI without a separate npm installation and preserves its bounded filesystem operations,
+  publication guarantees, opaque argument arrays, byte streams, JSON schemas and cancellation behavior. Release
+  qualification covers the supported minimum and pinned MoonBit runtimes, plus the actual archive and public registry.
 - The work lands in as few pull requests as needed: one pull request for the migration here, with a separate pull
   request only for a group that is blocked while the rest is ready.
 
