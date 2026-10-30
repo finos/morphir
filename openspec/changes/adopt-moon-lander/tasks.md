@@ -141,9 +141,9 @@
 
 ## 9. Integration checks across hosts (morphir-ukvn.5.99.9)
 
-- [ ] 9.1 Run the full gate, the itest suites and the Workbench browser suites on all supported targets; verify all
+- [x] 9.1 Run the full gate, the itest suites and the Workbench browser suites on all supported targets; verify all
   pass and record the results in the epic bead
-- [ ] 9.2 Compare CLI artifact sizes and start-up time with the numbers before group 2; verify the comparison is in
+- [x] 9.2 Compare CLI artifact sizes and start-up time with the numbers before group 2; verify the comparison is in
   the epic bead and any growth above 10 percent has an issue
 
 ## Workflow follow-up
