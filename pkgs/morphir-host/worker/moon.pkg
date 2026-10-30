@@ -7,26 +7,30 @@ import {
   "moonbitlang/core/debug",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
+  "moonrockz/moon-lander-hosting" @hosting,
 }
 
-// The async imports are used only by the channel files, which wasm-gc does not
-// build.
+// The async imports are used only by the channel and driver files, which
+// wasm-gc does not build.
 
 warnings = "-29"
 
 import {
   "finos/morphir-engine/ids",
   "finos/morphir-host/worker",
+  "moonbitlang/x/fs",
 } for "test"
 
 // moonbitlang/async has no event loop on wasm-gc. The types and the pure code
-// build on all four targets; the async channel, launcher and their tests build
-// on native, js and wasm only.
+// build on all four targets; the async channel, launcher, driver and their
+// tests build on native, js and wasm only.
 
 options(
   targets: {
     "channel.mbt": [ "native", "js", "wasm" ],
     "memory_channel.mbt": [ "native", "js", "wasm" ],
     "memory_channel_test.mbt": [ "native", "js", "wasm" ],
+    "host_driver.mbt": [ "native", "js", "wasm" ],
+    "host_driver_test.mbt": [ "native", "js", "wasm" ],
   },
 )

@@ -4,6 +4,7 @@ package "finos/morphir-host/worker"
 import {
   "finos/morphir-engine/ids",
   "moonbitlang/core/debug",
+  "moonrockz/moon-lander-hosting",
 }
 
 // Values
@@ -12,12 +13,19 @@ import {
 pub(all) suberror ChannelError {
   WorkerClosed
   FrameInvalid(String)
-  FrameLimit(declared~ : Int64, limit~ : Int32)
+  FrameLimit(direction~ : FrameDirection, declared~ : Int64, limit~ : Int32)
   Stopped
 } derive(Eq, @debug.Debug)
 pub fn ChannelError::equal(Self, Self) -> Bool
 pub fn ChannelError::not_equal(Self, Self) -> Bool
 pub fn ChannelError::to_repr(Self) -> @debug.Repr
+
+pub(all) suberror HostError {
+  Ended(Ending, report~ : SessionReport)
+} derive(Eq, @debug.Debug)
+pub fn HostError::equal(Self, Self) -> Bool
+pub fn HostError::not_equal(Self, Self) -> Bool
+pub fn HostError::to_repr(Self) -> @debug.Repr
 
 pub(all) suberror LaunchError {
   PlatformMismatch(Platform)
@@ -32,6 +40,20 @@ pub(all) suberror LaunchError {
 pub fn LaunchError::equal(Self, Self) -> Bool
 pub fn LaunchError::not_equal(Self, Self) -> Bool
 pub fn LaunchError::to_repr(Self) -> @debug.Repr
+
+pub(all) suberror Refusal {
+  Refusal(code~ : RefusalCode, message~ : String)
+} derive(Eq, @debug.Debug)
+pub fn Refusal::equal(Self, Self) -> Bool
+pub fn Refusal::not_equal(Self, Self) -> Bool
+pub fn Refusal::to_repr(Self) -> @debug.Repr
+
+pub(all) suberror SessionUnavailable {
+  SessionUnavailable(String)
+} derive(Eq, @debug.Debug)
+pub fn SessionUnavailable::equal(Self, Self) -> Bool
+pub fn SessionUnavailable::not_equal(Self, Self) -> Bool
+pub fn SessionUnavailable::to_repr(Self) -> @debug.Repr
 
 pub(all) suberror ValueError {
   InvalidSha256(String)
@@ -49,12 +71,25 @@ pub(all) suberror ValueError {
   InvalidIrVersionName(String)
   InvalidRuntime(String)
   InvalidArtifact(String)
+  InvalidDiagnostic(String)
+  InvalidClaim(String)
 } derive(Eq, @debug.Debug)
 pub fn ValueError::equal(Self, Self) -> Bool
 pub fn ValueError::not_equal(Self, Self) -> Bool
+pub fn ValueError::output(Self, &Logger) -> Unit
 pub fn ValueError::to_repr(Self) -> @debug.Repr
+pub fn ValueError::to_string(Self) -> String
+pub impl Show for ValueError
 
 // Types and methods
+pub struct Answer {
+  class : OutcomeClass[Json]
+  diagnostics : Array[Diagnostic]
+} derive(Eq, @debug.Debug)
+pub fn Answer::equal(Self, Self) -> Bool
+pub fn Answer::not_equal(Self, Self) -> Bool
+pub fn Answer::to_repr(Self) -> @debug.Repr
+
 pub struct ArtifactPath {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -81,6 +116,7 @@ pub struct ArtifactRef {
   sha256 : Sha256
 } derive(Eq, @debug.Debug)
 pub fn ArtifactRef::equal(Self, Self) -> Bool
+pub fn ArtifactRef::from_json(Json, PathStyle) -> Self raise ValueError
 pub fn ArtifactRef::new(ArtifactSource, Sha256) -> Self
 pub fn ArtifactRef::not_equal(Self, Self) -> Bool
 pub fn ArtifactRef::to_repr(Self) -> @debug.Repr
@@ -105,10 +141,94 @@ pub struct Claims {
   model_tuples : Array[ModelTuple]
 } derive(Eq, @debug.Debug)
 pub fn Claims::equal(Self, Self) -> Bool
+pub fn Claims::from_describe(Json) -> Self raise ValueError
 pub fn Claims::new(ExtensionId, ExtensionVersion, protocol_lines? : ArrayView[ProtocolLine], operations? : ArrayView[Operation], languages? : ArrayView[LanguageClaim], frontend_ir_versions? : ArrayView[IrVersionName], targets? : ArrayView[@ids.BackendId], backend_ir_versions? : ArrayView[IrVersionName], model_tuples? : ArrayView[ModelTuple]) -> Self
 pub fn Claims::not_equal(Self, Self) -> Bool
 pub fn Claims::offers(Self, Operation) -> Bool
 pub fn Claims::to_repr(Self) -> @debug.Repr
+
+pub struct CompileRequest {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn CompileRequest::equal(Self, Self) -> Bool
+pub fn CompileRequest::new(Map[String, Json]) -> Self raise Refusal
+pub fn CompileRequest::not_equal(Self, Self) -> Bool
+pub fn CompileRequest::to_repr(Self) -> @debug.Repr
+
+pub struct Compiled {
+  result : Json
+} derive(Eq, @debug.Debug)
+pub fn Compiled::equal(Self, Self) -> Bool
+pub fn Compiled::new(Json) -> Self
+pub fn Compiled::not_equal(Self, Self) -> Bool
+pub fn Compiled::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Conclusion {
+  Described(Description)
+  Closed
+  EndedEarly(Ending)
+} derive(Eq, @debug.Debug)
+pub fn Conclusion::equal(Self, Self) -> Bool
+pub fn Conclusion::not_equal(Self, Self) -> Bool
+pub fn Conclusion::to_repr(Self) -> @debug.Repr
+
+pub struct Conversation {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn Conversation::activate(Offer, expected~ : Claims, limits? : Limits) -> (Self, Step)
+pub fn Conversation::close(Self) -> (Self, Step) raise SessionUnavailable
+pub fn Conversation::compile(Self, CompileRequest) -> (Self, Step) raise SessionUnavailable
+pub fn Conversation::equal(Self, Self) -> Bool
+pub fn Conversation::generate(Self, GenerateRequest) -> (Self, Step) raise SessionUnavailable
+pub fn Conversation::limits(Self) -> Limits
+pub fn Conversation::negotiated(Self) -> Negotiated?
+pub fn Conversation::not_equal(Self, Self) -> Bool
+pub fn Conversation::on(Self, Event) -> (Self, Step)
+pub fn Conversation::probe(limits? : Limits) -> (Self, Step)
+pub fn Conversation::to_repr(Self) -> @debug.Repr
+
+pub struct Deadline {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn Deadline::default() -> Self
+pub fn Deadline::equal(Self, Self) -> Bool
+pub fn Deadline::ms(Self) -> Int32
+pub fn Deadline::not_equal(Self, Self) -> Bool
+pub fn Deadline::of_ms(Int32) -> Self raise ValueError
+pub fn Deadline::to_repr(Self) -> @debug.Repr
+
+pub struct Description {
+  claims : Claims
+} derive(Eq, @debug.Debug)
+pub fn Description::equal(Self, Self) -> Bool
+pub fn Description::not_equal(Self, Self) -> Bool
+pub fn Description::to_repr(Self) -> @debug.Repr
+
+pub struct Diagnostic {
+  severity : Severity
+  code : String?
+  message : String
+  location : SourceLocation?
+  related : Array[RelatedInformation]
+  data : Json?
+} derive(Eq, @debug.Debug)
+pub fn Diagnostic::decode(Json) -> Self raise ValueError
+pub fn Diagnostic::equal(Self, Self) -> Bool
+pub fn Diagnostic::not_equal(Self, Self) -> Bool
+pub fn Diagnostic::to_json(Self) -> Json
+pub fn Diagnostic::to_repr(Self) -> @debug.Repr
+pub impl ToJson for Diagnostic
+
+pub(all) enum Ending {
+  Refused(code~ : RefusalCode, message~ : String)
+  Failed(Fault)
+  Deadline
+  Cancelled
+} derive(Eq, @debug.Debug)
+pub fn[T] Ending::class(Self) -> OutcomeClass[T]
+pub fn Ending::equal(Self, Self) -> Bool
+pub fn Ending::not_equal(Self, Self) -> Bool
+pub fn Ending::to_repr(Self) -> @debug.Repr
 
 pub(all) enum EnvelopeVersion {
   V0_1_0Draft1
@@ -124,6 +244,16 @@ pub fn EnvelopeVersion::output(Self, &Logger) -> Unit
 pub fn EnvelopeVersion::to_repr(Self) -> @debug.Repr
 pub fn EnvelopeVersion::to_string(Self) -> String
 pub impl Show for EnvelopeVersion
+
+pub(all) enum Event {
+  Received(Message)
+  ChannelFailed(ChannelError)
+  DeadlinePassed
+  StopRequested
+} derive(Eq, @debug.Debug)
+pub fn Event::equal(Self, Self) -> Bool
+pub fn Event::not_equal(Self, Self) -> Bool
+pub fn Event::to_repr(Self) -> @debug.Repr
 
 pub struct ExtensionId {
   // private fields
@@ -146,6 +276,20 @@ pub fn ExtensionVersion::parse(String) -> Self raise ValueError
 pub fn ExtensionVersion::to_repr(Self) -> @debug.Repr
 pub fn ExtensionVersion::to_string(Self) -> String
 pub impl Show for ExtensionVersion
+
+pub struct ExtismProfile {
+  memory_bytes : Int32
+  instructions : Int64
+  call_ms : Int32
+  input_bytes : Int32
+  output_bytes : Int32
+} derive(Eq, @debug.Debug)
+pub fn ExtismProfile::equal(Self, Self) -> Bool
+pub fn ExtismProfile::not_equal(Self, Self) -> Bool
+pub fn ExtismProfile::restricted() -> Self
+pub fn ExtismProfile::to_json(Self) -> Json
+pub fn ExtismProfile::to_repr(Self) -> @debug.Repr
+pub impl ToJson for ExtismProfile
 
 pub(all) enum FailureCode {
   IncompleteSession
@@ -200,6 +344,52 @@ pub fn FaultCode::output(Self, &Logger) -> Unit
 pub fn FaultCode::to_repr(Self) -> @debug.Repr
 pub fn FaultCode::to_string(Self) -> String
 pub impl Show for FaultCode
+
+pub(all) enum FrameDirection {
+  Request
+  Response
+} derive(Eq, @debug.Debug)
+pub fn FrameDirection::equal(Self, Self) -> Bool
+pub fn FrameDirection::not_equal(Self, Self) -> Bool
+pub fn FrameDirection::to_repr(Self) -> @debug.Repr
+
+pub struct GenerateRequest {
+  // private fields
+} derive(Eq, @debug.Debug)
+pub fn GenerateRequest::equal(Self, Self) -> Bool
+pub fn GenerateRequest::new(Map[String, Json]) -> Self raise Refusal
+pub fn GenerateRequest::not_equal(Self, Self) -> Bool
+pub fn GenerateRequest::to_repr(Self) -> @debug.Repr
+
+pub struct Generated {
+  result : Json
+} derive(Eq, @debug.Debug)
+pub fn Generated::equal(Self, Self) -> Bool
+pub fn Generated::new(Json) -> Self
+pub fn Generated::not_equal(Self, Self) -> Bool
+pub fn Generated::to_repr(Self) -> @debug.Repr
+
+pub struct Host {
+  // private fields
+}
+pub async fn Host::activate(Self, WorkerSpec, expected~ : Claims, offer~ : Offer, deadline? : Deadline, stop? : StopSignal) -> Session
+pub fn Host::new(&Launcher, HostPlatform, limits? : Limits) -> Self
+pub async fn Host::probe(Self, WorkerSpec, deadline? : Deadline, stop? : StopSignal) -> Description
+pub fn Host::runtimes(Self) -> Array[RuntimeKind]
+pub fn Host::supports(Self, WorkerRuntime) -> Bool
+pub async fn[X] Host::with_session(Self, WorkerSpec, expected~ : Claims, offer~ : Offer, deadline? : Deadline, stop? : StopSignal, async (Session) -> X) -> X
+
+pub(all) enum HostPlatform {
+  Native(Platform)
+  Node(Platform)
+  Browser
+} derive(Eq, @debug.Debug)
+pub fn HostPlatform::admit(Self, WorkerRuntime) -> Unit raise Refusal
+pub fn HostPlatform::equal(Self, Self) -> Bool
+pub fn HostPlatform::not_equal(Self, Self) -> Bool
+pub fn HostPlatform::runtimes(Self) -> Array[RuntimeKind]
+pub fn HostPlatform::supports(Self, WorkerRuntime) -> Bool
+pub fn HostPlatform::to_repr(Self) -> @debug.Repr
 
 pub struct ImportName {
   module_name : String
@@ -264,10 +454,13 @@ pub struct Limits {
   model : ModelLimits
 } derive(Eq, @debug.Debug)
 pub fn Limits::equal(Self, Self) -> Bool
+pub fn Limits::for_session(Self, Offer, WorkerRuntime) -> Self
 pub fn Limits::host() -> Self
 pub fn Limits::new(request_bytes~ : Int32, response_bytes~ : Int32, model~ : ModelLimits) -> Self raise ValueError
 pub fn Limits::not_equal(Self, Self) -> Bool
+pub fn Limits::to_json(Self) -> Json
 pub fn Limits::to_repr(Self) -> @debug.Repr
+pub impl ToJson for Limits
 
 pub struct MemoryChannel {
   // private fields
@@ -282,7 +475,7 @@ pub impl Channel for MemoryChannel
 pub struct MemoryLauncher {
   // private fields
 }
-pub async fn MemoryLauncher::launch(Self, WorkerSpec) -> &Channel
+pub async fn MemoryLauncher::launch(Self, WorkerSpec, Limits) -> &Channel
 pub fn MemoryLauncher::new(MemoryChannel) -> Self
 pub impl Launcher for MemoryLauncher
 
@@ -329,9 +522,12 @@ pub struct ModelLimits {
   nodes : Int32
 } derive(Eq, @debug.Debug)
 pub fn ModelLimits::equal(Self, Self) -> Bool
+pub fn ModelLimits::min(Self, Self) -> Self
 pub fn ModelLimits::new(encoded_bytes~ : Int32, decoded_bytes~ : Int32, depth~ : Int32, nodes~ : Int32) -> Self raise ValueError
 pub fn ModelLimits::not_equal(Self, Self) -> Bool
+pub fn ModelLimits::to_json(Self) -> Json
 pub fn ModelLimits::to_repr(Self) -> @debug.Repr
+pub impl ToJson for ModelLimits
 
 pub(all) enum ModelOperation {
   CompileModel
@@ -382,7 +578,29 @@ pub fn ModelTuple::op_gt(Self, Self) -> Bool
 pub fn ModelTuple::op_le(Self, Self) -> Bool
 pub fn ModelTuple::op_lt(Self, Self) -> Bool
 pub fn ModelTuple::parse(String, String, String, String, String) -> Self raise ValueError
+pub fn ModelTuple::to_json(Self) -> Json
 pub fn ModelTuple::to_repr(Self) -> @debug.Repr
+pub impl ToJson for ModelTuple
+
+pub struct Negotiated {
+  offer : Offer
+  limits : Limits
+} derive(Eq, @debug.Debug)
+pub fn Negotiated::equal(Self, Self) -> Bool
+pub fn Negotiated::not_equal(Self, Self) -> Bool
+pub fn Negotiated::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Offer {
+  Legacy
+  Model(ModelTuple)
+} derive(Eq, @debug.Debug)
+pub fn Offer::check(Self, Claims) -> Unit raise Refusal
+pub fn Offer::equal(Self, Self) -> Bool
+pub fn Offer::line(Self) -> ProtocolLine
+pub fn Offer::not_equal(Self, Self) -> Bool
+pub fn Offer::operations(Self) -> Array[Operation]
+pub fn Offer::select(Claims, Operation, profile? : ModelProfile, codec? : ModelCodec) -> Self raise Refusal
+pub fn Offer::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Operation {
   Compile
@@ -407,11 +625,12 @@ pub impl Show for Operation
 
 pub struct Outcome[T] {
   class : OutcomeClass[T]
-  diagnostics : Array[Json]
+  diagnostics : Array[Diagnostic]
   stderr : StderrTail
 } derive(Eq, @debug.Debug)
 pub fn[T : Eq] Outcome::equal(Self[T], Self[T]) -> Bool
-pub fn[T] Outcome::new(OutcomeClass[T], diagnostics~ : ArrayView[Json], stderr~ : StderrTail) -> Self[T]
+pub fn[T, U] Outcome::map(Self[T], (T) -> U) -> Self[U]
+pub fn[T] Outcome::new(OutcomeClass[T], diagnostics~ : ArrayView[Diagnostic], stderr~ : StderrTail) -> Self[T]
 pub fn[T : Eq] Outcome::not_equal(Self[T], Self[T]) -> Bool
 pub fn[T : @debug.Debug] Outcome::to_repr(Self[T]) -> @debug.Repr
 
@@ -497,6 +716,14 @@ pub fn RefusalCode::to_repr(Self) -> @debug.Repr
 pub fn RefusalCode::to_string(Self) -> String
 pub impl Show for RefusalCode
 
+pub struct RelatedInformation {
+  location : SourceLocation
+  message : String
+} derive(Eq, @debug.Debug)
+pub fn RelatedInformation::equal(Self, Self) -> Bool
+pub fn RelatedInformation::not_equal(Self, Self) -> Bool
+pub fn RelatedInformation::to_repr(Self) -> @debug.Repr
+
 pub(all) enum RuntimeKind {
   Process
   Wasm
@@ -513,6 +740,42 @@ pub fn RuntimeKind::to_repr(Self) -> @debug.Repr
 pub fn RuntimeKind::to_string(Self) -> String
 pub impl Show for RuntimeKind
 
+pub struct Session {
+  // private fields
+}
+pub async fn Session::close(Self) -> SessionReport
+pub async fn Session::compile(Self, CompileRequest) -> Outcome[Compiled]
+pub async fn Session::generate(Self, GenerateRequest) -> Outcome[Generated]
+pub fn Session::negotiated(Self) -> Negotiated?
+
+pub struct SessionReport {
+  negotiated : Negotiated?
+  limits : Limits
+  extism : ExtismProfile?
+  stop : WorkerStop?
+  ending : Ending?
+} derive(Eq, @debug.Debug)
+pub fn SessionReport::equal(Self, Self) -> Bool
+pub fn SessionReport::new(Limits, negotiated? : Negotiated, extism? : ExtismProfile, stop? : WorkerStop, ending? : Ending) -> Self
+pub fn SessionReport::not_equal(Self, Self) -> Bool
+pub fn SessionReport::to_json(Self) -> Json
+pub fn SessionReport::to_repr(Self) -> @debug.Repr
+pub impl ToJson for SessionReport
+
+pub(all) enum Severity {
+  Error
+  Warning
+  Info
+  Hint
+} derive(Eq, @debug.Debug)
+pub fn Severity::equal(Self, Self) -> Bool
+pub fn Severity::not_equal(Self, Self) -> Bool
+pub fn Severity::output(Self, &Logger) -> Unit
+pub fn Severity::parse(String) -> Self raise ValueError
+pub fn Severity::to_repr(Self) -> @debug.Repr
+pub fn Severity::to_string(Self) -> String
+pub impl Show for Severity
+
 pub struct Sha256 {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -525,6 +788,25 @@ pub fn Sha256::to_repr(Self) -> @debug.Repr
 pub fn Sha256::to_string(Self) -> String
 pub impl Show for Sha256
 
+pub struct SourceLocation {
+  uri : String
+  start : SourcePosition
+  end : SourcePosition
+} derive(Eq, @debug.Debug)
+pub fn SourceLocation::equal(Self, Self) -> Bool
+pub fn SourceLocation::not_equal(Self, Self) -> Bool
+pub fn SourceLocation::to_json(Self) -> Json
+pub fn SourceLocation::to_repr(Self) -> @debug.Repr
+pub impl ToJson for SourceLocation
+
+pub struct SourcePosition {
+  line : Int64
+  character : Int64
+} derive(Eq, @debug.Debug)
+pub fn SourcePosition::equal(Self, Self) -> Bool
+pub fn SourcePosition::not_equal(Self, Self) -> Bool
+pub fn SourcePosition::to_repr(Self) -> @debug.Repr
+
 pub struct StderrTail {
   // private fields
 } derive(Eq, @debug.Debug)
@@ -535,6 +817,16 @@ pub fn StderrTail::not_equal(Self, Self) -> Bool
 pub fn StderrTail::of(Bytes) -> Self
 pub fn StderrTail::to_repr(Self) -> @debug.Repr
 pub fn StderrTail::truncated(Self) -> Bool
+
+pub(all) enum Step {
+  Exchange(sends~ : Array[Message], awaiting~ : Int32)
+  Activated(sends~ : Array[Message], Negotiated)
+  Answered(sends~ : Array[Message], Answer)
+  Finished(sends~ : Array[Message], stop~ : StopPlan, Conclusion)
+} derive(Eq, @debug.Debug)
+pub fn Step::equal(Self, Self) -> Bool
+pub fn Step::not_equal(Self, Self) -> Bool
+pub fn Step::to_repr(Self) -> @debug.Repr
 
 pub(all) enum StopMethod {
   ExitedAfterExit
@@ -547,6 +839,14 @@ pub fn StopMethod::equal(Self, Self) -> Bool
 pub fn StopMethod::not_equal(Self, Self) -> Bool
 pub fn StopMethod::to_repr(Self) -> @debug.Repr
 
+pub(all) enum StopPlan {
+  CloseAfterExit
+  Abort(StopReason)
+} derive(Eq, @debug.Debug)
+pub fn StopPlan::equal(Self, Self) -> Bool
+pub fn StopPlan::not_equal(Self, Self) -> Bool
+pub fn StopPlan::to_repr(Self) -> @debug.Repr
+
 pub(all) enum StopReason {
   GraceExpired
   Deadline
@@ -556,6 +856,14 @@ pub(all) enum StopReason {
 pub fn StopReason::equal(Self, Self) -> Bool
 pub fn StopReason::not_equal(Self, Self) -> Bool
 pub fn StopReason::to_repr(Self) -> @debug.Repr
+
+pub struct StopSignal {
+  // private fields
+}
+pub fn StopSignal::never() -> Self
+pub fn StopSignal::new(() -> Bool) -> Self
+pub fn StopSignal::of_token(@moon-lander-hosting.StopToken) -> Self
+pub fn StopSignal::requested(Self) -> Bool
 
 pub(all) enum StopStatus {
   Exited(code~ : Int32)
@@ -584,15 +892,19 @@ pub(all) enum WorkerRuntime {
   Wasm(abi~ : WasmAbi?)
 } derive(Eq, @debug.Debug)
 pub fn WorkerRuntime::equal(Self, Self) -> Bool
+pub fn WorkerRuntime::from_json(Json) -> Self raise ValueError
 pub fn WorkerRuntime::kind(Self) -> RuntimeKind
 pub fn WorkerRuntime::not_equal(Self, Self) -> Bool
+pub fn WorkerRuntime::to_json(Self) -> Json
 pub fn WorkerRuntime::to_repr(Self) -> @debug.Repr
+pub impl ToJson for WorkerRuntime
 
 pub struct WorkerSpec {
   artifact : ArtifactRef
   runtime : WorkerRuntime
 } derive(Eq, @debug.Debug)
 pub fn WorkerSpec::equal(Self, Self) -> Bool
+pub fn WorkerSpec::from_json(Json, PathStyle) -> Self raise ValueError
 pub fn WorkerSpec::new(ArtifactRef, WorkerRuntime) -> Self
 pub fn WorkerSpec::not_equal(Self, Self) -> Bool
 pub fn WorkerSpec::to_repr(Self) -> @debug.Repr
@@ -618,5 +930,5 @@ pub(open) trait Channel {
 }
 
 pub(open) trait Launcher {
-  async fn launch(Self, WorkerSpec) -> &Channel
+  async fn launch(Self, WorkerSpec, Limits) -> &Channel
 }

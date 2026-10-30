@@ -151,7 +151,9 @@ pub fn MemoryWorker::exit(self : MemoryWorker, code~ : Int32 = 0) -> Unit {
 }
 
 ///|
-/// A launcher that hands out one prepared in-memory channel.
+/// A launcher that hands out one prepared in-memory channel. The in-memory
+/// channel does not frame messages, so it does not apply frame limits; the
+/// session checks the size of each whole message.
 pub struct MemoryLauncher {
   priv mut channel : MemoryChannel?
 }
@@ -165,7 +167,7 @@ pub fn MemoryLauncher::new(channel : MemoryChannel) -> MemoryLauncher {
 pub extend MemoryLauncher with Launcher::{launch}
 
 ///|
-pub impl Launcher for MemoryLauncher with fn launch(self, _spec) {
+pub impl Launcher for MemoryLauncher with fn launch(self, _spec, _limits) {
   guard self.channel is Some(channel) else {
     raise LaunchFailed("the in-memory channel is already in use")
   }

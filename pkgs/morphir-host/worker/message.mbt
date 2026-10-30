@@ -50,14 +50,28 @@ pub fn Message::to_bytes(self : Message) -> Bytes {
 }
 
 ///|
+/// The direction of a frame: a request from the host to the worker, or a
+/// response or notification from the worker to the host.
+pub(all) enum FrameDirection {
+  Request
+  Response
+} derive(Eq, Debug)
+
+///|
+pub extend FrameDirection with Eq::{equal, not_equal}
+
+///|
+pub extend FrameDirection with @debug.Debug::{to_repr}
+
+///|
 /// A transport fault. `WorkerClosed` is the end of the worker's stream;
 /// `Stopped` is a call on a channel that the host has already closed or
-/// aborted. `FrameLimit` is a frame that declared more bytes than the limit,
-/// found before its body was read.
+/// aborted. `FrameLimit` is a frame that declared more bytes than the limit
+/// of its direction, found before its body was read or written.
 pub(all) suberror ChannelError {
   WorkerClosed
   FrameInvalid(String)
-  FrameLimit(declared~ : Int64, limit~ : Int32)
+  FrameLimit(direction~ : FrameDirection, declared~ : Int64, limit~ : Int32)
   Stopped
 } derive(Eq, Debug)
 

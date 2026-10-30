@@ -143,10 +143,15 @@ async test "a launcher returns a channel for a specification" {
     @worker.ArtifactRef::new(Memory(b"guest"), @worker.Sha256::of(b"guest")),
     Wasm(abi=Some(MorphirBytesV1)),
   )
-  let launched : &@worker.Channel = launcher.launch(spec)
+  let launched : &@worker.Channel = launcher.launch(
+    spec,
+    @worker.Limits::host(),
+  )
   launched.send(request(5))
   assert_eq(worker.receive().json(), request(5).json())
-  guard (Ok(launcher.launch(spec)) catch { e => Err(e) })
+  guard (Ok(launcher.launch(spec, @worker.Limits::host())) catch {
+      e => Err(e)
+    })
     is Err(@worker.LaunchFailed(_)) else {
     fail("launched a second worker from one channel")
   }

@@ -210,3 +210,41 @@ test "a model tuple has five closed parts" {
     fail("accepted an unknown codec")
   }
 }
+
+///|
+fn claim_set(critical : Json) -> Json {
+  {
+    "protocolVersions": ["0.1"],
+    "extension": { "id": "morphir-elm", "version": "2.1.0" },
+    "capabilities": {
+      "frontend": {
+        "languages": [{ "id": "elm", "fileExtensions": [".elm"] }],
+        "compile": true,
+      },
+    },
+    "critical": critical,
+  }
+}
+
+///|
+test "critical: a claim set that names a path the host does not understand is refused" {
+  let decoded = (critical : Json) => {
+    try @worker.Claims::from_describe(claim_set(critical)) catch {
+      error => Err(error)
+    } noraise {
+      claims => Ok(claims)
+    }
+  }
+  assert_true(decoded([]) is Ok(_))
+  assert_true(
+    decoded(["capabilities.frontend.languages", "extension.version"]) is Ok(_),
+  )
+  for path in ["capabilities.frontend.fragments", "requires"] {
+    guard decoded([Json::string(path)]) is Err(InvalidClaim(_)) else {
+      fail("accepted the critical path \{path}")
+    }
+  }
+  guard decoded("capabilities") is Err(InvalidClaim(_)) else {
+    fail("accepted critical that is not a list")
+  }
+}

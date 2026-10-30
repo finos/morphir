@@ -221,7 +221,7 @@ pub extend OutcomeClass with @debug.Debug::{to_repr}
 /// A session result. Every class keeps the guest's diagnostics and stderr tail.
 pub struct Outcome[T] {
   class : OutcomeClass[T]
-  diagnostics : Array[Json]
+  diagnostics : Array[Diagnostic]
   stderr : StderrTail
 } derive(Eq, Debug)
 
@@ -234,8 +234,25 @@ pub extend Outcome with @debug.Debug::{to_repr}
 ///|
 pub fn[T] Outcome::new(
   class : OutcomeClass[T],
-  diagnostics~ : ArrayView[Json],
+  diagnostics~ : ArrayView[Diagnostic],
   stderr~ : StderrTail,
 ) -> Outcome[T] {
   { class, diagnostics: diagnostics.to_owned(), stderr, }
+}
+
+///|
+/// The same outcome with the value of a completed class changed.
+pub fn[T, U] Outcome::map(self : Outcome[T], f : (T) -> U) -> Outcome[U] {
+  {
+    class: match self.class {
+      Completed(value) => Completed(f(value))
+      Unsuccessful => Unsuccessful
+      Failed(fault) => Failed(fault)
+      Refused(code~, message~) => Refused(code~, message~)
+      Deadline => Deadline
+      Cancelled => Cancelled
+    },
+    diagnostics: self.diagnostics,
+    stderr: self.stderr,
+  }
 }

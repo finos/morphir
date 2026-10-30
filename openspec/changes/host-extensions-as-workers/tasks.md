@@ -6,20 +6,20 @@
   `Claims`, `ProtocolLine`, `ModelTuple`, `Limits`, `Outcome`), the `Channel` and `Launcher` traits and an in-memory
   channel (CHAN-1); land it as its own pull request; verify it builds on native, js, wasm and wasm-gc with no new
   warnings
-- [ ] 1.2 Implement the pure session state machine for probe and operation sessions on both protocol lines (SES-1,
+- [x] 1.2 Implement the pure session state machine for probe and operation sessions on both protocol lines (SES-1,
   SES-2); verify with the recorded transcripts in `tests/fixtures/mep-smithy` and new transcript tests for the
   "Interactive session order" and "Response checks" scenarios (early exit, failed initialize, wrong ID, unsolicited
   and second response, oversized response)
-- [ ] 1.3 Implement protocol and model-tuple negotiation with the smaller-limit rule and the request limits; verify
+- [x] 1.3 Implement protocol and model-tuple negotiation with the smaller-limit rule and the request limits; verify
   the "Protocol lines", "Model tuple negotiation" and "Limits" scenarios as tests
-- [ ] 1.4 Implement claim checks at activation and the outcome classes with diagnostics and stderr tails; verify the
+- [x] 1.4 Implement claim checks at activation and the outcome classes with diagnostics and stderr tails; verify the
   "Activation against recorded claims", "Session calls" and "Outcome classes" scenarios as tests
-- [ ] 1.5 Implement the host API (`probe`, `activate`, `compile`, `generate`, `close`, `supports`) and its async
+- [x] 1.5 Implement the host API (`probe`, `activate`, `compile`, `generate`, `close`, `supports`) and its async
   driver with session deadlines and cancellation through Moon-Lander stop tokens; verify the "Describe probe",
   "Deadlines and cancellation" and "Host worker support" scenarios against fake workers on the in-memory channel
-- [ ] 1.6 Implement the `runtime` JSON decoder that pins and the installed catalog share; verify the "Worker
+- [x] 1.6 Implement the `runtime` JSON decoder that pins and the installed catalog share; verify the "Worker
   specification" scenarios, including mixed runtimes, a missing digest and a platform mismatch
-- [ ] 1.7 Document the host API for acquisition in `pkgs/morphir-host/worker/README.mbt.md`; verify its examples run
+- [x] 1.7 Document the host API for acquisition in `pkgs/morphir-host/worker/README.mbt.md`; verify its examples run
   as documentation tests
 
 ## 2. Native process workers (morphir-ukvn.5.64.36.2)
