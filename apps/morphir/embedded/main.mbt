@@ -57,6 +57,33 @@ fn embedded_logger(settings : @diagnostics.Settings) -> &@logging.Logger raise {
 #cfg(target="wasm-gc")
 fn gc_run(args : Array[String]) -> Int32 raise {
   let invocation = @cli.Invocation::prepare(args)
+  let finalized = Ref(true)
+  let status = gc_registered_run(invocation, finalized)
+  if finalized.val || status != 0 {
+    status
+  } else {
+    1
+  }
+}
+
+///|
+#cfg(target="wasm-gc")
+fn gc_registered_run(
+  invocation : @cli.Invocation,
+  finalized : Ref[Bool],
+) -> Int32 raise {
+  let cancel_file = invocation.cancel_file()
+  if cancel_file is Some(path) {
+    @platform.register_cancel_file(path)
+  }
+  defer (if cancel_file is Some(_) {
+    @platform.register_cancel_file("") catch {
+      _ => {
+        finalized.val = false
+        @platform.stderr("cancellation.cancel_file_cleanup_failed\n")
+      }
+    }
+  })
   let logger = embedded_logger(invocation.diagnostics())
   let host = invocation.host(logger, () => ())
   let outcome = @hosting.run_embedded(

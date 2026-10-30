@@ -105,9 +105,10 @@
 - [x] 6.2 Map failures to Morphir exit codes with `set_exit_code`, and cancellation to 130 and SIGTERM to 143 through
   `StopReason`; remove the `"Cancelled"` string compare; verify the exit-code scenarios of the `application/lifecycle`
   spec with argv tests that send real signals on native
-- [ ] 6.3 Make the cancel file a host stop request and register the telemetry session and log session as hosted
+- [x] 6.3 Make the cancel file a host stop request and register the telemetry session and log session as hosted
   services; replace per-command `interruption_start`/`interruption_stop`; verify the cancel-file, child-process and
-  cleanup-order scenarios
+  cleanup-order scenarios, including GC registration, idle stdin without EOF, retained stops after marker removal
+  and unconditional registration cleanup
 - [x] 6.4 Keep JSON failure output on standard output and the WASI worksheet refusal; verify the JSON failure and
   hosts-without-signals scenarios
 - [x] 6.5 File each missing hosting feature as a Moon-Lander issue and link it in the pull request; verify none is

@@ -17,6 +17,7 @@ pub fn startup_failure(Array[String], Error, status? : Int32) -> Int32
 pub struct Invocation {
   // private fields
 }
+pub fn Invocation::cancel_file(Self) -> String?
 pub fn Invocation::diagnostics(Self) -> @diagnostics.Settings
 pub async fn Invocation::execute(Self, @moon-lander-hosting.Context[Unit]) -> Unit
 pub fn Invocation::host(Self, &@moon-lander-logging.Logger, async () -> Unit) -> @moon-lander-hosting.Host[Unit] raise

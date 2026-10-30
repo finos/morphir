@@ -120,6 +120,12 @@ The maintainer confirmed these on 2026-10-28:
 - On 2026-10-30 the maintainer approved an additive `utc_milliseconds` operation in the GC host adapter for UTC
   diagnostic logging. It uses the existing response envelope. Missing or invalid clocks fail clearly when logging
   is enabled; help and logging-off runs do not require the clock. Existing MEP and worker payloads remain unchanged.
+- On 2026-10-30 the maintainer approved GC cancel-file registration so host-owned stdin waits can observe the
+  selected path. The registration is cleared after the run, including startup failures, and the existing host stop
+  state retains an observed request after the marker disappears. Existing worker messages and shared buffers stay unchanged.
+- On 2026-10-30 the maintainer confirmed that this release includes a qualified Moonx entry. Its compiler/runtime,
+  filesystem, JSON, failure and help/version qualification is part of release delivery; a help-only stub or silent
+  deferral does not satisfy that scope. Any additional runtime prerequisite requires an explicit maintainer decision.
 - The work lands in as few pull requests as needed: one pull request for the migration here, with a separate pull
   request only for a group that is blocked while the rest is ready.
 

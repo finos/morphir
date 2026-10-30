@@ -94,6 +94,22 @@ request a clock. Text diagnostics go only to stderr; rolling-file diagnostics re
 the native or JS process host and are explicitly refused here. No MEP or worker
 message fields are added by these host capabilities.
 
+For `--cancel-file`, the GC entry calls `register_cancel_file` before starting
+the host. The first argument is its prepared absolute path and the second is
+empty. Return `{"value":true}` after accepting it. Passing an empty first
+argument clears the registration and is idempotent. A host that lacks this
+capability refuses before the command starts with
+`cancellation.cancel_file_registration_unavailable` and exit 2.
+
+The supplied runner polls the path in the existing bounded stdin wait, retaining
+an observed request in its existing interrupt flag before returning to MoonBit.
+Removing the marker cannot undo that request. Registration cleanup runs after
+normal completion, cancellation and early startup failure. A failed clear emits
+`cancellation.cancel_file_cleanup_failed` on stderr; it changes an otherwise
+successful exit to 1 and keeps an existing failure/cancellation code. It does
+not add another stdout document. Existing worker messages and shared buffers
+are unchanged.
+
 Optional WASM-GC operations `bytes_supported`, `read_bytes` and `write_bytes`
 extend this interface. `bytes_supported` returns true when both byte operations
 are implemented; missing operations mean unsupported. `read_bytes(path)` returns

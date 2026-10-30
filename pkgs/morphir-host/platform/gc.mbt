@@ -188,6 +188,17 @@ pub fn utc_milliseconds() -> Int64 raise {
 }
 
 ///|
+/// Register the selected host path; an empty path clears the registration.
+pub fn register_cancel_file(path : String) -> Unit raise {
+  let response = call("register_cancel_file", a=path) catch {
+    _ => raise IOError("cancellation.cancel_file_registration_unavailable")
+  }
+  guard response is True else {
+    raise IOError("cancellation.cancel_file_registration_unavailable")
+  }
+}
+
+///|
 pub fn exit(code : Int32) -> Unit {
   ignore(call("exit", a=code.to_string())) catch {
     _ => ()

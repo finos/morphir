@@ -95,6 +95,16 @@ pub fn Invocation::diagnostics(self : Invocation) -> @diagnostics.Settings {
 }
 
 ///|
+/// The prepared host path, for embedding adapters that poll while MoonBit waits.
+pub fn Invocation::cancel_file(self : Invocation) -> String? {
+  if self.cancel_file == "" {
+    None
+  } else {
+    Some(self.cancel_file)
+  }
+}
+
+///|
 pub fn Invocation::log_directory(
   self : Invocation,
 ) -> @sinks.LogDirectory raise {

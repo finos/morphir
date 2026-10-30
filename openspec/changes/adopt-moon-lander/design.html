@@ -328,8 +328,20 @@ host's default code for an unhandled failure is 1, while Morphir uses 2 for ever
 A failure middleware maps each command failure to Morphir's code and calls <code>set_exit_code</code>, so the
 <code>application/lifecycle</code> codes hold. Cancellation is a <code>StopReason</code>, not the message text
 <code>"Cancelled"</code>. The cancel file becomes a host stop request polled by the same check as signals.</p>
-<p>Moon-Lander's own change <code>add-host-lifecycle</code> is still open. Group 6 uses only what the published
-release documents; any gap becomes a Moon-Lander issue, not a local workaround.</p>
+<p>The maintainer approved GC cancel-file registration on 2026-10-30. Before starting the embedded host, pass the
+prepared absolute path to <code>register_cancel_file</code> through <code>morphir_host_v1</code>; an empty first
+argument clears it, the second argument is empty, and the existing envelope acknowledges with
+<code>{"value":true}</code>. The Node adapter polls that path during its existing bounded stdin waits and retains
+the observed stop in the same shared interrupt flag. The ordinary embedded stop probe and hosted lifetime then own
+cancellation and cleanup. No new parent/worker message or shared-buffer field is added.</p>
+<p>Clear the registration after success, failure, cancellation and an error before the first host hook. A missing
+registration capability refuses before command execution. If cleanup fails after a successful operation, retain
+its existing stdout result, report <code>cancellation.cancel_file_cleanup_failed</code> on stderr and exit 1; an
+earlier failure or cancellation keeps its selected status. Qualification holds stdin open with no bytes, observes
+the actual input request, creates the marker, and requires one cancellation result and exit 130. It also covers a
+drained pipe, a marker that disappears immediately after observation, and startup/cleanup capability faults.</p>
+<p>Group 6 uses the documented APIs of the published framework release. Any newly discovered hosting gap becomes a
+Moon-Lander issue linked to the release evidence.</p>
 
 <h3 id="host-2">HOST-2. The desktop Workbench embeds the host under Proton</h3>
 <p>Proton owns the window event loop. The desktop app builds a host whose hosted services are the native Workbench

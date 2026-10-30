@@ -731,6 +731,14 @@ keeps signal reception on its parent thread while command work runs in an owned 
 Native originals publication polls that same lifetime, including when optional consumer observation
 is active. Its owned helper receives cancellation and retains its cleanup budget before escalation.
 
+The provided GC runner also observes `--cancel-file` while stdin is held open,
+including when no bytes have arrived. Its embedder registers the selected path
+through the documented host operation and clears it after the run. Once observed,
+the stop remains requested even if the marker disappears. Unsupported registration
+refuses before the command starts. A failed registration cleanup is reported on
+stderr and changes an otherwise successful exit to 1, preserving the existing
+stdout result and any earlier failure or cancellation status.
+
 Started services stop in reverse order after success, failure or cancellation. The diagnostic session drains
 before telemetry flushes, and the logging bridge closes it again idempotently before exit. The public completion
 callback reports a pending SIGINT or SIGTERM even when it stops the host before the first service or command
