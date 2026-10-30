@@ -133,7 +133,7 @@
 {"id":"morphir-5xzg","title":"Document required submodule initialization","status":"closed","priority":2}
 {"id":"morphir-5zvt","title":"Refuse MoonBit guest operations before morphir.initialized","status":"open","priority":2}
 {"id":"morphir-648","title":"Fix version embedding in binary - morphir --version shows 'dev' instead of release version","status":"closed","priority":1}
-{"id":"morphir-6b0k","title":"Adopt shared OpenSpec html-design in the umbrella repository","status":"in_progress","priority":2}
+{"id":"morphir-6b0k","title":"Adopt shared OpenSpec html-design in the umbrella repository","status":"closed","priority":2}
 {"id":"morphir-6cq2","title":"Standalone single-file compile ignores the env layer for frontend prelude and extension (GH #887)","status":"open","priority":3}
 {"id":"morphir-6f1o","title":"Finish CI reuse follow-ups from PR #199 review","status":"closed","priority":3}
 {"id":"morphir-6nn5","title":"Netlify deploy preview fails consistently on PR #791 (renovate/mise-tools)","status":"open","priority":3}
