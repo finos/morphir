@@ -100,6 +100,8 @@ empty. Return `{"value":true}` after accepting it. Passing an empty first
 argument clears the registration and is idempotent. A host that lacks this
 capability refuses before the command starts with
 `cancellation.cancel_file_registration_unavailable` and exit 2.
+The prepared path uses forward slashes on Windows too; compare file identities
+with the platform's path rules rather than raw separator spelling.
 
 The supplied runner polls the path in the existing bounded stdin wait, retaining
 an observed request in its existing interrupt flag before returning to MoonBit.

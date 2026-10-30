@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {spawn, spawnSync} from 'node:child_process';
 import {existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join, normalize} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {headlessEnvironment} from './headless-environment.ts';
 
@@ -18,12 +18,13 @@ import {Worker} from 'node:worker_threads';
 import {appendFileSync,writeFileSync} from 'node:fs';
 import fs from 'node:fs';
 import {syncBuiltinESMExports} from 'node:module';
+import {normalize} from 'node:path';
 const mode=${JSON.stringify(mode)};
 if(mode==='transient-file') {
   const lstat=fs.lstatSync;
   fs.lstatSync=function(path,...args) {
     const value=lstat(path,...args);
-    if(String(path)===${JSON.stringify(join(root, 'stop.flag'))}) fs.unlinkSync(path);
+    if(normalize(String(path))===normalize(${JSON.stringify(join(root, 'stop.flag'))})) fs.unlinkSync(path);
     return value;
   };
   syncBuiltinESMExports();
@@ -164,7 +165,7 @@ export async function exerciseHostLifecycle(target: string, binary: string, laun
       assert.match(stderr, /morphir\.configuration/);
       if (embedded) {
         const registrations = existsSync(audit) ? readFileSync(audit, 'utf8').trim().split('\n').map(line => JSON.parse(line)) : [];
-        assert.deepEqual(registrations, item.request === 'cancel-file' ? [{path: cancel, response: {value: true}}, {path: '', response: {value: true}}] : [], 'The selected file is registered and unconditionally cleared');
+        assert.deepEqual(registrations.map(record => ({...record, path: record.path === '' ? '' : normalize(record.path)})), item.request === 'cancel-file' ? [{path: normalize(cancel), response: {value: true}}, {path: '', response: {value: true}}] : [], 'The selected file is registered and unconditionally cleared');
         if (item.request === 'cancel-file' && item.input === 'empty-idle') assert.equal(existsSync(cancel), false, 'An observed stop remains cancelled after the marker disappears');
         assert.equal(existsSync(logs), false, 'Portable diagnostics use stderr, without rolling files');
       }
@@ -205,7 +206,7 @@ function exerciseGcRegistrationFailures(binary: string) {
         assert.ok(!result.stderr.includes('Starting worksheet'));
       }
       const registrations = readFileSync(audit, 'utf8').trim().split('\n').map(line => JSON.parse(line));
-      assert.equal(registrations[0].path, cancel);
+      assert.equal(normalize(registrations[0].path), normalize(cancel));
       assert.equal(registrations.length, mode === 'missing-registration' ? 1 : 2);
       if (mode !== 'missing-registration') assert.equal(registrations[1].path, '', 'Startup and completion paths both attempt cleanup');
     }
