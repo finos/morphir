@@ -281,6 +281,7 @@
 {"id":"morphir-ds9e.9.4","title":"Prove Avro and OpenAPI local repository steel threads","status":"open","priority":1}
 {"id":"morphir-ds9e.9.5","title":"Add multi-repository priority, refresh, and bounded caches","status":"open","priority":2}
 {"id":"morphir-ds9e.9.6","title":"Replace stale --index examples in morphir-rust docs","status":"open","priority":2}
+{"id":"morphir-dz98","title":"Reduce Renovate PR volume with weekly update batches","status":"in_progress","priority":2}
 {"id":"morphir-e88w","title":"Ion foundation completion precedes exhaustive case migration","status":"closed","priority":2}
 {"id":"morphir-eadj","title":"Decide whether Hole.partialBody and IncompleteTypeDefinition.partialTypeExp should be one member","status":"open","priority":2}
 {"id":"morphir-eag3","title":"morphir-rust: daemon installed_wasm_extension tests cannot start on Windows (os error 740, installer detection)","status":"open","priority":3}
