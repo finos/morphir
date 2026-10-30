@@ -2,7 +2,7 @@
 
 ## 1. Worker session core and host API (morphir-ukvn.5.64.36.1)
 
-- [ ] 1.1 Create `pkgs/morphir-host/worker` with the domain types (`WorkerSpec`, `WorkerRuntime`, `WasmAbi`,
+- [x] 1.1 Create `pkgs/morphir-host/worker` with the domain types (`WorkerSpec`, `WorkerRuntime`, `WasmAbi`,
   `Claims`, `ProtocolLine`, `ModelTuple`, `Limits`, `Outcome`), the `Channel` and `Launcher` traits and an in-memory
   channel (CHAN-1); land it as its own pull request; verify it builds on native, js, wasm and wasm-gc with no new
   warnings
