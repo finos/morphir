@@ -144,9 +144,13 @@
           "examples": [
             [ "morphir/SDK", "list", "map" ],
             [
-              [ "morphir" ],
-              [ "s", "d", "k" ],
-              [ "list" ],
+              [
+                [ "morphir" ],
+                [ "s", "d", "k" ]
+              ],
+              [
+                [ "list" ]
+              ],
               [ "map" ]
             ]
           ],
@@ -1340,7 +1344,7 @@
       ]
     },
     "ReferenceType": {
-      "description": "Reference to a named type, optionally with type arguments.\n\nCanonical (no args): \"morphir/SDK:basics#int\"\nCanonical (with args): {\"Reference\": [\"morphir/SDK:list#list\", \"a\"]}\n\nAccepted formats:\n- Bare FQName string: \"morphir/SDK:basics#int\"\n- Wrapper with FQName: {\"Reference\": \"morphir/SDK:basics#int\"}\n- Wrapper with array: {\"Reference\": [\"morphir/SDK:list#list\", \"a\"]}\n- Wrapper with object: {\"Reference\": {\"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"]}}\n\nEncoders should output canonical form.\n",
+      "description": "Reference to a named type, optionally with type arguments.\n\nCanonical (no args): \"morphir/SDK:basics#int\"\nCanonical (with args): {\"Reference\": {\"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"]}}\n\nAccepted formats:\n- Bare FQName string: \"morphir/SDK:basics#int\"\n- Wrapper with FQName: {\"Reference\": \"morphir/SDK:basics#int\"}\n- Wrapper with array: {\"Reference\": [\"morphir/SDK:list#list\", \"a\"]}\n- Wrapper with object: {\"Reference\": {\"fqname\": \"morphir/SDK:list#list\", \"args\": [\"a\"]}}\n\nEncoders should output canonical form.\n",
       "examples": [
         "morphir/SDK:basics#int",
         "morphir/SDK:string#string",
@@ -3625,7 +3629,7 @@
       "additionalProperties": false
     },
     "ValueSpecification": {
-      "description": "Value specification (public interface - signature only, no implementation).\n\nCanonical format: { \"inputs\": { \"a\": type, \"b\": type }, \"output\": type }\nThe \"inputs\" field can be omitted if empty.\n\nEncoders should output the canonical object format.\nDecoders should accept both object and legacy array formats.\n",
+      "description": "Value specification (public interface - signature only, no implementation).\n\nCanonical format: { \"inputs\": { \"a\": type, \"b\": type }, \"output\": type }, where the key order of \"inputs\" is the parameter order.\nThe \"inputs\" field can be omitted if empty.\n\nEncoders should output the canonical object format.\nDecoders should accept both object and legacy array formats.\n",
       "examples": [
         {
           "inputs": {
@@ -3653,7 +3657,7 @@
           }
         },
         "inputs": {
-          "description": "Input parameters.\nCanonical (output): Object keyed by parameter name: { \"x\": type, \"y\": type }\nAccepted (input): Array format: [[\"x\", type], [\"y\", type]]\nCan be omitted if empty (no inputs).\n",
+          "description": "Input parameters.\nCanonical (output): Object keyed by parameter name: { \"x\": type, \"y\": type }. The key order of \"inputs\" is the parameter order.\nAccepted (input): Array format: [[\"x\", type], [\"y\", type]]\nCan be omitted if empty (no inputs).\n",
           "oneOf": [
             {
               "type": "object",
