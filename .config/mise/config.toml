@@ -13,7 +13,7 @@ rust = "1.98.1"
 python = "3.14.7"
 
 # JavaScript runtimes for website and tooling
-node = "24.21.0"
+node = "26.13.0"
 bun = "1.4.2"
 "npm:morphir-elm" = { version = "2.100.0", allow_low_downloads = true }
 
@@ -26,7 +26,7 @@ jsonschema = "latest"
 # CLI documentation generator (https://usage.jdx.dev/)
 # Pinned: docs:cli commits generated output to docs/cli/ and completions/,
 # and the freshness check in CI fails when a new usage release changes it.
-usage = "6.11.1"
+usage = "7.1.3"
 
 # Match finos/morphir-moonbit's pinned toolchain. When upgrading, update the
 # version, platform URLs (encode "+" as "%2B") and Windows core checksum together.
