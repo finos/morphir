@@ -145,3 +145,9 @@ Copyright 2022 FINOS
 Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
+
+## OpenSpec change proposals
+
+New proposals use the shared `html-design` workflow, with capability specs,
+a standalone `design.html`, and implementation tasks linked to Beads.
+See [the OpenSpec guide](docs/developers/openspec.md) for setup and validation.

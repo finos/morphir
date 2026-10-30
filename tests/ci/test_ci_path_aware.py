@@ -1,4 +1,5 @@
 import re
+import fnmatch
 import tomllib
 import unittest
 from pathlib import Path
@@ -91,6 +92,23 @@ class PathAwareCiTests(unittest.TestCase):
     def test_docs_job_does_not_repeat_the_package_suite(self) -> None:
         self.assertNotIn("mise run package:check", job_body(self.ci, "docs"))
         self.assertIn("mise run package:check", job_body(self.ci, "package-mck"))
+
+    def test_openspec_inputs_select_docs_and_the_shared_gate(self) -> None:
+        docs_patterns = re.findall(r"- '([^']+)'", filter_body(self.ci, "docs"))
+        rust_patterns = re.findall(r"- '([^']+)'", filter_body(self.ci, "rust"))
+        for path in (
+            "openspec/config.yaml",
+            "openspec/extensions.lock.json",
+            "openspec/schemas/html-design/schema.yaml",
+            "openspec/changes/example/design.html",
+            "scripts/openspec-ext.mbtx",
+            "scripts/features/openspec_ext.feature",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(any(fnmatch.fnmatchcase(path, p) for p in docs_patterns))
+                self.assertFalse(any(fnmatch.fnmatchcase(path, p) for p in rust_patterns))
+        self.assertIn("mise run openspec:verify", job_body(self.ci, "docs"))
+        self.assertIn("openspec:verify", self.tasks["check"]["depends"])
 
     def test_native_mck_changes_run_the_typescript_binding_gate(self) -> None:
         mck_filter = filter_body(self.ci, "mck")

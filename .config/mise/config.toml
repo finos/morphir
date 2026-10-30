@@ -7,6 +7,7 @@
 experimental = true
 
 [tools]
+"npm:@fission-ai/openspec" = "1.14.3"
 # Core tools
 rust = "1.98.1"
 python = "3.14.7"
@@ -675,6 +676,7 @@ depends = [
     "spec:mep-check",
     "spec:mep-smithy-check",
     "tools:test",
+    "openspec:verify",
 ]
 
 # ===== Testing Tasks =====
@@ -799,3 +801,23 @@ run = "bun run tools/fetch-published-bundles.ts"
 [tasks."ci:validate-tool-release-metadata"]
 description = "Validate signed tool release metadata fixtures"
 run = "python .config/mise/tasks/ci/validate_tool_release_metadata.py"
+
+[tasks."openspec:check"]
+description = "Check the shared OpenSpec workflow"
+run = "mise exec -- moon run -q --target wasm scripts/openspec-ext.mbtx -- check"
+
+[tasks."openspec:setup"]
+description = "Setup the shared OpenSpec workflow"
+run = "mise exec -- moon run -q --target wasm scripts/openspec-ext.mbtx -- setup"
+
+[tasks."openspec:validate"]
+description = "Validate the shared OpenSpec workflow"
+run = ["mise exec -- openspec schema validate html-design", "mise exec -- openspec validate --all --strict"]
+
+[tasks."openspec:test"]
+description = "Test the shared OpenSpec workflow"
+run = "mise exec -- moon test --deny-warn --target wasm scripts/openspec-ext.mbtx"
+
+[tasks."openspec:verify"]
+description = "Verify the shared OpenSpec workflow"
+run = ["mise exec -- moon update", "mise run openspec:check", "mise run openspec:validate", "mise run openspec:test"]

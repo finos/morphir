@@ -59,6 +59,12 @@ mise run build
 mise run test
 ```
 
+## OpenSpec proposals
+
+Use `mise run openspec:verify` to check the shared proposal workflow. The
+[OpenSpec guide](docs/developers/openspec.md) covers setup, HTML designs, Beads
+links and bundle updates.
+
 ## Development Workflow
 
 ### Working on the Morphir CLI (Rust)
