@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>host-extensions-as-workers: design</title>
+<!--
+  Agent document template (docs/templates/agent-document.html). Specs, plans and reports that a person reviews
+  start from this file: copy it, keep the <head> as it is, and write the content inside <main>.
+  Styles and scripts are files in docs/templates/assets/, referenced and not embedded. In a copy, change the
+  "assets/" prefix of each href and src to the relative path from the copy to that directory, for example
+  "../../docs/templates/assets/" from .dev/beads-specs/. See AGENTS.md, "Specs and plans are HTML documents".
+  Code goes in <pre><code class="language-moonbit"> (or scheme, toml, json, bash, diff). Give sections an id and
+  list them in nav.toc.
+-->
+<link rel="stylesheet" href="../../../docs/templates/assets/agent-document.css">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github.min.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="../../../docs/templates/assets/highlight/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
+<script defer src="../../../docs/templates/assets/highlight/highlight.min.js"></script>
+<script defer src="../../../docs/templates/assets/highlight/languages/scheme.min.js"></script>
+<script defer src="../../../docs/templates/assets/agent-document.js"></script>
+</head>
+<body>
+<main>
+<h1>host-extensions-as-workers: design</h1>
+<p class="meta">OpenSpec change · Bead <code>morphir-ukvn.5.64.36</code> · 2026-10-30 · approved</p>
+
+<nav class="toc" aria-label="Contents">
+<ul>
+<li><a href="#context">Context</a></li>
+<li><a href="#goals">Goals and non-goals</a></li>
+<li><a href="#walkthrough">One compile, from command to result</a></li>
+<li><a href="#architecture">Parts and where they run</a></li>
+<li><a href="#contract">The contract acquisition uses</a></li>
+<li><a href="#decisions">Decisions</a></li>
+<li><a href="#extism-repo">The moonrockz/extism repository</a></li>
+<li><a href="#risks">Risks and trade-offs</a></li>
+<li><a href="#migration">Migration plan</a></li>
+<li><a href="#delivery">Delivery lanes</a></li>
+<li><a href="#open-questions">Open questions</a></li>
+</ul>
+</nav>
+
+<h2 id="context">Context</h2>
+<p>See <code>proposal.md</code>, "Why", for the motivation. This section records only the current state that the
+design builds on. Research for this design read the code in this repository, the source of
+<code>moonbitlang/async</code> 0.22.4, the Python, Elm and MoonBit extension releases, the MEP specification in
+finos/morphir and the Extism JavaScript SDK.</p>
+
+<table>
+<thead><tr><th>Today</th><th>Where</th><th>What it means for the host</th></tr></thead>
+<tbody>
+<tr><td>A pure MoonBit <em>guest</em> session and Content-Length codec exist</td>
+<td><code>pkgs/morphir-moonbit/mep</code> (<code>Decoder</code>, <code>encode_frame</code>, <code>Session</code>)</td>
+<td>Framing is reusable. The host side has no session type, no channel and no typed claims; its checks are
+private functions in <code>apps/morphir/cli/extension.mbt</code> that run on a pipelined batch after the guest
+exits.</td></tr>
+<tr><td>Process supervision is TypeScript, run at CLI run time</td>
+<td><code>apps/morphir/build-provider/supervision.mts</code>, <code>windows-job.mts</code>,
+<code>WindowsJob.cs</code></td>
+<td>Process groups, quiescence checks, stderr caps and Windows job objects work, but in a Node helper that the user
+must supply to the native CLI.</td></tr>
+<tr><td>MoonBit process code is synchronous and buffered</td>
+<td><code>pkgs/morphir-host/platform/platform.c</code>, <code>process_worker.js.mbt</code></td>
+<td>Both create a process group and stop it correctly, but neither pipes stdin or streams stdout, so neither can
+carry an interactive session.</td></tr>
+<tr><td><code>moonbitlang/async</code> <code>@process</code> streams but does not own a tree</td>
+<td>0.22.4, <code>process/unix.c</code>; upstream issue moonbitlang/async#648</td>
+<td>Unix spawn sets no process group and signals one PID. Windows has one global job per host, not one per child.
+The package does not build for js.</td></tr>
+<tr><td>Python extension is an Extism module with 8 kernel imports</td>
+<td><code>extension/python/v0.4.1</code>, 4,755,091 bytes</td>
+<td>Imports only <code>extism:host/env</code> <code>alloc</code>, <code>error_set</code>,
+<code>output_set</code>, <code>input_length</code>, <code>input_load_u64</code>, <code>input_load_u8</code>,
+<code>store_u64</code>, <code>store_u8</code>. No WASI. Exports <code>handle</code> and
+<code>morphir_extension_info</code>. Memory has no maximum.</td></tr>
+<tr><td>Extensions built with the Morphir extension SDK can import more than Python does</td>
+<td><code>morphir-extension-sdk/src/host.rs</code>, <code>morphir-host-native/src/extism/host_functions.rs</code>,
+<code>container.rs:300</code></td>
+<td>The SDK declares four host functions in <code>extism:host/user</code>: <code>morphir_get_workspace_info</code>,
+<code>morphir_cache_ir</code>, <code>morphir_get_cached_ir</code> and <code>morphir_log</code>. The Rust host enables
+WASI for every guest. A conformant guest may therefore import WASI preview 1 and these functions.</td></tr>
+<tr><td>Elm extension is a set of native executables</td>
+<td><code>extension/elm/v0.4.1</code>, six platforms, built with <code>bun build --compile</code></td>
+<td>A process worker over Content-Length stdio. No Node needed. It cannot run in a browser as released.</td></tr>
+<tr><td>The MoonBit guest has native and portable builds</td>
+<td><code>apps/morphir-extension</code>, <code>apps/morphir-extension/portable</code></td>
+<td>A process worker on native and Node; a <code>morphir_bytes_v1</code> WASM worker anywhere.</td></tr>
+</tbody>
+</table>
+
+<h2 id="goals">Goals and non-goals</h2>
+<h3 id="goals-in">Goals</h3>
+<ul>
+<li>The session rules (see <code>specs/extensions/worker-sessions</code>) exist once, as a pure MoonBit state
+machine, and every worker kind drives them.</li>
+<li>Effects stay in adapters: spawning, pipes, threads, Web Workers, timers and the file system. This follows the
+repository's functional core, imperative shell rule.</li>
+<li>No user-supplied helper, pin of a runtime or Node path on any route that acquisition uses.</li>
+<li>Session semantics are kept: interactive order, response checks, limits, outcome classes and exit status.</li>
+<li>The browser route is shown to work with real guests, with no change to the session code.</li>
+<li>Any extension that conforms to MEP and to a supported runtime and ABI profile runs with no host change. The host
+holds no list of languages or extensions: language, file types and operations come from claims, so a Gleam or Elm
+extension needs no host work. The published extensions are qualification examples, not the definition of
+support.</li>
+</ul>
+<h3 id="goals-out">Non-goals</h3>
+<ul>
+<li>Warm worker pools, a daemon or reuse of one worker across commands. <code>morphir-ukvn.5.64.7</code> owns the
+connected daemon; it can add a channel kind later.</li>
+<li>Wire cancellation. No released guest implements <code>$/cancelRequest</code>, so the host stops workers instead
+and says so.</li>
+<li>A sandbox for native process workers. A native executable has the user's authority minus its environment. This
+is the same as today and is documented.</li>
+<li>The WebAssembly Component Model and WASI preview 2. WASI preview 1 is supported only as the sandbox in
+<a href="#wasm-4">WASM-4</a>.</li>
+<li>Product use of the browser host in the Workbench, and the Elm extension in a browser.</li>
+<li>Any change to the Rust CLI.</li>
+</ul>
+
+<h2 id="walkthrough">One compile, from command to result</h2>
+<p>A user with no Node installed runs the native CLI on a Python file. Today this needs an <code>extism-wasm</code>
+pin, a Node runtime, three pinned helper modules and a 106 MiB Rust host. After this change the user gives only the
+artifact:</p>
+<pre><code class="language-bash">morphir extension compile src/loans.py --package acme/loans --ir-version 4 \
+  --extension-pin python.json --output model --json</code></pre>
+<pre><code class="language-json">{
+  "contractVersion": "0.2.0",
+  "artifact": { "path": "/work/python/morphir-python-binding-0.4.2.wasm", "sha256": "10acafa0…" },
+  "runtime": { "kind": "wasm", "abi": "extism-kernel-v1" },
+  "descriptor": { "path": "/work/python/release.json", "sha256": "72770f73…" },
+  "origin": "finos/morphir-python extension/python/v0.4.2"
+}</code></pre>
+<p>The CLI decodes the pin into a <code>WorkerSpec</code> at the boundary. It reads the WASM file through a no-follow
+descriptor, hashes the bytes it read and writes them into a private directory. It reads the module's import and
+export sections and classifies it as <code>extism-kernel-v1</code>; the pin's declared ABI agrees. The native host
+cannot run WASM in its own process safely, so it starts its own executable in worker mode, as a process worker in a
+new process group, with an empty environment and the private directory as its working directory.</p>
+<p>The worker process loads the module into the engine from <code>moonrockz/extism</code>, with a 256 MiB memory
+ceiling and the instruction budget. It now serves Content-Length frames on stdio. From here the host sees exactly
+what it would see from the Elm executable or the native MoonBit guest: a channel that carries whole MEP messages.</p>
+<p>The session state machine sends <code>morphir.extension.describe</code> to a first worker, compares the live
+claims with <code>release.json</code> and stops that worker. It starts a fresh worker, sends <code>initialize</code>
+with MEP <code>0.1</code>, checks the returned identity and the stable capabilities of the offered line against the claims, and that the model transport is the offered tuple within the offered limits, sends
+<code>initialized</code>, then <code>morphir.frontend.compile</code>, and checks the reply ID, shape and size. It
+sends <code>shutdown</code> and <code>exit</code>. Inside the worker, each request is one call of the guest's
+<code>handle</code> export; notifications are not delivered, and <code>exit</code> ends the instance and the
+process. The host confirms the process group is gone, renames <code>model.morphir-partial</code> to
+<code>model</code>, and writes one <code>morphir/command-result</code> object to stdout.</p>
+<p>The npm CLI follows the same steps, except that the guest runs in a Node worker thread, and the channel is a
+message port instead of stdio. In a browser it runs in a Web Worker. The Elm executable and the native MoonBit
+guest skip the WASM steps and are process workers directly.</p>
+
+<h3 id="sequence">Message order</h3>
+<p>The diagram shows the two workers of one operation. The probe worker exists only to read the live claims; the
+operation always uses a fresh worker, so state from the probe cannot leak into the operation.</p>
+<svg role="img" aria-labelledby="seq-title seq-desc" viewBox="0 0 760 420" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="13">
+<title id="seq-title">Message order of one compile</title>
+<desc id="seq-desc">Three lifelines: CLI session, probe worker and operation worker. The session sends describe and exit to the probe worker and compares claims. It then sends initialize, initialized, compile, shutdown and exit to a fresh operation worker, checks each reply, confirms the worker stopped and publishes the output.</desc>
+<g fill="none" stroke="currentColor">
+<rect x="20" y="10" width="170" height="36" rx="6"/>
+<rect x="295" y="10" width="170" height="36" rx="6"/>
+<rect x="570" y="10" width="170" height="36" rx="6"/>
+<path d="M105 46 V410 M380 46 V150 M655 160 V400" stroke-dasharray="4 4"/>
+<path d="M105 75 H372 M372 100 H113 M105 125 H372 M105 185 H647 M647 210 H113 M105 235 H647 M105 260 H647 M647 285 H113 M105 310 H647 M647 335 H113 M105 360 H647"/>
+<path d="M366 70 L372 75 L366 80 M119 95 L113 100 L119 105 M366 120 L372 125 L366 130 M641 180 L647 185 L641 190 M119 205 L113 210 L119 215 M641 230 L647 235 L641 240 M641 255 L647 260 L641 265 M119 280 L113 285 L119 290 M641 305 L647 310 L641 315 M119 330 L113 335 L119 340 M641 355 L647 360 L641 365"/>
+</g>
+<g fill="currentColor">
+<text x="40" y="33">CLI session (MoonBit)</text>
+<text x="325" y="33">probe worker</text>
+<text x="590" y="33">operation worker</text>
+<text x="140" y="70">morphir.extension.describe</text>
+<text x="140" y="95">claims: id, version, capabilities</text>
+<text x="140" y="120">morphir.exit, then stop and confirm</text>
+<text x="20" y="160" font-size="11">compare live claims with descriptor or catalog</text>
+<text x="140" y="180">morphir.initialize (protocol offer, tuple offer)</text>
+<text x="140" y="205">identity and stable claims checked; offer negotiated</text>
+<text x="140" y="230">morphir.initialized</text>
+<text x="140" y="255">morphir.frontend.compile</text>
+<text x="140" y="280">result or error; ID, shape and size checked</text>
+<text x="140" y="305">morphir.shutdown</text>
+<text x="140" y="330">acknowledged</text>
+<text x="140" y="355">morphir.exit; grace, then tree stop and confirm</text>
+<text x="20" y="400" font-size="11">publish: rename .morphir-partial into place; write one report</text>
+</g>
+</svg>
+<details>
+<summary>Mermaid source</summary>
+<pre><code>sequenceDiagram
+  participant S as CLI session (MoonBit)
+  participant P as probe worker
+  participant W as operation worker
+  S->>P: morphir.extension.describe
+  P-->>S: claims
+  S->>P: morphir.exit (stop, confirm)
+  Note over S: compare live claims with descriptor or catalog
+  S->>W: morphir.initialize
+  W-->>S: identity, stable claims checked, offer negotiated
+  S->>W: morphir.initialized
+  S->>W: morphir.frontend.compile
+  W-->>S: result or error (checked)
+  S->>W: morphir.shutdown
+  W-->>S: acknowledged
+  S->>W: morphir.exit (grace, tree stop, confirm)
+  Note over S: publish and report</code></pre>
+</details>
+
+<h2 id="architecture">Parts and where they run</h2>
+<p>The host has one portable core and a set of adapters. The core does not know what a process or a thread is; it
+sees a <code>Channel</code> that carries whole messages and a <code>Launcher</code> that turns a
+<code>WorkerSpec</code> into a channel. Each host wires the launchers it supports, and that set is what
+<code>Host::supports</code> reports.</p>
+<svg role="img" aria-labelledby="arch-title arch-desc" viewBox="0 0 760 400" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif" font-size="13">
+<title id="arch-title">Worker host parts</title>
+<desc id="arch-desc">At the top, the CLI commands and acquisition call the host API. Below is the portable session core with typed claims and the channel trait. Below that are three launchers: process launcher for native and Node, WASM launcher, and browser launcher. The WASM launcher uses the ABI classifier and adapters, which use the engine from moonrockz/extism. On native, the WASM launcher starts the CLI's own executable in worker mode through the process launcher.</desc>
+<g fill="none" stroke="currentColor">
+<rect x="20" y="10" width="340" height="46" rx="6"/>
+<rect x="400" y="10" width="340" height="46" rx="6"/>
+<rect x="20" y="90" width="720" height="70" rx="6"/>
+<rect x="20" y="200" width="220" height="80" rx="6"/>
+<rect x="270" y="200" width="220" height="80" rx="6"/>
+<rect x="520" y="200" width="220" height="80" rx="6"/>
+<rect x="270" y="310" width="470" height="70" rx="6" stroke-dasharray="6 3"/>
+<path d="M190 56 V90 M570 56 V90 M130 160 V200 M380 160 V200 M630 160 V200 M380 280 V310 M630 280 V310 M270 240 H240"/>
+</g>
+<g fill="currentColor">
+<text x="35" y="38">morphir extension describe | compile | generate</text>
+<text x="415" y="38">acquisition: probe, activate, calls (5.64.34)</text>
+<text x="35" y="115">Session core (pure): lifecycle, negotiation, claim checks, response checks, limits</text>
+<text x="35" y="137">Host API: WorkerSpec, probe, activate, Session; trait Channel; trait Launcher</text>
+<text x="35" y="225">Process launcher</text>
+<text x="35" y="245" font-size="11">native: posix_spawn group, job</text>
+<text x="35" y="262" font-size="11">Node: child_process, tree stop</text>
+<text x="285" y="225">WASM launcher</text>
+<text x="285" y="245" font-size="11">native: own executable, worker mode</text>
+<text x="285" y="262" font-size="11">Node: worker_threads</text>
+<text x="535" y="225">Browser launcher</text>
+<text x="535" y="245" font-size="11">Web Worker + MessageChannel</text>
+<text x="535" y="262" font-size="11">WASM only</text>
+<text x="285" y="335">ABI classifier, extism-kernel-v1 and morphir-bytes-v1 adapters</text>
+<text x="285" y="357" font-size="11">moonrockz/extism: engine (WAMR via Zig; js WebAssembly), Extism host</text>
+</g>
+</svg>
+<details>
+<summary>Mermaid source</summary>
+<pre><code>flowchart TB
+  CLI[morphir extension commands] --> Core
+  ACQ[acquisition 5.64.34] --> Core
+  Core[Session core + Host API + Channel/Launcher traits]
+  Core --> PL[Process launcher: native group/job, Node child_process]
+  Core --> WL[WASM launcher: native worker mode, Node worker_threads]
+  Core --> BL[Browser launcher: Web Worker]
+  WL -. native .-> PL
+  WL --> ABI[ABI classifier + adapters]
+  BL --> ABI
+  ABI --> EXT[moonrockz/extism engine + Extism host]</code></pre>
+</details>
+
+<table>
+<thead><tr><th>Worker</th><th>Native CLI (Linux, macOS, Windows)</th><th>npm CLI (Node)</th><th>Browser</th></tr></thead>
+<tbody>
+<tr><td>Elm <code>v0.4.1</code> executable</td><td>process worker</td><td>process worker</td><td>refused: no WASM
+artifact</td></tr>
+<tr><td>MoonBit native guest</td><td>process worker</td><td>process worker</td><td>refused</td></tr>
+<tr><td>MoonBit portable <code>model.wasm</code></td><td>WASM, worker mode process</td><td>WASM, worker
+thread</td><td>WASM, Web Worker</td></tr>
+<tr><td>Python <code>0.4.1</code> and <code>0.4.2</code></td><td>WASM, worker mode process</td><td>WASM, worker
+thread</td><td>WASM, Web Worker</td></tr>
+</tbody>
+</table>
+
+<h3 id="packages">Packages</h3>
+<table>
+<thead><tr><th>Package</th><th>Targets</th><th>Holds</th></tr></thead>
+<tbody>
+<tr><td><code>pkgs/morphir-host/worker</code></td><td>all</td><td>Domain types (<code>WorkerSpec</code>,
+<code>Claims</code>, <code>ProtocolLine</code>, <code>ModelTuple</code>, <code>Limits</code>,
+<code>Outcome</code>), the session state machine, <code>Channel</code> and <code>Launcher</code> traits, the host
+API, and an in-memory channel for tests.</td></tr>
+<tr><td><code>pkgs/morphir-host/worker/process</code></td><td>all</td><td>Pure parts shared by both process
+launchers: Content-Length frame reader with its limit, stderr tail, the <code>StagedArtifact</code> type and staging
+rules, and the launcher conformance suite.</td></tr>
+<tr><td><code>pkgs/morphir-host/worker/process/native</code></td><td>native</td><td>Spawn and tree stubs in C,
+native staging I/O, the native launcher and channel. A separate package because <code>moonbitlang/async</code>
+<code>process</code>, <code>pipe</code>, <code>fs</code> and <code>raw_fd</code> do not build for js.</td></tr>
+<tr><td><code>pkgs/morphir-host/worker/process/node</code></td><td>js</td><td>Node <code>child_process</code>
+bindings, js staging I/O, the Node launcher and channel.</td></tr>
+<tr><td><code>pkgs/morphir-host/worker/wasm</code></td><td>all</td><td>Import and export reader, ABI
+classifier, memory-maximum rewrite, <code>morphir-bytes-v1</code> adapter, Extism adapter, worker-mode serve
+loop.</td></tr>
+<tr><td><code>pkgs/morphir-host/worker/thread</code></td><td>js</td><td>Node worker-thread and browser Web Worker
+launchers and the worker entry module, built from MoonBit.</td></tr>
+<tr><td><code>apps/morphir/cli</code></td><td>native, js</td><td>Pin <code>0.2.0</code> decoding, command
+wiring, reports, the <code>morphir extension worker</code> mode.</td></tr>
+</tbody>
+</table>
+
+<h2 id="contract">The contract acquisition uses</h2>
+<p>Acquisition (<code>morphir-ukvn.5.64.34</code>) gets four things, and each one maps to a requirement in
+<code>specs/extensions/worker-sessions</code>. The sketch below is the intended shape, not final code.</p>
+<pre><code class="language-moonbit">pub(all) enum WorkerRuntime {
+  Process(platform~ : Platform, args~ : Array[String])
+  Wasm(abi~ : WasmAbi?)
+}
+
+pub(all) enum WasmAbi {
+  ExtismKernelV1
+  MorphirBytesV1
+}
+
+pub struct WorkerSpec {
+  artifact : ArtifactRef      // path and Sha256; validated at the boundary
+  runtime : WorkerRuntime
+}
+
+pub(open) trait Channel {
+  async send(Self, Message) -&gt; Unit raise ChannelError
+  async receive(Self) -&gt; Message raise ChannelError
+  async close(Self) -&gt; WorkerStop          // after exit: grace, then tree stop, confirm
+  async abort(Self, StopReason) -&gt; WorkerStop
+}
+
+pub fn Host::supports(self : Host, runtime : WorkerRuntime) -&gt; Bool
+pub async fn Host::probe(self : Host, spec : WorkerSpec, deadline~ : Deadline) -&gt; Description raise HostError
+pub(all) enum Offer {
+  Legacy                    // MEP 0.1: compile and generate
+  Model(ModelTuple)         // MEP 0.2.0-draft.1: only this tuple's operation
+}
+
+pub fn Offer::select(claims : Claims, operation : Operation, profile? : Profile, codec? : Codec) -&gt; Offer raise Refusal
+// chooses by the host's preference order (Ion, then JSON), not by the worker's order
+pub fn Launcher::launch(self : Self, spec : WorkerSpec, limits : Limits) -&gt; Channel raise  // frame limits come from negotiation
+pub async fn Host::activate(
+  self : Host, spec : WorkerSpec, expected~ : Claims, offer~ : Offer, deadline~ : Deadline, stop~ : StopSignal,
+) -&gt; Session raise HostError
+pub async fn Session::compile(self : Session, request : CompileRequest) -&gt; Outcome[Compiled] raise HostError
+pub async fn Session::generate(self : Session, request : GenerateRequest) -&gt; Outcome[Generated] raise HostError
+pub async fn Session::close(self : Session) -&gt; SessionReport</code></pre>
+<ol>
+<li><strong>Describe probe.</strong> <code>probe</code> runs <code>describe</code> and <code>exit</code> on a
+staged, verified artifact and returns identity, version and claims. Acquisition compares them with the index
+entry.</li>
+<li><strong>Activation.</strong> <code>activate</code> takes the stored artifact, its recorded runtime, the
+recorded claims and an <code>Offer</code>. <code>initialize</code> must carry the protocol offer and, for model
+methods, the one tuple, so the caller chooses the offer before the worker starts. <code>Offer::select</code> derives it
+from the claims and the requested operation, so the CLI and acquisition share one selection rule. A
+<code>StopSignal</code> wraps a Moon-Lander stop token; a stop interrupts a pending receive. Acquisition rehashes the stored artifact first (its own requirement); the host hashes the bytes
+it copies again, so the check covers the bytes that run.</li>
+<li><strong>Calls.</strong> <code>compile</code> and <code>generate</code> pick the method from the protocol line
+negotiated at activation. Model calls carry the five-part tuple. Limits and diagnostics are those in the specs.</li>
+<li><strong>Host support.</strong> <code>supports</code> lets acquisition offer only WASM artifacts in a
+browser.</li>
+</ol>
+<p>The catalog records the runtime with the same fields as <code>WorkerRuntime</code>. The JSON form is the
+<code>runtime</code> object of the pin, so a lock entry and a pin read through one decoder.</p>
+
+<h2 id="decisions">Decisions</h2>
+
+<h3 id="ses-1">SES-1. The session is a pure state machine, driven one message at a time</h3>
+<p>The session core takes events (a reply arrived, a channel closed, the deadline passed) and returns the next step
+(send this message, wait for that ID, finish with this outcome). The driver is a short async loop that executes
+the steps over a channel. Tests drive the core with recorded transcripts, including those in
+<code>tests/fixtures/mep-smithy</code>, without any process.</p>
+<p><em>Alternatives.</em> Keep the pipelined batch: it cannot check claims before it sends the operation, which
+activation requires. Port the Rust <code>Session</code> type as written: it mixes effects and checks, and this
+repository's rules ask for a functional core.</p>
+
+<h3 id="ses-2">SES-2. One session type serves MEP 0.1 and 0.2.0-draft.1</h3>
+<p>The protocol line is a closed enum. The host offers the line that the requested operation needs: MEP
+<code>0.1</code> for legacy compile and generate, which the Elm and Python guests use, and
+<code>0.2.0-draft.1</code> for model methods, which the MoonBit guest uses. The CLI picks the operation from the
+guest's describe answer, so a user does not choose a protocol.</p>
+<p><em>Alternative.</em> Separate session types per line. They would duplicate lifecycle and response checks, which
+are identical.</p>
+
+<h3 id="chan-1">CHAN-1. A channel carries whole messages; framing belongs to the stdio transport</h3>
+<p>The channel API is <code>send</code>, <code>receive</code>, <code>close</code> and <code>abort</code>, like
+the Rust <code>morphir_host::Channel</code> trait that <code>native-services/diagnostics.rs</code> wraps. The stdio
+channel adds Content-Length framing with <code>@mep.Decoder</code> and <code>encode_frame</code>. A worker-thread or
+Web Worker channel posts one message per MEP message, so it needs no framing. Size limits are checked in each
+transport before a body is allocated, and again in the core.</p>
+<p><em>Alternative.</em> Make every transport carry frames, so all workers look like stdio. That adds a framing
+step to message ports for no benefit and moves limit checks away from the reads that allocate.</p>
+
+<h3 id="proc-1">PROC-1. The native host owns spawn with its own stubs</h3>
+<p>On Unix, a C stub calls <code>posix_spawn</code> with <code>POSIX_SPAWN_SETPGROUP</code> and process group 0,
+<code>dup2</code> of three pipes that the stub creates itself (<code>pipe2</code> with <code>O_CLOEXEC</code> on Linux;
+<code>pipe</code> and <code>FD_CLOEXEC</code> under the spawn lock on macOS), and closes every other descriptor. Only the
+host's ends are given to the event loop, as <code>@raw_fd.RawFdStream</code>. <code>@pipe.pipe()</code> is not used: it
+registers both ends with epoll, and the end handed to the child keeps a stale registration that gives false readiness
+to a later pipe with the same descriptor number (seen as EAGAIN reads in about one Linux run in 30). Stop uses
+<code>killpg</code>, first <code>SIGTERM</code>, then <code>SIGKILL</code>, and confirms the group is empty with
+<code>killpg(pgid, 0)</code>, the way <code>supervision.mts</code> does today. Waiting uses
+<code>@process.wait_pid</code>, which already works for any child through pidfd or kqueue. On Windows, the stub
+creates a job per worker with kill-on-close, starts the process suspended with
+<code>PROC_THREAD_ATTRIBUTE_JOB_LIST</code> (or assigns it before resume), and stops it with
+<code>TerminateJobObject</code>.</p>
+<p><em>Alternatives.</em> <code>@process.spawn</code>: no group, one PID is signalled, and grandchildren survive
+(moonbitlang/async#648, open). <code>platform.c</code> <code>morphir_host_process</code>: right group handling, but
+synchronous and buffered to files. We will offer the group support upstream; when <code>@process</code> provides
+it, the stub can go.</p>
+
+<h3 id="proc-2">PROC-2. The npm CLI uses Node <code>child_process</code> through <code>extern "js"</code></h3>
+<p><code>@process</code> does not build for js. The Node adapter spawns with <code>detached: true</code>, piped
+stdio and <code>windowsHide</code>, reads stdout through <code>@js_async.ReadableStream</code>, and stops with
+<code>process.kill(-pid)</code> on Unix and <code>taskkill /T /F</code> on Windows, then waits for the exit event.
+Node cannot create a job object without the PowerShell and C# bridge that this change retires, so the npm CLI on
+Windows uses tree termination and reports it (see <code>specs/extensions/process-workers</code>).</p>
+
+<h3 id="wasm-1">WASM-1. The host classifies a module by ABI profile, never by extension</h3>
+<p>The host reads only the import and export sections and matches them against the import surface of two profiles,
+<code>extism-kernel-v1</code> and <code>morphir-bytes-v1</code>. A module may use any part of its profile's
+surface; a module that imports anything outside it is refused before instantiation, with the import named. A
+declared ABI must agree with the classification. The profile is the contract, so a new conformant extension in any
+language runs without a host change, and a module still cannot gain authority that its profile does not grant.</p>
+<p><em>Alternative.</em> Accept exactly the imports of the extensions we know (the first draft of this design took
+the 8 imports of the Python module). Every new PDK or SDK version would then need a host change, which is the
+opposite of what a protocol is for.</p>
+
+<h3 id="wasm-4">WASM-4. The Extism import surface and what each import may do</h3>
+<p>The surface is what upstream Extism hosts offer and what the Morphir extension SDK uses. Each import is linked,
+and its policy decides what it can reach:</p>
+<table>
+<thead><tr><th>Imports</th><th>Policy in the Morphir host</th></tr></thead>
+<tbody>
+<tr><td><code>extism:host/env</code> kernel (all 20 functions)</td><td>Served by the Zig kernel module
+(<a href="#ext-3">EXT-3</a>).</td></tr>
+<tr><td><code>extism:host/env</code> <code>config_get</code>, <code>var_get</code>, <code>var_set</code></td>
+<td>No configuration. Variables live only for the session.</td></tr>
+<tr><td><code>extism:host/env</code> <code>log_*</code>, <code>get_log_level</code></td><td>Bounded diagnostics in the
+stderr tail.</td></tr>
+<tr><td><code>extism:host/env</code> <code>http_request</code>, <code>http_status_code</code>,
+<code>http_headers</code></td><td>Linked, always fail; the report records the refused request.</td></tr>
+<tr><td><code>extism:host/user</code> <code>morphir_get_workspace_info</code>, <code>morphir_cache_ir</code>,
+<code>morphir_get_cached_ir</code>, <code>morphir_log</code></td><td>Signatures as in
+<code>morphir-extension-sdk</code>. Workspace info names an empty private directory, the IR cache lives only for
+the session, and the log becomes diagnostics. This matches <code>for_restricted_generation</code> in the Rust
+host.</td></tr>
+<tr><td><code>wasi_snapshot_preview1</code> (any preview 1 function)</td><td>No preopens, empty arguments,
+environment and stdin, clocks and random bytes allowed, stdout and stderr captured as diagnostics. Every other
+function returns an error code (<code>ENOTCAPABLE</code> or <code>EBADF</code>).</td></tr>
+</tbody>
+</table>
+<p>The surface grows only through a new profile version, never through a descriptor claim.</p>
+
+<h3 id="wasm-2">WASM-2. The native CLI runs WASM guests in a worker mode of its own executable</h3>
+<p>The host starts its own verified executable as <code>morphir extension worker --abi … --module …</code>, as a
+process worker. The worker loads the engine, serves frames on stdio and exits after <code>exit</code>. A deadline
+or cancellation is then a process-group stop, the same as for any process worker, and a crash in the C engine
+cannot take the CLI down. The host passes its build identity; the worker refuses to serve if its own differs, so a
+CLI replaced during an upgrade cannot serve an old host. <code>--json</code> in worker mode controls a startup and
+diagnostic report on stderr, never stdout.</p>
+<p><em>Alternatives.</em> Run the engine in a CLI thread: stopping a C engine call from outside is engine-specific
+and not portable, and a crash ends the CLI. Ship a separate worker executable: it needs its own pin, packaging and
+version check, for no gain over the CLI's own bytes.</p>
+
+<h3 id="wasm-3">WASM-3. Node and the browser run WASM in threads, with the same adapters</h3>
+<p>The worker entry module is MoonBit compiled to js. It uses the same classifier and adapters and the
+<code>moonrockz/extism</code> js engine, which wraps <code>WebAssembly</code>. The engine has no instruction
+metering on js, so the deadline is <code>terminate()</code>, and the memory ceiling is set by rewriting the module's
+memory maximum before compilation, as <code>embedding/wasm-memory.mts</code> does today. The kernel functions run
+inside the worker, so no <code>SharedArrayBuffer</code> and no cross-origin isolation headers are needed.</p>
+
+<h3 id="ext-1">EXT-1. A MoonBit Extism host lives in a new repository, <code>moonrockz/extism</code></h3>
+<p>Hosting Extism plugins is not specific to Morphir, and no MoonBit Extism host exists. A separate repository gives
+it its own release cycle and users, and keeps this repository to Morphir concerns. This repository pins its
+published package. See <a href="#extism-repo">the repository section</a>.</p>
+<p><em>Alternatives.</em> Use <code>@extism/extism</code>: its latest version is <code>2.0.0-rc13</code> from May
+2025, it has no fuel, its <code>maxPages</code> does not limit guest memory, and it cannot serve the native CLI. Use
+<code>libextism</code>: a 33 to 40 MiB prebuilt Rust library with no Windows arm64 build. Keep the kernel inside
+this repository: workable, but it would not be reusable, and Damian proposed the separate repository.</p>
+
+<h3 id="ext-2">EXT-2. The first native engine is WAMR, built from C source with Zig</h3>
+<p>WAMR is Apache-2.0 C, so the Zig already pinned in this repository builds it for every CLI platform, with no
+prebuilt binary and no Rust toolchain. Its fast interpreter supports the features the Python module uses
+(bulk memory, reference types, multi-value, sign extension, non-trapping float conversion, mutable globals). The
+<code>moonrockz/extism</code> group starts with a qualification gate: the Python <code>0.4.2</code> fixture must
+compile within the 30-second call deadline on the slowest qualified platform, with the Zig kernel bound as in
+<a href="#ext-3">EXT-3</a>, and instruction metering must work.
+If the gate fails, the engine layer takes the Wasmtime C API, linked with Zig, as its first engine instead. The
+engine is behind the engine layer, so the choice does not reach this repository's code.</p>
+<p><em>Alternatives.</em> Wasmtime C API first: full parity with today's fuel, epoch and memory limits and a JIT,
+but a prebuilt Rust-built library of about 13 MiB compressed per platform. wasm3: in minimal maintenance.</p>
+
+<h3 id="ext-3">EXT-3. The Extism kernel is written once in Zig and shipped as one WASM module</h3>
+<p>Official Extism does not run its kernel as host code. Its kernel is a small <code>no_std</code> Rust crate
+compiled to WASM (<code>runtime/src/extism-runtime.wasm</code>, 3,474 bytes), with its own linear memory, linked
+into the plugin's store under <code>extism:host/env</code>. The plugin's kernel imports are then calls from one
+WASM module to another, and the host reads the output from the kernel's memory through
+<code>output_offset</code> and <code>output_length</code>. The Go, Java, Erlang and WAMR SDKs embed that same file.
+The JavaScript SDK is the exception: it has a second kernel written in JavaScript.</p>
+<p><code>moonrockz/extism</code> writes the kernel in Zig, about 300 lines with no libc, and compiles it to
+<code>wasm32-freestanding</code> with an explicit CPU feature set that every engine we use supports. The
+<code>.wasm</code> is embedded as bytes in the MoonBit library. The same artifact then runs on native (WAMR), Node and
+browsers, so the block allocator, handle encoding, out-of-memory behavior and limits are identical everywhere. That
+is a stronger guarantee than upstream gives. The kernel keeps the upstream export names and signatures (20
+functions, including the 8 that the Python plugin imports). It leaves out the upstream <code>extism_context</code>
+externref global, so it needs no reference types.</p>
+<p>Binding differs only per engine. On js the host passes the kernel instance's exports as the plugin's imports. On
+WAMR the first binding is the pattern that <code>extism/wamr-sdk</code> already uses: each kernel import is a native
+function that calls the kernel instance. WAMR's load-time multi-module linking is measured as an alternative and
+kept only if it is faster and works in the interpreter mode we use. A native C-ABI build of the same Zig source is
+added only if measurement shows that forwarding is too slow; both builds then run the same Zig tests.</p>
+<p><em>Alternatives.</em> A kernel in MoonBit: portable across MoonBit targets, but every engine binding would call
+back into host code for every byte the guest reads, and nothing else could use it. A native Zig static library
+first: the fastest on native, but Node and browsers would need a second kernel, which repeats the split in upstream
+Extism.</p>
+
+<h3 id="cli-1">CLI-1. Explicit pins move to contract 0.2.0; helper options are retired</h3>
+<p>A pin now names an artifact and a runtime, the same shape the catalog records. Old pins named a helper, a Node
+runtime and twelve host modules, and none of those exist on the new host. Old pins and the options
+<code>--extension-helper</code> and <code>--node</code> are refused with a pointer to the migration section, not
+ignored. The <code>binding</code> field disappears, because the runtime and the classified ABI determine the
+route.</p>
+
+<h3 id="cli-2">CLI-2. One report and one exit table for every route, as a deliberate break</h3>
+<p>Today the portable route writes a <code>morphir/cli/extension-command</code> report and exits 2 on refusal, and
+the native and Extism routes write <code>morphir/command-result</code> and exit 1 on an expected refusal. With one
+host, the commands write <code>morphir/command-result</code> <code>0.1.0</code> and keep the portable route's exit table
+(0, 1, 2, 124, 130), which is the documented and more precise one.</p>
+<p>This breaks the existing successful JSON schema of the portable route. AGENTS.md normally forbids that: commands
+that already emit JSON keep their successful result schema, and <code>command-result</code> is the standard for new
+results only. The maintainer decided on 30 October 2026 that, at this stage of the CLI, a clean break is better than
+carrying two report schemas. This decision is an explicit exception for these three commands, made together with the
+pin break in <a href="#cli-1">CLI-1</a>. The breaking-change notes in group 9 list the old and new fields so that
+consumers can migrate.</p>
+<p><em>Alternatives.</em> Keep <code>extension-command</code> for every route, which preserves the portable consumers
+but leaves the extension commands as the only ones without the standard envelope. Or add a versioned report option,
+which keeps both schemas alive.</p>
+
+<h3 id="brw-1">BRW-1. The browser proof uses real guests and the product session code</h3>
+<p>A Playwright test loads a page that runs the browser launcher and the session core, compiled to js, against the
+MoonBit portable guest and the Python extension. It checks describe, compile and generate results against the Node
+results, a runaway guest stopped by <code>terminate()</code>, and refusal of a process artifact. The Elm extension
+needs a WASM or worker-module asset from finos/morphir-elm; that is a separate request to that repository, not part
+of this change.</p>
+
+<h3 id="mig-1">MIG-1. No Rust bridge</h3>
+<p>The new host uses no Rust host library. The existing helper routes stay as they are, with no new work, until the
+new host is qualified (group 7). Group 9 then removes them. This is the only overlap, and it ends inside this
+change.</p>
+
+<h2 id="extism-repo">The moonrockz/extism repository</h2>
+<p>The repository follows the canonical moonrockz setup: a site app, OpenSpec with the <code>html-design</code>
+schema, <code>moonx</code> and <code>.mbx</code> scripts, and Mooncakes publication. Its own first OpenSpec change
+defines its scope. For this change it must provide:</p>
+<table>
+<thead><tr><th>Package</th><th>Provides</th><th>Targets</th></tr></thead>
+<tbody>
+<tr><td><code>moonrockz/extism/engine</code></td><td>Compile and instantiate a module with host imports given as
+MoonBit functions, call an export, memory ceiling, instruction budget where available, interruption, and feature
+errors that name the feature</td><td>native (WAMR via Zig), js (<code>WebAssembly</code>)</td></tr>
+<tr><td><code>moonrockz/extism/kernel</code></td><td>The Extism kernel written in Zig and compiled to one
+<code>wasm32-freestanding</code> module (<a href="#ext-3">EXT-3</a>), embedded as bytes, with the upstream export
+names and signatures. The Zig source and its tests live in the repository; the build checks that the embedded
+bytes match it</td><td>all</td></tr>
+<tr><td><code>moonrockz/extism/wasi</code></td><td>A WASI preview 1 implementation for sandboxed plugins: no
+preopens, empty arguments, environment and stdin, embedder-supplied clock and random source, stdout and stderr
+handed to the embedder, error codes for everything else. Shared by every engine through the engine package's
+guest-memory access</td><td>all</td></tr>
+<tr><td><code>moonrockz/extism</code></td><td>A plugin API over the packages above: manifest, the Extism host
+functions with an embedder policy for configuration, variables, logging and HTTP, host functions that the
+embedder registers in any namespace, call by export name, and limits</td><td>native, js</td></tr>
+</tbody>
+</table>
+<p>The Morphir host uses the plugin API with the policy in <a href="#wasm-4">WASM-4</a> and registers the four
+Morphir host functions itself, so <code>moonrockz/extism</code> stays free of Morphir concepts. Its own
+<code>morphir-bytes-v1</code> adapter uses the engine package directly.</p>
+
+<h2 id="risks">Risks and trade-offs</h2>
+<ul>
+<li>[WAMR's interpreter is too slow for Python compiles] → The <a href="#ext-2">EXT-2</a> gate measures the real
+fixture first; the Wasmtime C API is the named fallback, behind the same engine layer.</li>
+<li>[A conformant guest needs a WASI function that the sandbox answers with an error] → The guest fails with
+its own diagnostic, not a host refusal. Conformance fixtures built with the Rust, Zig and JavaScript PDKs exercise
+the functions those toolchains call at start-up, and the sandbox adds a function only with a reviewed policy.</li>
+<li>[Calls between the plugin and the kernel instance are slow on WAMR] → The <a href="#ext-2">EXT-2</a> gate
+measures the Python fixture with the forwarding binding first. Multi-module linking and a native build of the same
+Zig kernel (<a href="#ext-3">EXT-3</a>) are the measured alternatives.</li>
+<li>[WAMR has no maintained <code>build.zig</code>, and Windows MSVC needs MASM files that Zig cannot assemble] →
+<code>moonrockz/extism</code> owns a <code>build.zig</code> that follows WAMR's CMake source selection, and uses
+WAMR's general C <code>invokeNative</code> on Windows. Windows linking against the MSVC C runtime is checked in group
+4 before any other platform work depends on it.</li>
+<li>[Zig releases break source compatibility] → The Zig code stays small, and the Zig version is pinned with the
+repository's existing pin.</li>
+<li>[Instruction metering is missing on js and may be missing in a WAMR build] → Deadlines and the memory ceiling
+always apply; the report lists the instruction budget as not enforced where it is not.</li>
+<li>[A grandchild that ignores stdin end of file survives a killed CLI on Unix] → Host exit closes stdin and the
+released guests exit on end of file. Linux parent-death signals need a fork path; we document the limit and
+revisit it if a guest needs it.</li>
+<li>[Windows qualification uses scarce runners] → One deliberate qualification run per release candidate, reviewed
+by the build-master; no new per-push Windows job. Results carry a <code>Tested-on:</code> trailer.</li>
+<li>[The new repository delays this repository] → Groups 1, 2 and 3 do not depend on it. Group 5 can develop
+against a local path dependency and lands only on a published version.</li>
+<li>[The CLI binary grows by the engine size] → Measured in group 5 and reported in the pull request; WAMR's
+interpreter is expected to be about 1 MiB.</li>
+<li>[Breaking pins, the report profile and exit codes for scripts] → Only explicit pins are affected; refusals
+point to a migration section with before and after pins; the qualification tasks are rewritten in the same
+group.</li>
+<li>[Self re-execution finds a different executable after an upgrade] → The build identity check in
+<a href="#wasm-2">WASM-2</a> refuses the mismatch with <code>extension.worker_runtime_mismatch</code>.</li>
+</ul>
+
+<h2 id="migration">Migration plan</h2>
+<ol>
+<li>Groups 1 to 6 add the host and wire the commands to it. Old pins keep working on the old routes until group 6
+switches the commands; the switch and the new pin contract land together.</li>
+<li>Group 7 qualifies the published extensions on the new host. Qualification tasks
+(<code>test:portable-mep-cli</code>, <code>test:cli-native-prerequisites</code>,
+<code>test:cli-extism-python</code>) are rewritten to use <code>0.2.0</code> pins.</li>
+<li>Group 9 removes the TypeScript helpers and the invocation role of the Rust native-services helper. Acquisition
+removes the helper's distribution role in its own groups.</li>
+<li>Rollback before group 9 is a revert of the group 6 switch. After group 9 it is a revert of that group.</li>
+</ol>
+
+<h2 id="delivery">Delivery lanes</h2>
+<p>The work splits into four lanes that can start in parallel, each in its own worktree and pull request. The
+channel trait and the <code>WorkerSpec</code> types (task 1.1) land first, as a small pull request, because lanes B
+and C build against them.</p>
+<table>
+<thead><tr><th>Lane</th><th>Groups</th><th>Repository</th><th>Needs</th></tr></thead>
+<tbody>
+<tr><td>A. Session core</td><td>1, then 6</td><td>finos/morphir-moonbit</td><td>none; 6 needs 2, 3 and 5</td></tr>
+<tr><td>B. Native process workers</td><td>2</td><td>finos/morphir-moonbit</td><td>task 1.1</td></tr>
+<tr><td>C. Node process workers</td><td>3</td><td>finos/morphir-moonbit</td><td>task 1.1</td></tr>
+<tr><td>D. Extism host</td><td>4</td><td>moonrockz/extism (new)</td><td>approval to create the repository</td></tr>
+<tr><td>E. WASM workers</td><td>5, then 8</td><td>finos/morphir-moonbit</td><td>1, 2 and a published group 4
+release</td></tr>
+<tr><td>F. Qualification and retirement</td><td>7, then 9</td><td>finos/morphir-moonbit</td><td>6</td></tr>
+</tbody>
+</table>
+
+<h2 id="open-questions">Open questions</h2>
+<ul>
+<li>The exact grace period after <code>exit</code> (the specs fix 2 seconds) may need tuning for the Bun-built Elm
+executable's shutdown; this changes no behavior beyond the bound.</li>
+<li>Whether the Workbench adopts the browser launcher in <code>morphir-ukvn.5.64.21</code> or in its own change.</li>
+</ul>
+</main>
+</body>
+</html>
